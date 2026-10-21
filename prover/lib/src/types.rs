@@ -330,7 +330,7 @@ pub struct BatchInput {
     /// against, COMMITTED in the usage hash, so a prover cannot nominate
     /// some clause whose section happens to equal the provenance bytes.
     /// The attestation path does not read it: an attestation of the
-    /// provenance leaf is recognised by the guest's own constant
+    /// provenance leaf is recognized by the guest's own constant
     /// (`kernel::PROVENANCE_LEAF_KEY`), because the chain's check of this
     /// witness sits inside the verifier's accrual try/catch and cannot
     /// refuse a batch's attestations.

@@ -63,8 +63,8 @@
 #      TakeoverChecksRoot) MUST fail Recoverable, the fifth
 #      (RebatchDropsRevoker) SendsExcludeKnownRevoked.
 #      The same module's second spec, DeferSpec (formal/RelayStateDeferral.cfg),
-#      models the deferral of an operation dropped at batch formation: 6
-#      invariants, five switches, each FALSE failing the invariant it names.
+#      models the deferral of an operation dropped at batch formation: 10
+#      invariants, ten switches, each FALSE failing the invariant it names.
 #
 # All five models complete exhaustive state exploration in under 20 minutes
 # total with -workers auto on a modern laptop.
@@ -83,7 +83,7 @@
 #   TLA2TOOLS=/path/to/tla2tools.jar ./scripts/test-tla.sh
 #
 # Exit codes:
-#   0  — all 60 invariants (and RelayState's two action properties) hold across the
+#   0  — all 64 invariants (and RelayState's two action properties) hold across the
 #        explored state space (five models, six configurations)
 #   >0 — an invariant violation was found OR the environment is misconfigured
 
@@ -167,7 +167,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 6/6 — The relay's deferral at batch formation (6 invariants)"
+echo "▶ Pass 6/6 — The relay's deferral at batch formation (10 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config RelayStateDeferral.cfg \

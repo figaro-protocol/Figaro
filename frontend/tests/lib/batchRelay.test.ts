@@ -59,6 +59,7 @@ import {
     createStateInclusionCheck,
     createStateRootAnchorCheck,
     getBatchRelayUrl,
+    MAX_RELAY_STATE_BYTES,
     readVerifiedBatchProcess,
     verifyBatchOrder,
     type BatchRelayCheckId,
@@ -1013,6 +1014,76 @@ describe("readVerifiedBatchProcess — the default inclusion check reads the rel
         } finally {
             vi.unstubAllGlobals();
         }
+    });
+
+    /** The state-inclusion check of one order read against `response` as the relay's /state. */
+    async function inclusionAgainst(response: Response) {
+        readUserEndpointsMock.mockReturnValue({ batchRelayUrl: RELAY });
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+        const relay = {
+            process: vi.fn().mockResolvedValue({ process_id: processId, orders: [honestView()], resolution: null }),
+            status: vi.fn().mockResolvedValue({ archive: null }),
+        };
+        try {
+            const result = await readVerifiedBatchProcess(
+                { readContract: vi.fn().mockResolvedValue(OTHER_ROOT) } as unknown as PublicClient,
+                CHAIN_ID,
+                processId,
+                { client: relay as never, isAnchored: anchored },
+            );
+            return { verdict: result.orders[0]?.verdict, check: checkFor(result.orders[0]!.checks, "state-inclusion") };
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    }
+
+    /** A body stream of `chunks` chunks of `size` bytes, counting what is pulled and whether it is canceled. */
+    function countedStream(chunks: number, size: number) {
+        const chunk = new Uint8Array(size).fill(0x20);
+        let pulled = 0;
+        let canceled = false;
+        const stream = new ReadableStream<Uint8Array>({
+            pull(controller) {
+                if (pulled === chunks) {
+                    controller.close();
+                    return;
+                }
+                pulled += 1;
+                controller.enqueue(chunk);
+            },
+            cancel() {
+                canceled = true;
+            },
+        });
+        return { stream, pulled: () => pulled, canceled: () => canceled };
+    }
+
+    it("refuses a /state whose Content-Length is over the page's limit, reading none of it", async () => {
+        const body = countedStream(1, 16);
+        const { verdict, check } = await inclusionAgainst(
+            new Response(body.stream, {
+                status: 200,
+                headers: { "content-length": String(MAX_RELAY_STATE_BYTES + 1) },
+            }),
+        );
+        expect(verdict).toBe("failed");
+        expect(check?.ok).toBe(false);
+        expect(check?.detail).toContain(`${MAX_RELAY_STATE_BYTES + 1} bytes`);
+        expect(check?.detail).toContain(`${MAX_RELAY_STATE_BYTES}-byte limit`);
+        expect(body.pulled()).toBeLessThanOrEqual(1);
+    });
+
+    it("refuses a /state that streams past the page's limit with no Content-Length, and stops reading", async () => {
+        const size = 1 << 20;
+        const chunks = MAX_RELAY_STATE_BYTES / size + 8;
+        const body = countedStream(chunks, size);
+        const { verdict, check } = await inclusionAgainst(new Response(body.stream, { status: 200 }));
+        expect(verdict).toBe("failed");
+        expect(check?.ok).toBe(false);
+        expect(check?.detail).toContain(`streamed past ${MAX_RELAY_STATE_BYTES} bytes`);
+        expect(check?.detail).toContain(`${MAX_RELAY_STATE_BYTES}-byte limit`);
+        expect(body.canceled()).toBe(true);
+        expect(body.pulled()).toBeLessThan(chunks);
     });
 });
 

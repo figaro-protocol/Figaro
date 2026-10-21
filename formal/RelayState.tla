@@ -72,18 +72,26 @@
 (* the drain's cut, may not be submitted yet, or may never come), or a     *)
 (* commit whose funding the node could not read, is DEFERRED, never        *)
 (* dead-lettered at first sight; what was filtered into an order behind a  *)
-(* deferred operation moves with it. A deferred operation waits apart from *)
-(* the queue and is drained again only into the slots the queue leaves     *)
-(* empty, its group whole; it is dead-lettered once `DWindow` ticks have   *)
-(* passed since it was first deferred. The ops are fixed: "a" a commit,    *)
-(* "b" an operation on a's order, "f" one that never applies — the free    *)
-(* failure anyone may submit whose refusal names a missing dependency. An  *)
-(* operation the kernel refuses for good against the landed state (it      *)
+(* deferred operation moves with it. A tick's deferrals wait apart from    *)
+(* the queue in drain groups                                               *)
+(* (`group_by_process`): operations share a group when a chain of them,    *)
+(* each touching a process the next touches, joins them. A group is        *)
+(* drained again only into the slots the queue leaves empty, whole; the    *)
+(* groups decide what is drained together and nothing else. Each         *)
+(* operation is dead-lettered once `DWindow` ticks have passed since its   *)
+(* OWN first deferral, and what was filtered behind it goes with it; what  *)
+(* is left of its group is grouped again. The ops are fixed: "a" a commit, *)
+(* "b" an operation on a's order, both of process P1 and honest; "f" and   *)
+(* "g" operations that never apply, which anyone may submit free, each     *)
+(* once at any tick — f a seller attestation with its role in P1 and its   *)
+(* target in P2, g one naming P2; "r" a resolve of P1 listing one order    *)
+(* twice, which never applies and which admission (`pre_check`) refuses.  *)
+(* An operation the kernel refuses for good against the landed state (it  *)
 (* exists, is resolved, is past its deadline, fails a signature or a       *)
 (* witness) is dead-lettered at once and never enters the deferral, so it  *)
-(* is not modelled here.                                                   *)
+(* is not modeled here.                                                    *)
 (*                                                                         *)
-(* FIVE MORE SWITCHES, each FALSE restoring one defect the deferral must   *)
+(* TEN MORE SWITCHES, each FALSE restoring one defect the deferral must   *)
 (* not have:                                                               *)
 (*   DeferBoundedInTime       — FALSE: the bound is in attempts, so an     *)
 (*                              operation retried every tick expires       *)
@@ -106,6 +114,30 @@
 (*   DeferDropsCopy           — FALSE: a copy resubmitted while the        *)
 (*                              operation was drained stays queued beside  *)
 (*                              the deferred one (fails `NoTwoCopies`)     *)
+(*   DeferGroupsByProcess     — FALSE: a tick's deferrals are one group,   *)
+(*                              whatever processes they touch (fails       *)
+(*                              `DrainGroupIsAClass`)                      *)
+(*   DeferGroupsTransitive    — FALSE: grouped by one touched process, so  *)
+(*                              a chain of operations touching common      *)
+(*                              processes is split (fails                  *)
+(*                              `DrainGroupIsAClass`)                      *)
+(*   DeferOwnWindow           — FALSE: a group with an operation past its  *)
+(*                              window is dead-lettered whole, so an       *)
+(*                              operation that never applies, submitted    *)
+(*                              earlier and naming an honest operation's   *)
+(*                              process, cuts that one's window short      *)
+(*                              (fails `HonestWindowKept` when checked     *)
+(*                              alone with the honest side held to the     *)
+(*                              commit — `DHonest` edited to {"a"} in this *)
+(*                              module; with `DHonest` as it stands,       *)
+(*                              `DeferralBoundedInTime` is reported first) *)
+(*   DeferDependentEdge       — FALSE: each operation expires on its own   *)
+(*                              window alone, and what was filtered behind *)
+(*                              it stays deferred (fails                   *)
+(*                              `DependentLeavesWithItsDependency`)        *)
+(*   AdmitRefusesDoubleListing — FALSE: a resolve listing one order twice  *)
+(*                              is admitted (fails                         *)
+(*                              `DoubleListingNeverAdmitted`)              *)
 (***************************************************************************)
 EXTENDS Naturals, Sequences, FiniteSets
 
@@ -127,7 +159,12 @@ CONSTANTS
     DeferOwnCounter,
     DeferDrainsOnlyFreeSlots,
     DeferMovesDependents,
-    DeferDropsCopy
+    DeferDropsCopy,
+    DeferGroupsByProcess,
+    DeferGroupsTransitive,
+    DeferOwnWindow,
+    DeferDependentEdge,
+    AdmitRefusesDoubleListing
 
 Genesis == 0
 Roots == 0..MaxBatches
@@ -392,23 +429,40 @@ Next ==
 (* THE DEFERRAL of an operation dropped at batch formation (main.rs's      *)
 (* formation, mempool.rs's `defer`, `drain_up_to`, `expire_deferred`).     *)
 (***************************************************************************)
-DOps == {"a", "b", "f"}
-\* b is built on a's order; f never applies; a is the one commit.
+DOps == {"a", "b", "f", "g", "r"}
+\* a is the one commit; b is built on a's order; f, g and r never apply —
+\* f and g operations that never apply, which anyone may submit free, each
+\* submitted once at any tick.
 DDep == [o \in DOps |-> IF o = "b" THEN {"a"} ELSE {}]
-DFree == {"f"}
+DFree == {"f", "g", "r"}
 DCommits == {"a"}
+\* The honest operations: those P1's parties make well-formed.
+DHonest == {"a", "b"}
+\* The resolve listing an order twice, which admission refuses.
+DDoubleListed == {"r"}
+\* The processes each operation touches (`touched_processes`): a commit
+\* its own, a resolve its process, a seller attestation its role and
+\* target orders' processes. f is a seller attestation with its role in P1
+\* and its target in P2, so it joins P1's operations to P2's.
+DTouch == [o \in DOps |->
+             CASE o = "f" -> {"P1", "P2"}
+               [] o = "g" -> {"P2"}
+               [] OTHER   -> {"P1"}]
 DReasons == {"no", "expired", "requeueCap", "unfunded", "builtOn"}
 
 VARIABLES
     queue,       \* the pending queue, oldest first
-    parked,      \* the deferral: groups (sets), oldest first
+    parked,      \* the deferral: drain groups, oldest first, each the set
+                 \* of its operations and the tick its formation ran
     deferred,    \* ghost: every operation deferred now, wherever it sits
     drained,     \* the tick's drain, between drain and formation
     dphase,      \* "idle" | "drained"
     landed,      \* operations a batch landed
     dead,        \* why each operation was dead-lettered ("no": it was not)
     sightSet,    \* operations holding a first-deferral record
-    sight,       \* that record: the tick of the first deferral
+    sight,       \* that record: the tick of the first deferral, 0 without one
+    behind,      \* the operations each deferred operation was filtered
+                 \* behind (`refilter_after_drops`): it rides with them
     requeues,    \* the transient re-queue's counter
     transients,  \* ghost: transient failures each operation suffered
     attempts,    \* the attempt counter DeferBoundedInTime = FALSE bounds by
@@ -416,18 +470,65 @@ VARIABLES
     now,         \* the tick
     lastDrain,   \* ghost: did the last drain retry a deferred operation,
                  \* and did it leave a queued one behind
-    early        \* ghost: an operation expired before its window ran out
+    early,       \* ghost: the deferral dead-lettered an operation before
+                 \* its own window ended, not with what it was filtered
+                 \* behind
+    cutShort,    \* ghost: the deferral dead-lettered an honest operation
+                 \* before its own window ended while every operation it
+                 \* depends on stood
+    stranded     \* ghost: an operation stayed deferred when one it was
+                 \* filtered behind was dead-lettered
 
 dvars == <<queue, parked, deferred, drained, dphase, landed, dead,
-           sightSet, sight, requeues, transients, attempts, submitted, now,
-           lastDrain, early>>
+           sightSet, sight, behind, requeues, transients, attempts,
+           submitted, now, lastDrain, early, cutShort, stranded>>
 allvars == <<vars, dvars>>
 
-ParkedOps == UNION Range(parked)
+ParkedOps == UNION {parked[i].ops : i \in 1..Len(parked)}
 SeqOf(S) == CHOOSE s \in [1..Cardinality(S) -> S] : Range(s) = S
+Orders(S) == {s \in [1..Cardinality(S) -> S] : Range(s) = S}
 Without(s, S) == SelectSeq(s, LAMBDA x : x \notin S)
-DropEmpty(gs) == SelectSeq(gs, LAMBDA g : g # {})
 Min(x, y) == IF x < y THEN x ELSE y
+
+\* Two operations touch a common process.
+Linked(x, y) == DTouch[x] \cap DTouch[y] # {}
+
+\* The operations of S joined to C by a chain of operations, each touching
+\* a process the next touches.
+RECURSIVE Close(_, _)
+Close(S, C) ==
+    LET N == C \cup {y \in S : \E x \in C : Linked(x, y)}
+    IN IF N = C THEN C ELSE Close(S, N)
+
+\* The one process DeferGroupsTransitive = FALSE keys an operation by.
+Key(o) == CHOOSE p \in DTouch[o] : TRUE
+
+\* Drain groups (`group_by_process`): operations share a group when a chain
+\* of them, each touching a process the next touches, joins them — the
+\* classes of the transitive closure of `Linked`. The groups decide what
+\* is drained together and nothing else. DeferGroupsByProcess = FALSE: one
+\* group; DeferGroupsTransitive = FALSE: grouped by one touched process.
+Groups(S) ==
+    IF S = {} THEN {}
+    ELSE IF ~DeferGroupsByProcess THEN {S}
+    ELSE IF DeferGroupsTransitive THEN {Close(S, {o}) : o \in S}
+    ELSE {{x \in S : Key(x) = Key(o)} : o \in S}
+
+Parcel(S, t) == {[ops |-> G, at |-> t] : G \in Groups(S)}
+
+\* What is left of each group once the operations X leave it, grouped
+\* again, so a group stays one class after a member is dead-lettered.
+RECURSIVE Regroup(_, _)
+Regroup(gs, X) ==
+    IF gs = <<>> THEN <<>>
+    ELSE SeqOf(Parcel(Head(gs).ops \ X, Head(gs).at)) \o Regroup(Tail(gs), X)
+
+\* E and the operations of D filtered behind one of them, transitively
+\* (`B[o]`: what o was filtered behind).
+RECURSIVE WithFollowers(_, _, _)
+WithFollowers(E, D, B) ==
+    LET N == E \cup {o \in D : B[o] \cap E # {}}
+    IN IF N = E THEN E ELSE WithFollowers(N, D, B)
 
 \* What applies, in some order, against the landed state: the operations
 \* whose dependencies landed or apply in the same drain. The dependencies
@@ -440,15 +541,15 @@ Applicable(D) ==
 RECURSIVE TakeGroups(_, _)
 TakeGroups(gs, room) ==
     IF gs = <<>> THEN [taken |-> {}, rest |-> <<>>]
-    ELSE IF Cardinality(Head(gs)) <= room
-         THEN LET r == TakeGroups(Tail(gs), room - Cardinality(Head(gs)))
-              IN [taken |-> Head(gs) \cup r.taken, rest |-> r.rest]
+    ELSE IF Cardinality(Head(gs).ops) <= room
+         THEN LET r == TakeGroups(Tail(gs), room - Cardinality(Head(gs).ops))
+              IN [taken |-> Head(gs).ops \cup r.taken, rest |-> r.rest]
          ELSE LET r == TakeGroups(Tail(gs), room)
               IN [taken |-> r.taken, rest |-> <<Head(gs)>> \o r.rest]
 
 DTypeOK ==
     /\ queue \in Seq(DOps)
-    /\ parked \in Seq(SUBSET DOps)
+    /\ parked \in Seq([ops : SUBSET DOps, at : 0..DMaxTime])
     /\ deferred \subseteq DOps
     /\ drained \subseteq DOps
     /\ dphase \in {"idle", "drained"}
@@ -456,6 +557,7 @@ DTypeOK ==
     /\ dead \in [DOps -> DReasons]
     /\ sightSet \subseteq DOps
     /\ sight \in [DOps -> 0..DMaxTime]
+    /\ behind \in [DOps -> SUBSET DOps]
     /\ requeues \in [DOps -> 0..(DMaxTime + 1)]
     /\ transients \in [DOps -> 0..(DMaxTime + 1)]
     /\ attempts \in [DOps -> 0..(DMaxTime + 1)]
@@ -463,6 +565,8 @@ DTypeOK ==
     /\ now \in 0..DMaxTime
     /\ lastDrain \in [retried : BOOLEAN, leftQueued : BOOLEAN]
     /\ early \in BOOLEAN
+    /\ cutShort \in BOOLEAN
+    /\ stranded \in BOOLEAN
 
 DInit ==
     /\ queue = <<>>
@@ -474,6 +578,7 @@ DInit ==
     /\ dead = [o \in DOps |-> "no"]
     /\ sightSet = {}
     /\ sight = [o \in DOps |-> 0]
+    /\ behind = [o \in DOps |-> {}]
     /\ requeues = [o \in DOps |-> 0]
     /\ transients = [o \in DOps |-> 0]
     /\ attempts = [o \in DOps |-> 0]
@@ -481,16 +586,21 @@ DInit ==
     /\ now = 0
     /\ lastDrain = [retried |-> FALSE, leftQueued |-> FALSE]
     /\ early = FALSE
+    /\ cutShort = FALSE
+    /\ stranded = FALSE
 
 \* A submission, once per operation (a deferred operation's key stays in the
 \* mempool's index, so resubmitting it then is a duplicate and adds nothing).
+\* Admission refuses a resolve that lists an order twice: it never applies,
+\* whatever the state, and its list rides unsigned.
 DSubmit(o) ==
     /\ o \notin submitted
+    /\ o \in DDoubleListed => ~AdmitRefusesDoubleListing
     /\ queue' = Append(queue, o)
     /\ submitted' = submitted \cup {o}
     /\ UNCHANGED <<parked, deferred, drained, dphase, landed, dead,
-                   sightSet, sight, requeues, transients, attempts, now, lastDrain,
-                   early>>
+                   sightSet, sight, behind, requeues, transients, attempts,
+                   now, lastDrain, early, cutShort, stranded>>
 
 \* The drain freed a drained operation's key: the same operation can be
 \* submitted again while its tick runs. A fresh admission clears the key's
@@ -503,20 +613,32 @@ DSubmitCopy(o) ==
     /\ requeues' = [requeues EXCEPT ![o] = 0]
     /\ transients' = [transients EXCEPT ![o] = 0]
     /\ UNCHANGED <<parked, deferred, drained, dphase, landed, dead,
-                   sightSet, sight, attempts, submitted, now, lastDrain, early>>
+                   sightSet, sight, behind, attempts, submitted, now,
+                   lastDrain, early, cutShort, stranded>>
 
-\* A tick's head: the clock moves, a deferral past its window is
-\* dead-lettered (in time: whether or not it was ever retried), and the drain
-\* takes the queue first and the deferred groups only into the slots left.
+\* A tick's head: the clock moves; a deferred operation past its own window
+\* is dead-lettered, with what was filtered behind it (`expire_deferred`; in
+\* time: whether or not it was ever retried); what is left of its group is
+\* grouped again; and the drain takes the queue first and the deferred
+\* groups, each whole, only into the slots left.
+\*   DeferOwnWindow = FALSE     — a group with an operation past its window
+\*                                is dead-lettered whole
+\*   DeferDependentEdge = FALSE — an operation expires on its own window
+\*                                alone
 DDrain ==
     /\ dphase = "idle"
     /\ now < DMaxTime
     /\ LET t == now + 1
-           exp == IF DeferBoundedInTime
-                  THEN {o \in deferred : t - sight[o] >= DWindow}
-                  ELSE {}
+           pastWindow(o) == t - sight[o] >= DWindow
+           own == {o \in deferred : pastWindow(o)}
+           lateGroups == {parked[i].ops : i \in {j \in 1..Len(parked) :
+                                                   parked[j].ops \cap own # {}}}
+           exp == IF ~DeferBoundedInTime THEN {}
+                  ELSE IF ~DeferOwnWindow THEN own \cup UNION lateGroups
+                  ELSE IF DeferDependentEdge THEN WithFollowers(own, deferred, behind)
+                  ELSE own
            q1 == Without(queue, exp)
-           p1 == DropEmpty([i \in 1..Len(parked) |-> parked[i] \ exp])
+           p1 == Regroup(parked, exp)
            n == Min(DCap, Len(q1))
            fromQueue == Range(SubSeq(q1, 1, n))
            tg == TakeGroups(p1, DCap - n)
@@ -527,21 +649,32 @@ DDrain ==
         /\ parked' = IF DeferDrainsOnlyFreeSlots THEN tg.rest ELSE p1
         /\ drained' = taken
         /\ deferred' = deferred \ (exp \cup taken)
-        /\ dead' = [o \in DOps |-> IF o \in exp THEN "expired" ELSE dead[o]]
+        /\ dead' = [o \in DOps |-> IF o \in own THEN "expired"
+                                  ELSE IF o \in exp
+                                       THEN (IF DeferOwnWindow THEN "builtOn" ELSE "expired")
+                                  ELSE dead[o]]
         /\ lastDrain' = [retried |-> taken \cap deferred # {},
                          leftQueued |-> SubSeq(q1, n + 1, Len(q1)) # <<>>]
-        /\ early' = (early \/ \E o \in exp : t - sight[o] < DWindow)
-        \* The record dies with the operation.
+        /\ early' = (early \/ \E o \in exp : ~pastWindow(o) /\ behind[o] \cap exp = {})
+        /\ cutShort' = (cutShort \/ \E o \in exp \cap DHonest :
+                           ~pastWindow(o) /\ \A d \in DDep[o] : d \notin exp /\ dead[d] = "no")
+        /\ stranded' = (stranded \/ \E o \in deferred \ exp : behind[o] \cap exp # {})
+        \* The records die with the operation.
         /\ sightSet' = sightSet \ exp
+        /\ sight' = [o \in DOps |-> IF o \in exp THEN 0 ELSE sight[o]]
+        /\ behind' = [o \in DOps |-> IF o \in exp THEN {} ELSE behind[o]]
     /\ dphase' = "drained"
-    /\ UNCHANGED <<landed, sight, requeues, transients, attempts, submitted>>
+    /\ UNCHANGED <<landed, requeues, transients, attempts, submitted>>
 
 \* Formation and the send. The operation filter's poison and the funding
 \* filter's unverifiable reads (U) are deferred; a verified shortfall (X) is
 \* dead-lettered; the operation filter runs again after the funding drops,
-\* and what was filtered behind a deferred operation moves with it. The
-\* batch then lands, or fails transiently and re-queues at the front, each
-\* operation at most DMaxRequeues times.
+\* and what was filtered behind a deferred operation moves with it and
+\* records the edge (`behind`). What is deferred past its own window is
+\* dead-lettered, with what was filtered behind it; the rest is grouped by
+\* process (`defer`, `group_by_process`) and parked in an order the model
+\* leaves free. The batch then lands, or fails transiently and re-queues at
+\* the front, each operation at most DMaxRequeues times.
 DForm ==
     /\ dphase = "drained"
     /\ LET valid0 == Applicable(drained)
@@ -557,19 +690,32 @@ DForm ==
                          ELSE {}
                deadBuilt == builtOn \ follow
                toDefer == poison \cup U \cup follow
-               overdue == IF DeferBoundedInTime
-                          THEN {o \in toDefer : o \in sightSet /\ now - sight[o] >= DWindow}
-                          ELSE {o \in toDefer : attempts[o] + 1 > DMaxAttempts}
+               edges == [o \in DOps |->
+                           IF o \in follow THEN behind[o] \cup (DDep[o] \cap (U \cup follow))
+                           ELSE behind[o]]
+               pastWindow(o) == o \in sightSet /\ now - sight[o] >= DWindow
+               late(o) == IF DeferBoundedInTime THEN pastWindow(o)
+                          ELSE attempts[o] + 1 > DMaxAttempts
+               own == {o \in toDefer : late(o)}
+               overdue == IF DeferOwnWindow THEN own
+                          ELSE UNION {G \in Groups(toDefer) : G \cap own # {}}
                capped == IF DeferOwnCounter
                          THEN {}
                          ELSE {o \in toDefer \ overdue : requeues[o] + 1 > DMaxRequeues}
-               defer == toDefer \ (overdue \cup capped)
                \* The transient re-queue.
                rq == [o \in DOps |-> IF ~DeferOwnCounter /\ o \in toDefer \ overdue
                                      THEN requeues[o] + 1 ELSE requeues[o]]
                failed == IF outcome = "transient" THEN batch ELSE {}
                overCap == {o \in failed : rq[o] + 1 > DMaxRequeues}
                back == failed \ overCap
+               dropped == overdue \cup capped \cup overCap \cup X \cup deadBuilt
+               followers == IF DeferOwnWindow /\ DeferDependentEdge
+                            THEN WithFollowers(dropped, toDefer, edges) \ dropped
+                            ELSE {}
+               defer == toDefer \ (overdue \cup capped \cup followers)
+               gone == dropped \cup followers
+               keptSight == ((sightSet \cup defer) \ gone)
+                            \ (IF outcome = "land" THEN batch ELSE {})
                \* Where the deferred go, a queued copy dropped first; the
                \* re-queue drops its copy whatever the switch.
                q1 == Without(IF DeferDropsCopy THEN Without(queue, defer) ELSE queue, back)
@@ -577,17 +723,25 @@ DForm ==
            IN
             /\ batch # {} \/ outcome = "land"
             /\ queue' = SeqOf(back) \o q2
-            /\ parked' = IF DeferDrainsOnlyFreeSlots /\ defer # {}
-                         THEN Append(parked, defer) ELSE parked
+            /\ IF DeferDrainsOnlyFreeSlots
+               THEN \E order \in Orders(Parcel(defer, now)) : parked' = parked \o order
+               ELSE parked' = parked
             /\ deferred' = deferred \cup defer
             /\ landed' = IF outcome = "land" THEN landed \cup batch ELSE landed
-            \* The first-deferral record rides on the operation: set once,
-            \* gone when the operation lands or is dead-lettered.
-            /\ sightSet' = ((sightSet \cup defer)
-                             \ (overdue \cup capped \cup overCap \cup X \cup deadBuilt))
-                           \ (IF outcome = "land" THEN batch ELSE {})
-            /\ early' = (early \/ \E o \in overdue : o \notin sightSet \/ now - sight[o] < DWindow)
-            /\ sight' = [o \in DOps |-> IF o \in defer /\ o \notin sightSet THEN now ELSE sight[o]]
+            \* The first-deferral record and the edges ride on the
+            \* operation: set once, gone when it lands or is dead-lettered.
+            /\ sightSet' = keptSight
+            /\ behind' = [o \in DOps |-> IF o \in defer THEN edges[o]
+                                        ELSE IF o \in drained THEN {}
+                                        ELSE behind[o]]
+            /\ early' = (early \/ \E o \in overdue \cup followers :
+                            ~pastWindow(o) /\ edges[o] \cap gone = {})
+            /\ cutShort' = (cutShort \/ \E o \in (overdue \cup followers) \cap DHonest :
+                               ~pastWindow(o) /\ \A d \in DDep[o] : d \notin gone /\ dead[d] = "no")
+            /\ stranded' = (stranded \/ \E o \in deferred \cup defer : edges[o] \cap gone # {})
+            /\ sight' = [o \in DOps |-> IF o \in defer /\ o \notin sightSet THEN now
+                                       ELSE IF o \in keptSight THEN sight[o]
+                                       ELSE 0]
             /\ attempts' = IF DeferBoundedInTime THEN attempts
                            ELSE [o \in DOps |-> IF o \in toDefer THEN attempts[o] + 1 ELSE attempts[o]]
             /\ requeues' = [o \in DOps |-> IF o \in failed THEN rq[o] + 1 ELSE rq[o]]
@@ -596,7 +750,7 @@ DForm ==
                           IF o \in overdue THEN "expired"
                           ELSE IF o \in capped \cup overCap THEN "requeueCap"
                           ELSE IF o \in X THEN "unfunded"
-                          ELSE IF o \in deadBuilt THEN "builtOn"
+                          ELSE IF o \in deadBuilt \cup followers THEN "builtOn"
                           ELSE dead[o]]
     /\ drained' = {}
     /\ dphase' = "idle"
@@ -616,10 +770,38 @@ DeferSpec == Init /\ DInit /\ [][DNext /\ UNCHANGED vars]_allvars
 (***************************************************************************)
 
 \* Bounded in TIME from the first deferral, both ways: nothing deferred is
-\* held past the window, retried or not, and nothing expires before it.
+\* held past its own window, retried or not, and nothing is dead-lettered
+\* by the deferral before its own window ends unless with an operation it
+\* was filtered behind.
 DeferralBoundedInTime ==
     /\ \A o \in deferred : now - sight[o] < DWindow
     /\ ~early
+
+\* No honest operation is dead-lettered by the deferral before its own
+\* window ends unless an operation it depends on was dead-lettered —
+\* whatever operations that never apply, which anyone may submit free,
+\* name its process, and whenever they are submitted.
+HonestWindowKept == ~cutShort
+
+\* No operation stays deferred after one it was filtered behind is
+\* dead-lettered: a dependent leaves with its dependency.
+DependentLeavesWithItsDependency == ~stranded
+
+\* Every drain group is one class of the transitive closure of touching a
+\* common process over its formation's deferrals: joined within (a chain of
+\* its operations, each touching a process the next touches, joins any two)
+\* and closed (no operation of another group of the same formation touches
+\* a process one of its operations touches).
+DrainGroupIsAClass ==
+    \A i \in 1..Len(parked) :
+        /\ parked[i].ops # {}
+        /\ \A o \in parked[i].ops : Close(parked[i].ops, {o}) = parked[i].ops
+        /\ \A j \in 1..Len(parked) :
+              (j # i /\ parked[j].at = parked[i].at)
+                  => \A x \in parked[i].ops, y \in parked[j].ops : ~Linked(x, y)
+
+\* Admission refuses a resolve listing one order twice.
+DoubleListingNeverAdmitted == DDoubleListed \cap submitted = {}
 
 \* The re-queue cap counts transient failures alone.
 RequeueCapCountsTransients ==

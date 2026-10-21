@@ -493,9 +493,10 @@ async fn batch_loop(
     loop {
         ticker.tick().await;
 
-        // A deferred operation whose window has passed since its first
+        // A deferred operation whose window has passed since its own first
         // deferral is dead-lettered at every tick, retried or not, and
-        // whether or not this tick builds a batch.
+        // whether or not this tick builds a batch, with what was filtered
+        // behind it; what is left of its group is grouped again.
         let now = std::time::Instant::now();
         let expired = mempool.expire_deferred(now).await;
         api::record_dropped(&failures, &expired, "the deferral").await;
@@ -647,9 +648,14 @@ async fn batch_loop(
         // cost the whole tick's batch. What applies once the deferred commits
         // are restored moves with them; the rest is dead-lettered.
         if !unfunded.is_empty() || !unanchored.is_empty() || !unread.is_empty() {
-            let (again, follow, built_on_them) = assembler::refilter_after_drops(
-                chain_id,
-                verifying_contract,
+            // Each that follows a deferred operation rides behind what it was
+            // filtered behind, and is dead-lettered with it.
+            let figaro_sequencer::mempool::Refiltered {
+                kept: again,
+                follow,
+                dropped: built_on_them,
+                ..
+            } = mempool.refilter_behind_deferred(
                 timestamp,
                 &prev_state,
                 std::mem::take(&mut valid),
@@ -667,9 +673,10 @@ async fn batch_loop(
             to_defer.extend(follow);
             valid = again;
         }
-        // One group: an operation and what was filtered behind it are
-        // drained again together. One deferred past its window since its
-        // first deferral is dead-lettered instead.
+        // Grouped by the processes they touch, transitively: the groups
+        // decide what is drained again together. One deferred past its
+        // window since its own first deferral is dead-lettered instead, with
+        // what was filtered behind it.
         let expired = mempool.defer(to_defer, now).await;
         api::record_dropped(&failures, &expired, "batch formation").await;
         if valid.is_empty() && usage_claims.is_empty() {

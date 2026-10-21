@@ -55,13 +55,14 @@ rule orderStatusTransitionsAreValid(bytes32 orderHash, method f) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 3: Active Order Count Never Decreases Via Commit
+// RULE 3: Active Order Count Rises Or Drops To Zero
 //
-// No function can decrease activeOrderCount below its pre-state value
-// unless it also resolves orders (which zeroes it).  Proved parametrically.
+// No function lowers an existing process's activeOrderCount except to
+// zero (resolve).  Proved parametrically.  It does not say by how much a
+// commit raises the count.
 // ═══════════════════════════════════════════════════════════════════
 
-rule commitIncreasesActiveCount(bytes32 processId, method f) {
+rule activeCountRisesOrDropsToZero(bytes32 processId, method f) {
     address rootBuyer; address currency; uint256 cumVal; uint256 countBefore;
     (rootBuyer, currency, cumVal, countBefore) = processes(processId);
 
@@ -111,21 +112,27 @@ rule onlyBuyerCanResolve(bytes32 processId, method f) {
 // ═══════════════════════════════════════════════════════════════════
 // RULE 5: No Double Commit
 //
-// An order that already has status >= 1 cannot have its status
-// decreased or overwritten.  This is implied by orderStatusNeverDecreases
-// but stated explicitly for clarity.
+// A commit that succeeds returns an order hash whose status was 0 before
+// the call: no order hash already committed or resolved is committed
+// again.  With commitBindsTheOrderToItsProcess (the returned order is
+// committed afterwards) and orderStatusNeverDecreases (a status never
+// returns to 0), each order hash is committed at most once.
 // ═══════════════════════════════════════════════════════════════════
 
-rule noDoubleCommit(bytes32 orderHash, method f) {
+rule noDoubleCommit(bytes32 orderHash) {
     uint8 statusBefore = orderStatus(orderHash);
-    require statusBefore != 0;
 
     env e;
-    calldataarg args;
-    f(e, args);
+    CommitmentTypes.Commitment c;
+    bytes buyerSig;
+    bytes sellerSig;
 
-    assert orderStatus(orderHash) >= statusBefore,
-        "Committed/resolved orders cannot be re-committed";
+    bytes32 processId;
+    bytes32 committedHash;
+    processId, committedHash = commit(e, c, buyerSig, sellerSig);
+
+    assert committedHash == orderHash => statusBefore == 0,
+        "A successful commit never returns an order hash that was already committed or resolved";
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -204,8 +211,7 @@ rule currencyImmutable(bytes32 processId, method f) {
 // orderProcessId is FigaroCore's own record of which process an order
 // belongs to. It is written once at commit and never moves: an order
 // that has a status has a process, and a bound process never changes.
-// (The mutation campaign of 2026-09 found no test reading this mapping;
-// the Foundry test and these two rules are the answer.)
+// The Foundry test of A-10 and these two rules are what read the mapping.
 // ═══════════════════════════════════════════════════════════════════
 
 rule commitBindsTheOrderToItsProcess() {

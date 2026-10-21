@@ -153,7 +153,7 @@ contract Deploy is Script {
         // COOLDOWN 0 ON DEVNET, deliberately: a requested withdrawal is
         // claimable in the same block, so e2e runs that register → leave →
         // re-register do not have to warp a chain they share with the
-        // frontend. The cooldown's BEHAVIOUR is covered in Foundry against a
+        // frontend. The cooldown's BEHAVIOR is covered in Foundry against a
         // non-zero parameter (MembersRegistryTest), not here.
         // Mainnet picks both values via DeployMainnet.s.sol — record the
         // reasoning there.

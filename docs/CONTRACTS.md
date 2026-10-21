@@ -300,7 +300,7 @@ Three permissionless functions and one proof-gated writer:
   The leaf's key is the public constant `provenanceLeaf =
   keccak256("figaro-agreement-provenance")`, a constant of the agreement
   format registered nowhere. It counts under the agreement kind and checks
-  `AgreementRegistry` only (`ClauseOrAssemblyNotRegistered` when the agreement
+  `AgreementRegistry` only (`ClauseAgreementOrAssemblyNotRegistered` when the agreement
   holds no live binding). The counter exposes the registry it reads as
   `agreements()` and the terms constant as `assemblyTermsLeaf()`.
 - `recordAssemblyUsage(order, compositionHash, agreementKey, slotContentHash,

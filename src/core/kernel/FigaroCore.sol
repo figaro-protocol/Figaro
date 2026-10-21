@@ -243,19 +243,19 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     ///         (struct hash, cold SLOAD, two ERC-20 transfers, SSTORE,
     ///         LOG + the order's calldata — measured all-in on real
     ///         post-Glamsterdam receipts; resolve cost ~= 73,000 + 29,800*N).
-    ///         The maximum number of orders per process therefore varies
-    ///         with the network's block gas limit: clients derive it from
-    ///         the live limit, never from a fixed number. The ceiling is
-    ///         a property of the resolveProcess path; it cannot be
-    ///         enforced on-chain at assembly registration because assembly
+    ///         The maximum number of orders per process therefore varies with the
+    ///         smaller of the chain's cap on one transaction's gas and its block gas
+    ///         limit: clients read the live block limit and take the cap, never a
+    ///         fixed order count. The ceiling is a property of the resolveProcess path;
+    ///         it cannot be enforced on-chain at assembly registration because assembly
     ///         documents live off-chain (AssemblyRegistry only stores their
     ///         hash + URI). Publish-side clients refuse to anchor an
     ///         assembly that would exceed the network's ceiling; buyer-side
     ///         clients verify the assembly document's order count before
-    ///         committing. For trees larger than the ceiling, compose
-    ///         multiple processes: a sub-order in process A roots process B,
-    ///         so the overall tree spans multiple settlements while
-    ///         each individual process stays within the ceiling.
+    ///         committing. For more orders than the ceiling, compose
+    ///         multiple processes linked at the assembly layer: an order in
+    ///         process A roots process B, so the orders span multiple
+    ///         resolutions while each process stays linear and within the ceiling.
     ///
     /// @param processId The process to resolve.
     /// @param commitments The full set of active order commitments.

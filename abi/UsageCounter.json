@@ -879,7 +879,7 @@
   },
   {
     "type": "error",
-    "name": "ClauseOrAssemblyNotRegistered",
+    "name": "ClauseAgreementOrAssemblyNotRegistered",
     "inputs": [
       {
         "name": "clauseOrAssembly",

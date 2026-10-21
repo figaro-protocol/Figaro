@@ -64,7 +64,7 @@ contract UsageCounterHarness is UsageCounter {
 ///         proof-gated batch) combine the way `scoreOf` claims, whether a
 ///         period boundary is respected exactly, and whether one clause or assembly's
 ///         bookkeeping can leak into another's, or one kind's into the
-///         another's at the same key. Six properties, symbolically,
+///         another's at the same key. Nine properties, symbolically,
 ///         for ALL inputs in their domain — not the paths a concrete Foundry
 ///         test happened to walk:
 ///
@@ -112,6 +112,15 @@ contract UsageCounterHarness is UsageCounter {
 ///                                             and the same process still
 ///                                             counts once under the other
 ///                                             kind.
+///           7  kind isolation, reversed    — another kind's EXISTING accrual
+///              (check_aKindNeverDisturbsAnotherKindsAccrual)
+///                                             at the key, either path, is
+///                                             left exactly as it was by a use
+///                                             counted under one kind.
+///           8  unknown kind skipped        — a batch accrual whose kind names
+///              (check_anUnknownKindIsSkipped) no registry writes nothing under
+///                                             any kind and leaves the period
+///                                             total where it was.
 ///
 ///         Halmos convention: `check_` prefix, not `test_`.
 ///
@@ -482,15 +491,7 @@ contract HalmosUsageCounter is Test {
         vm.warp(P0_END - 1000);
         UsageCounterHarness counter = _deploy();
 
-        if (viaBatch) {
-            address[] memory sellers = new address[](1);
-            sellers[0] = seller;
-            UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-            accr[0] = UsageCounter.BatchAccrual(key, countedKind, 3, 2);
-            counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
-        } else {
-            counter.accrueAs(countedKind, key, 0, processId, seller);
-        }
+        _countAs(counter, countedKind, key, processId, seller, viaBatch, 3, 2);
 
         (uint64 c, uint64 d, uint256 score) = counter.accrualOf(otherKind, key, 0);
         (uint64 bc, uint64 bd, uint256 bscore) = counter.batchAccrualOf(otherKind, key, 0);
@@ -506,5 +507,135 @@ contract HalmosUsageCounter is Test {
         counter.accrueAs(otherKind, key, 0, processId, seller);
         (c,,) = counter.accrualOf(otherKind, key, 0);
         assertEq(c, 1, "and the other kind counts it on its own");
+    }
+
+    /// The reverse direction of `check_theKindsNeverShareAKey`: another kind
+    /// already holds an accrual at the key, and a use counted under one kind —
+    /// direct or batch, over either path for the earlier one — leaves that
+    /// accrual exactly as it was, its counted process included. A stake in one
+    /// family neither earns another family's accrual nor disturbs it.
+    /// The second use is a different process with different cumulative
+    /// counts, so a write that ignored the kind would show in the other kind's
+    /// numbers. `pair` selects one of the six ordered pairs of distinct kinds; each
+    /// branch fixes both kinds to constants, so the score arithmetic of every
+    /// path runs on concrete counts and every path is explored whole.
+    function check_aKindNeverDisturbsAnotherKindsAccrual(
+        uint8 pair,
+        bytes32 key,
+        bytes32 processId,
+        address seller,
+        bool otherViaBatch,
+        bool countedViaBatch
+    ) public {
+        vm.assume(pair < 6);
+        vm.assume(key != PROVENANCE_LEAF && key != ASSEMBLY_TERMS_LEAF);
+        (uint8 countedKind, uint8 otherKind) = _orderedKindPair(pair);
+        vm.warp(P0_END - 1000);
+        UsageCounterHarness counter = _deploy();
+
+        _countAs(counter, otherKind, key, processId, seller, otherViaBatch, 3, 2);
+        Snapshot memory direct = _kindSnapshot(counter, otherKind, key, false);
+        Snapshot memory batch = _kindSnapshot(counter, otherKind, key, true);
+
+        // A second process and other cumulative counts: a counter blind to the
+        // kind would land this write on the other kind's accrual and move it.
+        _countAs(counter, countedKind, key, keccak256(abi.encode(processId)), seller, countedViaBatch, 5, 4);
+
+        Snapshot memory directAfter = _kindSnapshot(counter, otherKind, key, false);
+        Snapshot memory batchAfter = _kindSnapshot(counter, otherKind, key, true);
+        assertEq(directAfter.c, direct.c, "the other kind's count is untouched");
+        assertEq(directAfter.d, direct.d, "the other kind's breadth is untouched");
+        assertEq(directAfter.score, direct.score, "the other kind's score is untouched");
+        assertEq(batchAfter.c, batch.c, "the other kind's batch count is untouched");
+        assertEq(batchAfter.d, batch.d, "the other kind's batch breadth is untouched");
+        assertEq(batchAfter.score, batch.score, "the other kind's batch score is untouched");
+        assertEq(
+            counter.processCounted(otherKind, key, processId),
+            !otherViaBatch,
+            "the other kind's counted process is untouched"
+        );
+        assertEq(
+            counter.scoreOf(otherKind, key, 0),
+            direct.score + batch.score,
+            "the other kind scores what it held, no more"
+        );
+    }
+
+    /// The batch path skips an accrual whose kind names no registry: no kind's
+    /// accrual at the key moves, the counted kind's included, and the period
+    /// total stays where it was. The call itself does not revert, so the
+    /// batch's token resolution still lands.
+    function check_anUnknownKindIsSkipped(uint8 unknownKind, uint8 probeKind, bytes32 key, address seller) public {
+        vm.assume(unknownKind >= 3);
+        vm.assume(key != PROVENANCE_LEAF && key != ASSEMBLY_TERMS_LEAF);
+        vm.warp(P0_END - 1000);
+        UsageCounterHarness counter = _deploy();
+
+        address[] memory sellers = new address[](1);
+        sellers[0] = seller;
+        UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
+        accr[0] = UsageCounter.BatchAccrual(key, unknownKind, 3, 2);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
+
+        (uint64 bc, uint64 bd, uint256 bscore) = counter.batchAccrualOf(probeKind, key, 0);
+        assertEq(bc, 0, "no batch count under any kind");
+        assertEq(bd, 0, "no batch breadth under any kind");
+        assertEq(bscore, 0, "no batch score under any kind");
+        assertEq(counter.scoreOf(probeKind, key, 0), 0, "no kind scores the skipped accrual");
+        assertEq(counter.totalScoreIn(0), 0, "the period total does not move");
+    }
+
+    /// @dev The ordered pair of distinct kinds `pair` (0-5) names, each a
+    ///      constant on its branch.
+    function _orderedKindPair(uint8 pair) internal pure returns (uint8 countedKind, uint8 otherKind) {
+        if (pair == 0) return (0, 1);
+        if (pair == 1) return (0, 2);
+        if (pair == 2) return (1, 0);
+        if (pair == 3) return (1, 2);
+        if (pair == 4) return (2, 0);
+        return (2, 1);
+    }
+
+    /// @dev Counts one use of `key` under `kind`, by the direct path's
+    ///      `_accrue` or by a one-accrual batch write carrying the cumulative
+    ///      `(c, d)`, and requires the write to land: a reverted write would
+    ///      drop the path from the proof instead of failing it.
+    function _countAs(
+        UsageCounterHarness counter,
+        uint8 kind,
+        bytes32 key,
+        bytes32 processId,
+        address seller,
+        bool viaBatch,
+        uint64 c,
+        uint64 d
+    ) internal {
+        bool ok;
+        if (viaBatch) {
+            address[] memory sellers = new address[](1);
+            sellers[0] = seller;
+            UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
+            accr[0] = UsageCounter.BatchAccrual(key, kind, c, d);
+            (ok,) = address(counter)
+                .call(abi.encodeCall(UsageCounter.applyBatchAccrual, (0, PROVENANCE_LEAF, accr, sellers)));
+        } else {
+            (ok,) = address(counter).call(abi.encodeCall(counter.accrueAs, (kind, key, 0, processId, seller)));
+        }
+        assertTrue(ok, "the write lands");
+    }
+
+    /// @dev One kind's direct (`batch == false`) or batch accrual at `key` in
+    ///      period 0, with the period total.
+    function _kindSnapshot(UsageCounterHarness counter, uint8 kind, bytes32 key, bool batch)
+        internal
+        view
+        returns (Snapshot memory s)
+    {
+        if (batch) {
+            (s.c, s.d, s.score) = counter.batchAccrualOf(kind, key, 0);
+        } else {
+            (s.c, s.d, s.score) = counter.accrualOf(kind, key, 0);
+        }
+        s.total = counter.totalScoreIn(0);
     }
 }

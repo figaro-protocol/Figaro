@@ -20,9 +20,10 @@ alloy-sol-types = "1"
 alloy = { version = "1", features = ["full", "node-bindings"] }
 axum = { version = "0.7", features = ["json"] }
 # The HTTP boundary's limits: a request timeout and an in-flight cap (tower),
-# beside the per-IP submit rate limit the API implements itself.
+# beside the per-IP submit rate limit the API implements itself; and the read
+# routes' cross-origin headers (tower-http `cors`).
 tower = { version = "0.5", features = ["limit", "util"] }
-tower-http = { version = "0.6", features = ["timeout"] }
+tower-http = { version = "0.6", features = ["timeout", "cors"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

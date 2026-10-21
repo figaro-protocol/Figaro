@@ -289,7 +289,7 @@ contract RpgfMinter {
     ///      The `!withdrawn` requirement is the DESIGNER-SIDE half of the two-sided
     ///      live-ETH-stake gate (its seller-side half lives in `UsageCounter`):
     ///      you earn designer rewards only while your clause's, agreement's or assembly's stake stays
-    ///      live. Withdraw and you de-surface AND forfeit future reward — the
+    ///      live. A withdrawn stake de-surfaces and earns no further reward — the
     ///      stake is aligned
     ///      upside (more trade → more base-currency demand → ETH appreciates for
     ///      every registry staker), not a cost, so keeping it live is the honest

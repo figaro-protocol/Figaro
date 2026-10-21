@@ -449,7 +449,7 @@ sol! {
 
 // The two UsageCounter facts a batch's accrual must agree with. Both are
 // re-checked by the counter at resolution, so reading them here is an
-// optimisation (don't prove a batch that cannot resolve), never a source of
+// optimization (don't prove a batch that cannot resolve), never a source of
 // authority.
 sol! {
     #[sol(rpc)]
@@ -554,7 +554,7 @@ pub async fn read_usage_context(
 /// what the verifier's try/catch absorbs; this only shrinks how often that
 /// fires.
 ///
-/// The pre-filter is an OPTIMISATION, never authority: the counter re-checks all
+/// The pre-filter is an OPTIMIZATION, never authority: the counter re-checks all
 /// of it on-chain. So when a registry read fails (RPC hiccup) the claim is
 /// dropped conservatively — it can be re-submitted — rather than proven on
 /// unverified state. The filter is keyed on the COUNTER address, not the
@@ -1008,6 +1008,7 @@ mod tests {
                 },
             },
             deferred_since: None,
+            behind: Vec::new(),
         }];
         let (valid, dropped) = filter_funded_commits(None, ops).await;
         assert_eq!(valid.len(), 1);
@@ -1038,6 +1039,7 @@ mod tests {
                     seller_sig: sig.clone(),
                 },
                 deferred_since: None,
+                behind: Vec::new(),
             },
             PendingOp {
                 id: 2,
@@ -1048,6 +1050,7 @@ mod tests {
                     buyer_sig: sig,
                 },
                 deferred_since: None,
+                behind: Vec::new(),
             },
         ];
         let (valid, dropped) = filter_funded_commits(Some(&gate), ops).await;

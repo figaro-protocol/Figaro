@@ -364,4 +364,68 @@ contract RpgfIntegrationTest is Test {
         assertEq(florin.balanceOf(agreementDesigner), T0 / 2);
         assertEq(florin.balanceOf(designer), T0 / 2);
     }
+
+    /// The reverse squat: a stranger stakes a clause's key as an ASSEMBLY.
+    /// The clause's accrual pays the clause's designer of record; the
+    /// stranger's assembly-kind standing on that key earns nothing of it.
+    function test_aStrangerWhoStakesAClausesKeyAsAnAssemblyTakesNothingOfIt() public {
+        address stranger = address(0x5745);
+        vm.prank(stranger);
+        assemblies.registerAssembly(GEO_KEY, "ipfs://a-stranger-stakes-a-clause-key-as-an-assembly");
+
+        CommitmentTypes.Commitment memory p = _settle(GEO_KEY, 1);
+        counter.recordClauseUsage(p, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        vm.warp(P0_END + 1);
+
+        (,, uint256 assemblyKindScore) = counter.accrualOf(KIND_ASSEMBLY, GEO_KEY, 0);
+        assertEq(assemblyKindScore, 0, "nothing accrues under the assembly kind at the clause's key");
+
+        vm.prank(stranger);
+        vm.expectRevert(RpgfMinter.NothingToClaim.selector);
+        minter.claim(0, _assembly(GEO_KEY));
+
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_CLAUSE, GEO_KEY, stranger));
+        minter.claim(0, _clause(GEO_KEY));
+
+        vm.prank(author);
+        minter.claim(0, _clause(GEO_KEY));
+        assertEq(florin.balanceOf(author), T0, "the clause's designer of record takes the clause's accrual");
+        assertEq(florin.balanceOf(stranger), 0, "the stranger takes nothing of it");
+    }
+
+    /// `claimable` quotes what `claim` would pay under a crossed kind: zero
+    /// for a stranger's standing in the other family at the same key, a
+    /// refusal for the kind the stranger is not designer of record in, and
+    /// the whole share for each family's own designer of record.
+    function test_claimableQuotesNothingUnderACrossedKind() public {
+        address stranger = address(0x5745);
+        vm.startPrank(stranger);
+        clauses.registerClause(ASM, "ipfs://a-stranger-stakes-an-assembly-key-as-a-clause");
+        assemblies.registerAssembly(GEO_KEY, "ipfs://a-stranger-stakes-a-clause-key-as-an-assembly");
+        vm.stopPrank();
+
+        CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
+        counter.recordClauseUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        (CommitmentTypes.Commitment memory p2,) = _settleUnderAssembly(ASM, 2);
+        _recordAssembly(p2, ASM);
+        vm.warp(P0_END + 1);
+
+        assertEq(minter.claimable(0, stranger, _clause(ASM)), 0, "the assembly's key quotes nothing as a clause");
+        assertEq(minter.claimable(0, stranger, _assembly(GEO_KEY)), 0, "the clause's key quotes nothing as an assembly");
+
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_ASSEMBLY, ASM, stranger));
+        minter.claimable(0, stranger, _assembly(ASM));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_CLAUSE, GEO_KEY, stranger));
+        minter.claimable(0, stranger, _clause(GEO_KEY));
+
+        assertEq(
+            minter.claimable(0, designer, _assembly(ASM)),
+            T0 / 2,
+            "the assembly's designer of record is quoted its share"
+        );
+        assertEq(
+            minter.claimable(0, author, _clause(GEO_KEY)), T0 / 2, "the clause's designer of record is quoted its share"
+        );
+    }
 }

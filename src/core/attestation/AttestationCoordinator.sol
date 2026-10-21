@@ -27,7 +27,7 @@ interface IFigaroCore {
 /// @dev Two attestation modes — each caller supplies one or two `Commitment`
 ///      structs so the coordinator can (a) verify role authority, (b) read the
 ///      signed `agreementHash` without new FigaroCore state, and (c) verify the
-///      attestation matches a clause in the signed contract.
+///      attestation matches a clause in the signed agreement.
 ///      - attestAsSeller:    caller supplies role + target commitments
 ///                           (role proves seller identity + process; target
 ///                           carries the order being attested and its
@@ -44,19 +44,19 @@ interface IFigaroCore {
 ///      merkle root. A seller who signed an emissions clause naming "ISO 14064-1" at commit
 ///      time cannot fire a runtime emissions attestation under a different standard —
 ///      the inclusion proof won't open. This closes the drift where runtime
-///      declarations could contradict the signed contract.
+///      declarations could contradict the signed agreement.
 ///
 ///      Leaf format: `keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, keccak256(sectionData)))))`
 ///      — double-hashed so the leaf domain (32-byte preimage) can never collide
 ///      with the internal-node domain (64-byte preimage); a crafted agreement
-///      cannot replay one of its own internal nodes as a signed section leaf.
+///      cannot replay one of its own internal nodes as a signed clause leaf.
 ///      Tree: OpenZeppelin `MerkleProof` with sorted-pair hashing.
 ///      Empty / unbound attestation is blocked — callers must prove a clause.
 ///
 /// @dev Content encoding:
 ///      An attestation's content is ABI-encoded per the clause's spec (off-chain
 ///      JSON spec whose pinned bytes hash to the clause key ClauseRegistry registers) and lives OFF-CHAIN — in
-///      (optionally encrypted) IPFS for a `private`-disposition section, in the
+///      (optionally encrypted) IPFS for a `private`-disposition clause, in the
 ///      open for a `public` one. The chain never sees the preimage: the caller
 ///      supplies only `contentRef` (`keccak256(content)`) and `sectionHash`
 ///      (`keccak256(sectionData)`) — the FINGERPRINTS. So a private attestation's
@@ -110,7 +110,7 @@ contract AttestationCoordinator {
     ///      commitments — the coordinator verifies both are committed and in
     ///      the same process. The inclusion proof is verified against
     ///      `target.agreementHash` (the clause being declared lives in the
-    ///      target's signed contract, not the role's).
+    ///      target's signed agreement, not the role's).
     function attestAsSeller(
         CommitmentTypes.Commitment calldata role,
         CommitmentTypes.Commitment calldata target,
@@ -156,12 +156,12 @@ contract AttestationCoordinator {
     // ── Internal ────────────────────────────────────────────────────
 
     /// @dev Verify the clause is a committed leaf of the order's signed
-    ///      agreement. The chain binds the attestation to the signed contract
+    ///      agreement. The chain binds the attestation to the signed agreement
     ///      (merkle inclusion) and, separately, to its content (the caller's
     ///      `contentRef`, emitted verbatim); it does not validate content shape —
     ///      that is an off-chain SDK / read-time concern. The leaf is built from
     ///      the caller-supplied `sectionHash` (`keccak256(sectionData)`), never a
-    ///      preimage, so a `private` section's plaintext never touches calldata; a
+    ///      preimage, so a `private` clause's plaintext never touches calldata; a
     ///      wrong hash simply fails to open, so this is exactly as sound as taking
     ///      the preimage.
     ///      Leaf = `keccak256(keccak256(clauseId || sectionHash))` (double-hashed —

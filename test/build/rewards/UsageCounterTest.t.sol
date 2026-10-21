@@ -372,7 +372,7 @@ contract UsageCounterTest is Test {
         // inflating the shared denominator at gas cost (audit M-2).
         stake.kill(CARGO_KEY);
         CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, CARGO_KEY));
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseAgreementOrAssemblyNotRegistered.selector, CARGO_KEY));
         _record(c, CARGO_KEY);
     }
 
@@ -384,7 +384,7 @@ contract UsageCounterTest is Test {
         bytes32 root = _asmRoot();
         stake.kill(root);
         (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderAgreement(AGR2_KEY, root, 1);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, root));
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseAgreementOrAssemblyNotRegistered.selector, root));
         _recordAssembly(counter, c, 1, proof);
     }
 
@@ -394,7 +394,7 @@ contract UsageCounterTest is Test {
         // leaf opens; what fails is the stake behind the agreement credited.
         stake.kill(AGR_KEY);
         (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderAgreement(AGR_KEY, _asmRoot(), 1);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, AGR_KEY));
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseAgreementOrAssemblyNotRegistered.selector, AGR_KEY));
         counter.recordAgreementUsage(c, AGR_KEY, _asmRoot(), proof);
     }
 
@@ -523,7 +523,9 @@ contract UsageCounterTest is Test {
         bytes32 root = _asmRoot();
         (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderAgreement(AGR_KEY, root, 1);
         bytes32 clauseDataHash = keccak256(AgreementTestHelper.provenanceLeaf(AGR_KEY, root));
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, PROVENANCE_LEAF));
+        vm.expectRevert(
+            abi.encodeWithSelector(UsageCounter.ClauseAgreementOrAssemblyNotRegistered.selector, PROVENANCE_LEAF)
+        );
         real.recordClauseUsage(c, PROVENANCE_LEAF, clauseDataHash, proof);
 
         // The clause registry takes the key as given, so a stranger can stake a
@@ -744,7 +746,7 @@ contract UsageCounterTest is Test {
         vm.prank(address(0xA6));
         agreements_.withdrawDeposit(k);
         (CommitmentTypes.Commitment memory late, bytes32[] memory lateProof) = _settledUnderAgreement(k, k, 4);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, k));
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseAgreementOrAssemblyNotRegistered.selector, k));
         real.recordAgreementUsage(late, k, k, lateProof);
 
         UsageCounter.BatchAccrual[] memory a = new UsageCounter.BatchAccrual[](3);
@@ -1325,7 +1327,7 @@ contract UsageCounterTest is Test {
 
     function test_batchAccrualSkipsAnUnregisteredClauseOrAssembly() public {
         // Same skip semantics for a clause or assembly with no live registration —
-        // the batch-path twin of the direct path's ClauseOrAssemblyNotRegistered revert.
+        // the batch-path twin of the direct path's ClauseAgreementOrAssemblyNotRegistered revert.
         stake.kill(CARGO_KEY);
         uint256 totalBefore = counter.totalScoreIn(0);
         vm.prank(batchVerifier);

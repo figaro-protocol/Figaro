@@ -32,7 +32,8 @@
 //     own claim path do the right thing with it? That is exactly what rule 5
 //     (`ineligibleClauseOrAssemblyCannotBePaid`) checks, and the summary is fully
 //     behavior-preserving for it: `_isAuthor` has no other observable effect
-//     anywhere in RpgfMinter.sol.
+//     anywhere in RpgfMinter.sol. Which registry `_isAuthor` reads for each
+//     kind is proved where it runs as written: certora/RpgfMinterAuthor.spec.
 //
 //   • `counter.periodClosed` / `counter.totalScoreIn` / `counter.scoreOf` are
 //     real external calls to a contract not in the scene (UsageCounter is a

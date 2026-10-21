@@ -36,6 +36,30 @@ pub struct PendingOp {
     /// when the operation lands or is dead-lettered, a resubmission starts
     /// with none, and it is kept apart from the transient re-queue's count.
     pub deferred_since: Option<Instant>,
+    /// The keys of the deferred operations this one was filtered behind
+    /// ([`Mempool::refilter_behind_deferred`]): each one without which it no
+    /// longer applies against the landed state — an order it names, or an
+    /// earlier sub-order whose payment its cumulative value counts; past
+    /// [`MAX_DEPENDENCY_RERUNS`] re-runs in a tick, every deferred or
+    /// following commit of a process it touches that precedes it. It moved
+    /// with them, and it is dead-lettered with any of them. Empty until
+    /// then; it rides on the operation through its deferrals and is cleared
+    /// when the operation is given back or re-queued.
+    pub behind: Vec<B256>,
+}
+
+/// What [`Mempool::refilter_behind_deferred`] returns.
+#[derive(Debug)]
+pub struct Refiltered {
+    /// The operations kept, in a working execution order.
+    pub kept: Vec<PendingOp>,
+    /// The operations that apply again once the deferred ones are restored,
+    /// each marked with what it was filtered behind.
+    pub follow: Vec<PendingOp>,
+    /// The operations built on one dropped for good, each with its reason.
+    pub dropped: Vec<(PendingOp, String)>,
+    /// How many times the operation filter was run again to mark them.
+    pub reruns: usize,
 }
 
 /// Result of an accepted submission.
@@ -97,10 +121,12 @@ struct MempoolInner {
     /// `requeue`, which dead-letters a key past `max_requeues`.
     requeues: HashMap<B256, u32>,
     /// Operations batch formation deferred ([`Mempool::defer`]), in groups,
-    /// oldest first: each group is one tick's deferrals, an operation with
-    /// what was filtered into an order behind it. They wait apart from
-    /// `pending` and are drained again only into the room `pending` leaves
-    /// empty, a group whole; their keys stay in `index`.
+    /// oldest first: each group is a class of one tick's deferrals under
+    /// the touched-process chain, an operation with what was filtered into an
+    /// order behind it. They wait apart from `pending` and are drained again
+    /// only into the room `pending` leaves empty, a group whole; their keys
+    /// stay in `index`. A group decides what is drained together and nothing
+    /// else: each operation expires on its own window.
     deferred: VecDeque<Vec<PendingOp>>,
     next_id: u64,
 }
@@ -117,6 +143,16 @@ impl MempoolInner {
 /// re-proved forever; after this many attempts it is surfaced on `/status`
 /// and left for re-submission.
 pub const DEFAULT_MAX_REQUEUES: u32 = 3;
+
+/// The most times one batch formation runs the operation filter again to
+/// mark what follows a deferred commit ([`Mempool::refilter_behind_deferred`]).
+/// Each run is the filter over one drain group of at most `MAX_BATCH_OPS`
+/// operations (100 by default) against that group's slice of the landed
+/// state; 32 runs is the work of a third of a full drain's worth of
+/// candidates judged exactly. Past it, a group is marked conservatively
+/// instead: an operation that follows rides behind every deferred or
+/// following commit of a process it touches that precedes it.
+pub const MAX_DEPENDENCY_RERUNS: usize = 32;
 
 /// How long an operation batch formation deferred waits, from its first
 /// deferral, before it is dead-lettered. A bound in time, never in attempts:
@@ -210,6 +246,7 @@ impl Mempool {
             key,
             op,
             deferred_since: None,
+            behind: Vec::new(),
         });
         Ok(Admission {
             id,
@@ -379,58 +416,260 @@ impl Mempool {
     /// Defer the operations batch formation could not use this tick — one
     /// that applies against no order of its drain, a commit whose funding
     /// could not be read, and what was filtered into an order behind either
-    /// — as one group, apart from the queue (drained again only into the
-    /// room the queue leaves, [`Mempool::drain_up_to`]). Each keeps the time
-    /// it was first deferred; one deferred for the window or longer since
-    /// then is not deferred but returned, with the reason, for the caller to
-    /// dead-letter. Deferring spends nothing of the re-queue's count. A copy
-    /// resubmitted while the operation was drained is dropped: the deferred
-    /// one holds the key, and a resubmission is a duplicate of it.
-    /// Cap-exempt: these were already acknowledged.
-    pub async fn defer(&self, ops: Vec<PendingOp>, now: Instant) -> Vec<(PendingOp, String)> {
-        let mut inner = self.inner.lock().await;
-        let mut group = Vec::with_capacity(ops.len());
-        let mut expired = Vec::new();
-        for mut op in ops {
-            let since = *op.deferred_since.get_or_insert(now);
-            if now.saturating_duration_since(since) >= self.defer_window {
-                expired.push((op, self.expiry_reason()));
-                continue;
-            }
-            if inner.index.contains_key(&op.key) {
-                inner.pending.retain(|queued| queued.key != op.key);
-            }
-            inner.index.insert(op.key, op.id);
-            group.push(op);
+    /// — apart from the queue (drained again only into the room the queue
+    /// leaves, [`Mempool::drain_up_to`]), in drain groups: operations share a
+    /// group when a chain of them, each touching a process the next touches,
+    /// joins them (`touched_processes`). The groups decide what is drained
+    /// together and nothing else. Each operation keeps the time it was first
+    /// deferred; one deferred for the window or longer since then is not
+    /// deferred but returned, with the reason, for the caller to
+    /// dead-letter, and so is what was filtered behind it
+    /// ([`PendingOp::behind`]), transitively — never the rest of its group.
+    /// Deferring spends nothing of the re-queue's count. A copy resubmitted
+    /// while the operation was drained is dropped: the deferred one holds the
+    /// key, and a resubmission is a duplicate of it. Cap-exempt: these were
+    /// already acknowledged.
+    pub async fn defer(&self, mut ops: Vec<PendingOp>, now: Instant) -> Vec<(PendingOp, String)> {
+        for op in &mut ops {
+            op.deferred_since.get_or_insert(now);
         }
-        if !group.is_empty() {
+        let (ops, expired) = self.take_expired(ops, now);
+        let groups = self.group_by_process(ops);
+        let mut inner = self.inner.lock().await;
+        for group in groups {
+            for op in &group {
+                if inner.index.contains_key(&op.key) {
+                    inner.pending.retain(|queued| queued.key != op.key);
+                }
+                inner.index.insert(op.key, op.id);
+            }
             inner.deferred.push_back(group);
         }
         expired
     }
 
-    /// Take every deferred operation whose window has passed since it was
-    /// first deferred, retried or not, for the caller to dead-letter; its key
-    /// is freed.
+    /// Take every deferred operation whose window has passed since its own
+    /// first deferral, retried or not, and what was filtered behind it,
+    /// transitively, for the caller to dead-letter; their keys are freed.
+    /// What is left of a group is grouped again, in the group's place. An
+    /// operation and what was filtered behind it touch a common process, so
+    /// they share a group, and each group is judged alone.
     pub async fn expire_deferred(&self, now: Instant) -> Vec<(PendingOp, String)> {
         let mut inner = self.inner.lock().await;
         let mut expired = Vec::new();
-        let window = self.defer_window;
         let groups = std::mem::take(&mut inner.deferred);
         for group in groups {
-            let (late, waiting): (Vec<_>, Vec<_>) = group.into_iter().partition(|op| {
-                op.deferred_since
-                    .is_some_and(|since| now.saturating_duration_since(since) >= window)
-            });
-            for op in late {
+            let (kept, gone) = self.take_expired(group, now);
+            for (op, _) in &gone {
                 inner.index.remove(&op.key);
-                expired.push((op, self.expiry_reason()));
             }
-            if !waiting.is_empty() {
-                inner.deferred.push_back(waiting);
+            if gone.is_empty() {
+                inner.deferred.push_back(kept);
+            } else {
+                inner.deferred.extend(self.group_by_process(kept));
             }
+            expired.extend(gone);
         }
         expired
+    }
+
+    /// Split `ops` into those that stay and those past the window since their
+    /// own first deferral, with what was filtered behind one of those,
+    /// transitively, each with its reason. The kept keep their order.
+    fn take_expired(&self, ops: Vec<PendingOp>, now: Instant) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
+        let late = |op: &PendingOp| {
+            op.deferred_since
+                .is_some_and(|since| now.saturating_duration_since(since) >= self.defer_window)
+        };
+        let mut gone: HashSet<B256> = ops.iter().filter(|op| late(op)).map(|op| op.key).collect();
+        loop {
+            let more: Vec<B256> = ops
+                .iter()
+                .filter(|op| !gone.contains(&op.key) && op.behind.iter().any(|k| gone.contains(k)))
+                .map(|op| op.key)
+                .collect();
+            if more.is_empty() {
+                break;
+            }
+            gone.extend(more);
+        }
+        let mut kept = Vec::with_capacity(ops.len());
+        let mut expired = Vec::new();
+        for op in ops {
+            if !gone.contains(&op.key) {
+                kept.push(op);
+            } else if late(&op) {
+                expired.push((op, self.expiry_reason()));
+            } else {
+                let why = format!(
+                    "filtered at batch formation behind an operation dead-lettered at its deferral window: {}",
+                    self.expiry_reason()
+                );
+                expired.push((op, why));
+            }
+        }
+        (kept, expired)
+    }
+
+    /// The processes an operation touches: a commit's own (a root order's
+    /// derived from its struct), a resolve's, an attestation's role and
+    /// target orders' processes.
+    fn touched_processes(&self, op: &KernelOp) -> Vec<B256> {
+        let domain = domain_separator(self.chain_id, self.verifying_contract);
+        let process = |c: &Commitment| derive_commitment_ids(&domain, c).1;
+        match op {
+            KernelOp::Commit { commitment, .. } => vec![process(commitment)],
+            KernelOp::Resolve { process_id, .. } => vec![*process_id],
+            KernelOp::AttestAsSeller { role, target, .. } => vec![process(role), process(target)],
+            KernelOp::AttestAsBuyer { target, .. } => vec![process(target)],
+        }
+    }
+
+    /// [`crate::assembler::refilter_after_drops`], with each operation that
+    /// follows the `deferred` ones marked with what it was filtered behind
+    /// ([`PendingOp::behind`]).
+    pub fn refilter_behind_deferred(
+        &self,
+        block_timestamp: u64,
+        prev_state: &KernelStateSnapshot,
+        valid: Vec<PendingOp>,
+        deferred: &[PendingOp],
+    ) -> Refiltered {
+        let (kept, mut follow, dropped) = crate::assembler::refilter_after_drops(
+            self.chain_id,
+            self.verifying_contract,
+            block_timestamp,
+            prev_state,
+            valid,
+            deferred,
+        );
+        let reruns = self.mark_behind(block_timestamp, prev_state, &kept, &mut follow, deferred);
+        Refiltered { kept, follow, dropped, reruns }
+    }
+
+    /// Mark, on each of `follow`, the operations it was filtered behind:
+    /// each commit among `deferred` and the rest of `follow` without which it
+    /// no longer applies. Only a commit is a candidate: only a commit creates
+    /// a process, an order or a step of a process's cumulative value, the
+    /// state holds no attestation, and taking out a resolve never makes
+    /// another operation fail. Judged by the filter itself — the operation
+    /// filter run again over each candidate's drain group with the candidate
+    /// taken out — so the edge is the semantic dependency, whatever the
+    /// operation names: a sub-order whose cumulative value counts an earlier
+    /// sub-order's payment rides behind that sub-order, though it names only
+    /// the process; an operation that applies without the candidate is never
+    /// marked behind it. Each re-run reads the group's slice of the landed
+    /// state (`group_state`), never the whole of it. At most
+    /// [`MAX_DEPENDENCY_RERUNS`] re-runs: a group whose candidates would
+    /// pass the cap is marked conservatively instead — an operation that
+    /// follows rides behind every deferred or following commit of a process
+    /// it touches that precedes it (any such commit, for an operation that
+    /// is not a commit; one of lower cumulative value, for a commit). That
+    /// mark can only join an operation to commits of its own processes.
+    /// Added to what it already carries; transitive edges are followed at
+    /// expiry. Returns the number of re-runs.
+    fn mark_behind(
+        &self,
+        block_timestamp: u64,
+        prev_state: &KernelStateSnapshot,
+        kept: &[PendingOp],
+        follow: &mut [PendingOp],
+        deferred: &[PendingOp],
+    ) -> usize {
+        if follow.is_empty() {
+            return 0;
+        }
+        let domain = domain_separator(self.chain_id, self.verifying_contract);
+        let follow_keys: HashSet<B256> = follow.iter().map(|p| p.key).collect();
+        let is_commit = |p: &PendingOp| matches!(p.op, KernelOp::Commit { .. });
+        let candidates: HashSet<B256> = deferred
+            .iter()
+            .chain(follow.iter())
+            .filter(|p| is_commit(p))
+            .map(|p| p.key)
+            .collect();
+        let all: Vec<PendingOp> = kept.iter().chain(deferred).chain(follow.iter()).cloned().collect();
+        let mut reruns = 0;
+        let mut edges: HashMap<B256, Vec<B256>> = HashMap::new();
+        for group in self.group_by_process(all) {
+            if !group.iter().any(|p| follow_keys.contains(&p.key)) {
+                continue;
+            }
+            let group_candidates: Vec<&PendingOp> =
+                group.iter().filter(|p| candidates.contains(&p.key)).collect();
+            if reruns + group_candidates.len() > MAX_DEPENDENCY_RERUNS {
+                // Past the cap: the conservative mark.
+                for f in group.iter().filter(|p| follow_keys.contains(&p.key)) {
+                    let touched: HashSet<B256> = self.touched_processes(&f.op).into_iter().collect();
+                    for c in &group_candidates {
+                        if c.key != f.key && commit_precedes(&domain, &c.op, &f.op, &touched) {
+                            edges.entry(f.key).or_default().push(c.key);
+                        }
+                    }
+                }
+                continue;
+            }
+            let state = group_state(prev_state, &group.iter().flat_map(|p| self.touched_processes(&p.op)).collect());
+            for x in group_candidates {
+                reruns += 1;
+                let without: Vec<PendingOp> =
+                    group.iter().filter(|p| p.key != x.key).cloned().collect();
+                let (applies, _) = crate::assembler::filter_applicable_ops(
+                    self.chain_id,
+                    self.verifying_contract,
+                    block_timestamp,
+                    &state,
+                    without,
+                );
+                let applies: HashSet<B256> = applies.iter().map(|p| p.key).collect();
+                for f in group.iter().filter(|p| follow_keys.contains(&p.key) && p.key != x.key) {
+                    if !applies.contains(&f.key) {
+                        edges.entry(f.key).or_default().push(x.key);
+                    }
+                }
+            }
+        }
+        for p in follow.iter_mut() {
+            for key in edges.remove(&p.key).unwrap_or_default() {
+                if !p.behind.contains(&key) {
+                    p.behind.push(key);
+                }
+            }
+        }
+        reruns
+    }
+
+    /// Partition `ops` into groups that touch a common process, transitively:
+    /// two operations share a group when a chain of operations, each touching
+    /// a process the next touches, joins them. Groups are ordered by their
+    /// first operation, and each keeps the operations' order.
+    fn group_by_process(&self, ops: Vec<PendingOp>) -> Vec<Vec<PendingOp>> {
+        // Each group: the processes it touches, and its operations' positions.
+        let mut groups: Vec<(HashSet<B256>, Vec<usize>)> = Vec::new();
+        for (at, op) in ops.iter().enumerate() {
+            let touched: HashSet<B256> = self.touched_processes(&op.op).into_iter().collect();
+            let mut joined = (touched, vec![at]);
+            let mut kept = Vec::with_capacity(groups.len());
+            for group in groups {
+                if group.0.is_disjoint(&joined.0) {
+                    kept.push(group);
+                } else {
+                    joined.0.extend(group.0);
+                    joined.1.extend(group.1);
+                }
+            }
+            kept.push(joined);
+            groups = kept;
+        }
+        for group in &mut groups {
+            group.1.sort_unstable();
+        }
+        groups.sort_unstable_by_key(|group| group.1[0]);
+        let mut slots: Vec<Option<PendingOp>> = ops.into_iter().map(Some).collect();
+        groups
+            .into_iter()
+            .map(|(_, at)| at.into_iter().filter_map(|i| slots[i].take()).collect())
+            .collect()
     }
 
     fn expiry_reason(&self) -> String {
@@ -473,7 +712,8 @@ impl Mempool {
     /// id it was first given, and a submitter follows it by its key.
     pub async fn give_back(&self, ops: Vec<PendingOp>) {
         let mut inner = self.inner.lock().await;
-        for op in ops.into_iter().rev() {
+        for mut op in ops.into_iter().rev() {
+            op.behind.clear();
             if inner.index.contains_key(&op.key) {
                 inner.pending.retain(|queued| queued.key != op.key);
             }
@@ -492,7 +732,8 @@ impl Mempool {
     pub async fn requeue(&self, ops: Vec<PendingOp>) -> Vec<(PendingOp, String)> {
         let mut inner = self.inner.lock().await;
         let mut dropped = Vec::new();
-        for op in ops.into_iter().rev() {
+        for mut op in ops.into_iter().rev() {
+            op.behind.clear();
             let attempts = inner.requeues.entry(op.key).or_insert(0);
             *attempts += 1;
             if *attempts > self.max_requeues {
@@ -557,8 +798,8 @@ impl Mempool {
             }
             KernelOp::Resolve {
                 process_id,
+                commitments,
                 buyer_sig,
-                ..
             } => {
                 let struct_hash = resolve_struct_hash(process_id);
                 let digest = typed_data_hash(&domain, &struct_hash);
@@ -566,6 +807,19 @@ impl Mempool {
                     .map_err(|e| format!("invalid resolve signature: {e}"))?;
                 // Note: we can't check rootBuyer match without state — the
                 // proof enforces this. Pre-check only verifies sig is valid.
+                // An order listed twice never applies, whatever the state:
+                // the Core resolves the first listing and reads the second
+                // as not committed (`OrderNotCommitted`). The list rides
+                // unsigned, so this is refused here, never deferred.
+                let mut listed = HashSet::with_capacity(commitments.len());
+                for c in commitments {
+                    let order_hash = compute_order_hash(process_id, &commitment_struct_hash(c));
+                    if !listed.insert(order_hash) {
+                        return Err(format!(
+                            "resolve lists order {order_hash} twice — the Core resolves an order once and refuses the second listing (OrderNotCommitted)"
+                        ));
+                    }
+                }
                 Ok(())
             }
             KernelOp::AttestAsSeller {
@@ -632,6 +886,57 @@ impl Mempool {
                 Ok(())
             }
         }
+    }
+}
+
+/// Whether the commit `c` precedes `f` in a process `f` touches: `c` is a
+/// commit of one of `touched`, and `f` is not a commit, or is one of lower
+/// cumulative value in that process.
+fn commit_precedes(domain: &B256, c: &KernelOp, f: &KernelOp, touched: &HashSet<B256>) -> bool {
+    let KernelOp::Commit { commitment: c, .. } = c else {
+        return false;
+    };
+    let process = derive_commitment_ids(domain, c).1;
+    if !touched.contains(&process) {
+        return false;
+    }
+    match f {
+        KernelOp::Commit { commitment: f, .. } => c.expected_cumulative_value < f.expected_cumulative_value,
+        _ => true,
+    }
+}
+
+/// The slice of `state` an operation of these processes reads: the
+/// processes, and the orders filed under them. The Core's rules read
+/// nothing else for an operation — a commit reads its process and its own
+/// order (an order's hash binds its process), an attestation its role and
+/// target orders, a resolve its process and listed orders — and no
+/// operation reads the usage state, so an operation applies against the
+/// slice exactly as against the whole. One assumption: every key in
+/// `order_status` is also in `order_process_id`, filed under the process its
+/// hash binds. The Core mirror writes the two together (`apply_commit`) and
+/// nothing removes either; the snapshot carries no serde defaults; and the
+/// state root covers `order_process_id`, so every state the relay holds came
+/// out of the Core mirror.
+fn group_state(state: &KernelStateSnapshot, processes: &HashSet<B256>) -> KernelStateSnapshot {
+    let orders: HashSet<B256> = state
+        .order_process_id
+        .iter()
+        .filter(|(_, p)| processes.contains(p))
+        .map(|(o, _)| *o)
+        .collect();
+    KernelStateSnapshot {
+        processes: state.processes.iter().filter(|(p, _)| processes.contains(p)).cloned().collect(),
+        order_status: state.order_status.iter().filter(|(o, _)| orders.contains(o)).cloned().collect(),
+        order_process_id: state
+            .order_process_id
+            .iter()
+            .filter(|(o, _)| orders.contains(o))
+            .cloned()
+            .collect(),
+        usage_counted: Vec::new(),
+        usage_seller_seen: Vec::new(),
+        usage_accrual: Vec::new(),
     }
 }
 

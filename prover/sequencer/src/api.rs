@@ -16,13 +16,14 @@ use axum::{
         rejection::{JsonRejection, QueryRejection},
         ConnectInfo, DefaultBodyLimit, Path, Query, State,
     },
-    http::StatusCode,
+    http::{HeaderName, Method, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
-use tower::limit::ConcurrencyLimitLayer;
+use tower::limit::GlobalConcurrencyLimitLayer;
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::timeout::TimeoutLayer;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
@@ -55,7 +56,7 @@ pub struct AppState {
 /// gap it closes: ops were dead-lettered and every observer kept polling a surface that
 /// could not say so). Counts OPS dead-lettered — dropped without resolving —
 /// whatever the path (deterministic resolve revert, prove failure); the last
-/// error is kept verbatim for the reader. Usage claims dropped without
+/// error is kept for the reader, every URL in it taken out. Usage claims dropped without
 /// landing are counted apart, with their own last reason: a claim is not an
 /// operation, and one figure for both would tell neither reader the truth.
 #[derive(Clone, Default)]
@@ -72,10 +73,15 @@ struct FailureLogInner {
 }
 
 impl FailureLog {
+    /// Count `ops` operations dropped without resolving, with the reason,
+    /// every URL in it taken out ([`without_urls`]). The reason is an error's
+    /// Display text: an error recorded with `{:?}` can carry a URL as a
+    /// parsed structure, its scheme and host apart with no `://`, which
+    /// `without_urls` does not find.
     pub async fn record(&self, ops: u64, error: String) {
         let mut inner = self.inner.write().await;
         inner.dead_lettered_ops += ops;
-        inner.last_error = Some(error);
+        inner.last_error = Some(without_urls(&error));
     }
 
     pub async fn snapshot(&self) -> (u64, Option<String>) {
@@ -83,14 +89,15 @@ impl FailureLog {
         (inner.dead_lettered_ops, inner.last_error.clone())
     }
 
-    /// Count `claims` usage claims dropped without landing, with the reason.
+    /// Count `claims` usage claims dropped without landing, with the reason,
+    /// every URL in it taken out ([`without_urls`]).
     pub async fn record_claims(&self, claims: u64, error: String) {
         if claims == 0 {
             return;
         }
         let mut inner = self.inner.write().await;
         inner.dropped_usage_claims += claims;
-        inner.last_claim_error = Some(error);
+        inner.last_claim_error = Some(without_urls(&error));
     }
 
     /// The usage claims dropped so far, and the last reason.
@@ -98,6 +105,36 @@ impl FailureLog {
         let inner = self.inner.read().await;
         (inner.dropped_usage_claims, inner.last_claim_error.clone())
     }
+}
+
+/// `text` with every URL in it replaced by `<url>`. A failure's text is
+/// served to any client on `/status`; an HTTP client's error names the URL
+/// it requested, and a keyed RPC URL carries its key. A URL runs from its
+/// scheme (`http://`, `https://`, `ws://`, `wss://`) to the first
+/// whitespace, quote, or closing bracket; the scheme matches in any case.
+pub fn without_urls(text: &str) -> String {
+    const SCHEMES: [&str; 4] = ["https://", "http://", "wss://", "ws://"];
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    // Schemes match in any case (`HTTPS://` is a URL too); ASCII lowercasing
+    // keeps every byte offset, so a match in the lowered text is one in `rest`.
+    while let Some((at, scheme)) = {
+        let lowered = rest.to_ascii_lowercase();
+        SCHEMES
+            .iter()
+            .filter_map(|scheme| lowered.find(scheme).map(|at| (at, *scheme)))
+            .min_by_key(|(at, _)| *at)
+    } {
+        out.push_str(&rest[..at]);
+        out.push_str("<url>");
+        let after = &rest[at + scheme.len()..];
+        let end = after
+            .find(|c: char| c.is_whitespace() || matches!(c, '"' | '\'' | '`' | ')' | ']' | '}' | '>'))
+            .unwrap_or(after.len());
+        rest = &after[end..];
+    }
+    out.push_str(rest);
+    out
 }
 
 /// Log every usage claim dropped at `stage`, each with its reason, so a
@@ -261,12 +298,12 @@ pub struct StatusResponse {
     /// Cumulative ops dropped without resolving — a growing figure DURING a
     /// wait means the wait is over, whatever `batches_settled` says.
     pub dead_lettered_ops: u64,
-    /// The most recent dead-letter reason, verbatim; null while clean.
+    /// The most recent dead-letter reason, its URLs taken out; null while clean.
     pub last_settle_error: Option<String>,
     /// Cumulative usage claims dropped without landing — counted apart from
     /// the operations: a claim credits a designer, it resolves nothing.
     pub dropped_usage_claims: u64,
-    /// The most recent claim drop's reason, verbatim; null while clean.
+    /// The most recent claim drop's reason, its URLs taken out; null while clean.
     pub last_dropped_claim_error: Option<String>,
     /// The publication window — what `/batches` can still serve. A
     /// consumer reads this BEFORE replaying, so a gap between its cursor
@@ -295,15 +332,33 @@ pub struct HealthResponse {
 // ── Router ───────────────────────────────────────────────────────
 
 pub fn router(state: AppState, config: ApiConfig) -> Router {
+    // One in-flight count across every route: each route's layer shares the
+    // one semaphore.
+    let in_flight = GlobalConcurrencyLimitLayer::new(config.max_in_flight);
+    // The submission routes carry no cross-origin header. A JSON submission
+    // from a page needs a preflight, which they never answer; a `text/plain`
+    // POST is a CORS simple request, sent with no preflight, and the JSON
+    // extractor answers it `415`. So no page can have its visitors'
+    // browsers submit for it, each from an address of its own past the
+    // per-address limit.
     let submissions = Router::new()
         .route("/submit", post(submit_op))
         .route("/submit-usage", post(submit_usage))
         .route_layer(middleware::from_fn_with_state(
             RateLimiter::new(config.submits_per_minute_per_ip),
             rate_limit,
-        ));
-    Router::new()
-        .merge(submissions)
+        ))
+        .layer(DefaultBodyLimit::max(config.max_body_bytes))
+        // Outermost last: the in-flight cap admits, the timeout bounds.
+        .layer(TimeoutLayer::new(config.request_timeout))
+        .layer(in_flight.clone());
+    // The read routes answer a page on any origin (the site's `/audit` reads
+    // `/state` and the publication routes from the reader's browser): GET
+    // and its preflight, `/state`'s root header exposed. The read routes
+    // change nothing, and serve what the relay already serves to any client
+    // on `LISTEN_ADDR`. The cross-origin header is outermost, so an answer
+    // the timeout gives (`408`) reaches the page too.
+    let reads = Router::new()
         .route("/health", get(health))
         .route("/status", get(status))
         // The state behind the verifier's root, as this relay holds it.
@@ -312,11 +367,15 @@ pub fn router(state: AppState, config: ApiConfig) -> Router {
         .route("/orders/:order_hash", get(get_order))
         .route("/processes/:process_id", get(get_process))
         .route("/batches", get(get_batches))
-        .layer(DefaultBodyLimit::max(config.max_body_bytes))
-        // Outermost last: the in-flight cap admits, the timeout bounds.
         .layer(TimeoutLayer::new(config.request_timeout))
-        .layer(ConcurrencyLimitLayer::new(config.max_in_flight))
-        .with_state(state)
+        .layer(in_flight)
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods([Method::GET, Method::OPTIONS])
+                .expose_headers([HeaderName::from_static("x-figaro-state-root")]),
+        );
+    Router::new().merge(submissions).merge(reads).with_state(state)
 }
 
 // ── Handlers ─────────────────────────────────────────────────────

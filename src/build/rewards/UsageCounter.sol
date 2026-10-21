@@ -167,7 +167,7 @@ contract UsageCounter {
     uint8 public constant KIND_AGREEMENT = 2;
 
     /// @notice The key of the agreement format's reserved PROVENANCE leaf —
-    ///         the leaf whose committed section names the registered agreement
+    ///         the leaf whose committed bytes name the registered agreement
     ///         an order instantiates and the assembly it came from.
     ///         `keccak256("figaro-agreement-provenance")`.
     /// @dev    The link from a resolved process to its agreement and its
@@ -176,13 +176,13 @@ contract UsageCounter {
     ///         registered nowhere and earns nothing. The clause and assembly
     ///         registries take a key as given, so a wallet can stake this key in
     ///         either; `_accrue` and the batch path refuse it on every kind
-    ///         whatever any registry holds. The leaf's section bytes are exactly
+    ///         whatever any registry holds. The leaf's committed bytes are exactly
     ///         `{"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64
     ///         lowercase hex>"}`, reproduced here from the two keys claimed. An
     ///         agreementKey or a compositionHash is never itself an agreement's
     ///         leaf key, so both are proved through this leaf; fixing the key as
     ///         a constant rather than taking it per call is what stops a caller
-    ///         passing some clause whose section happens to name the two keys.
+    ///         passing some clause whose committed bytes happen to name the two keys.
     ///         The mandatory clauses ride every order and earn like any other
     ///         clause: scoring them rewards their designer of record.
     bytes32 public constant provenanceLeaf = keccak256("figaro-agreement-provenance");
@@ -242,7 +242,7 @@ contract UsageCounter {
     mapping(uint8 => mapping(bytes32 => mapping(uint8 => Accrual))) public accrualOf;
 
     /// @notice The same accrual for trade resolved through `FigaroBatchVerifier`
-    ///         — kept in a SEPARATE slot, never merged into `accrualOf`.
+    ///         — kept in a SEPARATE mapping, never merged into `accrualOf`.
     /// @dev    THE TWO ARE SUMMED AS SCORES, never as components (`scoreOf`).
     ///         Summing `c` and `d` would over-count breadth for any SELLER
     ///         active on BOTH paths: the chain holds counts, not the seller
@@ -355,7 +355,7 @@ contract UsageCounter {
     error EmptyPeriods();
     error TooManyPeriods();
     error PeriodsNotAscending();
-    error ClauseOrAssemblyNotRegistered(bytes32 clauseOrAssembly);
+    error ClauseAgreementOrAssemblyNotRegistered(bytes32 clauseOrAssembly);
     error AccrualClosed();
     error UnknownOrder();
     error OrderNotResolved();
@@ -471,14 +471,14 @@ contract UsageCounter {
     /// @param order       The order's commitment struct, exactly as signed.
     /// @param clauseOrAssembly    The clause key — the bytes32 key committed in the
     ///                    agreement's merkle leaf; counted under KIND_CLAUSE.
-    /// @param sectionHash `keccak256` of the clause section's committed bytes —
-    ///                    the FINGERPRINT, never the preimage. The merkle leaf
-    ///                    needs only this hash, so the section CONTENT never
+    /// @param sectionHash `keccak256` of the clause's committed bytes — the
+    ///                    FINGERPRINT, never the preimage. The merkle leaf
+    ///                    needs only this hash, so the clause's CONTENT never
     ///                    touches public calldata: a `private`-disposition
-    ///                    section's plaintext stays off-chain (encrypted IPFS),
+    ///                    clause's plaintext stays off-chain (encrypted IPFS),
     ///                    the chain sees the fingerprint alone. Matches the
     ///                    batched path's `bytes32` convention, byte for byte.
-    /// @param proof       Merkle proof of the section against `order.agreementHash`.
+    /// @param proof       Merkle proof of the clause leaf against `order.agreementHash`.
     function recordClauseUsage(
         CommitmentTypes.Commitment calldata order,
         bytes32 clauseOrAssembly,
@@ -503,7 +503,7 @@ contract UsageCounter {
         //    registration stake is live. Without it an agreement a seller wrote
         //    could commit any bytes32 key and accrue score to it, inflating the
         //    shared denominator at gas cost. The seller-side twin is in `_accrue`.
-        if (!_clauseLive(clauseOrAssembly)) revert ClauseOrAssemblyNotRegistered(clauseOrAssembly);
+        if (!_clauseLive(clauseOrAssembly)) revert ClauseAgreementOrAssemblyNotRegistered(clauseOrAssembly);
 
         _accrue(KIND_CLAUSE, clauseOrAssembly, period, processId, order.seller);
     }
@@ -511,7 +511,7 @@ contract UsageCounter {
     /// @notice Count one resolved process's use of a REGISTERED AGREEMENT,
     ///         under `KIND_AGREEMENT` and gated by `AgreementRegistry` alone. An
     ///         agreementKey is never a leaf key; what IS a leaf is the agreement
-    ///         format's reserved provenance leaf, whose committed section names
+    ///         format's reserved provenance leaf, whose committed bytes name
     ///         exactly the agreementKey and the compositionHash — so proving
     ///         that leaf proves the order instantiated this agreement, with no
     ///         new trust and no change to `agreementHash`. The assembly named
@@ -520,7 +520,7 @@ contract UsageCounter {
     /// @param order            The order's commitment struct, exactly as signed.
     /// @param agreementKey     The AgreementRegistry agreement being credited.
     /// @param compositionHash  The assembly the order's provenance names.
-    /// @param proof            Merkle proof of the provenance section against
+    /// @param proof            Merkle proof of the provenance leaf against
     ///                         `agreementHash`.
     function recordAgreementUsage(
         CommitmentTypes.Commitment calldata order,
@@ -535,7 +535,7 @@ contract UsageCounter {
 
         // DESIGNER-SIDE STAKE GATE, agreement form — the agreement must hold a
         // live AgreementRegistry binding (registered, stake un-withdrawn).
-        if (!_agreementLive(agreementKey)) revert ClauseOrAssemblyNotRegistered(agreementKey);
+        if (!_agreementLive(agreementKey)) revert ClauseAgreementOrAssemblyNotRegistered(agreementKey);
 
         _accrue(KIND_AGREEMENT, agreementKey, period, processId, order.seller);
     }
@@ -547,8 +547,8 @@ contract UsageCounter {
     ///         agreementKey of the agreement it instantiated; the agreement's
     ///         leaf `keccak256(keccak256(agreementKey ‖ slotContentHash))` then
     ///         opens under the compositionHash, which is the root of the
-    ///         assembly's tree — so the assembly holds that agreement in an
-    ///         agreement. The agreement's own stake is never read here.
+    ///         assembly's tree — so the assembly composes that agreement.
+    ///         The agreement's own stake is never read here.
     ///
     /// @param order            The order's commitment struct, exactly as signed.
     /// @param compositionHash  The AssemblyRegistry composition being credited.
@@ -556,7 +556,7 @@ contract UsageCounter {
     ///                         instantiated.
     /// @param slotContentHash  `keccak256` of the agreement's committed bytes
     ///                         (the agreement's own clause fills and its index).
-    /// @param leafProof        Merkle proof of the provenance section against
+    /// @param leafProof        Merkle proof of the provenance leaf against
     ///                         `agreementHash`.
     /// @param membershipProof  Merkle proof of the agreement's leaf against
     ///                         `compositionHash`.
@@ -587,21 +587,21 @@ contract UsageCounter {
 
         // DESIGNER-SIDE STAKE GATE, assembly form — the composition must hold a
         // live AssemblyRegistry binding (registered, stake un-withdrawn).
-        if (!_assemblyLive(compositionHash)) revert ClauseOrAssemblyNotRegistered(compositionHash);
+        if (!_assemblyLive(compositionHash)) revert ClauseAgreementOrAssemblyNotRegistered(compositionHash);
 
         _accrue(KIND_ASSEMBLY, compositionHash, period, processId, order.seller);
     }
 
     /// @dev Require the reserved provenance leaf naming `agreementKey` and
-    ///      `compositionHash` under `agreementHash`. No section preimage is
-    ///      taken — the provenance section's content is FULLY DETERMINED by the
-    ///      two keys. Sections commit as CANONICAL JSON bytes (object keys
-    ///      sorted), and the provenance section carries exactly two fields, so
+    ///      `compositionHash` under `agreementHash`. No preimage is taken —
+    ///      the provenance leaf's content is FULLY DETERMINED by the two keys.
+    ///      A leaf's content commits as CANONICAL JSON bytes (object keys
+    ///      sorted), and the provenance leaf carries exactly two fields, so
     ///      the committed bytes are reproducible verbatim:
     ///        {"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}
-    ///      Reproduction, never parsing — the section FINGERPRINT is derived
+    ///      Reproduction, never parsing — the content FINGERPRINT is derived
     ///      here, never supplied. One check does both inclusion and content
-    ///      match: a wrong key on either side derives a section hash whose leaf
+    ///      match: a wrong key on either side derives a content hash whose leaf
     ///      is simply not in the tree. The leaf is keyed by the format's
     ///      constant `provenanceLeaf`, so no clause can stand in for it.
     function _requireProvenance(
@@ -729,7 +729,7 @@ contract UsageCounter {
             Accrual storage stored = batchAccrualOf[a.kind][a.clauseOrAssembly][period];
             // Cumulative counts can only grow. The state-root check in the
             // verifier already guarantees it; asserting it costs nothing (both
-            // fields share a slot already being read) and it can never reject
+            // fields share a storage slot already being read) and it can never reject
             // an honest batch, so a guest regression surfaces as a revert
             // rather than as silently destroyed accrual.
             if (a.c < stored.c || a.d < stored.d) revert AccrualWentBackwards(a.clauseOrAssembly);

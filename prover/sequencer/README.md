@@ -191,7 +191,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `SETTLE_GAS_CAP` | `16777216` | The chain's cap on one transaction's gas (EIP-7825's 2^24, which mainnet enforces); a chain without it is told so here (Sepolia carries larger transactions), set below 95 percent of its block limit. It is the bound a batch-path process is admitted under, stable across ticks, and the tick's budget never plans past it; a value below the gas of resolving a one-order process (590,096), or at or past 95 percent of the block limit read at startup, is a refusal to start |
 | `MEMPOOL_MAX_OPS` | `10000` | Pending-op queue cap |
 | `MEMPOOL_MAX_USAGE_CLAIMS` | `10000` | Pending usage-claim queue cap |
-| `DEFER_WINDOW_SECS` | `600` | How long an operation deferred at batch formation waits, from its first deferral, before it is dead-lettered (see Mempool bounds) |
+| `DEFER_WINDOW_SECS` | `600` | How long an operation deferred at batch formation waits, from its own first deferral, before it is dead-lettered with what was filtered behind it (see Mempool bounds) |
 | `MAX_BODY_BYTES` | `1048576` | Per-request HTTP body cap |
 | `REQUEST_TIMEOUT_SECS` | `10` | A request not answered by then is `408` |
 | `MAX_IN_FLIGHT` | `256` | Requests served at once, across every route; the rest wait |
@@ -219,7 +219,8 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   order list, a seller attestation's role order, an attestation's witness
   spec bytes — so a submission that will be refused never makes the one that
   will be accepted a duplicate. `400` on signature or witness-gate
-  rejection, `422` on valid JSON that is not a `KernelOp` (wrong shape, unknown
+  rejection, or on a resolve that lists an order twice (the Core resolves the
+  first listing and refuses the second, whatever the state), `422` on valid JSON that is not a `KernelOp` (wrong shape, unknown
   variant, missing field), `402` for a commit whose bonds do not fund
   (balance and allowance to the verifier, read at the door — see Funding
   below), `408` past `REQUEST_TIMEOUT_SECS`, `413` over `MAX_BODY_BYTES`,
@@ -233,6 +234,19 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   counter gates), but do not rely on it as identity dedup.
 
 ### Status
+
+The read routes below and the publication routes (`/orders`, `/processes`,
+`/batches`) answer a page on any origin: `Access-Control-Allow-Origin: *` for
+`GET` and its `OPTIONS` preflight, with `x-figaro-state-root` exposed, so a
+browser page (the site's `/audit`) reads them from the reader's own browser.
+They change nothing, and serve what the relay already serves to any client on
+`LISTEN_ADDR`. The cross-origin header is outermost, so a `408` reaches the
+page too. The submission routes carry no cross-origin header: a JSON
+submission from a page needs a preflight, which they never answer, and a
+`text/plain` POST — a CORS simple request, sent with no preflight — is
+answered `415` by the JSON extractor and admits nothing. So no page can have
+its visitors' browsers submit for it, each from an address of its own past
+`SUBMITS_PER_MINUTE_PER_IP`.
 
 - `GET /state` — the state behind this relay's root (`KernelStateSnapshot`,
   the kept-state file's own format; the root is in the `x-figaro-state-root`
@@ -259,7 +273,9 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   capacity, one that fits no resolution, a batch
   that failed to prove or to plan, a batch the chain refused — every one
   re-submittable, and `last_settle_error` carries the most recent failure's
-  reason verbatim, whatever its path (null while clean).
+  reason, whatever its path (null while clean), with every URL in it replaced
+  by `<url>`: an HTTP client's error names the URL it requested, and a keyed
+  RPC URL carries its key. `last_dropped_claim_error` is recorded the same way.
   `dropped_usage_claims` counts the usage claims dropped without landing —
   at the pre-filter, at formation (one that would abort the proof), with no
   counter or accrual closed, or with a batch that did not land — apart from
@@ -463,18 +479,35 @@ drain it was taken in for any other reason — its dependency may sit past the
 drain's cut, ride a batch still in flight, not be submitted yet, or never
 come — and a commit whose funding could not be read are **deferred**, not
 dead-lettered, and what was filtered into an order
-behind a deferred commit moves with it, in one group. A deferred operation
+behind a deferred commit moves with it, in its group. A tick's deferrals are
+grouped by the processes they touch (a commit's, a resolve's, an
+attestation's role and target orders' processes): operations share a group
+when a chain of them, each touching a process the next touches, joins them,
+so an operation never shares one with what no such chain joins it to. A
+deferred operation
 waits apart from the queue, its key held (a resubmission is a duplicate of
 it, and a copy resubmitted while it was drained is dropped), and is drained
 again only into the room the queue leaves, its group whole: it never
 displaces a queued operation, so one that never applies — anyone may submit
-one free — costs no drain anything. It is dead-lettered, with its reason and
-re-submittable, once `DEFER_WINDOW_SECS` have passed since it was first
-deferred, retried or not: the bound is in time, never in attempts, and the
-deferral spends nothing of the re-queue count. The time rides on the
-operation, so it ends when the operation lands. `formal/RelayState.tla`
-(`DeferSpec`, `formal/RelayStateDeferral.cfg`) models the deferral; each of
-its five switches set FALSE restores one defect the model then finds.
+one free — costs no drain anything, and makes no other process's group
+larger. One that names an honest process joins that process's group and
+takes drain capacity, but cannot shorten an honest window. The groups
+decide what is drained together and nothing else: each operation is
+dead-lettered, with its reason and re-submittable, once `DEFER_WINDOW_SECS`
+have passed since its own first deferral, retried or not, and what was
+filtered behind it goes with it — each operation that fails to apply
+without it, whether it names its order or counts its payment in a cumulative
+value, judged by re-running the operation filter with each deferred or
+following commit taken out; past `MAX_DEPENDENCY_RERUNS` (32) re-runs a tick,
+each following operation of its process that it precedes — never the rest of
+its group;
+what is left of the group is grouped again. The bound is in time, never in
+attempts, and the deferral spends nothing of the re-queue count. The time
+and the edge to what an operation was filtered behind ride on the
+operation, so they end when the operation lands or is dead-lettered.
+`formal/RelayState.tla` (`DeferSpec`, `formal/RelayStateDeferral.cfg`)
+models the deferral; each of its ten switches set FALSE restores one defect
+the model then finds.
 
 ## The batch's bound
 

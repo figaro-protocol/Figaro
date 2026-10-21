@@ -4,9 +4,9 @@ pragma solidity 0.8.26;
 /// @title ClauseRegistry — Permissionless clause anchoring with reclaimable deposit
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
-/// @notice On-chain dedup guard + event emission for clause registration.
-///         No owner, minimal storage. Indexers reconstruct the full
-///         registry from events.
+/// @notice On-chain dedup guard + event emission for clause registration: one of the
+///         protocol's four registries (clauses, registered agreements, assemblies,
+///         members), parallel, reading none of the others. No owner, minimal storage.
 ///
 ///         A CLAUSE IS ITS SPEC. The clause key is `keccak256` of the spec's
 ///         pinned bytes — the canonical JSON the designer pins (the SDK's
@@ -61,9 +61,9 @@ pragma solidity 0.8.26;
 ///         headings), derived from the spec, never stored.
 ///
 ///         There is NO reward tag either. The 600M reward is UNIFORM:
-///         every clause or assembly's score is its real usage alone,
-///         with no category, tag, or weight — so the registry stores no
-///         incentive input.
+///         every clause's, registered agreement's and assembly's score is
+///         its real usage alone, with no category, tag, or weight — so the
+///         registry stores no incentive input.
 ///
 /// @dev Storage is the dedup guard (has this key been registered?) and the
 ///      stake state per key; everything else is the event.
@@ -80,8 +80,8 @@ contract ClauseRegistry {
     ///         registered key anchors at most one document.
     mapping(bytes32 => bool) public registered;
 
-    /// @dev Stake accounting per clause key. `registeredBy` is the depositor
-    ///      of record (the same role AssemblyRegistry records under the same
+    /// @dev Stake accounting per clause key. `registeredBy` is the designer of record
+    ///      (the role AssemblyRegistry and AgreementRegistry store under the same
     ///      name); `withdrawn` marks the stake reclaimed (= de-surfaced).
     struct DepositState {
         address registeredBy;
@@ -99,7 +99,7 @@ contract ClauseRegistry {
     /// @param contentURI   Off-chain spec document URI (IPFS, etc.). The pointer that
     ///                     lets any reader FETCH the spec from chain state alone and
     ///                     verify it against `clauseKey` — the same role `contentURI`
-    ///                     plays in AssemblyRegistry. (The pinned document IS the
+    ///                     plays in AssemblyRegistry and AgreementRegistry. (The pinned document IS the
     ///                     content, hence not "metadataURI" — MembersRegistry keeps
     ///                     that name because its mutable profile genuinely is
     ///                     metadata about a wallet-keyed identity.)

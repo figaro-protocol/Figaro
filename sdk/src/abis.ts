@@ -422,7 +422,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "error AlreadyCounted()",
     "error InvalidInclusionProof()",
     "error SellerNotStaked(address seller)",
-    "error ClauseOrAssemblyNotRegistered(bytes32 clauseOrAssembly)",
+    "error ClauseAgreementOrAssemblyNotRegistered(bytes32 clauseOrAssembly)",
     "error NotBatchVerifier()",
     "error PeriodMismatch(uint8 open, uint8 claimed)",
     "error ProvenanceLeafMismatch(bytes32 expected, bytes32 claimed)",

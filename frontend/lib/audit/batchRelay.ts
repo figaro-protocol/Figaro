@@ -575,23 +575,73 @@ export function createStateRootAnchorCheck(
 // ── Inclusion under the verifier's current root ────────────────────────────
 
 /** A relay's `GET /state`: the body, and the root its header names (null when
- *  absent or unreadable — a cross-origin header the relay does not expose). */
+ *  absent or unreadable — a relay that does not expose it cross-origin). */
 interface RelayStateRead {
     text: string;
     headerRoot: string | null;
 }
 
-/** `GET <relay>/state`, the body read as text so its u64s stay exact. */
+/**
+ * The most of a relay's `GET /state` this page reads: 64 MiB.
+ *
+ * `/state` is the whole state behind the verifier's root — every batch-path
+ * process and order the verifier holds, none dropped — at about 213 bytes of
+ * JSON per order (its status entry and its process entry) and 250 per process,
+ * beside the usage entries. A relay takes up to 1 GiB from another relay
+ * (`MAX_SERVED_STATE_BYTES`, `prover/sequencer/src/state.rs`); a page holds
+ * the body as one string (V8 caps a string at 2^29 − 24 characters, about
+ * 512 MiB) and parses it into maps several times that size, so its bound sits
+ * well under the relay's. 64 MiB is between about 145,000 orders (one per
+ * process) and 315,000. Past it the read is refused with the size, never
+ * parsed: the root is one hash over the whole state, so no smaller read
+ * proves an order's inclusion under it.
+ */
+export const MAX_RELAY_STATE_BYTES = 64 * 1024 * 1024;
+
+/** `GET <relay>/state`, the body read as text so its u64s stay exact, and no
+ *  more of it than `MAX_RELAY_STATE_BYTES`: a declared length over the limit is
+ *  refused unread, and a body that streams past it is refused and canceled. */
 function fetchRelayState(relayUrl: string): () => Promise<RelayStateRead> {
     return async () => {
-        const res = await fetch(`${relayUrl}/state`, {
+        const url = `${relayUrl}/state`;
+        const res = await fetch(url, {
             method: "GET",
             headers: { Accept: "application/json" },
         });
         if (!res.ok) {
-            throw new Error(`GET ${relayUrl}/state answered ${res.status} ${res.statusText}`.trim());
+            throw new Error(`GET ${url} answered ${res.status} ${res.statusText}`.trim());
         }
-        return { text: await res.text(), headerRoot: res.headers.get("x-figaro-state-root") };
+        const headerRoot = res.headers.get("x-figaro-state-root");
+        const declared = Number(res.headers.get("content-length") ?? NaN);
+        if (Number.isFinite(declared) && declared > MAX_RELAY_STATE_BYTES) {
+            await res.body?.cancel().catch(() => undefined);
+            throw new Error(
+                `GET ${url} is ${declared} bytes, over this page's ${MAX_RELAY_STATE_BYTES}-byte limit — not read`,
+            );
+        }
+        if (!res.body) {
+            return { text: "", headerRoot };
+        }
+        const reader = res.body.getReader();
+        const chunks: Uint8Array[] = [];
+        let read = 0;
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            read += value.byteLength;
+            if (read > MAX_RELAY_STATE_BYTES) {
+                await reader.cancel().catch(() => undefined);
+                throw new Error(
+                    `GET ${url} streamed past ${MAX_RELAY_STATE_BYTES} bytes, over this page's ${MAX_RELAY_STATE_BYTES}-byte limit — read no further`,
+                );
+            }
+            chunks.push(value);
+        }
+        const decoder = new TextDecoder();
+        let text = "";
+        for (const chunk of chunks) text += decoder.decode(chunk, { stream: true });
+        text += decoder.decode();
+        return { text, headerRoot };
     };
 }
 

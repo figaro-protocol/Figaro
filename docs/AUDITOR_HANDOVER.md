@@ -16,7 +16,7 @@ the review's is its own.
 | Baseline commit | `32c4ef8d` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 14 contract files, 1,423 lines of code (3,544 physical); 3 deploy scripts, 401 lines of code (840 physical) |
-| Rust in scope | 4 crates, 21 files under `src/`, 6,739 lines of code (9,426 physical) net of their inline test modules |
+| Rust in scope | 4 crates, 21 files under `src/`, 6,981 lines of code (9,797 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its on-chain verifier gateway), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
@@ -160,7 +160,7 @@ in scope.
 | `prover/program/` | `figaro-prover` | 13 | The guest's entry point: reads the batch input, runs the Core mirror, commits the public values | A batch the chain resolves wrongly |
 | `prover/lib/` | `figaro-kernel` | 2,046 | The mirror of `FigaroCore`'s commit and resolve logic, the witness gates, the public-values encoding, the state root, the usage accrual | A batch the chain resolves wrongly |
 | `prover/clause/` | `figaro-clause` | 1,939 | The generic clause engine: parses any clause spec supplied as witness input, validates content against it, encodes it | An attestation the batch path reads differently from the party who signed it |
-| `prover/sequencer/` | `figaro-sequencer` | 5,428 | The relay: collects signed operations, forms batches, proves them, calls `settleBatch`, publishes what it resolved | Liveness and griefing; a reader misled by what the relay publishes |
+| `prover/sequencer/` | `figaro-sequencer` | 5,799 | The relay: collects signed operations, forms batches, proves them, calls `settleBatch`, publishes what it resolved | Liveness and griefing; a reader misled by what the relay publishes |
 
 The Lines column counts physical lines under each crate's `src/`, net of the
 inline test modules.
@@ -602,7 +602,7 @@ The constants and constructor arguments the mainnet deploy fixes
 | `MAX_BATCH_OPS` | the relay's bound on what the prover finishes in one sitting, 100 operations by default; an operator's environment variable | `prover/sequencer/src/main.rs:121` |
 | The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order `settleBatch` call's 590,096, or at or past 95 percent of the block limit read at startup, the relay refuses to start); the call's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
 | Re-queue bound | an operation re-queued after a transient submission failure is re-queued at most three times, then dead-lettered; a deferral at batch formation spends nothing of it | `prover/sequencer/README.md`; `mempool.rs`, `requeue` |
-| Deferral window | an operation deferred at batch formation (it applies against no order of its drain, or its funding could not be read) is dead-lettered once 600 seconds have passed since it was first deferred, retried or not; an operator's environment variable, `DEFER_WINDOW_SECS` | `prover/sequencer/src/mempool.rs`, `DEFAULT_DEFER_WINDOW` |
+| Deferral window | an operation deferred at batch formation (it applies against no order of its drain, or its funding could not be read) is dead-lettered once 600 seconds have passed since its own first deferral, retried or not, and what was filtered behind it goes with it — each operation that no longer applies without it, whether it names its order or counts its payment in a cumulative value (past `MAX_DEPENDENCY_RERUNS` re-runs a tick, each following operation of its process that it precedes); an operator's environment variable, `DEFER_WINDOW_SECS` | `prover/sequencer/src/mempool.rs`, `DEFAULT_DEFER_WINDOW` |
 | Clause, agreement and assembly registration stake | 0.05 ETH per registration, no cooldown, withdrawable once; the binding stays | `DeployMainnet.s.sol:160`, `:174`, `:167` |
 | Member stake | 0.05 ETH, 28-day withdrawal cooldown | `DeployMainnet.s.sol:207` |
 | Minimum-support floor | 3 distinct staked sellers before a clause, registered agreement or assembly scores, under each of the three kinds | `DeployMainnet.s.sol:268` |
@@ -853,8 +853,12 @@ read it first.
   `compute_usage_accrual_hash` mirrors it. `DESIGN_DECISIONS.md` § 24 states
   the pattern. Tests:
   `test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt`,
+  `test_aStrangerWhoStakesAClausesKeyAsAnAssemblyTakesNothingOfIt`,
+  `test_claimableQuotesNothingUnderACrossedKind`,
   `test_aRegisteredAgreementsDesignerIsPaidForItsUse`
   (`test/build/rewards/RpgfIntegrationTest.t.sol`),
+  `test_settleBatch_anAssemblyAccrualPaysNoStrangerWhoStakedItsKeyAsAClause`
+  (`test/core/verifier/FigaroBatchVerifierTest.t.sol`),
   `test_assemblyUsageLandsUnderTheAssemblyKindOnly`,
   `test_batchAccrualGatesEachKindByItsOwnRegistry`,
   `test_theThreeKindsNeverShareACount`,
@@ -863,8 +867,10 @@ read it first.
   `test_eachKindReadsOnlyItsOwnRegistry`, `test_revertsOnUnknownKind`,
   `test_theThreeKindsPayOnlyTheirOwnDesignerOfRecord`
   (`test/build/rewards/RpgfMinterTest.t.sol`),
-  `check_theKindsNeverShareAKey`
-  (`test/build/rewards/HalmosUsageCounter.t.sol`), and
+  `check_theKindsNeverShareAKey`, `check_aKindNeverDisturbsAnotherKindsAccrual`,
+  `check_anUnknownKindIsSkipped`
+  (`test/build/rewards/HalmosUsageCounter.t.sol`), the rules of
+  `certora/RpgfMinterAuthor.spec` (verified, on the non-via-IR build), and
   `a_clause_and_an_assembly_on_the_same_key_accrue_apart`,
   `one_provenance_leaf_credits_the_agreement_and_the_assembly_apart`
   (`prover/lib/tests/usage.rs`).
@@ -1043,16 +1049,45 @@ read it first.
   flight, not be submitted yet, or never come) and a commit whose balance or
   allowance the node could not read are deferred, not dropped; what was filtered into an
   order behind a deferred commit applies again once the commit is restored
-  and moves with it, in one group (`assembler.rs`, `refilter_after_drops`;
-  `what_was_built_on_a_deferred_operation_moves_with_it`). A deferred group
+  and moves with it, in its group (`assembler.rs`, `refilter_after_drops`;
+  `what_was_built_on_a_deferred_operation_moves_with_it`). A tick's deferrals
+  are grouped by the processes they touch — a commit's, a resolve's, an
+  attestation's role and target orders' — and operations share a group when
+  a chain of them, each touching a process the next touches, joins them, so
+  an operation never shares one with what no such chain joins it to (`mempool.rs`, `defer`, `group_by_process`;
+  `deferred_operations_are_grouped_by_the_process_they_touch`). A deferred group
   waits apart from the queue, its keys held, and is drained again only into
   the room the queue leaves, whole (`mempool.rs`, `drain_up_to`,
   `defer`;
   `a_deferred_operation_is_drained_only_into_slots_the_queue_leaves_empty`,
-  `a_deferred_group_is_retried_whole`); it is dead-lettered once the deferral
-  window has passed since its first deferral, at every tick, retried or not
-  (`expire_deferred`;
-  `a_deferral_is_bounded_in_time_from_first_deferral_not_in_attempts`). The
+  `a_deferred_group_is_retried_whole`). The groups decide what is drained
+  together and nothing else: each operation is dead-lettered once the
+  deferral window has passed since its own first deferral, at every tick,
+  retried or not, and what was filtered behind it goes with it, never the
+  rest of its group. The edge rides on the operation (`PendingOp::behind`):
+  formation re-runs the operation filter over each follower's drain group,
+  against that group's slice of the landed state, with each deferred or
+  following commit taken out (only a commit creates a process, an order or
+  a cumulative step), and marks the follower behind every one without which
+  it no longer applies — an order it names, or an earlier sub-order whose
+  payment its cumulative value counts, though it names only the process —
+  and never behind one it applies without. At most `MAX_DEPENDENCY_RERUNS`
+  (32) re-runs a tick: a group whose candidates would pass the cap is marked
+  conservatively instead, each follower behind every deferred or following
+  commit of a process it touches that precedes it, which can join a
+  follower only to commits of its own processes
+  (`Mempool::refilter_behind_deferred`, which formation calls in place of
+  `refilter_after_drops`; `mark_behind`;
+  `a_sub_order_filtered_behind_a_deferred_sub_order_is_dead_lettered_with_it`,
+  `an_unread_root_with_99_attestations_behind_it_is_marked_in_one_run`,
+  `a_chain_of_99_sub_orders_behind_an_unread_one_is_marked_within_the_cap`).
+  What is left of the group is grouped again (`defer`,
+  `expire_deferred`, `take_expired`;
+  `a_deferral_is_bounded_in_time_from_first_deferral_not_in_attempts`,
+  `a_dependent_deferred_with_its_parent_is_dead_lettered_with_it`,
+  `an_operation_that_never_applies_does_not_cut_an_honest_window_short`,
+  `a_bridge_does_not_cut_either_processs_window_short`,
+  `what_is_left_of_a_group_is_grouped_again`). The
   first deferral's time rides on the operation (`PendingOp::deferred_since`),
   so it ends when the operation lands or is dead-lettered and spends nothing
   of the re-queue count (`a_deferral_spends_nothing_of_the_requeue_count`);
@@ -1060,8 +1095,12 @@ read it first.
   deferred or re-queued
   (`deferring_drops_a_copy_resubmitted_meanwhile_and_holds_the_key`,
   `requeue_drops_a_copy_resubmitted_meanwhile`). `formal/RelayState.tla`,
-  `DeferSpec` (`formal/RelayStateDeferral.cfg`), checks these as six
-  invariants, each of five switches set FALSE failing the one it names.
+  `DeferSpec` (`formal/RelayStateDeferral.cfg`), checks the deferral as ten
+  invariants, each of ten switches set FALSE failing the one it names: drain
+  groups closed under touching a common process, transitively, each
+  operation expiring on its own window with what was filtered behind it, so
+  no honest operation's window is cut short by operations that never apply
+  naming its process.
 - A usage claim dropped without landing — at the pre-filter, at formation,
   with no counter or accrual closed, or with a batch that did not land — is
   counted on `GET /status` as `dropped_usage_claims` with its reason in
@@ -1103,7 +1142,24 @@ read it first.
   restarts the relay between its two batches and starts one holding no state,
   which must exit 2). `GET /state` serves the state under an
   `x-figaro-state-root` header (`api.rs`, `get_state`;
-  `api_state_route_serves_the_state_another_relay_starts_on`). A relay
+  `api_state_route_serves_the_state_another_relay_starts_on`). The read
+  routes (`/health`, `/status`, `/state`, `/orders`, `/processes`,
+  `/batches`) answer any origin for `GET` and its preflight, the root header
+  exposed, the cross-origin header outermost so a `408` carries it
+  (`a_timed_out_read_still_answers_a_cross_origin_page`); the submission
+  routes answer none: a JSON submission from a page needs a preflight they
+  never answer, and a `text/plain` POST, a CORS simple request sent with no
+  preflight, is answered `415` by the JSON extractor and admits nothing, so
+  no page can have its visitors' browsers submit for it past the per-address
+  limit (`api.rs`, `router`;
+  `the_read_routes_answer_a_cross_origin_page_and_the_submit_routes_do_not`,
+  `a_cross_origin_text_plain_submission_is_refused_and_admits_nothing`). The
+  in-flight cap is one count across every route
+  (`the_in_flight_cap_is_one_count_across_every_route`). A failure's text on
+  `GET /status` (`last_settle_error`, `last_dropped_claim_error`) is recorded
+  with every URL replaced by `<url>`, since an HTTP client's error names the
+  URL it requested and a keyed RPC URL carries its key (`api.rs`,
+  `without_urls`; `a_recorded_failure_carries_no_url`). A relay
   started with `STATE_FROM=<another relay's base URL>` fetches that state
   itself, recomputes its root from the body, and writes it over its kept file
   only when the root is the verifier's and the kept file does not already
@@ -1171,7 +1227,7 @@ Stated so the review does not spend hours finding them.
    proof of equivalence.
 2. **The relay is not mutation-tested.** Mutation testing covers the guest
    (`figaro-kernel`, `figaro-clause`), where a defect costs a wrong resolution.
-   The relay has its 95 integration tests, 21 unit tests and the batch
+   The relay has its 120 integration tests, 21 unit tests and the batch
    end-to-end test.
 3. **A mid-flight revocation sinks a shared batch once.** A party who revokes
    its allowance after the funding check and before `settleBatch` reverts that
@@ -1221,19 +1277,46 @@ Stated so the review does not spend hours finding them.
    dependency.** An operation that applies against no order of its drain, or
    a commit whose funding the node could not read, waits for its dependency
    or a readable node for `DEFER_WINDOW_SECS` (600 seconds by default) from
-   its first deferral, and is retried only in the room the queue leaves
+   its own first deferral, and is retried only in the room the queue leaves
    empty: under a queue that stays longer than `MAX_BATCH_OPS` for the whole
    window it is never retried, and a dependency that arrives later than the
    window finds it dead-lettered, recorded with its reason and
-   re-submittable. A deferred operation counts against `MEMPOOL_MAX_OPS` for
-   its window. The refusals that defer, and so hold capacity, are the ones
+   re-submittable. Operations share a drain group when a chain of them, each
+   touching a process the next touches, joins them, and a group is drained
+   whole. An operation that never applies, which anyone may submit free,
+   naming an honest process (a resolve of a process not yet landed, signed
+   by any key) still joins that process's group and takes drain capacity:
+   the group needs room for that many more operations to be retried. It cannot
+   shorten an honest operation's window, which runs from that operation's
+   own first deferral; what goes when an operation's window ends is what
+   was marked behind it — exactly what was filtered behind it, or, past the
+   re-run cap below, every following commit of its process it precedes. Two
+   residuals of that edge: a follower
+   that applies behind either of two unread sub-orders competing for one
+   cumulative step is marked behind neither (taking out either alone leaves
+   it applying), and waits its own window — bounded, and it costs no honest
+   operation; and past `MAX_DEPENDENCY_RERUNS` (32) re-runs in a tick, a
+   group is marked conservatively, each follower behind every deferred or
+   following commit of a process it touches that precedes it, so a follower
+   can go with a commit of its own process it did not need. Anyone can spend
+   a tick's re-run budget with candidates of their own (groups are taken in
+   the order of their first operation), so the conservative mark reaches an
+   honest group at will; the harm is bounded to an honest follower leaving
+   with an honest sibling commit of its own process that precedes it. A
+   deferred
+   operation counts against
+   `MEMPOOL_MAX_OPS` for its window. The refusals that defer, and so hold capacity, are the ones
    that name what a later operation may supply, judged against the landed
    state: an unknown process or order (`UnknownProcess`, `UnknownOrder`); a
    resolve whose listed orders are all of its own process but not yet
    committed (`OrderNotCommitted`); an order list longer than the active
    orders (`IncompleteOrderList` with provided above required); a cumulative
    value the process has not yet reached (`CumulativeValueMismatch` with
-   expected above actual); and a commit whose funding could not be read.
+   expected above actual); and a commit whose funding could not be read. A
+   resolve that lists an order twice never applies (the Core resolves the
+   first listing and reads the second as `OrderNotCommitted`) and is refused
+   at admission, never deferred (`mempool.rs`, `pre_check`;
+   `mempool_refuses_a_resolve_listing_an_order_twice`).
    Every other refusal — and every operation in the same drain that names a
    process or an order only a refused commit would have created — is
    dead-lettered at once and holds none; such a dependent arriving in a later
@@ -1257,12 +1340,12 @@ tests is `TESTING.md`.
 
 | Layer | Result |
 |---|---|
-| Foundry | at `28489848`, whose Solidity equals the baseline's, `forge test --via-ir`: 27 suites, 418 passed, 0 failed, 3 skipped (386 test functions, the batch gas-ceiling suite's inherited harness tests counted in forge's figure); the three skipped are the fork tests (mainnet's Permit2, Sepolia's SwapRouter02), run without `MAINNET_RPC_URL` and `SEPOLIA_RPC_URL`. At `f62b71cf`, the fork tests included: 381 passed, 0 failed, 0 skipped |
+| Foundry | 389 test functions in the tree. At `28489848`, whose Solidity equals the baseline's, `forge test --via-ir`: 27 suites, 418 passed, 0 failed, 3 skipped (386 test functions at that commit, the batch gas-ceiling suite's inherited harness tests counted in forge's figure); the three skipped are the fork tests (mainnet's Permit2, Sepolia's SwapRouter02), run without `MAINNET_RPC_URL` and `SEPOLIA_RPC_URL`. At `f62b71cf`, the fork tests included: 381 passed, 0 failed, 0 skipped |
 | Halmos | at `28489848`, whose Solidity equals the baseline's: 39 of 39 properties proved — `FigaroCore` 7, `MembersRegistry` 7, `UsageCounter` 7, `ClauseRegistry` 6, `AssemblyRegistry` 6, `AgreementRegistry` 6 |
-| Certora | 7 of 7 specs, every rule verified, at `f62b71cf`; not re-run at `c53bdaeb`, at `e800bfb2`, at `28489848` or at the baseline. `certora/RpgfMinter.spec`, `BatchVerifierTokenOps.spec`, `BatchVerifierStateRoot.spec` and `token-ops.inventory` are edited for `e800bfb2`'s (kind, key) claim and `registered` read, and `RpgfMinter.spec` again for `28489848`'s agreement kind and fifth constructor address; they have not been run against either |
+| Certora | 7 of 7 specs, every rule verified, at `f62b71cf`; not re-run at `c53bdaeb`, at `e800bfb2`, at `28489848` or at the baseline. `certora/RpgfMinter.spec`, `BatchVerifierTokenOps.spec`, `BatchVerifierStateRoot.spec` and `token-ops.inventory` are edited for `e800bfb2`'s (kind, key) claim and `registered` read, and `RpgfMinter.spec` again for `28489848`'s agreement kind and fifth constructor address; they have not been run against either. `FigaroCore.spec` verified on the working tree after the baseline, every rule, among them `noDoubleCommit` (a successful commit returns only an order hash whose status was 0) and `activeCountRisesOrDropsToZero` (an existing process's active count rises or drops to zero): https://prover.certora.com/output/9512759/024d183244654c348229ee01814292ca. `certora/RpgfMinterAuthor.spec` verified on the same tree, both rules — `_isAuthor` answers for each kind from its own registry alone and refuses an unknown kind: https://prover.certora.com/output/9512759/f62a013cbdb44692b77bf04219670f75. It compiles without via-IR: under via-IR the prover's call resolution fails on `_isAuthor`'s decoding of the dynamic `string` that `bindings` returns, so the property is proved on the non-via-IR build |
 | Echidna | 15 properties, every one held on both harnesses, at `f62b71cf` |
-| TLA+ | 5 models in 6 configurations, 60 invariants and 2 action properties, no error. `RelayState` at `32c4ef8d`, both configurations: the relay's state lifecycle (`RelayState.cfg`, 7 invariants + 2 action properties) 10,837,227 states generated, 1,959,944 distinct, depth 32; the deferral at batch formation (`DeferSpec`, `RelayStateDeferral.cfg`, 6 invariants) 100,334 generated, 45,331 distinct, depth 20; each of its ten switches set FALSE fails the property it names. Not re-run at `32c4ef8d`, which the other models do not reach: `ResolutionUniverses` (20 invariants) at `c53bdaeb`, 10,030,087 states, no error; `FigaroCore` (9) at `cf6ba4ab`, 8,380,329 states generated, 6,087,113 distinct; `FlorinToken` (8) and `WitnessSwapAndCommitCoordinator` (10) at `cf6ba4ab`; the models' defect switches are their mutation checks (`TESTING.md` § TLA+) |
-| Rust (`cargo test --locked`) | at `32c4ef8d`: every crate of the workspace passes, 0 failed, among them `usage` 32, `parity` 31, `merkle_parity` 8, `guest_program` 6, and the relay's 21 unit and 106 integration tests; 2 ignored by design, run by the fuzz script |
+| TLA+ | 5 models in 6 configurations, 64 invariants and 2 action properties, no error. `RelayState` at `32c4ef8d`, both configurations: the relay's state lifecycle (`RelayState.cfg`, 7 invariants + 2 action properties) 10,837,227 states generated, 1,959,944 distinct, depth 32; the deferral at batch formation (`DeferSpec`, `RelayStateDeferral.cfg`, 10 invariants) 388,784 generated, 112,528 distinct; each of its ten switches set FALSE fails the property it names. Not re-run at `32c4ef8d`, which the other models do not reach: `ResolutionUniverses` (20 invariants) at `c53bdaeb`, 10,030,087 states, no error; `FigaroCore` (9) at `cf6ba4ab`, 8,380,329 states generated, 6,087,113 distinct; `FlorinToken` (8) and `WitnessSwapAndCommitCoordinator` (10) at `cf6ba4ab`; the models' defect switches are their mutation checks (`TESTING.md` § TLA+) |
+| Rust (`cargo test --locked`) | at `32c4ef8d`: every crate of the workspace passes, 0 failed, among them `usage` 32, `parity` 31, `merkle_parity` 8, `guest_program` 6, and the relay's 21 unit and 120 integration tests; 2 ignored by design, run by the fuzz script |
 | Differential fuzz | at `cf6ba4ab`: one round at seed 1791923560, no divergence: 400 Core operations (298 accepted, 102 rejected, 94 processes), the agreement vectors, 6,352 clause cases (1,850 encoded byte-for-byte, 3,318 rejected, 1,184 specs refused); CI runs four rounds on every push |
 | SDK (Vitest) | at `28489848`: 974 passed, 65 files |
 | Frontend (Vitest) and devnet end-to-end (Playwright) | at `28489848`; no spec runs the relay: 1,067 passed, 119 files; every devnet e2e spec green |
@@ -1482,8 +1565,8 @@ serves; without them those tests skip, and CI's `fork` job fails on a skip.
 | Command | Expected |
 |---|---|
 | `MAINNET_RPC_URL=<rpc> SEPOLIA_RPC_URL=<rpc> forge test --via-ir` | 0 failed, 0 skipped |
-| `./scripts/test-halmos.sh` | `✅ All 39 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 7 UsageCounter + 6 ClauseRegistry + 6 AssemblyRegistry + 6 AgreementRegistry).` |
-| `CERTORAKEY=<key> CERTORA_WAIT=1 ./scripts/test-certora.sh` | all 6 specs green (FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter). `CERTORA_WAIT=1` blocks until the cloud's verdict; without it the script only dispatches. `Failed on rule_not_vacuous` alone is the vacuity heuristic, not a rule failure; the results table is the authority. The script first checks `certora/token-ops.inventory` against every token-moving call site and refuses to run on a stale line |
+| `./scripts/test-halmos.sh` | `✅ All 41 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 9 UsageCounter + 6 ClauseRegistry + 6 AssemblyRegistry + 6 AgreementRegistry).` |
+| `CERTORAKEY=<key> CERTORA_WAIT=1 ./scripts/test-certora.sh` | all 8 specs green (FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, BatchVerifierStateRoot, RpgfMinter, RpgfMinterAuthor). `CERTORA_WAIT=1` blocks until the cloud's verdict; without it the script only dispatches. `Failed on rule_not_vacuous` alone is the vacuity heuristic, not a rule failure; the results table is the authority. The script first checks `certora/token-ops.inventory` against every token-moving call site and refuses to run on a stale line |
 | `./scripts/test-echidna.sh` | every property holds on both harnesses (Core + FlorinToken) |
 | `./scripts/test-tla.sh` | all five models verify every invariant, TLC exit 0. `ResolutionUniverses.cfg` ships both named assumptions TRUE; flipping either to FALSE is a deliberate experiment that is EXPECTED to fail, not a gate regression |
 | `(cd formal/lean && lake build)` | the equilibrium proof builds with no error (`TESTING.md` § "Lean 4") |

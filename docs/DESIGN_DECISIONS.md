@@ -634,7 +634,7 @@ are declined and the door is closed on the family.
 ## 19. Usage accrual requires the clause, agreement or assembly to hold a live registration stake — an unregistered key scores nothing
 
 **Looks wrong because:** `recordClauseUsage` proves a real, resolved order committed the
-clause or assembly and its seller is staked — yet still reverts `ClauseOrAssemblyNotRegistered` (direct path)
+clause or assembly and its seller is staked — yet still reverts `ClauseAgreementOrAssemblyNotRegistered` (direct path)
 or silently skips it (batch path) unless the clause or assembly ALSO holds a live stake in its own registry; the agreement leg is gated the same way by `AgreementRegistry`. A resolved, proven use that earns nothing reads like lost accrual.
 
 **Is correct because:** the clause-or-assembly key is otherwise just a
@@ -787,10 +787,21 @@ and `AgreementRegistry` refuses both as registrations.
 **Tests**: `test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt`
 (`test/build/rewards/RpgfIntegrationTest.t.sol`) — the stranger claims
 nothing under the clause kind and is refused under the assembly kind, and the
-assembly's registrant takes the accrual; `check_theKindsNeverShareAKey`
+assembly's registrant takes the accrual;
+`test_aStrangerWhoStakesAClausesKeyAsAnAssemblyTakesNothingOfIt` and
+`test_claimableQuotesNothingUnderACrossedKind` (the same file) — the reverse
+squat, and `claimable` quoting what `claim` pays under a crossed kind;
+`test_settleBatch_anAssemblyAccrualPaysNoStrangerWhoStakedItsKeyAsAClause`
+(`test/core/verifier/FigaroBatchVerifierTest.t.sol`) — the same squat on the
+batch path, through `settleBatch`, the counter and `claim`;
+`check_theKindsNeverShareAKey`, `check_aKindNeverDisturbsAnotherKindsAccrual`
+and `check_anUnknownKindIsSkipped`
 (`test/build/rewards/HalmosUsageCounter.t.sol`) — an accrual under one kind on
-either path leaves every other kind's accrual at the same key untouched — the
-three kinds, symbolically; `test_theThreeKindsNeverShareACount`
+either path leaves every other kind's accrual at the same key empty, leaves an
+existing one exactly as it was, and an unknown kind writes nothing — the
+three kinds, symbolically; `certora/RpgfMinterAuthor.spec` — `_isAuthor`
+answers for each kind from its own registry alone and refuses an unknown
+kind; `test_theThreeKindsNeverShareACount`
 (`test/build/rewards/UsageCounterTest.t.sol`) and
 `test_theThreeKindsPayOnlyTheirOwnDesignerOfRecord`
 (`test/build/rewards/RpgfMinterTest.t.sol`) — no kind's count or claim is

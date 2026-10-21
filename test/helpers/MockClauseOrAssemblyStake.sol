@@ -7,7 +7,7 @@ pragma solidity 0.8.26;
 ///         last two are one shape), so one instance can stand in for any of the
 ///         three registries. Every key is LIVE by default, so a counting test
 ///         need not register anything; `kill(key)` marks one un-live to
-///         exercise the `ClauseOrAssemblyNotRegistered` gate. This keeps the
+///         exercise the `ClauseAgreementOrAssemblyNotRegistered` gate. This keeps the
 ///         counter's counting properties isolated from real registration
 ///         mechanics, exactly as `batchVerifier` is a plain EOA in the suite.
 contract MockClauseOrAssemblyStake {

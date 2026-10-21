@@ -14,6 +14,10 @@ import {MembersRegistry} from "src/app/MembersRegistry.sol";
 import {FigaroCore} from "src/core/kernel/FigaroCore.sol";
 import {MockERC20NoReturn} from "src/mocks/MockERC20NoReturn.sol";
 import {MockERC20Blocklist} from "src/mocks/MockERC20Blocklist.sol";
+import {AssemblyRegistry} from "src/build/registries/AssemblyRegistry.sol";
+import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
+import {RpgfMinter} from "src/build/rewards/RpgfMinter.sol";
+import {FlorinToken} from "src/build/florin/FlorinToken.sol";
 
 /// @dev Unit tests for the realigned batch verifier: 8-word public values,
 ///      the spec-binding anchor check against the live ClauseRegistry,
@@ -1001,6 +1005,103 @@ contract FigaroBatchVerifierTest is Test {
 
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
         assertEq(verifier.stateRoot(), newRoot, "resolution is not hostage to the reward schedule");
+    }
+
+    /// The kind separation on the batch path, end to end: a batch credits an
+    /// ASSEMBLY, and a stranger has staked that assembly's composition hash as
+    /// a CLAUSE in the live ClauseRegistry. Through `settleBatch`, the counter
+    /// and `claim`, the assembly's registrant takes the period's budget and the
+    /// stranger takes nothing under either kind. The counter, the minter and
+    /// the registries are the real contracts; only SP1 is the mock.
+    function test_settleBatch_anAssemblyAccrualPaysNoStrangerWhoStakedItsKeyAsAClause() public {
+        address designer = address(0xDE519);
+        address stranger = address(0x5745);
+        bytes32 asmKey = keccak256("an-assembly-credited-on-the-batch-path");
+
+        AssemblyRegistry assemblies = new AssemblyRegistry(0);
+        vm.prank(designer);
+        assemblies.registerAssembly(asmKey, "ipfs://asm");
+        vm.deal(stranger, DEPOSIT);
+        vm.prank(stranger);
+        registry.registerClause{value: DEPOSIT}(asmKey, "ipfs://a-stranger-stakes-an-assembly-key-as-a-clause");
+
+        (RpgfMinter minter, FlorinToken florin) = _rewireOnRealRegistries(assemblies);
+        uint8 kindClause = counter.KIND_CLAUSE();
+        uint8 kindAssembly = counter.KIND_ASSEMBLY();
+
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(asmKey, 3, 2);
+        usage.accruals[0].kind = kindAssembly;
+        _settleWithUsage(usage);
+
+        (,, uint256 assemblyScore) = counter.batchAccrualOf(kindAssembly, asmKey, 0);
+        assertGt(assemblyScore, 0, "the batch credits the assembly kind");
+        assertEq(counter.scoreOf(kindClause, asmKey, 0), 0, "and nothing under the clause kind");
+
+        vm.warp(PERIOD_END + 1);
+        RpgfMinter.ClauseOrAssemblyKey[] memory entry = new RpgfMinter.ClauseOrAssemblyKey[](1);
+        entry[0] = RpgfMinter.ClauseOrAssemblyKey(kindClause, asmKey);
+        vm.prank(stranger);
+        vm.expectRevert(RpgfMinter.NothingToClaim.selector);
+        minter.claim(0, entry);
+
+        entry[0] = RpgfMinter.ClauseOrAssemblyKey(kindAssembly, asmKey);
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, kindAssembly, asmKey, stranger));
+        minter.claim(0, entry);
+
+        vm.prank(designer);
+        minter.claim(0, entry);
+        assertEq(
+            florin.balanceOf(designer), minter.periodAmount(0), "the assembly's registrant takes the period's budget"
+        );
+        assertEq(florin.balanceOf(stranger), 0, "the stranger takes nothing of it");
+    }
+
+    /// @dev Replaces the `counter` and `verifier` fields with a pair over the
+    ///      live `registry`, `assemblies` and a fresh AgreementRegistry, wired
+    ///      as setUp wires its pair, funds the new verifier's payout legs, and
+    ///      deploys a minter and florin over that counter for one period.
+    function _rewireOnRealRegistries(AssemblyRegistry assemblies)
+        internal
+        returns (RpgfMinter minter, FlorinToken florin)
+    {
+        AgreementRegistry agreements = new AgreementRegistry(0);
+        uint64[] memory periods = new uint64[](1);
+        periods[0] = PERIOD_END;
+        address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
+        counter = new UsageCounter(
+            address(core),
+            address(members),
+            address(registry),
+            address(assemblies),
+            address(agreements),
+            predicted,
+            1,
+            periods
+        );
+        verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter), GENESIS);
+        assertEq(address(verifier), predicted, "verifier address prediction");
+        token.mint(address(verifier), 1_000 ether);
+        vm.prank(buyer);
+        token.approve(address(verifier), type(uint256).max);
+
+        florin = new FlorinToken();
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 45_000_000 ether;
+        minter = new RpgfMinter(
+            address(florin), address(counter), address(registry), address(assemblies), address(agreements), amounts
+        );
+        florin.registerMinter(address(minter), amounts[0]);
+    }
+
+    /// @dev Resolves the canonical batch carrying `usage` through `settleBatch`.
+    function _settleWithUsage(FigaroBatchVerifier.BatchUsageData memory usage) internal {
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _batchWithUsage(usage);
+        verifier.settleBatch(hex"", pv, positions, events, usage);
     }
 
     // ── Differential fuzz: the assembly packers against the mirrors ──

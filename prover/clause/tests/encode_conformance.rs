@@ -142,6 +142,21 @@ fn utility_token_address() {
     );
 }
 
+#[test]
+fn acceptance_criteria_top_level_bytes32() {
+    // A top-level `bytes32-hex` field: `criteriaHash` encodes as a static
+    // `bytes32` word in the head, between the two dynamic strings.
+    assert_encode(
+        "figaro-acceptance-criteria",
+        json!({
+            "acceptanceBasis": "AQL 2.5 per ISO 2859-1",
+            "criteriaHash": format!("0x{}", "cd".repeat(32)),
+            "criteriaUri": "ipfs://criteria"
+        }),
+        "0x0000000000000000000000000000000000000000000000000000000000000060cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd00000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000001641514c20322e35207065722049534f20323835392d3100000000000000000000000000000000000000000000000000000000000000000000000000000000000f697066733a2f2f63726974657269610000000000000000000000000000000000",
+    );
+}
+
 // ── Unknown (permissionless) format encodes as plain string ──────────
 
 #[test]

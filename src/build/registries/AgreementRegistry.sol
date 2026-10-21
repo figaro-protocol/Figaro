@@ -13,18 +13,18 @@ pragma solidity 0.8.26;
 ///         A registered agreement is the clauses composed for ONE order
 ///         with the designer's fills, value-free: a reusable unit a
 ///         designer binds into any assembly, in any position, as is. Its identity
-///         IS its composition: agreementKey is the canonical content hash of
-///         `{ clauses }` — the clause keys and the fills the designer gave
-///         them, the topology clause composed with `{}` (who follows whom is
-///         the assembly's fact, never the agreement's), editorial prose
-///         excluded, so renaming never forks identity. The registry keys
+///         IS its composition: agreementKey is the merkle root over one leaf per
+///         composed clause, the clause key and the canonical bytes of the fills
+///         the designer gave it, so a clause's membership is a merkle proof. The
+///         topology clause is composed with `{}` (who follows whom is the assembly's
+///         fact), and editorial prose is excluded, so renaming never forks identity. The registry keys
 ///         bindings by agreementKey: identical compositions collapse to one
 ///         binding, and no caller-chosen name exists on-chain to squat.
 ///
 ///         contentURI points at the full pinned agreement document
 ///         (typically IPFS) — including the editorial prose the key
 ///         excludes. Readers fetch the document from contentURI and verify
-///         it by recomputing agreementKey from its `clauses`.
+///         it by recomputing the merkle root over its `clauses`.
 ///
 ///         The contract does NOT validate agreement content. It cannot — the
 ///         document lives off-chain; the contract only stores its key and
@@ -99,15 +99,15 @@ contract AgreementRegistry {
         string contentURI;
     }
 
-    /// @notice agreementKey (the canonical content hash of the agreement's
-    ///         `clauses`) → binding details.
+    /// @notice agreementKey (the merkle root over the agreement's clause
+    ///         leaves) → binding details.
     mapping(bytes32 => AgreementBinding) public bindings;
 
     // ── Events ──────────────────────────────────────────────────────────
 
     /// @notice Emitted when an agreement is registered.
-    /// @param agreementKey The canonical content hash of the agreement's
-    ///                     `clauses` — the agreement's identity.
+    /// @param agreementKey The merkle root over the agreement's clause
+    ///                     leaves — the agreement's identity.
     /// @param registeredBy Address that registered the agreement.
     /// @param contentURI   Full off-chain agreement document URI (typically
     ///                     IPFS).
@@ -152,8 +152,8 @@ contract AgreementRegistry {
     ///         Content validity is the publisher's responsibility off-chain;
     ///         clause content well-formedness is the SDK's off-chain validator's
     ///         concern — there is no on-chain content validation.
-    /// @param agreementKey The canonical content hash of the agreement's
-    ///                     `clauses`.
+    /// @param agreementKey The merkle root over the agreement's clause
+    ///                     leaves.
     /// @param contentURI   Full off-chain agreement document pointer
     ///                     (typically IPFS).
     function registerAgreement(bytes32 agreementKey, string calldata contentURI) external payable {

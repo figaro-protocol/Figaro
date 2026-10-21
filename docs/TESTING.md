@@ -84,13 +84,13 @@ drives the deployed Sepolia SwapRouter02 (`deployments/11155111.json`
 built the documented way (the SDK's `SWAP_ROUTER_02_ABI` shape), proving the
 allowance-pull composition end to end.
 
-## Halmos (`test/`) — 4 harness files, 33 properties
+## Halmos (`test/`) — 4 harness files, 41 properties
 
 | Harness | Properties | Key invariants |
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
 | `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the designer-reward Sybil bound assumes: solvency, no stake recycling, de-surfacing at request, the counter reads that gate |
-| `HalmosUsageCounter.t.sol` | 7 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two paths), period bucketing ×2, isolation across keys, and `check_theKindsNeverShareAKey` — a use counted under any one of the three kinds, on either path, leaves every other kind's accrual at the same key untouched. Mutation-checked: replace-not-add, score composition. |
+| `HalmosUsageCounter.t.sol` | 9 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two paths), period bucketing ×2, isolation across keys, `check_theKindsNeverShareAKey` — a use counted under any one of the three kinds, on either path, leaves every other kind's accrual at the same key empty — `check_aKindNeverDisturbsAnotherKindsAccrual` — it leaves another kind's existing accrual at the key exactly as it was — and `check_anUnknownKindIsSkipped` — a batch accrual whose kind names no registry writes nothing under any kind and leaves the period total where it was. Mutation-checked: replace-not-add, score composition, and `check_aKindNeverDisturbsAnotherKindsAccrual` (a counter writing every kind's accrual, direct and batch, to the clause kind fails it on every path combination). |
 | `HalmosClauseAgreementAndAssemblyRegistries.t.sol` | 18 (6 per contract) | `HalmosClauseRegistry` + `HalmosAssemblyRegistry` + `HalmosAgreementRegistry` — the stake machines `RpgfMinter._isAuthor` reads, one per kind: solvency under arbitrary interleavings by two registering wallets, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked: solvency + first-write-wins on the clause and assembly contracts, 4/4 counterexamples. |
 
 Run with `scripts/test-halmos.sh` (seven passes). **Halmos does not model
@@ -106,7 +106,7 @@ properties are mutation-checked: a deliberate recycling bug in
 any new property whose failure mode matters — "it proved" is not evidence that
 it *could* fail.
 
-## Certora (`certora/`) — 7 specs
+## Certora (`certora/`) — 8 specs
 
 | Spec | Rules | Covers |
 |---|---|---|
@@ -117,6 +117,7 @@ it *could* fail.
 | `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier net positions: user delta = payout−deposit, contract delta = deposit−payout, allowance-drain safety, conservation (single-position; inductive generalization documented in-spec). Aligned to the witness model and the usage-bridge `settleBatch` signature (`BatchUsageData` threaded, usage loops bounded). |
 | `BatchVerifierStateRoot.spec` | 3 | FigaroBatchVerifier's state root chains: a resolved batch's `prevRoot` is the root the verifier held and its `newRoot` the root it leaves; each resolved batch advances `batchCount` by one; no other function moves either. So the `BatchSettled` events form one unbroken, gap-free chain from the initial root. Read through `certora/harness/FigaroBatchVerifierHarness.sol` (the contract plus a pure `decodedRoots` view over its own `_decodePV`). Mutation-checked: all three. |
 | `RpgfMinter.spec` | 8 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor`, the gate on a live registration), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked: conservation, double-claim, eligibility. |
+| `RpgfMinterAuthor.spec` | 2 | `RpgfMinter._isAuthor` as written — the kind selection `RpgfMinter.spec` summarizes to a ghost: for each of the three kinds the answer is the live designer of record in the one registry that kind names, whatever the other two hold at the same key, and a kind past the three reverts. Read through `certora/harness/RpgfMinterAuthorHarness.sol` (the contract plus a view calling `_isAuthor`) against `certora/harness/AuthorRegistryMocks.sol` (one getter contract per registry family, linked to the minter's three registry addresses). Compiled without via-IR: under via-IR the prover's call resolution fails on `_isAuthor`'s decoding of the dynamic `string` that `bindings` returns. Verified, both rules: https://prover.certora.com/output/9512759/f62a013cbdb44692b77bf04219670f75 |
 
 Companion: `certora/token-ops.inventory` — declarative inventory of every ERC20 transfer call site in `src/`; `scripts/lint-token-ops.sh` (lint-staged on any staged `.sol` or on the inventory, and the prelude of `./scripts/test-certora.sh`) fails a commit that adds a transfer call without an inventory entry.
 
@@ -130,7 +131,7 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 60 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 20 + RelayState 7 + its deferral 6)
+## TLA+ (`formal/`) — 64 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 20 + RelayState 7 + its deferral 10)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -164,7 +165,7 @@ the bridge write REPLACES never adds), `FigaroCore` blindness (`settleBatch` wri
 no `FigaroCore` `orderStatus`) — 10,030,087 states, ~9.5 min. Mutation-checked: 5 mutations + 7 non-vacuity witnesses, each caught.
 The model's `Artifacts` are one abstract keyspace; it does not model the
 reward's kind, so the separation of clause and assembly accruals by (kind,
-key) is held by Foundry, Halmos (`check_theKindsNeverShareAKey`) and the
+key) is held by Foundry, Halmos (`check_theKindsNeverShareAKey`, `check_aKindNeverDisturbsAnotherKindsAccrual`, `check_anUnknownKindIsSkipped`), Certora (`RpgfMinterAuthor.spec`) and the
 guest's `usage.rs`, never by TLC.
 Two NAMED assumptions ride as `.cfg` constants: `AssumeDomainSeparation`
 (contract-enforced — EIP-712 `verifyingContract` disjointness carries
@@ -193,23 +194,43 @@ Mutation-checked through five `.cfg` switches, each restoring one defect:
 RelayState's second spec, `DeferSpec` (`RelayState.tla` +
 `RelayStateDeferral.cfg`, the sixth pass of `scripts/test-tla.sh`): the
 deferral of an operation dropped at batch formation
-(`prover/sequencer/src/main.rs`, `mempool.rs`) — three operations (a commit,
-one built on its order, one that never applies), a drain cap of 2, a window
-of 2 ticks in 5, a re-queue cap of 1, funding reads that fail or show a
-shortfall, transient send failures, and a copy resubmitted while a tick runs.
-6 invariants — `DeferralBoundedInTime` (nothing deferred is held past the
-window, retried or not, and nothing expires before it),
-`RequeueCapCountsTransients`, `NoExtraDraining` (a drain that retries a
-deferred operation leaves nothing queued behind it), `BuiltOnOnlyBehindDead`,
-`NoTwoCopies`, `DTypeOK`: 100,334 states / 45,331 distinct, depth 20, 22
-seconds. Mutation-checked through five more `.cfg` switches, each FALSE
-failing the invariant it names: `DeferBoundedInTime` →
-`DeferralBoundedInTime`, `DeferOwnCounter` → `RequeueCapCountsTransients`,
+(`prover/sequencer/src/main.rs`, `mempool.rs`) — five operations (a commit
+and one built on its order, honest, of one process; two operations that
+never apply, which anyone may submit free, each once at any tick, one
+naming that process and a second, the other naming the second; and a
+resolve listing one order twice), a drain cap of 3, a window of 2 ticks in
+4, a re-queue cap of 1, funding reads that fail or show a shortfall,
+transient send failures, and a copy resubmitted while a tick runs.
+Deferrals wait in drain groups — operations share a group when a chain of
+them, each touching a process the next touches, joins them — which decide
+what is drained together and nothing else; each operation expires on its
+own window, and what was filtered behind it goes with it.
+10 invariants — `DeferralBoundedInTime` (nothing deferred is held past its
+own window, retried or not, and nothing is dead-lettered before it unless
+with an operation it was filtered behind), `HonestWindowKept` (no honest
+operation is dead-lettered before its own window ends unless an operation
+it depends on was), `DependentLeavesWithItsDependency` (no operation stays
+deferred after one it was filtered behind is dead-lettered),
+`DrainGroupIsAClass` (every drain group is one class of the transitive
+closure of touching a common process over its formation's deferrals),
+`DoubleListingNeverAdmitted`, `RequeueCapCountsTransients`,
+`NoExtraDraining` (a drain that retries a deferred operation leaves nothing
+queued behind it), `BuiltOnOnlyBehindDead`, `NoTwoCopies`, `DTypeOK`:
+388,784 states / 112,528 distinct, depth 19, about 16 minutes.
+Mutation-checked through ten more `.cfg` switches, each FALSE failing the
+invariant it names: `DeferBoundedInTime` → `DeferralBoundedInTime`,
+`DeferOwnCounter` → `RequeueCapCountsTransients`,
 `DeferDrainsOnlyFreeSlots` → `NoExtraDraining`, `DeferMovesDependents` →
-`BuiltOnOnlyBehindDead`, `DeferDropsCopy` → `NoTwoCopies`; the
-counterexamples are 6, 6, 7, 5 and 5 states long. `Spec` holds the
-deferral's variables at their initial values, so the lifecycle's figures
-above are unchanged by it.
+`BuiltOnOnlyBehindDead`, `DeferDropsCopy` → `NoTwoCopies`,
+`DeferGroupsByProcess` and `DeferGroupsTransitive` →
+`DrainGroupIsAClass`, `DeferOwnWindow` (whole-group expiry) →
+`HonestWindowKept` (checked alone, with the honest side held to the commit
+so the window is cut by an operation that never applies),
+`DeferDependentEdge` (each operation on its own window alone) →
+`DependentLeavesWithItsDependency`, `AdmitRefusesDoubleListing` →
+`DoubleListingNeverAdmitted`; the counterexamples are 6, 6, 8, 5, 5, 5, 6,
+8, 8 and 2 states long. `Spec` holds the deferral's variables at their
+initial values, so the lifecycle's figures above are unchanged by it.
 
 ## Lean 4 (`formal/lean/`) — the equilibrium, machine-checked
 
@@ -241,7 +262,7 @@ main). The crates: `figaro-clause`
 (off-chain conformance: every spec in `clauses/` parses — count derived from the
 directory; the encode vectors in `prover/clause/tests/encode_conformance.rs`,
 generated from the live TS encoder, lock byte parity — signed int256,
-stage-scoped witnesses, tuple[] arrays, open formats), `figaro-kernel` (frozen Foundry parity vectors for commit/resolve;
+stage-scoped witnesses, tuple[] arrays, top-level bytes32 and address words, open formats), `figaro-kernel` (frozen Foundry parity vectors for commit/resolve;
 the transition replay — `prover/lib/tests/transition_vectors.rs` replays
 `test/fixtures/kernel-transition-vectors.json`, harvested from the live `FigaroCore`
 by `KernelTransitionVectorsTest`, and asserts every id, bond, payout,

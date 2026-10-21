@@ -19,7 +19,7 @@ import {WitnessSwapAndCommitCoordinator} from "../src/app/WitnessSwapAndCommitCo
 ///      calldata verbatim, so the router must PULL by ERC-20 allowance —
 ///      SwapRouter02's `exactInputSingle` does; the Universal Router pulls via
 ///      Permit2 or spends pre-sent balances and would not. The router is probed
-///      for BEHAVIOUR before broadcast (`factory()` and `WETH9()` must answer with
+///      for BEHAVIOR before broadcast (`factory()` and `WETH9()` must answer with
 ///      contracts) — an address is never trusted for existing alone (the SP1
 ///      gateway lesson, RELEASE_READINESS 7.3(c)).
 ///
@@ -34,7 +34,7 @@ contract DeploySwapCoordinator is Script {
         require(core != address(0) && permit2 != address(0) && router != address(0), "env address is zero");
         require(core.code.length != 0, "FIGARO_CORE has no code on this chain");
         require(permit2.code.length != 0, "PERMIT2 has no code on this chain");
-        // Behaviour, not existence: SwapRouter02 answers factory() and WETH9() with contracts.
+        // Behavior, not existence: SwapRouter02 answers factory() and WETH9() with contracts.
         (bool okF, bytes memory f) = router.staticcall(abi.encodeWithSignature("factory()"));
         (bool okW, bytes memory w) = router.staticcall(abi.encodeWithSignature("WETH9()"));
         require(

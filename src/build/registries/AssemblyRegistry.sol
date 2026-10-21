@@ -32,9 +32,9 @@ pragma solidity 0.8.26;
 ///         the AttestationCoordinator merkle-binds each attestation to
 ///         the signed agreement without validating content shape.
 ///
-///         The per-process gas ceiling (network-gas-limit dependent,
-///         documented in `FigaroCore.sol`) is a property of FigaroCore
-///         resolveProcess path. Publish-side and buyer-side clients
+///         The per-process gas ceiling (set by the chain's per-transaction gas
+///         cap and its block gas limit, documented in `FigaroCore.sol`) is a property
+///         of the FigaroCore resolveProcess path. Publish-side and buyer-side clients
 ///         enforce it; the contract makes no claim about node count
 ///         because that claim would be unenforceable against off-chain
 ///         content.
@@ -63,8 +63,8 @@ pragma solidity 0.8.26;
 ///         whoever anchors a composition first is its designer of record. Editorial
 ///         prose is not identity, so a front-runner can anchor someone
 ///         else's composition under their own prose — the same accepted
-///         squatting economics as ClauseRegistry name registration; the
-///         deposit is the cost floor.
+///         squatting economics as `ClauseRegistry` and `AgreementRegistry`,
+///         each first-write-wins on its own key; the deposit is the cost floor.
 ///
 ///         No owner, no admin, no fee extraction. The composition binding
 ///         is first-write-wins and permanent — no transferAssembly,

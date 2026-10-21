@@ -24,7 +24,7 @@ use figaro_sequencer::archive::{self, Archive, ArchiveConfig, BatchRecord};
 use figaro_sequencer::assembler::{self, AssemblerConfig, UsageContext};
 use figaro_sequencer::gas::{self, SettleItems};
 use figaro_sequencer::submitter::settle_calldata;
-use figaro_sequencer::mempool::{Mempool, PendingOp, SubmitError};
+use figaro_sequencer::mempool::{Mempool, PendingOp, Refiltered, SubmitError};
 use figaro_sequencer::state::{
     fetch_served_state, fetch_served_state_within, held_state_for, take_over_from_served, takeover, Held,
     NextState, StateMirror, StateStore, Takeover, TakeoverRefused,
@@ -339,6 +339,7 @@ fn pend(ops: Vec<KernelOp>) -> Vec<PendingOp> {
             key: B256::with_last_byte(i as u8 + 1),
             op,
             deferred_since: None,
+            behind: Vec::new(),
         })
         .collect()
 }
@@ -2115,6 +2116,7 @@ fn commit_from(base: &Commitment, salt: u64, payment: u64) -> PendingOp {
             seller_sig: Signature { r: B256::ZERO, s: B256::ZERO, v: 27 },
         },
         deferred_since: None,
+        behind: Vec::new(),
     }
 }
 
@@ -2499,6 +2501,7 @@ fn a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation() 
         key: B256::with_last_byte(99),
         op: KernelOp::Resolve { process_id: process, commitments: vec![], buyer_sig: Signature { r: B256::ZERO, s: B256::ZERO, v: 27 } },
         deferred_since: None,
+        behind: Vec::new(),
     };
     let ops = vec![commit(1), commit(2), commit(3), resolve, commit(4)];
     let (kept, dropped) = assembler::filter_commits_within_resolve_capacity(&prev, ops, 4);
@@ -2616,8 +2619,8 @@ async fn an_operation_dropped_at_batch_formation_is_recorded_with_its_reason() {
     let failures = FailureLog::default();
     let ops = canonical_ops();
     let dropped = vec![
-        (PendingOp { id: 7, key: B256::with_last_byte(7), op: ops[0].clone(), deferred_since: None }, "OrderAlreadyExists".to_string()),
-        (PendingOp { id: 8, key: B256::with_last_byte(8), op: ops[1].clone(), deferred_since: None }, "UnknownOrder".to_string()),
+        (PendingOp { id: 7, key: B256::with_last_byte(7), op: ops[0].clone(), deferred_since: None, behind: Vec::new() }, "OrderAlreadyExists".to_string()),
+        (PendingOp { id: 8, key: B256::with_last_byte(8), op: ops[1].clone(), deferred_since: None, behind: Vec::new() }, "UnknownOrder".to_string()),
     ];
     let recorded = record_dropped(&failures, &dropped, "batch formation").await;
     assert_eq!(recorded, 2);
@@ -2967,4 +2970,598 @@ fn what_was_built_on_a_permanently_refused_operation_is_dead_lettered_at_once() 
     assert!(b[0].contains("DeadlineExpired"), "{b:?}");
     assert_eq!(d.len(), 1, "the unrelated one still waits: {d:?}");
     assert!(d[0].contains("UnknownOrder"), "{d:?}");
+}
+
+// ── A deferred group is drained together; each operation keeps its window ──
+//
+// Each tick's deferrals are grouped by the processes they touch: operations
+// share a group when a chain of them, each touching a process the next
+// touches, joins them. An operation that never applies, which anyone may
+// submit free, on other processes never makes an honest group larger, and
+// an honest group needs no more room than its own process's operations. The
+// groups decide what is drained together and nothing else: each operation
+// is dead-lettered on its own first deferral's window, a dependent moved
+// with the operation it was filtered behind goes with that operation, and
+// what is left of a group is grouped again (`formal/RelayState.tla`,
+// `DeferSpec`: `HonestWindowKept`, `DependentLeavesWithItsDependency`,
+// `DrainGroupIsAClass`).
+
+/// A commit on a process of its own, with a pending key and id of `n`.
+fn commit_on_its_own_process(n: u8) -> PendingOp {
+    let root = match &canonical_ops()[0] {
+        KernelOp::Commit { commitment, .. } => commitment.clone(),
+        other => panic!("canonical ops[0] is the commit, got {other:?}"),
+    };
+    PendingOp { id: 100 + n as u64, key: B256::with_last_byte(100 + n), ..commit_from(&root, 1000 + n as u64, 1) }
+}
+
+#[tokio::test]
+async fn deferred_operations_are_grouped_by_the_process_they_touch() {
+    let mp = mempool().with_defer_window(WINDOW);
+    let honest = pend(canonical_ops());
+    let honest_ids: Vec<u64> = honest.iter().map(|p| p.id).collect();
+    // One tick defers the process's four operations interleaved with two
+    // commits on processes of their own.
+    let tick = vec![
+        honest[0].clone(),
+        commit_on_its_own_process(1),
+        honest[1].clone(),
+        commit_on_its_own_process(2),
+        honest[2].clone(),
+        honest[3].clone(),
+    ];
+    assert!(mp.defer(tick, std::time::Instant::now()).await.is_empty());
+    assert_eq!(mp.len().await, 6);
+    // Room for four: the process's group comes back whole and alone; the
+    // commits on their own processes wait in groups of their own.
+    let next = mp.drain_up_to(4).await;
+    assert_eq!(next.iter().map(|p| p.id).collect::<Vec<_>>(), honest_ids);
+    let rest = mp.drain_up_to(1).await;
+    assert_eq!(rest.iter().map(|p| p.id).collect::<Vec<_>>(), vec![101], "a group of one fits a room of one");
+    assert_eq!(mp.len().await, 1);
+}
+
+#[tokio::test]
+async fn a_dependent_deferred_with_its_parent_is_dead_lettered_with_it() {
+    let ops = pend(canonical_ops());
+    let commit = ops[0].clone();
+    let t0 = std::time::Instant::now();
+    // The commit's funding could not be read: the attestation, filtered into
+    // its order, follows it and rides behind it.
+    let Refiltered { kept, follow, dropped, .. } =
+        mempool().refilter_behind_deferred(1000, &empty_snapshot(), vec![ops[1].clone()], std::slice::from_ref(&commit));
+    assert!(kept.is_empty() && dropped.is_empty());
+    let attest = follow[0].clone();
+    assert_eq!(attest.behind, vec![commit.key]);
+
+    // At deferral: the commit's window ends as it is deferred again with
+    // what was filtered behind it; both are dead-lettered, neither waits.
+    let mp = mempool().with_defer_window(WINDOW);
+    assert!(mp.defer(vec![commit.clone()], t0).await.is_empty());
+    let parent = mp.drain_up_to(10).await;
+    let expired = mp.defer(vec![parent[0].clone(), attest.clone()], t0 + WINDOW).await;
+    assert_eq!(expired.iter().map(|(p, _)| p.id).collect::<Vec<_>>(), vec![commit.id, attest.id]);
+    assert_eq!(mp.len().await, 0, "the dependent does not wait on a fresh window");
+
+    // At a tick's expiry: the commit's window ends while the two wait.
+    let mp = mempool().with_defer_window(WINDOW);
+    assert!(mp.defer(vec![commit.clone()], t0).await.is_empty());
+    let parent = mp.drain_up_to(10).await;
+    assert!(mp.defer(vec![parent[0].clone(), attest.clone()], t0 + WINDOW - secs(1)).await.is_empty());
+    let expired = mp.expire_deferred(t0 + WINDOW).await;
+    assert_eq!(expired.iter().map(|(p, _)| p.id).collect::<Vec<_>>(), vec![commit.id, attest.id]);
+    assert_eq!(mp.len().await, 0);
+}
+
+// ── A resolve listing an order twice never applies ─────────────────────
+//
+// The Core resolves each listed order once and reads the second listing of
+// it as not committed (`OrderNotCommitted`), whatever the state; the list
+// rides unsigned, so anyone can replay a buyer's signature over one.
+// Admission refuses it: it never waits, and never holds a deferral.
+
+#[tokio::test]
+async fn mempool_refuses_a_resolve_listing_an_order_twice() {
+    let (_, _, root, _, process_id, resolve_sig) = two_order_process();
+    let mp = mempool();
+    let refused = mp
+        .submit(KernelOp::Resolve {
+            process_id,
+            commitments: vec![root.clone(), root],
+            buyer_sig: resolve_sig,
+        })
+        .await;
+    match refused {
+        Err(SubmitError::Invalid(why)) => assert!(why.contains("twice"), "{why}"),
+        other => panic!("a resolve listing an order twice is refused at admission, got {other:?}"),
+    }
+    assert_eq!(mp.len().await, 0);
+}
+
+// ── The read routes answer a page on another origin ────────────────────
+//
+// A browser page (the site's `/audit`) reads the relay cross-origin. The
+// read routes carry `Access-Control-Allow-Origin: *` for GET and answer a
+// preflight; `/state` exposes its root header to the page. The submission
+// routes carry none: a JSON submission from a page needs a preflight, so
+// without it no page can have its visitors' browsers submit for it, each
+// from an address of its own past the per-address limit.
+
+fn with_origin(req: Request<Body>) -> Request<Body> {
+    let (mut parts, body) = req.into_parts();
+    parts.headers.insert("origin", "https://reader.example".parse().unwrap());
+    Request::from_parts(parts, body)
+}
+
+#[tokio::test]
+async fn the_read_routes_answer_a_cross_origin_page_and_the_submit_routes_do_not() {
+    let hash = format!("{:?}", B256::repeat_byte(7));
+    for uri in [
+        "/health".to_string(),
+        "/status".to_string(),
+        "/state".to_string(),
+        "/batches".to_string(),
+        format!("/orders/{hash}"),
+        format!("/processes/{hash}"),
+    ] {
+        let app = api::router(test_app_state(), ApiConfig::default());
+        let req = with_origin(Request::builder().uri(&uri).body(Body::empty()).unwrap());
+        let response = app.oneshot(req).await.unwrap();
+        assert_eq!(
+            response.headers().get("access-control-allow-origin").map(|v| v.to_str().unwrap()),
+            Some("*"),
+            "GET {uri} answers any origin"
+        );
+        if uri == "/state" {
+            let exposed = response.headers()["access-control-expose-headers"].to_str().unwrap().to_ascii_lowercase();
+            assert!(exposed.contains("x-figaro-state-root"), "{exposed}");
+        }
+        // The preflight a page's GET may send.
+        let app = api::router(test_app_state(), ApiConfig::default());
+        let preflight = with_origin(
+            Request::builder()
+                .method("OPTIONS")
+                .uri(&uri)
+                .header("access-control-request-method", "GET")
+                .body(Body::empty())
+                .unwrap(),
+        );
+        let response = app.oneshot(preflight).await.unwrap();
+        assert!(response.status().is_success(), "OPTIONS {uri}: {}", response.status());
+        assert_eq!(response.headers()["access-control-allow-origin"], "*");
+        let methods = response.headers()["access-control-allow-methods"].to_str().unwrap().to_string();
+        assert!(methods.contains("GET") && !methods.contains("POST"), "{methods}");
+    }
+
+    let ops = canonical_ops();
+    let app = api::router(test_app_state(), ApiConfig::default());
+    let response = app.oneshot(from_ip(with_origin(submit_request(&ops[0])), [10, 0, 0, 9])).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(response.headers().get("access-control-allow-origin").is_none(), "/submit answers no origin");
+    for uri in ["/submit", "/submit-usage"] {
+        let app = api::router(test_app_state(), ApiConfig::default());
+        let preflight = from_ip(
+            with_origin(
+                Request::builder()
+                    .method("OPTIONS")
+                    .uri(uri)
+                    .header("access-control-request-method", "POST")
+                    .body(Body::empty())
+                    .unwrap(),
+            ),
+            [10, 0, 0, 9],
+        );
+        let response = app.oneshot(preflight).await.unwrap();
+        assert!(response.headers().get("access-control-allow-origin").is_none(), "OPTIONS {uri} answers no origin");
+    }
+}
+
+// ── A cross-origin page cannot submit ──────────────────────────────────
+//
+// A `text/plain` POST is a CORS simple request: a browser sends it with no
+// preflight. The submission routes read their body only as JSON, so such a
+// POST is answered `415` and admits nothing.
+
+#[tokio::test]
+async fn a_cross_origin_text_plain_submission_is_refused_and_admits_nothing() {
+    let state = test_app_state();
+    let mp = state.mempool.clone();
+    let op = serde_json::json!({ "operation": canonical_ops()[0] });
+    let claim = serde_json::json!({ "claim": build_canonical_batch_input().usage_claims[0] });
+    for (uri, body) in [("/submit", op), ("/submit-usage", claim)] {
+        let app = api::router(state.clone(), ApiConfig::default());
+        let req = from_ip(
+            with_origin(
+                Request::builder()
+                    .method("POST")
+                    .uri(uri)
+                    .header("content-type", "text/plain")
+                    .body(Body::from(serde_json::to_vec(&body).unwrap()))
+                    .unwrap(),
+            ),
+            [10, 0, 0, 11],
+        );
+        let response = app.oneshot(req).await.unwrap();
+        assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE, "POST {uri}");
+        assert!(response.headers().get("access-control-allow-origin").is_none(), "POST {uri}");
+    }
+    assert_eq!(mp.len().await, 0);
+    assert_eq!(mp.usage_len().await, 0);
+}
+
+// ── A read the relay's limits answer still reaches the page ────────────
+//
+// The cross-origin header sits outside the read routes' timeout and
+// in-flight cap, so a `408` carries it; and the in-flight cap is one count
+// across every route.
+
+#[tokio::test]
+async fn a_timed_out_read_still_answers_a_cross_origin_page() {
+    let state = test_app_state();
+    // `/health` reads the batch count; held, the read waits past the timeout.
+    let held = state.batch_count.write().await;
+    let config = ApiConfig { request_timeout: std::time::Duration::from_millis(50), ..ApiConfig::default() };
+    let app = api::router(state.clone(), config);
+    let req = with_origin(Request::builder().uri("/health").body(Body::empty()).unwrap());
+    let response = app.oneshot(req).await.unwrap();
+    assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
+    assert_eq!(response.headers().get("access-control-allow-origin").map(|v| v.to_str().unwrap()), Some("*"));
+    drop(held);
+}
+
+#[tokio::test]
+async fn the_in_flight_cap_is_one_count_across_every_route() {
+    let state = test_app_state();
+    let held = state.batch_count.write().await;
+    let config = ApiConfig {
+        max_in_flight: 1,
+        request_timeout: std::time::Duration::from_secs(30),
+        ..ApiConfig::default()
+    };
+    let app = api::router(state.clone(), config);
+    // One read in flight, waiting on the held count.
+    let first = tokio::spawn(app.clone().oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap()));
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    // A read of another route waits for the one place.
+    let second = tokio::time::timeout(
+        std::time::Duration::from_millis(200),
+        app.clone().oneshot(Request::builder().uri("/batches").body(Body::empty()).unwrap()),
+    )
+    .await;
+    assert!(second.is_err(), "the second route shares the one slot");
+    drop(held);
+    assert_eq!(first.await.unwrap().unwrap().status(), StatusCode::OK);
+}
+
+// ── A recorded failure names no URL ────────────────────────────────────
+//
+// `/status` serves the last failure's text to any client. An HTTP client's
+// error names the URL it requested, and a keyed RPC URL carries its key, so
+// the failure log keeps the text with every URL taken out.
+
+#[tokio::test]
+async fn a_recorded_failure_carries_no_url() {
+    use alloy::transports::http::reqwest;
+    let e = reqwest::Client::new()
+        .get("http://127.0.0.1:1/v3/SECRETKEY")
+        .send()
+        .await
+        .expect_err("nothing listens on port 1");
+    let text = e.to_string();
+    assert!(text.contains("SECRETKEY"), "the client's error names its URL: {text}");
+    let log = FailureLog::default();
+    log.record(1, format!("on-chain submission failed (transient): {text}")).await;
+    log.record_claims(1, format!("prove failed: {text}; see HTTPS://rpc.example/key/ABC")).await;
+    let (_, last) = log.snapshot().await;
+    let (_, claim) = log.claims_snapshot().await;
+    for recorded in [last.unwrap(), claim.unwrap()] {
+        for secret in ["SECRETKEY", "127.0.0.1", "http://", "HTTPS://", "ABC", "rpc.example"] {
+            assert!(!recorded.contains(secret), "{secret} in {recorded}");
+        }
+        assert!(recorded.contains("failed"), "the reason stays: {recorded}");
+    }
+}
+
+/// A resolve of `process_id` listing nothing, signed by no one: it never
+/// applies, and anyone may submit one free.
+fn never_applying_resolve(process_id: B256, n: u8) -> PendingOp {
+    PendingOp {
+        id: 200 + n as u64,
+        key: B256::with_last_byte(200 + n),
+        op: KernelOp::Resolve {
+            process_id,
+            commitments: vec![],
+            buyer_sig: Signature { r: B256::ZERO, s: B256::ZERO, v: 27 },
+        },
+        deferred_since: None,
+        behind: Vec::new(),
+    }
+}
+
+#[tokio::test]
+async fn an_operation_that_never_applies_does_not_cut_an_honest_window_short() {
+    // The model's adversary trace: f, naming P, deferred one tick before
+    // the honest a on P; drained and deferred again together, they share a
+    // group. At f's window a stays, until its own window ends.
+    let (_, process_id) = canonical_ids();
+    let honest = pend(canonical_ops())[2].clone();
+    let t0 = std::time::Instant::now();
+
+    let mp = mempool().with_defer_window(WINDOW);
+    assert!(mp.defer(vec![never_applying_resolve(process_id, 1)], t0).await.is_empty());
+    let f = mp.drain_up_to(10).await;
+    assert!(mp.defer(vec![f[0].clone(), honest.clone()], t0 + secs(1)).await.is_empty());
+    let expired = mp.expire_deferred(t0 + WINDOW).await;
+    assert_eq!(expired.iter().map(|(p, _)| p.id).collect::<Vec<_>>(), vec![201]);
+    assert_eq!(mp.len().await, 1, "the honest operation keeps its window");
+    let expired = mp.expire_deferred(t0 + secs(1) + WINDOW).await;
+    assert_eq!(expired.iter().map(|(p, _)| p.id).collect::<Vec<_>>(), vec![honest.id]);
+
+    // At deferral: f's window ends as the two are deferred again together.
+    let mp = mempool().with_defer_window(WINDOW);
+    assert!(mp.defer(vec![never_applying_resolve(process_id, 1)], t0).await.is_empty());
+    let f = mp.drain_up_to(10).await;
+    assert!(mp.defer(vec![f[0].clone(), honest.clone()], t0 + secs(1)).await.is_empty());
+    let both = mp.drain_up_to(10).await;
+    let expired = mp.defer(both, t0 + WINDOW).await;
+    assert_eq!(expired.iter().map(|(p, _)| p.id).collect::<Vec<_>>(), vec![201]);
+    assert_eq!(mp.len().await, 1);
+}
+
+/// A seller attestation with its role in the canonical process and its
+/// target in the process of `commit_on_its_own_process(1)`: a bridge.
+fn bridge() -> PendingOp {
+    let other = match commit_on_its_own_process(1).op {
+        KernelOp::Commit { commitment, .. } => commitment,
+        other => panic!("a commit, got {other:?}"),
+    };
+    let mut op = pend(canonical_ops())[1].clone();
+    match &mut op.op {
+        KernelOp::AttestAsSeller { target, .. } => *target = other,
+        other => panic!("canonical ops[1] is the seller attestation, got {other:?}"),
+    }
+    PendingOp { id: 300, key: B256::with_last_byte(250), ..op }
+}
+
+/// The bridge deferred at `t0`, then deferred again at `t0 + 1s` with an
+/// honest commit on each of the two processes it touches: one group.
+async fn bridged(t0: std::time::Instant) -> (Mempool, PendingOp, PendingOp) {
+    let mp = mempool().with_defer_window(WINDOW);
+    let a1 = pend(canonical_ops())[0].clone();
+    let a2 = commit_on_its_own_process(1);
+    assert!(mp.defer(vec![bridge()], t0).await.is_empty());
+    let b = mp.drain_up_to(10).await;
+    assert!(mp.defer(vec![a1.clone(), b[0].clone(), a2.clone()], t0 + secs(1)).await.is_empty());
+    (mp, a1, a2)
+}
+
+#[tokio::test]
+async fn a_bridge_does_not_cut_either_processs_window_short() {
+    let t0 = std::time::Instant::now();
+    let (mp, a1, a2) = bridged(t0).await;
+    let expired = mp.expire_deferred(t0 + WINDOW).await;
+    assert_eq!(expired.iter().map(|(p, _)| p.id).collect::<Vec<_>>(), vec![300]);
+    assert_eq!(mp.len().await, 2, "both honest operations keep their windows");
+    let expired = mp.expire_deferred(t0 + secs(1) + WINDOW).await;
+    let mut ids: Vec<u64> = expired.iter().map(|(p, _)| p.id).collect();
+    ids.sort_unstable();
+    assert_eq!(ids, vec![a1.id, a2.id]);
+}
+
+#[tokio::test]
+async fn what_is_left_of_a_group_is_grouped_again() {
+    let t0 = std::time::Instant::now();
+    let (mp, a1, a2) = bridged(t0).await;
+    // One group of three: room for two takes none of it. Drained and
+    // deferred again, nothing of it moves.
+    let none = mp.drain_up_to(2).await;
+    assert!(none.is_empty(), "the bridge joins the two processes: {none:?}");
+    assert_eq!(mp.expire_deferred(t0 + WINDOW).await.len(), 1);
+    // The bridge gone, the two processes are two groups of one.
+    let first = mp.drain_up_to(1).await;
+    assert_eq!(first.iter().map(|p| p.id).collect::<Vec<_>>(), vec![a1.id]);
+    let second = mp.drain_up_to(1).await;
+    assert_eq!(second.iter().map(|p| p.id).collect::<Vec<_>>(), vec![a2.id]);
+}
+
+// ── A sub-order filtered behind an earlier sub-order rides behind it ───
+//
+// The root landed; a second order's funding could not be read, so it is
+// deferred; a third order of the same process carries a cumulative value
+// that counts the second's payment, so it applies only after it and follows
+// it — though it names only the process, never the second's order. It is
+// dead-lettered with the second; an order of the same process that does not
+// need the second keeps its own window.
+
+#[tokio::test]
+async fn a_sub_order_filtered_behind_a_deferred_sub_order_is_dead_lettered_with_it() {
+    let (root_op, sub_op, root, sub, process_id, _) = two_order_process();
+    let landed = landed_after(vec![root_op]);
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller_key = make_signing_key(SELLER1_KEY);
+    let order = |c: &Commitment| KernelOp::Commit {
+        commitment: c.clone(),
+        buyer_sig: sign_commitment(c, &domain, &buyer_key),
+        seller_sig: sign_commitment(c, &domain, &seller_key),
+    };
+    let payment = alloy_primitives::U256::from(5u64);
+    // The third order, after the second.
+    let third = Commitment {
+        process_id,
+        payment,
+        expected_cumulative_value: sub.expected_cumulative_value + payment,
+        salt: sub.salt + alloy_primitives::U256::from(1u64),
+        ..sub.clone()
+    };
+    // An order of the same process that extends the root directly: it does
+    // not need the second.
+    let beside = Commitment {
+        process_id,
+        payment,
+        expected_cumulative_value: root.payment + payment,
+        salt: sub.salt + alloy_primitives::U256::from(2u64),
+        ..sub.clone()
+    };
+    let ops = pend(vec![sub_op, order(&third), order(&beside)]);
+    let (second, third_op, beside_op) = (ops[0].clone(), ops[1].clone(), ops[2].clone());
+
+    let t0 = std::time::Instant::now();
+    let mp = mempool().with_defer_window(WINDOW);
+    // Tick one: the second's funding could not be read; it is deferred.
+    assert!(mp.defer(vec![second.clone()], t0).await.is_empty());
+    let second = mp.drain_up_to(10).await.remove(0);
+    // Tick two: still unread; the third arrives and follows it, as the
+    // relay's formation wires it.
+    let Refiltered { kept, follow, dropped, .. } = mp.refilter_behind_deferred(
+        1000,
+        &landed,
+        vec![third_op.clone()],
+        std::slice::from_ref(&second),
+    );
+    assert!(kept.is_empty(), "{kept:?}");
+    assert!(dropped.is_empty(), "{dropped:?}");
+    assert_eq!(follow.iter().map(|p| p.id).collect::<Vec<_>>(), vec![third_op.id]);
+    assert_eq!(follow[0].behind, vec![second.key], "the third rides behind the second");
+    // The order beside applies without the second: it is kept, behind nothing.
+    let Refiltered { kept, follow: follow_beside, .. } = mp.refilter_behind_deferred(
+        1000,
+        &landed,
+        vec![beside_op.clone()],
+        std::slice::from_ref(&second),
+    );
+    assert_eq!(kept.iter().map(|p| p.id).collect::<Vec<_>>(), vec![beside_op.id]);
+    assert!(follow_beside.is_empty());
+    assert!(kept[0].behind.is_empty(), "an independent order is marked behind nothing");
+
+    let mut tick = vec![second.clone()];
+    tick.extend(follow);
+    assert!(mp.defer(tick, t0 + secs(1)).await.is_empty());
+    // At the second's window, the third goes with it.
+    let expired = mp.expire_deferred(t0 + WINDOW).await;
+    assert_eq!(expired.iter().map(|(p, _)| p.id).collect::<Vec<_>>(), vec![second.id, third_op.id]);
+    assert_eq!(mp.len().await, 0);
+}
+
+// ── Marking what follows a deferred commit is bounded per tick ─────────
+//
+// A deferred commit can carry a drain's worth of operations behind it, and
+// anyone can renew that every tick. Only a commit is a candidate (only a
+// commit creates a process, an order or a cumulative step); the re-runs of
+// the filter are capped (`MAX_DEPENDENCY_RERUNS`), a group past the cap
+// marked conservatively; each re-run reads the group's slice of the landed
+// state, never the whole of it. What is timed is what the marking adds to
+// `refilter_after_drops` on the same inputs.
+
+/// `landed` with `n` processes and orders of other processes beside it.
+fn padded(mut landed: KernelStateSnapshot, n: u32) -> KernelStateSnapshot {
+    for i in 0..n {
+        let process = keccak256(i.to_be_bytes());
+        let order = keccak256((i as u64 + (1u64 << 40)).to_be_bytes());
+        landed.processes.push((
+            process,
+            ProcessState {
+                root_buyer: Address::repeat_byte(1),
+                currency: Address::repeat_byte(2),
+                cumulative_value: alloy_primitives::U256::from(1u64),
+                active_order_count: 1,
+            },
+        ));
+        landed.order_status.push((order, 1));
+        landed.order_process_id.push((order, process));
+    }
+    landed
+}
+
+/// How long marking a 100-operation group may add to the refilter on a
+/// debug build.
+const MARKING_CEILING: std::time::Duration = std::time::Duration::from_secs(60);
+
+/// The time `refilter_behind_deferred` adds to `refilter_after_drops` on the
+/// same inputs, and its result.
+fn marking_cost(
+    landed: &KernelStateSnapshot,
+    valid: Vec<PendingOp>,
+    deferred: &PendingOp,
+) -> (std::time::Duration, Refiltered) {
+    let started = std::time::Instant::now();
+    let _ = assembler::refilter_after_drops(CHAIN_ID, CORE, 1000, landed, valid.clone(), std::slice::from_ref(deferred));
+    let bare = started.elapsed();
+    let started = std::time::Instant::now();
+    let r = mempool().refilter_behind_deferred(1000, landed, valid, std::slice::from_ref(deferred));
+    (started.elapsed().saturating_sub(bare), r)
+}
+
+#[test]
+fn an_unread_root_with_99_attestations_behind_it_is_marked_in_one_run() {
+    let ops = canonical_ops();
+    let root = pend(vec![ops[0].clone()]).remove(0);
+    let attests: Vec<PendingOp> = (0..99u8)
+        .map(|i| PendingOp {
+            id: 1000 + i as u64,
+            key: keccak256([7, i]),
+            op: ops[2].clone(),
+            deferred_since: None,
+            behind: Vec::new(),
+        })
+        .collect();
+    let landed = padded(empty_snapshot(), 500);
+    let (took, r) = marking_cost(&landed, attests, &root);
+    assert_eq!(r.follow.len(), 99, "{:?}", r.dropped);
+    assert!(r.follow.iter().all(|p| p.behind == vec![root.key]));
+    assert_eq!(r.reruns, 1, "only the commit is a candidate");
+    assert!(took < MARKING_CEILING, "{took:?}");
+}
+
+#[test]
+fn a_chain_of_99_sub_orders_behind_an_unread_one_is_marked_within_the_cap() {
+    let (root_op, sub_op, _, sub, _, _) = two_order_process();
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller_key = make_signing_key(SELLER1_KEY);
+    let payment = alloy_primitives::U256::from(1u64);
+    let mut chain = Vec::new();
+    let mut prev = sub.clone();
+    for i in 0..98u64 {
+        let next = Commitment {
+            payment,
+            expected_cumulative_value: prev.expected_cumulative_value + payment,
+            salt: sub.salt + alloy_primitives::U256::from(10 + i),
+            ..sub.clone()
+        };
+        chain.push(KernelOp::Commit {
+            commitment: next.clone(),
+            buyer_sig: sign_commitment(&next, &domain, &buyer_key),
+            seller_sig: sign_commitment(&next, &domain, &seller_key),
+        });
+        prev = next;
+    }
+    let second = pend(vec![sub_op]).remove(0);
+    let follow: Vec<PendingOp> = chain
+        .into_iter()
+        .enumerate()
+        .map(|(i, op)| PendingOp {
+            id: 2000 + i as u64,
+            key: keccak256([8, i as u8]),
+            op,
+            deferred_since: None,
+            behind: Vec::new(),
+        })
+        .collect();
+    let landed = padded(landed_after(vec![root_op]), 500);
+    let (took, r) = marking_cost(&landed, follow, &second);
+    assert_eq!(r.follow.len(), 98, "{:?}", r.dropped);
+    assert!(r.reruns <= figaro_sequencer::mempool::MAX_DEPENDENCY_RERUNS, "{} re-runs", r.reruns);
+    // Every one of the chain rides behind the unread second order.
+    assert!(r.follow.iter().all(|p| p.behind.contains(&second.key)));
+    // 99 candidates pass the cap: the group is marked conservatively, with no
+    // re-run, each link behind the unread second and every earlier link.
+    assert_eq!(r.reruns, 0, "the fallback runs no filter");
+    let tenth = r.follow.iter().find(|p| p.key == keccak256([8, 10u8])).expect("the tenth link follows");
+    let marked: std::collections::HashSet<B256> = tenth.behind.iter().copied().collect();
+    let expected: std::collections::HashSet<B256> =
+        std::iter::once(second.key).chain((0..10u8).map(|j| keccak256([8, j]))).collect();
+    assert_eq!(marked, expected);
+    assert_eq!(tenth.behind.len(), expected.len(), "no key twice");
+    assert!(took < MARKING_CEILING, "{took:?}");
 }
