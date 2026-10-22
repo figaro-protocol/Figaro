@@ -72,10 +72,12 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
 
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
-        const token = config.tokenAddress as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-        const balanceOf = (who: Hex) =>
-            publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
+        // A balance in the currency the order committed in, at a given block: the
+        // checkout picks the currency from the seller's accepted tokens, so the
+        // spec reads whichever one the event names, just before and at the commit.
+        const balanceAt = (currency: Hex, who: Hex, blockNumber: bigint) =>
+            publicClient.readContract({ address: currency, abi: ERC20_ABI, functionName: 'balanceOf', args: [who], blockNumber }) as Promise<bigint>;
 
         // ── The producing trade: buyer orders from the wizard seller's seed
         //    assembly, places, relays; the seller accepts. ──
@@ -83,9 +85,6 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
         });
         const committedBefore = (await queryCommitted()).length;
-        const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([
-            balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
-        ]);
 
         await gotoAsWallet(page, BUYER, `/s/view?seller=${SELLER}&e2e=devnet`);
         await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
@@ -122,8 +121,11 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
 
         // Value leg — the bond lock, read from the token contract.
         const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
-        const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
-            balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
+        const currency = event.args.currency! as Hex;
+        const at = event.blockNumber!;
+        const [buyerBefore, sellerBefore, coreBefore, buyerAfter, sellerAfter, coreAfter] = await Promise.all([
+            balanceAt(currency, BUYER, at - 1n), balanceAt(currency, SELLER, at - 1n), balanceAt(currency, core, at - 1n),
+            balanceAt(currency, BUYER, at), balanceAt(currency, SELLER, at), balanceAt(currency, core, at),
         ]);
         expect(buyerBefore - buyerAfter, 'buyer bonded 2× payment').toBe(buyerBond);
         expect(sellerBefore - sellerAfter, 'seller bonded 2× cumulative value').toBe(sellerBond);
