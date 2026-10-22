@@ -25,11 +25,15 @@ export function paperSvgFigures(root) {
 }
 
 /** The static export's root: the directory `next build` records in
- *  `<distDir>/export-detail.json` (out/ on a default build). */
+ *  `<distDir>/export-detail.json` (out/ on a default build), else the dist dir
+ *  itself when an e2e build exported into it. */
 export function paperExportDir(cwd = process.cwd(), distDir = process.env.NEXT_DISTDIR || ".next") {
     const detail = join(cwd, distDir, "export-detail.json");
-    if (!existsSync(detail)) throw new Error(`${detail} not found (run next build first)`);
-    return resolve(JSON.parse(readFileSync(detail, "utf8")).outDirectory);
+    if (existsSync(detail)) return resolve(JSON.parse(readFileSync(detail, "utf8")).outDirectory);
+    // An e2e build exports into its own dist dir and records nothing.
+    const inPlace = join(cwd, distDir);
+    if (existsSync(join(inPlace, "index.html"))) return inPlace;
+    throw new Error(`${detail} not found (run next build first)`);
 }
 
 /** The file name the build writes figure `index` (0-based) to. */
