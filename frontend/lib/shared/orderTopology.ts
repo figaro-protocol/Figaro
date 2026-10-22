@@ -14,12 +14,12 @@ import { depthsOverParents } from "@figaro-protocol/sdk";
 
 /** Topology read from first-class draft edges: order id → parent order ids.
  *  A designer draft ALWAYS carries its edges directly on the order
- *  (`parentOrderHashes` — the canvas is the origin of the topology clause's
+ *  (`follows` — the canvas is the origin of the topology clause's
  *  data, pre-commit), so draft topology never touches an agreement. */
 export function draftOrderTopology(
-    orders: readonly { orderHash: string; parentOrderHashes?: string[] }[],
+    orders: readonly { orderHash: string; follows?: string[] }[],
 ): Map<string, string[]> {
-    return new Map(orders.map((o) => [o.orderHash, o.parentOrderHashes ?? []]));
+    return new Map(orders.map((o) => [o.orderHash, o.follows ?? []]));
 }
 
 /** Depth per order id — root = 0, child = max(parent depths) + 1. The math

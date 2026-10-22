@@ -67,7 +67,7 @@ describe("useAssemblyChoices — the designer's words reach the reader", () => {
         const choice = await choiceFor({
             name: "Point of sale",
             summary: "One bonded order at the counter: buyer and seller, no process in between.",
-            agreements: [{ id: "order-0", clauses: {} }],
+            agreements: [{ id: "agreement-0", clauses: {} }],
         });
         expect(choice).toMatchObject({
             state: "loaded",

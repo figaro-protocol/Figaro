@@ -25,7 +25,7 @@ const COMMERCE = SPEC_KEY;
 const TOPOLOGY = `0x${"7c".repeat(32)}`;
 const COMPOSED = { name: "One order", clauses: { [COMMERCE]: {}, [TOPOLOGY]: {} } };
 const ASSEMBLY = {
-    agreements: [{ id: "order-0", agreementHash: agreementHashOf(COMPOSED), clauses: { [TOPOLOGY]: { parentOrderHashes: [] } } }],
+    agreements: [{ id: "agreement-0", agreementHash: agreementHashOf(COMPOSED), clauses: { [TOPOLOGY]: { follows: [] } } }],
 };
 
 /** A gateway serving `bodies[cid]` at /ipfs/<cid>; anything else 404s. */
@@ -73,13 +73,13 @@ test("a clause spec a gateway substituted reads as absence", async () => {
 });
 
 test("a assembly that hashes to its assembly hash is read; a substituted one is absence", async () => {
-    const forged = { agreements: [{ ...ASSEMBLY.agreements[0], clauses: { [TOPOLOGY]: { parentOrderHashes: ["order-9"] } } }] };
+    const forged = { agreements: [{ ...ASSEMBLY.agreements[0], clauses: { [TOPOLOGY]: { follows: ["agreement-9"] } } }] };
     const gw = await gateway({ t: JSON.stringify(ASSEMBLY), forged: JSON.stringify(forged), notAssembly: "{\"x\":1}" });
     try {
         const assembly = { contentURI: "ipfs://t", assemblyHash: assemblyHashOf(ASSEMBLY) };
         const hit = await fetchAnchoredAssembly(assembly, { gateways: [gw.url] });
         assert.equal(hit.absent, undefined, hit.absent);
-        assert.deepEqual(hit.assembly.agreements[0].id, "order-0");
+        assert.deepEqual(hit.assembly.agreements[0].id, "agreement-0");
 
         const swapped = await fetchAnchoredAssembly({ ...assembly, contentURI: "ipfs://forged" }, { gateways: [gw.url] });
         assert.match(swapped.absent, /the registry anchors/);

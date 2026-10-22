@@ -84,12 +84,12 @@ function projectionCases() {
     return {
         defaults: buildOrderAgreement(BUYER, SELLER, byKey({
             "figaro-commerce": commerceData(),
-            "figaro-topology": { parentOrderHashes: [] },
+            "figaro-topology": { follows: [] },
             "figaro-applicable-law": { applicableLaw: "US-NY", forum: "us-federal-court" },
         }), specSource()),
         processLog: buildOrderAgreement(BUYER, SELLER, byKey({
             "figaro-commerce": commerceData(),
-            "figaro-topology": { parentOrderHashes: [] },
+            "figaro-topology": { follows: [] },
             "figaro-merchant-process": {},
         }), specSource()),
     };
@@ -103,8 +103,8 @@ function projectionCases() {
  *  at the assembly level with no values, and the buyer fills it at checkout). */
 function assemblyCase() {
     const orders = [
-        { orderHash: "synthetic-root", parentOrderHashes: [] },
-        { orderHash: "synthetic-child", parentOrderHashes: ["synthetic-root"] },
+        { orderHash: "synthetic-root", follows: [] },
+        { orderHash: "synthetic-child", follows: ["synthetic-root"] },
     ];
     const built = buildAssembly({
         name: "Golden Vector Chain",

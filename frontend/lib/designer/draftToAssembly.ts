@@ -99,7 +99,7 @@ function builtToHydrated(built: BuiltAssembly): HydratedAssembly {
  *  publish (review) or has already published (`/view`): each agreement's
  *  registered agreement with the agreement's own fills merged over it.
  *
- *  Keyed by the assembly's own agreement ids (`order-<i>`). The MANDATORY
+ *  Keyed by the assembly's own agreement ids (`agreement-<i>`). The MANDATORY
  *  clauses are left out here: they come from the registered agreement picked
  *  in the mandatory article, and `assemblyMandatoryClauses` lists them on
  *  their own, by key.
@@ -199,7 +199,7 @@ export function assemblyMandatoryClauses(hydrated: HydratedAssembly): MandatoryC
  *  those bytes produce — the ONE object a review screen renders and the
  *  publish call sends. `composedByOrderId` is re-keyed from the assembly's
  *  local agreement ids back onto the canvas's own order ids (the build labels
- *  agreements `order-<i>` in the snapshot's own order, so the mapping is
+ *  agreements `agreement-<i>` in the snapshot's own order, so the mapping is
  *  positional), so a node on the review canvas reads its own composition out
  *  of the published assembly rather than out of the draft a second time. */
 export type SnapshotReview =

@@ -28,7 +28,7 @@ const composed = { name: "Editorial", clauses: { [keyOf("figaro-commerce")]: {},
 
 const assembly: Assembly = {
     name: "Editorial",
-    agreements: [{ id: "order-0", agreementHash: agreementHashOf(composed), clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
+    agreements: [{ id: "agreement-0", agreementHash: agreementHashOf(composed), clauses: { [keyOf("figaro-topology")]: { follows: [] } } }],
 };
 
 const agreement: Agreement = {
@@ -83,7 +83,7 @@ describe("anchorAssembly", () => {
     });
     it("refuses an agreement whose key is malformed or reserved", () => {
         for (const agreementHash of ["0x1234", PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
-            expect(anchorAssembly({ agreements: [{ id: "order-0", agreementHash, clauses: {} }] }, OTHER)).toBeNull();
+            expect(anchorAssembly({ agreements: [{ id: "agreement-0", agreementHash, clauses: {} }] }, OTHER)).toBeNull();
         }
     });
     it("refuses a document that is not a assembly", () => {
@@ -129,7 +129,7 @@ describe("hydrateAssembly", () => {
     const two: Assembly = {
         agreements: [
             assembly.agreements[0],
-            { id: "order-1", agreementHash: key, clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
+            { id: "agreement-1", agreementHash: key, clauses: { [keyOf("figaro-topology")]: { follows: ["agreement-0"] } } },
         ],
     };
 

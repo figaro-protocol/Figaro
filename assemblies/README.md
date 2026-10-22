@@ -4,7 +4,7 @@ Each file here is a real-world composition a newcomer can recognize, fork, and
 bind to on day one, written in the readable shape: one agreement per order
 (`agreements[]`), each naming the written agreement it binds (`agreement`, a
 file in `agreements/`, the sibling directory) and carrying its own topology
-(`parentOrderHashes`, `order-<j>` labels); `assemblyClauses` by clause name
+(`follows`, `agreement-<j>` labels); `assemblyClauses` by clause name
 (`name@version`) for the terms composed once for the whole design. The
 agreements are written first and reused: `agreements/counter-sale.json` is
 bound by `pos.json` and `equipment-hire.json`, `freelance-deliverable.json` by

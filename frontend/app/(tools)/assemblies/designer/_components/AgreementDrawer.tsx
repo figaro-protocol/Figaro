@@ -141,7 +141,7 @@ export function AgreementDrawer({
     // Topology is first-class on the order (the topology clause's data), read
     // directly — never recovered from the agreement. Forking a live assembly
     // reconstructs these onto the order via fetchAgreement in the fork flow.
-    const parentOrderHashes = order.parentOrderHashes ?? [];
+    const follows = order.follows ?? [];
 
     const presentArticles: readonly string[] = ["identity", "agreements", "registry"];
 
@@ -316,12 +316,12 @@ export function AgreementDrawer({
                                 </div>
                                 <div>
                                     <span className="text-xs text-ink-muted">Position</span>
-                                    {parentOrderHashes && parentOrderHashes.length > 0 ? (
+                                    {follows && follows.length > 0 ? (
                                         <ul
                                             className="font-mono text-[10px] text-ink-body space-y-1 break-all mt-0.5"
                                             data-testid="drawer-identity-parents"
                                         >
-                                            {parentOrderHashes.map((p) => (
+                                            {follows.map((p) => (
                                                 <li key={p}>{p}</li>
                                             ))}
                                         </ul>

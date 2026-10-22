@@ -40,7 +40,7 @@ import {
 } from "@/lib/checkout/checkoutDerivations";
 import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
-import { assemblyParentOrderHashes } from "@/lib/shared/assembly";
+import { assemblyFollows } from "@/lib/shared/assembly";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
@@ -520,7 +520,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // order; the final per-order sign confirmation is the shared agreement-preview
     // gate (the same one the seller's accept uses).
     const pickedRoot = pickedAssembly
-        ? (pickedAssembly.hydratedAssembly.assembly.agreements.find((o) => assemblyParentOrderHashes(o).length === 0)
+        ? (pickedAssembly.hydratedAssembly.assembly.agreements.find((o) => assemblyFollows(o).length === 0)
             ?? pickedAssembly.hydratedAssembly.assembly.agreements[0])
         : undefined;
     const cartUnitAmount = (item: (typeof cartItems)[number]) =>

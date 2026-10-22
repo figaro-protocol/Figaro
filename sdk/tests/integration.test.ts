@@ -291,7 +291,7 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         //       ceiling; the priced fields name the buyer's OWN clause. ──
         const chainNow = (await publicClient.getBlock({ blockTag: "latest" })).timestamp;
         const assembly = hydrateAuthored({
-            agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
+            agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } }],
         });
         const GATE_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
         const pricedFields = [

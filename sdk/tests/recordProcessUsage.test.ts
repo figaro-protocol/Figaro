@@ -18,7 +18,7 @@ const CORE = "0x0000000000000000000000000000000000c0ffee" as Address;
 const COMMERCE = keyOf("figaro-commerce");
 const MODALITIES = keyOf("figaro-modalities");
 const AGREEMENT_HASH = keccak256(encodePacked(["string"], ["an-agreement"]));
-const ASSEMBLY: Assembly = { agreements: [{ id: "order-0", agreementHash: AGREEMENT_HASH, clauses: {} }] };
+const ASSEMBLY: Assembly = { agreements: [{ id: "agreement-0", agreementHash: AGREEMENT_HASH, clauses: {} }] };
 const COMPOSITION = assemblyHashOf(ASSEMBLY);
 
 function order(salt: bigint): Commitment {

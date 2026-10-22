@@ -60,14 +60,14 @@ export default function Assemblies() {
                     className="my-8"
                     designHeading="One registered assembly"
                     designNodes={[
-                        { label: "order-0 · shipper" },
-                        { label: "order-1 · inspection", branch: true },
-                        { label: "order-2 · freight forwarder" },
-                        { label: "order-3 · ocean carrier" },
-                        { label: "order-4 · customs agent" },
-                        { label: "order-5 · drayage" },
+                        { label: "agreement-0 · shipper" },
+                        { label: "agreement-1 · inspection", branch: true },
+                        { label: "agreement-2 · freight forwarder" },
+                        { label: "agreement-3 · ocean carrier" },
+                        { label: "agreement-4 · customs agent" },
+                        { label: "agreement-5 · drayage" },
                     ]}
-                    branchNote="spawned from order-0, not the next link"
+                    branchNote="spawned from agreement-0, not the next link"
                     rootBuyerLabel="Importer of record"
                     commitOrder={[
                         "importer → shipper · G1",
@@ -82,8 +82,8 @@ export default function Assemblies() {
                         "and the only quantity it accumulates. Each seller bonds 2 × G at its own",
                         "commit, so G6 is the whole chain's value. The parent-child links ride in",
                         "the agreement as a topology clause: merkle-bound at commit, never a field",
-                        "the Core stores — which is why order-1 can hang off order-0 at design",
-                        "time while order-2 carries the line onward.",
+                        "the Core stores — which is why agreement-1 can hang off agreement-0 at design",
+                        "time while agreement-2 carries the line onward.",
                     ]}
                     figureTitle="A composed assembly, and the commit sequence it becomes"
                     figureDesc={
@@ -179,7 +179,7 @@ export default function Assemblies() {
                                 <td className="py-2">An agreement&apos;s key is the hash of the clause keys it composes and the designer&apos;s fills. A different clause set, one different design fill, or another clause that shares a name is a different agreement, so a different assembly.</td>
                             </tr>
                             <tr>
-                                <td className="py-2 pr-4">the topology, carried as a clause in each order (<code>parentOrderHashes</code>)</td>
+                                <td className="py-2 pr-4">the topology, carried as a clause in each order (<code>follows</code>)</td>
                                 <td className="py-2 pr-4 font-semibold">Yes</td>
                                 <td className="py-2">The registered agreement leaves it empty; each order fills it in its own leaf. Re-wire the chain, get a new assembly from the same agreements.</td>
                             </tr>

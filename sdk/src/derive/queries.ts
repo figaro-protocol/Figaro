@@ -76,10 +76,10 @@ export interface MarketShape {
  *  0-rooted via `depthsOverParents`. */
 function chainShapeOf(
     orders: readonly Order[],
-    parentOrderHashesOf: (orderHash: Hex) => readonly Hex[],
+    followsOf: (orderHash: Hex) => readonly Hex[],
 ): { orderCount: number; depth: number; maxWidth: number } {
     const ids = orders.map((o) => o.orderHash);
-    const depths = depthsOverParents(ids, (id) => [...parentOrderHashesOf(id as Hex)]);
+    const depths = depthsOverParents(ids, (id) => [...followsOf(id as Hex)]);
     let depth = 0;
     const widthAt = new Map<number, number>();
     for (const d of depths.values()) {
@@ -96,13 +96,13 @@ function chainShapeOf(
  * @param graph            the projected process graph
  * @param assemblyKeyOf    caller-supplied attribution: processId → assembly
  *                         key, `undefined` when the process is unattributed
- * @param parentOrderHashesOf  caller-supplied parent edges from decoded
+ * @param followsOf  caller-supplied parent edges from decoded
  *                         topology clauses; omitted = FigaroCore's linear view
  */
 export function marketShape(
     graph: ProcessGraph,
     assemblyKeyOf: (processId: Hex) => string | undefined,
-    parentOrderHashesOf?: (orderHash: Hex) => readonly Hex[],
+    followsOf?: (orderHash: Hex) => readonly Hex[],
 ): MarketShape {
     const groups = new Map<string, MarketShapeGroup>();
     // Per-group working state kept off the public shape.
@@ -152,8 +152,8 @@ export function marketShape(
             if (order.state === OrderState.Resolved) volume.settled += order.payment;
         }
 
-        const shape = parentOrderHashesOf
-            ? chainShapeOf(orders, parentOrderHashesOf)
+        const shape = followsOf
+            ? chainShapeOf(orders, followsOf)
             : {
                 orderCount: orders.length,
                 depth: Math.max(0, orders.length - 1),

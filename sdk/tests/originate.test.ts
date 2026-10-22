@@ -40,7 +40,7 @@ const buyerW = createWalletClient({ account: BUYER, transport: http("http://loca
 const sellerW = createWalletClient({ account: SELLER, transport: http("http://localhost:0") });
 
 const assembly = hydrateAuthored({
-    agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
+    agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } }],
 });
 const overrides = { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }] } };
 
@@ -65,11 +65,11 @@ describe("instantiateRootAgreement", () => {
         expect(a.seller).toBe(SELLER.address);
     });
 
-    it("picks the root agreement (no non-empty parentOrderHashes) from a multi-agreement assembly", () => {
+    it("picks the root agreement (no non-empty follows) from a multi-agreement assembly", () => {
         const multi = hydrateAuthored({
             agreements: [
-                { id: "order-1", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["0xabc"] } } },
-                { id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } },
+                { id: "agreement-1", clauses: { [keyOf("figaro-topology")]: { follows: ["0xabc"] } } },
+                { id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } },
             ],
         });
         const a = instantiateRootAgreement(multi, { buyer: BUYER.address, seller: SELLER.address });
@@ -287,7 +287,7 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
         assemblyClauses: {
             [keyOf("figaro-utility-token")]: { currency: PIN },
         },
-        agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
+        agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } }],
     });
 
     it("instantiateRootAgreement folds assemblyClauses into the root agreement", () => {
@@ -351,10 +351,10 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
             [keyOf("figaro-applicable-law")]: {},
         },
         agreements: [{
-            id: "order-0",
+            id: "agreement-0",
             clauses: {
                 [keyOf("figaro-commerce")]: {},
-                [keyOf("figaro-topology")]: { parentOrderHashes: [] },
+                [keyOf("figaro-topology")]: { follows: [] },
                 [keyOf("figaro-consent")]: { documents: DOCS },
             },
         }],
@@ -422,7 +422,7 @@ describe("the seller's bound assemblies — the offer leg refuses an order under
     // A structurally different assembly (its own clause selection), so its
     // assembly hash differs from the one the orders instantiate.
     const elsewhere = hydrateAuthored({
-        agreements: [{ id: "order-0", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
+        agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-topology")]: { follows: [] } } }],
     });
     const offeredHash = assemblyHashOf(assembly.assembly);
     const CTX = { chainId: CHAIN, core: CORE };

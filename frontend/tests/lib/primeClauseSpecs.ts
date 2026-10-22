@@ -131,7 +131,7 @@ export function referenceAssembly(name: string): HydratedAssembly {
 
 /** A hydrated assembly from the INLINE shape a test writes
  *  (`agreements[].clauses` by clause key or name, the topology clause
- *  carrying its parents as `order-<j>` labels): each agreement's parents
+ *  carrying its parents as `agreement-<j>` labels): each agreement's parents
  *  lifted into its own fill (the clause stays composed, with `{}`) and each
  *  agreement's agreement keyed — every registered agreement beside the
  *  assembly, keyed by lowercased key, as a registry read hands them to
@@ -151,16 +151,16 @@ export function hydrateAuthored(authored: object, opts: { pick?: boolean } = {})
         } & Record<string, unknown>;
         const byName: Record<string, RegisteredAgreement> = {};
         const entries = written.map((entry, i) => {
-            const id = entry.id ?? `order-${i}`;
+            const id = entry.id ?? `agreement-${i}`;
             const clauses: Record<string, Record<string, unknown>> = {};
             let parents: string[] | undefined;
             for (const [key, values] of Object.entries(entry.clauses)) {
-                const { parentOrderHashes, ...composed } = values ?? {};
+                const { follows, ...composed } = values ?? {};
                 clauses[key] = composed;
-                if (Array.isArray(parentOrderHashes)) parents = [...parentOrderHashes] as string[];
+                if (Array.isArray(follows)) parents = [...follows] as string[];
             }
             byName[id] = composeAuthoredAgreement({ clauses: { ...mandatory, ...clauses } }, specSource()).document;
-            return { id, agreement: id, ...(parents ? { parentOrderHashes: parents } : {}) };
+            return { id, agreement: id, ...(parents ? { follows: parents } : {}) };
         });
         const { assembly, agreements } = assembleAuthored({ ...rest, agreements: entries }, byName, specSource());
         for (const [key, doc] of Object.entries(agreements)) byKey[key.toLowerCase() as Hex] = doc;
@@ -173,9 +173,9 @@ export function hydrateAuthored(authored: object, opts: { pick?: boolean } = {})
         const clauses: Record<Hex, Record<string, unknown>> = {};
         const fills: Record<Hex, Record<string, unknown>> = {};
         for (const [key, values] of Object.entries(entry.clauses) as [Hex, Record<string, unknown>][]) {
-            const { parentOrderHashes, ...composed } = values ?? {};
+            const { follows, ...composed } = values ?? {};
             clauses[key] = composed;
-            if (Array.isArray(parentOrderHashes)) fills[key] = { parentOrderHashes: [...parentOrderHashes] };
+            if (Array.isArray(follows)) fills[key] = { follows: [...follows] };
         }
         const agreementHash = agreementHashOf({ clauses });
         byKey[agreementHash.toLowerCase() as Hex] = { clauses };

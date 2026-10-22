@@ -324,7 +324,7 @@ export type {
 export {
     assemblyHashOf,
     deriveAssemblySlug,
-    assemblyParentOrderHashes,
+    assemblyFollows,
     assemblyComposedClauseKeys,
     agreementHashOf,
     agreementClauseLeaves,

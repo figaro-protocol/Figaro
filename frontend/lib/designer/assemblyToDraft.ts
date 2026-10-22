@@ -63,7 +63,7 @@ export function assemblyToOrders(hydrated: HydratedAssembly): Order[] {
             payment: DISPLAY_PAYMENT,
             salt: BigInt(planned.index + 1),
             clauseFields: planned.clauses as ClauseFields,
-            parentOrderHashes: planned.parentLocalIds,
+            follows: planned.parentLocalIds,
         }).order,
     );
 }

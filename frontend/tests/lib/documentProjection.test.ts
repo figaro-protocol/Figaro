@@ -53,7 +53,7 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
     it("bill-of-lading: one per CARRIAGE LEG, with generic cargo/freight leaf sections", async () => {
         await primeClauseSpecs(ALL);
         const carriage = agreement([
-            { clause: "figaro-topology", data: { parentOrderHashes: ["0xPARENT"] } },
+            { clause: "figaro-topology", data: { follows: ["0xPARENT"] } },
             { clause: "figaro-courier-process", data: {} },
             { clause: "figaro-geolocation", data: { origin: "9q8yy", destination: "9q8yyk8yu" } },
             { clause: "figaro-cargo", data: { massGrams: 500, volumeMl: 1000 } },

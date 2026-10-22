@@ -31,7 +31,7 @@ const courierAW = createWalletClient({ account: COURIER_A, transport: http("http
 const courierBW = createWalletClient({ account: COURIER_B, transport: http("http://localhost:0") });
 
 const assembly = hydrateAuthored({
-    agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
+    agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } }],
 });
 
 const policy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 10_000n };
@@ -459,7 +459,7 @@ describe("the seller's bound assemblies — the race and quote legs refuse a dra
     // A structurally different assembly (its own clause selection), so its
     // assembly hash differs from the one the orders instantiate.
     const elsewhere = hydrateAuthored({
-        agreements: [{ id: "order-0", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
+        agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-topology")]: { follows: [] } } }],
     });
     const draftHash = assemblyHashOf(assembly.assembly);
     const NOT_BINDING = profileBinding(elsewhere);

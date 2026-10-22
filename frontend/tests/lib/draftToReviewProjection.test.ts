@@ -132,7 +132,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
         expect(listed(drawn.orders[0].orderHash)).toEqual(["figaro-acceptance-criteria#1", "figaro-schedule#1"]);
         expect(listed(drawn.orders[1].orderHash)).toEqual(["figaro-acceptance-criteria#1"]);
         // The same listing the /view path reads off a published assembly.
-        expect(assemblyComposedClauses(review.hydrated)["order-0"].map((c) => c.clauseKey).sort())
+        expect(assemblyComposedClauses(review.hydrated)["agreement-0"].map((c) => c.clauseKey).sort())
             .toEqual(keys(ORDER_CLAUSES).sort());
     });
 
@@ -143,7 +143,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
             .toEqual(drawn.orders.map((o) => o.orderHash).sort());
         // The assembly itself still speaks its own labels — the re-keying is
         // the projection's, so a review node finds its own composition.
-        expect(review.assembly.agreements.map((a) => a.id)).toEqual(["order-0", "order-1"]);
+        expect(review.assembly.agreements.map((a) => a.id)).toEqual(["agreement-0", "agreement-1"]);
     });
 
     it("is the SAME BYTES publish anchors — one assembly, one hash", () => {
@@ -201,8 +201,8 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
         // The `/view` path reads the pinned bytes directly — keyed by the
         // assembly's agreement ids, the mandatory clauses listed apart.
         const byAgreement = assemblyComposedByAgreement(review.hydrated);
-        expect(Object.keys(byAgreement)).toEqual(["order-0", "order-1"]);
-        expect(Object.keys(byAgreement["order-0"]).sort()).toEqual(keys(ORDER_CLAUSES).sort());
+        expect(Object.keys(byAgreement)).toEqual(["agreement-0", "agreement-1"]);
+        expect(Object.keys(byAgreement["agreement-0"]).sort()).toEqual(keys(ORDER_CLAUSES).sort());
     });
 });
 
@@ -357,8 +357,8 @@ describe("the mandatory clauses — written into every agreement, each listed on
         if (!review.ok) throw new Error(review.error);
         const listed = review.mandatory.map((f) => `${f.clauseId}#${f.version}:${f.carriedBy.join(",")}`).sort();
         expect(listed).toEqual([
-            "figaro-commerce#1:order-0,order-1",
-            "figaro-topology#1:order-0,order-1",
+            "figaro-commerce#1:agreement-0,agreement-1",
+            "figaro-topology#1:agreement-0,agreement-1",
         ]);
         expect(review.mandatory.map((f) => f.clauseKey).sort()).toEqual(keys(MANDATORY).sort());
         // The complement of the composed readout: together they are the assembly.
@@ -390,9 +390,9 @@ describe("the mandatory clauses — written into every agreement, each listed on
             clauseKey: lookalike,
             clauseId: "figaro-commerce",
             version: 98,
-            carriedBy: ["order-0"],
+            carriedBy: ["agreement-0"],
         }));
         // The DAO's commerce stays on the order the canvas composed.
-        expect(review.mandatory).toContainEqual(expect.objectContaining({ clauseId: "figaro-commerce", version: 1, carriedBy: ["order-1"] }));
+        expect(review.mandatory).toContainEqual(expect.objectContaining({ clauseId: "figaro-commerce", version: 1, carriedBy: ["agreement-1"] }));
     });
 });

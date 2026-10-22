@@ -1,14 +1,14 @@
 {
     "agreements": [
         {
-            "id": "order-0",
+            "id": "agreement-0",
             "agreement": "merchant-order"
         },
         {
-            "id": "order-1",
+            "id": "agreement-1",
             "agreement": "courier-delivery",
-            "parentOrderHashes": [
-                "order-0"
+            "follows": [
+                "agreement-0"
             ]
         }
     ],

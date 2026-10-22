@@ -180,7 +180,7 @@ Two things the Core does not hold, which no amount of querying will produce:
   the seller finding it on chain.
 - **There is no unfilled edge.** `FigaroCore` sees a linear chain of commits against a
   monotonic accumulator; parent-order edges are a committed TERM —
-  `figaro-topology`'s `parentOrderHashes`, empty for a root — so the DAG is
+  `figaro-topology`'s `follows`, empty for a root — so the DAG is
   reconstructed off-chain from agreements, never queried from the Core.
 
 **Committed content is read against the spec that declares it, never against a
@@ -225,7 +225,7 @@ which registered agreement and which registered assembly an order instantiated �
 the same values the once-per-process agreement and assembly credits are claimed
 from, each counting only while its own registry holds a live binding, the
 assembly credit with the agreement's membership proof under the root — and `figaro-topology`'s
-`parentOrderHashes` carries the edges the Core does not store. Both are merkle
+`follows` carries the edges the Core does not store. Both are merkle
 leaves under `checkoutHash`, so a provenance claim is verifiable by inclusion proof
 against the on-chain root instead of trusted from an index. That supports asking
 which processes instantiated a given assembly and how their orders relate. It does

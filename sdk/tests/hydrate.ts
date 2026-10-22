@@ -1,8 +1,8 @@
 /**
  * Test helper: a hydrated assembly from the AUTHORED shape the tests write
  * (`agreements[].clauses` keyed by clause key, the topology clause carrying
- * its parents as `order-<j>` labels). Each authored agreement becomes a
- * registered agreement with the `parentOrderHashes` values lifted into its
+ * its parents as `agreement-<j>` labels). Each authored agreement becomes a
+ * registered agreement with the `follows` values lifted into its
  * agreement's own fill (the clause stays composed, with `{}`), as the seeding
  * derives a reference assembly (`composeAuthoredAgreement`, `assembleAuthored`)
  * — with no mandatory pick, so a test's clause set is the one it wrote.
@@ -26,9 +26,9 @@ export function hydrateAuthored(authored: AuthoredAssembly): HydratedAssembly {
         const clauses: Record<Hex, Record<string, unknown>> = {};
         const fills: Record<Hex, Record<string, unknown>> = {};
         for (const [key, values] of Object.entries(entry.clauses) as [Hex, Record<string, unknown>][]) {
-            const { parentOrderHashes, ...rest } = values;
+            const { follows, ...rest } = values;
             clauses[key] = rest;
-            if (Array.isArray(parentOrderHashes)) fills[key] = { parentOrderHashes };
+            if (Array.isArray(follows)) fills[key] = { follows };
         }
         const agreementHash = agreementHashOf({ clauses });
         agreements[agreementHash.toLowerCase() as Hex] = { clauses };

@@ -2,10 +2,10 @@
     "clauseId": "figaro-topology",
     "version": 1,
     "title": "Order topology",
-    "description": "States the topology of an order within a process. On chain, FigaroCore stores only per-process accumulator state; parent-order edges are carried here and committed via checkoutHash.",
+    "description": "States the topology of an order within a process: the orders it follows. On chain, FigaroCore stores only per-process accumulator state; the edges are carried here and committed via checkoutHash.",
     "fields": [
         {
-            "name": "parentOrderHashes",
+            "name": "follows",
             "type": "array",
             "required": true,
             "minItems": 0,
@@ -15,7 +15,7 @@
                 "name": "parent",
                 "required": true
             },
-            "description": "Parent order hashes (bytes32 hex). Empty for root orders."
+            "description": "The order hashes (bytes32 hex) of the orders this order follows; at design time, the labels of the agreements the agreement follows. Empty for a root order."
         }
     ],
     "stages": {},

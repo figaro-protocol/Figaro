@@ -155,7 +155,7 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
                 buyer: buyerAccount.address,
                 seller: sellerAccount.address,
                 clauses: [
-                    { clause: TOPOLOGY_CLAUSE, data: { parentOrderHashes: [] } },
+                    { clause: TOPOLOGY_CLAUSE, data: { follows: [] } },
                     {
                         clause: COMMERCE_CLAUSE,
                         data: {

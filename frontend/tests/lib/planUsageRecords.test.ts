@@ -37,7 +37,7 @@ const MODALITIES = keccak256(encodePacked(["string"], ["a modalities spec's byte
 // The registered agreement the agreement binds, and the one-entry assembly
 // whose root is the assembly hash the provenance names.
 const AGREEMENT_HASH = agreementHashOf({ clauses: { [COMMERCE]: {}, [MODALITIES]: {} } });
-const ASSEMBLY: Assembly = { agreements: [{ id: "order-0", agreementHash: AGREEMENT_HASH, clauses: {} }] };
+const ASSEMBLY: Assembly = { agreements: [{ id: "agreement-0", agreementHash: AGREEMENT_HASH, clauses: {} }] };
 const COMPOSITION = assemblyHashOf(ASSEMBLY);
 const BUYER = "0x0000000000000000000000000000000000000b0b" as Address;
 const CURRENCY = "0x00000000000000000000000000000000000007ed" as Address;

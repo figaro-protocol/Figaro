@@ -31,16 +31,16 @@ function agreement(clauses: Agreement["clauses"]): Agreement {
 describe("extractContract — the order's place in its process", () => {
     it("reads a root order from the chain when no topology clause is composed", () => {
         const c = extractContract(order(100n, 100n), agreement([]));
-        expect(c.topology).toEqual({ position: "root", composed: false, parentOrderHashes: [] });
+        expect(c.topology).toEqual({ position: "root", composed: false, follows: [] });
     });
 
     it("never reports a sub-order as a root when its agreement composes no topology clause", () => {
         const c = extractContract(order(30n, 130n), agreement([]));
-        expect(c.topology).toEqual({ position: "sub-order", composed: false, parentOrderHashes: [] });
+        expect(c.topology).toEqual({ position: "sub-order", composed: false, follows: [] });
     });
 
     it("carries the composed parent links beside the chain's position", () => {
-        const c = extractContract(order(30n, 130n), agreement([{ clause: keyOf("figaro-topology"), data: { parentOrderHashes: [PARENT] } }]));
-        expect(c.topology).toEqual({ position: "sub-order", composed: true, parentOrderHashes: [PARENT] });
+        const c = extractContract(order(30n, 130n), agreement([{ clause: keyOf("figaro-topology"), data: { follows: [PARENT] } }]));
+        expect(c.topology).toEqual({ position: "sub-order", composed: true, follows: [PARENT] });
     });
 });

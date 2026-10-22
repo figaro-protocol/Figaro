@@ -58,20 +58,20 @@ describe("deriveAgreementGroups — spec reads by key", () => {
     });
 
     it("keeps an agreement's consent clause in the review, ordinary", () => {
-        const groups = groupsFor({ agreements: [{ id: "order-0", clauses: { [SPEC_V1.clauseKey]: DOCUMENTS } }] });
-        expect(reviewed(groups, "order-0")).toEqual([SPEC_V1.clauseKey]);
-        expect(rowOf(groups, "order-0", SPEC_V1.clauseKey)?.mandatory).toBe(false);
+        const groups = groupsFor({ agreements: [{ id: "agreement-0", clauses: { [SPEC_V1.clauseKey]: DOCUMENTS } }] });
+        expect(reviewed(groups, "agreement-0")).toEqual([SPEC_V1.clauseKey]);
+        expect(rowOf(groups, "agreement-0", SPEC_V1.clauseKey)?.mandatory).toBe(false);
     });
 
     it("lists the clause composed under the mandatory lookalike's key, marked mandatory and not fillable", () => {
-        const groups = groupsFor({ agreements: [{ id: "order-0", clauses: { [V99.clauseKey]: DOCUMENTS } }] });
-        expect(reviewed(groups, "order-0")).toEqual([V99.clauseKey]);
-        expect(rowOf(groups, "order-0", V99.clauseKey)).toMatchObject({ mandatory: true, fillable: false, data: DOCUMENTS });
+        const groups = groupsFor({ agreements: [{ id: "agreement-0", clauses: { [V99.clauseKey]: DOCUMENTS } }] });
+        expect(reviewed(groups, "agreement-0")).toEqual([V99.clauseKey]);
+        expect(rowOf(groups, "agreement-0", V99.clauseKey)).toMatchObject({ mandatory: true, fillable: false, data: DOCUMENTS });
         expect(unfilledRequiredFills(groups, {})).toEqual([]);
     });
 
     it("keeps an assembly-scoped consent clause in the assembly terms", () => {
-        const groups = groupsFor({ assemblyClauses: { [SPEC_V1.clauseKey]: DOCUMENTS }, agreements: [{ id: "order-0", clauses: {} }] });
+        const groups = groupsFor({ assemblyClauses: { [SPEC_V1.clauseKey]: DOCUMENTS }, agreements: [{ id: "agreement-0", clauses: {} }] });
         expect(reviewed(groups, "assembly")).toEqual([SPEC_V1.clauseKey]);
         expect(rowOf(groups, "assembly", SPEC_V1.clauseKey)?.mandatory).toBe(false);
     });
@@ -79,7 +79,7 @@ describe("deriveAgreementGroups — spec reads by key", () => {
     it("lists an assembly-scoped clause under the mandatory key, marked mandatory and not fillable", () => {
         const groups = groupsFor({
             assemblyClauses: { [V99.clauseKey]: DOCUMENTS },
-            agreements: [{ id: "order-0", clauses: {} }],
+            agreements: [{ id: "agreement-0", clauses: {} }],
         });
         expect(reviewed(groups, "assembly")).toEqual([V99.clauseKey]);
         expect(rowOf(groups, "assembly", V99.clauseKey)).toMatchObject({ mandatory: true, fillable: false });
@@ -87,10 +87,10 @@ describe("deriveAgreementGroups — spec reads by key", () => {
 
     it("lists every clause the agreement carries, in the assembly's order", () => {
         const groups = groupsFor({
-            agreements: [{ id: "order-0", clauses: { [V99.clauseKey]: DOCUMENTS, [UNLOADED]: {} } }],
+            agreements: [{ id: "agreement-0", clauses: { [V99.clauseKey]: DOCUMENTS, [UNLOADED]: {} } }],
         });
         // An unloaded spec is not mandatory: listed, read as an ordinary clause.
-        expect(reviewed(groups, "order-0")).toEqual([V99.clauseKey, UNLOADED]);
+        expect(reviewed(groups, "agreement-0")).toEqual([V99.clauseKey, UNLOADED]);
         expect(groups[0].clauses.map((c) => c.mandatory)).toEqual([true, false]);
     });
 });
@@ -120,16 +120,16 @@ describe("buyerAuthoredFields — the offered fields are the composed key's", ()
     });
 
     it("the original's clause offers no field and demands no term", () => {
-        const groups = groupsFor({ agreements: [{ id: "order-0", clauses: { [SPEC_V1.clauseKey]: DOCUMENTS } }] });
-        const row = groups.find((g) => g.key === "order-0")?.clauses[0];
+        const groups = groupsFor({ agreements: [{ id: "agreement-0", clauses: { [SPEC_V1.clauseKey]: DOCUMENTS } }] });
+        const row = groups.find((g) => g.key === "agreement-0")?.clauses[0];
         expect(row?.clauseKey).toBe(SPEC_V1.clauseKey);
         expect(row?.fillable).toBe(false);
         expect(unfilledRequiredFills(groups, {})).toEqual([]);
     });
 
     it("a clause composed under the lookalike's key offers and demands its own terms (its empty documents included)", () => {
-        const groups = groupsFor({ agreements: [{ id: "order-0", clauses: { [SPEC_V50.clauseKey]: DOCUMENTS } }] });
-        const row = groups.find((g) => g.key === "order-0")?.clauses[0];
+        const groups = groupsFor({ agreements: [{ id: "agreement-0", clauses: { [SPEC_V50.clauseKey]: DOCUMENTS } }] });
+        const row = groups.find((g) => g.key === "agreement-0")?.clauses[0];
         expect(row?.clauseKey).toBe(SPEC_V50.clauseKey);
         expect(row?.fillable).toBe(true);
         expect(unfilledRequiredFills(groups, {}).map((m) => `${m.clauseKey === SPEC_V50.clauseKey}:${m.fieldName}`))

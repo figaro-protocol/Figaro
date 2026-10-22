@@ -92,7 +92,7 @@ export function buildSyntheticOrder(params: {
     payment: bigint;
     salt: bigint;
     clauseFields: ClauseFields;
-    parentOrderHashes?: string[];
+    follows?: string[];
 }): CreatedOrder {
     // The clause map IS the seller's pinned assembly, valued for this order —
     // buildOrderAgreement projects it, names no clause.
@@ -116,7 +116,7 @@ export function buildSyntheticOrder(params: {
         checkoutHash,
         // First-class topology edges (the topology clause's data) — read directly by
         // the topology deriver, never recovered from the agreement.
-        parentOrderHashes: params.parentOrderHashes ?? [],
+        follows: params.follows ?? [],
         // Value-free draft: zeros satisfy the shared Order shape; never rendered
         // (designer-mode nodes show no amounts), never published, never signed.
         cumulativeValue: 0n,
@@ -179,7 +179,7 @@ export function createSyntheticSubOrder(
         payment,
         salt: BigInt(orderIndex + 1),
         clauseFields: { ...defaultNodeClauseFields(), ...clauseFieldOverrides },
-        parentOrderHashes: [parent.orderHash],
+        follows: [parent.orderHash],
     });
 }
 
@@ -209,7 +209,7 @@ export function mergeSyntheticParent(
 ): MergeResult {
     if (newParentId === child.orderHash) return { ok: false, reason: "self-loop" };
 
-    const existingParents = child.parentOrderHashes ?? [];
+    const existingParents = child.follows ?? [];
 
     if (existingParents.includes(newParentId)) {
         return { ok: false, reason: "duplicate-parent" };
@@ -236,7 +236,7 @@ export function mergeSyntheticParent(
     }
 
     const nextParents = [...existingParents, newParentId];
-    // Topology is first-class on the order (parentOrderHashes below); the
+    // Topology is first-class on the order (follows below); the
     // agreement projects the node's assembly clauses.
     const { agreement: newAgreement, checkoutHash: newCheckoutHash } = buildOrderAgreement(
         child.buyer as `0x${string}`,
@@ -248,7 +248,7 @@ export function mergeSyntheticParent(
 
     return {
         ok: true,
-        child: { ...child, checkoutHash: newCheckoutHash, parentOrderHashes: nextParents },
+        child: { ...child, checkoutHash: newCheckoutHash, follows: nextParents },
     };
 }
 

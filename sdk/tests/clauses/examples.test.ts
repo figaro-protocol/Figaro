@@ -40,7 +40,7 @@ describe("example clause specs — parse + validate sample content", () => {
         if (!parsed.ok) throw new Error("spec failed to parse");
         // The clause stores only the edges; mode (root/explicit/linear) is
         // DERIVED from them, never stored.
-        const root = { parentOrderHashes: [] };
+        const root = { follows: [] };
         expect(validateContent(root, parsed.spec).ok).toBe(true);
     });
 
@@ -48,7 +48,7 @@ describe("example clause specs — parse + validate sample content", () => {
         const parsed = parseClauseSpec(topologySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const child = {
-            parentOrderHashes: ["0x" + "ab".repeat(32), "0x" + "cd".repeat(32)],
+            follows: ["0x" + "ab".repeat(32), "0x" + "cd".repeat(32)],
         };
         expect(validateContent(child, parsed.spec).ok).toBe(true);
     });
@@ -56,7 +56,7 @@ describe("example clause specs — parse + validate sample content", () => {
     it("figaro-topology rejects malformed parent hashes", () => {
         const parsed = parseClauseSpec(topologySpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        const bogus = { parentOrderHashes: ["not-hex"] };
+        const bogus = { follows: ["not-hex"] };
         expect(validateContent(bogus, parsed.spec).ok).toBe(false);
     });
 

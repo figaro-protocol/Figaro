@@ -68,13 +68,13 @@ export interface ContractDocument extends ExtractedDocument {
      *   - `position` from the chain: a root order's cumulative value equals its
      *     payment, and every later order's is larger.
      *   - `composed`: whether the agreement composes a topology clause.
-     *   - `parentOrderHashes`: the parent links that clause holds (several for a
+     *   - `follows`: the parent links that clause holds (several for a
      *     fan-in node), empty when it composes none.
      */
     topology: {
         position: "root" | "sub-order";
         composed: boolean;
-        parentOrderHashes: string[];
+        follows: string[];
     };
     /** Canonical method — the modality clause's raw value (consume-onsite |
      *  pickup | delivery | virtual | any registry-defined modality). The
@@ -113,15 +113,15 @@ function extractJurisdictionSummary(agreement: Agreement) {
 }
 
 function extractTopology(order: Order, agreement: Agreement): ContractDocument["topology"] {
-    const topology = clauseByField(agreement, "parentOrderHashes", specSource());
-    const data = topology?.data as { parentOrderHashes?: unknown } | undefined;
-    const parentOrderHashes = Array.isArray(data?.parentOrderHashes)
-        ? (data.parentOrderHashes.filter((p) => typeof p === "string") as string[])
+    const topology = clauseByField(agreement, "follows", specSource());
+    const data = topology?.data as { follows?: unknown } | undefined;
+    const follows = Array.isArray(data?.follows)
+        ? (data.follows.filter((p) => typeof p === "string") as string[])
         : [];
     return {
         position: order.cumulativeValue === order.payment ? "root" : "sub-order",
         composed: topology !== undefined,
-        parentOrderHashes,
+        follows,
     };
 }
 

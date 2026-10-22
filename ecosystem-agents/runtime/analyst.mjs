@@ -475,15 +475,15 @@ function assemblyAttribution(corpus) {
 
 /**
  * Parent edges from held agreements' topology clauses, found by the declared
- * `parentOrderHashes` field. Returns `undefined` when NO held agreement
+ * `follows` field. Returns `undefined` when NO held agreement
  * carries edges — the caller then omits the argument and `marketShape` reports
  * FigaroCore's own linear view rather than a fabricated DAG.
  */
 function parentEdges(corpus) {
     const byOrder = new Map();
     for (const { agreement, order } of corpus.held.byHash.values()) {
-        const clauseEntry = clauseByField(agreement, "parentOrderHashes", corpus.specs);
-        const parents = clauseEntry?.data?.parentOrderHashes;
+        const clauseEntry = clauseByField(agreement, "follows", corpus.specs);
+        const parents = clauseEntry?.data?.follows;
         if (Array.isArray(parents)) byOrder.set(order.orderHash.toLowerCase(), parents);
     }
     if (byOrder.size === 0) return undefined;

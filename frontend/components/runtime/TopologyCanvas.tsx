@@ -220,11 +220,11 @@ export function TopologyCanvas({
 
         const newEdges: Edge[] = [];
         orders.forEach((order) => {
-            const parentOrderHashes = (topology.get(order.orderHash) ?? []).filter(
+            const follows = (topology.get(order.orderHash) ?? []).filter(
                 (parentOrderId) => parentOrderId !== order.orderHash && knownOrderIds.has(parentOrderId),
             );
 
-            parentOrderHashes.forEach((parentOrderId) => {
+            follows.forEach((parentOrderId) => {
                 newEdges.push({
                     id: `${parentOrderId}-${order.orderHash}`,
                     source: parentOrderId,

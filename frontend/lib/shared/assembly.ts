@@ -14,8 +14,8 @@
  * FigaroCore order. Each agreement binds a REGISTERED AGREEMENT by its
  * `AgreementRegistry` key — the clauses composed for that agreement, pinned
  * once and read by key — and carries its own fills over it: the topology
- * clause's parents, as sibling `order-<index>` labels, which is why the
- * topology field is `parentOrderHashes` (at runtime it holds the parent
+ * clause's parents, as sibling `agreement-<index>` labels, which is why the
+ * topology field is `follows` (at runtime it holds the parent
  * orders' FigaroCore order hashes). A reader hydrates the assembly with each
  * agreement's agreement before checkout plans from it. The assembly carries
  * NO party addresses (PARTY-AGNOSTIC — parties bind at adoption/checkout), NO
@@ -33,7 +33,7 @@ export type { Assembly } from "@figaro-protocol/sdk";
 // assembly's identity (the AssemblyRegistry key), and its derived slug —
 // single home is the SDK; re-exported here for the designer/registry surfaces.
 export {
-    assemblyParentOrderHashes,
+    assemblyFollows,
     assemblyHashOf,
     deriveAssemblySlug,
 } from "@figaro-protocol/sdk";

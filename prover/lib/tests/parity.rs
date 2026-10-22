@@ -1171,7 +1171,7 @@ fn every_vector_agreement_credits_its_agreement_and_its_assembly() {
 fn a_vector_membership_proof_from_another_assembly_is_refused() {
     let fx = assembly_vectors();
     let assemblies = fx["assemblies"].as_array().unwrap();
-    // `two-entries` order-1 and `one-entry` order-0 both bind the one-clause agreement.
+    // `two-entries` agreement-1 and `one-entry` agreement-0 both bind the one-clause agreement.
     let two = &assemblies[1];
     let one = &assemblies[0];
     let entry = &two["agreements"][1];

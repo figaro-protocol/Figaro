@@ -20,7 +20,7 @@ import { hydrateAuthored } from "./hydrate.js";
 // commit order. Structure + clauses come straight off the registered agreements —
 // party-agnostic, no baked payment. Parents live INSIDE the topology clause
 // (the real assembly shape — planSubOrderSellers reads them via
-// assemblyParentOrderHashes; a node-level parentOrderHashes field is the
+// assemblyFollows; a node-level follows field is the
 // retired pre-topology-clause shape and is never read).
 const MERCATO = "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f" as const;
 const SWIFT = "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955" as const;
@@ -29,7 +29,7 @@ const ROSSO = "0x976EA74026E726554dB657fA54763abd0C3a0aa9" as const;
 const PROX = keyOf("figaro-proximity-policy");
 const EMISSIONS = keyOf("figaro-emissions");
 const TOPO = keyOf("figaro-topology");
-const parents = (ids: string[]) => ({ [TOPO]: { parentOrderHashes: ids } });
+const parents = (ids: string[]) => ({ [TOPO]: { follows: ids } });
 
 const NO_SPECS = specSourceFromFixtures([]);
 const GEO_SPECS = specSourceFromFixtures(["figaro-geolocation"]);

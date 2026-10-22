@@ -198,7 +198,7 @@ export interface OrderNodeModel {
     currency?: `0x${string}`;
     payment: bigint;
     state: string;
-    parentOrderHashes: string[]; // bytes32 order hashes
+    follows: string[]; // bytes32 order hashes
     /** The order's committed checkout hash — lets consumers load the
      *  agreement and read its clauses (e.g. a courier handoff's
      *  proximity-policy band). */

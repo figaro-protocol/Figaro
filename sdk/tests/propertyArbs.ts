@@ -106,8 +106,8 @@ export const assemblyArb: fc.Arbitrary<Assembly> = fc.record({
     terms: fc.option(fc.dictionary(bytes32Arb, clauseDataArb, { minKeys: 1, maxKeys: 2 }), { nil: undefined }),
 }).map(({ topologyKey, keys, edges, terms }) => {
     const agreements: AssemblyAgreement[] = keys.map((agreementHash, i) => {
-        const parents = i === 0 ? [] : [...new Set(edges[i].map((n) => `order-${n % i}`))];
-        return { id: `order-${i}`, agreementHash, clauses: { [topologyKey]: { parentOrderHashes: parents } } };
+        const parents = i === 0 ? [] : [...new Set(edges[i].map((n) => `agreement-${n % i}`))];
+        return { id: `agreement-${i}`, agreementHash, clauses: { [topologyKey]: { follows: parents } } };
     });
     return { ...(terms ? { assemblyClauses: terms as Assembly["assemblyClauses"] } : {}), agreements };
 });

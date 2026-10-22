@@ -24,7 +24,7 @@ export interface DraftOrder {
     /** The filled clause values for the seller's pinned assembly. */
     clauses: ClauseFields;
     /** Topology position, when composing a sub-order. Optional. */
-    parentOrderHashes?: string[];
+    follows?: string[];
 }
 
 /** Serializable form (bigint payment → string). */
@@ -34,7 +34,7 @@ interface StoredDraftOrder {
     currency: string;
     payment: string;
     clauses: ClauseFields;
-    parentOrderHashes?: string[];
+    follows?: string[];
 }
 
 function toStored(d: DraftOrder): StoredDraftOrder {
@@ -44,7 +44,7 @@ function toStored(d: DraftOrder): StoredDraftOrder {
         currency: d.currency,
         payment: d.payment.toString(),
         clauses: d.clauses,
-        ...(d.parentOrderHashes ? { parentOrderHashes: d.parentOrderHashes } : {}),
+        ...(d.follows ? { follows: d.follows } : {}),
     };
 }
 
@@ -55,7 +55,7 @@ function fromStored(s: StoredDraftOrder): DraftOrder {
         currency: s.currency as `0x${string}`,
         payment: BigInt(s.payment),
         clauses: s.clauses,
-        ...(s.parentOrderHashes ? { parentOrderHashes: s.parentOrderHashes } : {}),
+        ...(s.follows ? { follows: s.follows } : {}),
     };
 }
 

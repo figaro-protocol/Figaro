@@ -530,8 +530,8 @@ describe("buildUsageClaims", () => {
     const OTHER_KEY = keccak256(encodePacked(["string"], ["another-agreement"]));
     const ASSEMBLY: Assembly = {
         agreements: [
-            { id: "order-0", agreementHash: OTHER_KEY, clauses: {} },
-            { id: "order-1", agreementHash: AGREEMENT_HASH, clauses: {} },
+            { id: "agreement-0", agreementHash: OTHER_KEY, clauses: {} },
+            { id: "agreement-1", agreementHash: AGREEMENT_HASH, clauses: {} },
         ],
     };
     const COMPOSITION = assemblyHashOf(ASSEMBLY);

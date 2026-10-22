@@ -57,7 +57,7 @@ contract UsageCounterTest is Test {
     bytes32 constant AGR2_KEY = keccak256("a-second-agreement");
     /// @dev Agreement 1's own fills: the topology clause naming agreement 0.
     string constant TOPOLOGY_FILL =
-        '{"0x7070000000000000000000000000000000000000000000000000000000000000":{"parentOrderHashes":["order-0"]}}';
+        '{"0x7070000000000000000000000000000000000000000000000000000000000000":{"follows":["agreement-0"]}}';
     /// @dev The canonical JSON of the test assembly's `assemblyClauses`.
     bytes constant TERMS = '{"0xabc0000000000000000000000000000000000000000000000000000000000000":{}}';
 

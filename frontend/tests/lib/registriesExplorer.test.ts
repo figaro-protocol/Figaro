@@ -87,12 +87,12 @@ describe("the document as stored — the reader re-derives the anchor themselves
         fields: [{ name: "jurisdiction", type: "string" }],
     };
     const COMMERCE = `0x${"c1".repeat(32)}` as const;
-    const AGREEMENT = { name: "Equipment hire · order-0", clauses: { [COMMERCE]: {} } };
+    const AGREEMENT = { name: "Equipment hire · agreement-0", clauses: { [COMMERCE]: {} } };
     const AGREEMENT_HASH = agreementHashOf(AGREEMENT);
     const ASSEMBLY = {
         name: "Equipment hire",
         summary: "The designer's own words — deliberately outside the anchor.",
-        agreements: [{ id: "order-0", agreementHash: AGREEMENT_HASH, clauses: {} }],
+        agreements: [{ id: "agreement-0", agreementHash: AGREEMENT_HASH, clauses: {} }],
     };
 
     it("names the anchor each family carries, and none for members", () => {
@@ -158,7 +158,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
         const reworded = JSON.stringify({ ...ASSEMBLY, name: "Kit hire", summary: "Different words entirely." });
         expect(storedDocument(reworded, anchored, "assembly-hash").matches).toBe(true);
         // Changing the COMPOSITION does break it — the anchor is the terms.
-        const retermed = JSON.stringify({ ...ASSEMBLY, agreements: [{ id: "order-0", agreementHash: `0x${"a2".repeat(32)}`, clauses: {} }] });
+        const retermed = JSON.stringify({ ...ASSEMBLY, agreements: [{ id: "agreement-0", agreementHash: `0x${"a2".repeat(32)}`, clauses: {} }] });
         expect(storedDocument(retermed, anchored, "assembly-hash").matches).toBe(false);
     });
 

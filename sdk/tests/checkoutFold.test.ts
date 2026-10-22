@@ -364,9 +364,9 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
     });
 
     it("writeTopologyClause", () => {
-        const { specs, fake } = lookalike([GEO], GEO, ["parentOrderHashes"]);
+        const { specs, fake } = lookalike([GEO], GEO, ["follows"]);
         expect(writeTopologyClause({ [REAL]: {} }, [HASH], specs)).toEqual({ [REAL]: {} });
-        expect(writeTopologyClause({ [fake]: {} }, [HASH], specs)[fake]).toEqual({ parentOrderHashes: [HASH] });
+        expect(writeTopologyClause({ [fake]: {} }, [HASH], specs)[fake]).toEqual({ follows: [HASH] });
     });
 
     it("fillCargoClause", () => {

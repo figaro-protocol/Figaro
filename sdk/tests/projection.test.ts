@@ -85,7 +85,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
         const registered = { clauses: { [keyOf("figaro-commerce")]: {} } };
         const agreementHash = agreementHashOf(registered);
         const design: HydratedAssembly = {
-            assembly: { agreements: [{ id: "order-0", agreementHash, clauses: {} }] },
+            assembly: { agreements: [{ id: "agreement-0", agreementHash, clauses: {} }] },
             agreements: { [agreementHash.toLowerCase() as `0x${string}`]: registered },
         };
         const named = { ...agreement, provenance: { agreementHash, assemblyHash: assemblyHashOf(design.assembly) } };
@@ -191,7 +191,7 @@ describe("the sign gate's denomination chain — pin == leaf == struct", () => {
     it("passes an unpinned assembly: the commerce leaf alone carries the term", () => {
         const { agreement, checkoutHash } = build({
             [keyOf("figaro-commerce")]: commerceData(),
-            [keyOf("figaro-topology")]: { parentOrderHashes: [] },
+            [keyOf("figaro-topology")]: { follows: [] },
         });
         const check = validateCommitmentAgreement(agreement, checkoutHash, SPECS, STRUCT, null);
         expect(check.ok).toBe(true);
@@ -255,7 +255,7 @@ describe("projection — golden-vector byte-exactness", () => {
     it("spec-default injection reproduces the frozen agreement + hash", () => {
         const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
-            [keyOf("figaro-topology")]: { parentOrderHashes: [] },
+            [keyOf("figaro-topology")]: { follows: [] },
             [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY", forum: "us-federal-court" },
         }, SPECS);
         expect(canonicalize(agreement)).toBe(vectors.agreementProjection.defaults.canonicalAgreement);
@@ -265,7 +265,7 @@ describe("projection — golden-vector byte-exactness", () => {
     it("the process-log empty anchor reproduces the frozen agreement + hash", () => {
         const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
-            [keyOf("figaro-topology")]: { parentOrderHashes: [] },
+            [keyOf("figaro-topology")]: { follows: [] },
             [keyOf("figaro-merchant-process")]: {},
         }, SPECS);
         expect(canonicalize(agreement)).toBe(
@@ -282,8 +282,8 @@ describe("projection — golden-vector byte-exactness", () => {
         const built = buildAssembly({
             name: "Golden Vector Chain",
             orders: [
-                { orderHash: "synthetic-root", parentOrderHashes: [] },
-                { orderHash: "synthetic-child", parentOrderHashes: ["synthetic-root"] },
+                { orderHash: "synthetic-root", follows: [] },
+                { orderHash: "synthetic-child", follows: ["synthetic-root"] },
             ],
             clausesByOrderId: {},
             assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
@@ -301,14 +301,14 @@ describe("projection — golden-vector byte-exactness", () => {
         // An assembly-scoped clause on an order is a BUILD error, never a
         // silent no-op…
         expect(() => buildAssembly({
-            orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
+            orders: [{ orderHash: "synthetic-root", follows: [] }],
             clausesByOrderId: { "synthetic-root": { [keyOf("figaro-applicable-law")]: {} } },
             mandatory: MANDATORY,
             specs: SPECS,
         })).toThrow(/design\.scope "assembly"/);
         // …and an agreement-scoped clause at the assembly level likewise.
         expect(() => buildAssembly({
-            orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
+            orders: [{ orderHash: "synthetic-root", follows: [] }],
             clausesByOrderId: {},
             assemblyClauses: { [keyOf("figaro-geolocation")]: {} },
             mandatory: MANDATORY,
@@ -319,12 +319,12 @@ describe("projection — golden-vector byte-exactness", () => {
     it("clauseByField reads by declared field, with data-key fallback while unloaded", () => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
-            [keyOf("figaro-topology")]: { parentOrderHashes: ["0xabc"] },
+            [keyOf("figaro-topology")]: { follows: ["0xabc"] },
         }, SPECS);
-        expect(clauseByField(agreement, "parentOrderHashes", SPECS)?.clause).toBe(keyOf("figaro-topology"));
+        expect(clauseByField(agreement, "follows", SPECS)?.clause).toBe(keyOf("figaro-topology"));
         // The uncached path: an empty SpecSource falls back to data-key presence.
         const empty: SpecSource = { get: () => undefined, list: () => [] };
-        expect(clauseByField(agreement, "parentOrderHashes", empty)?.clause).toBe(keyOf("figaro-topology"));
+        expect(clauseByField(agreement, "follows", empty)?.clause).toBe(keyOf("figaro-topology"));
     });
 });
 
@@ -472,8 +472,8 @@ describe("buildAssembly — the mandatory clauses: the DAO's live commerce and t
     // agreement before the designer composes anything. An agreement is not an
     // agreement without one clause of commerce's shape and one of topology's.
     const ORDERS = [
-        { orderHash: "synthetic-root", parentOrderHashes: [] },
-        { orderHash: "synthetic-child", parentOrderHashes: ["synthetic-root"] },
+        { orderHash: "synthetic-root", follows: [] },
+        { orderHash: "synthetic-child", follows: ["synthetic-root"] },
     ];
     const base = specSourceFromFixtures(["figaro-commerce", "figaro-topology", "figaro-geolocation", "figaro-applicable-law"]);
     /** A stranger's registration: the named spec's bytes with a changed title
@@ -525,7 +525,7 @@ describe("buildAssembly — the mandatory clauses: the DAO's live commerce and t
         const short = { clauses: { [keyOf("figaro-topology")]: {} } };
         expect(() => buildAssembly({
             orders: [ORDERS[0]], clausesByOrderId: {}, registeredByOrderId: { "synthetic-root": short }, mandatory: MANDATORY, specs,
-        })).toThrow(/order-0: registered agreement 0x[0-9a-f]+: no clause of commerce's shape/);
+        })).toThrow(/agreement-0: registered agreement 0x[0-9a-f]+: no clause of commerce's shape/);
     });
 
     it("an assembly-scoped registration marking itself mandatory joins no composition", () => {
@@ -586,8 +586,8 @@ describe("buildAssembly — the mandatory clauses: the DAO's live commerce and t
         const [root, child] = assembly.agreements;
         expect(root.agreementHash).toBe(child.agreementHash);
         expect(agreements[root.agreementHash].clauses[keyOf("figaro-topology")]).toEqual({});
-        expect(root.clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: [] } });
-        expect(child.clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } });
+        expect(root.clauses).toEqual({ [keyOf("figaro-topology")]: { follows: [] } });
+        expect(child.clauses).toEqual({ [keyOf("figaro-topology")]: { follows: ["agreement-0"] } });
         expect(agreementHashOf(agreements[root.agreementHash])).toBe(root.agreementHash);
         // The mandatory clauses alone are a complete agreement: same key.
         expect(root.agreementHash).toBe(agreementHashOf({ clauses: MANDATORY }));
@@ -603,14 +603,14 @@ describe("buildAssembly — the mandatory clauses: the DAO's live commerce and t
             specs: base,
         });
         expect(assembly.agreements[1].agreementHash).toBe(agreementHashOf(registered));
-        expect(assembly.agreements[1].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } });
+        expect(assembly.agreements[1].clauses).toEqual({ [keyOf("figaro-topology")]: { follows: ["agreement-0"] } });
         // Only the newly composed agreement is returned to register.
         expect(Object.keys(agreements)).toEqual([assembly.agreements[0].agreementHash]);
         // A registered agreement missing a clause of topology's shape is refused…
         const lacking = { clauses: { [keyOf("figaro-commerce")]: {} } };
         expect(() => buildAssembly({
             orders: ORDERS, clausesByOrderId: {}, registeredByOrderId: { "synthetic-child": lacking }, mandatory: MANDATORY, specs: base,
-        })).toThrow(/order-1: registered agreement 0x[0-9a-f]{64}: no clause of topology's shape/);
+        })).toThrow(/agreement-1: registered agreement 0x[0-9a-f]{64}: no clause of topology's shape/);
         // …as is one order binding a registered agreement and composing clauses too.
         expect(() => buildAssembly({
             orders: ORDERS,
@@ -654,7 +654,7 @@ describe("composeOrderAgreement — one agreement's registered agreement, on its
         const clauses = { [keyOf("figaro-geolocation")]: { ignored: "transaction particular" } };
         const alone = composeOrderAgreement({ clauses, mandatory: MANDATORY, specs: SPECS });
         const built = buildAssembly({
-            orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
+            orders: [{ orderHash: "synthetic-root", follows: [] }],
             clausesByOrderId: { "synthetic-root": clauses },
             mandatory: MANDATORY,
             specs: SPECS,
@@ -696,7 +696,7 @@ describe("composeOrderAgreement — one agreement's registered agreement, on its
         // Case of the address is no difference; a registrant with nothing live yields nothing, and the canvas publishes nothing.
         expect(mandatoryClauses(rows, specs, DAO.toLowerCase() as `0x${string}`)).toEqual({ [newer.clauseKey]: {}, [keyOf("figaro-topology")]: {} });
         expect(mandatoryClauses(rows, specs, STRANGER)).toEqual({});
-        expect(() => buildAssembly({ orders: [{ orderHash: "r", parentOrderHashes: [] }], clausesByOrderId: {}, mandatory: mandatoryClauses(rows, specs, STRANGER), specs }))
+        expect(() => buildAssembly({ orders: [{ orderHash: "r", follows: [] }], clausesByOrderId: {}, mandatory: mandatoryClauses(rows, specs, STRANGER), specs }))
             .toThrow(/no clause of commerce's shape/);
     });
 
@@ -718,7 +718,7 @@ describe("the sign gate's design check — the designer's values against the des
     const design: HydratedAssembly = {
         assembly: {
             assemblyClauses: { [keyOf("figaro-property-transfer")]: { anticipatedEvents: EVENTS } },
-            agreements: [{ id: "order-0", agreementHash, clauses: {} }],
+            agreements: [{ id: "agreement-0", agreementHash, clauses: {} }],
         },
         agreements: { [agreementHash.toLowerCase() as `0x${string}`]: registered },
     };
@@ -765,7 +765,7 @@ describe("the sign gate's design check — the designer's values against the des
         const withLog = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-merchant-process")]: {} } };
         const logKey = agreementHashOf(withLog);
         const logDesign: HydratedAssembly = {
-            assembly: { agreements: [{ id: "order-0", agreementHash: logKey, clauses: {} }] },
+            assembly: { agreements: [{ id: "agreement-0", agreementHash: logKey, clauses: {} }] },
             agreements: { [logKey.toLowerCase() as `0x${string}`]: withLog },
         };
         const provenance = { agreementHash: logKey, assemblyHash: assemblyHashOf(logDesign.assembly) };
@@ -791,7 +791,7 @@ describe("the sign gate's design check — the designer's values against the des
         // design names them: an order dropping one is refused like any clause
         // the designer composed.
         const built = buildAssembly({
-            orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
+            orders: [{ orderHash: "synthetic-root", follows: [] }],
             clausesByOrderId: { "synthetic-root": { [keyOf("figaro-merchant-process")]: {} } },
             mandatory: MANDATORY,
             specs: SPECS,
@@ -804,7 +804,7 @@ describe("the sign gate's design check — the designer's values against the des
         const provenance = { agreementHash: entry.agreementHash, assemblyHash: assemblyHashOf(built.assembly) };
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
-            [keyOf("figaro-topology")]: { parentOrderHashes: [] },
+            [keyOf("figaro-topology")]: { follows: [] },
             [keyOf("figaro-merchant-process")]: {},
         }, SPECS);
         const full = { ...agreement, provenance };

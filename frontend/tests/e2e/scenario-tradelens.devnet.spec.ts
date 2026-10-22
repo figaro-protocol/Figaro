@@ -8,17 +8,17 @@
  * tradelensScenario.ts — the runtime leg consumes the same assembly).
  *
  * Six orders, importer-of-record as root buyer on every one (FigaroCore star):
- *   order-0 root  shipper-of-record   cargo, incoterms, chain-of-custody,
+ *   agreement-0 root  shipper-of-record   cargo, incoterms, chain-of-custody,
  *                                     acceptance-criteria, applicable-law,
  *                                     arbitration-kleros, property-transfer (the three
  *                                     assembly terms), geolocation, modalities
- *   order-1 p:0   inspection service  merchant-process, acceptance-criteria
- *   order-2 p:0   freight forwarder   merchant-process, geolocation
- *   order-3 p:2   ocean carrier       courier-process, cold-chain, chain-of-custody,
+ *   agreement-1 p:0   inspection service  merchant-process, acceptance-criteria
+ *   agreement-2 p:0   freight forwarder   merchant-process, geolocation
+ *   agreement-3 p:2   ocean carrier       courier-process, cold-chain, chain-of-custody,
  *                 (reefer)            emissions, freight-class, handoff,
  *                                     proximity-policy, geolocation
- *   order-4 p:3   customs agent       merchant-process, consent (affixed filing terms)
- *   order-5 p:4   inland carrier      courier-process, handoff, proximity-policy,
+ *   agreement-4 p:3   customs agent       merchant-process, consent (affixed filing terms)
+ *   agreement-5 p:4   inland carrier      courier-process, handoff, proximity-policy,
  *                                     geolocation
  *
  * This leg drives the REAL designer UI all the way to the IPFS pin +

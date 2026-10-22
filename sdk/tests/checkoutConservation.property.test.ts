@@ -61,7 +61,7 @@ function assemblyFrom(parents: readonly number[][]): HydratedAssembly {
             id: `n${i}`,
             clauses: {
                 [keyOf("figaro-commerce")]: {},
-                [keyOf("figaro-topology")]: { parentOrderHashes: ps.map((p) => `n${p}`) },
+                [keyOf("figaro-topology")]: { follows: ps.map((p) => `n${p}`) },
             },
         })),
     });
@@ -141,7 +141,7 @@ describe("reconstructOrdersFromAssembly — payment conservation", () => {
                 for (const order of orders) {
                     const i = Number(order.nodeId.slice(1));
                     const topo = order.agreement.clauses.find((s) => s.clause === keyOf("figaro-topology"));
-                    expect(topo?.data.parentOrderHashes).toEqual(
+                    expect(topo?.data.follows).toEqual(
                         parents[i].map((p) => hashOf.get(`n${p}`)),
                     );
                     // THE MERKLE-LEAF SEAM: same guarantee on this property too.

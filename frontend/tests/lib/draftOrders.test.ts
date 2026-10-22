@@ -43,10 +43,10 @@ describe("draftOrders store", () => {
 
     it("round-trips the optional topology position — present and absent", () => {
         saveDraftOrder("root", draft());
-        saveDraftOrder("sub", draft({ parentOrderHashes: ["0xabc"] }));
-        expect(loadDraftOrder("root")!.parentOrderHashes).toBeUndefined();
-        expect("parentOrderHashes" in loadDraftOrder("root")!).toBe(false);
-        expect(loadDraftOrder("sub")!.parentOrderHashes).toEqual(["0xabc"]);
+        saveDraftOrder("sub", draft({ follows: ["0xabc"] }));
+        expect(loadDraftOrder("root")!.follows).toBeUndefined();
+        expect("follows" in loadDraftOrder("root")!).toBe(false);
+        expect(loadDraftOrder("sub")!.follows).toEqual(["0xabc"]);
     });
 
     it("save under an existing id replaces the draft", () => {

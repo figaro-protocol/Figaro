@@ -35,7 +35,7 @@ import {
     reconstructOrdersFromAssembly,
     resolveSubOrderPricing,
     agreementClauses,
-    assemblyParentOrderHashes,
+    assemblyFollows,
     type AssemblyCheckoutLineItem,
     type HydratedAssembly,
     type PlannedAssemblyOrder,
@@ -211,7 +211,7 @@ export async function executeAssemblyCheckout(
     }
 
     const rootId =
-        assembly.agreements.find((o) => assemblyParentOrderHashes(o).length === 0)?.id ??
+        assembly.agreements.find((o) => assemblyFollows(o).length === 0)?.id ??
         assembly.agreements[0]?.id;
     if (rootId === undefined) throw new Error("This assembly has no root order.");
 
@@ -431,7 +431,7 @@ export async function planAssemblyOrders(
     const hydrated = params.assembly.hydratedAssembly;
     const assembly = hydrated.assembly;
     const rootId =
-        assembly.agreements.find((o) => assemblyParentOrderHashes(o).length === 0)?.id ??
+        assembly.agreements.find((o) => assemblyFollows(o).length === 0)?.id ??
         assembly.agreements[0]?.id;
     if (rootId === undefined) throw new Error("This assembly has no root order.");
     const boundSellerByNode = new Map(

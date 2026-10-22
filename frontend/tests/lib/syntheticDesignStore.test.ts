@@ -67,7 +67,7 @@ describe("syntheticDesignStore round-trip", () => {
         expect(loaded).not.toBeNull();
         expect(loaded!.orders).toHaveLength(2);
         expect(loaded!.orders[1].payment).toBe(sub.order.payment);
-        expect(loaded!.orders[1].parentOrderHashes).toEqual([root.order.orderHash]);
+        expect(loaded!.orders[1].follows).toEqual([root.order.orderHash]);
         // Drafts are value-free: the value fields hydrate as zeros, whatever
         // an older stored draft carried.
         expect(loaded!.orders[0].cumulativeValue).toBe(0n);

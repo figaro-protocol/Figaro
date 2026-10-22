@@ -115,7 +115,7 @@ The published assembly document is the **exact assembly shape `@figaro-protocol/
 canvas sketch. `assemblyHashOf(assembly)` is the registry key, so any other shape
 computes a hash that matches nothing and cannot be registered. The assembly is
 `{ name?, summary?, description?, faq?, assemblyClauses?, agreements: AssemblyAgreement[] }`, each
-`AssemblyAgreement` `{ id: "order-<i>", agreementHash, clauses }`, every clause map keyed by clause
+`AssemblyAgreement` `{ id: "agreement-<i>", agreementHash, clauses }`, every clause map keyed by clause
 KEY — `keccak256` of the clause spec's pinned bytes, the `clauseKey` each registry row carries
 — never by the name a spec displays.
 
@@ -149,8 +149,8 @@ a clause's pinned bytes MUST be its canonical bytes. Pin readable JSON here;
 let `assemblyHashOf` — never a hand-rolled hash over the raw bytes —
 derive identity.
 
-- **One agreement per future `FigaroCore` order**, labeled `"order-<index>"` (`order-0`,
-  `order-1`, …), in order. The label is the topology reference target — stable within the
+- **One agreement per future `FigaroCore` order**, labeled `"agreement-<index>"` (`agreement-0`,
+  `agreement-1`, …), in order. The label is the topology reference target — stable within the
   assembly, not a chain id and not a party (the assembly is party-agnostic; addresses bind at
   runtime). Agreements are ordered, so one registered agreement may hold two.
 - **Each agreement is a `clauses` map: `clauseKey → design-time fields`.** An empty
@@ -159,8 +159,8 @@ derive identity.
   key is `agreementHashOf({ clauses })`.
 - **Topology is a clause like any other — filled by the agreement.** A agreement
   carries `figaro-topology` as `{}`, so one registered agreement fits any position; the order
-  agreement's own `clauses` carry `{ parentOrderHashes: [...] }` — the root order is `[]`; a child
-  names its parent's local `"order-<i>"` label. There are **no** `nodes`/`edges` arrays —
+  agreement's own `clauses` carry `{ follows: [...] }` — the root order is `[]`; a child
+  names its parent's local `"agreement-<i>"` label. There are **no** `nodes`/`edges` arrays —
   that is a canvas-internal editing form, never the published document.
 - **`assemblyClauses` is where an assembly-SCOPED clause lives** — the same
   `clauseKey → designer values` map, composed ONCE for the whole design, at the top level of
@@ -180,7 +180,7 @@ derive identity.
 - **Writing by name is a seed-time step over your own files.** If the user writes the
   design by clause NAME — each agreement as its own document (`clauses` by name with the
   designer's fills), the assembly as agreements naming those agreements and carrying their
-  own `parentOrderHashes` — `composeAuthoredAgreement(doc, specs)` from `@figaro-protocol/sdk`
+  own `follows` — `composeAuthoredAgreement(doc, specs)` from `@figaro-protocol/sdk`
   resolves the names (`resolveAuthoredClauseKeys`: the keys of the specs in `specs.list()` whose
   `clauseId` matches; write `name@version` to match the `version` too), merges the clauses of
   the agreement the document names as its pick (`mandatory`, a name in `picks` — or compose
@@ -203,14 +203,14 @@ catalog values, not assembly fields.
   },
   "agreements": [
     {
-      "id": "order-0",
+      "id": "agreement-0",
       "agreementHash": "0x<registered agreement hash>",
-      "clauses": { "0x<topology clause key>": { "parentOrderHashes": [] } }
+      "clauses": { "0x<topology clause key>": { "follows": [] } }
     },
     {
-      "id": "order-1",
+      "id": "agreement-1",
       "agreementHash": "0x<registered agreement hash>",
-      "clauses": { "0x<topology clause key>": { "parentOrderHashes": ["order-0"] } }
+      "clauses": { "0x<topology clause key>": { "follows": ["agreement-0"] } }
     }
   ]
 }

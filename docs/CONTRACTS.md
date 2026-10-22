@@ -241,7 +241,7 @@ anchoring under a stake.
   hashing): one leaf per agreement `i`, keyed by the agreement's
   `agreementHash`, whose bytes are the canonical JSON
   `{"clauses":{…},"slot":i}` (the agreement's own fills — the topology
-  clause's `parentOrderHashes` naming the agreements it follows); and one
+  clause's `follows` naming the agreements it follows); and one
   assembly terms leaf, keyed by `ASSEMBLY_TERMS_LEAF_KEY =
   keccak256("figaro-assembly-terms")`, whose bytes are the canonical JSON of
   the assembly-scoped clauses, present only when any are composed. Order

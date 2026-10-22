@@ -131,9 +131,9 @@ describe("DesignGraphCollapseFigure", () => {
         cleanup();
 
         const { container: custom } = render(
-            <DesignGraphCollapseFigure {...shape} branchNote="spawned from order-0, not the next link" />,
+            <DesignGraphCollapseFigure {...shape} branchNote="spawned from agreement-0, not the next link" />,
         );
-        expect(custom.textContent).toContain("spawned from order-0, not the next link");
+        expect(custom.textContent).toContain("spawned from agreement-0, not the next link");
         expect(custom.textContent).not.toContain("off the main line, bonded to the same process");
     });
 

@@ -107,8 +107,8 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
         const origin = missing.filter((m) => m.fieldName === "origin");
         // acceptance-criteria rides two orders, geolocation four — the
         // sub-orders' fills are the ones the built site left control-less.
-        expect(acceptance.map((m) => m.groupKey)).toEqual(["order-0", "order-1"]);
-        expect(origin.map((m) => m.groupKey)).toEqual(["order-0", "order-2", "order-3", "order-5"]);
+        expect(acceptance.map((m) => m.groupKey)).toEqual(["agreement-0", "agreement-1"]);
+        expect(origin.map((m) => m.groupKey)).toEqual(["agreement-0", "agreement-2", "agreement-3", "agreement-5"]);
         // Named the way the buyer reads them, from the spec's own labels.
         expect(acceptance[0].clauseTitle).toBe(getClauseSpec(keyOf("figaro-acceptance-criteria"))!.title);
         expect(origin[0].fieldLabel).toBe("Origin");
@@ -138,10 +138,10 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
     });
 
     it("a fill clears exactly its own order's demand", () => {
-        const one = { "order-0": { [keyOf("figaro-acceptance-criteria")]: { acceptanceBasis: "AQL 2.5 per ISO 2859-1" } } };
+        const one = { "agreement-0": { [keyOf("figaro-acceptance-criteria")]: { acceptanceBasis: "AQL 2.5 per ISO 2859-1" } } };
         const still = unfilledRequiredFills(groupsFor("tradelens.json"), one)
             .filter((m) => m.fieldName === "acceptanceBasis");
-        expect(still.map((m) => m.groupKey)).toEqual(["order-1"]);
+        expect(still.map((m) => m.groupKey)).toEqual(["agreement-1"]);
     });
 
     it("filling every demanded term empties the gate", () => {
@@ -163,25 +163,25 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
 
     it("a fill for an order or clause the assembly does not compose changes nothing", () => {
         const stray = {
-            "order-99": { [keyOf("figaro-acceptance-criteria")]: { acceptanceBasis: "x" } },
-            "order-0": { [`0x${"ee".repeat(32)}`]: { whatever: "x" } },
+            "agreement-99": { [keyOf("figaro-acceptance-criteria")]: { acceptanceBasis: "x" } },
+            "agreement-0": { [`0x${"ee".repeat(32)}`]: { whatever: "x" } },
         };
         expect(demanded("tradelens.json", stray)).toEqual(demanded("tradelens.json"));
     });
 
     it("an empty string, empty array or empty object is not a fill", () => {
         const empties = {
-            "order-0": {
+            "agreement-0": {
                 [keyOf("figaro-acceptance-criteria")]: { acceptanceBasis: "" },
                 [keyOf("figaro-incoterms")]: { incotermsNamedPlace: {} },
             },
-            "order-3": { [keyOf("figaro-proximity-policy")]: { bands: [] } },
+            "agreement-3": { [keyOf("figaro-proximity-policy")]: { bands: [] } },
         };
         const missing = unfilledRequiredFills(groupsFor("tradelens.json"), empties)
             .map((m) => `${m.groupKey}.${m.fieldName}`);
-        expect(missing).toContain("order-0.acceptanceBasis");
-        expect(missing).toContain("order-0.incotermsNamedPlace");
-        expect(missing).toContain("order-3.bands");
+        expect(missing).toContain("agreement-0.acceptanceBasis");
+        expect(missing).toContain("agreement-0.incotermsNamedPlace");
+        expect(missing).toContain("agreement-3.bands");
         expect(isFilledValue(0)).toBe(true);
         expect(isFilledValue(false)).toBe(true);
         expect(isFilledValue(undefined)).toBe(false);
@@ -207,7 +207,7 @@ describe("unfilledRequiredFills — a value already composed on the assembly cou
 
     it("a term the designer valued on the assembly is not asked of the buyer again", () => {
         const composed = hydrated("tradelens.json");
-        // The designer's value sits in order-0's registered agreement.
+        // The designer's value sits in agreement-0's registered agreement.
         const order0 = composed.agreements[composed.assembly.agreements[0].agreementHash.toLowerCase() as `0x${string}`];
         order0.clauses[keyOf("figaro-acceptance-criteria")] = { acceptanceBasis: "AQL 2.5 per ISO 2859-1" };
         const groups = deriveAgreementGroups({
@@ -216,7 +216,7 @@ describe("unfilledRequiredFills — a value already composed on the assembly cou
             sellerCatalogs: [] as never,
         });
         const acceptance = unfilledRequiredFills(groups, {}).filter((m) => m.fieldName === "acceptanceBasis");
-        expect(acceptance.map((m) => m.groupKey)).toEqual(["order-1"]);
+        expect(acceptance.map((m) => m.groupKey)).toEqual(["agreement-1"]);
     });
 });
 

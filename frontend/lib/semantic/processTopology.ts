@@ -3,7 +3,7 @@
  *
  * Topology is a clause like any other, and a STRUCTURAL one: every committed
  * agreement carries the topology clause (mandatory, like commerce), so an
- * order's parents are always readable BY FIELD NAME (`parentOrderHashes`) via
+ * order's parents are always readable BY FIELD NAME (`follows`) via
  * `agreement.clauses` — no privileged topology read path, no stored mode, and
  * NO invented edges: an agreement not yet hydrated from IPFS renders edgeless
  * until it loads (loading, never fabrication). Topology is an organizational
@@ -21,15 +21,15 @@ import { specSource } from "@/lib/shared/clauseSpecSource";
 
 // ── By-field reads of the topology clause (no clause id named) ────────────────
 
-function topologyParentOrderHashes(agreement: Agreement | null | undefined): string[] | null {
+function topologyFollows(agreement: Agreement | null | undefined): string[] | null {
     if (!agreement) return null;
-    const clauseEntry = clauseByField(agreement, "parentOrderHashes", specSource());
+    const clauseEntry = clauseByField(agreement, "follows", specSource());
     if (!clauseEntry) return null;
     // A clause fetched from a PUBLIC pin may be content-WITHHELD (its plaintext
     // `data` replaced by a `dataHash` fingerprint — the public/private seam), so
     // `data` can be absent. A withheld topology clause reads as edgeless, never
     // a crash — the full edges live in the signed + counterparty-relayed forms.
-    const raw = (clauseEntry.data as Record<string, unknown> | undefined)?.parentOrderHashes;
+    const raw = (clauseEntry.data as Record<string, unknown> | undefined)?.follows;
     if (!Array.isArray(raw)) return [];
     return raw.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
 }
@@ -48,12 +48,12 @@ export function deriveOrderTopology(
 ): Map<string, string[]> {
     const topology = new Map<string, string[]>();
     for (const order of orders) {
-        if (order.parentOrderHashes !== undefined) {
-            topology.set(order.orderHash, order.parentOrderHashes);
+        if (order.follows !== undefined) {
+            topology.set(order.orderHash, order.follows);
             continue;
         }
         const agreement = order.checkoutHash ? (agreements.get(order.checkoutHash) ?? null) : null;
-        topology.set(order.orderHash, topologyParentOrderHashes(agreement) ?? []);
+        topology.set(order.orderHash, topologyFollows(agreement) ?? []);
     }
     return topology;
 }

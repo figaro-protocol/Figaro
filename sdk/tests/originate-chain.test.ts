@@ -22,18 +22,18 @@ const CHAIN = 31337;
 const w = (acc: typeof BUYER) => createWalletClient({ account: acc, transport: http("http://localhost:0") });
 const buyerW = w(BUYER);
 
-// A 3-order value-added chain: root (order-0) + two subs under it (like the seed chain).
+// A 3-order value-added chain: root (agreement-0) + two subs under it (like the seed chain).
 const assembly = hydrateAuthored({
     agreements: [
-        { id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } },
-        { id: "order-1", clauses: { [keyOf("figaro-courier-process")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
-        { id: "order-2", clauses: { [keyOf("figaro-merchant-process")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
+        { id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } },
+        { id: "agreement-1", clauses: { [keyOf("figaro-courier-process")]: {}, [keyOf("figaro-topology")]: { follows: ["agreement-0"] } } },
+        { id: "agreement-2", clauses: { [keyOf("figaro-merchant-process")]: {}, [keyOf("figaro-topology")]: { follows: ["agreement-0"] } } },
     ],
 });
 const nodes: ChainNodeSpec[] = [
-    { nodeId: "order-0", seller: S0.address, payment: 1000n, overrides: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "1000" }] } } },
-    { nodeId: "order-1", seller: S1.address, payment: 500n },
-    { nodeId: "order-2", seller: S2.address, payment: 300n },
+    { nodeId: "agreement-0", seller: S0.address, payment: 1000n, overrides: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "1000" }] } } },
+    { nodeId: "agreement-1", seller: S1.address, payment: 500n },
+    { nodeId: "agreement-2", seller: S2.address, payment: 300n },
 ];
 const SPECS = specSourceFromFixtures([
     "figaro-commerce", "figaro-topology", "figaro-courier-process", "figaro-merchant-process",
@@ -47,13 +47,13 @@ const policy: OfferPolicy = { currencyAllowlist: [CURRENCY], maxValue: 10_000n }
 const BOUND = profileBinding(assembly);
 
 function topologyParents(offer: { agreement: { clauses: { clause: string; data: Record<string, unknown> }[] } }): unknown {
-    return offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-topology"))?.data.parentOrderHashes;
+    return offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-topology"))?.data.follows;
 }
 
 describe("buildChainOffers — the value-added chain walk", () => {
     it("orders root first and accumulates cumulative value across the chain", async () => {
         const offers = await buildChainOffers(buyerW, params);
-        expect(offers.map((o) => o.nodeId)).toEqual(["order-0", "order-1", "order-2"]);
+        expect(offers.map((o) => o.nodeId)).toEqual(["agreement-0", "agreement-1", "agreement-2"]);
         expect(offers[0].offer.commitment.expectedCumulativeValue).toBe(1000n);
         expect(offers[1].offer.commitment.expectedCumulativeValue).toBe(1500n);
         expect(offers[2].offer.commitment.expectedCumulativeValue).toBe(1800n);
@@ -173,7 +173,7 @@ describe("the buyer commits only the offer it sent", () => {
     });
 
     it("originateChain refuses a node's reply that is not the offer sent to that node", async () => {
-        // The courier (order-1) answers with the ROOT's counter-signed offer.
+        // The courier (agreement-1) answers with the ROOT's counter-signed offer.
         let rootReply: Awaited<ReturnType<typeof counterSignOffer>> = null;
         const channel = new InProcessChannel();
         channel.register(S0.address, async (o) => {
@@ -183,6 +183,6 @@ describe("the buyer commits only the offer it sent", () => {
         channel.register(S1.address, async () => rootReply);
         channel.register(S2.address, (o) => counterSignOffer(w(S2), o, { chainId: CHAIN, core: CORE }, () => true, policy, SPECS, assembly, BOUND));
         await expect(originateChain(buyerW, explodingPub, { core: CORE } as never, { ...params, channel }))
-            .rejects.toThrow(/reply for order-1 is not the offer sent/);
+            .rejects.toThrow(/reply for agreement-1 is not the offer sent/);
     });
 });

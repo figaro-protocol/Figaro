@@ -11,42 +11,42 @@
     },
     "agreements": [
         {
-            "id": "order-0",
+            "id": "agreement-0",
             "agreement": "shipper-consignment"
         },
         {
-            "id": "order-1",
+            "id": "agreement-1",
             "agreement": "cargo-inspection",
-            "parentOrderHashes": [
-                "order-0"
+            "follows": [
+                "agreement-0"
             ]
         },
         {
-            "id": "order-2",
+            "id": "agreement-2",
             "agreement": "freight-forwarding",
-            "parentOrderHashes": [
-                "order-0"
+            "follows": [
+                "agreement-0"
             ]
         },
         {
-            "id": "order-3",
+            "id": "agreement-3",
             "agreement": "reefer-carriage",
-            "parentOrderHashes": [
-                "order-2"
+            "follows": [
+                "agreement-2"
             ]
         },
         {
-            "id": "order-4",
+            "id": "agreement-4",
             "agreement": "customs-filing",
-            "parentOrderHashes": [
-                "order-3"
+            "follows": [
+                "agreement-3"
             ]
         },
         {
-            "id": "order-5",
+            "id": "agreement-5",
             "agreement": "drayage-delivery",
-            "parentOrderHashes": [
-                "order-4"
+            "follows": [
+                "agreement-4"
             ]
         }
     ],

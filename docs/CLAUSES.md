@@ -97,10 +97,10 @@ from it keeps working — while the drawer offers only live agreements for a new
 composition, and the agreement earns only while its stake is live.
 
 **The assembly.** The assembly document is `{ name?, summary?, description?,
-faq?, assemblyClauses?, agreements: [{ id: "order-<i>", agreementHash,
+faq?, assemblyClauses?, agreements: [{ id: "agreement-<i>", agreementHash,
 clauses }] }`. Each entry of `agreements` is an agreement (`AssemblyAgreement`):
 a position that holds one registered agreement and the fills that belong to
-the position — the topology clause's `{ "parentOrderHashes": ["order-<j>",
+the position — the topology clause's `{ "follows": ["agreement-<j>",
 …] }`, naming the agreements it follows. The topology stays a clause: at design
 time in the assembly's agreement, at runtime in the signed agreement. The
 assembly's key, `assemblyHash`, is the merkle root built with the clause-leaf
@@ -136,7 +136,7 @@ registration winning where the DAO holds two of one shape (`mandatoryClauses`
 in the SDK; the frontend's `mandatoryClausesForCanvas` reads the DAO's wallet
 from the chain's deployment record). Mandatory is a shape, never a name:
 commerce is the clause declaring `payment`, `currency` and `lineItems` as
-content, topology the clause declaring `parentOrderHashes`
+content, topology the clause declaring `follows`
 (`specIsCommerceShape`, `specIsTopologyShape`), and every reader already finds
 them by those fields. `composeOrderAgreement` refuses an agreement without one
 clause of each shape, or with two; a registered agreement bound as is must

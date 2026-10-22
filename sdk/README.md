@@ -333,7 +333,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildAssembly` | root | Design time: the assembly of agreements plus the new agreements to register; the mandatory clauses (`mandatory`, from `mandatoryClauses`) are written into every new agreement first; binds a registered agreement as is (it must carry both mandatory shapes) or composes a new one. |
 | `composeOrderAgreement` | root | ONE agreement's registered agreement from the mandatory clauses written in and the clauses a designer selected — the scope check, the value-free rule, one clause of commerce's shape and one of topology's — and its `agreementHash`; `buildAssembly` composes every new agreement through it, and a designer registers one on its own through it. |
 | `mandatoryClauses` | root | The mandatory clauses a canvas writes into every agreement: the registrant's (the DAO wallet's) live `ClauseRegistry` registrations whose spec declares the mandatory article at agreement scope, one per shape, the later registration winning; `clauseKey → {}`. |
-| `specIsCommerceShape` / `specIsTopologyShape` | root | Mandatory is a shape, never a name: a spec declaring `payment`, `currency` and `lineItems` as content is commerce; one declaring `parentOrderHashes` is topology. |
+| `specIsCommerceShape` / `specIsTopologyShape` | root | Mandatory is a shape, never a name: a spec declaring `payment`, `currency` and `lineItems` as content is commerce; one declaring `follows` is topology. |
 | `buildProvenanceInclusionProof` | root | Merkle proof that the agreement's provenance leaf sits under a signed `checkoutHash`. |
 | `buildAgreementInclusionProof` | root | An agreement's membership proof under `assemblyHash`, with its `slotContentHash` — what the assembly reward claim carries. |
 | `buildSignedClauseInclusionProof` | root | Merkle proof that one clause sits under a signed `checkoutHash`. |
@@ -425,7 +425,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `readUtilityTokenPin` | root | The designer's pinned denomination, read from a assembly's composed clauses. |
 | `reconstruct` | root | Rebuild the full process topology from parsed core events. |
 | `reconstructDiscovery` | root | Rebuild the live registry view; a member's current profile URI is EVENT-derived, not a getter. |
-| `reconstructOrdersFromAssembly` | root | THE hydrated-assembly→orders walk: root signs `processId = 0`, children carry real parent order hashes. |
+| `reconstructOrdersFromAssembly` | root | THE hydrated-assembly→orders walk: root signs `processId = 0`, children carry the real order hashes of the orders they follow. |
 | `provenanceContentRef` | root | The provenance leaf's fingerprint for an agreement hash and a assembly hash — its data hash, and the `contentRef` its attestation carries. |
 | `provenanceLeafAttestation` | root | The provenance leaf's attestation inputs — reserved key, fingerprint, proof, content ref — for `attestAsBuyer`. |
 | `recordProcessUsage` | `/agent` | File direct-path usage at resolution: one leg per distinct clause key plus the agreement and assembly legs from the provenance leaf; a sent leg that reverts lands in `failures`, never thrown. |
@@ -468,7 +468,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `witnessContentCid` | `/derive` | The content address a `contentRef` fingerprint resolves to, multibase base16. |
 | `witnessContentCidBase32` | `/derive` | The same CID in multibase base32 — what a Kubo node prints, for verbatim pin checks. |
 | `wrapWithSharedSecret` | `/handoff` | Encrypt a string payload under the ECDH shared secret (12-byte IV ‖ AES-256-GCM, base64url). |
-| `writeTopologyClause` | root | Write the REAL parent order hashes into the topology leaf; the assembly carries only local ids. |
+| `writeTopologyClause` | root | Write the REAL order hashes of the orders followed into the topology leaf; the assembly carries only local labels. |
 | `ZERO_BYTES32` | root | The zero bytes32 sentinel — `ZERO_PROCESS_ID` is its processId-named alias. |
 
 ### `@figaro-protocol/sdk` — Protocol Primitives
@@ -1909,8 +1909,8 @@ value-free, with the designer's fills — the topology clause composed with
 (`buildRegisteredClauseInclusionProof` proves a clause's membership)
 (`AgreementRegistry`, `AGREEMENT_REGISTRY_ABI`). An **assembly** is ordered
 agreements, each binding a registered agreement by key and carrying the
-agreement's own fills (today the topology's `{ parentOrderHashes:
-["order-<j>", …] }`), plus the assembly-scoped terms; its `assemblyHash` is
+agreement's own fills (today the topology's `{ follows:
+["agreement-<j>", …] }`), plus the assembly-scoped terms; its `assemblyHash` is
 the MERKLE ROOT over one leaf per agreement (key = the agreement hash, bytes =
 canonical `{"clauses":{…},"slot":i}`) and one terms leaf (key
 `ASSEMBLY_TERMS_LEAF_KEY`, bytes = canonical `assemblyClauses`, present only
@@ -1982,7 +1982,7 @@ designer's fills and `mandatory`, the name of the agreement it picks) resolves i
 through the one composition rule (`composeOrderAgreement`: the scope check, the
 value-free rule, the pick's clauses merged) into the document the seeding pins and its
 key (`composeAuthoredAgreements` composes a whole set by name, each pick resolved within it); an assembly file binds an agreement only when it carries every clause of one agreement in the set whose clauses are all mandatory-article; an assembly file (`assemblies/*.json`, agreements naming their agreements
-and carrying their own `parentOrderHashes`) binds each named agreement's hash
+and carrying their own `follows`) binds each named agreement's hash
 and takes the topology parents as the agreement's fill, returning each DISTINCT
 agreement once beside the assembly. Neither runs on a read path.
 
@@ -2090,7 +2090,7 @@ registry — are root exports (`dist/checkoutPlan.d.ts`). Everything here shapes
 COMMITTED bytes (agreement clauses the merkle root hashes) or the payment
 figures the commitments sign, so a second frontend must reproduce it exactly. **No
 clause is ever named**: clauses are found by their DECLARED FIELDS (`lineItems`,
-`parentOrderHashes`, `massGrams`, `billedMassGrams`) or their spec hints
+`follows`, `massGrams`, `billedMassGrams`) or their spec hints
 (`catalogueFills`) through the caller's `SpecSource` — a fill whose clause isn't
 composed is a no-op, so the same call serves the root and every sub-order.
 
@@ -2104,7 +2104,7 @@ import {
 ```
 
 - **Clause fills** (by declared field): `fillCommerceClause` (payment terms — `lineItems` supplied only for the root cart), `writeTopologyClause`
-  (the REAL parent-order hashes into `parentOrderHashes`), and the logistics
+  (the REAL order hashes of the orders followed into `follows`), and the logistics
   fills `fillDerivedClauses` folds together — `fillCargoClause` (mass/volume
   sum × quantity), `fillClassClauses` (catalog-filled freight-class/hazmat/…),
   `fillProfileClauses` (the seller's profile-filled master data — dimweight's

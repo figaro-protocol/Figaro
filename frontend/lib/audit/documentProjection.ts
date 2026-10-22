@@ -127,7 +127,7 @@ function appliesTo(pred: Predicate, agreement: Agreement | undefined): boolean {
     if ("always" in pred) return true;
     if ("hasLeafField" in pred) return agreement.clauses.some((s) => clauseDeclaresField(s.clause, pred.hasLeafField));
     // isCarriageLeg: topology declares parents AND a process-log ladder is composed.
-    const parents = leafByField(agreement, "parentOrderHashes")?.parentOrderHashes;
+    const parents = leafByField(agreement, "follows")?.follows;
     const hasParents = Array.isArray(parents) && parents.length > 0;
     return hasParents && agreement.clauses.some((s) => clauseIsProcessLog(s.clause));
 }

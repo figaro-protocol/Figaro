@@ -4,21 +4,21 @@
     "description": "Digital work is rarely one person: a lead deliverable draws on contributors \u2014 an editor and a translator, a developer and a designer, a producer and a session musician. Here each contributor is an equal, bonded partner in the same job: everyone delivers over the encrypted hand-off, everyone's stake secures everyone else's work, and the client's single payment resolves the whole chain at once. The agency without the agency.",
     "agreements": [
         {
-            "id": "order-0",
+            "id": "agreement-0",
             "agreement": "freelance-deliverable"
         },
         {
-            "id": "order-1",
+            "id": "agreement-1",
             "agreement": "freelance-contribution",
-            "parentOrderHashes": [
-                "order-0"
+            "follows": [
+                "agreement-0"
             ]
         },
         {
-            "id": "order-2",
+            "id": "agreement-2",
             "agreement": "freelance-contribution",
-            "parentOrderHashes": [
-                "order-0"
+            "follows": [
+                "agreement-0"
             ]
         }
     ]

@@ -7,7 +7,7 @@
  * Everything here shapes COMMITTED bytes (the agreement clauses the merkle
  * root hashes) or the payment figures the commitments sign, so a second
  * frontend must reproduce it exactly. No clause is ever named: clauses are
- * found by their DECLARED FIELDS (`lineItems`, `parentOrderHashes`,
+ * found by their DECLARED FIELDS (`lineItems`, `follows`,
  * `massGrams`, `billedMassGrams`) or their spec hints (`catalogueFills`)
  * through the caller's `SpecSource` — ANY registered clause carrying the
  * field participates, including clauses this code has never seen. A fill
@@ -26,7 +26,7 @@ import {
     type ProjectionSpecView,
     type SpecSource,
 } from "./projection.js";
-import { agreementClauses, assemblyParentOrderHashes, type HydratedAssembly, type AssemblyAgreement } from "./assembly.js";
+import { agreementClauses, assemblyFollows, type HydratedAssembly, type AssemblyAgreement } from "./assembly.js";
 import { planAssemblyOrders, type PlannedAssemblyOrder } from "./reconstructOrders.js";
 import { isAddressHex, type Hex } from "./types.js";
 import type { CounterpartyBinding } from "./memberProfile.js";
@@ -187,7 +187,7 @@ export function readUtilityTokenPin(
  *  The instantiated assembly's assembly hash is no field here: it is the
  *  agreement format's provenance leaf (`Agreement.provenance`), which the
  *  assembly walk writes, never a clause. */
-const MECHANICAL_FILL_FIELDS = ["currency", "payment", "lineItems", "parentOrderHashes", "billedMassGrams"] as const;
+const MECHANICAL_FILL_FIELDS = ["currency", "payment", "lineItems", "follows", "billedMassGrams"] as const;
 
 /**
  * The field names the checkout walk fills mechanically for THIS composed
@@ -211,9 +211,9 @@ export function mechanicallyFilledFieldNames(
 }
 
 /**
- * Write the REAL parent-order hashes into the topology clause, found by its
- * declared `parentOrderHashes` field (never by clause id). The assembly's
- * topology data carries assembly-LOCAL order ids ("order-0"); the committed
+ * Write the REAL order hashes of the orders followed into the topology clause, found by its
+ * declared `follows` field (never by clause id). The assembly's
+ * topology data carries the assembly's LOCAL agreement labels ("agreement-0"); the committed
  * agreement must carry the actual EIP-712 order hashes — they are the DAG
  * edges every off-chain reader (audit, derive) reconstructs from, and the
  * bytes32 shape the off-chain validator validates. The overwrite IS this writer's contract —
@@ -222,16 +222,16 @@ export function mechanicallyFilledFieldNames(
  */
 export function writeTopologyClause(
     clauses: ClauseFields,
-    parentOrderHashes: `0x${string}`[],
+    follows: `0x${string}`[],
     specs: SpecSource,
 ): ClauseFields {
-    const topologyClauseId = composedClauseDeclaring(clauses, "parentOrderHashes", specs);
+    const topologyClauseId = composedClauseDeclaring(clauses, "follows", specs);
     if (!topologyClauseId) return clauses;
     return {
         ...clauses,
         [topologyClauseId]: {
             ...clauses[topologyClauseId],
-            parentOrderHashes,
+            follows,
         },
     };
 }
@@ -458,7 +458,7 @@ export function planSubOrderSellers(
 ): Array<{ node: PlannedAssemblyOrder; seller: `0x${string}` | null }> {
     const { assembly } = bound.hydratedAssembly;
     const rootId =
-        assembly.agreements.find((o) => assemblyParentOrderHashes(o).length === 0)?.id ??
+        assembly.agreements.find((o) => assemblyFollows(o).length === 0)?.id ??
         assembly.agreements[0]?.id;
     // Commit order (throws on a cyclic topology — the guard the checkout
     // relies on), then the sub-orders are everything but the root.

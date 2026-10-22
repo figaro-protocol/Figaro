@@ -126,7 +126,7 @@ function design() {
     const documents = [{ documentHash: `0x${"d0".repeat(32)}`, documentVersion: "1.0.0", documentTitle: `Terms ${caseId}` }];
     const registered: RegisteredAgreement = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-consent")]: { documents } } };
     const agreementHash = agreementHashOf(registered);
-    const assembly: Assembly = { agreements: [{ id: "order-0", agreementHash, clauses: {} }] };
+    const assembly: Assembly = { agreements: [{ id: "agreement-0", agreementHash, clauses: {} }] };
     const assemblyHash = assemblyHashOf(assembly);
     bindings.set(assemblyHash.toLowerCase(), `ipfs://bound-assembly-${caseId}`);
     bindings.set(agreementHash.toLowerCase(), `ipfs://bound-agreement-${caseId}`);

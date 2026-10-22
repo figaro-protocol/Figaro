@@ -19,17 +19,17 @@ const authoredOf = () => ({
     name: "Assist round-trip",
     agreements: [
         {
-            id: "order-0",
+            id: "agreement-0",
             clauses: {
                 [keyOf("figaro-commerce")]: {},
-                [keyOf("figaro-topology")]: { parentOrderHashes: [] },
+                [keyOf("figaro-topology")]: { follows: [] },
             },
         },
         {
-            id: "order-1",
+            id: "agreement-1",
             clauses: {
                 [keyOf("figaro-commerce")]: {},
-                [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] },
+                [keyOf("figaro-topology")]: { follows: ["agreement-0"] },
             },
         },
     ],
@@ -54,7 +54,7 @@ describe("parseAssemblyJson", () => {
     });
 
     it("rejects an agreement missing its id, agreement hash or clauses map", () => {
-        const r = parseAssemblyJson(JSON.stringify({ agreements: [{ id: "order-0" }] }));
+        const r = parseAssemblyJson(JSON.stringify({ agreements: [{ id: "agreement-0" }] }));
         expect(r.ok).toBe(false);
         if (!r.ok) expect(r.error).toMatch(/agreementHash/);
     });
@@ -88,8 +88,8 @@ describe("assemblyToDraft — the agreements carry", () => {
         const hydrated = hydrateAuthored(authoredOf());
         const draft = assemblyToDraft(hydrated, { slug: "assist-test" });
         expect(draft.registeredByOrderId).toEqual({
-            "order-0": hydrated.assembly.agreements[0].agreementHash,
-            "order-1": hydrated.assembly.agreements[1].agreementHash,
+            "agreement-0": hydrated.assembly.agreements[0].agreementHash,
+            "agreement-1": hydrated.assembly.agreements[1].agreementHash,
         });
         expect(draft.clausesByOrderId).toEqual({});
         expect(draft.orders).toHaveLength(2);
@@ -99,7 +99,7 @@ describe("assemblyToDraft — the agreements carry", () => {
         const hydrated = hydrateAuthored(authoredOf());
         const key = hydrated.assembly.agreements[1].agreementHash.toLowerCase();
         const draft = assemblyToDraft(hydrated, { slug: "assist-test", composeKeys: new Set([key]) });
-        expect(Object.keys(draft.clausesByOrderId?.["order-1"] ?? {}).sort())
+        expect(Object.keys(draft.clausesByOrderId?.["agreement-1"] ?? {}).sort())
             .toEqual([keyOf("figaro-commerce"), keyOf("figaro-topology")].sort());
         expect(draft.registeredByOrderId).toBeUndefined();
         expect(draft).not.toHaveProperty("clauseVersionsByOrderId");

@@ -16,7 +16,7 @@ import { activeChain } from "@/lib/shared/wagmi";
 import { clauseIsProcessLog, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { agreementClauses, assemblyComposedClauseKeys, type HydratedAssembly } from "@figaro-protocol/sdk";
-import { assemblyParentOrderHashes } from "@/lib/shared/assembly";
+import { assemblyFollows } from "@/lib/shared/assembly";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import {
@@ -61,7 +61,7 @@ function chainIdToNetworkTarget(chainId: number): string {
 export function requiredCounterpartyClauses(hydrated: HydratedAssembly): string[] {
     const clauses = new Set<string>();
     for (const entry of hydrated.assembly.agreements) {
-        if (assemblyParentOrderHashes(entry).length === 0) continue; // root has no counterparty
+        if (assemblyFollows(entry).length === 0) continue; // root has no counterparty
         for (const clauseKey of Object.keys(agreementClauses(hydrated, entry))) {
             if (clauseIsProcessLog(clauseKey)) clauses.add(clauseKey);
         }

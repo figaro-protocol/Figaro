@@ -27,7 +27,7 @@ import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
 import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
-import { agreementClauses, assemblyHashOf, assemblyParentOrderHashes } from "../assembly.js";
+import { agreementClauses, assemblyHashOf, assemblyFollows } from "../assembly.js";
 import type { Assembly, HydratedAssembly, AssemblyAgreement } from "../assembly.js";
 import { reconstructOrdersFromAssembly, agreementFromClauses, mergeOverrides, fillWalkProvenance } from "../reconstructOrders.js";
 import { checkSellerBindsAssembly, type MemberProfileReader } from "../memberProfile.js";
@@ -39,10 +39,10 @@ import { checkSellerBindsAssembly, type MemberProfileReader } from "../memberPro
 export type { Assembly, HydratedAssembly, AssemblyAgreement };
 
 /** An agreement is a ROOT if its topology fill names no parent —
- *  `parentOrderHashes`, the mandatory topology clause's field, matched by
+ *  `follows`, the mandatory topology clause's field, matched by
  *  name not by clause id (open-world). */
 function isRootEntry(entry: AssemblyAgreement): boolean {
-    return assemblyParentOrderHashes(entry).length === 0;
+    return assemblyFollows(entry).length === 0;
 }
 
 export interface InstantiateParams {

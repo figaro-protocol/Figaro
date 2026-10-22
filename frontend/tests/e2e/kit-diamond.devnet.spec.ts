@@ -126,8 +126,8 @@ async function findDiamondAssembly(): Promise<string | undefined> {
     return assemblies.find(
         (t) => t.agreements.length === 4
             && t.agreements.some((o) => {
-                const topo = (o.clauses?.[TOPOLOGY_CLAUSE] ?? {}) as { parentOrderHashes?: unknown[] };
-                return Array.isArray(topo.parentOrderHashes) && topo.parentOrderHashes.length === 2;
+                const topo = (o.clauses?.[TOPOLOGY_CLAUSE] ?? {}) as { follows?: unknown[] };
+                return Array.isArray(topo.follows) && topo.follows.length === 2;
             })
             && t.agreements.some((o) => Object.keys(o.clauses ?? {}).includes(DELIVERY_CLAUSES.courier))
             && t.agreements.some((o) => Object.keys(o.clauses ?? {}).includes(EMISSIONS_CLAUSE)),
@@ -432,7 +432,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             clauses: { clause: string; data: Record<string, unknown> }[];
         };
         const topoClause = dAgreement.clauses.find((s) => s.clause === TOPOLOGY_CLAUSE);
-        const parents = ((topoClause?.data.parentOrderHashes ?? []) as string[]).map((h) => h.toLowerCase());
+        const parents = ((topoClause?.data.follows ?? []) as string[]).map((h) => h.toLowerCase());
         expect(parents, 'the leaf commits exactly TWO parents').toHaveLength(2);
         expect(
             parents.sort(),

@@ -211,7 +211,7 @@ whose commits were all funded in their own denomination carries resolution edges
 ```ts
 import { marketShape, walletRecord } from "@figaro-protocol/sdk/derive";
 
-const shape = marketShape(process, assemblyKeyOf, parentOrderHashesOf);
+const shape = marketShape(process, assemblyKeyOf, followsOf);
 const rec   = walletRecord(process, wallet);
 ```
 

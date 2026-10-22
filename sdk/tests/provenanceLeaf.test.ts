@@ -34,7 +34,7 @@ const bare: Agreement = {
     seller: "0x0000000000000000000000000000000000000002",
     clauses: [
         { clause: K("figaro-commerce"), data: { payment: "10", currency: "0x00" } },
-        { clause: K("figaro-topology"), data: { parentOrderHashes: [] } },
+        { clause: K("figaro-topology"), data: { follows: [] } },
     ],
 };
 const withDesign: Agreement = { ...bare, provenance: { agreementHash: AGREEMENT, assemblyHash: COMPOSITION } };

@@ -75,7 +75,7 @@ const WITH_DESIGN: Agreement = {
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
     clauses: [
         { clause: K("figaro-commerce"), data: { currency: "0x0000000000000000000000000000000000000000", payment: "7" } },
-        { clause: K("figaro-topology"), data: { parentOrderHashes: [] } },
+        { clause: K("figaro-topology"), data: { follows: [] } },
     ],
     provenance: { agreementHash: agreementHashOf(REGISTERED_DESIGN), assemblyHash: assemblyHashOf(ASSEMBLY_THREE) },
 };

@@ -121,7 +121,7 @@ function seedBlank() {
         name: 'Devnet seed',
         summary: 'Pre-populated bindable assembly for the e2e suite.',
         description: 'A blank single-agreement composition (mandatory clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
-        agreements: [{ id: 'order-0', agreement: 'blank' }],
+        agreements: [{ id: 'agreement-0', agreement: 'blank' }],
     }, SEED_AGREEMENTS, AUTHORED);
 }
 
@@ -138,9 +138,9 @@ function seedChain() {
         summary: 'Three-order value-added chain: merchant, courier, supplier.',
         description: 'A delivery chain for the multi-order e2e: the buyer sees the full decomposition at checkout, each contributor is bond-secured, and the single resolve pays every party.',
         agreements: [
-            { id: 'order-0', agreement: 'merchant' },
-            { id: 'order-1', agreement: 'courier', parentOrderHashes: ['order-0'] },
-            { id: 'order-2', agreement: 'supplier', parentOrderHashes: ['order-0'] },
+            { id: 'agreement-0', agreement: 'merchant' },
+            { id: 'agreement-1', agreement: 'courier', follows: ['agreement-0'] },
+            { id: 'agreement-2', agreement: 'supplier', follows: ['agreement-0'] },
         ],
     }, SEED_AGREEMENTS, AUTHORED);
 }

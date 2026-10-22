@@ -46,16 +46,16 @@ key).</p>
 <div class="tsd-comment tsd-typography"><p>The agreement's own fills, clauseKey → values, merged over the
 registered agreement's <code>clauses</code> at checkout (the agreement's fill
 wins for the keys it names): the topology clause's
-<code>{ parentOrderHashes: [&quot;order-&lt;j&gt;&quot;, …] }</code> (empty on the root).</p>
+<code>{ follows: [&quot;agreement-&lt;j&gt;&quot;, …] }</code> (empty on the root).</p>
 </div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/assembly.ts#L115">assembly.ts:115</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="id"><span>id</span><a href="#id" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">id</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
-<div class="tsd-comment tsd-typography"><p>Local label for the agreement — <code>order-&lt;index&gt;</code>, stable within the
+<div class="tsd-comment tsd-typography"><p>Local label for the agreement — <code>agreement-&lt;index&gt;</code>, stable within the
 assembly; the reference target the topology clause's
-<code>parentOrderHashes</code> names. NOT a chain id, and NOT a party — the
+<code>follows</code> names. NOT a chain id, and NOT a party — the
 assembly is party-agnostic.</p>
 </div><aside class="tsd-sources">
 <ul>

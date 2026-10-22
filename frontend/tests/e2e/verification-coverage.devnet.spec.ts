@@ -198,7 +198,7 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
         // The clause names its clause by KEY (the hash of the clause's
         // pinned spec), and the leaf is keccak over that key ++ the data
         // hash — the pasted JSON carries the key, nothing else identifies it.
-        const clauseEntry = { clause: keyOf('figaro-topology'), data: { parentOrderHashes: [] as string[] } };
+        const clauseEntry = { clause: keyOf('figaro-topology'), data: { follows: [] as string[] } };
         const expectedLeaf = computeClauseLeaf(clauseEntry);
         await page.getByTestId('verify-mode-clause').click();
         await page.getByTestId('verify-clause-mode').waitFor({ state: 'visible', timeout: 10000 });

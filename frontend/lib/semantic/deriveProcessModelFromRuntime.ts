@@ -366,7 +366,7 @@ function deriveProcessCapabilities(
     return capabilities;
 }
 
-function deriveResolutionBreakdown(order: Order, parentOrderHashes: string[], address?: string): EconomicBreakdownModel | undefined {
+function deriveResolutionBreakdown(order: Order, follows: string[], address?: string): EconomicBreakdownModel | undefined {
     if (!address) return undefined;
     const normalized = address.toLowerCase();
     const isBuyer = hexEqual(order.buyer, normalized);
@@ -436,7 +436,7 @@ function deriveResolutionBreakdown(order: Order, parentOrderHashes: string[], ad
             },
         },
         typedOutputs,
-        downstreamReferencedAmount: parentOrderHashes.length > 0
+        downstreamReferencedAmount: follows.length > 0
             ? {
                 label: "Downstream referenced value",
                 amount: order.payment,
@@ -457,7 +457,7 @@ function deriveOrderNodeModelFromOrder(
     indexes: RuntimeIndexes,
     address?: string,
 ): OrderNodeModel {
-    const parentOrderHashes = topology.get(order.orderHash) ?? [];
+    const follows = topology.get(order.orderHash) ?? [];
 
     return {
         orderId: order.orderHash.toString(),
@@ -467,10 +467,10 @@ function deriveOrderNodeModelFromOrder(
         currency: order.currency as `0x${string}` | undefined,
         payment: order.payment,
         state: OrderState[order.state],
-        parentOrderHashes,
+        follows,
         checkoutHash: (order.checkoutHash ?? ZERO_BYTES32) as `0x${string}`,
         capabilities: roleCapabilities(order, agreements, indexes, address),
-        resolutionBreakdown: deriveResolutionBreakdown(order, parentOrderHashes, address),
+        resolutionBreakdown: deriveResolutionBreakdown(order, follows, address),
     };
 }
 
@@ -490,7 +490,7 @@ export function deriveProcessModelFromRuntime(
     // whole model stays O(orders + attestations) at the resolve ceiling.
     const indexes = buildRuntimeIndexes(processOrders, topology, agreements, attestations);
     const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, agreements, indexes, address));
-    const rootOrderId = semanticOrders.find((order) => order.parentOrderHashes.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
+    const rootOrderId = semanticOrders.find((order) => order.follows.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
     const rootOrder = processOrders.find((order) => order.orderHash.toString() === rootOrderId);
     const rootAgreement = rootOrder?.checkoutHash ? agreements.get(rootOrder.checkoutHash) : undefined;
     // The modality clause is found by its declared field, never by name.

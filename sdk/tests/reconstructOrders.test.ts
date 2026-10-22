@@ -31,12 +31,12 @@ const assembly = hydrateAuthored({
             id: "courier",
             clauses: {
                 [keyOf("figaro-commerce")]: {},
-                [keyOf("figaro-topology")]: { parentOrderHashes: ["merchant"] },
+                [keyOf("figaro-topology")]: { follows: ["merchant"] },
             },
         },
         {
             id: "merchant",
-            clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } },
+            clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } },
         },
     ],
 });
@@ -55,8 +55,8 @@ describe("planAssemblyOrders — pure structure", () => {
     it("throws on a cyclic topology", () => {
         const cyclic = hydrateAuthored({
             agreements: [
-                { id: "a", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["b"] } } },
-                { id: "b", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["a"] } } },
+                { id: "a", clauses: { [keyOf("figaro-topology")]: { follows: ["b"] } } },
+                { id: "b", clauses: { [keyOf("figaro-topology")]: { follows: ["a"] } } },
             ],
         });
         expect(() => planAssemblyOrders(cyclic)).toThrow(/cycle/);
@@ -95,7 +95,7 @@ describe("reconstructOrdersFromAssembly — realization", () => {
         expect(sub.processId).toBe(root.processId);
         // The sub's topology clause carries the root's REAL order hash.
         const topo = sub.agreement.clauses.find((s) => s.clause === keyOf("figaro-topology"));
-        expect(topo?.data.parentOrderHashes).toEqual([root.orderHash]);
+        expect(topo?.data.follows).toEqual([root.orderHash]);
         // THE MERKLE-LEAF SEAM: with specs supplied, the walk fills the
         // commerce clause's currency leaf to match the commitment struct —
         // on EVERY realized order, root and sub alike.
@@ -137,7 +137,7 @@ describe("reconstructOrdersFromAssembly — realization", () => {
     it("rejects a assembly whose commit order starts with a parented node", async () => {
         const dangling = hydrateAuthored({
             agreements: [
-                { id: "only", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["ghost"] } } },
+                { id: "only", clauses: { [keyOf("figaro-topology")]: { follows: ["ghost"] } } },
             ],
         });
         await expect(

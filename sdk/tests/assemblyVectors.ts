@@ -39,12 +39,12 @@ export const REGISTERED_DESIGN: RegisteredAgreement = {
 };
 
 export const ASSEMBLY_ONE: Assembly = {
-    agreements: [{ id: "order-0", agreementHash: agreementHashOf(REGISTERED_ONE), clauses: {} }],
+    agreements: [{ id: "agreement-0", agreementHash: agreementHashOf(REGISTERED_ONE), clauses: {} }],
 };
 export const ASSEMBLY_TWO: Assembly = {
     agreements: [
-        { id: "order-0", agreementHash: agreementHashOf(REGISTERED_THREE), clauses: {} },
-        { id: "order-1", agreementHash: agreementHashOf(REGISTERED_ONE), clauses: {} },
+        { id: "agreement-0", agreementHash: agreementHashOf(REGISTERED_THREE), clauses: {} },
+        { id: "agreement-1", agreementHash: agreementHashOf(REGISTERED_ONE), clauses: {} },
     ],
 };
 export const ASSEMBLY_THREE: Assembly = {
@@ -52,8 +52,8 @@ export const ASSEMBLY_THREE: Assembly = {
         [K("figaro-applicable-law")]: { applicableLaw: "ch", forum: "Zurich", language: "en" },
     },
     agreements: [
-        { id: "order-0", agreementHash: agreementHashOf(REGISTERED_DESIGN), clauses: { [K("figaro-topology")]: { parentOrderHashes: [] } } },
-        { id: "order-1", agreementHash: agreementHashOf(REGISTERED_DESIGN), clauses: { [K("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
-        { id: "order-2", agreementHash: agreementHashOf(REGISTERED_THREE), clauses: {} },
+        { id: "agreement-0", agreementHash: agreementHashOf(REGISTERED_DESIGN), clauses: { [K("figaro-topology")]: { follows: [] } } },
+        { id: "agreement-1", agreementHash: agreementHashOf(REGISTERED_DESIGN), clauses: { [K("figaro-topology")]: { follows: ["agreement-0"] } } },
+        { id: "agreement-2", agreementHash: agreementHashOf(REGISTERED_THREE), clauses: {} },
     ],
 };

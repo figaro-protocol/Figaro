@@ -24,7 +24,7 @@
  * by FIELD NAME, never clause id).
  */
 
-import { agreementClauses, assemblyParentOrderHashes, assemblyHashOf } from "./assembly.js";
+import { agreementClauses, assemblyFollows, assemblyHashOf } from "./assembly.js";
 import type { HydratedAssembly, AssemblyAgreement } from "./assembly.js";
 import {
     computeCheckoutHash,
@@ -80,7 +80,7 @@ export function planAssemblyOrders(hydrated: HydratedAssembly): PlannedAssemblyO
     const byId = new Map(assembly.agreements.map((a) => [a.id, a]));
     const orderedIds = topologicalOrder(
         assembly.agreements.map((a) => a.id),
-        (id) => [...assemblyParentOrderHashes(byId.get(id) as AssemblyAgreement)],
+        (id) => [...assemblyFollows(byId.get(id) as AssemblyAgreement)],
         "throw",
     );
     // THE ASSEMBLY-SCOPE FOLD: the assembly's
@@ -95,7 +95,7 @@ export function planAssemblyOrders(hydrated: HydratedAssembly): PlannedAssemblyO
             nodeId: id,
             agreementHash: entry.agreementHash,
             clauses: { ...assemblyClauses, ...agreementClauses(hydrated, entry) },
-            parentLocalIds: [...assemblyParentOrderHashes(entry)],
+            parentLocalIds: [...assemblyFollows(entry)],
             index,
         };
     });
@@ -230,7 +230,7 @@ export async function reconstructOrdersFromAssembly(
         cumulative += spec.payment;
         // Assembly-local parent ids → the REAL order hashes built for those
         // nodes (root's empty parents pass through unchanged). Matched by
-        // FIELD NAME on every clause carrying `parentOrderHashes`.
+        // FIELD NAME on every clause carrying `follows`.
         const clauses = withRealParents(node.clauses, realHash);
         const built = params.specs
             ? buildOrderAgreement(
@@ -302,11 +302,11 @@ function withRealParents(
 ): Record<string, Record<string, unknown>> {
     const out: Record<string, Record<string, unknown>> = { ...clauses };
     for (const [cid, data] of Object.entries(clauses)) {
-        const p = (data as { parentOrderHashes?: unknown }).parentOrderHashes;
+        const p = (data as { follows?: unknown }).follows;
         if (Array.isArray(p) && p.length > 0) {
             out[cid] = {
                 ...data,
-                parentOrderHashes: (p as string[]).map((localId) => {
+                follows: (p as string[]).map((localId) => {
                     const h = realHash.get(localId);
                     if (!h) throw new Error(`parent "${localId}" was not built before its child (bad topo order)`);
                     return h;

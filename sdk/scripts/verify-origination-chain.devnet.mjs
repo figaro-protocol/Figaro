@@ -141,7 +141,7 @@ channel.register(SELLERS[1].address, makeSellerOfferHandler(sellerW[1], pub, add
 }));
 
 // ── Buyer LOOP: originate the whole chain ─────────────────────────────────────
-const parentsOf = (id) => Object.values(agreementClausesById.get(id) ?? {}).find((d) => Array.isArray(d.parentOrderHashes))?.parentOrderHashes ?? [];
+const parentsOf = (id) => Object.values(agreementClausesById.get(id) ?? {}).find((d) => Array.isArray(d.follows))?.follows ?? [];
 const orderedIds = [
     ...assembly.assembly.agreements.filter((a) => parentsOf(a.id).length === 0),
     ...assembly.assembly.agreements.filter((a) => parentsOf(a.id).length > 0),

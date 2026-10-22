@@ -100,9 +100,9 @@ export function buildRegisteredClauseInclusionProof(
 /** One agreement of an assembly: the registered agreement it binds and the
  *  agreement's own fills over it. */
 export interface AssemblyAgreement {
-    /** Local label for the agreement — `order-<index>`, stable within the
+    /** Local label for the agreement — `agreement-<index>`, stable within the
      *  assembly; the reference target the topology clause's
-     *  `parentOrderHashes` names. NOT a chain id, and NOT a party — the
+     *  `follows` names. NOT a chain id, and NOT a party — the
      *  assembly is party-agnostic. */
     id: string;
     /** The registered agreement this agreement binds (`AgreementRegistry`
@@ -111,7 +111,7 @@ export interface AssemblyAgreement {
     /** The agreement's own fills, clauseKey → values, merged over the
      *  registered agreement's `clauses` at checkout (the agreement's fill
      *  wins for the keys it names): the topology clause's
-     *  `{ parentOrderHashes: ["order-<j>", …] }` (empty on the root). */
+     *  `{ follows: ["agreement-<j>", …] }` (empty on the root). */
     clauses: Record<Hex, Record<string, unknown>>;
 }
 
@@ -189,16 +189,17 @@ export function agreementClauses(hydrated: HydratedAssembly, entry: AssemblyAgre
     return out;
 }
 
-/** An agreement's parent ids — the data of its topology fill. The entry is
- *  found by its DATA KEY (`parentOrderHashes` — named for what the committed
- *  clause holds at runtime: the parent orders' FigaroCore order hashes; at
- *  design time the values are sibling `order-<i>` labels), so reading needs
- *  no spec cache and tolerates any registry-defined topology clause. */
-export function assemblyParentOrderHashes(entry: Pick<AssemblyAgreement, "clauses">): string[] {
+/** The agreements an agreement follows — the data of its topology fill. The
+ *  entry is found by its DATA KEY (`follows`, one name at both times: at
+ *  runtime the committed clause holds the FigaroCore order hashes of the
+ *  orders the order follows; at design time the values are sibling
+ *  `agreement-<i>` labels), so reading needs no spec cache and tolerates any
+ *  registry-defined topology clause. */
+export function assemblyFollows(entry: Pick<AssemblyAgreement, "clauses">): string[] {
     const fill = Object.values(entry.clauses ?? {}).find(
-        (fields) => Array.isArray((fields as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes),
+        (fields) => Array.isArray((fields as { follows?: unknown } | undefined)?.follows),
     );
-    const ids = (fill as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes;
+    const ids = (fill as { follows?: unknown } | undefined)?.follows;
     return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
 }
 

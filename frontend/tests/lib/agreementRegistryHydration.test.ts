@@ -73,7 +73,7 @@ describe("fetchRegisteredAgreement — the binding by key, the document verified
     });
 
     it("reads a registered agreement and keeps it for the session", async () => {
-        const doc = { name: "Counter sale · order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-schedule")]: {} } };
+        const doc = { name: "Counter sale · agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-schedule")]: {} } };
         const key = register(doc, "ipfs://registered-1");
         const read = await fetchRegisteredAgreement(key);
         expect(read?.clauses).toEqual(doc.clauses);
@@ -126,8 +126,8 @@ describe("fetchRegisteredAgreement — the binding by key, the document verified
         const presentKey = register(present, "ipfs://present");
         const absentKey = agreementHashOf({ clauses: { [keyOf("figaro-commerce")]: { never: true } } });
         const entries = [
-            { id: "order-0", agreementHash: presentKey, clauses: {} },
-            { id: "order-1", agreementHash: absentKey, clauses: {} },
+            { id: "agreement-0", agreementHash: presentKey, clauses: {} },
+            { id: "agreement-1", agreementHash: absentKey, clauses: {} },
         ];
         expect(await hydrateAnchoredAssembly({ agreements: entries })).toBeNull();
         const whole = await hydrateAnchoredAssembly({ agreements: [entries[0]] });
@@ -176,7 +176,7 @@ describe("the designer binds a registered agreement to one agreement and compose
         expect(Object.keys(review.newAgreements[newKeys[0] as Hex].clauses).sort())
             .toEqual([keyOf("figaro-commerce"), keyOf("figaro-topology"), keyOf("figaro-acceptance-criteria")].sort());
         // The bound agreement carries only its own topology fill.
-        expect(review.assembly.agreements[0].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: [] } });
+        expect(review.assembly.agreements[0].clauses).toEqual({ [keyOf("figaro-topology")]: { follows: [] } });
     });
 
     it("refuses an agreement that binds and composes — the SDK's message reaches the review", async () => {
@@ -200,7 +200,7 @@ describe("the designer binds a registered agreement to one agreement and compose
         const base = snapshot({});
         const review = projectSnapshotForReview({ ...base, registeredByOrderId: { [base.rootId]: boundKey } });
         expect(review.ok).toBe(false);
-        if (!review.ok) expect(review.error).toMatch(/order-0: registered agreement 0x[0-9a-f]{64}: no clause of topology's shape/);
+        if (!review.ok) expect(review.error).toMatch(/agreement-0: registered agreement 0x[0-9a-f]{64}: no clause of topology's shape/);
     });
 
     it("refuses a binding this tab has not read — the build never binds an agreement it cannot read", () => {

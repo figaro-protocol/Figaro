@@ -321,14 +321,14 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
                 </Text>
                 {!contract.topology.composed ? (
                     <Text style={styles.sectionBody}>Its agreement composes no parent links.</Text>
-                ) : contract.topology.parentOrderHashes.length === 0 ? (
+                ) : contract.topology.follows.length === 0 ? (
                     <Text style={styles.sectionBody}>Parent links composed: none.</Text>
                 ) : (
                     <>
                         <Text style={styles.sectionBody}>
                             Parent order(s), as its agreement composes them:
                         </Text>
-                        {contract.topology.parentOrderHashes.map((p) => (
+                        {contract.topology.follows.map((p) => (
                             <Text key={p} style={[styles.mono, { marginTop: 1 }]}>{p}</Text>
                         ))}
                     </>

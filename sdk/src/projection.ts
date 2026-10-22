@@ -236,11 +236,11 @@ export function specIsCommerceShape(spec: ProjectionSpecView): boolean {
     return ["payment", "currency", "lineItems"].every((f) => specDeclaresContentField(spec, f));
 }
 
-/** The SHAPE of topology: a clause declaring `parentOrderHashes` as content —
+/** The SHAPE of topology: a clause declaring `follows` as content —
  *  the orders this order follows, the process's DAG. An agreement carries
  *  exactly one. */
 export function specIsTopologyShape(spec: ProjectionSpecView): boolean {
-    return specDeclaresContentField(spec, "parentOrderHashes");
+    return specDeclaresContentField(spec, "follows");
 }
 
 /** The shape a mandatory-article spec has: commerce's, topology's, or (for a
@@ -844,14 +844,14 @@ export function clauseByField(
  *  its (synthetic) hash and its parent edges. */
 export interface AssemblyOrderNode {
     orderHash: string;
-    parentOrderHashes?: readonly string[];
+    follows?: readonly string[];
 }
 
 /** The agreement's own fills for a composed clause map — the design-time
  *  values the ASSEMBLY'S AGREEMENT carries rather than the registered agreement: each
- *  composed clause whose loaded spec declares `parentOrderHashes` (the
+ *  composed clause whose loaded spec declares `follows` (the
  *  topology, matched by declared field, never by clause id) gets
- *  `{ parentOrderHashes: parents }` (root = []). The registered agreement
+ *  `{ follows: parents }` (root = []). The registered agreement
  *  composes those clauses with `{}`, so one agreement sits in any agreement
  *  of any assembly. */
 function agreementTopologyFills(
@@ -862,7 +862,7 @@ function agreementTopologyFills(
     const out: Record<Hex, Record<string, unknown>> = {};
     for (const clauseKey of Object.keys(clauses) as Hex[]) {
         const spec = specs.get(clauseKey);
-        if (spec && specDeclaresField(spec, "parentOrderHashes")) out[clauseKey] = { parentOrderHashes: [...parents] };
+        if (spec && specDeclaresField(spec, "follows")) out[clauseKey] = { follows: [...parents] };
     }
     return out;
 }
@@ -1048,7 +1048,7 @@ export function buildAssembly(args: {
     // Re-label each design-time (synthetic) order id to a clean local label
     // naming the future agreement. The assembly carries no chain ids and no
     // party addresses.
-    const idToLocal = new Map(orders.map((o, i) => [o.orderHash, `order-${i}`]));
+    const idToLocal = new Map(orders.map((o, i) => [o.orderHash, `agreement-${i}`]));
     // Assembly-scoped clauses keep the same value-free rule as agreements:
     // only design.fills values survive into the assembly.
     const assemblySelection: Record<Hex, Record<string, unknown>> = {};
@@ -1057,8 +1057,8 @@ export function buildAssembly(args: {
     }
     const agreements: Record<Hex, RegisteredAgreement> = {};
     const entries: AssemblyAgreement[] = orders.map((order, i) => {
-        const id = `order-${i}`;
-        const parents = (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p);
+        const id = `agreement-${i}`;
+        const parents = (order.follows ?? []).map((p) => idToLocal.get(p) ?? p);
         const bound = registeredByOrderId?.[order.orderHash];
         if (bound) {
             if (Object.keys(clausesByOrderId[order.orderHash] ?? {}).length > 0) {
@@ -1152,7 +1152,7 @@ export function composeAuthoredAgreements(
  * Build an AUTHORED assembly (`assemblies/*.json`) over authored agreements:
  * each agreement names the agreement it binds (`agreements[].agreement`,
  * the authored agreement's name) and carries its own topology as
- * `parentOrderHashes` (`order-<j>` labels); `assemblyClauses` are written by
+ * `follows` (`agreement-<j>` labels); `assemblyClauses` are written by
  * clause name. The entry binds the named agreement's hash — the same key
  * whether a designer registers that agreement on its own or this seeding
  * registers it — and its fill is the topology clause's parents
@@ -1172,14 +1172,14 @@ export function assembleAuthored(
         description?: string;
         faq?: Assembly["faq"];
         assemblyClauses?: Record<Hex, Record<string, unknown>>;
-        agreements?: { id?: string; agreement?: string; parentOrderHashes?: string[]; clauses?: unknown }[];
+        agreements?: { id?: string; agreement?: string; follows?: string[]; clauses?: unknown }[];
     };
     if (!Array.isArray(doc.agreements) || doc.agreements.length === 0) {
         throw new Error("the authored assembly has no agreements");
     }
     const agreements: Record<Hex, RegisteredAgreement> = {};
     const entries: AssemblyAgreement[] = doc.agreements.map((entry, i) => {
-        const id = entry.id ?? `order-${i}`;
+        const id = entry.id ?? `agreement-${i}`;
         if (typeof entry.agreement !== "string" || entry.agreement.length === 0) {
             throw new Error(`${id} names no agreement — write the authored agreement's name as "agreement"`);
         }
@@ -1191,7 +1191,7 @@ export function assembleAuthored(
         const agreementHash = agreementHashOf(bound);
         assertNotReservedKey(agreementHash, `${id} agreementHash`);
         assertMandatoryShapes(bound.clauses, specs, `${id}: agreement "${entry.agreement}"`);
-        const parents = Array.isArray(entry.parentOrderHashes) ? [...entry.parentOrderHashes] : [];
+        const parents = Array.isArray(entry.follows) ? [...entry.follows] : [];
         agreements[agreementHash] = { clauses: bound.clauses };
         return { id, agreementHash, clauses: agreementTopologyFills(bound.clauses, parents, specs) };
     });
