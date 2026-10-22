@@ -11,13 +11,14 @@
 // is copied under /docs (work/deploy/site-build.sh). Idempotent: a page's policy is replaced,
 // never stacked.
 //
-// Usage: node scripts/csp-inline-hashes.mjs [dir]   (default: NEXT_DISTDIR, where an e2e export
-//        lands, else `out/`, where a production export lands)
+// Usage: node scripts/csp-inline-hashes.mjs [dir]   (default: the export root `next build`
+//        records, `paperExportDir`)
 
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { paperExportDir } from "./paper-latex.mjs";
 
 const SCRIPT = /<script(\s[^>]*)?>([\s\S]*?)<\/script\s*>/g;
 const POLICY_META = /<meta http-equiv="Content-Security-Policy" content="[^"]*"\/>/g;
@@ -46,7 +47,7 @@ function* htmlFiles(dir) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-    const dir = process.argv[2] ?? join(process.cwd(), process.env.NEXT_DISTDIR || "out");
+    const dir = process.argv[2] ?? paperExportDir();
     let pages = 0;
     for (const file of htmlFiles(dir)) {
         const html = readFileSync(file, "utf8");

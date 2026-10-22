@@ -13,12 +13,13 @@
 //
 // Runs automatically via the npm `postbuild` lifecycle hook, so every consumer
 // of `npm run build` (manual builds, the Playwright webServer, deploys) serves
-// pageable HTML. Resolves the export root exactly as next.config.mjs does.
+// pageable HTML. The export root is the one `next build` records (`paperExportDir`).
 
 import { readdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { paperExportDir } from "./paper-latex.mjs";
 
-const distDir = join(process.cwd(), process.env.NEXT_DISTDIR || ".next");
+const distDir = paperExportDir();
 
 // Block-level closing tags safe to break inside (`</p\n>` parses as `</p>`).
 const BLOCK_CLOSERS =
