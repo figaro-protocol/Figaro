@@ -48,7 +48,9 @@ import {
     anchoredCompositionHash,
     isBindingOf,
     chainProfileReader,
+    chainDesignReader,
 } from './devnet-helpers';
+import { specSource } from '@/lib/shared/clauseSpecSource';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds } from '@figaro-protocol/sdk';
@@ -113,9 +115,12 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
         //    describes. ──
         const policy: OfferPolicy = { currencyAllowlist: [token], maxValue: parseUnits('1000', 18) };
         const respondToRaceDraft = makeHttpOfferResponder(
-            // The agent reads its OWN profile when a draft arrives: a draft under
-            // an assembly it has not bound is refused.
-            makeSellerRaceHandler(agentWallet, { chainId: 31337, core }, { accept: () => true, policy, readProfile: chainProfileReader() }),
+            // The agent reads its OWN profile when a draft arrives (a draft under
+            // an assembly it has not bound is refused) and runs the sign gate
+            // over the clause specs and the design the draft names.
+            makeSellerRaceHandler(agentWallet, { chainId: 31337, core }, {
+                accept: () => true, policy, specs: specSource(), readDesign: chainDesignReader(), readProfile: chainProfileReader(),
+            }),
         );
         let commitReady: CommitmentPayload | null = null;
         const agentServer: Server = createServer((req, res) => {

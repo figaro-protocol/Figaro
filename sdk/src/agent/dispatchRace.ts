@@ -35,7 +35,7 @@ import { buildCommitment, buildDomain, hashCommitmentStruct, ZERO_PROCESS_ID } f
 import { computeCheckoutHash, type Agreement, type AgreementProvenance } from "../agreement.js";
 import type { Hex, Address } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, PricedField, QuoteRequestTerms } from "./coordination.js";
-import { checkOfferPolicy, checkPayloadTerms, checkSellerSignature, countersignUnderFloors, gateSeller, instantiateRootAgreement, readOfferDesign, signCommitmentAs, verifyRaceReply, type OfferCheck, type OfferPolicy } from "./originate.js";
+import { checkOfferPolicy, checkPayloadTerms, checkSellerSignature, countersignUnderFloors, gateSeller, instantiateRootAgreement, readOfferDesign, requireSpecs, signCommitmentAs, verifyRaceReply, type OfferCheck, type OfferPolicy } from "./originate.js";
 
 // One owner for the reply check: the offer loops and the race both use it.
 export { verifyRaceReply };
@@ -92,10 +92,11 @@ export async function validateDraft(
  * bound (`validateDraft`), THROWS — the candidate never countersigns it. There
  * is no buyer signature to verify; that is the point.
  *
- * With `specs`, the anti-tamper gate ALSO runs the merkle-leaf seam
- * (`validateDraft`'s `assertAgreementSignable` check), the same treatment
+ * SPEC FLOOR: `specs` is required. The anti-tamper gate runs the merkle-leaf
+ * seam (`validateDraft`'s `assertAgreementSignable` check), the same treatment
  * `counterSignOffer` gives a signed offer: a draft whose terms contradict the
  * struct the candidate would bond against THROWS before any signature.
+ * Without `specs` it THROWS.
  */
 export async function counterSignDraft(
     wallet: WalletClient,
@@ -107,7 +108,8 @@ export async function counterSignDraft(
     design: HydratedAssembly | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
-    await gateSeller(wallet, "counterSignDraft", "the draft", (seller) => validateDraft(draft, seller, undefined, specs, design, readProfile));
+    const gateSpecs = requireSpecs(specs, "counterSignDraft");
+    await gateSeller(wallet, "counterSignDraft", "the draft", (seller) => validateDraft(draft, seller, undefined, gateSpecs, design, readProfile));
     if (draft.quoteRequest) {
         throw new Error("counterSignDraft: payload is a quote request — the candidate prices it via quoteDraft, never countersigns the ceiling");
     }
@@ -267,9 +269,10 @@ export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPa
  * same substitution the buyer will reconstruct with — the quote changes the
  * price and nothing else, by construction.
  *
- * With `specs`, the anti-tamper gate ALSO runs the merkle-leaf seam on the
- * inbound request (`validateDraft`'s `assertAgreementSignable` check), and the
- * outbound counter-draft passes the same gate before the candidate signs it.
+ * SPEC FLOOR: `specs` is required. The anti-tamper gate runs the merkle-leaf
+ * seam on the inbound request (`validateDraft`'s `assertAgreementSignable`
+ * check), and the outbound counter-draft passes the same gate before the
+ * candidate signs it. Without `specs` it THROWS.
  */
 export async function quoteDraft(
     wallet: WalletClient,
@@ -281,7 +284,8 @@ export async function quoteDraft(
     design: HydratedAssembly | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
-    await gateSeller(wallet, "quoteDraft", "the quote request", (seller) => validateDraft(draft, seller, undefined, specs, design, readProfile));
+    const gateSpecs = requireSpecs(specs, "quoteDraft");
+    await gateSeller(wallet, "quoteDraft", "the quote request", (seller) => validateDraft(draft, seller, undefined, gateSpecs, design, readProfile));
     const terms = draft.quoteRequest;
     if (!terms || terms.pricedFields.length === 0) {
         throw new Error("quoteDraft: payload carries no quote request — a race draft countersigns via counterSignDraft");
@@ -296,9 +300,7 @@ export async function quoteDraft(
     if (q === null || q < 1n || q > draft.commitment.payment) return null;
 
     const { commitment: quoted, agreement } = buildCounterDraft(draft, terms, q);
-    if (specs) {
-        assertAgreementSignable(agreement, quoted.checkoutHash, specs, quoted, design, "This quote");
-    }
+    assertAgreementSignable(agreement, quoted.checkoutHash, gateSpecs, quoted, design, "This quote");
     const sellerSig = await signCommitmentAs(wallet, ctx, quoted, "quoteDraft");
     return { commitment: quoted, agreement, sellerSig };
 }
@@ -515,8 +517,8 @@ export function makeSellerRaceHandler(
     opts: {
         accept: (draft: CommitmentPayload) => boolean;
         policy: OfferPolicy;
-        /** The clause-spec source for the merkle-leaf seam — see `counterSignDraft`. */
-        specs?: SpecSource;
+        /** The clause-spec source for the merkle-leaf seam, required — see `counterSignDraft`. */
+        specs: SpecSource;
         /** Reads the design a draft's agreement names — see `makeSellerOfferHandler`. */
         readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>;
         /** Reads the candidate's OWN member profile at acceptance time — see
@@ -539,8 +541,8 @@ export function makeSellerQuoteHandler(
     opts: {
         quote: (draft: CommitmentPayload) => bigint | null;
         policy: OfferPolicy;
-        /** The clause-spec source for the merkle-leaf seam — see `quoteDraft`. */
-        specs?: SpecSource;
+        /** The clause-spec source for the merkle-leaf seam, required — see `quoteDraft`. */
+        specs: SpecSource;
         /** Reads the design a draft's agreement names — see `makeSellerOfferHandler`. */
         readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>;
         /** Reads the candidate's OWN member profile at acceptance time — see

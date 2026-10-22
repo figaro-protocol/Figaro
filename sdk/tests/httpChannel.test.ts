@@ -8,7 +8,7 @@ import type { OfferHandler, CommitmentPayload } from "../src/agent/coordination.
 import { serializeCommitmentPayload } from "../src/agent/coordination.js";
 import { COMMITMENT_TYPES, buildDomain } from "../src/commitments.js";
 import type { DIDDocument } from "../src/agent/did.js";
-import { keyOf } from "./specFixtures.js";
+import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { hydrateAuthored, profileBinding } from "./hydrate.js";
 
 // ── Fixtures (no chain — signing is local; the socket is real) ────────────────
@@ -30,10 +30,13 @@ const assembly = hydrateAuthored({
     }],
 });
 
+const SPECS = specSourceFromFixtures(["figaro-commerce"]);
+
 async function buildOffer(): Promise<CommitmentPayload> {
     return buildBuyerOffer(buyerW, {
         assembly: assembly, buyer: BUYER.address, seller: SELLER.address,
         currency: CURRENCY, payment: PAYMENT, chainId: CHAIN_ID, core: CORE, salt: 1n, deadline: 0n,
+        specs: SPECS,
     });
 }
 
@@ -43,7 +46,7 @@ async function buildOffer(): Promise<CommitmentPayload> {
 const sellerHandler: OfferHandler = (offer) => counterSignOffer(
     sellerW, offer, { chainId: CHAIN_ID, core: CORE }, () => true,
     { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 10_000n },
-    undefined, null, profileBinding(assembly),
+    SPECS, assembly, profileBinding(assembly),
 );
 
 /** Stand up a real node:http server running `responder`; returns its URL + a stop. */

@@ -608,6 +608,18 @@ export function chainProfileReader(): MemberProfileReader {
     };
 }
 
+/** The design a payload's provenance names, read from the chain when it is
+ *  needed — AssemblyRegistry → IPFS, each agreement verified against its key:
+ *  the `readDesign` a seller handler takes. Null when no anchored assembly has
+ *  that composition hash. */
+export function chainDesignReader(): (provenance: { compositionHash: string }) => Promise<HydratedAssembly | null> {
+    return async (provenance) => {
+        const found = (await discoverAnchoredAssemblies())
+            .find((a) => a.compositionHash.toLowerCase() === provenance.compositionHash.toLowerCase());
+        return found?.hydrated ?? null;
+    };
+}
+
 /** A seller's live assembly bindings, read from its latest pinned profile
  *  (chain events → IPFS). Empty when unregistered or unresolvable. */
 export async function memberProfileBindings(

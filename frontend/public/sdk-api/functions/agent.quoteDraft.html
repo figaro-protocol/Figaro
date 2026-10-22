@@ -30,9 +30,10 @@ bound (<code>validateDraft</code>), THROWS. The counter-draft is built through t
 same substitution the buyer will reconstruct with — the quote changes the
 price and nothing else, by construction.</li>
 </ul>
-<p>With <code>specs</code>, the anti-tamper gate ALSO runs the merkle-leaf seam on the
-inbound request (<code>validateDraft</code>'s <code>assertAgreementSignable</code> check), and the
-outbound counter-draft passes the same gate before the candidate signs it.</p>
+<p>SPEC FLOOR: <code>specs</code> is required. The anti-tamper gate runs the merkle-leaf
+seam on the inbound request (<code>validateDraft</code>'s <code>assertAgreementSignable</code>
+check), and the outbound counter-draft passes the same gate before the
+candidate signs it. Without <code>specs</code> it THROWS.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -47,7 +48,7 @@ outbound counter-draft passes the same gate before the candidate signs it.</p>
 <li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">readProfile</span>: <a href="../types/index.MemberProfileReader.html" class="tsd-signature-type tsd-kind-type-alias">MemberProfileReader</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.CommitmentPayload.html" class="tsd-signature-type tsd-kind-interface">CommitmentPayload</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/dispatchRace.ts#L274">agent/dispatchRace.ts:274</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/dispatchRace.ts#L277">agent/dispatchRace.ts:277</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

@@ -34,11 +34,11 @@ bonds the seller against attacker-chosen <code>expectedCumulativeValue</code> /
 <code>currency</code>, so with NO policy the offer is declined — a bare integration
 never silently vouches for unbounded magnitudes or an unexpected currency.</li>
 </ul>
-<p>With <code>specs</code> supplied, the anti-tamper gate ALSO runs the merkle-leaf seam
-(<code>validateOffer</code>'s <code>assertAgreementSignable</code> check): an offer whose
+<p>SPEC FLOOR: <code>specs</code> is required. The anti-tamper gate runs the merkle-leaf
+seam (<code>validateOffer</code>'s <code>assertAgreementSignable</code> check): an offer whose
 commerce-clause currency LEAF disagrees with the commitment struct's
 <code>currency</code> field THROWS here too, before any signature — the same treatment
-as every other structural tamper.</p>
+as every other structural tamper. Without <code>specs</code> it THROWS.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -53,7 +53,7 @@ as every other structural tamper.</p>
 <li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">readProfile</span>: <a href="../types/index.MemberProfileReader.html" class="tsd-signature-type tsd-kind-type-alias">MemberProfileReader</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.CommitmentPayload.html" class="tsd-signature-type tsd-kind-interface">CommitmentPayload</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L375">agent/originate.ts:375</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L380">agent/originate.ts:380</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

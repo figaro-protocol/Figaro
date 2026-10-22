@@ -40,17 +40,20 @@ const assembly = hydrateAuthored({
     }],
 });
 
+const SPECS = specSourceFromFixtures(["figaro-commerce"]);
+
 async function buildOffer(): Promise<CommitmentPayload> {
     return buildBuyerOffer(buyerW, {
         assembly: assembly, buyer: BUYER.address, seller: SELLER.address,
         currency: CURRENCY, payment: PAYMENT, chainId: CHAIN_ID, core: CORE, salt: 1n, deadline: 0n,
+        specs: SPECS,
     });
 }
 
 const sellerHandler: OfferHandler = (offer) => counterSignOffer(
     sellerW, offer, { chainId: CHAIN_ID, core: CORE }, () => true,
     { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 10_000n },
-    undefined, null, profileBinding(assembly),
+    SPECS, assembly, profileBinding(assembly),
 );
 
 async function startSellerServer(
@@ -191,7 +194,7 @@ describe("A2aChannel over a real socket", () => {
 
 import { didWebEndpointResolver } from "../src/agent/httpChannel.js";
 import type { DIDDocument } from "../src/agent/did.js";
-import { keyOf } from "./specFixtures.js";
+import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { hydrateAuthored, profileBinding } from "./hydrate.js";
 
 describe("A2aChannel + didWebEndpointResolver", () => {

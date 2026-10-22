@@ -162,13 +162,13 @@ const deadline = computeDeadline(await readChainTimestamp(publicClient));
 ```
 
 **3. Pass `specs` on BOTH sides of the handshake.** The gate is per-signature, so each side
-arms its own — and a side that omits it signs with no content check at all, leaving the
-counterparty's gate as the only net.
+arms its own, and every signing path refuses without it: no signature leaves the SDK
+without the clause, term and designer checks.
 
 - **Buyer side:** `originateProcess` / `originateChain` take `specs` beside `deadline`
   (the builders under them, `buildBuyerOffer` / `buildChainOffers`, take the same field).
-  With it the walk also fills the currency leaf from the figure the struct signs and
-  THROWS on an override that contradicts it.
+  The walk also fills the currency leaf from the figure the struct signs and THROWS on an
+  override that contradicts it.
 - **Seller side:** `makeSellerOfferHandler(wallet, publicClient, addresses, { accept,
   policy, specs, readDesign, readProfile })`, or `counterSignOffer(wallet, offer, ctx, accept,
   policy, specs, design, readProfile)` directly. The market-formation legs take them in the
@@ -184,11 +184,10 @@ counterparty's gate as the only net.
   member, from a fresh `ctx.sync()` and `ctx.getMembers()`, then the pinned document through
   `tryParseMemberProfileDocument`).
 
-  **A seller handler given `specs` needs BOTH readers, or it refuses every order.** Every
+  **A seller handler needs `specs` and BOTH readers, or it refuses every order.** Every
   process instantiates an assembly, so every payload names one in its provenance leaf: with
-  `specs` and no `readDesign` the gate cannot check the designer's values and refuses; with
-  no `readProfile` it cannot read your bound assemblies and refuses (`readProfile` is needed
-  with or without `specs`). A payload with no provenance leaf, under an assembly your profile
+  no `readDesign` the gate cannot check the designer's values and refuses; with no
+  `readProfile` it cannot read your bound assemblies and refuses. A payload with no provenance leaf, under an assembly your profile
   does not bind, or arriving while your profile cannot be read is refused too
   (`checkSellerBindsAssembly`) — bind the assembly in your profile's `assemblyBindings` (by its
   full `compositionHash`) before you serve it.

@@ -130,7 +130,7 @@ What it does, in order:
    offer arrives. The seller first binds the discovered assembly in that
    profile: a seller accepts only orders under an assembly it has bound. A
    handler missing either floor declines every offer; a handler with no
-   `readProfile` refuses every offer, and one given `specs` without
+   `readProfile` or no `specs` refuses every offer, and one without
    `readDesign` refuses every offer naming a design — every offer, since every
    process instantiates an assembly.
 3. **Runs the buyer loop.** `originateProcess(…)` instantiates the discovered
@@ -457,7 +457,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `unwrapWithSharedSecret` | `/handoff` | Decrypt what `wrapWithSharedSecret` produced. |
 | `validateCommitmentAgreement` | root | The non-throwing form of `assertAgreementSignable` — returns the findings instead. |
 | `validateContent` | `/clauses` | Validate clause content against its spec; on a closed clause, unknown fields are rejected. |
-| `validateDraft` | `/agent` | The check a candidate MUST run before countersigning a race draft: structure, the bound assembly (`readProfile`), and with `specs` the merkle-leaf gate. |
+| `validateDraft` | `/agent` | The check a candidate runs before countersigning a race draft: structure, the bound assembly (`readProfile`), and with `specs` the merkle-leaf gate (`counterSignDraft` and `quoteDraft` run it themselves and refuse without `specs`). |
 | `verifyCommitmentSignature` | root | Does this signature over this commitment recover to this signer? Refuse early, off chain. |
 | `verifyInclusionProof` | root | Does this leaf sit under this root? The off-chain mirror of the on-chain `MerkleProof.verify`. |
 | `verifyRaceReply` | `/agent` | Buyer side: the reply's struct must EXACTLY equal the draft, and recover to the drafted candidate. |
@@ -1037,14 +1037,14 @@ channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, 
     accept: (offer) => offer.commitment.currency === myAcceptedToken
         && offer.commitment.expectedCumulativeValue <= myMaxBond,
     policy: { requireRootShape: true, currencyAllowlist: [myAcceptedToken], maxValue: myMaxBond },
-    specs, // the merkle-leaf sign gate — a leaf/struct contradiction or missing
-           // required term REFUSES before counter-signing; omit it and no
-           // content check runs on this side
+    specs, // the merkle-leaf sign gate, required — a leaf/struct contradiction
+           // or missing required term REFUSES before counter-signing; omit it
+           // and every offer is REFUSED
     readDesign, // (provenance) => the hydrated assembly the offer names, read
            // by its composition hash and verified (`anchorAssembly` +
-           // `hydrateAssembly`), or null. With `specs`, an offer whose design
-           // is not read, which drops a clause of that design, or whose
-           // designer values differ, is REFUSED
+           // `hydrateAssembly`), or null. An offer whose design is not read,
+           // which drops a clause of that design, or whose designer values
+           // differ, is REFUSED
     readProfile, // (member) => the seller's OWN profile, read when the offer
            // arrives: MembersRegistry's latest metadataURI for the member (a
            // `FigaroContext` sync, then its members) → the pinned document →
@@ -1056,7 +1056,7 @@ channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, 
 const tx = await originateProcess(buyerWallet, publicClient, addresses, {
     channel, assembly, buyer, seller, currency, payment, chainId, core, overrides,
     deadline, // CHAIN time: computeDeadline(await readChainTimestamp(publicClient))
-    specs,    // same gate before the buyer signs
+    specs,    // same gate before the buyer signs; required
 });
 
 // TRANSPORTS — `CoordinationChannel` is ONE method (`sendOffer`), and the SDK
@@ -1114,8 +1114,8 @@ const { status, body } = await respond(rawRequestBody); // status is always 200 
 // at the struct deadline. Same two candidate-side floors as counterSignOffer,
 // the same bound-assembly check (`readProfile`, the candidate's own profile —
 // a draft under an assembly it has not bound is refused, so a buyer races only
-// candidates whose profiles bind the assembly), and the same optional `specs`
-// merkle-leaf gate: with a SpecSource, a draft whose commerce leaf contradicts
+// candidates whose profiles bind the assembly), and the same required `specs`
+// merkle-leaf gate (no SpecSource, no signature): a draft whose commerce leaf contradicts
 // the struct, which drops a clause of the design it names, or whose designer
 // values differ from it
 // (`design`, the hydrated assembly; null refuses a draft naming one), is

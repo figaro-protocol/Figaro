@@ -99,19 +99,18 @@ export interface BuildOfferParams extends InstantiateParams {
     /** CHAIN-time deadline (readChainTimestamp) — never the machine clock. */
     deadline: bigint;
     /** The clause-spec source for the merkle-leaf seam (`assertAgreementSignable`,
-     *  docs/CLAUSES.md § "Every clause is a merkle leaf"): with it, the buyer
-     *  refuses to sign an agreement whose terms contradict the commitment
-     *  struct. WITHOUT it, the buyer signs ungated and the counterparty's
-     *  `validateOffer(..., specs)` is the only net. */
-    specs?: SpecSource;
+     *  docs/CLAUSES.md § "Every clause is a merkle leaf"): the buyer refuses to
+     *  sign an agreement whose terms contradict the commitment struct. Required:
+     *  no signature leaves the SDK without the clause, term and designer checks. */
+    specs: SpecSource;
 }
 
 /**
  * Buyer builds the root commitment from a discovered assembly and signs its half.
  * `wallet.account` is the buyer. Returns the offer envelope (buyerSig filled)
- * ready to send over a `CoordinationChannel`. With `specs`, the merkle-leaf
- * sign gate runs before the signature — the buyer-side half of the check
- * `validateOffer` runs for the seller.
+ * ready to send over a `CoordinationChannel`. The merkle-leaf sign gate runs
+ * before the signature — the buyer-side half of the check `validateOffer` runs
+ * for the seller.
  */
 export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferParams): Promise<CommitmentPayload> {
     const account = wallet.account;
@@ -127,9 +126,7 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
         payment: params.payment, expectedCumulativeValue: params.payment,
         checkoutHash, salt: params.salt, deadline: params.deadline,
     }, domain);
-    if (params.specs) {
-        assertAgreementSignable(agreement, checkoutHash, params.specs, commitment, params.assembly, "This offer");
-    }
+    assertAgreementSignable(agreement, checkoutHash, requireSpecs(params.specs, "buildBuyerOffer"), commitment, params.assembly, "This offer");
     const buyerSig = await wallet.signTypedData({ account, ...typedData });
     return { commitment, agreement, buyerSig };
 }
@@ -274,6 +271,14 @@ export async function signCommitmentAs(
     });
 }
 
+/** The spec floor every signing path shares: no signature leaves the SDK without the clause,
+ *  term and designer checks, so a caller that brings no `SpecSource` is refused, never signed
+ *  for ungated. `who` names the refusing path. */
+export function requireSpecs(specs: SpecSource | undefined, who: string): SpecSource {
+    if (!specs) throw new Error(`${who}: refusing to sign without the clause specs (a SpecSource) — every signature passes the clause, term and designer checks first`);
+    return specs;
+}
+
 /** The head every seller leg (`counterSignOffer`, `counterSignDraft`, `quoteDraft`) shares:
  *  the wallet's account is the seller, and the term check run against it must pass or the
  *  leg THROWS, naming itself (`who`) and what it refused (`what`). Returns the seller. */
@@ -366,11 +371,11 @@ export function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck
  *     `currency`, so with NO policy the offer is declined — a bare integration
  *     never silently vouches for unbounded magnitudes or an unexpected currency.
  *
- * With `specs` supplied, the anti-tamper gate ALSO runs the merkle-leaf seam
- * (`validateOffer`'s `assertAgreementSignable` check): an offer whose
+ * SPEC FLOOR: `specs` is required. The anti-tamper gate runs the merkle-leaf
+ * seam (`validateOffer`'s `assertAgreementSignable` check): an offer whose
  * commerce-clause currency LEAF disagrees with the commitment struct's
  * `currency` field THROWS here too, before any signature — the same treatment
- * as every other structural tamper.
+ * as every other structural tamper. Without `specs` it THROWS.
  */
 export async function counterSignOffer(
     wallet: WalletClient,
@@ -382,9 +387,10 @@ export async function counterSignOffer(
     design: HydratedAssembly | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
-    // The gate: a malformed or tampered offer, or one under an assembly the
-    // seller has not bound, THROWS.
-    await gateSeller(wallet, "counterSignOffer", "the offer", (seller) => validateOffer(offer, seller, undefined, specs, design, readProfile));
+    // The gate: no specs, a malformed or tampered offer, or one under an
+    // assembly the seller has not bound, THROWS.
+    const gateSpecs = requireSpecs(specs, "counterSignOffer");
+    await gateSeller(wallet, "counterSignOffer", "the offer", (seller) => validateOffer(offer, seller, undefined, gateSpecs, design, readProfile));
 
     const domain = buildDomain(ctx.chainId, ctx.core);
     const buyerSigValid = await verifyTypedData({
@@ -501,15 +507,15 @@ export interface SellerOfferHandlerOpts {
     /** The clause-spec source for the merkle-leaf seam (`assertAgreementSignable`,
      *  wired through `validateOffer`'s anti-tamper gate): an offer whose
      *  commerce-clause currency LEAF disagrees with the commitment struct's
-     *  `currency` is refused (thrown) before counter-signing. OMIT it and this
-     *  handler runs no leaf/struct check — the caller's own SpecSource (the same
-     *  one used to originate or display the offer) is the one to pass here. */
-    specs?: SpecSource;
+     *  `currency` is refused (thrown) before counter-signing. OMIT it and the
+     *  handler refuses every offer — the caller's own SpecSource (the same one
+     *  used to originate or display the offer) is the one to pass here. */
+    specs: SpecSource;
     /** Reads the design an offer's agreement names (its provenance leaf):
      *  the assembly by its composition hash, every registered agreement
-     *  verified against its key; null when it cannot be read. With `specs`,
-     *  the gate checks the designer's values against it, and an offer whose
-     *  design is not read is refused. */
+     *  verified against its key; null when it cannot be read. The gate checks
+     *  the designer's values against it, and an offer whose design is not read
+     *  is refused. */
     readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>;
     /** Reads the seller's OWN member profile at acceptance time
      *  (MembersRegistry → metadataURI → IPFS, parsed): the gate accepts an
@@ -546,15 +552,15 @@ export async function readOfferDesign(
  * bond); a malformed offer, or one under an assembly the seller has not bound,
  * throws. With no `accept` business rule OR no economic `policy` the handler
  * declines everything (both floors); with no `readProfile` it refuses
- * everything; given `specs`, it also needs `readDesign` or it refuses every
- * offer naming a design — so registering it bare never auto-signs a
- * stranger's offer.
+ * everything; with no `specs` it refuses everything, and it needs `readDesign`
+ * or it refuses every offer naming a design — so registering it bare never
+ * auto-signs a stranger's offer.
  */
 export function makeSellerOfferHandler(
     wallet: WalletClient,
     publicClient: PublicClient,
     addresses: FigaroAddresses,
-    opts: SellerOfferHandlerOpts = {},
+    opts: SellerOfferHandlerOpts,
 ): OfferHandler {
     return async (offer: CommitmentPayload): Promise<CommitmentPayload | null> => {
         const chainId = await publicClient.getChainId();
@@ -608,13 +614,11 @@ export interface BuildChainParams {
     salt?: (nodeId: string) => bigint | undefined;
     /** CHAIN-time deadline (readChainTimestamp) — never the machine clock. */
     deadline: bigint;
-    /** The clause-spec source. With it, the walk's currency-leaf fill engages
+    /** The clause-spec source, required: the walk's currency-leaf fill engages
      *  (`reconstructOrdersFromAssembly` writes the commerce leaf from the same
      *  figure the struct signs, and THROWS on a contradicting override) and
-     *  every order passes the merkle-leaf sign gate before the buyer signs.
-     *  WITHOUT it, the walk is the documented spec-less caller-owns-the-leaf
-     *  branch and the counterparty's `validateOffer(..., specs)` is the net. */
-    specs?: SpecSource;
+     *  every order passes the merkle-leaf sign gate before the buyer signs. */
+    specs: SpecSource;
 }
 
 /** A buyer-signed offer for one node, in commit order. */
@@ -636,6 +640,7 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
     const account = wallet.account;
     if (!account) throw new Error("buildChainOffers: wallet has no account");
     const buyer = account.address;
+    const specs = requireSpecs(params.specs, "buildChainOffers");
     const specByNode = new Map(params.nodes.map((n) => [n.nodeId, n]));
     const out: ChainOffer[] = [];
     await reconstructOrdersFromAssembly(params.assembly, {
@@ -643,7 +648,7 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
         currency: params.currency,
         chainId: params.chainId,
         core: params.core,
-        specs: params.specs,
+        specs,
         nodes: (planned) => {
             const spec = specByNode.get(planned.nodeId);
             if (!spec) throw new Error(`no seller/payment spec for assembly node "${planned.nodeId}"`);
@@ -652,12 +657,10 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
         salt: params.salt,
         deadline: params.deadline,
         onOrder: async (order) => {
-            if (params.specs) {
-                assertAgreementSignable(
-                    order.agreement, order.commitment.checkoutHash, params.specs,
-                    order.commitment, params.assembly, `Order "${order.nodeId}"`,
-                );
-            }
+            assertAgreementSignable(
+                order.agreement, order.commitment.checkoutHash, specs,
+                order.commitment, params.assembly, `Order "${order.nodeId}"`,
+            );
             const buyerSig = await wallet.signTypedData({ account, ...order.typedData });
             out.push({
                 nodeId: order.nodeId,

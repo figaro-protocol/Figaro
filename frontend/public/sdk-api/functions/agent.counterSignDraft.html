@@ -29,10 +29,11 @@ A malformed/tampered draft, or one under an assembly the candidate has not
 bound (<code>validateDraft</code>), THROWS — the candidate never countersigns it. There
 is no buyer signature to verify; that is the point.</li>
 </ul>
-<p>With <code>specs</code>, the anti-tamper gate ALSO runs the merkle-leaf seam
-(<code>validateDraft</code>'s <code>assertAgreementSignable</code> check), the same treatment
+<p>SPEC FLOOR: <code>specs</code> is required. The anti-tamper gate runs the merkle-leaf
+seam (<code>validateDraft</code>'s <code>assertAgreementSignable</code> check), the same treatment
 <code>counterSignOffer</code> gives a signed offer: a draft whose terms contradict the
-struct the candidate would bond against THROWS before any signature.</p>
+struct the candidate would bond against THROWS before any signature.
+Without <code>specs</code> it THROWS.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -47,7 +48,7 @@ struct the candidate would bond against THROWS before any signature.</p>
 <li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">readProfile</span>: <a href="../types/index.MemberProfileReader.html" class="tsd-signature-type tsd-kind-type-alias">MemberProfileReader</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.CommitmentPayload.html" class="tsd-signature-type tsd-kind-interface">CommitmentPayload</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/dispatchRace.ts#L100">agent/dispatchRace.ts:100</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/dispatchRace.ts#L101">agent/dispatchRace.ts:101</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
