@@ -35,7 +35,7 @@ export interface TransactionReceiptProps {
 }
 
 const DEFAULT_LIST_ROWS_CLASSNAME = "text-xs text-ink-body space-y-2 pt-2 border-t border-default";
-const DEFAULT_INLINE_ROWS_CLASSNAME = "text-xs text-ink-faint font-mono break-all";
+const DEFAULT_INLINE_ROWS_CLASSNAME = "text-xs text-ink-muted font-mono break-all";
 
 /**
  * Shared receipt panel: heading, prose, label/value rows, actions. Replaces
@@ -82,7 +82,7 @@ export function TransactionReceipt({
                     <dl className={rowsClassName ?? DEFAULT_LIST_ROWS_CLASSNAME}>
                         {rows.map((row, i) => (
                             <div key={i} data-testid={row.testId}>
-                                <dt className="text-ink-faint">{row.label}</dt>
+                                <dt className="text-ink-muted">{row.label}</dt>
                                 <dd className="font-mono break-all">{row.value}</dd>
                             </div>
                         ))}

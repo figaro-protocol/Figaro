@@ -75,13 +75,13 @@ export function MemberResolutionHistory({ record, isLoading }: Props) {
                                 <span key={v.currency}>
                                     {i > 0 ? ", " : ""}
                                     <span className="tabular-nums">{formatUnits(v.total, 18)}</span>{" "}
-                                    <span className="font-mono text-ink-faint">{truncateHex(v.currency)}</span>
+                                    <span className="font-mono text-ink-muted">{truncateHex(v.currency)}</span>
                                 </span>
                             ))}
                         </div>
                     )}
 
-                    <p className="text-[11px] text-ink-faint leading-snug">
+                    <p className="text-[11px] text-ink-muted leading-snug">
                         Every figure is recomputed from public on-chain events — resolution and
                         coordination history, not a platform score. Token amounts shown at 18 decimals.
                     </p>

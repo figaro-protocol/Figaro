@@ -51,13 +51,13 @@ export function IpfsImageUpload({
     if (value) {
         return (
             <div className="flex items-center gap-3 flex-1 min-w-0">
-                <code className="text-xs text-ink-faint font-mono truncate flex-1">
+                <code className="text-xs text-ink-muted font-mono truncate flex-1">
                     {truncateHex(value, { head: 16, tail: 8 })}
                 </code>
                 <button
                     type="button"
                     onClick={() => onChange("")}
-                    className="text-xs text-ink-faint hover:text-error-fg transition-colors"
+                    className="text-xs text-ink-muted hover:text-error-fg transition-colors"
                 >
                     Remove
                 </button>

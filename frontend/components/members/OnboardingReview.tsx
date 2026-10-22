@@ -168,7 +168,7 @@ export function OnboardingReview() {
     }
 
     if (!mounted) {
-        return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
+        return <Card className="p-6 text-sm text-ink-muted">Loading…</Card>;
     }
 
     if (!isConnected) {
@@ -225,7 +225,7 @@ export function OnboardingReview() {
                     {address && (
                         <Link
                             href={sellerPageHref(address)}
-                            className="text-sm text-ink-faint hover:text-ink-heading underline"
+                            className="text-sm text-ink-muted hover:text-ink-heading underline"
                         >
                             View public profile →
                         </Link>
@@ -251,7 +251,7 @@ export function OnboardingReview() {
                     <h2 className="text-heading-h2 text-ink-heading">Preview · pending publish</h2>
                     <Link
                         href="/members/identity"
-                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                        className="text-xs text-ink-muted hover:text-ink-heading underline"
                     >
                         Edit identity →
                     </Link>
@@ -278,7 +278,7 @@ export function OnboardingReview() {
                             <p className="text-sm text-ink-body">{profile.description}</p>
                         )}
                         {(profile?.location?.geohash || profile?.location?.addressText) && (
-                            <p className="text-xs text-ink-faint">
+                            <p className="text-xs text-ink-muted">
                                 {profile.location?.addressText}
                                 {profile.location?.geohash && (
                                     <span className="font-mono ml-2">({profile.location.geohash})</span>
@@ -295,7 +295,7 @@ export function OnboardingReview() {
                     <h2 className="text-heading-h2 text-ink-heading">Catalog ({items.length} item{items.length === 1 ? "" : "s"})</h2>
                     <Link
                         href="/members/catalog"
-                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                        className="text-xs text-ink-muted hover:text-ink-heading underline"
                     >
                         Edit catalog →
                     </Link>
@@ -310,7 +310,7 @@ export function OnboardingReview() {
                         ))}
                     </ul>
                 ) : (
-                    <p className="text-sm text-ink-faint">No items.</p>
+                    <p className="text-sm text-ink-muted">No items.</p>
                 )}
             </Card>
 
@@ -320,7 +320,7 @@ export function OnboardingReview() {
                     <h2 className="text-heading-h2 text-ink-heading">Accepted tokens</h2>
                     <Link
                         href="/members/identity#profile-section-accepted-tokens"
-                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                        className="text-xs text-ink-muted hover:text-ink-heading underline"
                     >
                         Edit tokens →
                     </Link>
@@ -330,7 +330,7 @@ export function OnboardingReview() {
                         {acceptedTokens.map((t) => t.symbol).join(", ")}
                     </p>
                 ) : (
-                    <p className="text-sm text-ink-faint">No tokens accepted.</p>
+                    <p className="text-sm text-ink-muted">No tokens accepted.</p>
                 )}
             </Card>
 
@@ -340,7 +340,7 @@ export function OnboardingReview() {
                     <h2 className="text-heading-h2 text-ink-heading">Assemblies ({bindings.length})</h2>
                     <Link
                         href="/members/assemblies"
-                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                        className="text-xs text-ink-muted hover:text-ink-heading underline"
                     >
                         Edit assemblies →
                     </Link>
@@ -352,7 +352,7 @@ export function OnboardingReview() {
                         ))}
                     </ul>
                 ) : (
-                    <p className="text-sm text-ink-faint">Unbound — the member stays registered but won&apos;t surface to assembly-scoped discovery.</p>
+                    <p className="text-sm text-ink-muted">Unbound — the member stays registered but won&apos;t surface to assembly-scoped discovery.</p>
                 )}
             </Card>
 
@@ -362,7 +362,7 @@ export function OnboardingReview() {
                     <h2 className="text-heading-h2 text-ink-heading">Buyer ({subscriptions.length} subscription{subscriptions.length === 1 ? "" : "s"})</h2>
                     <Link
                         href="/members/buyer"
-                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                        className="text-xs text-ink-muted hover:text-ink-heading underline"
                     >
                         Edit buyer side →
                     </Link>
@@ -374,7 +374,7 @@ export function OnboardingReview() {
                         ))}
                     </ul>
                 ) : (
-                    <p className="text-sm text-ink-faint">
+                    <p className="text-sm text-ink-muted">
                         No subscriptions — this member sells only.
                     </p>
                 )}
@@ -387,13 +387,13 @@ export function OnboardingReview() {
                     <span className="flex items-center gap-3">
                         <Link
                             href="/members/assemblies"
-                            className="text-xs text-ink-faint hover:text-ink-heading underline"
+                            className="text-xs text-ink-muted hover:text-ink-heading underline"
                         >
                             Edit seller side →
                         </Link>
                         <Link
                             href="/members/buyer"
-                            className="text-xs text-ink-faint hover:text-ink-heading underline"
+                            className="text-xs text-ink-muted hover:text-ink-heading underline"
                         >
                             Edit buyer side →
                         </Link>
@@ -405,7 +405,7 @@ export function OnboardingReview() {
                         {" "}{profile!.disclosurePolicy!.filter((e) => e.offered && e.posture === "buyer").length} from the buying side.
                     </p>
                 ) : (
-                    <p className="text-sm text-ink-faint">
+                    <p className="text-sm text-ink-muted">
                         None declared — the default applies: each party holds its
                         own copy of co-produced data; nothing is offered.
                     </p>
@@ -418,7 +418,7 @@ export function OnboardingReview() {
                     <h2 className="text-heading-h2 text-ink-heading">Agent endpoints</h2>
                     <Link
                         href="/members/agents"
-                        className="text-xs text-ink-faint hover:text-ink-heading underline"
+                        className="text-xs text-ink-muted hover:text-ink-heading underline"
                     >
                         Edit agents →
                     </Link>
@@ -485,7 +485,7 @@ export function OnboardingReview() {
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
                     href="/members/agents"
-                    className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
+                    className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
                 >
                     ← Back to wizard
                 </Link>

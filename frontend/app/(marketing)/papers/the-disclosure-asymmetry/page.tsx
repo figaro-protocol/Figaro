@@ -5,6 +5,7 @@ import {
     PaperSection,
     PaperRun,
     PaperRemark,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
@@ -88,9 +89,9 @@ export default function DisclosureAsymmetryPaper() {
                 <p>
                     The variable is the participant&rsquo;s epistemic accuracy about the mechanism. Let <Math>{"m"}</Math> be the mechanism in force, <Math>{"\\hat{m}"}</Math> the participant&rsquo;s model of it, and accuracy <Math>{"a"}</Math> the closeness of <Math>{"\\hat{m}"}</Math> to <Math>{"m"}</Math>, maximal when <Math>{"\\hat{m} = m"}</Math>. Write <Math>{"E"}</Math> for the degree to which the mechanism&rsquo;s stated equilibrium obtains, a property of the game form and not of the principal&rsquo;s further intention. The two regimes share their instruments and differ in the sign of the dependence of <Math>{"E"}</Math> on <Math>{"a"}</Math>. The derivative is directional shorthand for which way the outcome moves as the participant&rsquo;s model improves, not a claim of smooth functional dependence:
                 </p>
-                <div className="my-4 overflow-x-auto">
+                <PaperScroll className="my-4">
                     <Math display>{"\\frac{\\partial E}{\\partial a} < 0 \\quad \\text{(consent-engineering)} \\qquad\\qquad \\frac{\\partial E}{\\partial a} > 0 \\quad \\text{(cryptoeconomic mechanism design)}"}</Math>
-                </div>
+                </PaperScroll>
                 <PaperRun title="The negative regime.">
                     Consent-engineering, and platform mechanism design as Viljoen, Goldenfein, and McGuigan describe it, realizes its intended outcome <em>only when accuracy is low and the gap favors the principal</em>. The target acts on an installed disposition believing it endogenous; the platform participant takes the steered option believing it freely chosen. Raise accuracy and the outcome dissolves. A target who sees persuasion as persuasion forms no disposition, and a participant who sees the choice architecture re-optimizes against it. The mechanism is <em>common-knowledge-fragile</em> (common knowledge: each player knows the rules, knows that the others know them, and so on without end). It works by covertly violating the assumption the theory takes for granted.
                 </PaperRun>
@@ -115,9 +116,9 @@ export default function DisclosureAsymmetryPaper() {
                 <PaperRun title="The equilibrium, computed from the published rules.">
                     From the state in which both bonds are locked, the seller performs or holds out, and the buyer resolves or withholds. Withholding is not terminal and no clock runs, so each comparison is between doing and never doing. Each party is credited for what it holds at the value the parties signed, so the seller&rsquo;s entries are bounds: it retains at most <Math>{"G"}</Math>. The outcomes, written <Math>{"(u_b, u_s)"}</Math> for the buyer&rsquo;s and the seller&rsquo;s payoffs, are:
                 </PaperRun>
-                <div className="my-4 overflow-x-auto">
+                <PaperScroll className="my-4">
                     <Math display>{"\\begin{array}{l|cc} & \\text{resolution} & \\text{no resolution} \\\\ \\hline \\text{performance} & (0,\\; +P) & (-P,\\; -2G) \\\\ \\text{no performance} & (-P,\\; \\le P+G) & (-2P,\\; \\le -G) \\end{array}"}</Math>
-                </div>
+                </PaperScroll>
                 <p>
                     Three comparisons carry the result. <strong>(a)</strong> After performance the buyer strictly prefers resolving, <Math>{"0"}</Math>, to never resolving, <Math>{"-P"}</Math>, with no assumption about the seller: this is the one unconditional anchor. <strong>(b)</strong> Given (a) and the buyer&rsquo;s plan to resolve once performance has occurred and not before, the seller strictly prefers performing, <Math>{"+P"}</Math>, to never performing, at most <Math>{"-G"}</Math>, by a margin of <Math>{"P + G \\ge 2P"}</Math>. <strong>(c)</strong> Given (b), before performance the buyer keeps the process open rather than resolving at once, which ends at <Math>{"-P"}</Math>. Comparisons (b) and (c) are the two parties&rsquo; best-response checks against one profile, verified jointly: a fixed point, which is what an equilibrium is. It is not a dominance result, because the seller&rsquo;s comparison holds only given the buyer&rsquo;s plan. With several sellers, each seller&rsquo;s comparison holds given the buyer&rsquo;s plan and its co-sellers&rsquo; performance; the comparisons are proved for any number of orders the network resolves in one call in Figaro (2026).
                 </p>

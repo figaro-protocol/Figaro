@@ -243,7 +243,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                     ? `opens ${embargo} day${embargo === 1 ? "" : "s"} after resolution`
                                                     : "available at resolution"}
                                             </span>
-                                            <code className="text-[11px] text-ink-faint font-mono">
+                                            <code className="text-[11px] text-ink-muted font-mono">
                                                 {truncateHex(entry.compositionHash, { head: 10, tail: 0 })}
                                             </code>
                                         </li>

@@ -122,7 +122,7 @@ export function OnboardingAgentsForm({
     }
 
     if (!mounted) {
-        return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
+        return <Card className="p-6 text-sm text-ink-muted">Loading…</Card>;
     }
 
 
@@ -161,7 +161,7 @@ export function OnboardingAgentsForm({
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
                     href={backHref ?? onboardingPrevHref("agents")}
-                    className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
+                    className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}
                 </Link>

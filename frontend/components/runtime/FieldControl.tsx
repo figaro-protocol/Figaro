@@ -177,7 +177,7 @@ export function FieldControl({
             {labelText}
             {field.required && (
                 <span
-                    className="ml-1.5 text-[10px] uppercase tracking-wide text-ink-faint not-italic"
+                    className="ml-1.5 text-[10px] uppercase tracking-wide text-ink-muted not-italic"
                     data-testid={`${testId}-required`}
                 >
                     required
@@ -373,7 +373,7 @@ export function FieldControl({
                     </p>
                 )}
                 {mode === "design" && field.description && (
-                    <p className="mt-1 text-xs text-ink-faint">{field.description}</p>
+                    <p className="mt-1 text-xs text-ink-muted">{field.description}</p>
                 )}
             </>
         );
@@ -440,7 +440,7 @@ export function FieldControl({
     // sign gate then refuses as missing is the contradiction that stops buyers.
     const defaultText = Array.isArray(field.default) ? field.default.join(", ") : String(field.default);
     return (
-        <div className="text-xs text-ink-faint italic" data-testid={`${testId}-deferred`}>
+        <div className="text-xs text-ink-muted italic" data-testid={`${testId}-deferred`}>
             {labelText} — {field.required
                 ? (field.default !== undefined
                     ? `required; commits as ${defaultText} unless its producing surface fills it`

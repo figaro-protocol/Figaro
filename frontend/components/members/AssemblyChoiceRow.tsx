@@ -55,7 +55,7 @@ export function AssemblyChoiceRow({
                             <span className="font-semibold text-ink-heading truncate">
                                 {choice.name}
                             </span>
-                            <code className="text-xs text-ink-faint font-mono shrink-0">
+                            <code className="text-xs text-ink-muted font-mono shrink-0">
                                 {choice.slug}
                             </code>
                         </div>
@@ -72,7 +72,7 @@ export function AssemblyChoiceRow({
                             className="text-[11px]"
                             testId={`${testIdPrefix}-shape-${choice.slug}`}
                         />
-                        <p className="text-xs text-ink-faint">
+                        <p className="text-xs text-ink-muted">
                             Networks: {choice.networkTargets.join(", ")}
                         </p>
                     </div>

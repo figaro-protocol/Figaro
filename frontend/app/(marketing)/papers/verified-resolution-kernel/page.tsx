@@ -5,6 +5,7 @@ import {
     PaperSection,
     PaperSubsection,
     PaperRun,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 import { BatchResolutionSequenceFigure } from "@/components/figures/BatchResolutionSequenceFigure";
@@ -93,9 +94,9 @@ export default function VerifiedResolutionKernelPaper() {
                 </PaperSubsection>
                 <PaperSubsection title="2.3 Identifier Derivation">
                     <p>Process and order identifiers are content-addressed:</p>
-                    <div className="my-3 overflow-x-auto">
+                    <PaperScroll className="my-3">
                         <Math display>{"\\begin{aligned} \\text{processId} &= H_{\\text{EIP-712}}(\\text{root commitment}) \\\\ \\text{orderId} &= H(\\text{processId} \\,\\|\\, \\text{structHash}) \\end{aligned}"}</Math>
-                    </div>
+                    </PaperScroll>
                     <p>
                         Here <Math>{"H_{\\text{EIP-712}}"}</Math> is the EIP-712 typed-data digest, which binds the data to a domain separator, and <Math>{"H"}</Math> is the chain&rsquo;s collision-resistant hash. The domain separator binds the root identifier to the chain id and the verifying contract, so a commitment cannot be replayed across deployments. No counter exists; two identifiers collide only if the hash collides.
                     </p>
@@ -206,7 +207,7 @@ export default function VerifiedResolutionKernelPaper() {
                     <PaperRun title="The one N-party object is not machine-checked.">
                         <em>Which</em> equilibrium the co-sellers select under the weakest-link structure is a question of mechanism design, answered on paper as a conditional: wherever the standard selection criteria separate universal performance from universal holding out, they favor universal performance, and the criteria that weigh a seller&rsquo;s belief about its co-sellers are stated for a risk-neutral seller (Figaro 2026, Corollary 3). The proof assistant contributes only the conditionality proved above. Selection among the equilibria that leaves open is outside what <em>formally verified</em> covers here.
                     </PaperRun>
-                    <div className="my-4 overflow-x-auto">
+                    <PaperScroll className="my-4">
                         <table className="text-sm border-collapse">
                             <thead>
                                 <tr>
@@ -231,7 +232,7 @@ export default function VerifiedResolutionKernelPaper() {
                             </tbody>
                         </table>
                         <p className="text-xs text-ink-muted mt-2">The two instruments of this subsection at their actual coverage.</p>
-                    </div>
+                    </PaperScroll>
                 </PaperSubsection>
                 <PaperSubsection title="5.3 Composition Surfaces">
                     <p>

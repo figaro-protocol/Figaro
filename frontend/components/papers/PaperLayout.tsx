@@ -108,7 +108,7 @@ export function PaperLayout({
                 >
                     {nav.prev ? (
                         <Link href={nav.prev.href} className="group text-ink-muted hover:text-ink-body">
-                            <span className="block text-xs text-ink-faint mb-1">← Previous</span>
+                            <span className="block text-xs text-ink-muted mb-1">← Previous</span>
                             <span className="block group-hover:underline">{nav.prev.title}</span>
                         </Link>
                     ) : (
@@ -119,7 +119,7 @@ export function PaperLayout({
                             href={nav.next.href}
                             className="group text-right text-ink-muted hover:text-ink-body"
                         >
-                            <span className="block text-xs text-ink-faint mb-1">Next →</span>
+                            <span className="block text-xs text-ink-muted mb-1">Next →</span>
                             <span className="block group-hover:underline">{nav.next.title}</span>
                         </Link>
                     ) : (
@@ -170,5 +170,15 @@ export function PaperRemark({ title, children }: { title: string; children: Reac
             <span className="font-semibold not-italic text-ink-body">{title} </span>
             {children}
         </aside>
+    );
+}
+
+/** A table or display formula wider than the column, scrolled sideways inside
+ *  its own region: focusable and named, so a keyboard reaches the scroll (WCAG 2.1.1). */
+export function PaperScroll({ className, children }: { className?: string; children: ReactNode }) {
+    return (
+        <div className={className ? `overflow-x-auto ${className}` : "overflow-x-auto"} tabIndex={0} role="region" aria-label="Wide content, scrolls sideways">
+            {children}
+        </div>
     );
 }

@@ -41,7 +41,7 @@ export function AssetWalletOperatorFigure({ className }: AssetWalletOperatorFigu
                             className={cn(
                                 "flex items-baseline justify-between gap-4 rounded px-4 py-2",
                                 row.kernelSees
-                                    ? "border-[1.5px] border-ink-heading bg-subtle-hover"
+                                    ? "border-[1.5px] border-ink-heading bg-subtle"
                                     : "border border-default",
                             )}
                         >

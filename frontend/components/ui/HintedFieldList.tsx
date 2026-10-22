@@ -24,7 +24,7 @@ export function HintedFieldList<K extends string>({
     value,
     onChange,
     inputType = "text",
-    hintClassName = "text-ink-faint",
+    hintClassName = "text-ink-muted",
     withTestIds = false,
 }: {
     fields: readonly HintedFieldDef<K>[];

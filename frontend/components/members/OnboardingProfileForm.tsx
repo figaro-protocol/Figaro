@@ -411,7 +411,7 @@ export function OnboardingProfileForm({
     }
 
     if (!mounted) {
-        return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
+        return <Card className="p-6 text-sm text-ink-muted">Loading…</Card>;
     }
 
 
@@ -462,7 +462,7 @@ export function OnboardingProfileForm({
                         value={form.specialty}
                         onChange={(e) => setField("specialty", e.target.value)}
                     />
-                    <p className="text-xs text-ink-faint mt-1">
+                    <p className="text-xs text-ink-muted mt-1">
                         Free-form. What you specialize in, in your own words.
                     </p>
                 </FormField>
@@ -497,7 +497,7 @@ export function OnboardingProfileForm({
                         value={form.addressText}
                         onChange={(e) => setField("addressText", e.target.value)}
                     />
-                    <p className="text-xs text-ink-faint mt-1">
+                    <p className="text-xs text-ink-muted mt-1">
                         Optional, public. Use a coarse description if you&apos;d rather not publish a precise address.
                     </p>
                 </FormField>
@@ -512,7 +512,7 @@ export function OnboardingProfileForm({
                             <option key={p} value={p}>{PRECISION_LABELS[p]}</option>
                         ))}
                     </Select>
-                    <p className="text-xs text-ink-faint mt-1">
+                    <p className="text-xs text-ink-muted mt-1">
                         Neighborhood precision (6 chars, ~1.2 km) is the finest a public profile carries. Door-level detail is never published — it travels encrypted, per order, to the counterparty who needs it.
                     </p>
                 </FormField>
@@ -549,10 +549,10 @@ export function OnboardingProfileForm({
                         {locateError && (
                             <p className="text-xs text-error-fg" role="alert">{locateError}</p>
                         )}
-                        <p className="text-xs text-ink-faint">
+                        <p className="text-xs text-ink-muted">
                             Auto-fill from the address (geocoded via OpenStreetMap) or your device&apos;s location. You can also paste a geohash from any tool — the encoding is standard base32.
                         </p>
-                        <p className="text-xs text-ink-faint">
+                        <p className="text-xs text-ink-muted">
                             Geocoding sends the typed address to OpenStreetMap&apos;s
                             Nominatim service (a third party) — and only when you press
                             &ldquo;From address above&rdquo;. Device location never
@@ -583,7 +583,7 @@ export function OnboardingProfileForm({
                         onChange={(uri) => setField("logoURI", uri)}
                         label="Upload logo"
                     />
-                    <p className="text-xs text-ink-faint mt-1">
+                    <p className="text-xs text-ink-muted mt-1">
                         Optional. Pinned to IPFS. Shown on the discover card and the member page.
                     </p>
                 </FormField>
@@ -618,7 +618,7 @@ export function OnboardingProfileForm({
 
                 {commonTokens.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs text-ink-faint">Quick-add:</span>
+                        <span className="text-xs text-ink-muted">Quick-add:</span>
                         {commonTokens.map((token) => (
                             <button
                                 key={token.address}
@@ -658,12 +658,12 @@ export function OnboardingProfileForm({
                     <button
                         type="button"
                         onClick={addTokenRow}
-                        className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
+                        className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
                     >
                         + Add token
                     </button>
                     {commonTokens.length === 0 && form.acceptedTokens.every((t) => !t.address.trim()) && (
-                        <p className="text-xs text-ink-faint">
+                        <p className="text-xs text-ink-muted">
                             No quick-add tokens registered for this network. Paste an ERC-20 address above to fetch its symbol from the contract.
                         </p>
                     )}
@@ -678,7 +678,7 @@ export function OnboardingProfileForm({
                         required
                         error={errors.defaultTokenAddress}
                     >
-                        <p className="text-xs text-ink-faint mb-2">
+                        <p className="text-xs text-ink-muted mb-2">
                             Your catalog is priced in this token, and only in
                             this token.
                         </p>
@@ -697,7 +697,7 @@ export function OnboardingProfileForm({
                                         aria-required="true"
                                     />
                                     <span className="font-semibold text-ink-heading">{token.symbol}</span>
-                                    <code className="text-xs text-ink-faint font-mono">{token.address}</code>
+                                    <code className="text-xs text-ink-muted font-mono">{token.address}</code>
                                 </label>
                             ))}
                         </div>
@@ -720,7 +720,7 @@ export function OnboardingProfileForm({
                 <div className="flex items-center justify-between">
                     <Link
                         href={backHref ?? "/members"}
-                        className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
+                        className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
                     >
                         {backLabel ?? "← Back"}
                     </Link>
@@ -814,7 +814,7 @@ function AcceptedTokenRow({ value, onChange, onRemove, hasError = false, isDupli
                 onRemove={onRemove}
                 hasError={rowHasError}
             />
-            {symbolHint && <p className="text-xs text-ink-faint">{symbolHint}</p>}
+            {symbolHint && <p className="text-xs text-ink-muted">{symbolHint}</p>}
         </div>
     );
 }

@@ -207,7 +207,7 @@ export function OnboardingAssembliesForm({
     }
 
     if (!mounted) {
-        return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
+        return <Card className="p-6 text-sm text-ink-muted">Loading…</Card>;
     }
 
 
@@ -318,7 +318,7 @@ export function OnboardingAssembliesForm({
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
                     href={backHref ?? onboardingPrevHref("assemblies")}
-                    className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
+                    className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}
                 </Link>
@@ -397,11 +397,11 @@ function CounterpartyClauseEditor({
                 <span className="text-xs font-semibold text-ink-heading">
                     {heading}
                 </span>
-                <span className="text-[11px] text-ink-faint">
+                <span className="text-[11px] text-ink-muted">
                     {addresses.length} saved
                 </span>
             </div>
-            <p className="text-[11px] text-ink-faint">
+            <p className="text-[11px] text-ink-muted">
                 Wallets you designate to fill this sub-order at checkout. Order is
                 significant — the cart picks the first reachable wallet.
             </p>
@@ -425,7 +425,7 @@ function CounterpartyClauseEditor({
                                 <button
                                     type="button"
                                     onClick={() => removeRow(i)}
-                                    className="text-xs text-ink-faint hover:text-error-fg px-2"
+                                    className="text-xs text-ink-muted hover:text-error-fg px-2"
                                     aria-label={`Remove address ${i + 1}`}
                                     data-testid={`counterparty-${clauseKey}-remove-${i}`}
                                 >
@@ -438,7 +438,7 @@ function CounterpartyClauseEditor({
                 <button
                     type="button"
                     onClick={addRow}
-                    className="text-xs text-ink-faint hover:text-ink-heading"
+                    className="text-xs text-ink-muted hover:text-ink-heading"
                     data-testid={`counterparty-${clauseKey}-add`}
                 >
                     + Add another

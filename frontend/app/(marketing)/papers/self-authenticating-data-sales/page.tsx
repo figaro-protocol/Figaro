@@ -5,6 +5,7 @@ import {
     PaperSection,
     PaperRun,
     PaperRemark,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
@@ -104,9 +105,9 @@ export default function SelfAuthenticatingDataSalesPaper() {
                 <p>
                     Resolving refunds the locked <Math>{"2P"}</Math> less the <Math>{"P"}</Math> that transfers to the seller, and the content stays where it is, so the buyer ends at <Math>{"W - P"}</Math>. Never resolving leaves the whole bond locked, and the content stays where it is there too, since withholding resolution un-discloses nothing that has crossed the handoff channel. The buyer ends at <Math>{"W - 2P"}</Math>. The comparison is
                 </p>
-                <div className="my-4 overflow-x-auto">
+                <PaperScroll className="my-4">
                     <Math display>{"(W - P) \\;-\\; (W - 2P) \\;=\\; P \\;>\\; 0 \\qquad \\text{for every } W \\geq 0"}</Math>
-                </div>
+                </PaperScroll>
                 <p>
                     The buyer&rsquo;s valuation cancels, exactly as the signed figure does in comparison (a). Does the data case weaken the buyer&rsquo;s reason to resolve, since a buyer of information has banked everything it came for? It does not: the reason is exactly as strong, because what the buyer banked is common to both continuations and drops out. The Core therefore never prices the quantity Arrow&rsquo;s paradox says nobody can price before disclosure. The buyer&rsquo;s valuation has become irrelevant to the only decision left to it.
                 </p>

@@ -6,6 +6,7 @@ import {
     PaperSubsection,
     PaperRun,
     PaperRemark,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
@@ -204,9 +205,9 @@ export default function SelfClosingLedgerPeriodsPaper() {
                     </FormalBlock>
                     <FormalBlock label="Proposition 4.2 (Zero-equity process entity).">
                         <p>At every moment from the first commitment to the resolution of <Math>{"\\Pi"}</Math>,</p>
-                        <div className="my-3 overflow-x-auto">
+                        <PaperScroll className="my-3">
                             <Math display>{"A(\\Pi, t) \\;=\\; L(\\Pi, t) \\;=\\; \\sum_{i \\in \\mathcal{A}(\\Pi, t)} \\bigl(2P_i + 2G_i\\bigr),"}</Math>
-                        </div>
+                        </PaperScroll>
                         <p>so <Math>{"E(\\Pi, t) = 0"}</Math> identically; and after resolution every account of <Math>{"\\Pi"}</Math> stands at zero.</p>
                     </FormalBlock>
                     <Proof>
@@ -247,7 +248,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
                     <p>
                         Debits equal credits in each entry, and together the two move exactly what the Core transfers: <Math>{"2G_i + P_i"}</Math> to the seller and <Math>{"P_i"}</Math> to the buyer. Taken account by account, the three entries leave nothing outstanding:
                     </p>
-                    <div className="my-4 overflow-x-auto">
+                    <PaperScroll className="my-4">
                         <table className="text-sm border-collapse">
                             <thead>
                                 <tr>
@@ -288,7 +289,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
                             </tbody>
                         </table>
                         <p className="text-xs text-ink-muted mt-2">The three entries of a complete order, account by account. The closing act zeroes every account the period opened, and the same table repeated over the orders of a process zeroes the process. The reclassification line is the only entry of the period that is neither a bond going in nor a bond being refunded: it is the consideration, and it occupies one line.</p>
-                    </div>
+                    </PaperScroll>
                     <p>
                         The table carries the substance of the &ldquo;self-closing&rdquo; claim in two features. First, of the buyer&rsquo;s bond of <Math>{"2P_i"}</Math>, exactly half is the consideration and half the deterrent. The deterrent is refunded and the consideration transfers, and the reclassification line makes the split, not anyone&rsquo;s judgment. The seller&rsquo;s bond of <Math>{"2G_i"}</Math> is refunded whole alongside the payment, so the seller&rsquo;s net over the period is <Math>{"+P_i"}</Math> and the buyer&rsquo;s is <Math>{"-P_i"}</Math>. Second, no account closes at a loss: nothing is written off, allowed for, or provided against, because no operation consumes a bond and no discretion can impair a claim.
                     </p>
@@ -407,7 +408,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
                     The translation can be made concrete. EN&nbsp;16931-1 (CEN 2026) defines the <em>semantic data model</em> of the core electronic invoice: the meaning and cardinality of an invoice&rsquo;s information elements, serialized into one of two permitted syntaxes. The element identifiers below are those of its 2017 edition (CEN 2017); the 2026 edition replaced it, and invoices conforming to the 2017 edition remain compliant through the migration. Directive&nbsp;2014/55/EU obliged European public bodies to accept invoices conforming to it (European Parliament and Council 2014). Council Directive (EU) 2025/516, part of the &ldquo;VAT in the Digital Age&rdquo; package, makes a structured invoice conforming to the norm the definition of an electronic invoice for intra-Community transactions from 2030 (Council of the European Union 2025). A resolved order projects onto that model, one invoice per order: the model admits exactly one seller per invoice, and each order of a process has its own seller. The projection is a serialization performed above the mechanism, and it sorts the invoice&rsquo;s elements into two classes that recover the byproduct-versus-interpretive split of this paper.
                 </PaperRun>
                 <p>The first class, the intrinsic commercial elements, falls out of the order&rsquo;s data as byproduct:</p>
-                <div className="my-4 overflow-x-auto">
+                <PaperScroll className="my-4">
                     <table className="text-sm border-collapse">
                         <thead>
                             <tr>
@@ -425,7 +426,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
                             <tr><td className="border border-default px-3 py-1.5">Sum of Invoice line net amount (BG-22, BT-106)</td><td className="border border-default px-3 py-1.5"><Math>{"P_i"}</Math></td></tr>
                         </tbody>
                     </table>
-                </div>
+                </PaperScroll>
                 <p>
                     The invoice currency code (BT-5) sits between the classes. The norm takes an ISO 4217 code and the order counts in a token, so the projection assigns the code; the data does not carry it. The second class, the tax elements, does not fall out and cannot: the seller VAT identifier (BT-31), the VAT breakdown (BG-23), its category code (BT-118) and rate (BT-119), the tax point date (BT-7), the tax representative (BG-11), and the VAT-inclusive total (BT-112). These presuppose a registered entity inside a particular regime, and the model treats them as conditional. Rule BR-S-02 requires, where an invoice line is standard-rated, the seller VAT identifier (BT-31), the seller tax registration identifier (BT-32), or the seller tax representative VAT identifier (BT-63). The tax apparatus attaches when the party is inside a taxable regime. That trigger is the registration status the Core does not hold and the parties&rsquo; terms do: clauses composed for an EU jurisdiction supply BT-31 and the VAT breakdown from the seller&rsquo;s registration data, and the order&rsquo;s data supplies the rest.
                 </p>

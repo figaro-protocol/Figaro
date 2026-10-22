@@ -16,9 +16,9 @@ export function MemberEditGate({ gate }: { gate: MemberEditGateState }) {
         return (
             <Card className="p-8 space-y-3">
                 <p className="text-sm text-error-fg" role="alert">{gate.message}</p>
-                <p className="text-xs text-ink-faint">{gate.explainer}</p>
+                <p className="text-xs text-ink-muted">{gate.explainer}</p>
             </Card>
         );
     }
-    return <Card className="p-8 text-sm text-ink-faint">{gate.message}</Card>;
+    return <Card className="p-8 text-sm text-ink-muted">{gate.message}</Card>;
 }

@@ -77,7 +77,7 @@ export function MemberCard({
                 <p className="text-xs text-ink-muted mb-3 truncate">
                     {listing.addressText ?? listing.geohash}
                     {listing.addressText && listing.geohash ? (
-                        <span className="font-mono text-ink-faint ml-2">({listing.geohash})</span>
+                        <span className="font-mono text-ink-muted ml-2">({listing.geohash})</span>
                     ) : null}
                 </p>
             )}

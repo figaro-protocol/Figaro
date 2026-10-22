@@ -215,7 +215,7 @@ function DeleteCatalogFooter({
 
     if (!confirming) {
         return (
-            <div className="pt-4 border-t border-default text-xs text-ink-faint">
+            <div className="pt-4 border-t border-default text-xs text-ink-muted">
                 <button
                     type="button"
                     onClick={() => setConfirming(true)}
@@ -246,7 +246,7 @@ function DeleteCatalogFooter({
                     type="button"
                     onClick={() => setConfirming(false)}
                     disabled={running}
-                    className="text-xs text-ink-faint hover:text-ink-heading transition-colors disabled:opacity-50"
+                    className="text-xs text-ink-muted hover:text-ink-heading transition-colors disabled:opacity-50"
                 >
                     Cancel
                 </button>

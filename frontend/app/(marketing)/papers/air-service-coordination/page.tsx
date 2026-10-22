@@ -5,6 +5,7 @@ import {
     PaperSection,
     PaperSubsection,
     PaperRun,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 import { ProcessTopologyFigure } from "@/components/figures/ProcessTopologyFigure";
@@ -123,7 +124,7 @@ export default function AirServiceCoordinationPaper() {
                     <PaperRun title="A bond-posture worked example.">
                         Consider a stylized domestic short-haul journey totaling $250. The passenger is the buyer of every order, so it commits directly to each provider wallet, and the ten commits below form one process. The accumulator <Math>{"G"}</Math> grows monotonically as each commit lands (<Math>{"G \\leftarrow G + P_i"}</Math>). At every commit the buyer posts <Math>{"2P_i"}</Math> and the seller posts twice the accumulator as it then stands.
                     </PaperRun>
-                    <div className="my-4 overflow-x-auto">
+                    <PaperScroll className="my-4">
                         <table className="text-sm border-collapse w-full">
                             <thead>
                                 <tr>
@@ -167,7 +168,7 @@ export default function AirServiceCoordinationPaper() {
                         <p className="text-xs text-ink-muted mt-2 leading-relaxed">
                             Stylized per-commit bond posture for a domestic short-haul passenger journey under one process. <Math>{"G"}</Math> is the cumulative-value accumulator, monotonically growing with each commit. The last seller to commit posts the largest seller bond, <Math>{"2G_{\\text{final}}"}</Math> = 2 &times; $250 = $500. Per-seller payments are illustrative; absolute magnitudes vary with route, aircraft type, and operating context. The two public-authority rows and the two airport-authority rows carry the assumption declared in Section 1 and bounded in Section 7.
                         </p>
-                    </div>
+                    </PaperScroll>
                     <p>
                         <em>The asymmetry between the two sides.</em> The passenger&rsquo;s aggregate locked position is $500, twice the ticket, and that is the whole of it. The provider cohort&rsquo;s aggregate is $3,512, more than seven times the passenger&rsquo;s. Each provider bonds against the accumulator as it stands at its own commit, and every earlier payment is inside that figure. Held at fixed per-commit payments, the cohort&rsquo;s aggregate grows quadratically in the number of commits while the passenger&rsquo;s grows linearly: <Math>{"n"}</Math> commits of equal payment <Math>{"p"}</Math> put the cohort at <Math>{"p\\,n(n+1)"}</Math> against the passenger&rsquo;s <Math>{"2pn"}</Math>, a ratio of <Math>{"(n+1)/2"}</Math>. The qualifier carries weight. Split a <em>fixed</em> ticket into <Math>{"n"}</Math> equal commits instead and the cohort aggregate is <Math>{"P_{\\text{ticket}}(n+1)"}</Math>, still rising with each market added, but linearly. A process the passenger has not resolved holds that whole pool locked.
                     </p>

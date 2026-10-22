@@ -61,14 +61,14 @@ export function CompositionIdentity({ snapshot }: { snapshot: DesignSnapshot | n
         >
             <p className="text-xs font-semibold text-ink-heading">Composition identity</p>
             {identity.error !== null ? (
-                <p className="text-[11px] text-ink-faint leading-relaxed">{identity.error}</p>
+                <p className="text-[11px] text-ink-muted leading-relaxed">{identity.error}</p>
             ) : (
                 <>
                     <p className="font-mono text-[11px] text-ink-body break-all" data-testid="designer-composition-slug">
                         {identity.slug}
                     </p>
                     <p
-                        className="font-mono text-[10px] text-ink-faint break-all"
+                        className="font-mono text-[10px] text-ink-muted break-all"
                         data-testid="designer-composition-hash"
                         title={identity.compositionHash}
                     >

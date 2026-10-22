@@ -4,6 +4,7 @@ import {
     PaperLayout,
     PaperSection,
     PaperRun,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphCollapseFigure";
@@ -268,7 +269,7 @@ export default function AfterTradeLensPaper() {
                 <PaperRun title="A worked example.">
                     Take a stylized $1,000 shipment with a cargo invoice of $700, imported under a 5% duty on the declared CIF (cost, insurance, and freight) value, with the importer as root buyer. The table traces one commit sequence, the one Section 4 lists.
                 </PaperRun>
-                <div className="my-4 overflow-x-auto">
+                <PaperScroll className="my-4">
                     <table className="text-sm border-collapse w-full">
                         <thead>
                             <tr>
@@ -315,7 +316,7 @@ export default function AfterTradeLensPaper() {
                     <p className="text-xs text-ink-muted mt-2 leading-relaxed">
                         Stylized bonds per commit for a shipment with $1,000 total process value, the importer as root buyer. The import duty ($39, rounded from 0.05 &times; $775 = $38.75) is 5% of the declared CIF value ($775 = $700 cargo + $15 marine insurance + $60 ocean freight). <Math>{"G"}</Math> is the accumulator as the row&rsquo;s own commit leaves it, so each seller&rsquo;s bond is twice a figure that already includes its own payment. Per-leg payments are illustrative; magnitudes vary with cargo, route, tariff, and arrangement.
                     </p>
-                </div>
+                </PaperScroll>
                 <p>
                     The importer&rsquo;s aggregate bond is $2,000, the sum of the <Math>{"2P_i"}</Math> and twice the total process value. The sellers&rsquo; aggregate is $21,886, nearly eleven times the importer&rsquo;s. The two grow differently, and the difference needs stating precisely. The importer&rsquo;s aggregate, <Math>{"2\\sum_i P_i"}</Math>, is exactly twice the total process value by construction, whatever the granularity or route. The sellers&rsquo; aggregate, <Math>{"2\\sum_i G_i"}</Math>, is super-linear <em>in the number of legs at fixed per-leg payments</em>: for <Math>{"n"}</Math> equal legs it is exactly <Math>{"(n+1)"}</Math> times the total process value. Held to a fixed number of legs, it grows only linearly with the total value. So adding transshipment ports, inland legs, or inspections widens the ratio between the two sides; raising the cargo&rsquo;s invoice value does not.
                 </p>

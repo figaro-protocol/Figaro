@@ -19,7 +19,7 @@ interface OnboardingStepIndicatorProps {
  * Position-only rendering: a step is filled (bg-ink-heading +
  * text-paper) if it is the current step OR any step to the left of
  * the current step. Steps to the right of current render as outline
- * (border-default + text-ink-faint). No data-completion check, no
+ * (border-default + text-ink-muted). No data-completion check, no
  * `optional` flag effect — the indicator is a pure progress tracker,
  * not a data-state reflection. The form's "Next" handler still gates
  * on data presence; the indicator just doesn't mirror that.
@@ -43,7 +43,7 @@ export function OnboardingStepIndicator({
                     "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
                     isVisited
                         ? "bg-ink-primary text-paper"
-                        : "border border-default text-ink-faint",
+                        : "border border-default text-ink-muted",
                 );
 
                 // One line on EVERY viewport: on
@@ -51,7 +51,7 @@ export function OnboardingStepIndicator({
                 // rest show as numbered circles.
                 const labelClasses = cn(
                     "whitespace-nowrap",
-                    isCurrent ? "font-semibold text-ink-heading" : "text-ink-faint hidden sm:inline",
+                    isCurrent ? "font-semibold text-ink-heading" : "text-ink-muted hidden sm:inline",
                 );
 
                 const href = onboardingStepHref(step.id);

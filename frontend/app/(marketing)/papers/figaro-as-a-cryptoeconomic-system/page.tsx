@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
-import { PaperLayout, PaperSection, PaperRun } from "@/components/papers/PaperLayout";
+import { PaperLayout, PaperSection, PaperRun, PaperScroll } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
@@ -137,7 +137,7 @@ export default function FigaroAsACryptoeconomicSystemPaper() {
                 <p>
                     Voshmgir and Zargham define purpose-driven tokens as steering collective action &ldquo;towards a collective goal in the absence of intermediaries&rdquo;. Of designing one, they hold that &ldquo;it is more realistic to take a polycentric viewpoint where there is no one social optimum&rdquo;, since &ldquo;any choice of coordination objective is a subjective choice&rdquo;. Figaro&rsquo;s ends are several, and three of them are these: cooperation is the equilibrium on every order; value moves from the top of hierarchies to the assets that produce; and each asset earns what it needs to keep taking part, a productive life.
                 </p>
-                <div className="overflow-x-auto my-4">
+                <PaperScroll className="my-4">
                     <table className="text-sm border-collapse w-full">
                         <thead>
                             <tr>
@@ -168,7 +168,7 @@ export default function FigaroAsACryptoeconomicSystemPaper() {
                             ))}
                         </tbody>
                     </table>
-                </div>
+                </PaperScroll>
                 <PaperRun title="The two mechanisms of the Core.">
                     Asymmetric bonding secures each order and scales; buyer dominance with atomic resolution coordinates what the bonds already secured. Nobody is paid until the buyer resolves, so when one seller&rsquo;s work is faulty, every co-seller&rsquo;s cheapest move is to help put it right. This one-shot weakest-link game reproduces the coordination-pressure component of joint-liability lending, though not its peer selection or monitoring.
                 </PaperRun>
@@ -190,7 +190,7 @@ export default function FigaroAsACryptoeconomicSystemPaper() {
                 <p>
                     The two tokens with a design of their own, in Voshmgir&rsquo;s (2025) seven properties:
                 </p>
-                <div className="overflow-x-auto my-4">
+                <PaperScroll className="my-4">
                     <table className="text-sm border-collapse w-full">
                         <thead>
                             <tr>
@@ -217,7 +217,7 @@ export default function FigaroAsACryptoeconomicSystemPaper() {
                             ))}
                         </tbody>
                     </table>
-                </div>
+                </PaperScroll>
                 <PaperRun title="The field&rsquo;s experience with formula rewards.">
                     &ldquo;The central vulnerabilities of QF [quadratic funding] are collusion and fraud&rdquo; (Buterin, Hitzig, and Weyl 2019). In retroactive funding, &ldquo;mega rounds devolve into popularity contests&rdquo;, and &ldquo;we don’t (yet) have the data to show that retroactive funding produces superior outcomes&rdquo; (Open Source Observer 2024); &ldquo;Any metric can be gameable&rdquo;, in the words of a participant quoted in Optimism&rsquo;s report on its fourth round (Optimism 2024). Proof of personhood is a check that each account belongs to one distinct human. On Idena, a network whose members prove it by solving puzzles in one simultaneous online session, &ldquo;hidden pools rapidly emerged&rdquo; (Ohlhaver, Nikulin, and Berman 2024).
                 </PaperRun>

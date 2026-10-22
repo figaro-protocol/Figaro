@@ -503,7 +503,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     <div className="flex items-center gap-3 pt-2">
                         <Link
                             href={`/assemblies/designer/view?slug=${encodeURIComponent(receipt.slug)}&just-published=1`}
-                            className="text-sm text-ink-faint hover:text-ink-heading underline"
+                            className="text-sm text-ink-muted hover:text-ink-heading underline"
                             title={`Opens the public read-only view at /assemblies/designer/view?slug=${receipt.slug}`}
                         >
                             Open public read-only view →

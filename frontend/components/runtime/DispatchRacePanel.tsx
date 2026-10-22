@@ -154,7 +154,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                                         Choose
                                     </button>
                                 ) : (
-                                    <span className="text-xs text-ink-faint">{quoting ? "awaiting quote…" : "waiting…"}</span>
+                                    <span className="text-xs text-ink-muted">{quoting ? "awaiting quote…" : "waiting…"}</span>
                                 )}
                             </div>
                         </li>

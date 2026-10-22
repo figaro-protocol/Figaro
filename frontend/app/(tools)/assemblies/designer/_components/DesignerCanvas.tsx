@@ -776,7 +776,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     <label className="block">
                         <div className="flex items-baseline justify-between">
                             <span className="text-xs font-semibold text-ink-heading">Assembly Name</span>
-                            <span className="text-[10px] text-ink-faint tabular-nums">{name.length}/{NAME_MAX}</span>
+                            <span className="text-[10px] text-ink-muted tabular-nums">{name.length}/{NAME_MAX}</span>
                         </div>
                         <input
                             type="text"
@@ -792,7 +792,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     <label className="block">
                         <div className="flex items-baseline justify-between">
                             <span className="text-xs font-semibold text-ink-heading">Short description</span>
-                            <span className="text-[10px] text-ink-faint tabular-nums">{summary.length}/{SUMMARY_MAX}</span>
+                            <span className="text-[10px] text-ink-muted tabular-nums">{summary.length}/{SUMMARY_MAX}</span>
                         </div>
                         <input
                             type="text"
@@ -808,7 +808,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     <label className="block">
                         <div className="flex items-baseline justify-between">
                             <span className="text-xs font-semibold text-ink-heading">Full description</span>
-                            <span className="text-[10px] text-ink-faint tabular-nums">{description.length}/{DESCRIPTION_MAX}</span>
+                            <span className="text-[10px] text-ink-muted tabular-nums">{description.length}/{DESCRIPTION_MAX}</span>
                         </div>
                         <textarea
                             value={description}

@@ -79,7 +79,7 @@ export function QrChallengePanel({ processId, orderHash, clauseKey }: Interactio
         >
             <div className="flex items-baseline justify-between gap-2">
                 <p className="text-xs font-semibold text-ink-muted">Hand-off QR</p>
-                <p className="text-[11px] text-ink-faint">{clauseTitle}</p>
+                <p className="text-[11px] text-ink-muted">{clauseTitle}</p>
             </div>
             <p className="text-xs text-ink-body">
                 Present this code at the hand-off — the counterparty scans it to pull

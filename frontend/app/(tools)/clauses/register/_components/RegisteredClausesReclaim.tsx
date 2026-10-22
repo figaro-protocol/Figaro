@@ -146,7 +146,7 @@ function ReclaimClauseRow({
                         {spec && <>{" · version "}{spec.version}</>}
                         {" · "}
                         <span
-                            className={withdrawn ? "text-ink-faint" : "text-success-fg"}
+                            className={withdrawn ? "text-ink-muted" : "text-success-fg"}
                             data-testid={`clause-reclaim-state-${clause.clauseKey}`}
                         >
                             {withdrawn ? "stake reclaimed" : "live"}
@@ -184,7 +184,7 @@ function ReclaimClauseRow({
                     Reclaim failed: {error}
                 </p>
             )}
-            <p className="font-mono text-[10px] text-ink-faint" title={clause.clauseKey}>
+            <p className="font-mono text-[10px] text-ink-muted" title={clause.clauseKey}>
                 {truncateHex(clause.clauseKey, { head: 10, tail: 6 })}
             </p>
         </li>

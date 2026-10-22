@@ -6,6 +6,7 @@ import {
     PaperSubsection,
     PaperRun,
     PaperRemark,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
@@ -374,7 +375,7 @@ export default function CoordinationSubstratesPaper() {
                     <p>
                         The table gives the ten axes thirteen rows. Axis 1 takes three, for who bears the cost, to whom it is revenue, and the shape of the charge, and axis 8 takes two, for the regulatory data and the cost of compliance.
                     </p>
-                    <div className="my-4 overflow-x-auto">
+                    <PaperScroll className="my-4">
                         <table className="text-sm border-collapse">
                             <thead>
                                 <tr>
@@ -477,7 +478,7 @@ export default function CoordinationSubstratesPaper() {
                                 </tr>
                             </tbody>
                         </table>
-                    </div>
+                    </PaperScroll>
                 </PaperSubsection>
             </PaperSection>
 

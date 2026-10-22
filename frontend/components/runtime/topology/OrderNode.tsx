@@ -211,7 +211,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                         ))}
                     </div>
                 ) : (
-                    <p className="pt-1 text-[10px] italic text-ink-faint" data-testid={`node-clauses-empty-${data.orderHash}`}>
+                    <p className="pt-1 text-[10px] italic text-ink-muted" data-testid={`node-clauses-empty-${data.orderHash}`}>
                         No terms yet — click to compose
                     </p>
                 ))}

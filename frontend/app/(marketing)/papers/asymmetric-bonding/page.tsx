@@ -6,6 +6,7 @@ import {
     PaperSubsection,
     PaperRun,
     PaperRemark,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
@@ -153,7 +154,7 @@ export default function AsymmetricBondingPaper() {
                     <p>
                         Now let each party defect, and credit it with everything it keeps. A buyer that receives the delivery and never resolves keeps the delivery, worth {EX_P}, while its {EX.buyer_locks} stays locked: it stands at <Math>{`-${EX.buyer_locks} + ${EX_P} = -${EX.buyer_locks - EX_P}`}</Math> against the zero of resolving, out of pocket by exactly the payment. A seller that never performs keeps what it would have handed over, worth at most {EX_G}, while its {EX.seller_locks} stays locked: it stands at best at <Math>{`-${EX.seller_locks} + ${EX_G} = -${EX.seller_locks - EX_G}`}</Math> against <Math>{`+${EX_P}`}</Math> for performing, a loss of at least {EX_P + EX_G}. Neither defector&rsquo;s locked bond goes to the other party; it stays where it is, and only the buyer&rsquo;s resolution moves it. The table gives all four outcomes, each cell the pair (buyer, seller) counted the same way.
                     </p>
-                    <div className="my-4 overflow-x-auto">
+                    <PaperScroll className="my-4">
                         <table className="text-sm border-collapse">
                             <thead>
                                 <tr>
@@ -176,7 +177,7 @@ export default function AsymmetricBondingPaper() {
                             </tbody>
                         </table>
                         <p className="text-xs text-ink-muted mt-2">The four outcomes of the example, a payment of {EX_P} at a single order. The seller&rsquo;s entries in the second row are bounds, because what it keeps by not performing is worth at most the {EX_G} it would have handed over. The right-hand column holds open positions, which persist rather than end.</p>
-                    </div>
+                    </PaperScroll>
                     <p>
                         Three readings of the table carry the rest of the paper. First, the second half of each bond is what makes defection cost anything once the taking is credited, the reading &sect;3.3 states in general. Second, the bottom-left cell, the buyer resolving over nothing delivered, pays a seller that did nothing; only the buyer can choose it, and it costs the buyer the {EX_P} it signed for. Third, the two calls do different work: commit locks the deterrent, and resolve, which only the buyer may call, releases everything at once. Section 3 states the same arithmetic in general symbols, &sect;4 proves that performing and resolving are best responses to each other, and &sect;5 shares the trade among several sellers, each bonding twice the value accumulated through its own order.
                     </p>
@@ -303,7 +304,7 @@ export default function AsymmetricBondingPaper() {
                         <p>The unresolved outcomes are positions held while the process stands open, not endings, and the mechanism has no operation that converts them into anything. With no clock once the bonds are locked, acting now and acting later pay alike: a seller that performs at its fourth node is paid exactly what it would have been paid at its first. Every comparison below is therefore between <em>doing</em> and <em>never doing</em>. That also makes the comparisons exhaustive. With no clock and no discounting, a payoff depends only on whether performance ever occurs, whether resolution ever occurs, and in which order, so every plan of each party, against the other&rsquo;s, terminates in one of the four outcomes. Best responses are checked over the outcomes directly, against every deviation at once. The one-shot-deviation principle is not invoked, and could not be, since its continuity-at-infinity condition fails: never resolving, at <Math>{"-P"}</Math>, is not the limit of resolving at the <Math>{"m"}</Math>-th node, at <Math>{"0"}</Math>. Resolving now against keeping the process open is the one apparent exception, and it compares states, not timings: resolution forecloses the continuation that waiting preserves.</p>
                         <p>One case is deliberately not a move in this game. Where the seller has performed and the buyer honestly judges the performance short, the parties are negotiating a remedy, and the game resumes at the buyer&rsquo;s node when they are done (&sect;4.2). <Math>{"\\Gamma"}</Math> prices the case where a party can perform and asks whether it will, which is the case the bonds exist for.</p>
                     </FormalBlock>
-                    <div className="my-4 overflow-x-auto">
+                    <PaperScroll className="my-4">
                         <table className="text-sm border-collapse">
                             <thead>
                                 <tr>
@@ -326,7 +327,7 @@ export default function AsymmetricBondingPaper() {
                             </tbody>
                         </table>
                         <p className="text-xs text-ink-muted mt-2">The four <em>outcomes</em> of the bonding game <Math>{"\\Gamma"}</Math>, not a strategic form: the rows give whether the seller ever performs, the columns whether the buyer ever resolves, and every plan either party may adopt terminates in one of the four. Each cell is the pair <Math>{"(u_b, u_s)"}</Math> of &sect;3.3: locked positions, plus the assented value of what each party holds. The seller&rsquo;s entries are bounds because what it retains is at most the cumulative value at its order. Parameters: <Math>{"P > 0"}</Math> and <Math>{"G \\geq P"}</Math>, the root being the case <Math>{"G = P"}</Math>. The right-hand column holds open positions, which persist rather than mature.</p>
-                    </div>
+                    </PaperScroll>
                     <PaperRemark title="What the theorem assumes.">
                         The theorem holds under the Standing Assumptions of &sect;3.1 and the game of Definition 8, and the binding ones fit in a sentence: two parties, each ranking outcomes by the payoffs of &sect;3.3 at the value both signed, each knowing the schedule of transfers and the two operations, beyond each other&rsquo;s coercive reach, with no observer of performance beyond the two of them and the buyer&rsquo;s resolution its own judgment of it, resolution terminal and the buyer&rsquo;s alone while withholding is not, no clock once the bonds are locked, and either party free to adopt any plan at its nodes. It relies on no mechanism outside the two calls: remedies, forums and the visibility of an unresolved process enter only in &sect;4.2 and &sect;6, and nothing in the proof leans on them.
                     </PaperRemark>
@@ -437,7 +438,7 @@ export default function AsymmetricBondingPaper() {
                     <p>
                         <em>The chain example.</em> Take the trade of &sect;1.3, a payment of {CH.trade} in all, and let three sellers share it, committing in this order with payments {CH_FIRST.P}, {CH_SECOND.P} and {CH_LAST.P}. Each payment is the figure the parties signed for value that exists entirely off-chain, and each bond is set by the one rule:
                     </p>
-                    <div className="my-4 overflow-x-auto">
+                    <PaperScroll className="my-4">
                         <table className="text-sm border-collapse">
                             <thead>
                                 <tr>
@@ -463,7 +464,7 @@ export default function AsymmetricBondingPaper() {
                             </tbody>
                         </table>
                         <p className="text-xs text-ink-muted mt-2">Were every seller to bond twice the whole trade, the three would lock {CH.if_every_seller_bonded_the_whole_trade.total}, {CH.if_every_seller_bonded_the_whole_trade.each} each. Each bonds instead against the value accumulated through its own order, so together they lock {CH.seller_bonds_total}, and only the last bonds twice the whole trade.</p>
-                    </div>
+                    </PaperScroll>
                     <p>
                         The buyer locks {CH.buyer_total} in all, the same {CH.buyer_total} as in &sect;1.3, arriving one commitment at a time as each order joins. {CH_LAST.label} is paid {CH_LAST.P} and bonds {CH_LAST.sellerBond}, because {CH_LAST.G} is what the chain has accumulated at its order, the ceiling on what any defection there could carry off. Possession shows why the rule is right. Suppose the value passes along the chain in commit order and {CH_LAST.label}&rsquo;s own contribution is a service it renders at the end. Holding out, it keeps what reached it, worth {CH_LAST_HELD}, and cannot keep a service it never rendered, so it stands at <Math>{`-${CH_LAST.sellerBond} + ${CH_LAST_HELD} = -${CH_LAST.sellerBond - CH_LAST_HELD}`}</Math> against the <Math>{`+${CH_LAST.P}`}</Math> it declined. {CH_FIRST.label} has the same shape at the bound: bonded at {CH_FIRST.sellerBond} against a contribution worth {CH_FIRST.P}, keeping it leaves it at <Math>{`-${CH_FIRST.sellerBond - CH_FIRST.G}`}</Math> against <Math>{`+${CH_FIRST.P}`}</Math>. The buyer, having received nothing in either case, stands in its own locked bonds, with no way to reach them but the resolution it alone can call.
                     </p>

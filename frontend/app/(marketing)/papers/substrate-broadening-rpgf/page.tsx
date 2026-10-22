@@ -6,6 +6,7 @@ import {
     PaperSubsection,
     PaperRun,
     PaperRemark,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 import { RpgfScheduleFigure } from "@/components/figures/RpgfScheduleFigure";
@@ -163,9 +164,9 @@ export default function SubstrateBroadeningRpgfPaper() {
                 <p>
                     Each registration <Math>{"a"}</Math> carries, per period, one pair of counters for each route: <Math>{"(c_1(a), d_1(a))"}</Math> for the direct route and <Math>{"(c_2(a), d_2(a))"}</Math> for the batched route. Its score is the sum of the two route scores, and the period&rsquo;s total moves by the change in a score whenever a count lands, so no pass over history is ever required:
                 </p>
-                <div className="my-3 overflow-x-auto">
+                <PaperScroll className="my-3">
                     <Math display>{"\\text{score}(a) \\;=\\; \\sigma\\bigl(c_1(a), d_1(a)\\bigr) + \\sigma\\bigl(c_2(a), d_2(a)\\bigr), \\qquad \\sigma(c, d) \\;=\\; \\begin{cases} c^{\\,1/3}\\, d^{\\,2/3}, & d \\;\\ge\\; d_{\\min},\\\\[4pt] 0, & \\text{otherwise.}\\end{cases}"}</Math>
-                </div>
+                </PaperScroll>
                 <ul className="space-y-1 list-disc pl-6 text-sm">
                     <li><Math>{"c"}</Math> &mdash; the number of distinct resolved <em>processes</em> counted for the registration on that route in the period.</li>
                     <li><Math>{"d"}</Math> &mdash; the number of distinct live-staked <em>sellers of record</em> across those processes, each counted once however often it trades in the period.</li>
@@ -219,9 +220,9 @@ export default function SubstrateBroadeningRpgfPaper() {
                     <p>
                         Write <Math>{"D"}</Math> for the member stake a seller of record must place, <Math>{"T"}</Math> for the cooldown between requesting it back and receiving it, and <Math>{"L"}</Math> for the length of a period. Eligibility ends at the <em>request</em>, so one stake can be run through a sequence of identities within a period: register a fresh address, resolve and count with it, request the stake, wait out the cooldown, register the next. One stake furnishes at most <Math>{"\\lceil L/T \\rceil"}</Math> identities in a period, and the outlay of holding one fabricated staked seller for one period is
                     </p>
-                    <div className="my-3 overflow-x-auto">
+                    <PaperScroll className="my-3">
                         <Math display>{"\\delta \\;=\\; \\frac{D}{\\lceil L/T \\rceil} \\;\\approx\\; D\\,\\frac{T}{L}\\,, \\qquad \\text{saturating at } \\delta = D \\text{ once } T \\ge L."}</Math>
-                    </div>
+                    </PaperScroll>
                     <p>
                         A cooldown of zero makes <Math>{"\\delta"}</Math> vanish, because one stake then serves unboundedly many identities in sequence. A cooldown of a period or more makes each fabricated identity cost the full stake, the strongest the pair can be. The stake and the cooldown are one price, and neither means anything alone.
                     </p>
@@ -235,16 +236,16 @@ export default function SubstrateBroadeningRpgfPaper() {
                     <p>
                         Consider an adversary who wants score <Math>{"s"}</Math> on one route for a registration it designs, and who chooses how much to buy with identities and how much with volume. With <Math>{"n"}</Math> fabricated staked sellers and <Math>{"c"}</Math> fabricated resolved processes the score is <Math>{"s = (c\\,n^{2})^{1/3}"}</Math>. Every seller needs at least one process, so <Math>{"c \\ge n"}</Math>, and the floor requires <Math>{"n \\ge d_{\\min}"}</Math>. The adversary&rsquo;s problem is
                     </p>
-                    <div className="my-3 overflow-x-auto">
+                    <PaperScroll className="my-3">
                         <Math display>{"\\min_{n,\\,c}\\;\\; C \\;=\\; n\\,\\delta \\;+\\; c\\,g \\qquad \\text{subject to} \\qquad (c\\,n^{2})^{1/3} = s, \\quad c \\ge n \\ge d_{\\min}."}</Math>
-                    </div>
+                    </PaperScroll>
                     <FormalBlock label="Proposition (Unit price of fabricated score).">
                         <p>
                             For <Math>{"s \\ge s_{0}"}</Math>, where <Math>{"s_{0} = d_{\\min}\\max\\{1,\\,(\\delta/2g)^{1/3}\\}"}</Math>, the minimum outlay of fabricating score <Math>{"s"}</Math> is <Math>{"C^{*}(s) = \\gamma \\, s"}</Math>, where
                         </p>
-                        <div className="my-3 overflow-x-auto">
+                        <PaperScroll className="my-3">
                             <Math display>{"\\gamma \\;=\\; \\begin{cases} \\delta + g, & \\delta \\le 2g,\\\\[4pt] 3\\cdot 2^{-2/3}\\,\\delta^{2/3}g^{1/3} \\;\\approx\\; 1.89\\,\\delta^{2/3}g^{1/3}, & \\delta > 2g.\\end{cases}"}</Math>
-                        </div>
+                        </PaperScroll>
                         <p>
                             The outlay is <em>linear in the score fabricated</em> in both regimes, and the two expressions agree at <Math>{"\\delta = 2g"}</Math>, where both equal <Math>{"3g"}</Math>.
                         </p>
@@ -269,9 +270,9 @@ export default function SubstrateBroadeningRpgfPaper() {
                     <p>
                         A wallet&rsquo;s reward is its score over the period&rsquo;s total, so the adversary&rsquo;s real objective is a share. Let it want a fraction <Math>{"\\varphi \\in (0,1)"}</Math> of the period&rsquo;s budget. Its own score <Math>{"s_A"}</Math> enters the denominator too, so it needs <Math>{"s_A/(s_A + S_h) = \\varphi"}</Math>, that is <Math>{"s_A = S_h\\,\\varphi/(1-\\varphi)"}</Math>. With the Proposition:
                     </p>
-                    <div className="my-3 overflow-x-auto">
+                    <PaperScroll className="my-3">
                         <Math display>{"C(\\varphi) \\;=\\; \\gamma\\,S_h\\,\\frac{\\varphi}{1-\\varphi}\\,, \\qquad \\frac{dC}{d\\varphi} \\;=\\; \\frac{\\gamma\\,S_h}{(1-\\varphi)^{2}} \\;>\\; 0."}</Math>
-                    </div>
+                    </PaperScroll>
                     <p>
                         The curve is convex and unbounded as <Math>{"\\varphi \\to 1"}</Math>, and three things follow. First, honest designers always keep a positive share, because the last increment of share costs without limit. Second, the marginal price of share rises with the share already taken: an adversary at a tenth spends about 23% more for the next increment than for the first, and one at half spends four times as much, so capture gets harder as it proceeds. Third, the statement is denominated in outlay per unit of dilution, never in profit. The mechanism sets no price for the florin and reads none, so a claim that an attack is unprofitable below some stake would smuggle in a price forecast. What it can publish exactly is the cost side, and a reader supplies its own view of the other.
                     </p>

@@ -841,7 +841,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             />
                                             <span>{t.symbol}</span>
                                             {sellerDefault && hexEqual(t.address, sellerDefault) && (
-                                                <span className="text-xs text-ink-faint">(list price)</span>
+                                                <span className="text-xs text-ink-muted">(list price)</span>
                                             )}
                                         </label>
                                     ))}
@@ -1115,7 +1115,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             .join("; ")}
                                     </p>
                                 )}
-                                <p className="text-[11px] text-ink-faint">
+                                <p className="text-[11px] text-ink-muted">
                                     Placing the order signs {agreementGroups.length > 1 ? "these agreements" : "this agreement"} and locks your bond.
                                 </p>
                             </div>

@@ -588,6 +588,13 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   with no provider, without a console error. It exists because the devnet
   suite is a producer's suite — every spec drives a flow the project itself built —
   so a defect only a consumer hits is invisible to it.
+  Its second spec, `accessibility.stranger.spec.ts`, reads the same census
+  (`exportCensus.ts`) and runs axe-core's WCAG 2.0 and 2.1 A and AA rules on
+  every exported route; any violation fails it, named by route, rule and node.
+  axe is evaluated through Playwright, never injected as a page script, so the
+  pages' inline-script policy stands. The test build makes no paper PDFs, so
+  the crawl reports each paper's PDF link as a 404 against it; the production
+  build makes them.
 - **`smoke`** — MAINTAINER-MANUAL smokes over real external transports the devnet
   suite deliberately mocks (the XMTP hosted `dev` network); never part of any
   suite run — explicitly `npx playwright test --project=smoke`; pass/fail is a

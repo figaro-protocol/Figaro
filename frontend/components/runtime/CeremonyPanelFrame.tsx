@@ -16,7 +16,7 @@ export function CeremonyPanelFrame({ testId, title, clauseKey, children }: {
         <section className="rounded border border-default bg-paper p-4 space-y-3" data-testid={testId}>
             <div className="flex items-baseline justify-between gap-2">
                 <p className="text-xs font-semibold text-ink-muted">{title}</p>
-                <p className="text-[11px] text-ink-faint">{clauseTitle}</p>
+                <p className="text-[11px] text-ink-muted">{clauseTitle}</p>
             </div>
             {children}
         </section>

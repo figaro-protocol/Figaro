@@ -85,7 +85,7 @@ export function TokenAddressInput({
                     className="font-mono"
                 />
                 {valid && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint pointer-events-none">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted pointer-events-none">
                         {isLoading ? "…" : (symbol ?? "✓")}
                     </span>
                 )}
@@ -94,7 +94,7 @@ export function TokenAddressInput({
                 <button
                     type="button"
                     onClick={onRemove}
-                    className="text-ink-faint hover:text-error-fg transition-colors text-lg leading-none flex-shrink-0"
+                    className="text-ink-muted hover:text-error-fg transition-colors text-lg leading-none flex-shrink-0"
                     aria-label="Remove"
                 >
                     &times;

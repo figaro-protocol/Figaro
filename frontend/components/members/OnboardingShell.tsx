@@ -39,7 +39,7 @@ export function OnboardingShell({
                 {description && (
                     <div className="text-body-lead text-ink-body">{description}</div>
                 )}
-                <p className="text-xs text-ink-faint" data-testid="onboarding-draft-persistence">
+                <p className="text-xs text-ink-muted" data-testid="onboarding-draft-persistence">
                     Saved in this browser as you type, under your wallet address: reload or
                     come back later and this step reopens with what you entered. Nothing
                     reaches the network until you publish on the last step.

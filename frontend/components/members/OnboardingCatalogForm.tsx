@@ -362,7 +362,7 @@ export function OnboardingCatalogForm({
     }
 
     if (!mounted) {
-        return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
+        return <Card className="p-6 text-sm text-ink-muted">Loading…</Card>;
     }
 
 
@@ -417,7 +417,7 @@ export function OnboardingCatalogForm({
                         />
                         Imperial (oz, fl oz)
                     </label>
-                    <p className="text-xs text-ink-faint">
+                    <p className="text-xs text-ink-muted">
                         Stored as metric; the editor + buyer-facing display use this preference.
                     </p>
                 </div>
@@ -441,11 +441,11 @@ export function OnboardingCatalogForm({
                     <button
                         type="button"
                         onClick={addItem}
-                        className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
+                        className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
                     >
                         + Add item
                     </button>
-                    <label className="text-xs text-ink-faint hover:text-ink-heading transition-colors cursor-pointer">
+                    <label className="text-xs text-ink-muted hover:text-ink-heading transition-colors cursor-pointer">
                         <input
                             type="file"
                             accept=".csv,text/csv"
@@ -471,7 +471,7 @@ export function OnboardingCatalogForm({
                         <ul className="list-disc pl-5">
                             {importErrors.map((e) => (<li key={e}>{e}</li>))}
                         </ul>
-                        <p className="text-ink-faint">
+                        <p className="text-ink-muted">
                             Expected header columns: <code>name, price, description, category, image, available, massGrams, volumeMl, lengthMm, widthMm, heightMm, pricingPolicy, rateUnit, rateQuantitySource</code> (case-insensitive, any order; <code>name</code> + <code>price</code> required).
                         </p>
                     </div>
@@ -488,7 +488,7 @@ export function OnboardingCatalogForm({
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
                     href={backHref ?? onboardingPrevHref("catalog")}
-                    className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
+                    className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}
                 </Link>
@@ -525,7 +525,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, dataSol
                     <button
                         type="button"
                         onClick={onRemove}
-                        className="text-xs text-ink-faint hover:text-error-fg transition-colors"
+                        className="text-xs text-ink-muted hover:text-error-fg transition-colors"
                     >
                         Remove
                     </button>

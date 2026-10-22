@@ -57,6 +57,7 @@ import {
     NAV_LINKS_MARKETING_DRAWER,
 } from '../../components/shared/navLinks';
 import { waitForReactHydration } from './test-helpers';
+import { exportDistDir, exportedRoutes } from './exportCensus';
 
 /** One defect the blind visitor hit, attributed to the page that produced it. */
 interface Finding {
@@ -167,28 +168,6 @@ function classify(href: string, origin: string): Classified {
         return { kind: 'asset', path: route };
     }
     return { kind: 'route', route };
-}
-
-/**
- * The static export's own route census: every `index.html` under the dist
- * dir the webServer built (trailingSlash: true — directory-per-route).
- * `/404` (the not-found page — no link points at it by design) and the
- * typedoc bundle are not crawl targets.
- */
-function exportedRoutes(distDir: string): string[] {
-    const routes: string[] = [];
-    const walk = (dir: string, rel: string) => {
-        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-            if (entry.isDirectory()) {
-                if (rel === '' && (entry.name === '_next' || entry.name === 'sdk-api')) continue;
-                walk(path.join(dir, entry.name), `${rel}/${entry.name}`);
-            } else if (entry.name === 'index.html' && rel !== '/404') {
-                routes.push(rel === '' ? '/' : rel);
-            }
-        }
-    };
-    walk(distDir, '');
-    return routes.sort();
 }
 
 /**
@@ -361,11 +340,7 @@ test.describe('The stranger: the blind visitor', () => {
         expect(visited.size, 'the transitive crawl reached a real route set').toBeGreaterThan(50);
 
         // ── Completeness: the export's own census vs. what crawling reached ──
-        const distDir = path.resolve(
-            __dirname,
-            '../..',
-            process.env.E2E_CHAIN === 'sepolia' ? '.next-e2e-sepolia' : '.next-e2e',
-        );
+        const distDir = exportDistDir();
         const unreachable: string[] = [];
         if (fs.existsSync(distDir)) {
             const unreached = exportedRoutes(distDir).filter((r) => !visited.has(r));

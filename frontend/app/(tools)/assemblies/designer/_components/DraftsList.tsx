@@ -55,7 +55,7 @@ export function DraftsList() {
                 >
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-ink-primary truncate">
-                            {d.name || <span className="font-normal italic text-ink-faint">Untitled</span>}
+                            {d.name || <span className="font-normal italic text-ink-muted">Untitled</span>}
                         </p>
                         <p className="font-mono text-[11px] text-ink-muted mt-0.5">/{d.slug}</p>
                         <p className="text-xs text-ink-muted mt-1">

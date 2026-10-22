@@ -69,7 +69,7 @@ export function MemberLanding() {
         return (
             <>
                 <ManageHeader />
-                <Card className="p-8 text-sm text-ink-faint">Loading…</Card>
+                <Card className="p-8 text-sm text-ink-muted">Loading…</Card>
             </>
         );
     }
@@ -77,7 +77,7 @@ export function MemberLanding() {
         return (
             <>
                 <ManageHeader />
-                <Card className="p-8 text-sm text-ink-faint">Loading…</Card>
+                <Card className="p-8 text-sm text-ink-muted">Loading…</Card>
             </>
         );
     }
@@ -103,7 +103,7 @@ export function MemberLanding() {
         return (
             <>
                 <ManageHeader />
-                <Card className="p-8 text-sm text-ink-faint">Loading…</Card>
+                <Card className="p-8 text-sm text-ink-muted">Loading…</Card>
             </>
         );
     }
@@ -193,7 +193,7 @@ function RegisteredCard({
                 )}
                 <Link
                     href={sellerPageHref(address)}
-                    className="inline-block text-sm text-ink-faint hover:text-ink-heading underline"
+                    className="inline-block text-sm text-ink-muted hover:text-ink-heading underline"
                 >
                     View public profile →
                 </Link>
@@ -216,7 +216,7 @@ function RegisteredCard({
                 view/edit above, AND the onboarding wizard — for a registered
                 wallet the wizard re-walks the steps and publishing updates
                 this profile in place. */}
-            <p className="text-sm text-ink-faint">
+            <p className="text-sm text-ink-muted">
                 <Link
                     href="/members/identity"
                     className="underline hover:text-ink-heading"
@@ -269,7 +269,7 @@ function ManageList({
                     <li key={item.label} className="border-b border-default">
                         <Link
                             href={item.href}
-                            className="flex items-baseline justify-between gap-4 py-3 text-ink-faint hover:bg-paper-200 -mx-3 px-3 transition-colors"
+                            className="flex items-baseline justify-between gap-4 py-3 text-ink-muted hover:bg-paper-200 -mx-3 px-3 transition-colors"
                         >
                             <div>
                                 <span className="text-ink-body">{item.label}</span>
@@ -281,7 +281,7 @@ function ManageList({
                 ) : (
                     <li
                         key={item.label}
-                        className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint"
+                        className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-muted"
                         aria-disabled="true"
                     >
                         <div>
@@ -499,7 +499,7 @@ function WithdrawRow({
     if (!confirming) {
         const depositLabel = deposit !== undefined ? `${formatEther(deposit)} ETH` : "ETH";
         return (
-            <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint">
+            <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-muted">
                 <div>
                     <span className="text-ink-body">Leave the registry</span>
                     <span className="ml-2 text-xs">De-lists you from discovery straight away; the {depositLabel} stake follows {cooldownPhrase(cooldown)}.</span>
@@ -528,7 +528,7 @@ function WithdrawRow({
                     type="button"
                     onClick={() => setConfirming(false)}
                     disabled={isProcessing}
-                    className="text-xs text-ink-faint hover:text-ink-heading transition-colors disabled:opacity-50"
+                    className="text-xs text-ink-muted hover:text-ink-heading transition-colors disabled:opacity-50"
                 >
                     Cancel
                 </button>

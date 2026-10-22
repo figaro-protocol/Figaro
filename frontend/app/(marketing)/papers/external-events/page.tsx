@@ -6,6 +6,7 @@ import {
     PaperSubsection,
     PaperRun,
     PaperRemark,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
@@ -102,7 +103,7 @@ export default function ExternalEventsPaper() {
                 <p>
                     Two questions separate every decision that bears on a resolution. The first is <em>when</em>: before both parties have signed, or after? The second is <em>how</em>: computed deterministically from what was signed, or exercised by a named party at its own discretion? The pivot for the first is the signature pair, where assent is complete and the terms stand as signed. Crossing the two questions gives four positions, and all four are occupied.
                 </p>
-                <div className="my-4 overflow-x-auto">
+                <PaperScroll className="my-4">
                     <table className="text-sm border-collapse">
                         <thead>
                             <tr>
@@ -125,7 +126,7 @@ export default function ExternalEventsPaper() {
                         </tbody>
                     </table>
                     <p className="text-xs text-ink-muted mt-2">The lower-right cell holds exactly one act that the mechanism itself executes &mdash; the buyer&rsquo;s resolution. The remedies and the ruling are the parties&rsquo; and a forum&rsquo;s, and reach the mechanism only through what the parties do with them.</p>
-                </div>
+                </PaperScroll>
                 <PaperRun title="One discretionary act, and what it does.">
                     After the signatures everything the mechanism does is fixed by them, except whether and when the buyer resolves. That act is discretionary in the strong sense: the Core holds no test of performance, and no attestation conditions resolution. Resolution <em>is</em> the buyer&rsquo;s acceptance. Because it is atomic across the process, its force reaches beyond the buyer&rsquo;s own order: nobody is paid until it is called, so every seller holds a live interest in every co-seller&rsquo;s performance. A seller that has performed is exposed to a co-seller&rsquo;s fault by <Math>{"P_i + 2G_i"}</Math>, since it has parted with its work and its whole bond stays locked. One that has not yet performed is exposed by at least <Math>{"P_i + G_i"}</Math>, since it still holds at most <Math>{"G_i"}</Math> of value. Both figures are arithmetic on the signed accumulator, and they make the co-sellers participants in any negotiation over an event.
                 </PaperRun>

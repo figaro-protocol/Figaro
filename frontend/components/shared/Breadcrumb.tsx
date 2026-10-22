@@ -31,7 +31,7 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
     if (items.length === 0) return null;
 
     return (
-        <nav aria-label="Breadcrumb" className={cn("print:hidden mb-4 text-sm text-ink-faint", className)}>
+        <nav aria-label="Breadcrumb" className={cn("print:hidden mb-4 text-sm text-ink-muted", className)}>
             {items.map((item, i) => (
                 <span key={`${item.href ?? item.label}-${i}`}>
                     {i > 0 && (

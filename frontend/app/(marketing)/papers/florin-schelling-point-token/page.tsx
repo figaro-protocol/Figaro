@@ -4,6 +4,7 @@ import {
     PaperLayout,
     PaperSection,
     PaperRun,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
@@ -137,7 +138,7 @@ export default function FlorinSchellingPointTokenPaper() {
                 <p>
                     The tests are best read against the tokens they were written for. Each row below states what was sold and to whom, who controlled the rules at issuance, what a holder could verify at acquisition, and what the tests found. The middle two columns decide the outer two.
                 </p>
-                <div className="overflow-x-auto">
+                <PaperScroll>
                     <table className="text-sm border-collapse">
                         <thead>
                             <tr>
@@ -191,7 +192,7 @@ export default function FlorinSchellingPointTokenPaper() {
                                 </tr>
                         </tbody>
                     </table>
-                </div>
+                </PaperScroll>
                 <p>
                     Two things stand out. First, every token that met the tests was sold in advance to pay for something not yet built, under the control of the party that sold it, on the strength of a document rather than a running system. Second, the two that did not meet them, bitcoin and ether on the stated view, escaped by one route: no central operator, and nothing a holder could not see. Meme coins escape for a narrower reason, the absence of any enterprise, and they show what belief alone looks like when a token is launched through a market with insiders holding early. The florin has bitcoin&rsquo;s two properties from the first day and adds the one Section 2 found bitcoin lacks: nothing in its system requires the unit.
                 </p>

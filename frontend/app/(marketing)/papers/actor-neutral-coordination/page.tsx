@@ -5,6 +5,7 @@ import {
     PaperSection,
     PaperRun,
     PaperRemark,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
@@ -83,7 +84,7 @@ export default function ActorNeutralCoordinationPaper() {
                 <PaperRun title="Buyer dominance with atomic resolution.">
                     Only the buyer can resolve, and resolution is atomic: every order in the process resolves in one call, or none does. Resolution pays each seller its payment and refunds its bond, <Math>{"2G + P"}</Math> in all, and refunds the buyer&rsquo;s bond less the payment it carried. No order is paid alone. Resolution is the buyer&rsquo;s judgment and its acceptance, because the Core holds no test of performance. While any seller has not performed, each seller <Math>{"i"}</Math> that has, with payment <Math>{"P_i"}</Math> and cumulative value <Math>{"G_i"}</Math> through its order, stands exposed at <Math>{"P_i + 2G_i"}</Math>, its payment forgone and its bond locked. Each seller therefore holds a bonded interest in every other seller&rsquo;s performance, readable from the accumulator alone. Bonding is what scales the mechanism; atomic resolution coordinates the process that bonding has already secured.
                 </PaperRun>
-                <div className="my-4 overflow-x-auto">
+                <PaperScroll className="my-4">
                     <table className="text-sm border-collapse">
                         <thead>
                             <tr>
@@ -106,7 +107,7 @@ export default function ActorNeutralCoordinationPaper() {
                         </tbody>
                     </table>
                     <p className="text-xs text-ink-muted mt-2">The four outcomes of one order, each the pair <Math>{"(u_b, u_s)"}</Math>: the position in the Core plus the assented value of what each party holds. Rows show whether the seller ever performs, columns whether the buyer ever resolves. The seller&rsquo;s entries are bounds, because it retains at most <Math>{"G"}</Math>. The right-hand column holds open positions, which the Core has no operation to convert.</p>
-                </div>
+                </PaperScroll>
                 <PaperRun title="The equilibrium.">
                     Three comparisons on the table make cooperation the equilibrium. (a) After performance the buyer strictly prefers resolving, <Math>{"0"}</Math>, to never resolving, <Math>{"-P"}</Math>; the comparison needs no assumption about the seller. (b) Given (a), and given the buyer&rsquo;s plan to resolve once performance has occurred and not before, each seller strictly prefers performing, <Math>{"+P"}</Math>, to never performing, at most <Math>{"-G"}</Math>; the margin is <Math>{"\\Delta = P + G"}</Math>. (c) Given (b), before performance the buyer keeps the process open rather than resolve at once, which is terminal at <Math>{"-P"}</Math>. Comparisons (b) and (c) are the two parties&rsquo; best replies to one profile and hold jointly, as a fixed point; (a) is the one unconditional anchor. The comparisons are proved for the two-party order and for every order of a process chain, for any number of orders the network resolves in one call (Figaro 2026).
                 </PaperRun>

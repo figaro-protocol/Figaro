@@ -104,7 +104,7 @@ export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
     }
 
     if (!mounted) {
-        return <Card className="p-6 text-sm text-ink-faint">Loading…</Card>;
+        return <Card className="p-6 text-sm text-ink-muted">Loading…</Card>;
     }
 
     return (

@@ -48,7 +48,7 @@ export function CartLineList({ items, tokenSymbol, emphasizePrice = false, showS
                         data-testid={`cart-line-${item.catalogItemId}`}
                     >
                         <span className="flex-1 min-w-0 text-ink-primary font-medium truncate">
-                            {item.name} <span className="text-ink-faint">× {item.quantity}</span>
+                            {item.name} <span className="text-ink-muted">× {item.quantity}</span>
                         </span>
                         <span className={`text-ink-primary ${emphasizePrice ? "font-semibold " : ""}tabular-nums shrink-0`}>
                             {cartLineTotal(item).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}

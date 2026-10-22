@@ -103,10 +103,10 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
                 <Card key={choice.compositionHash} className="p-4 space-y-4" data-testid={`disclosure-assembly-${choice.slug}`}>
                     <div className="flex items-baseline justify-between gap-2">
                         <span className="font-semibold text-ink-heading truncate">{choice.name}</span>
-                        <code className="text-xs text-ink-faint font-mono shrink-0">{choice.slug}</code>
+                        <code className="text-xs text-ink-muted font-mono shrink-0">{choice.slug}</code>
                     </div>
                     {choice.clauses === null ? (
-                        <p className="text-xs text-ink-faint">Loading the assembly&apos;s clause set…</p>
+                        <p className="text-xs text-ink-muted">Loading the assembly&apos;s clause set…</p>
                     ) : (
                         (choice.clauses as readonly `0x${string}`[]).map((clauseKey) => (
                             <div key={clauseKey} className="space-y-2 pt-2 border-t border-default">
@@ -222,7 +222,7 @@ function PolicyLeafRow({
                             className="w-full text-xs font-mono px-2 py-1.5 rounded border border-default min-h-9"
                             data-testid={`${rowId}-whitelist`}
                         />
-                        <p className="text-[11px] text-ink-faint">
+                        <p className="text-[11px] text-ink-muted">
                             {entry?.whitelist?.length
                                 ? `${entry.whitelist.length} wallet${entry.whitelist.length === 1 ? "" : "s"} whitelisted.`
                                 : "No whitelist — any counterparty may buy or see this class."}
@@ -238,7 +238,7 @@ function PolicyLeafRow({
                             className="w-24 text-xs px-2 py-1.5 rounded border border-default min-h-9"
                             data-testid={`${rowId}-embargo`}
                         />
-                        <span className="text-[11px] text-ink-faint">
+                        <span className="text-[11px] text-ink-muted">
                             days after resolution before disclosure opens (empty = immediately).
                         </span>
                     </div>

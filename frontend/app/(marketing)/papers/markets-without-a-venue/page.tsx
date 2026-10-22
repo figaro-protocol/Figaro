@@ -6,6 +6,7 @@ import {
     PaperSubsection,
     PaperRun,
     PaperRemark,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 import { MarketFormationSwimlaneFigure } from "@/components/figures/MarketFormationSwimlaneFigure";
@@ -110,7 +111,7 @@ export default function MarketsWithoutAVenuePaper() {
                     <p>
                         A stipulated case shows both routes before the formal apparatus. A buyer <Math>{"B"}</Math> needs one job done at a <em>position</em>, an order&rsquo;s place in the sequence of orders the buyer opens (&sect;2.1); this one opens a process, so the order&rsquo;s cumulative value is its payment. Three candidates, <Math>{"S_1"}</Math>, <Math>{"S_2"}</Math>, and <Math>{"S_3"}</Math>, have published terms that can price the job. Every object exchanged is one commitment struct in one of three states: a <em>draft</em> carries no signature, an <em>answer</em> carries the candidate&rsquo;s, and a <em>commitment</em> carries both and is the one object the Core admits. The table gives each step of each route, and who signs what at it.
                     </p>
-                    <div className="my-4 overflow-x-auto">
+                    <PaperScroll className="my-4">
                         <table className="text-sm border-collapse">
                             <thead>
                                 <tr>
@@ -151,7 +152,7 @@ export default function MarketsWithoutAVenuePaper() {
                                 </tr>
                             </tbody>
                         </table>
-                    </div>
+                    </PaperScroll>
                     <p>
                         The two routes differ in the first four steps, in what a draft carries and what an answer may change, and coincide in the last two. A race candidate signs a price it published before the solicitation existed, so its answer reports availability and nothing else: what the race found out is that <Math>{"S_1"}</Math>, the cheapest, could not take the job. A quote candidate signs a figure it chose, so the answers are the price discovery. On both routes the buyer signs last and once, and the Core sees only the commitment at the sixth step. Section 3 shows why signing last is what makes asking several candidates safe, and &sect;&sect;4 and 5 analyze each route. The figure at the end of &sect;3.3 draws both routes and marks where the Core enters.
                     </p>
@@ -530,7 +531,7 @@ export default function MarketsWithoutAVenuePaper() {
                     <p>
                         The trade-off can be stated property by property. The table sets each property a market design asks for against what the two mechanisms supply when no venue holds the authoritative state, with the result that establishes it. The four roles of &sect;2.4 are among its rows, and for three of them a venue contract would add little and cost something specific.
                     </p>
-                    <div className="my-4 overflow-x-auto">
+                    <PaperScroll className="my-4">
                         <table className="text-sm border-collapse">
                             <thead>
                                 <tr>
@@ -612,7 +613,7 @@ export default function MarketsWithoutAVenuePaper() {
                                 </tr>
                             </tbody>
                         </table>
-                    </div>
+                    </PaperScroll>
                     <p>
                         Verifiable selection is the one role lost. A venue could make the buyer&rsquo;s rule binding and checkable, which would buy the commitment Proposition 5.2 shows to be otherwise unavailable. Its cost is a party with authority over which of several bonded parties becomes obliged.
                     </p>

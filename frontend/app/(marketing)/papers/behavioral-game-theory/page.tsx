@@ -4,6 +4,7 @@ import {
     PaperLayout,
     PaperSection,
     PaperRun,
+    PaperScroll,
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 
@@ -98,7 +99,7 @@ export default function BehavioralGameTheoryPaper() {
                 <p>
                     At a single order the mechanism produces four outcomes.
                 </p>
-                <div className="my-4 overflow-x-auto">
+                <PaperScroll className="my-4">
                     <table className="text-sm border-collapse">
                         <thead>
                             <tr>
@@ -121,7 +122,7 @@ export default function BehavioralGameTheoryPaper() {
                         </tbody>
                     </table>
                     <p className="text-xs text-ink-muted mt-2">The four outcomes at one order, each the pair <Math>{"(u_b, u_s)"}</Math>: the position in the mechanism plus the signed value of what each party holds. Rows say whether the seller ever performs and columns whether the buyer ever resolves; every plan either party may adopt ends in one of the four, so this is a table of outcomes and not a strategic form. The seller&rsquo;s entries are bounds because its retention is at most <Math>{"G"}</Math>. The right-hand column holds open positions, which persist because no clock runs from the bonded state.</p>
-                </div>
+                </PaperScroll>
                 <PaperRun title="The equilibrium is an anchor and a fixed point.">
                     The equilibrium has three comparisons and one structure. <strong>(a)</strong> After performance the buyer compares resolving, <Math>{"0"}</Math>, against never resolving, <Math>{"-P"}</Math>. It holds the delivery either way, and the withheld payment stays frozen in its own bond, so resolving is strictly better with no assumption about the seller. <strong>(b)</strong> Given (a) and the buyer&rsquo;s plan &mdash; resolve once performance has occurred and not before &mdash; the seller compares performing, <Math>{"+P"}</Math>, against never performing, <Math>{"-2G + r \\leq -G"}</Math>, and performs by a margin of at least <Math>{"P + G"}</Math>. The two premises fix one branch each: (a) fixes performing at <Math>{"+P"}</Math>, and the plan&rsquo;s &ldquo;not before&rdquo; fixes holding out at its bound, since a buyer that resolved against non-performance would hand the seller up to <Math>{"P + G"}</Math>. <strong>(c)</strong> Given (b), before performance the buyer compares keeping the process open, worth <Math>{"0"}</Math> once the seller performs, against resolving at once, a terminal <Math>{"-P"}</Math>, and waits.
                 </PaperRun>

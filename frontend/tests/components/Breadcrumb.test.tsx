@@ -64,6 +64,6 @@ describe("Breadcrumb", () => {
         render(<Breadcrumb items={[{ label: "Solo" }]} className="mb-8" />);
         const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
         expect(nav.className).toContain("mb-8");
-        expect(nav.className).toContain("text-ink-faint");
+        expect(nav.className).toContain("text-ink-muted");
     });
 });
