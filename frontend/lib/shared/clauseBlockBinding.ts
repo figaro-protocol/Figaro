@@ -54,7 +54,7 @@ interface ClauseBlockDesign {
      *  relationship, composed per-order in the drawer. `"assembly"` = a term
      *  of the COMPOSITION itself (a denomination pin, a dispute forum):
      *  composed once at the assembly level, carried once in the assembly
-     *  (part of the compositionHash), folded into EVERY agreement at checkout
+     *  (part of the assemblyHash), folded into EVERY agreement at checkout
      *  so every party signs it. Wrong-level composition is a build/publish
      *  error, never a silent no-op. */
     scope: "agreement" | "assembly";
@@ -68,7 +68,7 @@ interface ClauseBlockDesign {
      *  application (a pinned consent document, a pinned denomination).
      *  The drawer exposes field editors exactly for these; their values
      *  survive into the published assembly (identity-bearing — part of the
-     *  compositionHash). Empty when the designer only selects the clause. */
+     *  assemblyHash). Empty when the designer only selects the clause. */
     fills: readonly string[];
     /** Composition binding — the on-network contract or external forum this
      *  clause composes with (the sixth noun). `interface` names a STANDARD

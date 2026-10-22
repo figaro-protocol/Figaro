@@ -217,7 +217,7 @@ export async function recordProcessUsage(
                 sent.add(key);
                 try {
                     await send("recordAgreementUsage", [
-                        commitment, claim.clause_or_assembly, claim.kind.Agreement.composition_hash, claim.inclusion_proof,
+                        commitment, claim.clause_or_assembly, claim.kind.Agreement.assembly_hash, claim.inclusion_proof,
                     ]);
                     report.agreementRecorded = true;
                 } catch (error) {

@@ -9,7 +9,7 @@
  * (`deriveInFlightOrders` + `deriveClauseWithdrawGate` /
  * `deriveAssemblyWithdrawGate` / `deriveAgreementWithdrawGate`, the last two
  * attributing an order by its verified agreement's decoded provenance
- * `{ agreementHash, compositionHash }`) — this hook does
+ * `{ agreementHash, assemblyHash }`) — this hook does
  * ONLY the I/O the SDK deliberately does not: read FigaroCore event log from
  * the chain, then fetch each in-flight order's pinned agreement from IPFS. It
  * never re-derives the count.
@@ -49,7 +49,7 @@ import { isValidAddress } from "@/lib/shared/evm";
 
 export type WithdrawClauseOrAssembly =
     | { kind: "clause"; clauseKey: `0x${string}` }
-    | { kind: "assembly"; compositionHash: `0x${string}` }
+    | { kind: "assembly"; assemblyHash: `0x${string}` }
     | { kind: "agreement"; agreementHash: `0x${string}` };
 
 /** Read every in-flight order off-chain, then resolve each to its committed
@@ -92,12 +92,12 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
     const [isLoading, setIsLoading] = useState(false);
 
     // A stable identity for the clause or assembly so the effect re-runs only
-    // when the target changes (an assembly is identified by its composition hash).
+    // when the target changes (an assembly is identified by its assembly hash).
     const clauseOrAssemblyKey = useMemo(() => {
         if (!clauseOrAssembly) return null;
         switch (clauseOrAssembly.kind) {
             case "clause": return `clause:${clauseOrAssembly.clauseKey}`;
-            case "assembly": return `assembly:${clauseOrAssembly.compositionHash}`;
+            case "assembly": return `assembly:${clauseOrAssembly.assemblyHash}`;
             case "agreement": return `agreement:${clauseOrAssembly.agreementHash}`;
         }
     }, [clauseOrAssembly]);
@@ -119,7 +119,7 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
                     clauseOrAssembly.kind === "clause"
                         ? deriveClauseWithdrawGate(clauseOrAssembly.clauseKey, agreements)
                         : clauseOrAssembly.kind === "assembly"
-                            ? deriveAssemblyWithdrawGate(clauseOrAssembly.compositionHash, agreements)
+                            ? deriveAssemblyWithdrawGate(clauseOrAssembly.assemblyHash, agreements)
                             : deriveAgreementWithdrawGate(clauseOrAssembly.agreementHash, agreements),
                 );
                 setIsLoading(false);

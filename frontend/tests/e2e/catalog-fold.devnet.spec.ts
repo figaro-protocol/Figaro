@@ -35,7 +35,7 @@
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server (:3100).
  * figaro-cargo is a KNOWN, pre-populated clause, so this spec's composition is
  * FIXED — and assembly identity IS the composition (editorial names are
- * excluded from the compositionHash). On the persistent devnet the first run
+ * excluded from the assemblyHash). On the persistent devnet the first run
  * against a deployment ANCHORS the assembly; every later run ADOPTS it: the
  * publish leg reads the binding from the chain: unbound, it publishes and
  * reads the receipt; bound (first-write-wins), the Review screen closes publish

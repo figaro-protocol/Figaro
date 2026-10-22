@@ -33,7 +33,7 @@ import {
     holdIpfsApi,
     keyOf,
     primeRegisteredClauseSpecs,
-    anchoredCompositionHash,
+    anchoredAssemblyHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
@@ -79,7 +79,7 @@ const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
  *  anvil-held so the fixture can drive its accept). */
 const POS_SELLER = ANVIL_ACCOUNTS[31] as Hex;
 async function findPosAssembly(): Promise<string> {
-    // Identify pos.json by IDENTITY (its compositionHash → slug), NOT by a
+    // Identify pos.json by IDENTITY (its assemblyHash → slug), NOT by a
     // clause-shape heuristic. The old filter (single-order + has-modalities +
     // no-content-handoff) is closed-world AND ambiguous — it also matched other
     // single-order compositions (e.g. the aerial-survey assemblies), so `.find()`
@@ -92,7 +92,7 @@ async function findPosAssembly(): Promise<string> {
 }
 async function ensurePosSeller(token: Hex): Promise<Hex> {
     const slug = await findPosAssembly();
-    const assemblyHash = await anchoredCompositionHash(slug);
+    const assemblyHash = await anchoredAssemblyHash(slug);
     const bound = (await memberProfileBindings(POS_SELLER)).some((b) => isBindingOf(b, assemblyHash));
     if (!bound) {
         const { uri: catalogURI } = await pinJSONToIPFS({
@@ -120,7 +120,7 @@ async function ensurePosSeller(token: Hex): Promise<Hex> {
                 assemblyBindings: [{
                     bindingId: 'pos-reference',
                     subjectAddress: POS_SELLER,
-                    compositionHash: assemblyHash,
+                    assemblyHash,
                     counterpartyBindings: [],
                 }],
             },

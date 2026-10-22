@@ -180,7 +180,7 @@ export async function executeAssemblyCheckout(
 
     // UTILITY-TOKEN PIN VERIFICATION: when the assembly pins
     // its denomination (an assembly-scoped term, part of the
-    // compositionHash), the commitment currency MUST be that token — refuse
+    // assemblyHash), the commitment currency MUST be that token — refuse
     // before any signature rather than let the signed struct contradict the
     // signed term.
     const pin = readUtilityTokenPin(assembly.assemblyClauses ?? {}, specs);

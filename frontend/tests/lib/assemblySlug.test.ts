@@ -3,7 +3,7 @@ import { agreementHashOf, serializeAssembly } from "@figaro-protocol/sdk";
 import { deriveAssemblySlug, type Assembly } from "@/lib/shared/assembly";
 
 // Construct assemblies directly (no spec cache needed) to test the
-// serialize → compositionHash → slug pipeline in isolation. The clause keys
+// serialize → assemblyHash → slug pipeline in isolation. The clause keys
 // are opaque 32-byte hashes: the pipeline reads none of the specs behind them.
 // Each agreement binds the agreement those clauses key to.
 const CLAUSE = `0x${"c1".repeat(32)}` as const;
@@ -12,7 +12,7 @@ const composition = (x: number, clauseKey: `0x${string}` = CLAUSE): Assembly => 
     agreements: [{ id: "order-0", agreementHash: agreementHashOf({ clauses: { [clauseKey]: { x } } }), clauses: {} }],
 });
 
-const slugOf = (t: Assembly) => deriveAssemblySlug(serializeAssembly(t).compositionHash);
+const slugOf = (t: Assembly) => deriveAssemblySlug(serializeAssembly(t).assemblyHash);
 
 describe("content-derived assembly slug", () => {
     it("identical compositions → identical slug (the dedup property)", () => {
@@ -27,7 +27,7 @@ describe("content-derived assembly slug", () => {
         const agreementHash = composition(1).agreements[0].agreementHash;
         const ordered: Assembly = { agreements: [{ id: "order-0", agreementHash, clauses: { [CLAUSE]: { a: 1, b: 2 } } }] };
         const reordered = { agreements: [{ clauses: { [CLAUSE]: { b: 2, a: 1 } }, agreementHash, id: "order-0" }] } as Assembly;
-        expect(serializeAssembly(ordered).compositionHash).toBe(serializeAssembly(reordered).compositionHash);
+        expect(serializeAssembly(ordered).assemblyHash).toBe(serializeAssembly(reordered).assemblyHash);
     });
 
     it("format: asm- prefix + 16 hex", () => {
@@ -49,7 +49,7 @@ describe("content-derived assembly slug", () => {
 
     // A clause is its spec: another version of a clause — or a lookalike that
     // shares its name — is another key, so composing it IS composing a
-    // different clause: distinct compositionHash, distinct slug.
+    // different clause: distinct assemblyHash, distinct slug.
     it("composing another spec's key → distinct composition identity", () => {
         expect(slugOf(composition(1, LOOKALIKE))).not.toBe(slugOf(composition(1)));
     });

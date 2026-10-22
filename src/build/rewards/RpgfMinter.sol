@@ -21,7 +21,7 @@ interface IClauseAuthor {
 
 /// @notice Designer of record for an assembly — `AssemblyRegistry.bindings`.
 interface IAssemblyAuthor {
-    function bindings(bytes32 compositionHash)
+    function bindings(bytes32 assemblyHash)
         external
         view
         returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string memory contentURI);
@@ -102,7 +102,7 @@ contract RpgfMinter {
     ///         is a `ClauseRegistry` clause key.
     uint8 public constant KIND_CLAUSE = 0;
     /// @notice The kind of an assembly entry — `UsageCounter.KIND_ASSEMBLY`; its
-    ///         key is an `AssemblyRegistry` compositionHash.
+    ///         key is an `AssemblyRegistry` assemblyHash.
     uint8 public constant KIND_ASSEMBLY = 1;
     /// @notice The kind of an agreement entry — `UsageCounter.KIND_AGREEMENT`;
     ///         its key is an `AgreementRegistry` agreementHash.
@@ -210,7 +210,7 @@ contract RpgfMinter {
     ///         pass every clause, agreement and assembly you are designer of record for in one call.
     /// @param periodId  The accrual period being claimed.
     /// @param clausesOrAssemblies (kind, key) pairs — clause keys under
-    ///                  `KIND_CLAUSE`, assembly compositionHashes under
+    ///                  `KIND_CLAUSE`, assemblyHashes under
     ///                  `KIND_ASSEMBLY`, agreementHashes under `KIND_AGREEMENT` —
     ///                  the caller is designer of record for.
     ///                  Each is verified against the one registry its kind

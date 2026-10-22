@@ -157,8 +157,8 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         expect(single, 'a single-order assembly is anchored (the seed)').toBeTruthy();
         const chainSlug = chain!.slug;
         const singleSlug = single!.slug;
-        const chainHash = chain!.compositionHash;
-        const singleHash = single!.compositionHash;
+        const chainHash = chain!.assemblyHash;
+        const singleHash = single!.assemblyHash;
 
         // ── GATE (idempotent): the LEAD binds both assemblies + designates the
         //    chain counterparties THROUGH THE WIZARD. Mainnet semantics: register

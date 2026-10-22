@@ -79,7 +79,7 @@ async function fetchSellerAsCatalog(
     // profile an assertion). No anchored binding ⇒ absence, on /discover,
     // /s, and checkout alike.
     const hasAnchoredBinding = (profile.assemblyBindings ?? [])
-        .some((b) => publishedHashes.has(b.compositionHash.toLowerCase()));
+        .some((b) => publishedHashes.has(b.assemblyHash.toLowerCase()));
     if (!hasAnchoredBinding) return null;
 
     // Stamp the wallet onto the profile so downstream renderers can

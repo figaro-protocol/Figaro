@@ -54,7 +54,7 @@ import { AgreementDrawer } from "./AgreementDrawer";
 import { usePublishAgreement } from "@/lib/designer/publishAssembly";
 import { AssemblyTermsPanel } from "./AssemblyTermsPanel";
 import { CompositionAssist } from "./CompositionAssist";
-import { CompositionIdentity } from "./CompositionIdentity";
+import { AssemblyIdentity } from "./AssemblyIdentity";
 import { assemblyToDraft } from "@/lib/designer/assemblyToDraft";
 import type { HydratedAssembly } from "@figaro-protocol/sdk";
 import { clauseIsMandatory } from "@/lib/shared/clauseSpecSource";
@@ -841,7 +841,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         walk publish anchors, so a composed value's change
                         (a disclosure regime, a pinned token) is VISIBLY a
                         different assembly, not a silent mutation of this one. */}
-                    <CompositionIdentity snapshot={identitySnapshot} />
+                    <AssemblyIdentity snapshot={identitySnapshot} />
 
                     {/* Assembly-level composition — clauses declaring
                         design.scope: "assembly"; the drawer excludes them, so

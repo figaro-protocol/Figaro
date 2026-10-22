@@ -7,7 +7,7 @@
  *     offer envelope; bigints → hex strings → bigints)
  *   - `serializeAssembly` (canonical JSON) / `JSON.parse` — the pinned
  *     assembly document's reader path, whose integrity check is recomputing
- *     `assemblyCompositionHash` from the parsed document.
+ *     `assemblyHashOf` from the parsed document.
  *
  * Complements (never replaces) the pinned golden vectors in
  * `commitmentPayload.test.ts` and the EIP-712 parity hard gate.
@@ -20,7 +20,7 @@ import {
     type CommitmentPayload,
 } from "../src/agent/coordination.js";
 import { serializeAssembly } from "../src/projection.js";
-import { assemblyCompositionHash, type Assembly } from "../src/assembly.js";
+import { assemblyHashOf, type Assembly } from "../src/assembly.js";
 import {
     addressArb,
     agreementArb,
@@ -95,14 +95,14 @@ describe("CommitmentPayload codec — property round-trip", () => {
 });
 
 describe("Assembly document — property round-trip", () => {
-    it("JSON.parse(serialize(t).json) deep-equals t, and the reader's recomputed compositionHash matches", () => {
+    it("JSON.parse(serialize(t).json) deep-equals t, and the reader's recomputed assemblyHash matches", () => {
         fc.assert(
             fc.property(assemblyArb, (assembly) => {
-                const { json, compositionHash } = serializeAssembly(assembly);
+                const { json, assemblyHash } = serializeAssembly(assembly);
                 const parsed = JSON.parse(json) as Assembly;
                 expect(parsed).toEqual(assembly);
                 // Reader-side integrity check: recompute from the fetched doc.
-                expect(assemblyCompositionHash(parsed)).toBe(compositionHash);
+                expect(assemblyHashOf(parsed)).toBe(assemblyHash);
             }),
         );
     });
@@ -110,10 +110,10 @@ describe("Assembly document — property round-trip", () => {
     it("identity is composition-derived: editorial prose never forks the hash; the composition always does", () => {
         fc.assert(
             fc.property(assemblyArb, fc.string({ maxLength: 16 }), (assembly, prose) => {
-                const { compositionHash } = serializeAssembly(assembly);
+                const { assemblyHash } = serializeAssembly(assembly);
                 // Renaming never forks the slug…
                 const renamed = { ...assembly, name: prose, description: prose };
-                expect(serializeAssembly(renamed).compositionHash).toBe(compositionHash);
+                expect(serializeAssembly(renamed).assemblyHash).toBe(assemblyHash);
                 // …but touching the composition always does.
                 const grown: Assembly = {
                     ...assembly,
@@ -123,7 +123,7 @@ describe("Assembly document — property round-trip", () => {
                             : a,
                     ),
                 };
-                expect(serializeAssembly(grown).compositionHash).not.toBe(compositionHash);
+                expect(serializeAssembly(grown).assemblyHash).not.toBe(assemblyHash);
             }),
         );
     });

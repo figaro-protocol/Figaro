@@ -31,7 +31,7 @@ import {
     waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
-    anchoredCompositionHash,
+    anchoredAssemblyHash,
     isBindingOf,
     pickMandatoryForEveryOrder,
 } from './devnet-helpers';
@@ -198,7 +198,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
             expect(slug, 'the published booking assembly is discoverable by shape').toBe(published);
         }
 
-        const assemblyHash = await anchoredCompositionHash(slug!);
+        const assemblyHash = await anchoredAssemblyHash(slug!);
 
         // ── ONBOARD (idempotent): the lead (fixed price) binds + designates the
         //    provider; the provider (RATE item, booking-window source) binds. ──

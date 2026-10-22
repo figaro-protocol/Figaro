@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * CompositionIdentity — the canvas's live identity readout.
+ * AssemblyIdentity — the canvas's live identity readout.
  *
- * The assembly's identity IS its composition: `compositionHash` = the merkle
+ * The assembly's identity IS its composition: `assemblyHash` = the merkle
  * root over its agreements (each agreement's agreement hash and its own fills) and
  * its assembly terms, which is the AssemblyRegistry key (first-write-wins,
  * immutable), and the published slug is a pure function of it. Editorial prose (name / summary / description) is excluded from the
@@ -23,17 +23,17 @@
  * field — any composed clause moves it.
  *
  * Testids: `designer-composition-identity`, `designer-composition-slug`,
- * `designer-composition-hash`.
+ * `designer-assembly-hash`.
  */
 
 import { useMemo } from "react";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { snapshotCompositionIdentity } from "@/lib/designer/draftToAssembly";
+import { snapshotAssemblyIdentity } from "@/lib/designer/draftToAssembly";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useRegisteredAgreementsVersion } from "@/lib/protocol/useAgreementRegistry";
 import { truncateHex } from "@/lib/shared/formatHex";
 
-export function CompositionIdentity({ snapshot }: { snapshot: DesignSnapshot | null }) {
+export function AssemblyIdentity({ snapshot }: { snapshot: DesignSnapshot | null }) {
     // The spec cache is an input to the walk (every composed and picked
     // clause is read from it), so a warm — or a clause registered mid-session — re-runs it. The
     // canvas already gates its render on `loaded`, so the error branch below
@@ -45,7 +45,7 @@ export function CompositionIdentity({ snapshot }: { snapshot: DesignSnapshot | n
     const agreementsVersion = useRegisteredAgreementsVersion();
 
     const identity = useMemo(
-        () => (snapshot ? snapshotCompositionIdentity(snapshot) : null),
+        () => (snapshot ? snapshotAssemblyIdentity(snapshot) : null),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [snapshot, specsVersion, agreementsVersion],
     );
@@ -69,10 +69,10 @@ export function CompositionIdentity({ snapshot }: { snapshot: DesignSnapshot | n
                     </p>
                     <p
                         className="font-mono text-[10px] text-ink-muted break-all"
-                        data-testid="designer-composition-hash"
-                        title={identity.compositionHash}
+                        data-testid="designer-assembly-hash"
+                        title={identity.assemblyHash}
                     >
-                        {truncateHex(identity.compositionHash, { head: 10, tail: 6 })}
+                        {truncateHex(identity.assemblyHash, { head: 10, tail: 6 })}
                     </p>
                     <p className="text-[11px] text-ink-muted leading-relaxed">
                         The AssemblyRegistry key, derived from the composed clauses and

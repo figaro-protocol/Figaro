@@ -80,7 +80,7 @@ pub enum ContentKind {
 /// The one key the gates do not run for is the agreement format's
 /// reserved provenance leaf (`kernel::PROVENANCE_LEAF_KEY`): it is not a
 /// clause, so S and C give way to the format's own rule — `clause_data`
-/// is the reproduction of the agreementHash and compositionHash it carries, `content_ref` is
+/// is the reproduction of the agreementHash and assemblyHash it carries, `content_ref` is
 /// its keccak — and I runs as for any leaf; no spec binding is committed.
 ///
 /// JSON crosses the SP1 stdin boundary as pre-serialized `String`s —
@@ -183,16 +183,16 @@ pub enum UsageClaimKind {
     /// Agreement usage; the claim's key is the registered agreementHash.
     /// The leaf is the reserved PROVENANCE leaf, a constant of the
     /// agreement format, and its bytes are REPRODUCED from both keys rather
-    /// than supplied: `{"agreementHash":"0x…","compositionHash":"0x…"}`, the
-    /// compositionHash of the assembly whose order slot the order instantiates. A
+    /// than supplied: `{"agreementHash":"0x…","assemblyHash":"0x…"}`, the
+    /// assemblyHash of the assembly whose agreement the order instantiates. A
     /// wrong key on either side derives a leaf that is simply not in the
     /// tree.
-    Agreement { composition_hash: B256 },
-    /// Assembly usage; the claim's key is the compositionHash. The
+    Agreement { assembly_hash: B256 },
+    /// Assembly usage; the claim's key is the assemblyHash. The
     /// provenance leaf is proved exactly as for an agreement claim, from
-    /// `agreement_hash` and the compositionHash; then the agreement's leaf
+    /// `agreement_hash` and the assemblyHash; then the agreement's leaf
     /// `keccak256(keccak256(agreement_hash ‖ slot_content_hash))` is proved
-    /// under the compositionHash by `membership_proof`, with the same
+    /// under the assemblyHash by `membership_proof`, with the same
     /// sorted-pair verifier — the assembly's root is a merkle tree over its
     /// order slots.
     Assembly {
@@ -233,7 +233,7 @@ pub struct UsageClaim {
     pub order: Commitment,
     /// The key the claim credits, each family's own registry key: the
     /// clause key (keccak256 of the spec's pinned bytes), the agreementHash,
-    /// or the compositionHash — never a new identifier.
+    /// or the assemblyHash — never a new identifier.
     pub clause_or_assembly: B256,
     pub kind: UsageClaimKind,
     /// Sorted-pair Merkle proof of the clause leaf against the order's
@@ -543,12 +543,12 @@ pub enum KernelError {
     UsageAlreadyCounted { clause_or_assembly: B256, process_id: B256 },
     /// The claimed clause is not a leaf of the order's signed
     /// agreement — for an agreement or assembly claim, the usual cause is
-    /// an agreementHash or compositionHash that does not match the committed
+    /// an agreementHash or assemblyHash that does not match the committed
     /// provenance leaf — or, for an assembly claim, the agreement's leaf is not
-    /// a leaf of the compositionHash.
+    /// a leaf of the assemblyHash.
     UsageInvalidInclusionProof,
     /// An attestation of the reserved provenance leaf whose bytes are not
-    /// `{"agreementHash":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`
+    /// `{"agreementHash":"0x<64 lowercase hex>","assemblyHash":"0x<64 lowercase hex>"}`
     /// reproduced from the two keys they carry.
     ProvenanceLeafNotCanonical,
     /// A usage claim keyed on a reserved key of the format (the

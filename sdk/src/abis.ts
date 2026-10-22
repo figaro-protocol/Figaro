@@ -292,15 +292,15 @@ export const MEMBERS_REGISTRY_ABI = parseAbi([
 // ── AssemblyRegistry ABI ──────────────────────────────────────────────────
 
 export const ASSEMBLY_REGISTRY_ABI = parseAbi([
-    "function registerAssembly(bytes32 compositionHash, string contentURI) external payable",
-    "function withdrawDeposit(bytes32 compositionHash) external",
-    "function bindings(bytes32 compositionHash) view returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)",
+    "function registerAssembly(bytes32 assemblyHash, string contentURI) external payable",
+    "function withdrawDeposit(bytes32 assemblyHash) external",
+    "function bindings(bytes32 assemblyHash) view returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)",
     "function registrationDeposit() view returns (uint256)",
-    "event AssemblyRegistered(bytes32 indexed compositionHash, address indexed registeredBy, string contentURI)",
-    "event DepositWithdrawn(bytes32 indexed compositionHash, address indexed registeredBy, uint256 amount)",
+    "event AssemblyRegistered(bytes32 indexed assemblyHash, address indexed registeredBy, string contentURI)",
+    "event DepositWithdrawn(bytes32 indexed assemblyHash, address indexed registeredBy, uint256 amount)",
     "error EmptyContentURI()",
-    "error ZeroCompositionHash()",
-    "error CompositionAlreadyRegistered(bytes32 compositionHash)",
+    "error ZeroAssemblyHash()",
+    "error AssemblyAlreadyRegistered(bytes32 assemblyHash)",
     "error WrongDeposit(uint256 provided, uint256 required)",
     "error NotRegistered()",
     "error NotRegisteredBy(address caller, address registeredBy)",
@@ -358,9 +358,9 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // `recordAgreementUsage` and `recordAssemblyUsage` take no clause at all —
 // the content of the agreement format's reserved provenance leaf
 // (`provenanceLeaf`) is fully determined by the two keys it names
-// (`agreementHash`, `compositionHash`), so the contract derives it; the
+// (`agreementHash`, `assemblyHash`), so the contract derives it; the
 // assembly claim adds the agreement's membership proof under
-// `compositionHash`. Accrual
+// `assemblyHash`. Accrual
 // buckets into fixed periods; a period's counts are final once `periodClosed`.
 //
 // BATCH-RESOLVED trade never touches FigaroCore, so it can never travel that
@@ -374,8 +374,8 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 export const USAGE_COUNTER_ABI = parseAbi([
     // ── Recording (permissionless) ──────────────────────────────────
     `function recordClauseUsage(${COMMITMENT_TUPLE} order, bytes32 clauseOrAssembly, bytes32 clauseDataHash, bytes32[] proof) external`,
-    `function recordAgreementUsage(${COMMITMENT_TUPLE} order, bytes32 agreementHash, bytes32 compositionHash, bytes32[] proof) external`,
-    `function recordAssemblyUsage(${COMMITMENT_TUPLE} order, bytes32 compositionHash, bytes32 agreementHash, bytes32 slotContentHash, bytes32[] leafProof, bytes32[] membershipProof) external`,
+    `function recordAgreementUsage(${COMMITMENT_TUPLE} order, bytes32 agreementHash, bytes32 assemblyHash, bytes32[] proof) external`,
+    `function recordAssemblyUsage(${COMMITMENT_TUPLE} order, bytes32 assemblyHash, bytes32 agreementHash, bytes32 slotContentHash, bytes32[] leafProof, bytes32[] membershipProof) external`,
 
     // ── Composition + schedule ──────────────────────────────────────
     "function core() view returns (address)",

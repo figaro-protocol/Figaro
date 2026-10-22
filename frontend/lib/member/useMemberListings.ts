@@ -54,7 +54,7 @@ async function fetchProfileAsListing(
     // assertion. Only anchored bindings survive; a member with none does
     // not surface on discover at all (no member
     // without a properly anchored assembly).
-    const anchored = listing.bindings.filter((b) => publishedHashes.has(b.compositionHash.toLowerCase()));
+    const anchored = listing.bindings.filter((b) => publishedHashes.has(b.assemblyHash.toLowerCase()));
     if (anchored.length === 0) return null;
     return { ...listing, bindings: anchored };
 }
@@ -90,7 +90,7 @@ export function useMemberListings(): UseSellerListingsResult {
             setState((prev) => ({ ...prev, isLoading: true }));
             return;
         }
-        const publishedHashes = new Set(publishedAssemblies.map((a) => a.compositionHash.toLowerCase()));
+        const publishedHashes = new Set(publishedAssemblies.map((a) => a.assemblyHash.toLowerCase()));
 
         let canceled = false;
         setState((prev) => ({ ...prev, isLoading: true }));

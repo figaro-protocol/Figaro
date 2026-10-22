@@ -30,7 +30,7 @@ import {
     syntheticAddress,
 } from "@/lib/designer/syntheticProcess";
 import {
-    snapshotCompositionIdentity,
+    snapshotAssemblyIdentity,
     snapshotToAssembly,
 } from "@/lib/designer/draftToAssembly";
 import { clauseDesignFills, getClauseSpec } from "@/lib/shared/clauseSpecSource";
@@ -93,7 +93,7 @@ describe("syntheticDesignStore round-trip", () => {
  * disclosure regime (`figaro-data-terms`, `block.design.fills: ["disclosure"]`)
  * because it is the case the ruling turns on: the regime is composed at design
  * time, what the canvas control writes is the clause's design fill, and the
- * fill is part of the compositionHash — so regime variants are SIBLING
+ * fill is part of the assemblyHash — so regime variants are SIBLING
  * assemblies, not a setting on one assembly (the shipped `aerial-survey` /
  * `aerial-survey-open-data` pair is exactly this difference).
  *
@@ -172,14 +172,14 @@ describe("design fills are the composition's identity — the disclosure regime"
     it("each regime is a DISTINCT composition — regime variants are sibling assemblies", () => {
         const identities = regimeValues().map((regime) => ({
             regime,
-            ...snapshotCompositionIdentity(draft({ [FIELD]: regime })),
+            ...snapshotAssemblyIdentity(draft({ [FIELD]: regime })),
         }));
         for (const i of identities) {
             expect(i.error, `${i.regime} derives an identity`).toBeNull();
-            expect(i.compositionHash).toMatch(/^0x[0-9a-f]{64}$/u);
+            expect(i.assemblyHash).toMatch(/^0x[0-9a-f]{64}$/u);
         }
-        const hashes = identities.map((i) => i.compositionHash);
-        expect(new Set(hashes).size, "one composition hash per regime").toBe(hashes.length);
+        const hashes = identities.map((i) => i.assemblyHash);
+        expect(new Set(hashes).size, "one assembly hash per regime").toBe(hashes.length);
         // The slug is a pure function of the hash, so siblings never collide
         // on the published route either.
         expect(new Set(identities.map((i) => i.slug)).size).toBe(identities.length);
@@ -189,30 +189,30 @@ describe("design fills are the composition's identity — the disclosure regime"
         // Optional-field handling: an unfilled design fill is a valid committed
         // state (absence, not a default) — and a different composition from any
         // filled one, so it can never be confused for one.
-        const unfilled = snapshotCompositionIdentity(draft({}));
+        const unfilled = snapshotAssemblyIdentity(draft({}));
         expect(unfilled.error).toBeNull();
-        const filled = regimeValues().map((r) => snapshotCompositionIdentity(draft({ [FIELD]: r })).compositionHash);
-        expect(filled).not.toContain(unfilled.compositionHash);
+        const filled = regimeValues().map((r) => snapshotAssemblyIdentity(draft({ [FIELD]: r })).assemblyHash);
+        expect(filled).not.toContain(unfilled.assemblyHash);
     });
 
     it("editorial prose is excluded — renaming leaves the identity unmoved", () => {
         const regime = regimeValues()[0];
-        const a = snapshotCompositionIdentity(draft({ [FIELD]: regime }, "One name"));
-        const b = snapshotCompositionIdentity(draft({ [FIELD]: regime }, "A completely different name"));
-        expect(b.compositionHash).toBe(a.compositionHash);
+        const a = snapshotAssemblyIdentity(draft({ [FIELD]: regime }, "One name"));
+        const b = snapshotAssemblyIdentity(draft({ [FIELD]: regime }, "A completely different name"));
+        expect(b.assemblyHash).toBe(a.assemblyHash);
     });
 
     it("the identity survives the draft's save → load round-trip unchanged", () => {
         const regime = regimeValues()[regimeValues().length - 1];
         const snapshot = draft({ [FIELD]: regime });
-        const before = snapshotCompositionIdentity(snapshot);
+        const before = snapshotAssemblyIdentity(snapshot);
         saveNamedDraft(snapshot);
         const loaded = loadNamedDraft(snapshot.slug);
         expect(loaded).not.toBeNull();
         // A design fill dropped by the persistence layer would show up here as
         // a MOVED hash — the composition the designer reopens would publish as
         // a different assembly than the one they saved.
-        expect(snapshotCompositionIdentity(loaded!).compositionHash).toBe(before.compositionHash);
+        expect(snapshotAssemblyIdentity(loaded!).assemblyHash).toBe(before.assemblyHash);
     });
 
     it("a clause with NO design fills contributes no values — its identity is fill-blind", () => {
@@ -240,8 +240,8 @@ describe("design fills are the composition's identity — the disclosure regime"
             ...base,
             clausesByOrderId: { [root.order.orderHash]: { [dimweight]: { unit: "cm-kg" } } },
         };
-        expect(snapshotCompositionIdentity(withStrayValues).compositionHash)
-            .toBe(snapshotCompositionIdentity(base).compositionHash);
+        expect(snapshotAssemblyIdentity(withStrayValues).assemblyHash)
+            .toBe(snapshotAssemblyIdentity(base).assemblyHash);
     });
 });
 

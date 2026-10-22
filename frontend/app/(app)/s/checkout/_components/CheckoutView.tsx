@@ -28,7 +28,7 @@ import { CartLineList } from "@/components/runtime/CartLineList";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
-import { assemblyCompositionHash, planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses } from "@figaro-protocol/sdk";
+import { assemblyHashOf, planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses } from "@figaro-protocol/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import {
     buyerAuthoredFields,
@@ -1178,7 +1178,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 {!raceOutcome && pickedAssembly && (
                                     <SellerCatalogPicker
                                         tokenSymbol={tokenSymbol}
-                                        compositionHash={assemblyCompositionHash(pickedAssembly.hydratedAssembly.assembly)}
+                                        assemblyHash={assemblyHashOf(pickedAssembly.hydratedAssembly.assembly)}
                                         onSelect={setSellerSelection}
                                     />
                                 )}

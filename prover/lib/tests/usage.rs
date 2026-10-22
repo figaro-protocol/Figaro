@@ -96,12 +96,12 @@ fn provenance_leaf_data_hash(agreement_hash: &B256, composition: &B256) -> B256 
 }
 
 /// The provenance leaf's bytes:
-/// `{"agreementHash":"0x…","compositionHash":"0x…"}`, lowercase hex, the
+/// `{"agreementHash":"0x…","assemblyHash":"0x…"}`, lowercase hex, the
 /// keys in that order.
 fn provenance_bytes(agreement_hash: &B256, composition: &B256) -> String {
     let hex = |w: &B256| -> String { w.iter().map(|b| format!("{b:02x}")).collect() };
     format!(
-        "{{\"agreementHash\":\"0x{}\",\"compositionHash\":\"0x{}\"}}",
+        "{{\"agreementHash\":\"0x{}\",\"assemblyHash\":\"0x{}\"}}",
         hex(agreement_hash),
         hex(composition)
     )
@@ -457,7 +457,7 @@ fn distinct_sellers_raise_breadth() {
 
 /// An agreement is credited through the reserved PROVENANCE leaf: its key
 /// is never a leaf key, so the guest reproduces the provenance bytes from
-/// the claimed agreementHash and the compositionHash the claim carries.
+/// the claimed agreementHash and the assemblyHash the claim carries.
 #[test]
 fn credits_an_agreement_through_the_provenance_leaf() {
     let buyer = make_signing_key(BUYER_KEY);
@@ -471,7 +471,7 @@ fn credits_an_agreement_through_the_provenance_leaf() {
         order,
         clause_or_assembly: agreement,
         kind: UsageClaimKind::Agreement {
-            composition_hash: composition,
+            assembly_hash: composition,
         },
         inclusion_proof: vec![],
     };
@@ -505,7 +505,7 @@ fn rejects_an_agreement_claim_with_the_wrong_agreement_hash() {
         order,
         clause_or_assembly: keccak256(b"another-agreement"),
         kind: UsageClaimKind::Agreement {
-            composition_hash: composition,
+            assembly_hash: composition,
         },
         inclusion_proof: vec![],
     };
@@ -516,10 +516,10 @@ fn rejects_an_agreement_claim_with_the_wrong_agreement_hash() {
     }
 }
 
-/// The compositionHash half of the bytes binds as tightly: the right
+/// The assemblyHash half of the bytes binds as tightly: the right
 /// agreementHash under another assembly opens nothing.
 #[test]
-fn rejects_an_agreement_claim_with_the_wrong_composition_hash() {
+fn rejects_an_agreement_claim_with_the_wrong_assembly_hash() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
     let agreement = keccak256(b"an-agreement");
@@ -530,7 +530,7 @@ fn rejects_an_agreement_claim_with_the_wrong_composition_hash() {
         order,
         clause_or_assembly: agreement,
         kind: UsageClaimKind::Agreement {
-            composition_hash: keccak256(b"a-different-composition"),
+            assembly_hash: keccak256(b"a-different-composition"),
         },
         inclusion_proof: vec![],
     };
@@ -546,7 +546,7 @@ fn rejects_an_agreement_claim_with_the_wrong_composition_hash() {
 /// An assembly claim for the order's agreement in agreement 0 of a
 /// two-order-entry assembly: the provenance leaf over both keys, then order
 /// entry 0's leaf under
-/// the compositionHash.
+/// the assemblyHash.
 fn assembly_claim(
     order: &Commitment,
     composition: B256,
@@ -566,7 +566,7 @@ fn assembly_claim(
     }
 }
 
-/// An assembly is credited INDIRECTLY: a compositionHash is never a leaf key
+/// An assembly is credited INDIRECTLY: a assemblyHash is never a leaf key
 /// of an agreement, so the guest proves the reserved PROVENANCE leaf from
 /// both keys, then proves the agreement is an agreement of the assembly's root.
 #[test]
@@ -586,17 +586,17 @@ fn credits_an_assembly_through_the_provenance_leaf_and_its_agreement() {
     assert_eq!(events.usage_accruals.len(), 1);
     assert_eq!(
         events.usage_accruals[0].clause_or_assembly, composition,
-        "the DESIGNER is credited — the compositionHash, never the provenance leaf's key"
+        "the DESIGNER is credited — the assemblyHash, never the provenance leaf's key"
     );
     assert_eq!(events.usage_accruals[0].kind, USAGE_KIND_ASSEMBLY);
     assert_eq!(events.usage_accruals[0].c, 1);
 }
 
-/// The provenance leaf is reproduced, not parsed, so a compositionHash
+/// The provenance leaf is reproduced, not parsed, so a assemblyHash
 /// that was never committed cannot open the leaf — even with a membership
 /// proof that is valid under the claimed root.
 #[test]
-fn rejects_an_assembly_claim_for_an_uncommitted_composition() {
+fn rejects_an_assembly_claim_for_an_uncommitted_assembly() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
     let agreement = keccak256(b"an-agreement");
@@ -637,7 +637,7 @@ fn rejects_an_assembly_claim_naming_another_agreement_s_key() {
     }
 }
 
-/// The membership proof is verified under the CLAIMED compositionHash: a
+/// The membership proof is verified under the CLAIMED assemblyHash: a
 /// proof that opens the agreement under some other assembly's root refuses the
 /// claim exactly as a failed inclusion proof does, though the provenance
 /// leaf itself opens.
@@ -703,7 +703,7 @@ fn one_provenance_leaf_credits_the_agreement_and_the_assembly_apart() {
             order: order.clone(),
             clause_or_assembly: agreement,
             kind: UsageClaimKind::Agreement {
-                composition_hash: composition,
+                assembly_hash: composition,
             },
             inclusion_proof: vec![],
         },
@@ -1086,7 +1086,7 @@ fn a_provenance_attestation_whose_content_ref_is_not_the_bytes_is_refused() {
 /// two keys are refused even when the signed agreement carries exactly
 /// those bytes: the leaf's content is a rule of the agreement format,
 /// reproduced, never parsed loosely. Upper-case hex, the keys swapped, and
-/// the one-key form naming the compositionHash alone are each refused.
+/// the one-key form naming the assemblyHash alone are each refused.
 #[test]
 fn non_canonical_provenance_bytes_are_refused() {
     let agreement = keccak256(b"an-agreement");
@@ -1095,16 +1095,16 @@ fn non_canonical_provenance_bytes_are_refused() {
     let upper = |w: &B256| -> String { w.iter().map(|b| format!("{b:02X}")).collect() };
     for bytes in [
         format!(
-            "{{\"agreementHash\":\"0x{}\",\"compositionHash\":\"0x{}\"}}",
+            "{{\"agreementHash\":\"0x{}\",\"assemblyHash\":\"0x{}\"}}",
             upper(&agreement),
             upper(&composition)
         ),
         format!(
-            "{{\"compositionHash\":\"0x{}\",\"agreementHash\":\"0x{}\"}}",
+            "{{\"assemblyHash\":\"0x{}\",\"agreementHash\":\"0x{}\"}}",
             hex(&composition),
             hex(&agreement)
         ),
-        format!("{{\"compositionHash\":\"0x{}\"}}", hex(&composition)),
+        format!("{{\"assemblyHash\":\"0x{}\"}}", hex(&composition)),
     ] {
         let hash = keccak256(bytes.as_bytes());
         let (input, _) = provenance_attestation(hash, &bytes, hash);
@@ -1161,7 +1161,7 @@ fn every_kind_keyed_on_a_reserved_key_is_refused() {
             order,
             clause_or_assembly: reserved,
             kind: UsageClaimKind::Agreement {
-                composition_hash: keccak256(b"a-composition"),
+                assembly_hash: keccak256(b"a-composition"),
             },
             inclusion_proof: vec![],
         };
@@ -1186,7 +1186,7 @@ fn every_kind_keyed_on_a_reserved_key_is_refused() {
 }
 
 /// The terms leaf is a leaf of the assembly root, so a membership proof of
-/// it opens under the compositionHash — the guest refuses it as an order
+/// it opens under the assemblyHash — the guest refuses it as an order
 /// entry by its key, before any proof is read.
 #[test]
 fn an_assembly_claim_passing_the_terms_leaf_as_an_agreement_is_refused() {

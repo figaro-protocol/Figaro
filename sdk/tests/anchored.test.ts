@@ -17,7 +17,7 @@ import {
 } from "../src/anchored.js";
 import { PROVENANCE_LEAF_KEY, canonicalContentHash, canonicalize, computeCheckoutHash, type Agreement } from "../src/agreement.js";
 import { computeClauseKey } from "../src/discovery.js";
-import { ASSEMBLY_TERMS_LEAF_KEY, agreementHashOf, assemblyCompositionHash, type Assembly } from "../src/assembly.js";
+import { ASSEMBLY_TERMS_LEAF_KEY, agreementHashOf, assemblyHashOf, type Assembly } from "../src/assembly.js";
 import { keyOf } from "./specFixtures.js";
 
 const OTHER = `0x${"11".repeat(32)}` as const;
@@ -71,15 +71,15 @@ describe("anchorClauseSpec", () => {
 });
 
 describe("anchorAssembly", () => {
-    it("returns the assembly its composition hash names, editorial prose aside", () => {
-        const hash = assemblyCompositionHash(assembly);
+    it("returns the assembly its assembly hash names, editorial prose aside", () => {
+        const hash = assemblyHashOf(assembly);
         expect(anchorAssembly(assembly, hash)).toBe(assembly);
         const renamed = { ...assembly, name: "Renamed" };
         expect(anchorAssembly(renamed, hash)).toBe(renamed);
     });
     it("refuses a changed composition", () => {
         const changed = { ...assembly, agreements: [{ ...assembly.agreements[0], clauses: {} }] };
-        expect(anchorAssembly(changed, assemblyCompositionHash(assembly))).toBeNull();
+        expect(anchorAssembly(changed, assemblyHashOf(assembly))).toBeNull();
     });
     it("refuses an agreement whose key is malformed or reserved", () => {
         for (const agreementHash of ["0x1234", PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
@@ -163,16 +163,16 @@ describe("anchorAgreement", () => {
         expect(anchorAgreement(null, OTHER)).toBeNull();
     });
     it("accepts the provenance leaf as two 32-byte keys under the hash, and refuses anything else there", () => {
-        const P = { agreementHash: `0x${"33".repeat(32)}`, compositionHash: `0x${"22".repeat(32)}` } as const;
+        const P = { agreementHash: `0x${"33".repeat(32)}`, assemblyHash: `0x${"22".repeat(32)}` } as const;
         const named = { ...agreement, provenance: P };
         const root = computeCheckoutHash(named);
         expect(anchorAgreement(named, root)).toBe(named);
         // Dropping or changing either key changes the root.
         expect(anchorAgreement(agreement, root)).toBeNull();
-        expect(anchorAgreement({ ...named, provenance: { ...P, compositionHash: OTHER } }, root)).toBeNull();
+        expect(anchorAgreement({ ...named, provenance: { ...P, assemblyHash: OTHER } }, root)).toBeNull();
         expect(anchorAgreement({ ...named, provenance: { ...P, agreementHash: OTHER } }, root)).toBeNull();
         // A provenance that is not two 32-byte hex keys is not the agreement format.
-        for (const bad of [P.compositionHash, "0x1234", 7, null, { compositionHash: P.compositionHash }, { ...P, agreementHash: "0x12" }]) {
+        for (const bad of [P.assemblyHash, "0x1234", 7, null, { assemblyHash: P.assemblyHash }, { ...P, agreementHash: "0x12" }]) {
             expect(anchorAgreement({ ...named, provenance: bad }, root)).toBeNull();
         }
     });

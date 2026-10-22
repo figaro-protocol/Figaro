@@ -159,8 +159,8 @@ const OTHER_AGREEMENT_HASH = ("0x" + "a1".repeat(32)) as Hex;
 
 /** An agreement whose provenance leaf names the given registered agreement
  *  and assembly. */
-function instantiated(agreementHash: Hex, compositionHash: Hex): Agreement {
-    return { ...agreementWith(["figaro-commerce", "figaro-topology"]), provenance: { agreementHash, compositionHash } };
+function instantiated(agreementHash: Hex, assemblyHash: Hex): Agreement {
+    return { ...agreementWith(["figaro-commerce", "figaro-topology"]), provenance: { agreementHash, assemblyHash } };
 }
 
 for (const [label, derive, key, other] of [

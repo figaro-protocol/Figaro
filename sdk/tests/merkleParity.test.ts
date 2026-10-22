@@ -45,7 +45,7 @@ import {
     type Agreement,
 } from "../src/agreement.js";
 import { agreementArb } from "./propertyArbs.js";
-import { agreementHashOf, assemblyCompositionHash } from "../src/assembly.js";
+import { agreementHashOf, assemblyHashOf } from "../src/assembly.js";
 import { ASSEMBLY_THREE, REGISTERED_DESIGN, K } from "./assemblyVectors.js";
 
 const FUZZ_PATH = path.resolve(__dirname, "../../test/fixtures/streams/agreements.json");
@@ -77,7 +77,7 @@ const WITH_DESIGN: Agreement = {
         { clause: K("figaro-commerce"), data: { currency: "0x0000000000000000000000000000000000000000", payment: "7" } },
         { clause: K("figaro-topology"), data: { parentOrderHashes: [] } },
     ],
-    provenance: { agreementHash: agreementHashOf(REGISTERED_DESIGN), compositionHash: assemblyCompositionHash(ASSEMBLY_THREE) },
+    provenance: { agreementHash: agreementHashOf(REGISTERED_DESIGN), assemblyHash: assemblyHashOf(ASSEMBLY_THREE) },
 };
 
 function vectorFor(label: string, agreement: Agreement) {
@@ -88,9 +88,9 @@ function vectorFor(label: string, agreement: Agreement) {
             // rebuild the leaf from these two, exactly as for a clause.
             leafKey: PROVENANCE_LEAF_KEY,
             agreementHash: agreement.provenance.agreementHash,
-            compositionHash: agreement.provenance.compositionHash,
+            assemblyHash: agreement.provenance.assemblyHash,
             clauseData: Buffer.from(
-                provenanceLeafBytes(agreement.provenance.agreementHash, agreement.provenance.compositionHash).slice(2),
+                provenanceLeafBytes(agreement.provenance.agreementHash, agreement.provenance.assemblyHash).slice(2),
                 "hex",
             ).toString("utf8"),
             leaf,

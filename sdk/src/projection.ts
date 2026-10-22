@@ -3,7 +3,7 @@
  * a design's orders to the assembly. The deterministic projection
  * rules BOTH parties (and any second frontend) must reproduce byte-exactly,
  * because their outputs are hashed: `checkoutHash` (the merkle root the
- * commitment signs) and `compositionHash` (assembly identity).
+ * commitment signs) and `assemblyHash` (assembly identity).
  *
  * The SDK holds NO clause-spec cache. Every function takes a `SpecSource` —
  * the consumer's window onto the live ClauseRegistry→IPFS spec set. A spec
@@ -19,11 +19,11 @@
  * merged into each agreement → agreementHash),
  * `design.article: "attestations"` (process-log clauses stay empty anchors at
  * commit → checkoutHash), `design.scope: "assembly"` (composed once for the
- * whole design, folded into EVERY agreement at checkout → compositionHash +
+ * whole design, folded into EVERY agreement at checkout → assemblyHash +
  * checkoutHash), `design.fills` (the fields whose values the
  * DESIGNER composes into the assembly — the tailoring; every other clause's
  * assembly values are `{}` and the fields fill at checkout →
- * compositionHash), and the `checkout` fills (`catalogueFills` /
+ * assemblyHash), and the `checkout` fills (`catalogueFills` /
  * `profileFills` — which clauses the catalog and member-profile folds
  * write → checkoutHash). `parseProjectionHints` extracts exactly those from
  * a raw spec document; everything else in `block` remains presentation the
@@ -43,7 +43,7 @@ import {
     agreementHashOf,
     assertNotReservedKey,
     resolveAuthoredClauseKeys,
-    assemblyCompositionHash,
+    assemblyHashOf,
     agreementClauses,
     deriveAssemblySlug,
     type Assembly,
@@ -547,28 +547,28 @@ function designIssues(
     const provenance = agreement.provenance;
     // A provenance that is not two 32-byte keys does not encode: the merkle
     // check reports it.
-    if (provenance !== undefined && !(isBytes32Hex(provenance.agreementHash) && isBytes32Hex(provenance.compositionHash))) return [];
+    if (provenance !== undefined && !(isBytes32Hex(provenance.agreementHash) && isBytes32Hex(provenance.assemblyHash))) return [];
     if (design == null) {
         return provenance === undefined ? [] : [{
             clause: "(provenance)",
-            path: "compositionHash",
-            message: `the agreement instantiates assembly ${provenance.compositionHash}, which was not read, so its designer values cannot be checked`,
+            path: "assemblyHash",
+            message: `the agreement instantiates assembly ${provenance.assemblyHash}, which was not read, so its designer values cannot be checked`,
         }];
     }
     if (provenance === undefined) {
-        return [{ clause: "(provenance)", path: "compositionHash", message: `the agreement names no design, so its designer values cannot be checked` }];
+        return [{ clause: "(provenance)", path: "assemblyHash", message: `the agreement names no design, so its designer values cannot be checked` }];
     }
-    let compositionHash: Hex;
+    let assemblyHash: Hex;
     try {
-        compositionHash = assemblyCompositionHash(design.assembly);
+        assemblyHash = assemblyHashOf(design.assembly);
     } catch (cause) {
-        return [{ clause: "(provenance)", path: "compositionHash", message: `the design does not hash: ${cause instanceof Error ? cause.message : String(cause)}` }];
+        return [{ clause: "(provenance)", path: "assemblyHash", message: `the design does not hash: ${cause instanceof Error ? cause.message : String(cause)}` }];
     }
-    if (compositionHash.toLowerCase() !== provenance.compositionHash.toLowerCase()) {
+    if (assemblyHash.toLowerCase() !== provenance.assemblyHash.toLowerCase()) {
         return [{
             clause: "(provenance)",
-            path: "compositionHash",
-            message: `the agreement instantiates assembly ${provenance.compositionHash}; the design read is ${compositionHash}`,
+            path: "assemblyHash",
+            message: `the agreement instantiates assembly ${provenance.assemblyHash}; the design read is ${assemblyHash}`,
         }];
     }
     let bags: DesignOrderBag[];
@@ -581,7 +581,7 @@ function designIssues(
         return [{
             clause: "(provenance)",
             path: "agreementHash",
-            message: `assembly ${provenance.compositionHash} binds no registered agreement ${provenance.agreementHash}`,
+            message: `assembly ${provenance.assemblyHash} binds no registered agreement ${provenance.agreementHash}`,
         }];
     }
     // The order matches one of the design's orders for that registered
@@ -591,7 +591,7 @@ function designIssues(
     // loaded and a value-free clause (a process-log clause's empty anchor)
     // each count, so an order never names a design it does not carry.
     const carried = new Set(agreement.clauses.map((s) => s.clause.toLowerCase()));
-    const named = `assembly ${deriveAssemblySlug(provenance.compositionHash)} (${provenance.compositionHash})`;
+    const named = `assembly ${deriveAssemblySlug(provenance.assemblyHash)} (${provenance.assemblyHash})`;
     let first: CommitmentAgreementIssue[] | undefined;
     for (const bag of bags) {
         const found: CommitmentAgreementIssue[] = bag.required
@@ -1223,14 +1223,14 @@ export function assembleAuthored(
 
 export function serializeAssembly(assembly: Assembly): {
     json: string;
-    compositionHash: `0x${string}`;
+    assemblyHash: `0x${string}`;
 } {
     // The pinned document carries everything — INCLUDING the editorial
-    // name/summary/description. But the composition hash (→ slug + on-chain
+    // name/summary/description. But the assembly hash (→ slug + on-chain
     // anchor) derives from the COMPOSITION ONLY, so editorial edits never
     // fork identity: identical compositions collapse to one binding regardless
     // of their prose.
     const json = canonicalize(assembly);
-    const compositionHash = assemblyCompositionHash(assembly);
-    return { json, compositionHash };
+    const assemblyHash = assemblyHashOf(assembly);
+    return { json, assemblyHash };
 }

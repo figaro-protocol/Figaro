@@ -25,14 +25,14 @@ import { createPublicClient, createWalletClient, http } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 // Protocol canonicals come from the SDK (@figaro-protocol/sdk, file:../sdk): the
 // registry + ERC-20 ABIs, the canonical-JSON convention, and the assembly
-// identity (compositionHash). Nothing is re-implemented here.
+// identity (assemblyHash). Nothing is re-implemented here.
 import { MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import {
     AGREEMENTS_DIR, ASSEMBLIES_DIR, LOCAL_ANVIL, anchorBuiltAssembly, fillDeployTimeCurrency, loadAuthoredSpecs, pinFile, pinJSON,
     loadAuthoredAgreements, readBuiltAssembly,
     populateClauses, populateReferenceAssemblies, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
-import { assemblyCompositionHash, resolveAuthoredClauseKeys, composeAuthoredAgreements, assembleAuthored } from '@figaro-protocol/sdk';
+import { assemblyHashOf, resolveAuthoredClauseKeys, composeAuthoredAgreements, assembleAuthored } from '@figaro-protocol/sdk';
 
 // The specs in clauses/, each with its key — the set every authored clause
 // NAME below resolves against at seed time (`resolveAuthoredClauseKeys`);
@@ -67,13 +67,13 @@ const SELLERS = [
     { addressIndex: 12, name: 'Sterling Goods', specialty: 'general goods, delivery with named recourse', geohash: '9q8yyk8z0', binds: 'pos.json', products: [{ name: 'Hardware kit', price: '1' }] },
 ];
 
-/** The composition hash a reference assembly is anchored under — the hash of
+/** The assembly hash a reference assembly is anchored under — the hash of
  *  the assembly AFTER the deploy-time currency fill, the same hash
  *  populateReferenceAssemblies anchored, never the raw file's. A binding
  *  records it in full. */
-function referenceCompositionHash(file, tokenAddress) {
+function referenceAssemblyHash(file, tokenAddress) {
     const { assembly } = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), AUTHORED, AUTHORED_AGREEMENTS);
-    return assemblyCompositionHash(fillDeployTimeCurrency(assembly, tokenAddress));
+    return assemblyHashOf(fillDeployTimeCurrency(assembly, tokenAddress));
 }
 
 const slugifyId = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -91,7 +91,7 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // (`composeAuthoredAgreements` — its clauses merge in, so a seed writes only
 // what it selects), then the assembly built over them by name
 // (`assembleAuthored`): its agreements register on AgreementRegistry, then
-// its assembly anchors — identity (agreement hashes, compositionHash + slug)
+// its assembly anchors — identity (agreement hashes, assemblyHash + slug)
 // and canonical JSON come from the SDK.
 
 /** The seeds' authored agreements, composed once, by name. Design time is
@@ -171,7 +171,7 @@ async function main() {
     //  set, the sibling of `clauses/`) are the deploy's genesis
     //  (`scripts/deploy-local.sh` registers them through populate-clauses,
     //  with this same token), so the call below finds each one's agreements
-    //  and assembly already bound and skips them: compositionHash and every
+    //  and assembly already bound and skips them: assemblyHash and every
     //  agreement hash are content-derived, the registries' `bindings` read is
     //  the already-registered test, and first write wins whoever the
     //  registrar. It still anchors them on a registry that lacks them. Their
@@ -246,7 +246,7 @@ async function main() {
             assemblyBindings: [{
                 bindingId: `seed-${s.addressIndex}`,
                 subjectAddress: account.address,
-                compositionHash: referenceCompositionHash(s.binds, mockErc20),
+                assemblyHash: referenceAssemblyHash(s.binds, mockErc20),
                 counterpartyBindings: s.courierIndex == null
                     ? []
                     : [{ clauseId: COURIER_CLAUSE, addresses: [mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: s.courierIndex }).address] }],

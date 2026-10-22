@@ -16,7 +16,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import {
     agreementHashOf,
-    assemblyCompositionHash,
+    assemblyHashOf,
     buildOrderAgreement,
     computeCheckoutHash,
     deriveAssemblySlug,
@@ -100,7 +100,7 @@ vi.mock("@/lib/member/profileFetcher", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/member/profileFetcher")>()),
     profileReaderForChain: () => async () => ({
         name: "Seller",
-        assemblyBindings: designed.map((compositionHash, i) => ({ bindingId: `b-${i}`, subjectAddress: SELLER, compositionHash })),
+        assemblyBindings: designed.map((assemblyHash, i) => ({ bindingId: `b-${i}`, subjectAddress: SELLER, assemblyHash })),
     }),
 }));
 
@@ -121,15 +121,15 @@ function design() {
     const registered: RegisteredAgreement = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-consent")]: { documents } } };
     const agreementHash = agreementHashOf(registered);
     const assembly: Assembly = { agreements: [{ id: "order-0", agreementHash, clauses: {} }] };
-    const compositionHash = assemblyCompositionHash(assembly);
-    designed.push(compositionHash);
+    const assemblyHash = assemblyHashOf(assembly);
+    designed.push(assemblyHash);
     const anchor = () => {
-        bindings.set(compositionHash.toLowerCase(), `ipfs://assembly-${caseId}`);
+        bindings.set(assemblyHash.toLowerCase(), `ipfs://assembly-${caseId}`);
         bindings.set(agreementHash.toLowerCase(), `ipfs://agreement-${caseId}`);
         pinned.set(`ipfs://assembly-${caseId}`, JSON.stringify(assembly));
         pinned.set(`ipfs://agreement-${caseId}`, JSON.stringify(registered));
     };
-    return { documents, registered, agreementHash, assembly, compositionHash, anchor, id: caseId };
+    return { documents, registered, agreementHash, assembly, assemblyHash, anchor, id: caseId };
 }
 
 /** The order `d` designs, its consent clause carrying `consent` — or, with
@@ -144,7 +144,7 @@ function payloadFor(d: ReturnType<typeof design>, consent: Record<string, unknow
         },
         ...(consent === null ? {} : { [keyOf("figaro-consent")]: consent }),
     }, specSource());
-    const agreement: Agreement = { ...built, provenance: { agreementHash: d.agreementHash, compositionHash: d.compositionHash } };
+    const agreement: Agreement = { ...built, provenance: { agreementHash: d.agreementHash, assemblyHash: d.assemblyHash } };
     const commitment: Commitment = {
         processId: `0x${"00".repeat(32)}` as Hex,
         buyer: BUYER,
@@ -182,7 +182,7 @@ describe("both sign flows read and verify the design the agreement names", () =>
         expect(commitSignedOrder).not.toHaveBeenCalled();
     });
 
-    it("refuses an agreement whose assembly does not verify against its composition root", async () => {
+    it("refuses an agreement whose assembly does not verify against its assembly root", async () => {
         const d = design();
         d.anchor();
         pinned.set(`ipfs://assembly-${d.id}`, JSON.stringify({ ...d.assembly, assemblyClauses: { [keyOf("figaro-consent")]: {} } }));
@@ -215,7 +215,7 @@ describe("both sign flows read and verify the design the agreement names", () =>
     it("refuses an order missing a clause of the registered agreement it names, naming the assembly by slug and full hash", async () => {
         const d = design();
         d.anchor();
-        const missing = new RegExp(`figaro-consent clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(d.compositionHash)} \\(${d.compositionHash}\\) composes`);
+        const missing = new RegExp(`figaro-consent clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(d.assemblyHash)} \\(${d.assemblyHash}\\) composes`);
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.acceptOrder(payloadFor(d, null))).rejects.toThrow(missing);
         await expect(result.current.commitOrder(signed(payloadFor(d, null)))).rejects.toThrow(missing);

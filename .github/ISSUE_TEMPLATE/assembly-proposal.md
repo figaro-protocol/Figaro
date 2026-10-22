@@ -34,6 +34,6 @@ labels: assembly-proposal
 <!-- Registration on AssemblyRegistry requires a live ETH stake tied to the
      registering wallet (see docs/CONTRACTS.md § RPGF and
      script/DeployMainnet.s.sol for current sizing) — confirm you understand
-     registration is permissionless, first-write-wins by compositionHash, and
+     registration is permissionless, first-write-wins by assemblyHash, and
      immutable, and that usage/reward accrual requires the stake to stay
      live. -->

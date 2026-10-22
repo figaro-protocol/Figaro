@@ -12,10 +12,10 @@
  *      order, each binding a registered agreement by key (one the designer
  *      bound, or one newly composed from the order's clauses), the topology
  *      parents in the agreement's own fill — plus prose.
- *   2. Compute the composition root (the merkle root over the agreements
+ *   2. Compute the assembly root (the merkle root over the agreements
  *      and the assembly terms — the assembly's identity).
  *   3. Pin the assembly to IPFS and simulate
- *      AssemblyRegistry.registerAssembly(compositionHash, contentURI); pin
+ *      AssemblyRegistry.registerAssembly(assemblyHash, contentURI); pin
  *      each newly agreement no registry binds yet and simulate its
  *      AgreementRegistry.registerAgreement(key, uri). Every check passes
  *      before any write is sent.
@@ -176,14 +176,14 @@ export function usePublishAssembly() {
      *  registered. Throws on any failure — no wallet, IPFS down,
      *  insufficient ETH, composition collision, on-chain revert, etc.
      *
-     *  `reviewedCompositionHash` is the BYTE-EQUALITY GATE: the identity the
+     *  `reviewedAssemblyHash` is the BYTE-EQUALITY GATE: the identity the
      *  caller last showed a human. The anchor is permanent, so the bytes that
      *  go out must be the bytes that were seen — if the build no longer hashes
      *  to what was reviewed, this refuses before anything is pinned or signed
      *  rather than anchoring a composition nobody read. */
     async function publish(
         snapshot: DesignSnapshot,
-        reviewedCompositionHash?: `0x${string}`,
+        reviewedAssemblyHash?: `0x${string}`,
     ): Promise<PublishOutcome> {
         const registry = getAssemblyRegistry();
         if (!registry) {
@@ -223,20 +223,20 @@ export function usePublishAssembly() {
         // refuses, never a silent no-op.
         const built = snapshotToAssembly(snapshot);
         const { assembly } = built;
-        const { json, compositionHash } = serializeAssembly(assembly);
+        const { json, assemblyHash } = serializeAssembly(assembly);
         // One assembly, one hash: refuse before the pin and before the wallet
         // when this build is not the composition the caller reviewed.
-        if (reviewedCompositionHash && !hexEqual(compositionHash, reviewedCompositionHash)) {
+        if (reviewedAssemblyHash && !hexEqual(assemblyHash, reviewedAssemblyHash)) {
             throw new Error(
                 `This draft now builds a different composition than the one reviewed `
-                + `(reviewed ${reviewedCompositionHash}, builds ${compositionHash}). `
+                + `(reviewed ${reviewedAssemblyHash}, builds ${assemblyHash}). `
                 + `Nothing was published — reopen it in the editor and review again.`,
             );
         }
-        // The slug is presentation, derived from the composition hash —
+        // The slug is presentation, derived from the assembly hash —
         // identical compositions collapse to one on-chain binding (the
         // registry's first-write-wins dedups them); the user never names it.
-        const slug = deriveAssemblySlug(compositionHash);
+        const slug = deriveAssemblySlug(assemblyHash);
 
         // EVERY CHECK BEFORE ANY WRITE. The pins are content addressing, not
         // chain writes; the simulations surface a typed revert before the
@@ -250,7 +250,7 @@ export function usePublishAssembly() {
                 address: registry,
                 abi: ASSEMBLY_REGISTRY_ABI as Abi,
                 functionName: "registerAssembly",
-                args: [compositionHash, ipfs.uri],
+                args: [assemblyHash, ipfs.uri],
                 value: deposit,
                 account: address,
             });
@@ -329,7 +329,7 @@ export function usePublishAssembly() {
             address: registry,
             abi: ASSEMBLY_REGISTRY_ABI as Abi,
             functionName: "registerAssembly",
-            args: [compositionHash, ipfs.uri],
+            args: [assemblyHash, ipfs.uri],
             value: deposit,
             account: address,
             translateRevert: (err) => translatePublishRevert(err, slug),

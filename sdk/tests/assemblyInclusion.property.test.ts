@@ -12,7 +12,7 @@ import {
     agreementHashOf,
     buildRegisteredClauseInclusionProof,
     buildAgreementInclusionProof,
-    assemblyCompositionHash,
+    assemblyHashOf,
 } from "../src/assembly.js";
 import { decodeProvenanceContent, provenanceLeafBytes, verifyInclusionProof } from "../src/agreement.js";
 import { bytes32Arb, registeredAgreementArb, assemblyArb } from "./propertyArbs.js";
@@ -20,7 +20,7 @@ import { bytes32Arb, registeredAgreementArb, assemblyArb } from "./propertyArbs.
 describe("the composition tree", () => {
     it("every agreement's membership proof verifies under its assembly's root", () => {
         fc.assert(fc.property(assemblyArb, (assembly) => {
-            const root = assemblyCompositionHash(assembly);
+            const root = assemblyHashOf(assembly);
             assembly.agreements.forEach((_, i) => {
                 const { leaf, proof } = buildAgreementInclusionProof(assembly, i);
                 expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
@@ -30,8 +30,8 @@ describe("the composition tree", () => {
 
     it("an agreement's proof does not verify under a different assembly's root", () => {
         fc.assert(fc.property(assemblyArb, assemblyArb, (a, b) => {
-            const rootA = assemblyCompositionHash(a);
-            const rootB = assemblyCompositionHash(b);
+            const rootA = assemblyHashOf(a);
+            const rootB = assemblyHashOf(b);
             fc.pre(rootA !== rootB);
             const { leaf, proof } = buildAgreementInclusionProof(a, 0);
             expect(verifyInclusionProof(rootB, leaf, proof)).toBe(false);
@@ -40,7 +40,7 @@ describe("the composition tree", () => {
 
     it("editorial prose never moves the root", () => {
         fc.assert(fc.property(assemblyArb, fc.string(), (assembly, name) => {
-            expect(assemblyCompositionHash({ ...assembly, name } as typeof assembly)).toBe(assemblyCompositionHash(assembly));
+            expect(assemblyHashOf({ ...assembly, name } as typeof assembly)).toBe(assemblyHashOf(assembly));
         }));
     });
 });
@@ -84,9 +84,9 @@ describe("the agreement hash", () => {
 
 describe("the two-key provenance bytes", () => {
     it("decode back to the two keys they name", () => {
-        fc.assert(fc.property(bytes32Arb, bytes32Arb, (agreementHash, compositionHash) => {
-            expect(decodeProvenanceContent(provenanceLeafBytes(agreementHash, compositionHash)))
-                .toEqual({ agreementHash, compositionHash });
+        fc.assert(fc.property(bytes32Arb, bytes32Arb, (agreementHash, assemblyHash) => {
+            expect(decodeProvenanceContent(provenanceLeafBytes(agreementHash, assemblyHash)))
+                .toEqual({ agreementHash, assemblyHash });
         }));
     });
 });

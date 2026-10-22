@@ -160,7 +160,7 @@ export function fillCommerceClause(
  * declares it as plain CONTENT (one order's resolution term, written at
  * checkout) and is never a pin, while ANY clause — including one this code
  * has never seen — declaring a `currency` design fill IS one. The pin
- * survives the value-free assembly build and is part of the compositionHash:
+ * survives the value-free assembly build and is part of the assemblyHash:
  * the assembly's one-token tailoring.
  *
  * Undefined = unpinned (the buyer's payment-token pick, else the seller's
@@ -184,7 +184,7 @@ export function readUtilityTokenPin(
  *  commercial terms (`fillCommerceClause`), the topology rewrite
  *  (`writeTopologyClause`), and the dimweight derivation
  *  (`fillDimweightClause`). ONE list, owned beside the fills it describes.
- *  The instantiated assembly's composition hash is no field here: it is the
+ *  The instantiated assembly's assembly hash is no field here: it is the
  *  agreement format's provenance leaf (`Agreement.provenance`), which the
  *  assembly walk writes, never a clause. */
 const MECHANICAL_FILL_FIELDS = ["currency", "payment", "lineItems", "parentOrderHashes", "billedMassGrams"] as const;

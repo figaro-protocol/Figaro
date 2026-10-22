@@ -13,7 +13,7 @@ import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
  * edited beside the assembly bindings it derives from.
  *
  * WHAT DATA each row names is DERIVED, never a stored taxonomy: the
- * pair (assembly compositionHash, clause key) enumerated from the
+ * pair (assembly assemblyHash, clause key) enumerated from the
  * assemblies the member is binding right now (the `choices` prop is
  * the live-registry selection), crossed with the two postures a member
  * holds — data co-produced AS A SELLER and AS A BUYER. The buyer
@@ -31,13 +31,13 @@ const ALL_POSTURES = ["seller", "buyer"] as const;
 
 function findEntry(
     entries: DisclosurePolicyEntry[],
-    compositionHash: `0x${string}`,
+    assemblyHash: `0x${string}`,
     clauseKey: `0x${string}`,
     posture: PartyRole,
 ): DisclosurePolicyEntry | undefined {
     return entries.find(
         (e) =>
-            e.compositionHash === compositionHash &&
+            e.assemblyHash === assemblyHash &&
             e.clauseKey.toLowerCase() === clauseKey.toLowerCase() &&
             e.posture === posture,
     );
@@ -63,17 +63,17 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
     function upsert(entry: DisclosurePolicyEntry) {
         const rest = entries.filter(
             (e) =>
-                !(e.compositionHash === entry.compositionHash &&
+                !(e.assemblyHash === entry.assemblyHash &&
                     e.clauseKey.toLowerCase() === entry.clauseKey.toLowerCase() &&
                     e.posture === entry.posture),
         );
         onChange([...rest, entry]);
     }
 
-    function remove(compositionHash: `0x${string}`, clauseKey: `0x${string}`, posture: PartyRole) {
+    function remove(assemblyHash: `0x${string}`, clauseKey: `0x${string}`, posture: PartyRole) {
         onChange(entries.filter(
             (e) =>
-                !(e.compositionHash === compositionHash &&
+                !(e.assemblyHash === assemblyHash &&
                     e.clauseKey.toLowerCase() === clauseKey.toLowerCase() &&
                     e.posture === posture),
         ));
@@ -100,7 +100,7 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
                 </p>
             </Card>
             {choices.map((choice) => (
-                <Card key={choice.compositionHash} className="p-4 space-y-4" data-testid={`disclosure-assembly-${choice.slug}`}>
+                <Card key={choice.assemblyHash} className="p-4 space-y-4" data-testid={`disclosure-assembly-${choice.slug}`}>
                     <div className="flex items-baseline justify-between gap-2">
                         <span className="font-semibold text-ink-heading truncate">{choice.name}</span>
                         <code className="text-xs text-ink-muted font-mono shrink-0">{choice.slug}</code>
@@ -119,16 +119,16 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
                                         slug={choice.slug}
                                         clauseKey={clauseKey}
                                         posture={posture}
-                                        entry={findEntry(entries, choice.compositionHash, clauseKey, posture)}
+                                        entry={findEntry(entries, choice.assemblyHash, clauseKey, posture)}
                                         onOffer={(offered) =>
                                             offered
                                                 ? upsert({
-                                                    compositionHash: choice.compositionHash,
+                                                    assemblyHash: choice.assemblyHash,
                                                     clauseKey,
                                                     posture,
                                                     offered: true,
                                                 })
-                                                : remove(choice.compositionHash, clauseKey, posture)}
+                                                : remove(choice.assemblyHash, clauseKey, posture)}
                                         onUpdate={upsert}
                                     />
                                 ))}

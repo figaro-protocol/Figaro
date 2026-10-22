@@ -39,7 +39,7 @@
  *                                   instead of the event scan (public gateways'
  *                                   log indexes are load-balanced and flaky —
  *                                   state reads are not). WITHDRAW_ASSEMBLIES
- *                                   is its sibling (csv of compositionHashes),
+ *                                   is its sibling (csv of assemblyHashes),
  *                                   and WITHDRAW_AGREEMENTS (csv of agreement
  *                                   hashes); any one alone skips the other
  *                                   families' scans.
@@ -153,7 +153,7 @@ async function main() {
             address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered',
         }, fromBlock))
             .filter((e) => String(e.args.registeredBy ?? '').toLowerCase() === actor)
-            .map((e) => e.args.compositionHash);
+            .map((e) => e.args.assemblyHash);
     for (const key of assemblyKeys) {
         const [registeredBy, , depositWithdrawn] = await publicClient.readContract({
             address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [key],

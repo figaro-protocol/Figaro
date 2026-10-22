@@ -46,7 +46,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useChainId, useWalletClient } from "wagmi";
 import {
-    assemblyCompositionHash,
+    assemblyHashOf,
     derivePricedFields,
     hashCommitmentStruct,
     resolveSubOrderPricing,
@@ -145,10 +145,10 @@ export function pricedRaceCandidates(args: {
     const node = hydrated.assembly.agreements.find((a) => a.id === racedNodeId);
     if (!node) throw new Error(`Assembly node "${racedNodeId}" not found.`);
     const specs = specSource();
-    const compositionHash = assemblyCompositionHash(hydrated.assembly);
+    const assemblyHash = assemblyHashOf(hydrated.assembly);
     const nodeClauses = { ...agreementClauses(hydrated, node), ...(checkout.clauseFills?.[racedNodeId] ?? {}) };
     return checkout.sellerCatalogs
-        .filter((cat) => !hexEqual(cat.address, checkout.buyer) && bindsAssembly(cat, compositionHash))
+        .filter((cat) => !hexEqual(cat.address, checkout.buyer) && bindsAssembly(cat, assemblyHash))
         .map((cat) => ({
             address: cat.address as Hex,
             services: cat.agentServices,

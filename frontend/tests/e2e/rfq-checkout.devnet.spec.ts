@@ -36,7 +36,7 @@ import {
     seedRegisteredMember,
     memberProfileBindings,
     waitForConnected,
-    anchoredCompositionHash,
+    anchoredAssemblyHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
@@ -83,7 +83,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
         // ── GATES shared with dispatch-race (all idempotent): the assembly,
         //    Aurora's undesignated binding, the two couriers, funding. ──
         const deliverySlug = await ensureDeliveryAssembly(page);
-        const deliveryHash = await anchoredCompositionHash(deliverySlug);
+        const deliveryHash = await anchoredAssemblyHash(deliverySlug);
         if (!(await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash))) {
             await gotoAsWallet(page, MERCHANT, '/members/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
@@ -121,7 +121,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
                     assemblyBindings: [{
                         bindingId: `race-binding-${address.slice(2, 8).toLowerCase()}`,
                         subjectAddress: address,
-                        compositionHash: deliveryHash,
+                        assemblyHash: deliveryHash,
                         counterpartyBindings: [],
                     }],
                 },

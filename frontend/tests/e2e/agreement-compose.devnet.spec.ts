@@ -7,7 +7,7 @@
  *   agreement from the drawer's agreements tab (one row per live
  *   `AgreementRegistry` registration), and the sub-order composes a per-run
  *   probe clause — a new agreement. The review states each agreement's
- *   agreement hash and the composition root; confirming registers the new
+ *   agreement hash and the assembly root; confirming registers the new
  *   agreement, then anchors the assembly.
  *
  *   REACTION (UI): the publish receipt names the agreement it registered.
@@ -39,7 +39,7 @@ import {
     calculateBonds,
     generateSalt,
     reconstructOrdersFromAssembly,
-    assemblyCompositionHash,
+    assemblyHashOf,
 } from '@figaro-protocol/sdk';
 import { recordProcessUsage } from '@figaro-protocol/sdk/agent';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -149,7 +149,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         // ── CHAIN FACTS: the anchored assembly and both bindings, by key. ──
         const anchored = (await discoverAnchoredAssemblies()).find((a) => a.slug === slug);
         expect(anchored, 'the published assembly hydrates from chain → IPFS').toBeTruthy();
-        expect(assemblyCompositionHash(anchored!.hydrated.assembly)).toBe(anchored!.compositionHash);
+        expect(assemblyHashOf(anchored!.hydrated.assembly)).toBe(anchored!.assemblyHash);
         const rootAgreement = anchored!.agreements.find((s) => s.agreementHash.toLowerCase() === registeredKey.toLowerCase());
         const subAgreement = anchored!.agreements.find((s) => s.agreementHash.toLowerCase() !== registeredKey.toLowerCase());
         expect(rootAgreement, 'an agreement binds the registered agreement').toBeTruthy();
@@ -208,7 +208,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         for (const order of orders) {
             const entry = anchored!.agreements.find((s) => s.id === order.nodeId)!;
             expect(order.agreement.provenance, 'each order names its registered agreement and the assembly')
-                .toEqual({ agreementHash: entry.agreementHash, compositionHash: anchored!.compositionHash });
+                .toEqual({ agreementHash: entry.agreementHash, assemblyHash: anchored!.assemblyHash });
             const { buyerBond, sellerBond } = calculateBonds(order.cumulativeValue, order.payment);
             await receipt(await buyerWallet.writeContract({ address: token, abi: ERC20_ABI, functionName: 'approve', args: [core, buyerBond] }));
             await receipt(await sellerWallet.writeContract({ address: token, abi: ERC20_ABI, functionName: 'approve', args: [core, sellerBond] }));
@@ -242,7 +242,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         expect(keysOf(USAGE_KIND_AGREEMENT).sort(), 'both registered agreements are recorded under the agreement kind')
             .toEqual([registeredKey.toLowerCase(), subAgreement!.agreementHash.toLowerCase()].sort());
         expect(keysOf(USAGE_KIND_ASSEMBLY), 'the assembly is recorded under the assembly kind')
-            .toEqual([anchored!.compositionHash.toLowerCase()]);
+            .toEqual([anchored!.assemblyHash.toLowerCase()]);
     });
     test('a designer registers an agreement on its own from the drawer, and any assembly can bind it', async ({ page }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });

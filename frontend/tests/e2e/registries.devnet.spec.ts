@@ -158,7 +158,7 @@ test.describe('Registry explorer (devnet)', () => {
             address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered', fromBlock: 0n,
         });
         expect(events.length, 'no anchored assemblies on this devnet — run populate-test-data first').toBeGreaterThan(0);
-        const slug = deriveAssemblySlug(events[events.length - 1].args.compositionHash as `0x${string}`);
+        const slug = deriveAssemblySlug(events[events.length - 1].args.assemblyHash as `0x${string}`);
 
         await page.goto('/registries?family=assemblies');
         const row = page.locator(`#assembly-${slug}`);

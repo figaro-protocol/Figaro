@@ -74,7 +74,7 @@ import {
     memberProfileBindings,
     waitForConnected,
     publishOrAdoptReviewed,
-    anchoredCompositionHash,
+    anchoredAssemblyHash,
     isBindingOf,
     pickMandatoryForEveryOrder,
 } from './devnet-helpers';
@@ -230,7 +230,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             expect(kitSlug, 'the published diamond is discoverable by shape').toBe(receiptSlug);
         }
 
-        const kitHash = await anchoredCompositionHash(kitSlug!);
+        const kitHash = await anchoredAssemblyHash(kitSlug!);
 
         // ── BIND (idempotent): the lead registers through the wizard, binds the
         //    diamond, and designates the seeded counterparties per clause. ──

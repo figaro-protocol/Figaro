@@ -12,7 +12,7 @@
  * record: the commerce leaf and the pin leaf, both committed under the same
  * checkoutHash, carrying the SAME address.
  *
- *   discover → the reference is identified by IDENTITY (compositionHash →
+ *   discover → the reference is identified by IDENTITY (assemblyHash →
  *              slug), computed from the checked-in assembly with its
  *              ZERO_ADDRESS currency sentinel substituted for the live
  *              deployment's token address — the exact substitution
@@ -57,7 +57,7 @@ import {
     RPC_URL,
     keyOf,
     primeRegisteredClauseSpecs,
-    anchoredCompositionHash,
+    anchoredAssemblyHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
@@ -106,7 +106,7 @@ async function findEquipmentHireAssembly(tokenAddress: Hex): Promise<string> {
 
 async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Promise<Hex> {
     const slug = await findEquipmentHireAssembly(mockToken);
-    const assemblyHash = await anchoredCompositionHash(slug);
+    const assemblyHash = await anchoredAssemblyHash(slug);
     const bound = (await memberProfileBindings(SELLER)).some((b) => isBindingOf(b, assemblyHash));
     if (!bound) {
         const { uri: catalogURI } = await pinJSONToIPFS({
@@ -141,7 +141,7 @@ async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Prom
                 assemblyBindings: [{
                     bindingId: 'equipment-hire-reference',
                     subjectAddress: SELLER,
-                    compositionHash: assemblyHash,
+                    assemblyHash,
                     counterpartyBindings: [],
                 }],
             },

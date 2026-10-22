@@ -16,9 +16,9 @@ import { hexEqual } from "@/lib/shared/evm";
  * the primary.
  */
 interface ListingBinding {
-    /** `AssemblyRegistry` composition hash of the assembly this binding
+    /** `AssemblyRegistry` assembly hash of the assembly this binding
      *  targets; a slug shown for it is derived (`deriveAssemblySlug`). */
-    compositionHash: `0x${string}`;
+    assemblyHash: `0x${string}`;
 }
 
 export interface Listing {
@@ -63,7 +63,7 @@ export function profileToListing(
     address: string,
 ): Listing {
     const bindings: ListingBinding[] = (profile.assemblyBindings ?? []).map((b) => ({
-        compositionHash: b.compositionHash,
+        assemblyHash: b.assemblyHash,
     }));
 
     return {
@@ -83,14 +83,14 @@ export function profileToListing(
 import { truncateHex } from "@/lib/shared/formatHex";
 
 /** Does this member's discovered profile bind the assembly with this
- *  composition hash? The buyer-side reading of the rule every seller's accept
+ *  assembly hash? The buyer-side reading of the rule every seller's accept
  *  gate enforces (`checkSellerBindsAssembly`): a seller is offered for an
  *  order only under an assembly it has bound. */
 export function bindsAssembly(
-    member: { assemblyBindings?: readonly { compositionHash: string }[] },
-    compositionHash: string,
+    member: { assemblyBindings?: readonly { assemblyHash: string }[] },
+    assemblyHash: string,
 ): boolean {
-    return (member.assemblyBindings ?? []).some((b) => hexEqual(b.compositionHash, compositionHash));
+    return (member.assemblyBindings ?? []).some((b) => hexEqual(b.assemblyHash, assemblyHash));
 }
 
 /** Find a member listing by wallet address. Case-insensitive. Accepts any

@@ -216,7 +216,7 @@ export type SnapshotReview =
          *  agreement hash it binds, and whether that agreement was bound as
          *  registered or composed here. */
         entries: { orderId: string; agreementHash: Hex; bound: boolean }[];
-        compositionHash: `0x${string}`;
+        assemblyHash: `0x${string}`;
         slug: string;
         /** canvas order id → clause key → composed values (the mandatory clauses listed apart). */
         composedByOrderId: Record<string, Record<string, Record<string, unknown>>>;
@@ -240,7 +240,7 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
         const built = snapshotToAssembly(snapshot);
         const { assembly } = built;
         const hydrated = builtToHydrated(built);
-        const { compositionHash } = serializeAssembly(assembly);
+        const { assemblyHash } = serializeAssembly(assembly);
         const byAgreement = assemblyComposedByAgreement(hydrated);
         const clausesByAgreement = assemblyComposedClauses(hydrated);
         const boundIds = new Set(Object.keys(snapshot.registeredByOrderId ?? {}));
@@ -262,8 +262,8 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
                 agreementHash: assembly.agreements[index].agreementHash,
                 bound: boundIds.has(order.orderHash),
             })),
-            compositionHash,
-            slug: deriveAssemblySlug(compositionHash),
+            assemblyHash,
+            slug: deriveAssemblySlug(assemblyHash),
             composedByOrderId,
             composedClausesByOrderId,
             assemblyClauses: assembly.assemblyClauses ?? {},
@@ -278,7 +278,7 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
 }
 
 /** The composition's IDENTITY, derived from the draft exactly as publish
- *  derives it: `compositionHash` = the merkle root over the agreements (each
+ *  derives it: `assemblyHash` = the merkle root over the agreements (each
  *  agreement's agreement hash and its own fills) and the assembly terms (the
  *  AssemblyRegistry key), and the slug that is a pure function of it. The
  *  editorial prose is excluded, so renaming never forks identity; any change
@@ -289,14 +289,14 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
  *  the review screen can never disagree about which assembly this is.
  *  Never throws: a cold spec cache or a mis-scoped clause comes back as
  *  `{ error }` for the caller to render. */
-export function snapshotCompositionIdentity(
+export function snapshotAssemblyIdentity(
     snapshot: DesignSnapshot,
-): { compositionHash: `0x${string}`; slug: string; error: null }
-    | { compositionHash: null; slug: null; error: string } {
+): { assemblyHash: `0x${string}`; slug: string; error: null }
+    | { assemblyHash: null; slug: null; error: string } {
     const review = projectSnapshotForReview(snapshot);
     return review.ok
-        ? { compositionHash: review.compositionHash, slug: review.slug, error: null }
-        : { compositionHash: null, slug: null, error: review.error };
+        ? { assemblyHash: review.assemblyHash, slug: review.slug, error: null }
+        : { assemblyHash: null, slug: null, error: review.error };
 }
 
 /** A required assembly term the designer has not filled: the clause and the

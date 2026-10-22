@@ -64,7 +64,7 @@ export function useRegisteredCatalogs(
             setIsLoading(true);
             return;
         }
-        const publishedHashes = new Set(publishedAssemblies.map((a) => a.compositionHash.toLowerCase()));
+        const publishedHashes = new Set(publishedAssemblies.map((a) => a.assemblyHash.toLowerCase()));
 
         let canceled = false;
         setIsLoading(true);

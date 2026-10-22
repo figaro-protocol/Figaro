@@ -9,7 +9,7 @@ import { encodePacked, keccak256, type Address, type Hex, type PublicClient, typ
 import { recordProcessUsage } from "../src/agent/index.js";
 import { computeClauseKey } from "../src/discovery.js";
 import { PROVENANCE_LEAF_KEY, type Agreement } from "../src/agreement.js";
-import { ASSEMBLY_TERMS_LEAF_KEY, buildAgreementInclusionProof, assemblyCompositionHash, type Assembly } from "../src/assembly.js";
+import { ASSEMBLY_TERMS_LEAF_KEY, buildAgreementInclusionProof, assemblyHashOf, type Assembly } from "../src/assembly.js";
 import type { Commitment } from "../src/types.js";
 import { keyOf } from "./specFixtures.js";
 
@@ -19,7 +19,7 @@ const COMMERCE = keyOf("figaro-commerce");
 const MODALITIES = keyOf("figaro-modalities");
 const AGREEMENT_HASH = keccak256(encodePacked(["string"], ["an-agreement"]));
 const ASSEMBLY: Assembly = { agreements: [{ id: "order-0", agreementHash: AGREEMENT_HASH, clauses: {} }] };
-const COMPOSITION = assemblyCompositionHash(ASSEMBLY);
+const COMPOSITION = assemblyHashOf(ASSEMBLY);
 
 function order(salt: bigint): Commitment {
     return {
@@ -35,7 +35,7 @@ function order(salt: bigint): Commitment {
     };
 }
 
-function agreement(provenance: Agreement["provenance"] = { agreementHash: AGREEMENT_HASH, compositionHash: COMPOSITION }): Agreement {
+function agreement(provenance: Agreement["provenance"] = { agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION }): Agreement {
     const o = order(1n);
     return {
         version: "a1", buyer: o.buyer, seller: o.seller,
@@ -87,7 +87,7 @@ describe("recordProcessUsage", () => {
         const assembly = sent.filter((s) => s.functionName === "recordAssemblyUsage");
         expect(assembly.map((s) => s.key)).toEqual([COMPOSITION]);
         const membership = buildAgreementInclusionProof(ASSEMBLY, 0);
-        // (order, compositionHash, agreementHash, slotContentHash, leafProof, membershipProof)
+        // (order, assemblyHash, agreementHash, slotContentHash, leafProof, membershipProof)
         expect(assembly[0].args[2]).toBe(AGREEMENT_HASH);
         expect(assembly[0].args[3]).toBe(membership.slotContentHash);
         expect(assembly[0].args[5]).toEqual(membership.proof);
@@ -100,7 +100,7 @@ describe("recordProcessUsage", () => {
     it("an agreement whose provenance is malformed has no provable leg: nothing is sent and the report says so", async () => {
         const { publicClient, walletClient, sent } = clients();
         const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [
-            { commitment: order(1n), agreement: agreement({ agreementHash: AGREEMENT_HASH, compositionHash: "0x12" }), assembly: ASSEMBLY },
+            { commitment: order(1n), agreement: agreement({ agreementHash: AGREEMENT_HASH, assemblyHash: "0x12" }), assembly: ASSEMBLY },
         ]);
 
         expect(sent).toHaveLength(0);

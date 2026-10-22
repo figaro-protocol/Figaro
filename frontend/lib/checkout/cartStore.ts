@@ -29,12 +29,12 @@ interface CartItem {
      *  clause key → field values. */
     clauseValues?: Record<string, Record<string, unknown>>;
     /** Data-market context: the data this item sells
-     *  (assembly compositionHash × clause key × the posture the seller
+     *  (assembly assemblyHash × clause key × the posture the seller
      *  co-produced on), copied from the catalog item so checkout can
      *  show what is being licensed. The license TERMS ride `clauseValues`
      *  like any catalog-filled clause. */
     dataSold?: {
-        compositionHash: `0x${string}`;
+        assemblyHash: `0x${string}`;
         clauseKey: `0x${string}`;
         posture: PartyRole;
     };

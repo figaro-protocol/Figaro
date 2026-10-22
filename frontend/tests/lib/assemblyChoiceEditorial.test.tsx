@@ -24,7 +24,7 @@ import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 const EVENT = {
     slug: "asm-9ffb1eb79755a9ab",
     registeredBy: "0xA",
-    compositionHash: "0x1",
+    assemblyHash: "0x1",
     contentURI: "ipfs://tmpl",
     blockNumber: 2n,
     stakeWithdrawn: false,

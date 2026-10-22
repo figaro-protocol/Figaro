@@ -10,7 +10,7 @@ contract AssemblyRegistryTest is Test {
     address alice = address(0xA11CE);
     address bob = address(0xB0B);
 
-    bytes32 constant COMPOSITION_HASH = keccak256("canonical-composition-subset");
+    bytes32 constant ASSEMBLY_HASH = keccak256("canonical-composition-subset");
     string constant CONTENT_URI = "ipfs://QmCoffeeShop";
     uint256 constant DEPOSIT = 0.001 ether;
 
@@ -24,10 +24,10 @@ contract AssemblyRegistryTest is Test {
 
     function test_registerAssembly_happy() public {
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, CONTENT_URI);
 
         (address registeredBy, uint64 registeredAt, bool withdrawn, string memory uri) =
-            registry.bindings(COMPOSITION_HASH);
+            registry.bindings(ASSEMBLY_HASH);
 
         assertEq(registeredBy, alice);
         assertGt(registeredAt, 0);
@@ -38,10 +38,10 @@ contract AssemblyRegistryTest is Test {
 
     function test_registerAssembly_emitsEvent() public {
         vm.expectEmit(true, true, false, true, address(registry));
-        emit AssemblyRegistry.AssemblyRegistered(COMPOSITION_HASH, alice, CONTENT_URI);
+        emit AssemblyRegistry.AssemblyRegistered(ASSEMBLY_HASH, alice, CONTENT_URI);
 
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, CONTENT_URI);
     }
 
     // ── Registration — deposit revert paths ─────────────────────────────
@@ -49,45 +49,43 @@ contract AssemblyRegistryTest is Test {
     function test_registerAssembly_revertsOnUnderpay() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.WrongDeposit.selector, DEPOSIT - 1, DEPOSIT));
-        registry.registerAssembly{value: DEPOSIT - 1}(COMPOSITION_HASH, CONTENT_URI);
+        registry.registerAssembly{value: DEPOSIT - 1}(ASSEMBLY_HASH, CONTENT_URI);
     }
 
     function test_registerAssembly_revertsOnOverpay() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.WrongDeposit.selector, DEPOSIT + 1 wei, DEPOSIT));
-        registry.registerAssembly{value: DEPOSIT + 1 wei}(COMPOSITION_HASH, CONTENT_URI);
+        registry.registerAssembly{value: DEPOSIT + 1 wei}(ASSEMBLY_HASH, CONTENT_URI);
     }
 
     function test_registerAssembly_revertsOnZeroDeposit() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.WrongDeposit.selector, 0, DEPOSIT));
-        registry.registerAssembly(COMPOSITION_HASH, CONTENT_URI);
+        registry.registerAssembly(ASSEMBLY_HASH, CONTENT_URI);
     }
 
     // ── Registration — content revert paths ──────────────────────────────
 
-    function test_registerAssembly_revertsOnDuplicateComposition() public {
-        // Identity is the composition: the same compositionHash cannot anchor
+    function test_registerAssembly_revertsOnDuplicateAssembly() public {
+        // Identity is the composition: the same assemblyHash cannot anchor
         // twice, regardless of who calls or which document URI they carry.
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, "ipfs://A");
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, "ipfs://A");
 
-        vm.expectRevert(
-            abi.encodeWithSelector(AssemblyRegistry.CompositionAlreadyRegistered.selector, COMPOSITION_HASH)
-        );
+        vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.AssemblyAlreadyRegistered.selector, ASSEMBLY_HASH));
         vm.prank(bob);
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, "ipfs://B");
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, "ipfs://B");
     }
 
     function test_registerAssembly_revertsOnEmptyContentURI() public {
         vm.prank(alice);
         vm.expectRevert(AssemblyRegistry.EmptyContentURI.selector);
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, "");
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, "");
     }
 
-    function test_registerAssembly_revertsOnZeroCompositionHash() public {
+    function test_registerAssembly_revertsOnZeroAssemblyHash() public {
         vm.prank(alice);
-        vm.expectRevert(AssemblyRegistry.ZeroCompositionHash.selector);
+        vm.expectRevert(AssemblyRegistry.ZeroAssemblyHash.selector);
         registry.registerAssembly{value: DEPOSIT}(bytes32(0), CONTENT_URI);
     }
 
@@ -114,17 +112,17 @@ contract AssemblyRegistryTest is Test {
 
     function test_withdrawDeposit_happy() public {
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, CONTENT_URI);
 
         uint256 balanceBefore = alice.balance;
         vm.prank(alice);
-        registry.withdrawDeposit(COMPOSITION_HASH);
+        registry.withdrawDeposit(ASSEMBLY_HASH);
 
         assertEq(alice.balance, balanceBefore + DEPOSIT);
         assertEq(address(registry).balance, 0);
 
         // Binding stays — only the withdrawn flag flips.
-        (address registeredBy,, bool withdrawn, string memory uri) = registry.bindings(COMPOSITION_HASH);
+        (address registeredBy,, bool withdrawn, string memory uri) = registry.bindings(ASSEMBLY_HASH);
         assertEq(registeredBy, alice, "registeredBy preserved after withdraw");
         assertEq(withdrawn, true);
         assertEq(uri, CONTENT_URI, "contentURI preserved after withdraw");
@@ -132,13 +130,13 @@ contract AssemblyRegistryTest is Test {
 
     function test_withdrawDeposit_emitsEvent() public {
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, CONTENT_URI);
 
         vm.expectEmit(true, true, false, true, address(registry));
-        emit AssemblyRegistry.DepositWithdrawn(COMPOSITION_HASH, alice, DEPOSIT);
+        emit AssemblyRegistry.DepositWithdrawn(ASSEMBLY_HASH, alice, DEPOSIT);
 
         vm.prank(alice);
-        registry.withdrawDeposit(COMPOSITION_HASH);
+        registry.withdrawDeposit(ASSEMBLY_HASH);
     }
 
     function test_withdrawDeposit_immediately() public {
@@ -146,34 +144,34 @@ contract AssemblyRegistryTest is Test {
         // round-trip is priced off-chain — a withdrawn assembly
         // de-surfaces from discovery (readers filter on the live stake).
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, CONTENT_URI);
 
         vm.prank(alice);
-        registry.withdrawDeposit(COMPOSITION_HASH);
+        registry.withdrawDeposit(ASSEMBLY_HASH);
     }
 
     function test_withdrawDeposit_revertsOnDoubleWithdraw() public {
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, CONTENT_URI);
 
         vm.prank(alice);
-        registry.withdrawDeposit(COMPOSITION_HASH);
+        registry.withdrawDeposit(ASSEMBLY_HASH);
 
         vm.prank(alice);
         vm.expectRevert(AssemblyRegistry.AlreadyWithdrawn.selector);
-        registry.withdrawDeposit(COMPOSITION_HASH);
+        registry.withdrawDeposit(ASSEMBLY_HASH);
     }
 
     function test_withdrawDeposit_revertsByNonRegisteredBy() public {
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, CONTENT_URI);
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.NotRegisteredBy.selector, bob, alice));
-        registry.withdrawDeposit(COMPOSITION_HASH);
+        registry.withdrawDeposit(ASSEMBLY_HASH);
     }
 
-    function test_withdrawDeposit_revertsOnUnknownComposition() public {
+    function test_withdrawDeposit_revertsOnUnknownAssembly() public {
         vm.prank(alice);
         vm.expectRevert(AssemblyRegistry.NotRegistered.selector);
         registry.withdrawDeposit(keccak256("never-existed"));
@@ -190,13 +188,13 @@ contract AssemblyRegistryTest is Test {
         vm.deal(rejecter, DEPOSIT);
 
         vm.prank(rejecter);
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, CONTENT_URI);
 
         vm.prank(rejecter);
         vm.expectRevert(AssemblyRegistry.TransferFailed.selector);
-        registry.withdrawDeposit(COMPOSITION_HASH);
+        registry.withdrawDeposit(ASSEMBLY_HASH);
 
-        (,, bool withdrawn,) = registry.bindings(COMPOSITION_HASH);
+        (,, bool withdrawn,) = registry.bindings(ASSEMBLY_HASH);
         assertFalse(withdrawn);
         assertEq(address(registry).balance, DEPOSIT);
     }
@@ -205,16 +203,14 @@ contract AssemblyRegistryTest is Test {
         // Permanence guarantee: once a composition is bound, withdrawing the
         // deposit does NOT release the binding for re-registration.
         vm.prank(alice);
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, CONTENT_URI);
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, CONTENT_URI);
 
         vm.prank(alice);
-        registry.withdrawDeposit(COMPOSITION_HASH);
+        registry.withdrawDeposit(ASSEMBLY_HASH);
 
         // Bob tries to take over the composition — must fail.
         vm.prank(bob);
-        vm.expectRevert(
-            abi.encodeWithSelector(AssemblyRegistry.CompositionAlreadyRegistered.selector, COMPOSITION_HASH)
-        );
-        registry.registerAssembly{value: DEPOSIT}(COMPOSITION_HASH, "ipfs://hijack");
+        vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.AssemblyAlreadyRegistered.selector, ASSEMBLY_HASH));
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, "ipfs://hijack");
     }
 }

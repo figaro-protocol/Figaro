@@ -30,7 +30,7 @@ import {
     composeAuthoredAgreements,
     agreementHashOf,
     isMandatoryAgreement,
-    assemblyCompositionHash,
+    assemblyHashOf,
     tryParseMemberProfileDocument,
     type Assembly,
     type BuiltAssembly,
@@ -234,8 +234,8 @@ export interface SeedMemberProfile {
     assemblyBindings?: Array<{
         bindingId: string;
         subjectAddress: `0x${string}`;
-        /** The bound assembly's full `AssemblyRegistry` composition hash. */
-        compositionHash: `0x${string}`;
+        /** The bound assembly's full `AssemblyRegistry` assembly hash. */
+        assemblyHash: `0x${string}`;
         counterpartyBindings: Array<{ clauseKey: string; addresses: string[] }>;
     }>;
     /** Agent service endpoints (`MemberAgentServices`) — a declared `rest`
@@ -243,11 +243,11 @@ export interface SeedMemberProfile {
     services?: { mcp?: string; a2a?: string; rest?: string; did?: string; ens?: string };
     /** The buyer's assembly SUBSCRIPTIONS — the assemblies this member buys
      *  through and monetizes records from (independent of the bindings). */
-    buyerAssemblies?: Array<{ compositionHash: `0x${string}` }>;
+    buyerAssemblies?: Array<{ assemblyHash: `0x${string}` }>;
     /** The member's data-disclosure policy — the data offered
-     *  (assembly compositionHash × clauseKey × posture). */
+     *  (assembly assemblyHash × clauseKey × posture). */
     disclosurePolicy?: Array<{
-        compositionHash: `0x${string}`;
+        assemblyHash: `0x${string}`;
         clauseKey: string;
         posture: 'buyer' | 'seller';
         offered: boolean;
@@ -469,25 +469,25 @@ export interface DiscoveredMember {
     /** The seller's home geohash (profile.location.geohash), discovered from IPFS. */
     geohash?: string;
     assemblyBindings: Array<{
-        compositionHash: `0x${string}`;
+        assemblyHash: `0x${string}`;
         counterpartyBindings?: Array<{ clauseKey: string; addresses: string[] }>;
     }>;
 }
 
-/** Does this profile binding name the assembly with this composition hash?
+/** Does this profile binding name the assembly with this assembly hash?
  *  A binding records the full hash; the slug a UI testid carries is derived
  *  from it. */
-export function isBindingOf(binding: { compositionHash?: string }, compositionHash: string): boolean {
-    return !!binding.compositionHash && binding.compositionHash.toLowerCase() === compositionHash.toLowerCase();
+export function isBindingOf(binding: { assemblyHash?: string }, assemblyHash: string): boolean {
+    return !!binding.assemblyHash && binding.assemblyHash.toLowerCase() === assemblyHash.toLowerCase();
 }
 
-/** The full composition hash of the ANCHORED assembly a slug is derived
+/** The full assembly hash of the ANCHORED assembly a slug is derived
  *  from — what a profile binding records. Read from the registry's events;
  *  throws when no anchored assembly derives that slug. */
-export async function anchoredCompositionHash(slug: string): Promise<`0x${string}`> {
+export async function anchoredAssemblyHash(slug: string): Promise<`0x${string}`> {
     const found = (await discoverAnchoredAssemblies()).find((a) => a.slug === slug);
     if (!found) throw new Error(`no anchored assembly derives the slug ${slug}`);
-    return found.compositionHash;
+    return found.assemblyHash;
 }
 
 /** Every LIVE registered seller, discovered from chain → IPFS (events +
@@ -611,11 +611,11 @@ export function chainProfileReader(): MemberProfileReader {
 /** The design a payload's provenance names, read from the chain when it is
  *  needed — AssemblyRegistry → IPFS, each agreement verified against its key:
  *  the `readDesign` a seller handler takes. Null when no anchored assembly has
- *  that composition hash. */
-export function chainDesignReader(): (provenance: { compositionHash: string }) => Promise<HydratedAssembly | null> {
+ *  that assembly hash. */
+export function chainDesignReader(): (provenance: { assemblyHash: string }) => Promise<HydratedAssembly | null> {
     return async (provenance) => {
         const found = (await discoverAnchoredAssemblies())
-            .find((a) => a.compositionHash.toLowerCase() === provenance.compositionHash.toLowerCase());
+            .find((a) => a.assemblyHash.toLowerCase() === provenance.assemblyHash.toLowerCase());
         return found?.hydrated ?? null;
     };
 }
@@ -670,14 +670,14 @@ export async function confirmAgreementPreviews(
 }
 
 /** An anchored assembly HYDRATED — its assembly verified against its
- *  composition root, every agreement's registered agreement read from
+ *  assembly root, every agreement's registered agreement read from
  *  `AgreementRegistry` by key and verified against it — with each agreement
  *  own clauses resolved (its agreement's, its own fills merged over
  *  them): enough for a spec to select an assembly by SHAPE (order count,
  *  clause keys) instead of a hardcoded slug. */
 export interface DiscoveredAssembly {
     slug: string;
-    compositionHash: `0x${string}`;
+    assemblyHash: `0x${string}`;
     /** Per agreement, in assembly order: its id, the agreement hash it binds,
      *  and the clauses it instantiates. */
     agreements: Array<{ id: string; agreementHash: Hex; clauses: Record<string, Record<string, unknown>> }>;
@@ -742,21 +742,21 @@ function fillSentinelCurrency<T extends { assemblyClauses?: Record<string, Recor
 }
 
 /** The slug of a REFERENCE assembly identified by its IDENTITY — the
- *  compositionHash over its canonical composition, the same one
+ *  assemblyHash over its canonical composition, the same one
  *  populate-test-data anchors it under (names resolved to keys first). An
  *  assembly IS its composition; it is never a "kind" inferred from which
  *  clauses it happens to carry, so a spec that wants a SPECIFIC assembly must
  *  name it by identity, never select it with a clause-shape heuristic.
  *  `name` is the file in `assemblies/`. */
 export function referenceAssemblySlug(name: string): string {
-    return deriveAssemblySlug(referenceAssemblyCompositionHash(name));
+    return deriveAssemblySlug(referenceAssemblyHash(name));
 }
 
-/** The composition hash of a REFERENCE assembly — the identity
+/** The assembly hash of a REFERENCE assembly — the identity
  *  `referenceAssemblySlug` derives its slug from, and what a profile binding
  *  records. `name` is the file in `assemblies/`. */
-export function referenceAssemblyCompositionHash(name: string): `0x${string}` {
-    return assemblyCompositionHash(referenceAssemblyBuilt(name).assembly);
+export function referenceAssemblyHash(name: string): `0x${string}` {
+    return assemblyHashOf(referenceAssemblyBuilt(name).assembly);
 }
 
 /** Identity of a reference whose checked-in copy carries the ZERO_ADDRESS
@@ -768,7 +768,7 @@ export function referenceAssemblyCompositionHash(name: string): `0x${string}` {
  *  file in `assemblies/`. */
 export function referenceAssemblySlugWithLiveCurrency(name: string, tokenAddress: `0x${string}`): string {
     const assembly = fillSentinelCurrency(referenceAssemblyBuilt(name).assembly, tokenAddress);
-    return deriveAssemblySlug(assemblyCompositionHash(assembly));
+    return deriveAssemblySlug(assemblyHashOf(assembly));
 }
 
 /** A registered agreement's binding, read BY KEY from `AgreementRegistry`
@@ -821,15 +821,15 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
     });
     const out: DiscoveredAssembly[] = [];
     for (const ev of anchored) {
-        const { compositionHash, contentURI } = ev.args as { compositionHash?: `0x${string}`; contentURI?: string };
-        if (!compositionHash || !contentURI) continue;
+        const { assemblyHash, contentURI } = ev.args as { assemblyHash?: `0x${string}`; contentURI?: string };
+        if (!assemblyHash || !contentURI) continue;
         try {
-            const assembly = anchorAssembly(await (await fetch(resolveIpfsURI(contentURI))).json(), compositionHash);
+            const assembly = anchorAssembly(await (await fetch(resolveIpfsURI(contentURI))).json(), assemblyHash);
             if (!assembly || assembly.agreements.length === 0) continue;
             const hydrated = await hydrateFromChain(assembly);
             if (!hydrated) continue;
             out.push({
-                slug: deriveAssemblySlug(compositionHash), compositionHash,
+                slug: deriveAssemblySlug(assemblyHash), assemblyHash,
                 agreements: assembly.agreements.map((entry) => ({
                     id: entry.id, agreementHash: entry.agreementHash, clauses: agreementClauses(hydrated, entry),
                 })),
@@ -1069,7 +1069,7 @@ export async function waitForConnected(page: Page): Promise<void> {
 /**
  * PUBLISH OR ADOPT the reviewed composition and return its content slug. Opens
  * the Review screen for the draft `handle` with the publish intent and reads the
- * composition it would anchor from `designer-composition-hash`'s title. The
+ * composition it would anchor from `designer-assembly-hash`'s title. The
  * chain fact — `AssemblyRegistry.bindings(hash)`, read out-of-band — decides the
  * branch: unbound, the publish anchors it and the receipt names the slug; bound
  * (first-write-wins), the Review screen reads that binding at the edge, closes
@@ -1089,7 +1089,7 @@ export async function publishOrAdoptReviewed(
     await confirmBtn.waitFor({ state: 'visible', timeout: 30000 });
     await waitForConnected(page);
     await onPublishScreen?.();
-    const reviewedHash = await page.getByTestId('designer-composition-hash').getAttribute('title') as `0x${string}`;
+    const reviewedHash = await page.getByTestId('designer-assembly-hash').getAttribute('title') as `0x${string}`;
     expect(reviewedHash, 'the review screen states the composition it would anchor').toMatch(/^0x[0-9a-f]{64}$/i);
     const [, registeredAt] = await localPublicClient().readContract({
         address: readLocalDeploymentConfig().assemblyRegistry as `0x${string}`,

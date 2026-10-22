@@ -16,7 +16,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { keccak256 } from "viem";
-import { canonicalize, planAssemblyOrders, agreementClauses, assemblyCompositionHash, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { canonicalize, planAssemblyOrders, agreementClauses, assemblyHashOf, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { parseAssemblyJson } from "@/lib/designer/assemblyToDraft";
 import { authoredAgreements, authoredSpecSet, primeClauseSpecs, referenceAssembly } from "./primeClauseSpecs";
 
@@ -75,11 +75,11 @@ describe("reference assemblies — the onboarding set", () => {
             // The seeding's build: the authored agreements composed by name over clauses/, the agreements keyed.
             const hydrated = (): HydratedAssembly => referenceAssembly(file);
 
-            it("parses as a sound Assembly and its composition hashes", () => {
+            it("parses as a sound Assembly and its assembly hashes", () => {
                 const { assembly, agreements } = hydrated();
                 const parsed = parseAssemblyJson(canonicalize({ assembly, agreements }));
                 expect(parsed.ok, !parsed.ok ? (parsed as { error: string }).error : "").toBe(true);
-                expect(assemblyCompositionHash(assembly)).toMatch(/^0x[0-9a-f]{64}$/);
+                expect(assemblyHashOf(assembly)).toMatch(/^0x[0-9a-f]{64}$/);
             });
 
             it("resolves its topology in commit order", () => {

@@ -14,7 +14,7 @@ import {Vm} from "forge-std/Vm.sol";
 ///         `checkoutHash` is a real merkle root and attestations can carry
 ///         valid inclusion proofs, and by the reward tests for an assembly's
 ///         tree: the same leaf convention and root over the entry leaves and
-///         the terms leaf, whose root is the compositionHash.
+///         the terms leaf, whose root is the assemblyHash.
 library AgreementTestHelper {
     Vm private constant VM = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -28,13 +28,9 @@ library AgreementTestHelper {
     ///      agreement an order instantiates and the assembly it came from,
     ///      both as 0x-prefixed lowercase hex (keys sorted, as canonical JSON
     ///      sorts them).
-    function provenanceLeaf(bytes32 agreementHash, bytes32 compositionHash) internal pure returns (bytes memory) {
+    function provenanceLeaf(bytes32 agreementHash, bytes32 assemblyHash) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            '{"agreementHash":"',
-            VM.toString(agreementHash),
-            '","compositionHash":"',
-            VM.toString(compositionHash),
-            '"}'
+            '{"agreementHash":"', VM.toString(agreementHash), '","assemblyHash":"', VM.toString(assemblyHash), '"}'
         );
     }
 

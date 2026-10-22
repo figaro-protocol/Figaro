@@ -232,7 +232,7 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
             UsageClaim {
                 order: order.clone(),
                 clause_or_assembly: agreement,
-                kind: UsageClaimKind::Agreement { composition_hash: composition },
+                kind: UsageClaimKind::Agreement { assembly_hash: composition },
                 inclusion_proof: vec![],
             },
             UsageClaim {

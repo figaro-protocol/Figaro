@@ -22,7 +22,7 @@
  *      (`Agreement.provenance`, under the same hash), the registered agreement
  *      and the assembly it instantiated. A clause is attributed by its key
  *      among the clauses; an agreement and an assembly by the provenance's
- *      `agreementHash` and `compositionHash`.
+ *      `agreementHash` and `assemblyHash`.
  *
  * `canWithdraw(clauseOrAssembly) == (inFlightCount === 0)`.
  *
@@ -165,14 +165,14 @@ function provenanceGate(
 
 /**
  * Withdraw gate for an ASSEMBLY. A trade is composed from the assembly iff
- * one of its verified orders' provenance names the `compositionHash`.
+ * one of its verified orders' provenance names the `assemblyHash`.
  * Counted per process.
  */
 export function deriveAssemblyWithdrawGate(
-    compositionHash: Hex,
+    assemblyHash: Hex,
     agreements: readonly InFlightAgreement[],
 ): WithdrawGate {
-    return provenanceGate("compositionHash", compositionHash, agreements);
+    return provenanceGate("assemblyHash", assemblyHash, agreements);
 }
 
 /**

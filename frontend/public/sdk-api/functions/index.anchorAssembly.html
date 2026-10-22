@@ -14,10 +14,10 @@
 <section class="tsd-panel">
 <ul class="tsd-signatures">
 <li class="">
-<div class="tsd-signature tsd-anchor-link" id="anchorassembly"><span class="tsd-kind-call-signature">anchorAssembly</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">raw</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">compositionHash</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/index.Anchored.html" class="tsd-signature-type tsd-kind-type-alias">Anchored</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.Assembly.html" class="tsd-signature-type tsd-kind-interface">Assembly</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span><a href="#anchorassembly" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-signature tsd-anchor-link" id="anchorassembly"><span class="tsd-kind-call-signature">anchorAssembly</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">raw</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">assemblyHash</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/index.Anchored.html" class="tsd-signature-type tsd-kind-type-alias">Anchored</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.Assembly.html" class="tsd-signature-type tsd-kind-interface">Assembly</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span><a href="#anchorassembly" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>An assembly, verified against <code>AssemblyRegistry</code>'s
-<code>compositionHash</code>: the merkle root over its agreement leaves and its
+<code>assemblyHash</code>: the merkle root over its agreement leaves and its
 assembly-terms leaf is the hash. A document with no <code>agreements</code> array
 carries no composition and is not a assembly; an agreement whose key is
 malformed or reserved does not hash.</p>
@@ -26,7 +26,7 @@ malformed or reserved does not hash.</p>
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li><span><span class="tsd-kind-parameter">raw</span>: <span class="tsd-signature-type">unknown</span></span></li>
-<li><span><span class="tsd-kind-parameter">compositionHash</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<li><span><span class="tsd-kind-parameter">assemblyHash</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../types/index.Anchored.html" class="tsd-signature-type tsd-kind-type-alias">Anchored</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.Assembly.html" class="tsd-signature-type tsd-kind-interface">Assembly</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></h4><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/anchored.ts#L150">anchored.ts:150</a></li></ul></aside></div></li></ul></section></div>

@@ -216,7 +216,7 @@ describe("overlayRows — the open graph class", () => {
 
     it("the agreement format's provenance leaf is a row named as such, decodable with no spec", () => {
         const [row] = overlayRows([
-            graph({ clauseKey: PROVENANCE_LEAF_KEY, provenanceLeaf: true, entries: [entry({ decoded: { compositionHash: KEY_B } })] }),
+            graph({ clauseKey: PROVENANCE_LEAF_KEY, provenanceLeaf: true, entries: [entry({ decoded: { assemblyHash: KEY_B } })] }),
         ]);
         expect(row.provenanceLeaf).toBe(true);
         expect(row.clauseId).toBeNull();

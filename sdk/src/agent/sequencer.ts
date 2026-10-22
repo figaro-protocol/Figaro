@@ -111,13 +111,13 @@ export interface SequencerCommitment {
  */
 export type SequencerUsageClaimKind =
     | { Clause: { clause_data_hash: Hex } }
-    | { Agreement: { composition_hash: Hex } }
+    | { Agreement: { assembly_hash: Hex } }
     | { Assembly: { agreement_hash: Hex; slot_content_hash: Hex; membership_proof: Hex[] } };
 
 export interface SequencerUsageClaim {
     order: SequencerCommitment;
     /** Clause key (kind `Clause`), agreement hash (kind `Agreement`) or
-     *  assembly compositionHash (kind `Assembly`). Field name mirrors the Rust
+     *  assembly assemblyHash (kind `Assembly`). Field name mirrors the Rust
      *  guest's `UsageClaim.clause_or_assembly` (prover/lib/src/types.rs) — a
      *  wire-protocol identity; any change must land in lockstep with the Rust side. */
     clause_or_assembly: Hex;

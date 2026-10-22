@@ -175,13 +175,13 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
         });
 
         // The unfetchable case: the same root order, its provenance leaf
-        // pointed at a composition hash no registry anchors.
+        // pointed at a assembly hash no registry anchors.
         const unread = forgedCase!.order.agreement;
         const unanchored = keccak256(toHex(`sign-gate-design:${Date.now()}`));
         const { order: cleanOrder } = await rootOrder(forgedCase!.found, {});
-        const unreadAgreement: Agreement = { ...cleanOrder.agreement, provenance: { agreementHash: cleanOrder.agreement.provenance!.agreementHash, compositionHash: unanchored } };
+        const unreadAgreement: Agreement = { ...cleanOrder.agreement, provenance: { agreementHash: cleanOrder.agreement.provenance!.agreementHash, assemblyHash: unanchored } };
         const unreadCommitment: Commitment = { ...cleanOrder.commitment, checkoutHash: computeCheckoutHash(unreadAgreement) };
-        expect(unread.provenance?.compositionHash).toBe(forgedCase!.found.compositionHash);
+        expect(unread.provenance?.assemblyHash).toBe(forgedCase!.found.assemblyHash);
 
         // The seller binds both assemblies the payloads name — its own act,
         // through its own registry entry — so the counter-sign reaches the
@@ -191,8 +191,8 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
             profile: {
                 name: 'Sign gate seller',
                 description: 'Seeded by sign-gate-design.devnet.spec.ts',
-                assemblyBindings: [forgedCase!.found.compositionHash, unanchored].map((compositionHash, i) => ({
-                    bindingId: `sign-gate-design-${i}`, subjectAddress: SELLER.address, compositionHash, counterpartyBindings: [],
+                assemblyBindings: [forgedCase!.found.assemblyHash, unanchored].map((assemblyHash, i) => ({
+                    bindingId: `sign-gate-design-${i}`, subjectAddress: SELLER.address, assemblyHash, counterpartyBindings: [],
                 })),
             },
         });
@@ -254,7 +254,7 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
             type: 'dropped clause',
             description: `assembly ${forgedCase!.found.slug} clause ${droppedClauseId} (only refusal: ${dropped!.onlyMissing})`,
         });
-        const hash = forgedCase!.found.compositionHash;
+        const hash = forgedCase!.found.assemblyHash;
         const notCarried = new RegExp(`(?:${droppedClauseId}|${dropped!.clauseKey}) clause: the order does not carry this clause, which assembly ${forgedCase!.found.slug} \\(${hash}\\) composes`, 'i');
         await refuseOnSign(SELLER.address, await signedPayload(dropped!.agreement, dropped!.commitment, false), 'btn-counter-sign', notCarried);
         await refuseOnSign(BUYER.address, await signedPayload(dropped!.agreement, dropped!.commitment, true), 'btn-broadcast', notCarried);

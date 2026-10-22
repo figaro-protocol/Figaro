@@ -36,7 +36,7 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         const agreementEvents = await scanContractEvents(publicClient, { address: config.agreementRegistry as `0x${string}`, abi: AGREEMENT_REGISTRY_ABI, eventName: 'AgreementRegistered' });
         const agreementHashes = new Set(agreementEvents.map((e) => String((e.args as { agreementHash?: string }).agreementHash ?? '').toLowerCase()).filter(Boolean));
         const assemblyEvents = await scanContractEvents(publicClient, { address: config.assemblyRegistry as `0x${string}`, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered' });
-        const slugs = new Set(assemblyEvents.map((e) => deriveAssemblySlug((e.args as { compositionHash: `0x${string}` }).compositionHash)));
+        const slugs = new Set(assemblyEvents.map((e) => deriveAssemblySlug((e.args as { assemblyHash: `0x${string}` }).assemblyHash)));
         // A registration whose stake is withdrawn keeps its binding readable (a
         // row in the explorer, never cleared), and nothing about its content is
         // asserted here — on the public network a withdrawn registration's
@@ -46,7 +46,7 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         const withdrawnAgreements = new Set((await scanContractEvents(publicClient, { address: config.agreementRegistry as `0x${string}`, abi: AGREEMENT_REGISTRY_ABI, eventName: 'DepositWithdrawn' }))
             .map((e) => String((e.args as { agreementHash?: string }).agreementHash ?? '').toLowerCase()).filter(Boolean));
         const withdrawnSlugs = new Set((await scanContractEvents(publicClient, { address: config.assemblyRegistry as `0x${string}`, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'DepositWithdrawn' }))
-            .map((e) => deriveAssemblySlug((e.args as { compositionHash: `0x${string}` }).compositionHash)));
+            .map((e) => deriveAssemblySlug((e.args as { assemblyHash: `0x${string}` }).assemblyHash)));
         const memberEvents = await scanContractEvents(publicClient, { address: config.membersRegistry as `0x${string}`, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberRegistered' });
         const members = new Set(memberEvents.map((e) => String((e.args as { member?: string }).member ?? '').toLowerCase()).filter(Boolean));
         expect(clauseKeys.size, 'the registry holds clauses').toBeGreaterThan(0);

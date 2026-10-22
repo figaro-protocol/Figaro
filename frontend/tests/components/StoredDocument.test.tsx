@@ -19,7 +19,7 @@
 import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { canonicalize, computeClauseKey, assemblyCompositionHash } from "@figaro-protocol/sdk";
+import { canonicalize, computeClauseKey, assemblyHashOf } from "@figaro-protocol/sdk";
 import { keccak256, stringToBytes } from "viem";
 
 const fetchCappedContentMock = vi.fn();
@@ -186,20 +186,20 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         expect(screen.queryByTestId("stored-json-clause-figaro-applicable-law")).toBeNull();
     });
 
-    it("an assembly's note names the COMPOSITION its anchor covers, not the whole document", async () => {
+    it("an assembly's note names the ASSEMBLY ROOT its anchor covers, not the whole document", async () => {
         const assembly = {
             name: "Equipment hire",
             summary: "Editorial wording, outside the anchor.",
             agreements: [{ id: "order-0", agreementHash: `0x${"a1".repeat(32)}`, clauses: {} }],
         };
-        const hash = assemblyCompositionHash(assembly as Parameters<typeof assemblyCompositionHash>[0]);
+        const hash = assemblyHashOf(assembly as Parameters<typeof assemblyHashOf>[0]);
         fetchCappedContentMock.mockResolvedValue(served(JSON.stringify(assembly, null, 2)));
-        mount({ id: "assembly-asm-1", anchoredHash: hash, anchor: "composition-hash" });
+        mount({ id: "assembly-asm-1", anchoredHash: hash, anchor: "assembly-hash" });
         screen.getByTestId("stored-toggle-assembly-asm-1").click();
 
         expect((await screen.findByTestId("stored-verdict-assembly-asm-1")).textContent).toMatch(/reproduces the anchor/i);
         const panel = screen.getByTestId("stored-panel-assembly-asm-1");
-        expect(panel.textContent).toMatch(/composition/i);
+        expect(panel.textContent).toMatch(/assembly root/i);
         expect(panel.textContent).toMatch(/editorial wording rides in the same document/i);
     });
 });

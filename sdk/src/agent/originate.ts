@@ -27,7 +27,7 @@ import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
 import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
-import { agreementClauses, assemblyCompositionHash, assemblyParentOrderHashes } from "../assembly.js";
+import { agreementClauses, assemblyHashOf, assemblyParentOrderHashes } from "../assembly.js";
 import type { Assembly, HydratedAssembly, AssemblyAgreement } from "../assembly.js";
 import { reconstructOrdersFromAssembly, agreementFromClauses, mergeOverrides, fillWalkProvenance } from "../reconstructOrders.js";
 import { checkSellerBindsAssembly, type MemberProfileReader } from "../memberProfile.js";
@@ -79,7 +79,7 @@ export function instantiateRootAgreement(hydrated: HydratedAssembly, params: Ins
     // provenance leaf, the same fill the walk performs on every order.
     return fillWalkProvenance(
         agreementFromClauses(merged, params.buyer, params.seller),
-        { agreementHash: root.agreementHash, compositionHash: assemblyCompositionHash(assembly) },
+        { agreementHash: root.agreementHash, assemblyHash: assemblyHashOf(assembly) },
         root.id ?? "root",
     );
 }
@@ -512,7 +512,7 @@ export interface SellerOfferHandlerOpts {
      *  used to originate or display the offer) is the one to pass here. */
     specs: SpecSource;
     /** Reads the design an offer's agreement names (its provenance leaf):
-     *  the assembly by its composition hash, every registered agreement
+     *  the assembly by its assembly hash, every registered agreement
      *  verified against its key; null when it cannot be read. The gate checks
      *  the designer's values against it, and an offer whose design is not read
      *  is refused. */

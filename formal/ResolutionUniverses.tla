@@ -114,7 +114,7 @@ EXTENDS Integers, FiniteSets, TLC
 CONSTANTS
   Buyers,                    \* non-empty finite set of buyer addresses
   Sellers,                   \* non-empty finite set of seller addresses
-  Artifacts,                 \* (kind, key) pairs: clause keys / assembly compositionHashes / agreementHashes
+  Artifacts,                 \* (kind, key) pairs: clause keys / assembly assemblyHashes / agreementHashes
   InitialBalance,            \* starting token balance per participant
   MaxPayment,                \* 1..MaxPayment are valid payments
   MaxProcesses,              \* upper bound on process identities

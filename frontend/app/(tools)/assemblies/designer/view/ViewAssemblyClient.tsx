@@ -7,9 +7,9 @@
  *   1. localStorage draft (loadNamedDraft) — work-in-progress in this
  *      browser.
  *   2. On-chain published assembly — AssemblyRegistered event filtered
- *      by its derived slug (a pure function of the indexed compositionHash),
+ *      by its derived slug (a pure function of the indexed assemblyHash),
  *      then the assembly fetched from IPFS via contentURI and verified
- *      against the anchored compositionHash, and every agreement's
+ *      against the anchored assemblyHash, and every agreement's
  *      registered agreement read from AgreementRegistry by key and verified
  *      against it (absent ⇒ the assembly is not shown).
  *
@@ -46,7 +46,7 @@ import { Button } from "@/components/ui/Button";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { AgreementDrawer } from "../_components/AgreementDrawer";
 import { AssemblyTermsPanel } from "../_components/AssemblyTermsPanel";
-import { CompositionIdentity } from "../_components/CompositionIdentity";
+import { AssemblyIdentity } from "../_components/AssemblyIdentity";
 import {
     deleteNamedDraft,
     loadNamedDraft,
@@ -87,7 +87,7 @@ type ResolvedSource =
         hydratedAssembly: HydratedAssembly;
         /** The on-chain binding — needed to gate the registeredBy-only reclaim. */
         registeredBy: `0x${string}`;
-        compositionHash: `0x${string}`;
+        assemblyHash: `0x${string}`;
         /** Whether the registration stake has already been reclaimed. */
         stakeWithdrawn: boolean;
     }
@@ -131,7 +131,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     // reads `.canWithdraw`.
     const { gate: withdrawGate } = useWithdrawGate(
         resolved.kind === "published"
-            ? { kind: "assembly", compositionHash: resolved.compositionHash }
+            ? { kind: "assembly", assemblyHash: resolved.assemblyHash }
             : null,
     );
     // `assemblyToOrders` builds synthetic agreements through the chain-loaded
@@ -178,7 +178,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 }
                 try {
                     // The slug is not on-chain — it is derived from the
-                    // indexed compositionHash, so resolution scans the event
+                    // indexed assemblyHash, so resolution scans the event
                     // log for the binding whose derived slug matches.
                     // Through the event cache (deployment block, adaptive
                     // chunks — public gateways cap `eth_getLogs` ranges).
@@ -189,7 +189,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     });
                     if (canceled) return;
                     const logs = allLogs.filter(
-                        (l) => deriveAssemblySlug((l.args as { compositionHash?: `0x${string}` } | undefined)?.compositionHash as `0x${string}`) === slug,
+                        (l) => deriveAssemblySlug((l.args as { assemblyHash?: `0x${string}` } | undefined)?.assemblyHash as `0x${string}`) === slug,
                     );
                     if (logs.length === 0) {
                         // Last attempt — surface not-found. Earlier attempts
@@ -202,12 +202,12 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         }
                         continue;
                     }
-                    const log = logs[0] as { args: { contentURI?: string; compositionHash?: `0x${string}`; registeredBy?: `0x${string}` } };
+                    const log = logs[0] as { args: { contentURI?: string; assemblyHash?: `0x${string}`; registeredBy?: `0x${string}` } };
                     const contentURI = (log.args.contentURI ?? "") as string;
-                    const compositionHash = log.args.compositionHash as `0x${string}`;
+                    const assemblyHash = log.args.assemblyHash as `0x${string}`;
                     const hydratedAssembly = await fetchHydratedAssembly(
                         contentURI,
-                        compositionHash,
+                        assemblyHash,
                     );
                     if (canceled) return;
                     if (!hydratedAssembly) {
@@ -230,7 +230,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                             address: registry,
                             abi: ASSEMBLY_REGISTRY_ABI,
                             functionName: "bindings",
-                            args: [compositionHash],
+                            args: [assemblyHash],
                         })) as readonly [`0x${string}`, bigint, boolean, string];
                         registeredBy = binding[0];
                         stakeWithdrawn = binding[2];
@@ -247,7 +247,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         orders,
                         hydratedAssembly,
                         registeredBy,
-                        compositionHash,
+                        assemblyHash,
                         stakeWithdrawn,
                     });
                     return;
@@ -318,14 +318,14 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     );
     /**
      * The registry's answer for the composition under review, read at the edge
-     * (`AssemblyRegistry.bindings(compositionHash)`): `null` is resolved-empty —
+     * (`AssemblyRegistry.bindings(assemblyHash)`): `null` is resolved-empty —
      * nothing anchored, publish stays open; a binding means this composition is
      * already anchored (an unchanged fork, say: the name and descriptions sit
      * outside the hash), so publish could only revert. `undefined` is not yet
      * read, or a read that failed — publish stays open and its simulate remains
      * the backstop (`translatePublishRevert`).
      */
-    const reviewedHash = isPublishReview && review?.ok ? review.compositionHash : null;
+    const reviewedHash = isPublishReview && review?.ok ? review.assemblyHash : null;
     const [anchoredBinding, setAnchoredBinding] = useState<{ registeredBy: `0x${string}` } | null | undefined>(undefined);
     useEffect(() => {
         setAnchoredBinding(undefined);
@@ -371,7 +371,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         const stored = loadNamedDraft(resolved.snapshot.slug);
         const storedReview = stored ? projectSnapshotForReview(stored) : null;
         if (storedReview && (!storedReview.ok
-            || !hexEqual(storedReview.compositionHash, review.compositionHash))) {
+            || !hexEqual(storedReview.assemblyHash, review.assemblyHash))) {
             setPublishError(
                 "This draft changed after it was opened for review, so what is on screen is no "
                 + "longer what would be published. Nothing was published — go back to the editor "
@@ -382,7 +382,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         setConfirming(true);
         setPublishError(null);
         try {
-            const outcome = await publish(resolved.snapshot, review.compositionHash);
+            const outcome = await publish(resolved.snapshot, review.assemblyHash);
             // publish() waits for receipt-confirmed status:success, so
             // it's safe to delete the named draft + clear the session here.
             clearCurrentSession();
@@ -417,7 +417,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         setWithdrawing(true);
         setWithdrawError(null);
         try {
-            await withdraw(resolved.compositionHash);
+            await withdraw(resolved.assemblyHash);
             // Reflect the reclaim locally — the binding stays; only the stake moved.
             setResolved((prev) => (prev.kind === "published" ? { ...prev, stakeWithdrawn: true } : prev));
         } catch (err) {
@@ -642,16 +642,16 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         </div>
     );
 
-    // The composition root and each agreement's agreement hash — read from
+    // The assembly root and each agreement's agreement hash — read from
     // the pinned assembly (published) or the review's build (draft).
     const entryAssembly = resolved.kind === "published"
         ? resolved.hydratedAssembly.assembly
         : review?.ok ? review.assembly : null;
     const composition = entryAssembly
         ? {
-            compositionHash: resolved.kind === "published"
-                ? resolved.compositionHash
-                : (review?.ok ? review.compositionHash : ("0x" as `0x${string}`)),
+            assemblyHash: resolved.kind === "published"
+                ? resolved.assemblyHash
+                : (review?.ok ? review.assemblyHash : ("0x" as `0x${string}`)),
             agreementHashes: entryAssembly.agreements.map((entry) => entry.agreementHash),
         }
         : null;
@@ -705,9 +705,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     {review?.ok && (
                         <div className="mt-2 max-w-3xl space-y-1" data-testid="review-agreements">
                             <p className="text-xs text-warning-fg leading-relaxed">
-                                Composition root{" "}
-                                <code className="font-mono" data-testid="review-composition-root" title={review.compositionHash}>
-                                    {review.compositionHash}
+                                Assembly root{" "}
+                                <code className="font-mono" data-testid="review-composition-root" title={review.assemblyHash}>
+                                    {review.assemblyHash}
                                 </code>
                                 . Each agreement binds one agreement by key:
                             </p>
@@ -780,10 +780,10 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         >
                             This composition is already anchored on the AssemblyRegistry as{" "}
                             <Link
-                                href={`/assemblies/designer/view?slug=${encodeURIComponent(deriveAssemblySlug(review.compositionHash))}`}
+                                href={`/assemblies/designer/view?slug=${encodeURIComponent(deriveAssemblySlug(review.assemblyHash))}`}
                                 className="font-mono underline"
                             >
-                                {deriveAssemblySlug(review.compositionHash)}
+                                {deriveAssemblySlug(review.assemblyHash)}
                             </Link>
                             . Its identity is the composition, and the name and descriptions sit outside
                             it, so publishing would anchor nothing new. To publish a different assembly,
@@ -863,7 +863,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         className="w-[300px] shrink-0 overflow-y-auto border-r border-default bg-paper px-5 py-4 space-y-4"
                     >
                         {resolved.kind === "draft" && (
-                            <CompositionIdentity snapshot={resolved.snapshot} />
+                            <AssemblyIdentity snapshot={resolved.snapshot} />
                         )}
                         <AssemblyTermsPanel
                             values={composedAssemblyClauses}

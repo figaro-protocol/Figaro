@@ -25,14 +25,14 @@ export function memberProfileReader(ctx, readDocument) {
 }
 
 /** The design an order's provenance leaf names, read at acceptance time: the
- *  assembly registered under its composition hash, hydrated and verified by
+ *  assembly registered under its assembly hash, hydrated and verified by
  *  `hydrate` (the assembly against its hash, each registered agreement
  *  against its key). Null when it is not registered or does not verify. */
 export function designReader(ctx, hydrate) {
     return async (provenance) => {
         await ctx.sync();
         const registered = ctx.getAssemblies()
-            .find((a) => a.compositionHash.toLowerCase() === provenance.compositionHash.toLowerCase());
+            .find((a) => a.assemblyHash.toLowerCase() === provenance.assemblyHash.toLowerCase());
         return registered ? hydrate(registered) : null;
     };
 }
@@ -47,21 +47,21 @@ async function pinJson(ipfsApiUrl, doc) {
 }
 
 /**
- * The seller binds `compositionHash` in its own member profile — skipped when
+ * The seller binds `assemblyHash` in its own member profile — skipped when
  * its profile already binds it. The profile it already has is kept and the
  * binding added; a wallet with none publishes a profile that names it and
  * binds the assembly. Returns once `MembersRegistry` points at the new pin.
  */
-export async function bindAssemblyAsSeller({ pub, wallet, membersRegistry, compositionHash, ipfsApiUrl, readProfile, name }) {
+export async function bindAssemblyAsSeller({ pub, wallet, membersRegistry, assemblyHash, ipfsApiUrl, readProfile, name }) {
     const seller = wallet.account.address;
     const current = await readProfile(seller);
-    if ((current?.assemblyBindings ?? []).some((b) => b.compositionHash.toLowerCase() === compositionHash.toLowerCase())) return false;
+    if ((current?.assemblyBindings ?? []).some((b) => b.assemblyHash.toLowerCase() === assemblyHash.toLowerCase())) return false;
     const profile = {
         ...(current ?? { name }),
         subjectAddress: seller,
         assemblyBindings: [
             ...(current?.assemblyBindings ?? []),
-            { bindingId: `binding:${seller.toLowerCase()}:${compositionHash}`, subjectAddress: seller, compositionHash },
+            { bindingId: `binding:${seller.toLowerCase()}:${assemblyHash}`, subjectAddress: seller, assemblyHash },
         ],
     };
     const metadataURI = await pinJson(ipfsApiUrl, profile);

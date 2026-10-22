@@ -10,15 +10,15 @@ pragma solidity 0.8.26;
 ///         its own anchor per the protocol's separation-of-concerns doctrine.
 ///
 ///         An assembly is a list of registered agreements; its
-///         identity IS its composition: compositionHash is the merkle root,
+///         identity IS its composition: assemblyHash is the merkle root,
 ///         under the agreement format's leaf convention, over one leaf per
 ///         agreement (key: its agreementHash; bytes: `{"clauses":…,"slot":i}`)
 ///         and the terms leaf when assembly-scoped clauses are composed
-///         (editorial prose excluded). The registry keys bindings by compositionHash:
+///         (editorial prose excluded). The registry keys bindings by assemblyHash:
 ///         identical compositions collapse to one binding, and no
 ///         caller-chosen name exists on-chain to squat. The human-readable
 ///         slug is presentation, derived off-chain as a pure function of
-///         compositionHash.
+///         assemblyHash.
 ///
 ///         contentURI points at the full pinned assembly document
 ///         (typically IPFS) — including the editorial prose the root
@@ -59,7 +59,7 @@ pragma solidity 0.8.26;
 ///         and carries no usage, so no contract can learn the count and there
 ///         is no on-chain hardening of this gate.
 ///
-///         The designer of record is first-write-wins on the compositionHash:
+///         The designer of record is first-write-wins on the assemblyHash:
 ///         whoever anchors a composition first is its designer of record. Editorial
 ///         prose is not identity, so a front-runner can anchor someone
 ///         else's composition under their own prose — the same accepted
@@ -92,34 +92,34 @@ contract AssemblyRegistry {
         string contentURI;
     }
 
-    /// @notice compositionHash (the merkle root over the assembly's
+    /// @notice assemblyHash (the merkle root over the assembly's
     ///         agreements and terms) → binding details.
     mapping(bytes32 => AssemblyBinding) public bindings;
 
     // ── Events ──────────────────────────────────────────────────────────
 
     /// @notice Emitted when an assembly is registered.
-    /// @param compositionHash The merkle root over the off-chain
+    /// @param assemblyHash The merkle root over the off-chain
     ///                        assembly's agreements and terms — the
     ///                        assembly's identity.
     /// @param registeredBy    Address that registered the assembly.
     /// @param contentURI      Full off-chain assembly document URI
     ///                        (typically IPFS).
-    event AssemblyRegistered(bytes32 indexed compositionHash, address indexed registeredBy, string contentURI);
+    event AssemblyRegistered(bytes32 indexed assemblyHash, address indexed registeredBy, string contentURI);
 
     /// @notice Emitted when the registering wallet withdraws its deposit. The
     ///         composition binding stays in place; only the deposit moves.
-    /// @param compositionHash The composition whose deposit was withdrawn.
+    /// @param assemblyHash The composition whose deposit was withdrawn.
     /// @param registeredBy    Address that withdrew.
     /// @param amount          Deposit amount returned (always equals
     ///                        `registrationDeposit`).
-    event DepositWithdrawn(bytes32 indexed compositionHash, address indexed registeredBy, uint256 amount);
+    event DepositWithdrawn(bytes32 indexed assemblyHash, address indexed registeredBy, uint256 amount);
 
     // ── Errors ──────────────────────────────────────────────────────────
 
     error EmptyContentURI();
-    error ZeroCompositionHash();
-    error CompositionAlreadyRegistered(bytes32 compositionHash);
+    error ZeroAssemblyHash();
+    error AssemblyAlreadyRegistered(bytes32 assemblyHash);
     error WrongDeposit(uint256 provided, uint256 required);
     error NotRegistered();
     error NotRegisteredBy(address caller, address registeredBy);
@@ -136,30 +136,30 @@ contract AssemblyRegistry {
     // ── Assembly registration (permissionless, first-write-wins) ────────
 
     /// @notice Register an assembly. Requires `registrationDeposit` ETH.
-    ///         The contract anchors identity (compositionHash → contentURI).
+    ///         The contract anchors identity (assemblyHash → contentURI).
     ///         Content validity is the publisher's responsibility
     ///         off-chain; clause content well-formedness is the off-chain
     ///         Layer-A SDK's concern — there is no on-chain content
     ///         validation.
-    /// @param compositionHash The merkle root over the off-chain
+    /// @param assemblyHash The merkle root over the off-chain
     ///                        assembly's agreements and terms.
     /// @param contentURI      Full off-chain assembly document
     ///                        pointer (typically IPFS).
-    function registerAssembly(bytes32 compositionHash, string calldata contentURI) external payable {
+    function registerAssembly(bytes32 assemblyHash, string calldata contentURI) external payable {
         if (msg.value != registrationDeposit) revert WrongDeposit(msg.value, registrationDeposit);
-        if (compositionHash == bytes32(0)) revert ZeroCompositionHash();
+        if (assemblyHash == bytes32(0)) revert ZeroAssemblyHash();
         if (bytes(contentURI).length == 0) revert EmptyContentURI();
 
-        if (bindings[compositionHash].registeredAt != 0) revert CompositionAlreadyRegistered(compositionHash);
+        if (bindings[assemblyHash].registeredAt != 0) revert AssemblyAlreadyRegistered(assemblyHash);
 
-        bindings[compositionHash] = AssemblyBinding({
+        bindings[assemblyHash] = AssemblyBinding({
             registeredBy: msg.sender,
             registeredAt: uint64(block.timestamp),
             depositWithdrawn: false,
             contentURI: contentURI
         });
 
-        emit AssemblyRegistered(compositionHash, msg.sender, contentURI);
+        emit AssemblyRegistered(assemblyHash, msg.sender, contentURI);
     }
 
     // ── Deposit withdrawal (registeredBy-only, post-lock) ───────────────
@@ -171,16 +171,16 @@ contract AssemblyRegistry {
     /// @dev The commits == resolves gate is protocol-surface (indexer
     ///      count; see the contract notice) — the chain carries no
     ///      composition provenance to enforce it here.
-    /// @param compositionHash The composition whose deposit to withdraw.
-    function withdrawDeposit(bytes32 compositionHash) external {
-        AssemblyBinding storage binding = bindings[compositionHash];
+    /// @param assemblyHash The composition whose deposit to withdraw.
+    function withdrawDeposit(bytes32 assemblyHash) external {
+        AssemblyBinding storage binding = bindings[assemblyHash];
         if (binding.registeredAt == 0) revert NotRegistered();
         if (msg.sender != binding.registeredBy) revert NotRegisteredBy(msg.sender, binding.registeredBy);
         if (binding.depositWithdrawn) revert AlreadyWithdrawn();
 
         // Checks-effects-interactions: flag THEN transfer.
         binding.depositWithdrawn = true;
-        emit DepositWithdrawn(compositionHash, msg.sender, registrationDeposit);
+        emit DepositWithdrawn(assemblyHash, msg.sender, registrationDeposit);
 
         (bool ok,) = msg.sender.call{value: registrationDeposit}("");
         if (!ok) revert TransferFailed();

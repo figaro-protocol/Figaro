@@ -56,13 +56,13 @@ export function validateCatalogClauseValues(item: CatalogItemMetadata): string[]
  * here knows any clause or assembly by name.
  */
 export function catalogClausesForBindings(
-    bindings: readonly { compositionHash: string }[],
-    choices: readonly { compositionHash: string; clauses: readonly string[] | null }[],
+    bindings: readonly { assemblyHash: string }[],
+    choices: readonly { assemblyHash: string; clauses: readonly string[] | null }[],
 ): readonly KnownClause[] {
-    const bound = new Set(bindings.map((b) => b.compositionHash.toLowerCase()));
+    const bound = new Set(bindings.map((b) => b.assemblyHash.toLowerCase()));
     const composed = new Set<string>();
     for (const choice of choices) {
-        if (!bound.has(choice.compositionHash.toLowerCase())) continue;
+        if (!bound.has(choice.assemblyHash.toLowerCase())) continue;
         for (const clauseKey of choice.clauses ?? []) composed.add(clauseKey.toLowerCase());
     }
     if (composed.size === 0) return [];

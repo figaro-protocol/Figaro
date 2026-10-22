@@ -1108,7 +1108,7 @@ fn kind2(order: &Commitment, entry: &serde_json::Value) -> UsageClaim {
         order: order.clone(),
         clause_or_assembly: hex32(&entry["agreementHash"]),
         kind: UsageClaimKind::Agreement {
-            composition_hash: hex32(&entry["provenance"]["compositionHash"]),
+            assembly_hash: hex32(&entry["provenance"]["assemblyHash"]),
         },
         inclusion_proof: vec![],
     }
@@ -1136,7 +1136,7 @@ fn every_vector_agreement_credits_its_agreement_and_its_assembly() {
     let fx = assembly_vectors();
     let mut salt = 1000u64;
     for assembly in fx["assemblies"].as_array().unwrap() {
-        let composition = hex32(&assembly["compositionHash"]);
+        let composition = hex32(&assembly["assemblyHash"]);
         for entry in assembly["agreements"].as_array().unwrap() {
             salt += 1;
             let (order, ops) = resolved_order_under(hex32(&entry["provenance"]["leaf"]), salt);
@@ -1179,7 +1179,7 @@ fn a_vector_membership_proof_from_another_assembly_is_refused() {
     let (order, ops) = resolved_order_under(hex32(&entry["provenance"]["leaf"]), 1);
     let claim = kind1(
         &order,
-        hex32(&two["compositionHash"]),
+        hex32(&two["assemblyHash"]),
         hex32(&entry["agreementHash"]),
         hex32(&one["agreements"][0]["slotContentHash"]),
         proof_list(&one["agreements"][0]["membershipProof"]),
@@ -1213,7 +1213,7 @@ fn a_vector_agreement_claim_with_the_wrong_agreement_hash_is_refused() {
 fn the_vector_terms_leaf_never_passes_as_an_agreement() {
     let fx = assembly_vectors();
     let assembly = &fx["assemblies"][2];
-    let composition = hex32(&assembly["compositionHash"]);
+    let composition = hex32(&assembly["assemblyHash"]);
     let terms = &assembly["terms"];
     let terms_leaf = hex32(&terms["leaf"]);
 

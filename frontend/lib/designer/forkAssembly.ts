@@ -9,7 +9,7 @@
  *     `-2`, `-3`, …). No prompt: a native dialog is auto-dismissed by any
  *     automated browser and reads as a dead button to whoever drives one
  *     (beta r4, the founder), and a local draft's slug is a working name,
- *     not its identity — the composition hash is.
+ *     not its identity — the assembly hash is.
  *   - Assembly → draft hydration via `assemblyToDraft`.
  *   - Persisting the new draft to localStorage.
  *

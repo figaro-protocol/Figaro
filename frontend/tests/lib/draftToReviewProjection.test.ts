@@ -22,7 +22,7 @@ import { _primeRegisteredAgreement_TESTING_ONLY } from "@/lib/protocol/useAgreem
 import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs, primeMandatoryPick } from "./primeClauseSpecs";
 import {
     projectSnapshotForReview,
-    snapshotCompositionIdentity,
+    snapshotAssemblyIdentity,
     snapshotToAssembly,
     assemblyComposedByAgreement,
     assemblyComposedClauses,
@@ -159,10 +159,10 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
         const review = projectSnapshotForReview(composed);
         if (!review.ok) throw new Error(review.error);
         const published = serializeAssembly(snapshotToAssembly(composed).assembly);
-        expect(review.compositionHash).toBe(published.compositionHash);
-        expect(review.slug).toBe(deriveAssemblySlug(published.compositionHash));
+        expect(review.assemblyHash).toBe(published.assemblyHash);
+        expect(review.slug).toBe(deriveAssemblySlug(published.assemblyHash));
         // And the canvas's own identity readout agrees with the review's.
-        expect(snapshotCompositionIdentity(composed).compositionHash).toBe(review.compositionHash);
+        expect(snapshotAssemblyIdentity(composed).assemblyHash).toBe(review.assemblyHash);
     });
 
     it("shows the designer's composed clauses while the bytes still carry the mandatory pick's clauses", () => {
@@ -201,7 +201,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
             },
         });
         if (!first.ok || !other.ok) throw new Error("both compositions build");
-        expect(other.compositionHash).not.toBe(first.compositionHash);
+        expect(other.assemblyHash).not.toBe(first.assemblyHash);
     });
 
     it("reads a assembly's composition the same way for a published assembly", () => {
@@ -368,7 +368,7 @@ describe("the mandatory pick — its clauses merged, each listed on the review",
         const lookalike = await registerStranger("figaro-commerce", 99);
         const after = projectSnapshotForReview(snapshotOf(drawn));
         if (!after.ok) throw new Error(after.error);
-        expect(after.compositionHash).toBe(before.compositionHash);
+        expect(after.assemblyHash).toBe(before.assemblyHash);
         expect(after.mandatory.map((f) => f.clauseKey)).not.toContain(lookalike);
     });
 

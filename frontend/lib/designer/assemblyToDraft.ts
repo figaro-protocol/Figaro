@@ -27,7 +27,7 @@ import {
     type HydratedAssembly,
 } from "@figaro-protocol/sdk";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
-import { assemblyCompositionHash, type Assembly } from "@/lib/shared/assembly";
+import { assemblyHashOf, type Assembly } from "@/lib/shared/assembly";
 import { fetchRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
@@ -108,11 +108,11 @@ export type ParsedAssemblyResult =
 /**
  * Parse text pasted as a composition — the composition-assist import
  * surface, where the JSON comes from the designer's own agent rather than a
- * chain-anchored URI (so there is no compositionHash to check integrity
+ * chain-anchored URI (so there is no assemblyHash to check integrity
  * against; soundness is the bar). Accepts the handoff shape
  * `{ assembly, agreements }` (the assembly and the agreements newly composed
  * for it, keyed by agreement hash) or a bare assembly. Shape-checks the order
- * entries, then probes the composition through `assemblyCompositionHash` — the
+ * entries, then probes the composition through `assemblyHashOf` — the
  * same walk the registry key uses — so anything it cannot hash is rejected
  * here with a message instead of failing later at publish.
  */
@@ -152,7 +152,7 @@ export function parseAssemblyJson(text: string): ParsedAssemblyResult {
     }
     const assembly = candidate as Assembly;
     try {
-        assemblyCompositionHash(assembly);
+        assemblyHashOf(assembly);
     } catch (cause) {
         return { ok: false, error: `The composition does not hash: ${extractErrorMessage(cause, "malformed assembly")}` };
     }

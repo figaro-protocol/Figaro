@@ -126,9 +126,9 @@ export function RegistryExplorer() {
             const description = a.hydratedAssembly?.assembly.summary ?? a.hydratedAssembly?.assembly.description ?? "";
             out.push({
                 family: "assemblies", key: `assembly-${a.slug}`, id: a.slug, name: a.name, article: "", description,
-                content: a.state === "loaded" ? "resolved" : getAssemblyLoadError(a.compositionHash) ? "unavailable" : "resolving",
+                content: a.state === "loaded" ? "resolved" : getAssemblyLoadError(a.assemblyHash) ? "unavailable" : "resolving",
                 registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: a.stakeWithdrawn, clauses: a.clauses ?? [],
-                contentURI: a.contentURI, anchoredHash: a.compositionHash,
+                contentURI: a.contentURI, anchoredHash: a.assemblyHash,
                 text: [a.slug, a.name, description, a.registeredBy, ...(a.clauses ?? []),
                     ...(a.clauses ?? []).map((k) => getClauseSpec(k)?.clauseId ?? "")].join(" "),
             });

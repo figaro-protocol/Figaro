@@ -114,7 +114,7 @@ function assertSigningDomain(core: string | undefined, chainId: number): asserts
 }
 
 /** The design the agreement names in its provenance leaf, read from the
- *  chain and IPFS and verified against its composition root and every
+ *  chain and IPFS and verified against its assembly root and every
  *  registered agreement's hash — the input the sign gate checks the
  *  designer's values against. Null when the agreement names none or the read
  *  fails; the gate then refuses an agreement naming a design (fail-closed:
@@ -123,7 +123,7 @@ export async function readSigningDesign(agreement: Agreement): Promise<HydratedA
     const provenance = agreement.provenance;
     if (!provenance) return null;
     try {
-        return await fetchHydratedAssemblyByHash(provenance.compositionHash);
+        return await fetchHydratedAssemblyByHash(provenance.assemblyHash);
     } catch {
         return null;
     }

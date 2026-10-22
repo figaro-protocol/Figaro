@@ -52,7 +52,7 @@ import {
     seedRegisteredMember,
     memberProfileBindings,
     waitForConnected,
-    anchoredCompositionHash,
+    anchoredAssemblyHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
@@ -103,7 +103,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
 
         // ── ENSURE the delivery assembly (shared author-if-absent). ──
         const deliverySlug = await ensureDeliveryAssembly(page);
-        const deliveryHash = await anchoredCompositionHash(deliverySlug);
+        const deliveryHash = await anchoredAssemblyHash(deliverySlug);
 
         // ── BIND (idempotent): Aurora pins the assembly, designating NOBODY —
         //    the absence IS what makes the courier node race-able. ──
@@ -152,7 +152,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
                     assemblyBindings: [{
                         bindingId: `race-binding-${address.slice(2, 8).toLowerCase()}`,
                         subjectAddress: address,
-                        compositionHash: deliveryHash,
+                        assemblyHash: deliveryHash,
                         counterpartyBindings: [],
                     }],
                 },

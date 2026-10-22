@@ -53,7 +53,7 @@ describe("executeTransactionCapabilityAction", () => {
             kind: "attest-provenance-leaf" as const,
             orderHash: "an-order",
             agreementHash: `0x${"8b".repeat(32)}` as const,
-            compositionHash: `0x${"9a".repeat(32)}` as const,
+            assemblyHash: `0x${"9a".repeat(32)}` as const,
             party: "buyer" as const,
         };
         await executeTransactionCapabilityAction(action, { attestProvenanceLeaf });

@@ -503,7 +503,7 @@
         "internalType": "bytes32"
       },
       {
-        "name": "compositionHash",
+        "name": "assemblyHash",
         "type": "bytes32",
         "internalType": "bytes32"
       },
@@ -573,7 +573,7 @@
         ]
       },
       {
-        "name": "compositionHash",
+        "name": "assemblyHash",
         "type": "bytes32",
         "internalType": "bytes32"
       },

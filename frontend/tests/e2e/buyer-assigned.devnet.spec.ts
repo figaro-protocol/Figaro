@@ -56,7 +56,7 @@ import {
     readLocalDeploymentConfig,
     memberProfileBindings,
     waitForConnected,
-    anchoredCompositionHash,
+    anchoredAssemblyHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
@@ -94,7 +94,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
 
         // ── ENSURE the delivery assembly (shared author-if-absent). ──
         const deliverySlug = await ensureDeliveryAssembly(page);
-        const deliveryHash = await anchoredCompositionHash(deliverySlug);
+        const deliveryHash = await anchoredAssemblyHash(deliverySlug);
 
         // ── BIND (idempotent): Aurora pins the assembly and designates NOBODY.
         //    The counterparty editor is left untouched — the ABSENCE of a

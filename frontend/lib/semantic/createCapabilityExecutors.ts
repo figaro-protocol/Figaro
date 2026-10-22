@@ -57,9 +57,9 @@ export interface CapabilityExecutorDeps {
      *  only if the simulation passes. */
     fetchUsageClaimContext: () => Promise<UsageClaimContext>;
     /** The assembly of the assembly a provenance names, read from
-     *  `AssemblyRegistry` by its composition root (whatever its stake) and
+     *  `AssemblyRegistry` by its assembly root (whatever its stake) and
      *  verified against it; null when absent. */
-    readAssembly: (compositionHash: Hex) => Promise<Assembly | null>;
+    readAssembly: (assemblyHash: Hex) => Promise<Assembly | null>;
     simulateUsage: (write: UsageWrite) => Promise<void>;
     recordUsage: (write: UsageWrite) => Promise<Hex | undefined>;
     submitAttestation: (role: "buyer" | "seller", args: AttestationSubmitArgs) => Promise<Hex | undefined>;
@@ -166,7 +166,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             console.error(`[usage-recording] the UsageCounter's reserved leaves did not read — skipping every clause, agreement and assembly of this process: ${error instanceof Error ? error.message : String(error)}`);
             return [];
         }
-        // Each assembly a provenance names, read once by its composition root.
+        // Each assembly a provenance names, read once by its assembly root.
         const assemblies = new Map<string, Assembly | null>();
         const entries: UsagePlanEntry[] = [];
         for (let i = 0; i < activeOrders.length; i++) {
@@ -177,9 +177,9 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                 continue;
             }
             let assembly: Assembly | undefined;
-            if (agreement.provenance && isBytes32Hex(agreement.provenance.compositionHash)) {
-                const key = agreement.provenance.compositionHash.toLowerCase();
-                if (!assemblies.has(key)) assemblies.set(key, await deps.readAssembly(agreement.provenance.compositionHash).catch(() => null));
+            if (agreement.provenance && isBytes32Hex(agreement.provenance.assemblyHash)) {
+                const key = agreement.provenance.assemblyHash.toLowerCase();
+                if (!assemblies.has(key)) assemblies.set(key, await deps.readAssembly(agreement.provenance.assemblyHash).catch(() => null));
                 assembly = assemblies.get(key) ?? undefined;
             }
             entries.push({ orderHash, commitment: commitments[i], agreement, context, assembly });
@@ -253,7 +253,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             orderHash: action.orderHash as Hex,
             clauseId: PROVENANCE_LEAF_KEY,
             stage: 0,
-            content: provenanceLeafBytes(action.agreementHash, action.compositionHash),
+            content: provenanceLeafBytes(action.agreementHash, action.assemblyHash),
             failureMessage: "provenance attestation failed",
         });
 

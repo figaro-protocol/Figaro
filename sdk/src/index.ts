@@ -319,7 +319,7 @@ export type {
 // shape and its accessors (topology parents, composed clause keys) + the
 // authoring resolver (clause names in a source document → clause keys)
 export {
-    assemblyCompositionHash,
+    assemblyHashOf,
     deriveAssemblySlug,
     assemblyParentOrderHashes,
     assemblyComposedClauseKeys,

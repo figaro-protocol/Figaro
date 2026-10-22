@@ -8,13 +8,13 @@
  * anything is signed, an order whose agreement carries no provenance leaf, an
  * order under an assembly the profile does not bind, and any order while the
  * profile cannot be read. The refusal names the assembly by its derived slug
- * and its full composition hash.
+ * and its full assembly hash.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import {
     agreementHashOf,
-    assemblyCompositionHash,
+    assemblyHashOf,
     buildOrderAgreement,
     computeCheckoutHash,
     deriveAssemblySlug,
@@ -119,7 +119,7 @@ vi.mock("@/lib/handoff/relayChannel", () => ({ relayCommitmentPayload: (...args:
 const { useOrderCommitmentFlow } = await import("@/lib/checkout/orderCommitmentFlow");
 
 /** A design of its own per case (a distinct consent document, so a distinct
- *  composition hash), anchored on the registries and pinned. */
+ *  assembly hash), anchored on the registries and pinned. */
 let caseId = 0;
 function design() {
     caseId += 1;
@@ -127,18 +127,18 @@ function design() {
     const registered: RegisteredAgreement = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-consent")]: { documents } } };
     const agreementHash = agreementHashOf(registered);
     const assembly: Assembly = { agreements: [{ id: "order-0", agreementHash, clauses: {} }] };
-    const compositionHash = assemblyCompositionHash(assembly);
-    bindings.set(compositionHash.toLowerCase(), `ipfs://bound-assembly-${caseId}`);
+    const assemblyHash = assemblyHashOf(assembly);
+    bindings.set(assemblyHash.toLowerCase(), `ipfs://bound-assembly-${caseId}`);
     bindings.set(agreementHash.toLowerCase(), `ipfs://bound-agreement-${caseId}`);
     pinned.set(`ipfs://bound-assembly-${caseId}`, JSON.stringify(assembly));
     pinned.set(`ipfs://bound-agreement-${caseId}`, JSON.stringify(registered));
-    return { agreementHash, compositionHash, documents };
+    return { agreementHash, assemblyHash, documents };
 }
 
-function profileBinding(...compositionHashes: Hex[]): MemberProfileMetadata {
+function profileBinding(...assemblyHashes: Hex[]): MemberProfileMetadata {
     return {
         name: "Seller",
-        assemblyBindings: compositionHashes.map((compositionHash, i) => ({ bindingId: `b-${i}`, subjectAddress: SELLER, compositionHash })),
+        assemblyBindings: assemblyHashes.map((assemblyHash, i) => ({ bindingId: `b-${i}`, subjectAddress: SELLER, assemblyHash })),
     };
 }
 
@@ -152,7 +152,7 @@ function payloadUnder(d: ReturnType<typeof design> | null, opts: { buyerSig?: bo
         },
         ...(d ? { [keyOf("figaro-consent")]: { documents: d.documents } } : {}),
     }, specSource());
-    const agreement: Agreement = d ? { ...built, provenance: { agreementHash: d.agreementHash, compositionHash: d.compositionHash } } : built;
+    const agreement: Agreement = d ? { ...built, provenance: { agreementHash: d.agreementHash, assemblyHash: d.assemblyHash } } : built;
     const commitment: Commitment = {
         processId: `0x${"00".repeat(32)}` as Hex,
         buyer: BUYER,
@@ -189,7 +189,7 @@ describe("every seller accept path reads the seller's own bound assemblies", () 
 
     it("acceptOrder counter-signs and broadcasts an order under an assembly the seller binds, reading the seller's own profile", async () => {
         const d = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(d.compositionHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.acceptOrder(payloadUnder(d))).resolves.toMatch(/^0x/);
         expect(commitSignedOrder).toHaveBeenCalledTimes(1);
@@ -199,15 +199,15 @@ describe("every seller accept path reads the seller's own bound assemblies", () 
     it("acceptOrder refuses an order under an assembly the seller has not bound, naming it by slug and full hash", async () => {
         const d = design();
         const other = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(other.compositionHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(other.assemblyHash));
         const { result } = renderHook(() => useOrderCommitmentFlow());
-        await expect(result.current.acceptOrder(payloadUnder(d))).rejects.toThrow(named(d.compositionHash));
+        await expect(result.current.acceptOrder(payloadUnder(d))).rejects.toThrow(named(d.assemblyHash));
         expect(commitSignedOrder).not.toHaveBeenCalled();
     });
 
     it("acceptOrder refuses an order whose agreement carries no provenance leaf", async () => {
         const d = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(d.compositionHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.acceptOrder(payloadUnder(null))).rejects.toThrow(/names no assembly/);
         expect(commitSignedOrder).not.toHaveBeenCalled();
@@ -226,22 +226,22 @@ describe("every seller accept path reads the seller's own bound assemblies", () 
     it("counterSignAndReturn countersigns a race draft under a bound assembly and refuses one under an assembly the seller has not bound", async () => {
         const d = design();
         const other = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(d.compositionHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.counterSignAndReturn(payloadUnder(d, { buyerSig: false }))).resolves.toHaveProperty("sellerSig");
         expect(relayed).toHaveBeenCalledTimes(1);
-        await expect(result.current.counterSignAndReturn(payloadUnder(other, { buyerSig: false }))).rejects.toThrow(named(other.compositionHash));
+        await expect(result.current.counterSignAndReturn(payloadUnder(other, { buyerSig: false }))).rejects.toThrow(named(other.assemblyHash));
         expect(relayed).toHaveBeenCalledTimes(1);
     });
 
     it("quoteAndReturn quotes a request under a bound assembly and refuses one under an assembly the seller has not bound", async () => {
         const d = design();
         const other = design();
-        profiles.set(SELLER.toLowerCase(), profileBinding(d.compositionHash));
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.quoteAndReturn(quoteRequestUnder(d), 700n)).resolves.toHaveProperty("sellerSig");
         expect(relayed).toHaveBeenCalledTimes(1);
-        await expect(result.current.quoteAndReturn(quoteRequestUnder(other), 700n)).rejects.toThrow(named(other.compositionHash));
+        await expect(result.current.quoteAndReturn(quoteRequestUnder(other), 700n)).rejects.toThrow(named(other.assemblyHash));
         expect(relayed).toHaveBeenCalledTimes(1);
     });
 });

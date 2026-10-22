@@ -94,7 +94,7 @@ interface FormItem {
     rateUnit: string;
     rateQuantitySource: string;
     /** Encoded data-sold reference for a DATA-PRODUCT item —
-     *  `compositionHash|clauseKey|posture` of one of the member's own
+     *  `assemblyHash|clauseKey|posture` of one of the member's own
      *  declared data offers, "" for an ordinary item. The
      *  disclosure policy declares the TERMS; this item is the PRICE. */
     dataSoldKey: string;
@@ -102,15 +102,15 @@ interface FormItem {
 
 /** Encode the data reference as a stable select-option key. */
 function dataSoldKeyOf(rc: NonNullable<CatalogItemMetadata["dataSold"]>): string {
-    return [rc.compositionHash, rc.clauseKey, rc.posture].join("|");
+    return [rc.assemblyHash, rc.clauseKey, rc.posture].join("|");
 }
 
 function dataSoldFromKey(key: string): CatalogItemMetadata["dataSold"] {
-    const [compositionHash, clauseKey, posture] = key.split("|");
-    if (!compositionHash || !clauseKey || (posture !== "buyer" && posture !== "seller")) {
+    const [assemblyHash, clauseKey, posture] = key.split("|");
+    if (!assemblyHash || !clauseKey || (posture !== "buyer" && posture !== "seller")) {
         return undefined;
     }
-    return { compositionHash: compositionHash as `0x${string}`, clauseKey: clauseKey as `0x${string}`, posture };
+    return { assemblyHash: assemblyHash as `0x${string}`, clauseKey: clauseKey as `0x${string}`, posture };
 }
 
 function uid(): string {
@@ -597,17 +597,17 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, dataSol
                     >
                         <option value="">Not a data product</option>
                         {dataSoldOptions.map((rc) => {
-                            const key = [rc.compositionHash, rc.clauseKey, rc.posture].join("|");
+                            const key = [rc.assemblyHash, rc.clauseKey, rc.posture].join("|");
                             const title = getClauseSpec(rc.clauseKey)?.title ?? rc.clauseKey;
                             return (
                                 <option key={key} value={key}>
-                                    {title} — as {rc.posture} ({truncateHex(rc.compositionHash, { head: 10, tail: 0 })})
+                                    {title} — as {rc.posture} ({truncateHex(rc.assemblyHash, { head: 10, tail: 0 })})
                                 </option>
                             );
                         })}
                         {item.dataSoldKey &&
                             !dataSoldOptions.some(
-                                (rc) => [rc.compositionHash, rc.clauseKey, rc.posture].join("|") === item.dataSoldKey,
+                                (rc) => [rc.assemblyHash, rc.clauseKey, rc.posture].join("|") === item.dataSoldKey,
                             ) && (
                             <option value={item.dataSoldKey}>
                                 (no longer declared) {item.dataSoldKey.split("|")[1]}

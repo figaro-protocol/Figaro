@@ -171,10 +171,10 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await rootNode.click();
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await pickMandatoryForEveryOrder(page);
-        const hashReadout = page.getByTestId('designer-composition-hash');
+        const hashReadout = page.getByTestId('designer-assembly-hash');
         await expect(hashReadout).toBeVisible({ timeout: 30000 });
         const before = await hashReadout.getAttribute('title');
-        expect(before, 'the identity readout carries the full composition hash').toMatch(/^0x[0-9a-f]{64}$/);
+        expect(before, 'the identity readout carries the full assembly hash').toMatch(/^0x[0-9a-f]{64}$/);
 
         // Compose the regime clause on the root order.
         await page.getByTestId('drawer-tab-registry').click();
@@ -217,7 +217,7 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         const first = await hashReadout.getAttribute('title');
 
         // Pick a DIFFERENT regime — same clauses, same topology, one changed
-        // design fill: a different composition hash, i.e. a sibling assembly.
+        // design fill: a different assembly hash, i.e. a sibling assembly.
         await page.getByTestId(`drawer-field-${REGIME_CLAUSE_KEY}-${REGIME_FIELD}-${tokens[1]}`).check();
         await expect(
             hashReadout,
@@ -268,8 +268,8 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await expect(canvasChips, 'the canvas node states both composed terms').toHaveCount(2, { timeout: 10000 });
 
         // The identity the canvas shows is the one the review must show.
-        const canvasHash = await page.getByTestId('designer-composition-hash').getAttribute('title');
-        expect(canvasHash, 'the canvas states a full composition hash').toMatch(/^0x[0-9a-f]{64}$/);
+        const canvasHash = await page.getByTestId('designer-assembly-hash').getAttribute('title');
+        expect(canvasHash, 'the canvas states a full assembly hash').toMatch(/^0x[0-9a-f]{64}$/);
 
         // Publishing needs the editorial identity; Review is the gate before it.
         await page.getByTestId('designer-name-input').fill(`Review fidelity ${Date.now()}`);
@@ -317,7 +317,7 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
 
         // One assembly, one hash: the identity reviewed is the identity composed.
         await expect(
-            page.getByTestId('designer-composition-hash'),
+            page.getByTestId('designer-assembly-hash'),
             'the review carries the canvas composition, byte for byte',
         ).toHaveAttribute('title', canvasHash!, { timeout: 20000 });
 

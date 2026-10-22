@@ -38,11 +38,11 @@ function activeBuyerPolicy(
     entries: DisclosurePolicyEntry[],
     subscribedHashes: Set<string>,
 ): DisclosurePolicyEntry[] {
-    return entries.filter((e) => subscribedHashes.has(e.compositionHash));
+    return entries.filter((e) => subscribedHashes.has(e.assemblyHash));
 }
 
 function buildSubscriptions(subscribedHashes: Set<string>): BuyerAssemblySubscription[] {
-    return [...subscribedHashes].map((h) => ({ compositionHash: h as `0x${string}` }));
+    return [...subscribedHashes].map((h) => ({ assemblyHash: h as `0x${string}` }));
 }
 
 export interface OnboardingBuyerFormProps extends OnboardingStepChromeProps {
@@ -84,7 +84,7 @@ export function OnboardingBuyerForm({
 
     useEffect(() => {
         if (hydrated || !loaded) return;
-        setSubscribed(new Set((state.buyerAssemblies ?? []).map((s) => s.compositionHash)));
+        setSubscribed(new Set((state.buyerAssemblies ?? []).map((s) => s.assemblyHash)));
         hydrate(state.disclosurePolicy ?? []);
     }, [hydrated, loaded, hydrate, state.buyerAssemblies, state.disclosurePolicy]);
 
@@ -99,8 +99,8 @@ export function OnboardingBuyerForm({
         });
     }, [subscribed, policyEntries, otherPostureEntries, hydrated, update]);
 
-    function toggle(compositionHash: string) {
-        setSubscribed((prev) => toggledSet(prev, compositionHash));
+    function toggle(assemblyHash: string) {
+        setSubscribed((prev) => toggledSet(prev, assemblyHash));
     }
 
     function handleNext(e: React.FormEvent) {
@@ -138,13 +138,13 @@ export function OnboardingBuyerForm({
 
             <div className="space-y-3">
                 {choices.map((choice) => {
-                    const isSubscribed = subscribed.has(choice.compositionHash);
+                    const isSubscribed = subscribed.has(choice.assemblyHash);
                     return (
                         <AssemblyChoiceRow
                             key={choice.slug}
                             choice={choice}
                             checked={isSubscribed}
-                            onToggle={() => toggle(choice.compositionHash)}
+                            onToggle={() => toggle(choice.assemblyHash)}
                             testIdPrefix="buyer-assembly"
                         />
                     );
@@ -154,7 +154,7 @@ export function OnboardingBuyerForm({
             {/* BUYER-side data-disclosure — classes derive from the
                 subscriptions selected above; nothing here is required. */}
             <DisclosurePolicyEditor
-                choices={choices.filter((c) => subscribed.has(c.compositionHash))}
+                choices={choices.filter((c) => subscribed.has(c.assemblyHash))}
                 entries={policyEntries}
                 onChange={setPolicyEntries}
                 postures={["buyer"]}

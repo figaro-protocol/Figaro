@@ -38,8 +38,8 @@ import {
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { truncateHex } from "@/lib/shared/formatHex";
 
-/** The composition root and each agreement's agreement hash. */
-function CompositionAgreements({ composition }: { composition: { compositionHash: `0x${string}`; agreementHashes: readonly `0x${string}`[] } }) {
+/** The assembly root and each agreement's agreement hash. */
+function CompositionAgreements({ composition }: { composition: { assemblyHash: `0x${string}`; agreementHashes: readonly `0x${string}`[] } }) {
     return (
         <section data-testid="assembly-composition" className="border border-default rounded bg-paper p-3 space-y-2">
             <p className="text-xs font-semibold text-ink-body">Composition</p>
@@ -47,8 +47,8 @@ function CompositionAgreements({ composition }: { composition: { compositionHash
                 The root is the AssemblyRegistry key: the merkle root over the agreements, each
                 binding one registered agreement by its AgreementRegistry key, and the assembly terms.
             </p>
-            <p className="font-mono text-[10px] text-ink-body break-all" data-testid="assembly-composition-root" title={composition.compositionHash}>
-                {composition.compositionHash}
+            <p className="font-mono text-[10px] text-ink-body break-all" data-testid="assembly-composition-root" title={composition.assemblyHash}>
+                {composition.assemblyHash}
             </p>
             <ul className="space-y-0.5">
                 {composition.agreementHashes.map((agreementHash, index) => (
@@ -79,9 +79,9 @@ export function AssemblyTermsPanel({
     onToggleClause: (clauseKey: string, next: boolean) => void;
     onSetClauseField: (clauseKey: string, field: string, value: unknown) => void;
     readOnly?: boolean;
-    /** The composition root and each agreement's agreement hash, in
+    /** The assembly root and each agreement's agreement hash, in
      *  assembly order — shown by the read-only surfaces. */
-    composition?: { compositionHash: `0x${string}`; agreementHashes: readonly `0x${string}`[] };
+    composition?: { assemblyHash: `0x${string}`; agreementHashes: readonly `0x${string}`[] };
 }) {
     const { data: registered } = useAllRegisteredClauses();
     const { version: specsVersion } = useClauseSpecs();

@@ -8,7 +8,7 @@
  * `buildUsageClaims`, the same builder the headless `recordProcessUsage` and
  * the batch path use: one claim per clause, and — when the agreement
  * names its provenance (`Agreement.provenance`: the registered agreement it
- * instantiated and its assembly's composition root) — the agreement claim and
+ * instantiated and its assembly's assembly root) — the agreement claim and
  * the assembly claim, the latter carrying the agreement's membership proof
  * from the assembly's assembly. Planning here adds only what is
  * process-wide:
@@ -17,7 +17,7 @@
  *    `UsageCounter` counts a pair once per process (`AlreadyCounted`), so the
  *    first order that carries it is the one planned. The kind keeps the three
  *    families apart: a clause key, an agreement hash and an assembly
- *    composition hash with the same bytes are three pairs, each counted under
+ *    assembly hash with the same bytes are three pairs, each counted under
  *    its own registry;
  *  - an order whose claims do not build (a malformed provenance, a missing or
  *    mismatched assembly, a counter whose reserved leaves are not the
@@ -42,7 +42,7 @@ import type { UsageWrite } from "@/lib/protocol/useUsageRecorder";
 /** One resolved order's inputs: the SIGNED commitment the counter re-hashes,
  *  its hydrated agreement, the counter's facts, and — when the agreement
  *  names a provenance — the assembly of the assembly it instantiated (read
- *  from `AssemblyRegistry` by the composition root). */
+ *  from `AssemblyRegistry` by the assembly root). */
 export interface UsagePlanEntry {
     orderHash: string;
     commitment: Commitment;
@@ -69,7 +69,7 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
         if (provenance !== undefined && (
             provenance === null || typeof provenance !== "object"
             || !isBytes32Hex((provenance as { agreementHash?: unknown }).agreementHash)
-            || !isBytes32Hex((provenance as { compositionHash?: unknown }).compositionHash))) {
+            || !isBytes32Hex((provenance as { assemblyHash?: unknown }).assemblyHash))) {
             problems.push(`order ${orderHash}: provenance present but malformed: ${JSON.stringify(provenance)}`);
             continue;
         }
@@ -100,7 +100,7 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
                     orderHash,
                     order: commitment,
                     key: claim.clause_or_assembly,
-                    compositionHash: kind.Agreement.composition_hash,
+                    assemblyHash: kind.Agreement.assembly_hash,
                     proof: claim.inclusion_proof,
                 });
             } else {

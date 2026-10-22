@@ -11,7 +11,7 @@ import * as http from "node:http";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { keccak256, toBytes } from "viem";
-import { agreementHashOf, canonicalize, assemblyCompositionHash } from "@figaro-protocol/sdk";
+import { agreementHashOf, canonicalize, assemblyHashOf } from "@figaro-protocol/sdk";
 import { fetchAnchoredClauseSpec, fetchAnchoredRegisteredAgreement, fetchAnchoredAssembly } from "../anchoredContent.mjs";
 import { fetchIpfsBytes } from "../ipfsRead.mjs";
 
@@ -72,11 +72,11 @@ test("a clause spec a gateway substituted reads as absence", async () => {
     } finally { await gw.close(); }
 });
 
-test("a assembly that hashes to its composition hash is read; a substituted one is absence", async () => {
+test("a assembly that hashes to its assembly hash is read; a substituted one is absence", async () => {
     const forged = { agreements: [{ ...ASSEMBLY.agreements[0], clauses: { [TOPOLOGY]: { parentOrderHashes: ["order-9"] } } }] };
     const gw = await gateway({ t: JSON.stringify(ASSEMBLY), forged: JSON.stringify(forged), notAssembly: "{\"x\":1}" });
     try {
-        const assembly = { contentURI: "ipfs://t", compositionHash: assemblyCompositionHash(ASSEMBLY) };
+        const assembly = { contentURI: "ipfs://t", assemblyHash: assemblyHashOf(ASSEMBLY) };
         const hit = await fetchAnchoredAssembly(assembly, { gateways: [gw.url] });
         assert.equal(hit.absent, undefined, hit.absent);
         assert.deepEqual(hit.assembly.agreements[0].id, "order-0");
@@ -120,7 +120,7 @@ test("the parse strips prototype keys from an anchored document", async () => {
     const gw = await gateway({ h: hostileText });
     try {
         const hit = await fetchAnchoredAssembly(
-            { contentURI: "ipfs://h", compositionHash: assemblyCompositionHash(hostile) },
+            { contentURI: "ipfs://h", assemblyHash: assemblyHashOf(hostile) },
             { gateways: [gw.url] },
         );
         assert.equal(({}).polluted, undefined);

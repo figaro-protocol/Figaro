@@ -31,7 +31,7 @@ import {
     waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
-    anchoredCompositionHash,
+    anchoredAssemblyHash,
     isBindingOf,
     pickMandatoryForEveryOrder,
 } from './devnet-helpers';
@@ -212,7 +212,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
             expect(slug, 'the published rate assembly is discoverable by shape').toBe(published);
         }
 
-        const assemblyHash = await anchoredCompositionHash(slug!);
+        const assemblyHash = await anchoredAssemblyHash(slug!);
 
         // ── ONBOARD (idempotent): the lead (fixed price) binds + designates
         //    the hauler; the hauler (RATE item, entered through the wizard's

@@ -197,17 +197,17 @@ contract UsageCounterTest is Test {
     /// @dev A resolved one-order process whose agreement carries a clause
     ///      clause and the format's reserved PROVENANCE leaf naming
     ///      `agreementHash` (the registered agreement the order instantiates)
-    ///      and `compositionHash` (the assembly it came from). The clause
+    ///      and `assemblyHash` (the assembly it came from). The clause
     ///      commits as the canonical-JSON bytes the counter reproduces from
     ///      the two keys. Returns the provenance leaf's proof under the root.
-    function _settledUnderAgreement(bytes32 agreementHash, bytes32 compositionHash, uint256 salt)
+    function _settledUnderAgreement(bytes32 agreementHash, bytes32 assemblyHash, uint256 salt)
         internal
         returns (CommitmentTypes.Commitment memory c, bytes32[] memory provenanceProof)
     {
         bytes32[] memory leaves = new bytes32[](2);
         leaves[0] = AgreementTestHelper.leafFor(CARGO_KEY, CLAUSE_DATA);
         leaves[1] = AgreementTestHelper.leafFor(
-            PROVENANCE_LEAF, AgreementTestHelper.provenanceLeaf(agreementHash, compositionHash)
+            PROVENANCE_LEAF, AgreementTestHelper.provenanceLeaf(agreementHash, assemblyHash)
         );
         provenanceProof = AgreementTestHelper.proofFor(leaves, 1);
         c = CommitmentTypes.Commitment({
@@ -249,7 +249,7 @@ contract UsageCounterTest is Test {
         leaves[2] = AgreementTestHelper.leafFor(AgreementTestHelper.ASSEMBLY_TERMS_LEAF_KEY, TERMS);
     }
 
-    /// @dev The test assembly's compositionHash: the root of its tree.
+    /// @dev The test assembly's assemblyHash: the root of its tree.
     function _asmRoot() internal pure returns (bytes32) {
         return AgreementTestHelper.rootFor(_assemblyLeaves());
     }
@@ -664,7 +664,7 @@ contract UsageCounterTest is Test {
     /// holds it. The order names another assembly, whose tree holds no entry
     /// for AGR_KEY: the provenance opens under that assembly, and the agreement leaf
     /// with its proof from the test assembly's tree fails under its root.
-    function test_anAgreementLeafUnderADifferentCompositionHashFails() public {
+    function test_anAgreementLeafUnderADifferentAssemblyHashFails() public {
         bytes32[] memory otherLeaves = new bytes32[](1);
         otherLeaves[0] = AgreementTestHelper.leafFor(AGR2_KEY, AgreementTestHelper.agreementLeafBytes(0, "{}"));
         bytes32 otherRoot = AgreementTestHelper.rootFor(otherLeaves);

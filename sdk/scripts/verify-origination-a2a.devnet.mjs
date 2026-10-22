@@ -81,7 +81,7 @@ const specs = {
 // hash and every one of its registered agreements hydrates and verifies
 // against its key — read from the binding whatever its stake.
 const hydrate = async (a) => {
-    const t = anchorAssembly(await tryHydrate(a.contentURI), a.compositionHash);
+    const t = anchorAssembly(await tryHydrate(a.contentURI), a.assemblyHash);
     if (!t) return null;
     return hydrateAssembly(t, async (key) => {
         const binding = ctx.getAgreementBinding(key);
@@ -132,11 +132,11 @@ check("located the commerce clause by its declared field", !!commerceClauseId);
 
 // ── The seller binds the assembly in its own member profile ──────────────────
 await bindAssemblyAsSeller({
-    pub, wallet: sellerW, membersRegistry: addresses.membersRegistry, compositionHash: chosen.compositionHash,
+    pub, wallet: sellerW, membersRegistry: addresses.membersRegistry, assemblyHash: chosen.assemblyHash,
     ipfsApiUrl: IPFS_API, readProfile, name: "Origination proof seller",
 });
 check("the seller's own profile binds the assembly", (await readProfile(SELLER.address))?.assemblyBindings
-    ?.some((b) => b.compositionHash.toLowerCase() === chosen.compositionHash.toLowerCase()) === true);
+    ?.some((b) => b.assemblyHash.toLowerCase() === chosen.assemblyHash.toLowerCase()) === true);
 
 // ── Buyer LOOP: originate over HttpChannel (the seller is reached via the socket) ─
 const channel = new A2aChannel({ resolveEndpoint: async () => sellerUrl });

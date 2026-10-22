@@ -51,9 +51,9 @@ function buildBinding(
     counterpartyBindings: CounterpartyBinding[],
 ): AssemblyBindingRecord {
     return {
-        bindingId: `binding:${wallet.toLowerCase()}:${choice.compositionHash.toLowerCase()}`,
+        bindingId: `binding:${wallet.toLowerCase()}:${choice.assemblyHash.toLowerCase()}`,
         subjectAddress: wallet,
-        compositionHash: choice.compositionHash,
+        assemblyHash: choice.assemblyHash,
         counterpartyBindings: counterpartyBindings.length > 0 ? counterpartyBindings : undefined,
     };
 }
@@ -61,7 +61,7 @@ function buildBinding(
 /** Build the full bindings array from the live selection + counterparty
  *  state. Used both for the autosave effect and the submit handler so
  *  they can't drift. The selection and the counterparty state are keyed by
- *  each assembly's full composition hash, lowercased — the identity a
+ *  each assembly's full assembly hash, lowercased — the identity a
  *  binding carries; the slug is only shown. */
 // A draft made before a wallet connects carries this subject; the review step
 // re-stamps every binding with the wallet that signs the registration.
@@ -78,9 +78,9 @@ function buildBindings(
         .map((c) => buildBinding(wallet, c, counterpartiesByAssembly.get(assemblyKey(c)) ?? []));
 }
 
-/** The key the selection is held under: the assembly's full composition hash. */
-function assemblyKey(choice: { compositionHash: string }): string {
-    return choice.compositionHash.toLowerCase();
+/** The key the selection is held under: the assembly's full assembly hash. */
+function assemblyKey(choice: { assemblyHash: string }): string {
+    return choice.assemblyHash.toLowerCase();
 }
 
 /** Restrict the disclosure policy to the data of the assemblies
@@ -93,9 +93,9 @@ function activePolicy(
     choices: AssemblyChoice[],
 ): DisclosurePolicyEntry[] {
     const selectedHashes = new Set(
-        choices.filter((c) => selected.has(assemblyKey(c))).map((c) => c.compositionHash),
+        choices.filter((c) => selected.has(assemblyKey(c))).map((c) => c.assemblyHash),
     );
-    return entries.filter((e) => selectedHashes.has(e.compositionHash));
+    return entries.filter((e) => selectedHashes.has(e.assemblyHash));
 }
 
 export interface OnboardingAssembliesFormProps extends OnboardingStepChromeProps {
@@ -246,7 +246,7 @@ export function OnboardingAssembliesForm({
                     const counterparties = counterpartiesByAssembly.get(assemblyKey(choice)) ?? [];
                     return (
                         <AssemblyChoiceRow
-                            key={choice.compositionHash}
+                            key={choice.assemblyHash}
                             choice={choice}
                             checked={isSelected}
                             onToggle={() => toggle(assemblyKey(choice))}

@@ -13,8 +13,8 @@ const fetchCappedContentMock = vi.hoisted(() => vi.fn());
 // Stable references: the hook's effect keys on the registry reads' identity.
 const reads = vi.hoisted(() => ({
     published: {
-        // The slug is derived from the composition hash (`deriveAssemblySlug`).
-        data: [{ slug: "asm-0101010101010101", contentURI: "ipfs://QmAssembly", compositionHash: "0x0101010101010101010101010101010101010101010101010101010101010101" }],
+        // The slug is derived from the assembly hash (`deriveAssemblySlug`).
+        data: [{ slug: "asm-0101010101010101", contentURI: "ipfs://QmAssembly", assemblyHash: "0x0101010101010101010101010101010101010101010101010101010101010101" }],
         isLoading: false,
     },
     profile: { data: [""] as [string], isLoading: false },
@@ -40,7 +40,7 @@ import { useMemberBoundAssemblies } from "@/lib/member/useMemberBoundAssemblies"
 
 const PROFILE = {
     name: "Seller",
-    assemblyBindings: [{ bindingId: "b1", subjectAddress: SELLER, compositionHash: `0x${"01".repeat(32)}`, counterpartyBindings: [] }],
+    assemblyBindings: [{ bindingId: "b1", subjectAddress: SELLER, assemblyHash: `0x${"01".repeat(32)}`, counterpartyBindings: [] }],
 };
 
 describe("useMemberBoundAssemblies", () => {

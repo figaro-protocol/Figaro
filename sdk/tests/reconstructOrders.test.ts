@@ -11,7 +11,7 @@ import {
     planAssemblyOrders,
     reconstructOrdersFromAssembly,
 } from "../src/reconstructOrders.js";
-import { assemblyCompositionHash } from "../src/assembly.js";
+import { assemblyHashOf } from "../src/assembly.js";
 import { computeCheckoutHash, buildProvenanceInclusionProof, verifyInclusionProof } from "../src/agreement.js";
 import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
 import { hydrateAuthored } from "./hydrate.js";
@@ -105,7 +105,7 @@ describe("reconstructOrdersFromAssembly — realization", () => {
         }
     });
 
-    it("every realized order carries the assembly's own composition hash as agreement.provenance, under its signed root", async () => {
+    it("every realized order carries the assembly's own assembly hash as agreement.provenance, under its signed root", async () => {
         for (const specs of [SPECS, undefined]) {
             const orders = await reconstructOrdersFromAssembly(assembly, {
                 buyer: BUYER,
@@ -124,7 +124,7 @@ describe("reconstructOrdersFromAssembly — realization", () => {
                 const entry = assembly.assembly.agreements.find((a) => a.id === order.nodeId)!;
                 expect(order.agreement.provenance).toEqual({
                     agreementHash: entry.agreementHash,
-                    compositionHash: assemblyCompositionHash(assembly.assembly),
+                    assemblyHash: assemblyHashOf(assembly.assembly),
                 });
                 expect(order.checkoutHash).toBe(computeCheckoutHash(order.agreement));
                 expect(order.commitment.checkoutHash).toBe(order.checkoutHash);

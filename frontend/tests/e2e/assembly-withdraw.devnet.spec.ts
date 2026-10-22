@@ -93,15 +93,15 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         await gotoAsWallet(page, REGISTERED_BY, '/?e2e=devnet');
         const { slug } = await publishProbeAssembly(page);
 
-        // The binding this run anchors — compositionHash found by deriving each
+        // The binding this run anchors — assemblyHash found by deriving each
         // AssemblyRegistered event's slug (the slug exists nowhere on-chain).
         const registered = await publicClient.getContractEvents({
             address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered',
             args: { registeredBy: REGISTERED_BY }, fromBlock: 0n,
         });
-        const binding = registered.find((e) => deriveAssemblySlug(e.args.compositionHash as Hex) === slug);
+        const binding = registered.find((e) => deriveAssemblySlug(e.args.assemblyHash as Hex) === slug);
         expect(binding, 'the publish anchored a binding whose derived slug matches the receipt').toBeTruthy();
-        const compositionHash = binding!.args.compositionHash as Hex;
+        const assemblyHash = binding!.args.assemblyHash as Hex;
 
         // ── BIND: onboard the dedicated member through the real wizard — one
         //    catalog item, EXACTLY this run's assembly bound (a prior run's
@@ -298,10 +298,10 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         await expect(reclaimBtn).toBeDisabled();
 
         // The event, from strictly after the pre-click head (pattern 17),
-        // keyed by THIS run's compositionHash.
+        // keyed by THIS run's assemblyHash.
         const withdrawnEvents = await publicClient.getContractEvents({
             address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'DepositWithdrawn',
-            args: { compositionHash }, fromBlock: blockBefore + 1n,
+            args: { assemblyHash }, fromBlock: blockBefore + 1n,
         });
         expect(withdrawnEvents, 'exactly one DepositWithdrawn for this binding').toHaveLength(1);
         expect((withdrawnEvents[0].args.registeredBy as string).toLowerCase()).toBe(REGISTERED_BY.toLowerCase());
@@ -323,7 +323,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         ).toBe(deposit - gasCost);
         test.info().annotations.push({
             type: 'DepositWithdrawn',
-            description: `composition=${compositionHash} deposit=${deposit} gas=${gasCost} tx=${receipt.transactionHash}`,
+            description: `composition=${assemblyHash} deposit=${deposit} gas=${gasCost} tx=${receipt.transactionHash}`,
         });
 
         // ── DE-SURFACE REFLECTION: a fresh read of the view page resolves the

@@ -14,7 +14,7 @@
  *      the clause the composition carries (read out of the PINNED assembly,
  *      the same reading the review screen makes of the bytes it is about to
  *      anchor), and a published assembly offers Fork (not Edit).
- *      Fork it unchanged and open its Review: the fork's composition hash is
+ *      Fork it unchanged and open its Review: the fork's assembly hash is
  *      the anchored one (`AssemblyRegistry.bindings` read out-of-band), so the
  *      Review screen says it is already anchored and publish stays closed.
  *   2. A slug that is neither a draft nor on-chain → the not-found error.
@@ -92,7 +92,7 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         await page.getByTestId('designer-review').click();
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=.*intent=publish/, { timeout: 15000 });
         await expect(page.getByTestId('review-banner')).toBeVisible({ timeout: 30000 });
-        const reviewedHash = await page.getByTestId('designer-composition-hash').getAttribute('title') as Hex;
+        const reviewedHash = await page.getByTestId('designer-assembly-hash').getAttribute('title') as Hex;
         expect(reviewedHash, 'the review screen states the composition it would anchor').toMatch(/^0x[0-9a-f]{64}$/i);
         // The chain fact, read out-of-band — never from the screen that claims it:
         // the binding under the reviewed hash exists, and it is the one just published.

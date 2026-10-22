@@ -3,7 +3,7 @@
  * into the buyer-facing choice set at checkout.
  *
  * Member-domain composition: reads the member's profile (MembersRegistry →
- * IPFS), intersects the profile's `assemblyBindings[].compositionHash` with the
+ * IPFS), intersects the profile's `assemblyBindings[].assemblyHash` with the
  * published assembly events, and reads each matched assembly hydrated — the
  * assembly and every agreement's registered agreement, each verified. The
  * on-chain reads come from `@/lib/protocol/useAssemblyRegistry` (a legal
@@ -19,7 +19,7 @@ import {
     tryParseMemberProfileDocument,
     type CounterpartyBinding,
 } from "@/lib/member/memberProfileMetadata";
-import { assemblyCompositionHash } from "@figaro-protocol/sdk";
+import { assemblyHashOf } from "@figaro-protocol/sdk";
 import { bindsAssembly, findListingByAddress } from "@/lib/member/memberListing";
 import {
     useAllPublishedAssemblies,
@@ -28,11 +28,11 @@ import {
 
 /** A member's on-chain bound assembly, hydrated. */
 export interface BoundAssembly {
-    /** Derived from the composition hash (`deriveAssemblySlug`) — display only. */
+    /** Derived from the assembly hash (`deriveAssemblySlug`) — display only. */
     slug: string;
     /** Display name from the assembly; falls back to the slug. */
     name: string;
-    /** The assembly verified against its composition hash, beside every
+    /** The assembly verified against its assembly hash, beside every
      *  agreement's registered agreement verified against its key. */
     hydratedAssembly: HydratedAssembly;
     /** The member's designated counterparty wallets for this assembly,
@@ -57,7 +57,7 @@ export interface MemberBoundAssemblies {
 /**
  * Resolves a member's on-chain bound assemblies into the buyer-facing
  * choice set. Reads the member's profile (MembersRegistry →
- * IPFS), intersects the profile's `assemblyBindings[].compositionHash` with
+ * IPFS), intersects the profile's `assemblyBindings[].assemblyHash` with
  * the published assembly events, and reads each matched assembly hydrated.
  *
  * When `hasOnChainBinding` is true, `assemblies` is the authoritative
@@ -117,15 +117,15 @@ export function useMemberBoundAssemblies(
                     return;
                 }
 
-                const boundHashes = new Set(profile.assemblyBindings.map((b) => b.compositionHash.toLowerCase()));
-                const matchedEvents = publishedEvents.filter((e) => boundHashes.has(e.compositionHash.toLowerCase()));
+                const boundHashes = new Set(profile.assemblyBindings.map((b) => b.assemblyHash.toLowerCase()));
+                const matchedEvents = publishedEvents.filter((e) => boundHashes.has(e.assemblyHash.toLowerCase()));
                 if (matchedEvents.length === 0) {
                     setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
                     return;
                 }
 
                 const hydratedAssemblies = await Promise.all(
-                    matchedEvents.map((e) => fetchHydratedAssembly(e.contentURI, e.compositionHash)),
+                    matchedEvents.map((e) => fetchHydratedAssembly(e.contentURI, e.assemblyHash)),
                 );
                 if (canceled) return;
 
@@ -135,9 +135,9 @@ export function useMemberBoundAssemblies(
                 const assemblies: BoundAssembly[] = [];
                 hydratedAssemblies.forEach((m, i) => {
                     if (!m) return;
-                    const { slug, compositionHash } = matchedEvents[i];
+                    const { slug, assemblyHash } = matchedEvents[i];
                     const binding = (profile.assemblyBindings ?? []).find(
-                        (b) => b.compositionHash.toLowerCase() === compositionHash.toLowerCase(),
+                        (b) => b.assemblyHash.toLowerCase() === assemblyHash.toLowerCase(),
                     );
                     assemblies.push({
                         slug,
@@ -178,15 +178,15 @@ export function useMemberBoundAssemblies(
  */
 export function withBoundCounterparties(
     bound: BoundAssembly,
-    members: readonly { address: string; assemblyBindings?: readonly { compositionHash: string }[] }[],
+    members: readonly { address: string; assemblyBindings?: readonly { assemblyHash: string }[] }[],
 ): BoundAssembly {
-    const compositionHash = assemblyCompositionHash(bound.hydratedAssembly.assembly);
+    const assemblyHash = assemblyHashOf(bound.hydratedAssembly.assembly);
     const counterpartyBindings = bound.counterpartyBindings
         .map((cb) => ({
             ...cb,
             addresses: cb.addresses.filter((a) => {
                 const member = findListingByAddress(members, a);
-                return !!member && bindsAssembly(member, compositionHash);
+                return !!member && bindsAssembly(member, assemblyHash);
             }),
         }))
         .filter((cb) => cb.addresses.length > 0);

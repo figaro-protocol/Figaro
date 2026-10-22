@@ -73,11 +73,11 @@ test.describe('a seller refuses an order under an assembly it has not bound (dev
         const anvil = new Set(ANVIL_ACCOUNTS.map((a) => a.toLowerCase()));
         const members = (await discoverMembers()).filter((m) =>
             anvil.has(m.address.toLowerCase()) && m.address.toLowerCase() !== BUYER.address.toLowerCase()
-            && m.assemblyBindings.some((b) => anchored.some((a) => isBindingOf(b, a.compositionHash))));
+            && m.assemblyBindings.some((b) => anchored.some((a) => isBindingOf(b, a.assemblyHash))));
         let pair: { seller: Hex; notBound: (typeof anchored)[number] } | undefined;
         for (const m of members) {
             const notBound = anchored.find((a) => a.agreements.length === 1
-                && !m.assemblyBindings.some((b) => isBindingOf(b, a.compositionHash)));
+                && !m.assemblyBindings.some((b) => isBindingOf(b, a.assemblyHash)));
             if (notBound) { pair = { seller: m.address, notBound }; break; }
         }
         expect(pair, 'a registered seller and an anchored single-order assembly its profile does not bind').toBeDefined();
@@ -98,8 +98,8 @@ test.describe('a seller refuses an order under an assembly it has not bound (dev
             buyer: BUYER.address, currency, chainId: 31337, core, specs, deadline: chainNow + 3600n,
             nodes: (planned) => ({ seller: SELLER, payment, overrides: planned.index === 0 ? filled : undefined }),
         });
-        expect(order.agreement.provenance?.compositionHash, 'the order names the assembly in its provenance leaf')
-            .toBe(notBound.compositionHash);
+        expect(order.agreement.provenance?.assemblyHash, 'the order names the assembly in its provenance leaf')
+            .toBe(notBound.assemblyHash);
         const { typedData } = buildCommitment({ ...order.commitment }, buildDomain(31337, core));
         const buyerSig = await BUYER.signTypedData(typedData as unknown as Parameters<typeof BUYER.signTypedData>[0]);
         const payload = serializeCommitmentPayload({ commitment: order.commitment, agreement: order.agreement, buyerSig });
@@ -124,8 +124,8 @@ test.describe('a seller refuses an order under an assembly it has not bound (dev
         // ── The reaction: the refusal names the assembly by slug and hash. ──
         const refusal = page.getByTestId('sign-error');
         await expect(refusal, 'the seller refuses the order').toContainText('has not bound assembly', { timeout: 60000 });
-        await expect(refusal).toContainText(deriveAssemblySlug(notBound.compositionHash));
-        await expect(refusal).toContainText(notBound.compositionHash);
+        await expect(refusal).toContainText(deriveAssemblySlug(notBound.assemblyHash));
+        await expect(refusal).toContainText(notBound.assemblyHash);
         await expect(page.getByTestId('agreement-preview-modal'), 'no confirm opens: nothing reaches a signature').toHaveCount(0);
 
         // ── Out of band: no order committed, no token moved. ──

@@ -11,7 +11,7 @@ import {
 import { useMemberResolutionHistory } from "@/lib/member/useMemberResolutionHistory";
 
 function distinctAssemblySlugs(listing: Listing): string[] {
-    return Array.from(new Set(listing.bindings.map((b) => deriveAssemblySlug(b.compositionHash))));
+    return Array.from(new Set(listing.bindings.map((b) => deriveAssemblySlug(b.assemblyHash))));
 }
 
 interface MemberCardProps {

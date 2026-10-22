@@ -14,7 +14,7 @@
  * speak one shape.
  */
 
-import { agreementHashOf, canonicalize, assemblyCompositionHash } from "@figaro-protocol/sdk";
+import { agreementHashOf, canonicalize, assemblyHashOf } from "@figaro-protocol/sdk";
 import { keccak256 } from "viem";
 import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
 import { safeJsonParse, strippingReviver } from "@/lib/shared/safeJson";
@@ -113,7 +113,7 @@ export interface ExplorerRow {
     contentURI: string;
     /** The digest the CHAIN anchors for this row: the clause key (the hash of
      *  the pinned spec bytes) for a clause, `AgreementRegistry`'s agreement
-     *  hash for an agreement, `AssemblyRegistry`'s `compositionHash` for an
+     *  hash for an agreement, `AssemblyRegistry`'s `assemblyHash` for an
      *  assembly.
      *  Empty where the family anchors none. */
     anchoredHash: string;
@@ -168,15 +168,15 @@ function compareRows(a: ExplorerRow, b: ExplorerRow, sort: RegistrySort): number
  *   (`agreementHashOf`); the designer's editorial fields ride in the same
  *   document outside the key.
  *
- *   `composition-hash` — assemblies. `AssemblyRegistry`'s `compositionHash` is
+ *   `assembly-hash` — assemblies. `AssemblyRegistry`'s `assemblyHash` is
  *   the merkle root over the assembly's agreements (each agreement's agreement
  *   hash and its own fills) and, where composed, its assembly-scoped clauses
- *   (`assemblyCompositionHash`). The designer's editorial
+ *   (`assemblyHashOf`). The designer's editorial
  *   fields (name, summary, description) ride in the same document and are
  *   deliberately NOT covered: a differently-worded assembly is the same
  *   assembly, a differently-termed one is not.
  */
-export type StoredDocumentAnchor = "content-hash" | "agreement-hash" | "composition-hash";
+export type StoredDocumentAnchor = "content-hash" | "agreement-hash" | "assembly-hash";
 
 /** Which digest a family anchors. Members anchor none — a profile is the
  *  member's own declaration, re-pinnable at will, not a registration. */
@@ -185,7 +185,7 @@ export function anchorForFamily(family: RegistryFamily): StoredDocumentAnchor | 
         ? "content-hash"
         : family === "agreements"
             ? "agreement-hash"
-            : family === "assemblies" ? "composition-hash" : null;
+            : family === "assemblies" ? "assembly-hash" : null;
 }
 
 /** The one-line statement of what the chain's digest covers, per anchor. Shown
@@ -195,8 +195,8 @@ export const STORED_DOCUMENT_NOTE: Record<StoredDocumentAnchor, string> = {
         "The hash on chain is the clause key: the keccak256 of exactly these bytes, as pinned. The designer pins the spec's canonical form — object keys sorted at every depth, no whitespace — so anyone can hash the bytes the gateway serves and reproduce the key; the same document in any other byte form is another key.",
     "agreement-hash":
         "The hash on chain is the agreement hash: the keccak256 of the canonical form of this document's clauses — the clauses composed for one agreement. The designer's editorial wording rides in the same document and is deliberately outside the key.",
-    "composition-hash":
-        "The hash on chain is the composition root: the merkle root over this document's agreements — each one the key of the registered agreement it binds and its own fills — and the assembly-scoped clauses where it composes any. The designer's editorial wording rides in the same document and is deliberately outside the anchor.",
+    "assembly-hash":
+        "The hash on chain is the assembly root: the merkle root over this document's agreements — each one the key of the registered agreement it binds and its own fills — and the assembly-scoped clauses where it composes any. The designer's editorial wording rides in the same document and is deliberately outside the anchor.",
 };
 
 /** A pinned document read back and checked against the chain's own digest. */
@@ -285,7 +285,7 @@ export function storedDocument(fetched: Uint8Array | string, anchored: string, a
                 ? keccak256(bytes)
                 : anchor === "agreement-hash"
                     ? agreementHashOf(parsed as unknown as Parameters<typeof agreementHashOf>[0])
-                    : assemblyCompositionHash(parsed as unknown as Parameters<typeof assemblyCompositionHash>[0]);
+                    : assemblyHashOf(parsed as unknown as Parameters<typeof assemblyHashOf>[0]);
     } catch {
         // A document that parses but carries no composition to hash cannot
         // reproduce the anchor. Absence of a recomputation, never a match.

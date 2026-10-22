@@ -84,7 +84,7 @@ export interface OverlayGraph {
     spec: ProjectionSpecView | null;
     /** True when the key is the agreement format's reserved provenance leaf
      *  (`PROVENANCE_LEAF_KEY`) — compared to the format constant, never to a
-     *  clause name. Its entries decode to `{ agreementHash, compositionHash }`,
+     *  clause name. Its entries decode to `{ agreementHash, assemblyHash }`,
      *  the registered agreement and assembly the attested order
      *  instantiated, with no spec. */
     provenanceLeaf: boolean;

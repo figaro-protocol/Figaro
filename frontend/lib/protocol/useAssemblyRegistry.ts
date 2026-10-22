@@ -54,14 +54,14 @@ export interface PublishOutcome {
 
 /**
  * A single registered assembly, reconstructed from an `AssemblyRegistered`
- * event. compositionHash + registeredBy come from indexed topics; contentURI is
+ * event. assemblyHash + registeredBy come from indexed topics; contentURI is
  * event data. The slug exists nowhere on-chain — it is derived here as a
- * pure function of compositionHash (`deriveAssemblySlug`).
+ * pure function of assemblyHash (`deriveAssemblySlug`).
  */
 interface PublishedAssembly {
     slug: string;
     registeredBy: `0x${string}`;
-    compositionHash: `0x${string}`;
+    assemblyHash: `0x${string}`;
     contentURI: string;
     blockNumber: bigint;
     transactionHash: `0x${string}`;
@@ -80,10 +80,10 @@ interface PublishedAssembly {
 export function translatePublishRevert(err: unknown, attemptedSlug: string): Error {
     return translateContractRevert(err, (name, args) => {
         switch (name) {
-            case "CompositionAlreadyRegistered":
+            case "AssemblyAlreadyRegistered":
                 return `This assembly is already published — an identical composition is anchored on-chain as "${attemptedSlug}". Identity is the composition, so the same composition always maps to one binding; adopt the existing one rather than re-publishing.`;
-            case "ZeroCompositionHash":
-                return "Computed an empty composition hash — likely a assembly-builder bug.";
+            case "ZeroAssemblyHash":
+                return "Computed an empty assembly hash — likely a assembly-builder bug.";
             default:
                 return sharedRegisterRevertMessage(name, args);
         }
@@ -110,7 +110,7 @@ export const useWithdrawAssembly = createUseWithdrawStake({
  * Reads `AssemblyRegistered` events from the registry, optionally filtered
  * to a specific registering wallet. Returns the most-recent-first list — the
  * composition binding is first-write-wins on-chain, so duplicates per
- * compositionHash shouldn't occur, but if they do (e.g. a stale fork
+ * assemblyHash shouldn't occur, but if they do (e.g. a stale fork
  * chain), the most-recent block wins.
  *
  * SURFACING DERIVES FROM THE LIVE STAKE (K4): `DepositWithdrawn` events
@@ -136,16 +136,16 @@ const useAssemblyRegistryScan = createRegistryEventScan<PublishedAssembly>({
         // Decoding is the SDK's — one parse per family.
         const withdrawn = new Set(
             parseAssemblyRegistryLogs(withdrawnLogs).withdrawn
-                .map((w) => w.compositionHash.toLowerCase()),
+                .map((w) => w.assemblyHash.toLowerCase()),
         );
         const items: PublishedAssembly[] = parseAssemblyRegistryLogs(registeredLogs).registered.map((row) => ({
-            slug: deriveAssemblySlug(row.compositionHash),
+            slug: deriveAssemblySlug(row.assemblyHash),
             registeredBy: row.registeredBy,
-            compositionHash: row.compositionHash,
+            assemblyHash: row.assemblyHash,
             contentURI: row.contentURI,
             blockNumber: BigInt(row.blockNumber),
             transactionHash: (row.transactionHash ?? "0x") as `0x${string}`,
-            stakeWithdrawn: withdrawn.has(row.compositionHash.toLowerCase()),
+            stakeWithdrawn: withdrawn.has(row.assemblyHash.toLowerCase()),
         }));
         items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
         // All rows, flagged — the de-surface policy is applied in
@@ -175,39 +175,39 @@ export function useAllPublishedAssemblies() {
 /**
  * Fetch the IPFS-pinned assembly at `contentURI` and VERIFY it
  * against the anchored identity: the fetched document's recomputed
- * composition hash must equal the on-chain `compositionHash`. A document
+ * assembly hash must equal the on-chain `assemblyHash`. A document
  * that fails verification is treated exactly like an unreachable one —
  * null, never rendered (a tampered or mismatched pin is absence, not
  * content). Returns null on gateway failure, malformed JSON, or hash
  * mismatch.
  */
-/** PERMANENT failures, by composition root: the assembly the binding points
+/** PERMANENT failures, by assembly root: the assembly the binding points
  *  at was served and is not the one the root anchors, or an agreement's
  *  registered agreement failed permanently (`getRegisteredAgreementLoadError`).
  *  A gateway miss keeps nothing and is read again; this is never re-read. */
 const loadErrors = new Map<string, string>();
 
-/** The permanent load failure recorded for a composition root, if any. */
-export function getAssemblyLoadError(compositionHash: string): string | undefined {
-    return loadErrors.get(compositionHash.toLowerCase());
+/** The permanent load failure recorded for a assembly root, if any. */
+export function getAssemblyLoadError(assemblyHash: string): string | undefined {
+    return loadErrors.get(assemblyHash.toLowerCase());
 }
 
 export async function fetchAssembly(
     contentURI: string,
-    expectedCompositionHash: `0x${string}`,
+    expectedAssemblyHash: `0x${string}`,
 ): Promise<Anchored<Assembly> | null> {
-    // Size-capped fetch (F4) and a reviver-backed parse: the compositionHash proves
+    // Size-capped fetch (F4) and a reviver-backed parse: the assemblyHash proves
     // DESIGNER-integrity, not prototype-pollution safety — the registering wallet is
     // untrusted (the AssemblyRegistry is permissionless), so a hostile assembly can be
     // anchored under its own hash and pass verification. Matches the clause-spec path;
     // strips __proto__/constructor/prototype.
     return fetchPinnedDocument(
         contentURI,
-        (text) => anchorAssembly(safeJsonParse<unknown>(text), expectedCompositionHash),
+        (text) => anchorAssembly(safeJsonParse<unknown>(text), expectedAssemblyHash),
         () => {
-            loadErrors.set(expectedCompositionHash.toLowerCase(), `integrity failure at ${contentURI}: the document is not the assembly the root anchors`);
+            loadErrors.set(expectedAssemblyHash.toLowerCase(), `integrity failure at ${contentURI}: the document is not the assembly the root anchors`);
             console.warn(
-                `[fetchAssembly] integrity failure at ${contentURI}: the document is not the assembly whose composition the chain anchors (${expectedCompositionHash}) — dropping`,
+                `[fetchAssembly] integrity failure at ${contentURI}: the document is not the assembly whose composition the chain anchors (${expectedAssemblyHash}) — dropping`,
             );
         },
     );
@@ -215,7 +215,7 @@ export async function fetchAssembly(
 
 /**
  * The assembly a checkout, a view or a member profile consumes: the assembly
- * read and verified against its composition root (`fetchAssembly`),
+ * read and verified against its assembly root (`fetchAssembly`),
  * then every agreement's registered agreement read from `AgreementRegistry`
  * by key and verified against it (`hydrateAnchoredAssembly`). Null when the
  * assembly or any agreement's agreement is absent — the assembly is not
@@ -223,9 +223,9 @@ export async function fetchAssembly(
  */
 export async function fetchHydratedAssembly(
     contentURI: string,
-    expectedCompositionHash: `0x${string}`,
+    expectedAssemblyHash: `0x${string}`,
 ): Promise<HydratedAssembly | null> {
-    const assembly = await fetchAssembly(contentURI, expectedCompositionHash);
+    const assembly = await fetchAssembly(contentURI, expectedAssemblyHash);
     if (!assembly) return null;
     const hydrated = await hydrateAnchoredAssembly(assembly);
     if (hydrated === null) {
@@ -234,7 +234,7 @@ export async function fetchHydratedAssembly(
         const failed = assembly.agreements.find((entry) => getRegisteredAgreementLoadError(entry.agreementHash));
         if (failed) {
             loadErrors.set(
-                expectedCompositionHash.toLowerCase(),
+                expectedAssemblyHash.toLowerCase(),
                 `agreement ${failed.id} binds ${failed.agreementHash}, whose document is not the agreement the key names`,
             );
         }
@@ -249,12 +249,12 @@ export async function fetchHydratedAssembly(
  * Null when unbound, unreachable or not the assembly the root names.
  */
 export async function fetchAssemblyByHash(
-    compositionHash: `0x${string}`,
+    assemblyHash: `0x${string}`,
 ): Promise<Anchored<Assembly> | null> {
     const registry = getAssemblyRegistry();
     if (!registry) return null;
-    const binding = await readRegistryBinding(registry, ASSEMBLY_REGISTRY_ABI, compositionHash);
-    return binding ? fetchAssembly(binding[3], compositionHash) : null;
+    const binding = await readRegistryBinding(registry, ASSEMBLY_REGISTRY_ABI, assemblyHash);
+    return binding ? fetchAssembly(binding[3], assemblyHash) : null;
 }
 
 /**
@@ -266,8 +266,8 @@ export async function fetchAssemblyByHash(
  * the document its key names.
  */
 export async function fetchHydratedAssemblyByHash(
-    compositionHash: `0x${string}`,
+    assemblyHash: `0x${string}`,
 ): Promise<HydratedAssembly | null> {
-    const assembly = await fetchAssemblyByHash(compositionHash);
+    const assembly = await fetchAssemblyByHash(assemblyHash);
     return assembly ? hydrateAnchoredAssembly(assembly) : null;
 }

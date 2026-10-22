@@ -89,14 +89,14 @@ describe("DiscoveryGraph — assemblies", () => {
     it("surfaces registered assemblies and de-surfaces on withdraw", () => {
         const g = reconstructDiscovery(mkEvents({
             assemblyRegistered: [
-                { compositionHash: COMP_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a1", blockNumber: 1, logIndex: 0 },
-                { compositionHash: COMP_2, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a2", blockNumber: 1, logIndex: 1 },
+                { assemblyHash: COMP_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a1", blockNumber: 1, logIndex: 0 },
+                { assemblyHash: COMP_2, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://a2", blockNumber: 1, logIndex: 1 },
             ],
-            assemblyWithdrawn: [{ compositionHash: COMP_1, registeredBy: ASM_REGISTERED_BY, blockNumber: 9, logIndex: 0 }],
+            assemblyWithdrawn: [{ assemblyHash: COMP_1, registeredBy: ASM_REGISTERED_BY, blockNumber: 9, logIndex: 0 }],
         }));
         const live = g.getAssemblies();
         expect(live).toHaveLength(1);
-        expect(live[0].compositionHash).toBe(COMP_2);
+        expect(live[0].assemblyHash).toBe(COMP_2);
         expect(g.getAssembly(COMP_1)).toBeUndefined();
         expect(g.getAssembly(COMP_2)?.contentURI).toBe("ipfs://a2");
     });
@@ -191,7 +191,7 @@ describe("DiscoveryGraph — members (order-dependent liveness)", () => {
 describe("registry log parsers (decode round-trip — no chain)", () => {
     // Hand-build the exact { data, topics } shape a node returns, then parse it
     // back — proves the ABI decode + field mapping (the silent
-    // a.clauseId/a.compositionHash trap). topic0 = keccak(canonical signature);
+    // a.clauseId/a.assemblyHash trap). topic0 = keccak(canonical signature);
     // indexed params are the remaining topics; non-indexed params are the data.
     const addrTopic = (a: Address): Hex => pad(a.toLowerCase() as Hex, { size: 32 });
     function mkLog(
@@ -242,15 +242,15 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
         expect(parseMembersRegistryLogs([claim]).withdrawn).toHaveLength(0);
     });
 
-    it("parses AssemblyRegistered + DepositWithdrawn keyed by compositionHash", () => {
+    it("parses AssemblyRegistered + DepositWithdrawn keyed by assemblyHash", () => {
         const reg = mkLog("AssemblyRegistered(bytes32,address,string)", [COMP_1, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "string" }], ["ipfs://a"], 1n, 0);
         const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [COMP_1, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "uint256" }], [10n], 2n, 0);
         const parsed = parseAssemblyRegistryLogs([reg, wd]);
-        expect(parsed.registered[0].compositionHash).toBe(COMP_1);
+        expect(parsed.registered[0].assemblyHash).toBe(COMP_1);
         expect(parsed.registered[0].contentURI).toBe("ipfs://a");
-        expect(parsed.withdrawn[0].compositionHash).toBe(COMP_1);
+        expect(parsed.withdrawn[0].assemblyHash).toBe(COMP_1);
     });
 
     it("parses AgreementRegistered + DepositWithdrawn keyed by agreementHash", () => {

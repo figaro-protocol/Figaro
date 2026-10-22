@@ -13,7 +13,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
     agreementHashOf,
-    assemblyCompositionHash,
+    assemblyHashOf,
     assertAgreementSignable,
     buildAssembly,
     composeOrderAgreement,
@@ -84,13 +84,13 @@ describe("assertAgreementSignable — the shared sign gate", () => {
             assembly: { agreements: [{ id: "order-0", agreementHash, clauses: {} }] },
             agreements: { [agreementHash.toLowerCase() as `0x${string}`]: registered },
         };
-        const named = { ...agreement, provenance: { agreementHash, compositionHash: assemblyCompositionHash(design.assembly) } };
+        const named = { ...agreement, provenance: { agreementHash, assemblyHash: assemblyHashOf(design.assembly) } };
         expect(() => assertAgreementSignable(named, computeCheckoutHash(named), SPECS, STRUCT, design)).not.toThrow();
         // The root without the provenance leaf is not this agreement's.
         expect(() => assertAgreementSignable(named, computeCheckoutHash(agreement), SPECS, STRUCT, design)).toThrow(/merkle/);
         // An agreement naming a design no one read is refused.
         expect(() => assertAgreementSignable(named, computeCheckoutHash(named), SPECS, STRUCT, null)).toThrow(/was not read/);
-        const malformed = { ...agreement, provenance: { agreementHash: `0x${"6f".repeat(32)}`, compositionHash: "0x5e" } as const };
+        const malformed = { ...agreement, provenance: { agreementHash: `0x${"6f".repeat(32)}`, assemblyHash: "0x5e" } as const };
         expect(() => assertAgreementSignable(malformed, computeCheckoutHash(agreement), SPECS, STRUCT, null))
             .toThrow(/32-byte/);
     });
@@ -245,7 +245,7 @@ describe("projection — golden-vector byte-exactness", () => {
             defaults: { canonicalAgreement: string; checkoutHash: string };
             processLog: { canonicalAgreement: string; checkoutHash: string };
         };
-        assembly: { canonicalJson: string; compositionHash: string; agreements: Record<string, string> };
+        assembly: { canonicalJson: string; assemblyHash: string; agreements: Record<string, string> };
     };
 
     it("spec-default injection reproduces the frozen agreement + hash", () => {
@@ -270,7 +270,7 @@ describe("projection — golden-vector byte-exactness", () => {
         expect(checkoutHash).toBe(vectors.agreementProjection.processLog.checkoutHash);
     });
 
-    it("the mandatory pick + relabeling + assembly terms reproduce the frozen assembly + compositionHash", () => {
+    it("the mandatory pick + relabeling + assembly terms reproduce the frozen assembly + assemblyHash", () => {
         // figaro-applicable-law is ASSEMBLY-SCOPED (design.scope: "assembly")
         // and DESIGNER-AUTHORED (design.fills — recourse
         // terms are part of the assembly's identity, never buyer-authored),
@@ -288,7 +288,7 @@ describe("projection — golden-vector byte-exactness", () => {
         });
         const assembly = serializeAssembly(built.assembly);
         expect(assembly.json).toBe(vectors.assembly.canonicalJson);
-        expect(assembly.compositionHash).toBe(vectors.assembly.compositionHash);
+        expect(assembly.assemblyHash).toBe(vectors.assembly.assemblyHash);
         expect(Object.fromEntries(Object.entries(built.agreements).map(([k, v]) => [k, canonicalize(v)])))
             .toEqual(vectors.assembly.agreements);
     });
@@ -693,8 +693,8 @@ describe("the sign gate's design check — the designer's values against the des
         },
         agreements: { [agreementHash.toLowerCase() as `0x${string}`]: registered },
     };
-    const compositionHash = assemblyCompositionHash(design.assembly);
-    const instantiate = (consent: Record<string, unknown>, law: Record<string, unknown>, provenance = { agreementHash, compositionHash }) => {
+    const assemblyHash = assemblyHashOf(design.assembly);
+    const instantiate = (consent: Record<string, unknown>, law: Record<string, unknown>, provenance = { agreementHash, assemblyHash }) => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-consent")]: consent,
@@ -727,7 +727,7 @@ describe("the sign gate's design check — the designer's values against the des
             expect(check.ok).toBe(false);
             expect(check.issues).toHaveLength(1);
             expect(() => assertAgreementSignable(short, computeCheckoutHash(short), DESIGN_SPECS, STRUCT, design))
-                .toThrow(new RegExp(`${dropped} clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(compositionHash)} \\(${compositionHash}\\) composes`));
+                .toThrow(new RegExp(`${dropped} clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(assemblyHash)} \\(${assemblyHash}\\) composes`));
         }
     });
 
@@ -739,7 +739,7 @@ describe("the sign gate's design check — the designer's values against the des
             assembly: { agreements: [{ id: "order-0", agreementHash: logKey, clauses: {} }] },
             agreements: { [logKey.toLowerCase() as `0x${string}`]: withLog },
         };
-        const provenance = { agreementHash: logKey, compositionHash: assemblyCompositionHash(logDesign.assembly) };
+        const provenance = { agreementHash: logKey, assemblyHash: assemblyHashOf(logDesign.assembly) };
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-merchant-process")]: {},
@@ -772,7 +772,7 @@ describe("the sign gate's design check — the designer's values against the des
             assembly: built.assembly,
             agreements: { [entry.agreementHash.toLowerCase() as `0x${string}`]: built.agreements[entry.agreementHash] },
         };
-        const provenance = { agreementHash: entry.agreementHash, compositionHash: assemblyCompositionHash(built.assembly) };
+        const provenance = { agreementHash: entry.agreementHash, assemblyHash: assemblyHashOf(built.assembly) };
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-topology")]: { parentOrderHashes: [] },
@@ -787,7 +787,7 @@ describe("the sign gate's design check — the designer's values against the des
 
     it("refuses a design that is not the one the agreement's provenance names", () => {
         const { agreement, checkoutHash } = instantiate({ documents: DOCS }, { applicableLaw: "England-Wales" },
-            { agreementHash, compositionHash: `0x${"5e".repeat(32)}` });
+            { agreementHash, assemblyHash: `0x${"5e".repeat(32)}` });
         expect(() => assertAgreementSignable(agreement, checkoutHash, DESIGN_SPECS, STRUCT, design))
             .toThrow(/provenance/);
     });

@@ -28,7 +28,7 @@ const V2 = pinSpec({ ...canonical, version: 2 });
 
 type Assemblies = Parameters<typeof readAssemblyUtilityTokenPins>[0];
 const assembly = (clauseKey: string): Assemblies[number] => ({
-    compositionHash: `0x${"ab".repeat(32)}`,
+    assemblyHash: `0x${"ab".repeat(32)}`,
     agreementHashes: [],
     name: "pinned",
     clauseSets: [{ clauses: { [clauseKey]: { currency: TOKEN } } }],
@@ -55,7 +55,7 @@ describe("readAssemblyUtilityTokenPins — the pin read from the composed key's 
 
 // Attribution rides the agreement FORMAT's provenance leaf: the graph is told
 // by `provenanceLeaf` (the reserved key), its entries decode to
-// `{ agreementHash, compositionHash }` with no spec, and an entry whose payload
+// `{ agreementHash, assemblyHash }` with no spec, and an entry whose payload
 // did not recover still attributes when its fingerprint is the
 // `provenanceContentRef` of a loaded assembly's agreement.
 describe("attributionFromOverlays — the provenance leaf", () => {
@@ -63,8 +63,8 @@ describe("attributionFromOverlays — the provenance leaf", () => {
     const OTHER = `0x${"7b".repeat(32)}` as `0x${string}`;
     const AGREEMENT_HASH = `0x${"8b".repeat(32)}` as `0x${string}`;
     const LOADED = [
-        { compositionHash: COMPOSITION, agreementHashes: [AGREEMENT_HASH] },
-        { compositionHash: OTHER, agreementHashes: [AGREEMENT_HASH] },
+        { assemblyHash: COMPOSITION, agreementHashes: [AGREEMENT_HASH] },
+        { assemblyHash: OTHER, agreementHashes: [AGREEMENT_HASH] },
     ];
     const PROCESS_A = `0x${"01".repeat(32)}` as `0x${string}`;
     const PROCESS_B = `0x${"02".repeat(32)}` as `0x${string}`;
@@ -86,8 +86,8 @@ describe("attributionFromOverlays — the provenance leaf", () => {
         entries,
     });
 
-    it("attributes a decoded leaf entry to its composition hash", () => {
-        const graph = leafGraph([entry(PROCESS_A, provenanceContentRef(AGREEMENT_HASH, COMPOSITION), { agreementHash: AGREEMENT_HASH, compositionHash: COMPOSITION })]);
+    it("attributes a decoded leaf entry to its assembly hash", () => {
+        const graph = leafGraph([entry(PROCESS_A, provenanceContentRef(AGREEMENT_HASH, COMPOSITION), { agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION })]);
         expect(attributionFromOverlays([graph], []).get(PROCESS_A)).toBe(COMPOSITION);
     });
 
@@ -105,9 +105,9 @@ describe("attributionFromOverlays — the provenance leaf", () => {
         const clauseGraph: OverlayGraph = {
             boundary: "protocol-derived",
             clauseKey: `0x${"44".repeat(32)}`,
-            spec: { clauseId: "some-clause", version: 1, title: "t", fields: [{ name: "compositionHash", type: "string" }] } as unknown as NonNullable<OverlayGraph["spec"]>,
+            spec: { clauseId: "some-clause", version: 1, title: "t", fields: [{ name: "assemblyHash", type: "string" }] } as unknown as NonNullable<OverlayGraph["spec"]>,
             provenanceLeaf: false,
-            entries: [entry(PROCESS_A, `0x${"66".repeat(32)}`, { compositionHash: COMPOSITION })],
+            entries: [entry(PROCESS_A, `0x${"66".repeat(32)}`, { assemblyHash: COMPOSITION })],
         };
         expect(attributionFromOverlays([clauseGraph], LOADED).size).toBe(0);
     });

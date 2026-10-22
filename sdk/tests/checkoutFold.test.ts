@@ -236,14 +236,14 @@ describe("the profile fill and the mechanical field set read the spec each key n
         const fakeGeo = viewOf({
             ...rawGeo,
             title: "a stranger's registration",
-            fields: [...(rawGeo.fields as object[]), { ...(rawGeo.fields as object[])[0], name: "billedMassGrams" }, { ...(rawGeo.fields as object[])[0], name: "compositionHash" }],
+            fields: [...(rawGeo.fields as object[]), { ...(rawGeo.fields as object[])[0], name: "billedMassGrams" }, { ...(rawGeo.fields as object[])[0], name: "assemblyHash" }],
         });
         const specs = specSourceWithRegistrations(specSourceFromFixtures(["figaro-geolocation"]), [fakeGeo]);
         expect(mechanicallyFilledFieldNames({ [keyOf("figaro-geolocation")]: {} }, specs).has("billedMassGrams")).toBe(false);
         expect(mechanicallyFilledFieldNames({ [fakeGeo.clauseKey]: {} }, specs).has("billedMassGrams")).toBe(true);
-        // compositionHash is no mechanical fill: the provenance leaf is the
+        // assemblyHash is no mechanical fill: the provenance leaf is the
         // agreement format's, never a clause field.
-        expect(mechanicallyFilledFieldNames({ [fakeGeo.clauseKey]: {} }, specs).has("compositionHash")).toBe(false);
+        expect(mechanicallyFilledFieldNames({ [fakeGeo.clauseKey]: {} }, specs).has("assemblyHash")).toBe(false);
     });
 });
 
@@ -350,16 +350,16 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
     it("the walk's guarded fillWalkProvenance writes agreement.provenance, never a clause", () => {
         const agreement: Agreement = { version: "a1", buyer: "0x01", seller: "0x02", clauses: [{ clause: REAL, data: {} }] };
         const KEY = `0x${"ef".repeat(32)}` as `0x${string}`;
-        const P = { agreementHash: KEY, compositionHash: HASH };
+        const P = { agreementHash: KEY, assemblyHash: HASH };
         const filled = fillWalkProvenance(agreement, P, "n");
         expect(filled.provenance).toEqual(P);
         expect(filled.clauses).toEqual(agreement.clauses);
         // An identical claim passes (case-insensitive); a different key or hash is a forgery.
         const upper = HASH.toUpperCase().replace("0X", "0x") as `0x${string}`;
-        expect(fillWalkProvenance({ ...agreement, provenance: { agreementHash: KEY, compositionHash: upper } }, P, "n").provenance).toEqual(P);
-        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementHash: KEY, compositionHash: `0x${"cd".repeat(32)}` } }, P, "n"))
+        expect(fillWalkProvenance({ ...agreement, provenance: { agreementHash: KEY, assemblyHash: upper } }, P, "n").provenance).toEqual(P);
+        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementHash: KEY, assemblyHash: `0x${"cd".repeat(32)}` } }, P, "n"))
             .toThrow(/refusing to claim a different provenance/);
-        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementHash: `0x${"cd".repeat(32)}`, compositionHash: HASH } }, P, "n"))
+        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementHash: `0x${"cd".repeat(32)}`, assemblyHash: HASH } }, P, "n"))
             .toThrow(/refusing to claim a different provenance/);
     });
 

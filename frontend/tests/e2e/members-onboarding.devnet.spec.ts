@@ -188,7 +188,7 @@ async function onboardViaWizard(
     // this browser under this wallet until they publish it.
     await draftCarries(page, '"offered":true');
     // The binding the draft holds names the assembly by its full hash.
-    await draftCarries(page, assembly.compositionHash);
+    await draftCarries(page, assembly.assemblyHash);
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(
         page.getByTestId(`seller-assembly-row-${slug}`).locator('input[type="checkbox"]').first(),
@@ -349,7 +349,7 @@ test.describe("member registration wizard (devnet)", () => {
         if (uriBefore) {
             const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
             const doc = await (await fetch(`${gateway}/ipfs/${uriBefore.slice("ipfs://".length)}`)).json();
-            const bindings = (doc.assemblyBindings ?? []) as Array<{ compositionHash?: string }>;
+            const bindings = (doc.assemblyBindings ?? []) as Array<{ assemblyHash?: string }>;
             // Premise: exactly the single-order binding AND both devnet tokens
             // accepted (the permit token is the swap-funded leg's input set —
             // an older single-token profile gets repaired in update mode).
@@ -358,11 +358,11 @@ test.describe("member registration wizard (devnet)", () => {
             // The buyer half is part of the premise now: at least one
             // subscription and one offered buyer-posture class. An older
             // seller-only profile gets repaired in update mode.
-            const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ compositionHash: string }>;
+            const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ assemblyHash: string }>;
             const policyEntries = (doc.disclosurePolicy ?? []) as Array<{ posture: string; offered: boolean }>;
             const buyerOffered = policyEntries.some((e) => e.posture === "buyer" && e.offered === true);
             const sellerOffered = policyEntries.some((e) => e.posture === "seller" && e.offered === true);
-            conformant = bindings.length === 1 && isBindingOf(bindings[0], singleOrderAssembly!.compositionHash)
+            conformant = bindings.length === 1 && isBindingOf(bindings[0], singleOrderAssembly!.assemblyHash)
                 && !!permitToken
                 && acceptedTokens.some((t) => t.address?.toLowerCase() === permitToken)
                 && buyerSubs.length >= 1 && buyerOffered && sellerOffered;
@@ -384,9 +384,9 @@ test.describe("member registration wizard (devnet)", () => {
         {
             const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
             const doc = await (await fetch(`${gateway}/ipfs/${profileURI!.slice("ipfs://".length)}`)).json();
-            const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ compositionHash: string }>;
+            const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ assemblyHash: string }>;
             expect(buyerSubs.length, "the buyer's assembly subscription is in the pinned profile").toBeGreaterThanOrEqual(1);
-            const policy = (doc.disclosurePolicy ?? []) as Array<{ posture: string; offered: boolean; compositionHash: string }>;
+            const policy = (doc.disclosurePolicy ?? []) as Array<{ posture: string; offered: boolean; assemblyHash: string }>;
             const buyerEntry = policy.find((e) => e.posture === "buyer" && e.offered === true);
             expect(buyerEntry, "offered buyer-side data is in the pinned profile").toBeTruthy();
             const sellerEntry = policy.find((e) => e.posture === "seller" && e.offered === true);
@@ -398,7 +398,7 @@ test.describe("member registration wizard (devnet)", () => {
                 "the second accepted token is in the pinned profile",
             ).toBe(true);
             expect(
-                buyerSubs.some((s) => s.compositionHash === buyerEntry!.compositionHash),
+                buyerSubs.some((s) => s.assemblyHash === buyerEntry!.assemblyHash),
                 "the offered buyer class derives from a subscribed assembly",
             ).toBe(true);
         }
@@ -442,9 +442,9 @@ test.describe("member registration wizard (devnet)", () => {
             }),
             discoverMembers(),
         ]);
-        const anchoredHashes = new Set(published.map((e) => (e.args.compositionHash as string).toLowerCase()));
+        const anchoredHashes = new Set(published.map((e) => (e.args.assemblyHash as string).toLowerCase()));
         const nonConformant = allSellers.filter(
-            (s) => !s.assemblyBindings.some((b) => anchoredHashes.has(b.compositionHash?.toLowerCase())),
+            (s) => !s.assemblyBindings.some((b) => anchoredHashes.has(b.assemblyHash?.toLowerCase())),
         );
         for (const seller of nonConformant.slice(0, 5)) {
             await expect(

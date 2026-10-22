@@ -93,11 +93,11 @@ const PRODUCTS = [
 ] as const;
 
 interface PublishedDataMember {
-    /** The slugs derived from the bound assemblies' composition hashes. */
+    /** The slugs derived from the bound assemblies' assembly hashes. */
     bindings: string[];
     subscriptions: string[];
-    offered: Array<{ compositionHash: string; clauseKey: string; posture: string }>;
-    items: Array<{ id: string; name: string; price: string; dataSold?: { compositionHash: string; clauseKey: string; posture: string };
+    offered: Array<{ assemblyHash: string; clauseKey: string; posture: string }>;
+    items: Array<{ id: string; name: string; price: string; dataSold?: { assemblyHash: string; clauseKey: string; posture: string };
         clauseValues?: Record<string, Record<string, unknown>> }>;
 }
 
@@ -111,11 +111,11 @@ async function readPublishedDataMember(): Promise<PublishedDataMember | null> {
     const profile = await fetchPinned(latest);
     const catalog = profile.catalogURI ? await fetchPinned(profile.catalogURI) : { items: [] };
     return {
-        // A binding names its assembly by the full composition hash; the
+        // A binding names its assembly by the full assembly hash; the
         // slug it is compared under is derived from it.
-        bindings: ((profile.assemblyBindings ?? []) as Array<{ compositionHash: `0x${string}` }>).map((b) => deriveAssemblySlug(b.compositionHash)),
-        subscriptions: ((profile.buyerAssemblies ?? []) as Array<{ compositionHash: string }>).map((s) => s.compositionHash),
-        offered: ((profile.disclosurePolicy ?? []) as Array<{ compositionHash: string; clauseKey: string; posture: string; offered: boolean }>)
+        bindings: ((profile.assemblyBindings ?? []) as Array<{ assemblyHash: `0x${string}` }>).map((b) => deriveAssemblySlug(b.assemblyHash)),
+        subscriptions: ((profile.buyerAssemblies ?? []) as Array<{ assemblyHash: string }>).map((s) => s.assemblyHash),
+        offered: ((profile.disclosurePolicy ?? []) as Array<{ assemblyHash: string; clauseKey: string; posture: string; offered: boolean }>)
             .filter((e) => e.offered),
         items: (catalog.items ?? []) as PublishedDataMember['items'],
     };
@@ -128,9 +128,9 @@ async function readPublishedDataMember(): Promise<PublishedDataMember | null> {
 function isTheDataMember(p: PublishedDataMember | null, surveyHash: string, surveySlug: string, streamSlug: string): boolean {
     if (!p) return false;
     const offers = (posture: string) => p.offered.some((e) =>
-        e.compositionHash === surveyHash && e.clauseKey.toLowerCase() === RECORD_CLAUSE && e.posture === posture);
+        e.assemblyHash === surveyHash && e.clauseKey.toLowerCase() === RECORD_CLAUSE && e.posture === posture);
     const priced = (posture: string, scope: string) => p.items.some((i) =>
-        i.dataSold?.compositionHash === surveyHash && i.dataSold.clauseKey.toLowerCase() === RECORD_CLAUSE && i.dataSold.posture === posture
+        i.dataSold?.assemblyHash === surveyHash && i.dataSold.clauseKey.toLowerCase() === RECORD_CLAUSE && i.dataSold.posture === posture
         && i.clauseValues?.[LICENSE_CLAUSE]?.licenseScope === scope);
     return p.bindings.length === 2 && p.bindings.includes(surveySlug) && p.bindings.includes(streamSlug)
         && p.subscriptions.includes(surveyHash)
@@ -240,7 +240,7 @@ async function ensureDataMember(page: Page): Promise<{ streamSlug: string; itemI
         survey!.agreements.some((o) => Object.keys(o.clauses ?? {}).includes(RECORD_CLAUSE)),
         'the survey composes the flight-record clause',
     ).toBe(true);
-    const surveyHash = survey!.compositionHash;
+    const surveyHash = survey!.assemblyHash;
 
     if (!isTheDataMember(await readPublishedDataMember(), surveyHash, surveySlug, streamSlug)) {
         await authorDataMemberThroughWizard(page, surveyHash, surveySlug, streamSlug);
@@ -253,7 +253,7 @@ async function ensureDataMember(page: Page): Promise<{ streamSlug: string; itemI
     ).toBe(true);
     const published = (await readPublishedDataMember())!;
     const idOf = (posture: 'buyer' | 'seller') => published.items.find((i) =>
-        i.dataSold?.compositionHash === surveyHash && i.dataSold.clauseKey.toLowerCase() === RECORD_CLAUSE && i.dataSold.posture === posture)!.id;
+        i.dataSold?.assemblyHash === surveyHash && i.dataSold.clauseKey.toLowerCase() === RECORD_CLAUSE && i.dataSold.posture === posture)!.id;
     return { streamSlug, itemIds: { buyer: idOf('buyer'), seller: idOf('seller') } };
 }
 

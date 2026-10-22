@@ -31,7 +31,7 @@ import {
     waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
-    anchoredCompositionHash,
+    anchoredAssemblyHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
@@ -70,7 +70,7 @@ test.describe('A wallet orders from its own listing (buyer == seller, devnet)', 
         // ── Register the member, bound to the pos reference (identity by slug,
         //    never a clause-shape heuristic — as orders-accept does).
         const slug = referenceAssemblySlug('pos.json');
-        const assemblyHash = await anchoredCompositionHash(slug);
+        const assemblyHash = await anchoredAssemblyHash(slug);
         expect(
             (await discoverAnchoredAssemblies()).some((a) => a.slug === slug),
             'the pos reference (assemblies/pos.json) is anchored — run populate-test-data',
@@ -100,7 +100,7 @@ test.describe('A wallet orders from its own listing (buyer == seller, devnet)', 
                 assemblyBindings: [{
                     bindingId: 'self-order',
                     subjectAddress: SELF,
-                    compositionHash: assemblyHash,
+                    assemblyHash,
                     counterpartyBindings: [],
                 }],
             },

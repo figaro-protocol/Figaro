@@ -63,7 +63,7 @@ attacker-chosen magnitudes/currency, so vouching for them is opt-IN.</p>
 <h3 class="tsd-anchor-link" id="readdesign"><code class="tsd-tag">Optional</code><span>read<wbr/>Design</span><a href="#readdesign" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">readDesign</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">provenance</span><span class="tsd-signature-symbol">:</span> <a href="index.AgreementProvenance.html" class="tsd-signature-type tsd-kind-interface">AgreementProvenance</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="index.HydratedAssembly.html" class="tsd-signature-type tsd-kind-interface">HydratedAssembly</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">&gt;</span></div>
 <div class="tsd-comment tsd-typography"><p>Reads the design an offer's agreement names (its provenance leaf):
-the assembly by its composition hash, every registered agreement
+the assembly by its assembly hash, every registered agreement
 verified against its key; null when it cannot be read. The gate checks
 the designer's values against it, and an offer whose design is not read
 is refused.</p>

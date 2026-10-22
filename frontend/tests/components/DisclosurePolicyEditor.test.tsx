@@ -11,7 +11,7 @@ import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
 const CHOICE: AssemblyChoice = {
     slug: "aerial-survey",
     registeredBy: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    compositionHash: `0x${"ab".repeat(32)}` as `0x${string}`,
+    assemblyHash: `0x${"ab".repeat(32)}` as `0x${string}`,
     contentURI: "ipfs://QmAssembly",
     blockNumber: 1n,
     networkTargets: ["31337"],

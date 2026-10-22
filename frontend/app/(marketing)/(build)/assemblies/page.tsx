@@ -28,7 +28,7 @@ export default function Assemblies() {
                         that wires registered agreements, each a reusable composition of
                         clauses,{" "}
                         into a multi-order process. Each one registers on{" "}
-                        <code>AssemblyRegistry</code> under its <strong>composition hash</strong>
+                        <code>AssemblyRegistry</code> under its <strong>assembly hash</strong>
                         {" "}&mdash; the hash IS the identity &mdash; with an IPFS pointer to its
                         document. The readable slug you see in a URL is <em>derived</em> from
                         that hash off-chain; the registry stores no slug and no name. Sellers
@@ -117,9 +117,9 @@ export default function Assemblies() {
 
             <MarketingSection title="Document-anchored, not catalog-listed.">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    The registry keys every binding by <code>compositionHash</code>, and stores
+                    The registry keys every binding by <code>assemblyHash</code>, and stores
                     exactly four things under it &mdash; call{" "}
-                    <code>bindings(compositionHash)</code> yourself and you get back{" "}
+                    <code>bindings(assemblyHash)</code> yourself and you get back{" "}
                     <code>(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string
                     contentURI)</code>. That is the whole on-chain record. <strong>There is no
                     slug on chain, and no name.</strong> The <code>contentURI</code> points at
@@ -131,7 +131,7 @@ export default function Assemblies() {
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     The slug is <em>derived</em>, not stored: it is a pure function of the
-                    composition hash, <code>deriveAssemblySlug(compositionHash)</code> from{" "}
+                    assembly hash, <code>deriveAssemblySlug(assemblyHash)</code> from{" "}
                     <code>@figaro-protocol/sdk</code>, and every reader computes it from the registry
                     event&apos;s own hash. Identical compositions produce an identical slug;
                     distinct compositions, distinct slugs. Nothing is squattable, because no
@@ -149,7 +149,7 @@ export default function Assemblies() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="What the composition hash covers.">
+            <MarketingSection title="What the assembly hash covers.">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     An assembly&apos;s identity is a merkle root computed over a <em>subset</em> of
                     the document you pin &mdash; one leaf per order, keyed by the registered
@@ -163,7 +163,7 @@ export default function Assemblies() {
                         <thead>
                             <tr className="border-b border-default text-left font-semibold text-ink-heading">
                                 <th scope="col" className="py-2 pr-4">What you write</th>
-                                <th scope="col" className="py-2 pr-4">In <code>compositionHash</code>?</th>
+                                <th scope="col" className="py-2 pr-4">In <code>assemblyHash</code>?</th>
                                 <th scope="col" className="py-2">Why</th>
                             </tr>
                         </thead>
@@ -203,17 +203,17 @@ export default function Assemblies() {
                 </div>
                 <p className="text-sm text-ink-body leading-relaxed mt-5">
                     Both halves are pure functions you can call without a chain &mdash;{" "}
-                    <code>assemblyCompositionHash(assembly)</code> and{" "}
+                    <code>assemblyHashOf(assembly)</code> and{" "}
                     <code>deriveAssemblySlug(hash)</code>, from <code>@figaro-protocol/sdk</code>:
                 </p>
-                <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mt-3"><code>{`import { assemblyCompositionHash,
+                <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mt-3"><code>{`import { assemblyHashOf,
          deriveAssemblySlug } from "@figaro-protocol/sdk";
 
-const h = assemblyCompositionHash(assembly);   // the registry key: the merkle root
+const h = assemblyHashOf(assembly);   // the registry key: the merkle root
 deriveAssemblySlug(h);                         // "asm-<first 8 bytes>"
 
 // Prove prose is excluded: same hash, different words.
-assemblyCompositionHash({ ...assembly, name: "Anything" }) === h;  // true`}</code></pre>
+assemblyHashOf({ ...assembly, name: "Anything" }) === h;  // true`}</code></pre>
                 <p className="text-sm text-ink-body leading-relaxed mt-5">
                     One order matters and is easy to get backwards: compute the hash from the <em>raw</em> assembly, before any buyer, catalog or pricing fill touches it &mdash; compute it after merging those fills and you get a hash the registry never anchored. That trap, and the others that bite at commit, at resolve and at read time, are indexed on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
                 </p>
@@ -222,7 +222,7 @@ assemblyCompositionHash({ ...assembly, name: "Anything" }) === h;  // true`}</co
             <MarketingSection title="Registered assemblies." bottomPad="wide">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     Every registered assembly is searchable in the registry explorer &mdash; each
-                    row one on-chain binding keyed by its composition hash, its assembly fetched
+                    row one on-chain binding keyed by its assembly hash, its assembly fetched
                     from IPFS, its designer of record the wallet that anchored it.
                 </p>
                 <RegistryCountLink family="assemblies" />

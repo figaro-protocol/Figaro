@@ -48,7 +48,7 @@ import {
 } from '@figaro-protocol/sdk';
 import { CORE_ABI, ERC20_ABI } from '@/lib/kernel/contracts';
 import {
-    E2E_CHAIN, LOCAL_ANVIL, RPC_URL, assertPinnedInIpfs, readAgreementBinding, readLocalDeploymentConfig, referenceAssemblySlug, referenceAssemblyCompositionHash, isBindingOf, resolveIpfsURI, scanContractEvents, waitForConnected,
+    E2E_CHAIN, LOCAL_ANVIL, RPC_URL, assertPinnedInIpfs, readAgreementBinding, readLocalDeploymentConfig, referenceAssemblySlug, referenceAssemblyHash, isBindingOf, resolveIpfsURI, scanContractEvents, waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
 } from './devnet-helpers';
@@ -140,7 +140,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
 
             // ═══ 1. MEMBER — the wizard ═══════════════════════════════════════
             const posSlug = referenceAssemblySlug('pos.json');
-            const posHash = referenceAssemblyCompositionHash('pos.json');
+            const posHash = referenceAssemblyHash('pos.json');
             const sellerName = `Smoke counter ${seller.address.slice(2, 8)}`;
             const gateway = (process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080').replace(/\/$/, '');
             const latestUri = async () => {
@@ -162,7 +162,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             if (alreadyRegistered) {
                 const uri = await latestUri();
                 const doc = uri.startsWith('ipfs://')
-                    ? await fetch(`${gateway}/ipfs/${uri.slice('ipfs://'.length)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null) as { name?: string; assemblyBindings?: Array<{ compositionHash?: string }> } | null
+                    ? await fetch(`${gateway}/ipfs/${uri.slice('ipfs://'.length)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null) as { name?: string; assemblyBindings?: Array<{ assemblyHash?: string }> } | null
                     : null;
                 alreadyBound = !!doc && doc.name === sellerName && (doc.assemblyBindings ?? []).some((b) => isBindingOf(b, posHash));
             }
@@ -321,15 +321,15 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             const provenance = committedAgreement!.provenance;
             expect(provenance, 'the order names the assembly it instantiates').toBeTruthy();
             expect(agreementLeaves(committedAgreement!), 'the provenance leaf is a leaf of the committed tree')
-                .toContain(computeProvenanceLeaf(provenance!.agreementHash, provenance!.compositionHash));
-            const decoded = decodeProvenanceContent(provenanceLeafBytes(provenance!.agreementHash, provenance!.compositionHash));
+                .toContain(computeProvenanceLeaf(provenance!.agreementHash, provenance!.assemblyHash));
+            const decoded = decodeProvenanceContent(provenanceLeafBytes(provenance!.agreementHash, provenance!.assemblyHash));
             expect(decoded, 'the provenance leaf decodes to both keys').toEqual(provenance);
-            expect(deriveAssemblySlug(decoded!.compositionHash), 'the assembly is the bound pos reference').toBe(posSlug);
+            expect(deriveAssemblySlug(decoded!.assemblyHash), 'the assembly is the bound pos reference').toBe(posSlug);
             expect(await readAgreementBinding(decoded!.agreementHash), 'the agreement hash is registered on the AgreementRegistry').not.toBeNull();
             const [, assemblyRegisteredAt] = await publicClient.readContract({
-                address: config.assemblyRegistry as Hex, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [decoded!.compositionHash],
+                address: config.assemblyRegistry as Hex, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [decoded!.assemblyHash],
             }) as readonly [Hex, bigint, boolean, string];
-            expect(assemblyRegisteredAt, 'the composition root is registered on the AssemblyRegistry').toBeGreaterThan(0n);
+            expect(assemblyRegisteredAt, 'the assembly root is registered on the AssemblyRegistry').toBeGreaterThan(0n);
 
             // ═══ 6. AUDIT — the record renders ════════════════════════════════
             await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });

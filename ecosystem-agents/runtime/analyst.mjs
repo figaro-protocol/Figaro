@@ -352,20 +352,20 @@ export async function syncCorpus({
     const pins = [];
     // The provenance-leaf fingerprint of every (registered agreement,
     // assembly) pair the verified assemblies compose → that assembly's
-    // composition hash: what attributes a buyer's provenance attestation
+    // assembly hash: what attributes a buyer's provenance attestation
     // whose content was not recovered (`assemblyAttribution`).
     const provenanceContentRefs = new Map();
     for (const assembly of discovery.getAssemblies()) {
         try {
-            // Verified against its composition hash: a assembly a gateway
+            // Verified against its assembly hash: a assembly a gateway
             // substituted contributes no pin.
             const hit = await fetchAnchoredAssembly(assembly, { gateways });
             if (hit.absent) continue;
             for (const entry of hit.assembly.agreements ?? []) {
                 if (BYTES32.test(entry.agreementHash ?? "")) {
                     provenanceContentRefs.set(
-                        provenanceContentRef(entry.agreementHash, assembly.compositionHash).toLowerCase(),
-                        assembly.compositionHash,
+                        provenanceContentRef(entry.agreementHash, assembly.assemblyHash).toLowerCase(),
+                        assembly.assemblyHash,
                     );
                 }
                 // Each agreement's registered agreement, read from its
@@ -430,7 +430,7 @@ export async function syncCorpus({
 
 /**
  * Assembly attribution from two sources, both the agreement format's
- * provenance leaf (the registered agreement and the composition hash of the
+ * provenance leaf (the registered agreement and the assembly hash of the
  * assembly the order instantiated — the format's own field, never a clause):
  *   - the agreements the operator holds (`agreement.provenance`), each
  *     verified against its committed `checkoutHash`;
@@ -447,8 +447,8 @@ export async function syncCorpus({
 function assemblyAttribution(corpus) {
     const byProcess = new Map();
     for (const { agreement, order } of corpus.held.byHash.values()) {
-        const key = agreement.provenance?.compositionHash;
-        // A composition hash is a bytes32; anything else there is a party's
+        const key = agreement.provenance?.assemblyHash;
+        // A assembly hash is a bytes32; anything else there is a party's
         // free text, attributes nothing, and never reaches the wire.
         if (typeof key === "string" && BYTES32.test(key)) byProcess.set(order.processId.toLowerCase(), key);
     }
@@ -463,9 +463,9 @@ function assemblyAttribution(corpus) {
             const contentRef = entry.contentRef.toLowerCase();
             let key = refs.get(contentRef);
             const pair = entry.decoded;
-            if (pair && BYTES32.test(pair.agreementHash ?? "") && BYTES32.test(pair.compositionHash ?? "")
-                && provenanceContentRef(pair.agreementHash, pair.compositionHash).toLowerCase() === contentRef) {
-                key = pair.compositionHash;
+            if (pair && BYTES32.test(pair.agreementHash ?? "") && BYTES32.test(pair.assemblyHash ?? "")
+                && provenanceContentRef(pair.agreementHash, pair.assemblyHash).toLowerCase() === contentRef) {
+                key = pair.assemblyHash;
             }
             if (typeof key === "string" && BYTES32.test(key)) byProcess.set(processId, key);
         }

@@ -12,10 +12,10 @@ import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
 /// @notice `ClauseRegistry`, `AssemblyRegistry` and `AgreementRegistry` are
 ///         `MembersRegistry`'s siblings minus the cooldown: each key (the
 ///         clause key, keccak256 of the spec's pinned bytes / the
-///         compositionHash / the agreementHash) is bound FIRST-WRITE-WINS and
+///         assemblyHash / the agreementHash) is bound FIRST-WRITE-WINS and
 ///         PERMANENTLY — there is no `requestWithdrawal` two-step and nothing
 ///         to recycle, because a withdrawn key can never be re-registered by
-///         anyone (`AlreadyRegistered` / `CompositionAlreadyRegistered` /
+///         anyone (`AlreadyRegistered` / `AssemblyAlreadyRegistered` /
 ///         `AgreementAlreadyRegistered` guard the key forever, not just the
 ///         wallet that staked it). `RpgfMinter._isAuthor` reads this machine
 ///         directly at CLAIM time — `depositOf[key].withdrawn == false` for a
@@ -282,7 +282,7 @@ contract HalmosClauseRegistry is Test {
 }
 
 /// @notice Same five properties, restated for `AssemblyRegistry`'s shape:
-///         the key is the caller-supplied `compositionHash`, and both keys
+///         the key is the caller-supplied `assemblyHash`, and both keys
 ///         are left fully symbolic, as for the clause registry above.
 contract HalmosAssemblyRegistry is Test {
     address internal constant ALICE = address(0xA11CE);
@@ -385,7 +385,7 @@ contract HalmosAssemblyRegistry is Test {
         (bool ok,) =
             address(r).call{value: deposit}(abi.encodeCall(AssemblyRegistry.registerAssembly, (hashA, "ipfs://hijack")));
 
-        assertFalse(ok, "no second registration for this compositionHash ever succeeds, withdrawn or not");
+        assertFalse(ok, "no second registration for this assemblyHash ever succeeds, withdrawn or not");
         (address registeredBy, uint64 registeredAt,, string memory uri) = r.bindings(hashA);
         assertEq(registeredBy, ALICE, "the registeredBy of record is permanent");
         assertEq(uri, "ipfs://original", "contentURI never changes on a failed hijack");
@@ -411,7 +411,7 @@ contract HalmosAssemblyRegistry is Test {
         vm.prank(ALICE);
         (bool ok,) = address(r).call(abi.encodeCall(AssemblyRegistry.withdrawDeposit, (hashA)));
 
-        assertFalse(ok, "a second withdraw for this compositionHash cannot succeed");
+        assertFalse(ok, "a second withdraw for this assemblyHash cannot succeed");
         assertEq(ALICE.balance, balAfterFirst, "no ETH moves on the second attempt");
         assertEq(address(r).balance, contractBalAfterFirst, "contract balance is unchanged");
     }

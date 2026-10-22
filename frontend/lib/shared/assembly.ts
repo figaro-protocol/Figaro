@@ -3,7 +3,7 @@
  *
  * The shared source every tier reads (the assembly-family mirror of
  * `clauseSpecSource.ts`): the assembly type, the one accessor for an agreement
- * own topology edges, the composition root, and the content-derived slug.
+ * own topology edges, the assembly root, and the content-derived slug.
  * AUTHORING lives in `@figaro-protocol/sdk` projection — `buildAssembly`
  * (designers build); this module is for everyone who READS published
  * assemblies — checkout instantiates, sellers bind, inventories list, view
@@ -34,6 +34,6 @@ export type { Assembly } from "@figaro-protocol/sdk";
 // single home is the SDK; re-exported here for the designer/registry surfaces.
 export {
     assemblyParentOrderHashes,
-    assemblyCompositionHash,
+    assemblyHashOf,
     deriveAssemblySlug,
 } from "@figaro-protocol/sdk";

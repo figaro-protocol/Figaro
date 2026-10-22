@@ -196,7 +196,7 @@ contract RpgfMinterTest is Test {
         minter.claim(0, _clause(A_KEY));
     }
 
-    /// A registry takes any bytes32, so bob can stake carol's composition hash
+    /// A registry takes any bytes32, so bob can stake carol's assembly hash
     /// as a CLAUSE. The kind names the one registry that decides authorship:
     /// bob's clause-kind entry reads the clause entry (empty), his assembly-kind
     /// entry reads `AssemblyRegistry` (carol's), and carol is paid.

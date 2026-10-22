@@ -635,7 +635,7 @@ function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] 
                 verifies against chain. checkoutHash = merkle root over clause
                 leaves and the provenance leaf. Each clause leaf =
                 computeClauseLeaf(clause); the provenance leaf =
-                computeProvenanceLeaf(agreementHash, compositionHash). Each
+                computeProvenanceLeaf(agreementHash, assemblyHash). Each
                 attestation contentRef = keccak256(content) where content sits
                 in the transaction calldata.
             </Text>

@@ -97,16 +97,16 @@ export function buildHashAppendix(
     }
 
     // 3b. The agreement FORMAT's provenance leaf — the registered agreement
-    //     the order instantiated and the composition root of its assembly,
+    //     the order instantiated and the assembly root of its assembly,
     //     under the reserved key. A leaf of the same tree: without it the
     //     listed leaves do not rebuild the root.
     if (agreement.provenance !== undefined) {
-        const { agreementHash, compositionHash } = agreement.provenance;
+        const { agreementHash, assemblyHash } = agreement.provenance;
         anchors.push({
             kind: "agreement-provenance-leaf",
             label: "Provenance leaf — the registered agreement and the assembly this order instantiated",
-            hash: computeProvenanceLeaf(agreementHash, compositionHash),
-            sourceLocation: `Merkle leaf under checkoutHash root. Reader recomputes via computeProvenanceLeaf("${agreementHash}", "${compositionHash}") and verifies inclusion in the checkoutHash tree.`,
+            hash: computeProvenanceLeaf(agreementHash, assemblyHash),
+            sourceLocation: `Merkle leaf under checkoutHash root. Reader recomputes via computeProvenanceLeaf("${agreementHash}", "${assemblyHash}") and verifies inclusion in the checkoutHash tree.`,
         });
     }
 

@@ -132,13 +132,13 @@ describe("proposeInitiations", () => {
 
     it("proposes one initiate-process per discovered assembly, buyer = me", () => {
         const assemblies: RegisteredAssembly[] = [
-            { compositionHash: COMP, registeredBy: REGISTERED_BY, contentURI: "ipfs://asm" },
+            { assemblyHash: COMP, registeredBy: REGISTERED_BY, contentURI: "ipfs://asm" },
         ];
         const inits = proposeInitiations(assemblies, BUYER);
         expect(inits).toHaveLength(1);
         expect(inits[0].type).toBe("initiate-process");
         expect(inits[0].buyer).toBe(BUYER);
-        expect(inits[0].compositionHash).toBe(COMP);
+        expect(inits[0].assemblyHash).toBe(COMP);
         expect(inits[0].contentURI).toBe("ipfs://asm");
         // No process exists yet — FigaroCore derives the id at root commit.
         expect(inits[0].processId).toBe(`0x${"0".repeat(64)}`);

@@ -16,7 +16,7 @@ const BYTES32_HEX_RE = /^0x[0-9a-fA-F]{64}$/;
 const ADDRESS_HEX_RE = /^0x[0-9a-fA-F]{40}$/;
 
 /** True for a 32-byte hex string (`0x` + 64 hex chars) — order hashes,
- *  process ids, content fingerprints, composition hashes. */
+ *  process ids, content fingerprints, assembly hashes. */
 export function isBytes32Hex(value: unknown): value is Hex {
     return typeof value === "string" && BYTES32_HEX_RE.test(value);
 }
@@ -177,10 +177,10 @@ export interface MemberWithdrawnEvent {
     logIndex: number;
 }
 
-/** AssemblyRegistry `AssemblyRegistered`. Identity IS `compositionHash`; the
+/** AssemblyRegistry `AssemblyRegistered`. Identity IS `assemblyHash`; the
  *  human slug is derived off-chain (AssemblyRegistry.sol:16-21). */
 export interface AssemblyRegisteredEvent {
-    compositionHash: Hex;
+    assemblyHash: Hex;
     registeredBy: Address;
     contentURI: string;
     blockNumber: number;
@@ -189,9 +189,9 @@ export interface AssemblyRegisteredEvent {
     transactionHash: Hex | null;
 }
 
-/** AssemblyRegistry `DepositWithdrawn` — keyed by `compositionHash` directly. */
+/** AssemblyRegistry `DepositWithdrawn` — keyed by `assemblyHash` directly. */
 export interface AssemblyWithdrawnEvent {
-    compositionHash: Hex;
+    assemblyHash: Hex;
     registeredBy: Address;
     blockNumber: number;
     logIndex: number;
@@ -241,7 +241,7 @@ export interface RegisteredMember {
 }
 
 export interface RegisteredAssembly {
-    compositionHash: Hex;
+    assemblyHash: Hex;
     registeredBy: Address;
     contentURI: string;
 }

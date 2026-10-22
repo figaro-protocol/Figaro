@@ -15,7 +15,7 @@ import { computeCheckoutHash } from "../src/agreement.js";
 import type { Address, Hex } from "../src/types.js";
 import { hydrateAuthored, profileBinding } from "./hydrate.js";
 import { forgeBuyerOffer } from "./forgeOffer.js";
-import { assemblyCompositionHash, deriveAssemblySlug } from "../src/assembly.js";
+import { assemblyHashOf, deriveAssemblySlug } from "../src/assembly.js";
 
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]
 const COURIER_A = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"); // anvil[1]
@@ -437,7 +437,7 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
         const agreement = { ...payload.agreement, clauses: payload.agreement.clauses.filter((s) => s.clause !== keyOf("figaro-topology")) };
         return { ...payload, agreement, commitment: { ...payload.commitment, checkoutHash: computeCheckoutHash(agreement) } };
     }
-    const draftHash = assemblyCompositionHash(assembly.assembly);
+    const draftHash = assemblyHashOf(assembly.assembly);
     const missing = new RegExp(`figaro-topology clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(draftHash)} \\(${draftHash}\\) composes`);
 
     it("validateDraft, counterSignDraft and quoteDraft refuse a draft missing a clause of the registered agreement it names", async () => {
@@ -457,11 +457,11 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
 
 describe("the seller's bound assemblies — the race and quote legs refuse a draft under an assembly the candidate has not bound", () => {
     // A structurally different assembly (its own clause selection), so its
-    // composition hash differs from the one the orders instantiate.
+    // assembly hash differs from the one the orders instantiate.
     const elsewhere = hydrateAuthored({
         agreements: [{ id: "order-0", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
     });
-    const draftHash = assemblyCompositionHash(assembly.assembly);
+    const draftHash = assemblyHashOf(assembly.assembly);
     const NOT_BINDING = profileBinding(elsewhere);
     const named = new RegExp(`has not bound assembly ${deriveAssemblySlug(draftHash)} \\(${draftHash}\\)`);
 

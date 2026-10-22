@@ -89,8 +89,8 @@ describe("RegistryExplorer — the state of the content behind a pointer is show
         searchParams = "family=assemblies";
         clauseEventsMock.mockReturnValue({ data: [], failed: false });
         assembliesMock.mockReturnValue({ data: [
-            { slug: "asm-fresh", registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", compositionHash: "0x1", contentURI: "ipfs://a", blockNumber: 2n, networkTargets: [], state: "error", name: "asm-fresh", agreementCount: null, clauses: null, hydratedAssembly: null },
-            { slug: "asm-named", registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", compositionHash: "0x2", contentURI: "ipfs://b", blockNumber: 3n, networkTargets: [], state: "loaded", name: "Containerized import chain", agreementCount: 3, clauses: [], hydratedAssembly: { assembly: { name: "Containerized import chain", summary: "Six bonded parties move a container.", agreements: [] }, agreements: {} } },
+            { slug: "asm-fresh", registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", assemblyHash: "0x1", contentURI: "ipfs://a", blockNumber: 2n, networkTargets: [], state: "error", name: "asm-fresh", agreementCount: null, clauses: null, hydratedAssembly: null },
+            { slug: "asm-named", registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", assemblyHash: "0x2", contentURI: "ipfs://b", blockNumber: 3n, networkTargets: [], state: "loaded", name: "Containerized import chain", agreementCount: 3, clauses: [], hydratedAssembly: { assembly: { name: "Containerized import chain", summary: "Six bonded parties move a container.", agreements: [] }, agreements: {} } },
         ] });
 
         render(<RegistryExplorer />);

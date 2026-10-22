@@ -37,7 +37,7 @@ pragma solidity 0.8.26;
 ///         `checkoutHash` a commitment carries: an order instantiating a
 ///         registered agreement carries the agreement format's reserved
 ///         provenance leaf, whose bytes name the agreementHash and the
-///         compositionHash of the assembly it came from, under its own
+///         assemblyHash of the assembly it came from, under its own
 ///         `checkoutHash`.
 ///
 ///         STAKED INTENT: registration requires an ETH stake

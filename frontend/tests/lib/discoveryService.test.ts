@@ -24,7 +24,7 @@ function makeJsonResponse(body: unknown): Response {
     } as unknown as Response;
 }
 
-// The AssemblyRegistry's anchored composition hashes the surfacing rule
+// The AssemblyRegistry's anchored assembly hashes the surfacing rule
 // cross-checks against (applied evenly across every projection).
 const ANCHORED_HASH = `0x${'a1'.repeat(32)}`;
 const ANCHORED = new Set([ANCHORED_HASH]);
@@ -33,7 +33,7 @@ function anchoredBinding(subjectAddress: string) {
     return [{
         bindingId: 'binding-1',
         subjectAddress,
-        compositionHash: ANCHORED_HASH,
+        assemblyHash: ANCHORED_HASH,
         counterpartyBindings: [],
     }];
 }
@@ -206,7 +206,7 @@ describe('discoveryService', () => {
             assemblyBindings: [{
                 bindingId: 'binding-x',
                 subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-                compositionHash: `0x${'b2'.repeat(32)}`,
+                assemblyHash: `0x${'b2'.repeat(32)}`,
                 counterpartyBindings: [],
             }],
         }));

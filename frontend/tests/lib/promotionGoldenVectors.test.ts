@@ -11,7 +11,7 @@
  *      bigint→hex replacer + prototype-pollution stripping on deserialize),
  *   3. agreement projection → checkoutHash (since Phase 3: @figaro-protocol/sdk
  *      projection — spec-default injection, process-log skip, clause sort),
- *   4. assembly composition → compositionHash (since Phase 3: @figaro-protocol/sdk
+ *   4. assembly composition → assemblyHash (since Phase 3: @figaro-protocol/sdk
  *      projection — the mandatory pick's clauses merged, sparse-version
  *      normalization, editorial exclusion).
  *
@@ -158,7 +158,7 @@ interface GoldenVectors {
         defaults: { canonicalAgreement: string; checkoutHash: string };
         processLog: { canonicalAgreement: string; checkoutHash: string };
     };
-    assembly: { canonicalJson: string; compositionHash: string; agreements: Record<string, string> };
+    assembly: { canonicalJson: string; assemblyHash: string; agreements: Record<string, string> };
 }
 
 beforeAll(async () => {
@@ -209,7 +209,7 @@ beforeAll(async () => {
             },
             assembly: {
                 canonicalJson: assembly.json,
-                compositionHash: assembly.compositionHash,
+                assemblyHash: assembly.assemblyHash,
                 agreements: assembly.agreements,
             },
         };
@@ -279,11 +279,11 @@ describe("SDK-promotion golden vectors — the live bytes, frozen", () => {
         expect(checkoutHash).toBe(v.checkoutHash);
     });
 
-    it("assembly: the mandatory pick + relabeling reproduce the frozen assembly, its agreements + compositionHash", () => {
+    it("assembly: the mandatory pick + relabeling reproduce the frozen assembly, its agreements + assemblyHash", () => {
         const v = loadVectors().assembly;
         const assembly = assemblyCase();
         expect(assembly.json).toBe(v.canonicalJson);
-        expect(assembly.compositionHash).toBe(v.compositionHash);
+        expect(assembly.assemblyHash).toBe(v.assemblyHash);
         expect(assembly.agreements).toEqual(v.agreements);
     });
 });

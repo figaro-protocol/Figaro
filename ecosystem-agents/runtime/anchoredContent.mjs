@@ -6,7 +6,7 @@
  * anchor each one on chain: `ClauseRegistry` keys a clause by the hash of its
  * pinned spec bytes (the clause key), `AgreementRegistry` keys a registered
  * agreement by `agreementHashOf` of its document, `AssemblyRegistry` keys the
- * assembly by its composition hash. A gateway can serve any bytes, so the
+ * assembly by its assembly hash. A gateway can serve any bytes, so the
  * bytes are checked against the anchor before anything reads them, by the
  * SDK's `anchorClauseSpec`, `anchorRegisteredAgreement` and `anchorAssembly` —
  * the functions the frontend verifies with. A
@@ -27,7 +27,7 @@ import {
     anchorRegisteredAgreement,
     anchorAssembly,
     strippingReviver,
-    assemblyCompositionHash,
+    assemblyHashOf,
 } from "@figaro-protocol/sdk";
 import { cidOf, fetchIpfsBytes, fetchIpfsText } from "./ipfsRead.mjs";
 
@@ -96,10 +96,10 @@ export async function fetchAnchoredRegisteredAgreement(agreement, options = {}) 
 }
 
 /**
- * A live assembly's pinned document, verified against its composition hash.
+ * A live assembly's pinned document, verified against its assembly hash.
  *
  * @param registered  a `RegisteredAssembly` from the discovery graph
- *                  (`contentURI`, `compositionHash`)
+ *                  (`contentURI`, `assemblyHash`)
  * @returns `{ assembly, text }`, or `{ absent }` naming why. Throws only when
  *          every gateway failed to answer.
  */
@@ -110,14 +110,14 @@ export async function fetchAnchoredAssembly(registered, options = {}) {
     if (assembly === null || typeof assembly !== "object" || !Array.isArray(assembly.agreements)) {
         return { absent: "not an assembly" };
     }
-    if (anchorAssembly(assembly, registered.compositionHash) === null) {
+    if (anchorAssembly(assembly, registered.assemblyHash) === null) {
         let recomputed;
         try {
-            recomputed = assemblyCompositionHash(assembly);
+            recomputed = assemblyHashOf(assembly);
         } catch {
             recomputed = "no root";
         }
-        return { absent: `hashes to ${recomputed}, the registry anchors ${registered.compositionHash}` };
+        return { absent: `hashes to ${recomputed}, the registry anchors ${registered.assemblyHash}` };
     }
     return { assembly, text };
 }

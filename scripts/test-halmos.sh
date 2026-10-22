@@ -186,7 +186,7 @@ run_halmos \
     "$@"
 
 echo ""
-echo "▶ Pass 6/7 — AssemblyRegistry: the same stake machine, compositionHash-keyed"
+echo "▶ Pass 6/7 — AssemblyRegistry: the same stake machine, assemblyHash-keyed"
 echo ""
 
 run_halmos \

@@ -12,7 +12,7 @@ import {
 import { useMemberListings } from "@/lib/member/useMemberListings";
 
 function listingAssemblies(listing: Listing): string[] {
-    return Array.from(new Set(listing.bindings.map((b) => deriveAssemblySlug(b.compositionHash))));
+    return Array.from(new Set(listing.bindings.map((b) => deriveAssemblySlug(b.assemblyHash))));
 }
 
 export function MemberDiscovery() {

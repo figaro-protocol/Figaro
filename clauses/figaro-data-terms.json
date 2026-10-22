@@ -18,7 +18,7 @@
                 "each-own": "Each party may disclose its own copy",
                 "open": "Open \u2014 either party may publish"
             },
-            "description": "The regime for the process's co-produced records, fixed by the designer at design time (declared in design.fills; part of the compositionHash \u2014 regime variants are sibling assemblies). closed = neither party discloses beyond the parties (the composed confidentiality term); each-own = each party may disclose the copy it holds (the paper-contract default, made explicit and co-signed); open = either party may publish the process record."
+            "description": "The regime for the process's co-produced data, fixed by the designer at design time (declared in design.fills; part of the assemblyHash \u2014 regime variants are sibling assemblies). closed = neither party discloses beyond the parties (the composed confidentiality term); each-own = each party may disclose the copy it holds (the paper-contract default, made explicit and co-signed); open = either party may publish the process's data."
         },
         {
             "name": "buyerDisclosure",

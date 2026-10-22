@@ -7,7 +7,7 @@
  * leaf per composed clause (the clause key and the designer's fills), so
  * membership of a clause in a registered agreement is a merkle proof
  * (`buildRegisteredClauseInclusionProof`). `AssemblyRegistry` keys an assembly by
- * `compositionHash` — the root over its agreements (each a registered
+ * `assemblyHash` — the root over its agreements (each a registered
  * agreement hash and the agreement's own fills) and its assembly-scoped
  * terms, so membership of an agreement in an assembly is a merkle proof
  * (`buildAgreementInclusionProof`).
@@ -124,7 +124,7 @@ export interface AssemblyFaqEntry {
 export interface Assembly {
     /** EDITORIAL — the designer's own words, for legibility (the content-derived
      *  slug is opaque at scale). Free-form prose, NOT a taxonomy. Pinned in the
-     *  document but EXCLUDED from the composition hash — identity stays
+     *  document but EXCLUDED from the assembly hash — identity stays
      *  composition-derived, so renaming never forks the slug. All optional. */
     name?: string;
     summary?: string;
@@ -134,7 +134,7 @@ export interface Assembly {
      *  how and when each side is paid under this design. Rendered wherever the
      *  assembly is offered to a user; the users' FAQ surfaces every published
      *  assembly's entries from the registry at runtime. Excluded from the
-     *  composition hash like the rest of the editorial prose. */
+     *  assembly hash like the rest of the editorial prose. */
     faq?: readonly AssemblyFaqEntry[];
     /** ASSEMBLY-SCOPED clauses — clauses declaring
      *  `design.scope: "assembly"`, composed ONCE for the whole design
@@ -271,13 +271,13 @@ export function assemblyLeaves(assembly: Assembly): Hex[] {
  *  Editorial prose is excluded, so renaming never forks identity. This is
  *  the hash `AssemblyRegistry` keys bindings on. Publishers anchor it;
  *  readers recompute it from a fetched document to verify integrity. */
-export function assemblyCompositionHash(
+export function assemblyHashOf(
     assembly: Assembly,
 ): Hex {
     return buildMerkleRoot(assemblyLeaves(assembly));
 }
 
-/** The membership proof of agreement `i` under `assemblyCompositionHash`:
+/** The membership proof of agreement `i` under `assemblyHashOf`:
  *  its leaf, its sorted-pair proof, and `slotContentHash` =
  *  `keccak256(agreementLeafBytes(entry, i))` — what
  *  `UsageCounter.recordAssemblyUsage` and the batch path's assembly claim
@@ -295,12 +295,12 @@ export function buildAgreementInclusionProof(
 }
 
 /** The published slug — presentation only, a deterministic pure function of
- *  the composition hash. Identical compositions → identical slug; distinct
+ *  the assembly hash. Identical compositions → identical slug; distinct
  *  compositions → distinct slug. The slug exists nowhere on-chain: the
- *  registry keys bindings by `compositionHash`, and every reader derives the
+ *  registry keys bindings by `assemblyHash`, and every reader derives the
  *  slug from the event's hash. */
-export function deriveAssemblySlug(compositionHash: Hex): string {
-    return `asm-${compositionHash.slice(2, 18)}`;
+export function deriveAssemblySlug(assemblyHash: Hex): string {
+    return `asm-${assemblyHash.slice(2, 18)}`;
 }
 
 // ── Authoring: clause names → clause keys ───────────────────────────────────

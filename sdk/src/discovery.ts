@@ -161,7 +161,7 @@ export function parseAssemblyRegistryLogs(logs: Log[]): AssemblyRegistryEvents {
             const a = decoded.args as Record<string, unknown>;
             if (decoded.eventName === "AssemblyRegistered") {
                 registered.push({
-                    compositionHash: a.compositionHash as Hex,
+                    assemblyHash: a.assemblyHash as Hex,
                     registeredBy: a.registeredBy as Address,
                     contentURI: a.contentURI as string,
                     blockNumber: Number(log.blockNumber ?? 0),
@@ -170,7 +170,7 @@ export function parseAssemblyRegistryLogs(logs: Log[]): AssemblyRegistryEvents {
                 });
             } else if (decoded.eventName === "DepositWithdrawn") {
                 withdrawn.push({
-                    compositionHash: a.compositionHash as Hex,
+                    assemblyHash: a.assemblyHash as Hex,
                     registeredBy: a.registeredBy as Address,
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
@@ -322,7 +322,7 @@ interface MemberEntry {
  */
 export class DiscoveryGraph {
     private readonly clauses = new Map<string, ClauseEntry>(); // key: lowercased clause key
-    private readonly assemblies = new Map<Hex, AssemblyEntry>(); // key: compositionHash
+    private readonly assemblies = new Map<Hex, AssemblyEntry>(); // key: assemblyHash
     private readonly agreements = new Map<string, AgreementEntry>(); // key: lowercased agreement hash
     private readonly members = new Map<string, MemberEntry>(); // key: lowercased address
 
@@ -380,9 +380,9 @@ export class DiscoveryGraph {
         return e && !e.clause.stakeWithdrawn ? e.clause : undefined;
     }
 
-    /** A single assembly by compositionHash; undefined if unknown or de-surfaced. */
-    getAssembly(compositionHash: Hex): RegisteredAssembly | undefined {
-        const e = this.assemblies.get(compositionHash);
+    /** A single assembly by assemblyHash; undefined if unknown or de-surfaced. */
+    getAssembly(assemblyHash: Hex): RegisteredAssembly | undefined {
+        const e = this.assemblies.get(assemblyHash);
         return e && !e.withdrawn ? e.assembly : undefined;
     }
 
@@ -418,11 +418,11 @@ export class DiscoveryGraph {
 
     private applyAssemblyEvents(registered: AssemblyRegisteredEvent[], withdrawn: AssemblyWithdrawnEvent[]): void {
         for (const e of registered) {
-            // compositionHash is first-write-wins and permanent — first-seen wins.
-            if (!this.assemblies.has(e.compositionHash)) {
-                this.assemblies.set(e.compositionHash, {
+            // assemblyHash is first-write-wins and permanent — first-seen wins.
+            if (!this.assemblies.has(e.assemblyHash)) {
+                this.assemblies.set(e.assemblyHash, {
                     assembly: {
-                        compositionHash: e.compositionHash,
+                        assemblyHash: e.assemblyHash,
                         registeredBy: e.registeredBy,
                         contentURI: e.contentURI,
                     },
@@ -431,7 +431,7 @@ export class DiscoveryGraph {
             }
         }
         for (const w of withdrawn) {
-            const entry = this.assemblies.get(w.compositionHash);
+            const entry = this.assemblies.get(w.assemblyHash);
             if (entry) entry.withdrawn = true; // withdraw is terminal for a composition
         }
     }

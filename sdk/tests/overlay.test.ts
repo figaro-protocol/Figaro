@@ -186,7 +186,7 @@ describe("extractOverlays — the agreement's provenance leaf", () => {
         );
         expect(graph.provenanceLeaf).toBe(true);
         expect(graph.spec).toBeNull();
-        expect(graph.entries[0].decoded).toEqual({ agreementHash: AGREEMENT, compositionHash: COMPOSITION });
+        expect(graph.entries[0].decoded).toEqual({ agreementHash: AGREEMENT, assemblyHash: COMPOSITION });
     });
 
     it("unrecovered or foreign bytes stay fingerprint-only", () => {

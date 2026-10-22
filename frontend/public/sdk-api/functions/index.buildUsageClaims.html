@@ -25,13 +25,13 @@ without a client. <code>fetchUsageClaimContext</code> gets them.</p>
 clause earns, the mandatory ones included.</li>
 <li>the AGREEMENT leg credits the registered agreement's designer from the
 agreement's provenance leaf (<code>Agreement.provenance</code>), proved with
-<code>buildProvenanceInclusionProof</code>: kind <code>{ Agreement: { composition_hash } }</code>
+<code>buildProvenanceInclusionProof</code>: kind <code>{ Agreement: { assembly_hash } }</code>
 keyed by the agreement hash.</li>
 <li>the ASSEMBLY leg credits the assembly's designer from the same leaf
-plus the agreement's membership proof under the composition hash
+plus the agreement's membership proof under the assembly hash
 (<code>buildAgreementInclusionProof</code> over <code>assembly</code>, the instantiated assembly):
 kind <code>{ Assembly: { agreement_hash, slot_content_hash, membership_proof } }</code>
-keyed by the composition hash. The agreement proved is the first whose
+keyed by the assembly hash. The agreement proved is the first whose
 <code>agreementHash</code> is the provenance's (every such agreement proves the
 same membership).</li>
 </ul>
@@ -41,7 +41,7 @@ of the last two legs.</p>
 <p>Throws when the counter's reserved keys are not the format's (every
 agreement and assembly claim against it would revert); when the agreement
 names a provenance but no <code>assembly</code> is given, the assembly does not hash
-to the provenance's composition hash, or no agreement binds its agreement
+to the provenance's assembly hash, or no agreement binds its agreement
 hash; when the provenance's agreement hash is a reserved key; and when the
 agreement's leaves do not build — no leg of such an agreement can be
 proved.</p>

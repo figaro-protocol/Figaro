@@ -80,7 +80,7 @@ const specs = {
 // hash and every one of its registered agreements hydrates and verifies
 // against its key — read from the binding whatever its stake.
 const hydrate = async (a) => {
-    const t = anchorAssembly(await tryHydrate(a.contentURI), a.compositionHash);
+    const t = anchorAssembly(await tryHydrate(a.contentURI), a.assemblyHash);
     if (!t) return null;
     return hydrateAssembly(t, async (key) => {
         const binding = ctx.getAgreementBinding(key);
@@ -119,11 +119,11 @@ const readProfile = memberProfileReader(ctx, tryHydrate);
 const readDesign = designReader(ctx, hydrate);
 for (const [i, s] of [SELLERS[0], SELLERS[1]].entries()) {
     await bindAssemblyAsSeller({
-        pub, wallet: sellerW[i], membersRegistry: addresses.membersRegistry, compositionHash: chosen.compositionHash,
+        pub, wallet: sellerW[i], membersRegistry: addresses.membersRegistry, assemblyHash: chosen.assemblyHash,
         ipfsApiUrl: IPFS_API, readProfile, name: `Origination proof seller ${i}`,
     });
     check(`seller ${i}'s own profile binds the assembly`, (await readProfile(s.address))?.assemblyBindings
-        ?.some((b) => b.compositionHash.toLowerCase() === chosen.compositionHash.toLowerCase()) === true);
+        ?.some((b) => b.assemblyHash.toLowerCase() === chosen.assemblyHash.toLowerCase()) === true);
 }
 
 // ── One seller LOOP per DISTINCT seller, registered on the channel ────────────

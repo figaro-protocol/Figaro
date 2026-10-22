@@ -141,7 +141,7 @@ describe("re-assert committed clauses — one card per party per order", () => {
 describe("re-assert committed clauses — the provenance leaf", () => {
     const COMPOSITION = `0x${"9a".repeat(32)}` as `0x${string}`;
     const AGREEMENT_HASH = `0x${"8b".repeat(32)}` as `0x${string}`;
-    const withProvenance: Agreement = { ...agreement, provenance: { agreementHash: AGREEMENT_HASH, compositionHash: COMPOSITION } };
+    const withProvenance: Agreement = { ...agreement, provenance: { agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION } };
     const cardsWith = (address: string, attestations: RuntimeAttestation[] = [], state = OrderState.Active) =>
         deriveProcessModelFromRuntime(
             summary,
@@ -164,7 +164,7 @@ describe("re-assert committed clauses — the provenance leaf", () => {
             kind: "attest-provenance-leaf",
             orderHash: ORDER_HASH,
             agreementHash: AGREEMENT_HASH,
-            compositionHash: COMPOSITION,
+            assemblyHash: COMPOSITION,
             party: "buyer",
         });
     });

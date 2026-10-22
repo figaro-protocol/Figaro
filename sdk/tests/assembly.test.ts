@@ -11,7 +11,7 @@ import {
     agreementClauses,
     agreementLeafBytes,
     assemblyComposedClauseKeys,
-    assemblyCompositionHash,
+    assemblyHashOf,
     assemblyLeaves,
     assemblyParentOrderHashes,
     agreementClauseLeaves,
@@ -102,7 +102,7 @@ describe("the composition tree", () => {
         const one: Assembly = { agreements: [{ id: "order-0", agreementHash: A, clauses: {} }] };
         const { leaf, proof, slotContentHash } = buildAgreementInclusionProof(one, 0);
         expect(proof).toEqual([]);
-        expect(assemblyCompositionHash(one)).toBe(leaf);
+        expect(assemblyHashOf(one)).toBe(leaf);
         expect(slotContentHash).toBe(keccak256(agreementLeafBytes({ clauses: {} }, 0)));
         expect(leaf).toBe(computeClauseLeaf({ clause: A, dataHash: slotContentHash }));
         const termed = { ...one, assemblyClauses: { [keyOf("figaro-applicable-law")]: { law: "x" } } };
@@ -110,9 +110,9 @@ describe("the composition tree", () => {
         expect(assemblyLeaves(termed)).toContain(
             computeClauseLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: termed.assemblyClauses }),
         );
-        expect(assemblyCompositionHash(termed)).not.toBe(assemblyCompositionHash(one));
+        expect(assemblyHashOf(termed)).not.toBe(assemblyHashOf(one));
         // Empty terms are no leaf.
-        expect(assemblyCompositionHash({ ...one, assemblyClauses: {} })).toBe(assemblyCompositionHash(one));
+        expect(assemblyHashOf({ ...one, assemblyClauses: {} })).toBe(assemblyHashOf(one));
     });
 
     it("the same agreement in two agreements is two leaves; editorial prose never moves the root", () => {
@@ -123,10 +123,10 @@ describe("the composition tree", () => {
             ],
         };
         expect(new Set(assemblyLeaves(two)).size).toBe(2);
-        expect(assemblyCompositionHash({ ...two, name: "x", faq: [{ question: "q", answer: "a" }] })).toBe(assemblyCompositionHash(two));
+        expect(assemblyHashOf({ ...two, name: "x", faq: [{ question: "q", answer: "a" }] })).toBe(assemblyHashOf(two));
         for (const i of [0, 1]) {
             const { leaf, proof } = buildAgreementInclusionProof(two, i);
-            expect(verifyInclusionProof(assemblyCompositionHash(two), leaf, proof)).toBe(true);
+            expect(verifyInclusionProof(assemblyHashOf(two), leaf, proof)).toBe(true);
         }
         expect(() => buildAgreementInclusionProof(two, 2)).toThrow(/not in the assembly/);
     });
@@ -135,13 +135,13 @@ describe("the composition tree", () => {
         const t1: Assembly = { agreements: [{ id: "order-0", agreementHash: A, clauses: {} }, { id: "order-1", agreementHash: B, clauses: {} }] };
         const t2: Assembly = { agreements: [{ id: "order-0", agreementHash: B, clauses: {} }, { id: "order-1", agreementHash: A, clauses: {} }] };
         const { leaf, proof } = buildAgreementInclusionProof(t1, 0);
-        expect(verifyInclusionProof(assemblyCompositionHash(t2), leaf, proof)).toBe(false);
+        expect(verifyInclusionProof(assemblyHashOf(t2), leaf, proof)).toBe(false);
     });
 
     it("refuses the two reserved format keys as an agreement's agreement hash", () => {
         for (const reserved of [PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
             const t: Assembly = { agreements: [{ id: "order-0", agreementHash: reserved, clauses: {} }] };
-            expect(() => assemblyCompositionHash(t)).toThrow(/reserved format key/);
+            expect(() => assemblyHashOf(t)).toThrow(/reserved format key/);
             expect(() => assertNotReservedKey(reserved)).toThrow(/reserved format key/);
         }
         expect(ASSEMBLY_TERMS_LEAF_KEY).toBe(keccak256(toHex("figaro-assembly-terms")));
@@ -271,7 +271,7 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
             for (const entry of authored.agreements) used.add(entry.agreement);
             const { assembly, agreements } = assembleAuthored(authored, byName, all);
             for (const key of assemblyComposedClauseKeys(assembly, agreements)) expect(all.get(key), `${file} ${key}`).toBeDefined();
-            expect(assemblyCompositionHash(assembly)).toMatch(/^0x[0-9a-f]{64}$/);
+            expect(assemblyHashOf(assembly)).toMatch(/^0x[0-9a-f]{64}$/);
             for (const entry of assembly.agreements) expect(agreements[entry.agreementHash], `${file} ${entry.id}`).toBeDefined();
         }
         for (const name of Object.keys(byName)) expect(used.has(name), `agreements/${name}.json is bound by a reference assembly or picked`).toBe(true);
@@ -304,18 +304,18 @@ describe("resolveAuthoredClauseKeys (seed-time authoring resolver)", () => {
     it("rewrites a member document's named clause references to clauseKey", () => {
         const profile = {
             name: "m",
-            disclosurePolicy: [{ compositionHash: `0x${"1".repeat(64)}`, clauseId: "figaro-data-license", posture: "buyer", offered: true }],
+            disclosurePolicy: [{ assemblyHash: `0x${"1".repeat(64)}`, clauseId: "figaro-data-license", posture: "buyer", offered: true }],
             assemblyBindings: [{ bindingId: "b", counterpartyBindings: [{ clauseId: "figaro-commerce", addresses: [] }] }],
             profileClauseValues: { "figaro-commerce": { a: 1 } },
         };
         const resolved = resolveAuthoredClauseKeys(profile, specs) as unknown as Record<string, any>;
         expect(resolved.disclosurePolicy[0]).toEqual({
-            compositionHash: `0x${"1".repeat(64)}`, clauseKey: keyOf("figaro-data-license"), posture: "buyer", offered: true,
+            assemblyHash: `0x${"1".repeat(64)}`, clauseKey: keyOf("figaro-data-license"), posture: "buyer", offered: true,
         });
         expect(resolved.assemblyBindings[0].counterpartyBindings[0]).toEqual({ clauseKey: keyOf("figaro-commerce"), addresses: [] });
         expect(resolved.profileClauseValues).toEqual({ [keyOf("figaro-commerce")]: { a: 1 } });
 
-        const catalog = { items: [{ id: "i", clauseValues: { "figaro-commerce": {} }, dataSold: { compositionHash: "0x", clauseId: "figaro-data-license", posture: "seller" } }] };
+        const catalog = { items: [{ id: "i", clauseValues: { "figaro-commerce": {} }, dataSold: { assemblyHash: "0x", clauseId: "figaro-data-license", posture: "seller" } }] };
         const c = resolveAuthoredClauseKeys(catalog, specs) as unknown as Record<string, any>;
         expect(c.items[0].clauseValues).toEqual({ [keyOf("figaro-commerce")]: {} });
         expect(c.items[0].dataSold.clauseKey).toBe(keyOf("figaro-data-license"));

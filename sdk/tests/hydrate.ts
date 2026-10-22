@@ -8,7 +8,7 @@
  * — with no mandatory pick, so a test's clause set is the one it wrote.
  */
 import type { Hex } from "viem";
-import { agreementHashOf, assemblyCompositionHash, type RegisteredAgreement, type HydratedAssembly, type AssemblyAgreement } from "../src/assembly.js";
+import { agreementHashOf, assemblyHashOf, type RegisteredAgreement, type HydratedAssembly, type AssemblyAgreement } from "../src/assembly.js";
 import type { MemberProfileReader } from "../src/memberProfile.js";
 
 export interface AuthoredAssembly {
@@ -48,7 +48,7 @@ export function profileBinding(...hydrated: HydratedAssembly[]): MemberProfileRe
         assemblyBindings: hydrated.map((h, i) => ({
             bindingId: `test-${i}`,
             subjectAddress: member,
-            compositionHash: assemblyCompositionHash(h.assembly),
+            assemblyHash: assemblyHashOf(h.assembly),
         })),
     });
 }

@@ -27,12 +27,12 @@ contract MockClauseOrAssemblyStake {
     }
 
     /// @dev `AssemblyRegistry.bindings` / `AgreementRegistry.bindings` shape.
-    function bindings(bytes32 compositionHash)
+    function bindings(bytes32 assemblyHash)
         external
         view
         returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string memory contentURI)
     {
-        if (dead[compositionHash]) return (address(0), 0, false, "");
+        if (dead[assemblyHash]) return (address(0), 0, false, "");
         return (STAKER, 1, false, "");
     }
 }

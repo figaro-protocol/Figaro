@@ -23,7 +23,7 @@ const SDK_README = "https://github.com/figaro-protocol/Figaro/blob/main/sdk/READ
 describe("RegistryCountLink — one component owns the registry scaffolding all three families shared", () => {
     beforeEach(() => {
         clausesMock.mockReturnValue({ data: [clause(), clause(), clause(true)] });
-        assembliesMock.mockReturnValue({ data: [{ compositionHash: "0x1" }] });
+        assembliesMock.mockReturnValue({ data: [{ assemblyHash: "0x1" }] });
         membersMock.mockReturnValue({ data: [member(), member(true)] });
     });
 

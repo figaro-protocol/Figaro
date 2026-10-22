@@ -37,7 +37,7 @@ const bare: Agreement = {
         { clause: K("figaro-topology"), data: { parentOrderHashes: [] } },
     ],
 };
-const withDesign: Agreement = { ...bare, provenance: { agreementHash: AGREEMENT, compositionHash: COMPOSITION } };
+const withDesign: Agreement = { ...bare, provenance: { agreementHash: AGREEMENT, assemblyHash: COMPOSITION } };
 
 describe("the reserved provenance leaf", () => {
     it("keys on the hash of the label, a shape no registered clause key can take", () => {
@@ -47,7 +47,7 @@ describe("the reserved provenance leaf", () => {
     it("commits exactly the bytes the counter reproduces: both keys, lowercase, canonical JSON", () => {
         const upper = (h: string) => h.toUpperCase().replace("0X", "0x") as `0x${string}`;
         expect(provenanceLeafBytes(upper(AGREEMENT), upper(COMPOSITION))).toBe(
-            toHex(new TextEncoder().encode(`{"agreementHash":"${AGREEMENT}","compositionHash":"${COMPOSITION}"}`)),
+            toHex(new TextEncoder().encode(`{"agreementHash":"${AGREEMENT}","assemblyHash":"${COMPOSITION}"}`)),
         );
         expect(computeProvenanceLeaf(AGREEMENT, COMPOSITION)).toBe(
             keccak256(keccak256(concat([PROVENANCE_LEAF_KEY, keccak256(provenanceLeafBytes(AGREEMENT, COMPOSITION))]))),
@@ -76,8 +76,8 @@ describe("the reserved provenance leaf", () => {
 
     it("refuses a provenance key that is not 32 bytes, as the counter's bytes32 does", () => {
         expect(() => provenanceLeafBytes("0x1234", COMPOSITION)).toThrow(/agreementHash is not a 32-byte/);
-        expect(() => provenanceLeafBytes(AGREEMENT, "0x1234")).toThrow(/compositionHash is not a 32-byte/);
-        expect(() => computeCheckoutHash({ ...bare, provenance: { agreementHash: AGREEMENT, compositionHash: "0xzz" } })).toThrow(/32-byte/);
+        expect(() => provenanceLeafBytes(AGREEMENT, "0x1234")).toThrow(/assemblyHash is not a 32-byte/);
+        expect(() => computeCheckoutHash({ ...bare, provenance: { agreementHash: AGREEMENT, assemblyHash: "0xzz" } })).toThrow(/32-byte/);
     });
 
     it("refuses to prove a design the agreement does not name", () => {
@@ -104,13 +104,13 @@ describe("attesting the provenance leaf", () => {
 
     it("decodes the leaf's bytes back to both keys only when they are the format's bytes exactly", () => {
         expect(decodeProvenanceContent(provenanceLeafBytes(AGREEMENT, COMPOSITION)))
-            .toEqual({ agreementHash: AGREEMENT, compositionHash: COMPOSITION });
+            .toEqual({ agreementHash: AGREEMENT, assemblyHash: COMPOSITION });
         const enc = (text: string) => toHex(new TextEncoder().encode(text));
-        expect(decodeProvenanceContent(enc(`{ "agreementHash": "${AGREEMENT}", "compositionHash": "${COMPOSITION}" }`))).toBeNull();
-        expect(decodeProvenanceContent(enc(`{"agreementHash":"0x${"AB".repeat(32)}","compositionHash":"${COMPOSITION}"}`))).toBeNull();
+        expect(decodeProvenanceContent(enc(`{ "agreementHash": "${AGREEMENT}", "assemblyHash": "${COMPOSITION}" }`))).toBeNull();
+        expect(decodeProvenanceContent(enc(`{"agreementHash":"0x${"AB".repeat(32)}","assemblyHash":"${COMPOSITION}"}`))).toBeNull();
         // The single-key bytes, and the keys in the wrong order, are not the format's.
-        expect(decodeProvenanceContent(enc(`{"compositionHash":"${COMPOSITION}"}`))).toBeNull();
-        expect(decodeProvenanceContent(enc(`{"compositionHash":"${COMPOSITION}","agreementHash":"${AGREEMENT}"}`))).toBeNull();
+        expect(decodeProvenanceContent(enc(`{"assemblyHash":"${COMPOSITION}"}`))).toBeNull();
+        expect(decodeProvenanceContent(enc(`{"assemblyHash":"${COMPOSITION}","agreementHash":"${AGREEMENT}"}`))).toBeNull();
         expect(decodeProvenanceContent(toHex(new TextEncoder().encode("not json")))).toBeNull();
         expect(decodeProvenanceContent("0xzz" as `0x${string}`)).toBeNull();
     });

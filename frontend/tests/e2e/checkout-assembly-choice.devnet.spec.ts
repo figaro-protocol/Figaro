@@ -143,7 +143,7 @@ test.describe('checkout assembly choice — two bindings force the buyer to pick
         expect(singleOrderSlug, 'a single-order assembly is anchored (run populate-test-data)').toBeTruthy();
         expect(multiOrderSlug, 'a multi-order assembly is anchored (run populate-test-data)').toBeTruthy();
         const targetSlugs = [singleOrderSlug!, multiOrderSlug!];
-        const targetHashes = [seeds.blank!.compositionHash, seeds.chain!.compositionHash].map((h) => h.toLowerCase());
+        const targetHashes = [seeds.blank!.assemblyHash, seeds.chain!.assemblyHash].map((h) => h.toLowerCase());
 
         // Mainnet semantics: register ONCE and persist. Walk the wizard only
         // when this wallet isn't registered yet or its bindings don't match
@@ -168,7 +168,7 @@ test.describe('checkout assembly choice — two bindings force the buyer to pick
         if (uriBefore) {
             const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
             const doc = await (await fetch(`${gateway}/ipfs/${uriBefore.slice('ipfs://'.length)}`)).json();
-            const bound = ((doc.assemblyBindings ?? []) as Array<{ compositionHash?: string }>).map((b) => b.compositionHash?.toLowerCase());
+            const bound = ((doc.assemblyBindings ?? []) as Array<{ assemblyHash?: string }>).map((b) => b.assemblyHash?.toLowerCase());
             conformant = bound.length === 2 && targetHashes.every((h) => bound.includes(h));
         }
         const wizardRan = !uriBefore || !conformant;

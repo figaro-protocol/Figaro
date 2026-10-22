@@ -34,7 +34,7 @@ import type { Commitment } from "../src/types.js";
 import {
     ASSEMBLY_TERMS_LEAF_KEY,
     buildAgreementInclusionProof,
-    assemblyCompositionHash,
+    assemblyHashOf,
     type Assembly,
 } from "../src/assembly.js";
 import { keyOf } from "./specFixtures.js";
@@ -464,7 +464,7 @@ describe("computeRpgfAllocations", () => {
 
     it("keeps the two families apart: the same bytes under each kind are two accruals, each paid to its own author", () => {
         // A registry accepts any bytes32, so a stranger can register an
-        // assembly's composition hash as a clause key. The accrual is keyed by
+        // assembly's assembly hash as a clause key. The accrual is keyed by
         // (kind, key), so the squatter's clause earns only what its own kind
         // accrued, and the assembly's designer keeps the assembly's score.
         const SQUATTER = "0x4000000000000000000000000000000000000004" as Address;
@@ -534,8 +534,8 @@ describe("buildUsageClaims", () => {
             { id: "order-1", agreementHash: AGREEMENT_HASH, clauses: {} },
         ],
     };
-    const COMPOSITION = assemblyCompositionHash(ASSEMBLY);
-    const PROVENANCE = { agreementHash: AGREEMENT_HASH, compositionHash: COMPOSITION };
+    const COMPOSITION = assemblyHashOf(ASSEMBLY);
+    const PROVENANCE = { agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION };
 
     const order: Commitment = {
         processId: `0x${"0".repeat(64)}` as Hex,
@@ -579,7 +579,7 @@ describe("buildUsageClaims", () => {
     // The two designer credits ride the agreement format's provenance leaf,
     // not a clauseEntry: every clause still earns its clause leg, the agreement
     // leg credits the agreement hash, and the assembly leg credits the
-    // compositionHash with the agreement's membership proof — never the
+    // assemblyHash with the agreement's membership proof — never the
     // reserved leaf key.
     it("credits the agreement's and the assembly's designers from agreement.provenance beside every clause leg", () => {
         const claims = buildUsageClaims(order, agreementWith([modalities, commerce], PROVENANCE), CONTEXT, ASSEMBLY);
@@ -587,7 +587,7 @@ describe("buildUsageClaims", () => {
         expect(claims.filter((c) => "Clause" in c.kind)).toHaveLength(2);
         const agreementClaim = claims.find((c) => "Agreement" in c.kind)!;
         expect(agreementClaim.clause_or_assembly).toBe(AGREEMENT_HASH);
-        expect(agreementClaim.kind).toEqual({ Agreement: { composition_hash: COMPOSITION } });
+        expect(agreementClaim.kind).toEqual({ Agreement: { assembly_hash: COMPOSITION } });
         expect(usageClaimKindCode(agreementClaim)).toBe(USAGE_KIND_AGREEMENT);
         const assemblyClaim = claims.find((c) => "Assembly" in c.kind)!;
         expect(assemblyClaim.clause_or_assembly).toBe(COMPOSITION);
@@ -599,7 +599,7 @@ describe("buildUsageClaims", () => {
         expect(claims.map((c) => c.clause_or_assembly)).not.toContain(PROVENANCE_LEAF_KEY);
     });
 
-    it("the assembly claim's membership proof verifies under its compositionHash and under no other root", () => {
+    it("the assembly claim's membership proof verifies under its assemblyHash and under no other root", () => {
         const claims = buildUsageClaims(order, agreementWith([modalities], PROVENANCE), CONTEXT, ASSEMBLY);
         const assembly = claims.find((c) => "Assembly" in c.kind)!;
         const { agreement_hash, slot_content_hash, membership_proof } = (assembly.kind as {
@@ -607,7 +607,7 @@ describe("buildUsageClaims", () => {
         }).Assembly;
         const leaf = computeClauseLeaf({ clause: agreement_hash, dataHash: slot_content_hash });
         expect(verifyInclusionProof(COMPOSITION, leaf, membership_proof)).toBe(true);
-        const other = assemblyCompositionHash({ agreements: [...ASSEMBLY.agreements].reverse() });
+        const other = assemblyHashOf({ agreements: [...ASSEMBLY.agreements].reverse() });
         expect(verifyInclusionProof(other, leaf, membership_proof)).toBe(false);
     });
 
@@ -621,13 +621,13 @@ describe("buildUsageClaims", () => {
         expect(() => buildUsageClaims(order, agreement, CONTEXT)).toThrow(/assembly is needed/);
         expect(() => buildUsageClaims(order, agreement, CONTEXT, { agreements: [ASSEMBLY.agreements[1]] }))
             .toThrow(/does not hash to the provenance/);
-        const elsewhere = agreementWith([modalities], { agreementHash: keccak256(encodePacked(["string"], ["x"])), compositionHash: COMPOSITION });
+        const elsewhere = agreementWith([modalities], { agreementHash: keccak256(encodePacked(["string"], ["x"])), assemblyHash: COMPOSITION });
         expect(() => buildUsageClaims(order, elsewhere, CONTEXT, ASSEMBLY)).toThrow(/no agreement/);
     });
 
     it("refuses a reserved key as the provenance's agreement hash", () => {
         for (const reserved of [PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
-            const agreement = agreementWith([modalities], { agreementHash: reserved, compositionHash: COMPOSITION });
+            const agreement = agreementWith([modalities], { agreementHash: reserved, assemblyHash: COMPOSITION });
             expect(() => buildUsageClaims(order, agreement, CONTEXT, ASSEMBLY)).toThrow(/reserved format key/);
         }
     });

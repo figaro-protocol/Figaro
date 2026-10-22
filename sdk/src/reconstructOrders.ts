@@ -24,7 +24,7 @@
  * by FIELD NAME, never clause id).
  */
 
-import { agreementClauses, assemblyParentOrderHashes, assemblyCompositionHash } from "./assembly.js";
+import { agreementClauses, assemblyParentOrderHashes, assemblyHashOf } from "./assembly.js";
 import type { HydratedAssembly, AssemblyAgreement } from "./assembly.js";
 import {
     computeCheckoutHash,
@@ -214,10 +214,10 @@ export async function reconstructOrdersFromAssembly(
     const realHash = new Map<string, Hex>();
     let rootProcessId: Hex | null = null;
     let cumulative = 0n;
-    // The assembly's OWN composition hash — every realized order carries it,
+    // The assembly's OWN assembly hash — every realized order carries it,
     // beside its agreement's agreement hash, as the agreement's provenance
     // leaf (see fillWalkProvenance).
-    const compositionHash = assemblyCompositionHash(hydrated.assembly);
+    const assemblyHash = assemblyHashOf(hydrated.assembly);
     const out: ReconstructedOrder[] = [];
 
     for (const node of planned) {
@@ -250,7 +250,7 @@ export async function reconstructOrdersFromAssembly(
                   spec.seller,
                   spec.overrides,
               );
-        const agreement = fillWalkProvenance(built, { agreementHash: node.agreementHash, compositionHash }, node.nodeId);
+        const agreement = fillWalkProvenance(built, { agreementHash: node.agreementHash, assemblyHash }, node.nodeId);
         const checkoutHash = computeCheckoutHash(agreement);
 
         const { commitment, typedData } = buildCommitment(
@@ -370,7 +370,7 @@ function fillWalkCurrency(
 }
 
 /** Write the order's provenance — the registered agreement its agreement
- *  binds and the instantiated assembly's OWN composition hash — into the
+ *  binds and the instantiated assembly's OWN assembly hash — into the
  *  agreement's provenance leaf (`Agreement.provenance`) BEFORE hashing: the
  *  agreement format's own field, never a clause; neither hash can
  *  appear inside the composition it hashes, so it fills at instantiation,
@@ -387,15 +387,15 @@ export function fillWalkProvenance(
     if (
         existing !== undefined &&
         (existing.agreementHash.toLowerCase() !== provenance.agreementHash.toLowerCase() ||
-            existing.compositionHash.toLowerCase() !== provenance.compositionHash.toLowerCase())
+            existing.assemblyHash.toLowerCase() !== provenance.assemblyHash.toLowerCase())
     ) {
         throw new Error(
-            `node "${nodeId}": the agreement names provenance ${existing.agreementHash} / ${existing.compositionHash}, ` +
-            `which contradicts this agreement's ${provenance.agreementHash} / ${provenance.compositionHash} — ` +
+            `node "${nodeId}": the agreement names provenance ${existing.agreementHash} / ${existing.assemblyHash}, ` +
+            `which contradicts this agreement's ${provenance.agreementHash} / ${provenance.assemblyHash} — ` +
             `refusing to claim a different provenance`,
         );
     }
-    return { ...agreement, provenance: { agreementHash: provenance.agreementHash, compositionHash: provenance.compositionHash } };
+    return { ...agreement, provenance: { agreementHash: provenance.agreementHash, assemblyHash: provenance.assemblyHash } };
 }
 
 /** The one clause-bag ∪ overrides merge (per-clause shallow spread) — shared

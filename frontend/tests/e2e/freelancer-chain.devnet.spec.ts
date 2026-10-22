@@ -69,7 +69,7 @@ import {
     waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
-    anchoredCompositionHash,
+    anchoredAssemblyHash,
 } from './devnet-helpers';
 import { formatToken } from '@/lib/shared/utils';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -127,7 +127,7 @@ async function seedChainSellers(
     listsIn: (s: ChainSeller) => ListedToken,
 ): Promise<Map<string, string>> {
     const contributors = sellers.filter((s) => s.label !== 'lead');
-    const compositionHash = await anchoredCompositionHash(slug);
+    const assemblyHash = await anchoredAssemblyHash(slug);
     const catalogs = new Map<string, string>();
     for (const s of sellers) {
         const { uri: catalogURI } = await pinJSONToIPFS({
@@ -158,7 +158,7 @@ async function seedChainSellers(
                 assemblyBindings: [{
                     bindingId: `chain-${s.label}`,
                     subjectAddress: s.address,
-                    compositionHash,
+                    assemblyHash,
                     counterpartyBindings: s.label === 'lead'
                         ? [{ clauseKey: CONTENT_CLAUSE, addresses: contributors.map((c) => c.address) }]
                         : [],

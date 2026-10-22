@@ -38,7 +38,7 @@ export interface InitiateProcessAction extends BaseAction {
     /** The buyer that would originate — the agent's own address. */
     buyer: Address;
     /** The discovered assembly being instantiated. Identity IS the hash. */
-    compositionHash: Hex;
+    assemblyHash: Hex;
     /** Pointer to the assembly document; the agent hydrates it (off-SDK) to
      *  build the agreement(s) the parties sign. */
     contentURI: string;
@@ -215,12 +215,12 @@ export function proposeInitiations(
     return assemblies.map((a) => ({
         type: "initiate-process",
         description:
-            `Initiate a new process from assembly ${a.compositionHash}. ` +
+            `Initiate a new process from assembly ${a.assemblyHash}. ` +
             `You would be the root buyer; sellers co-sign from the assembly's roles.`,
         // No process exists yet — FigaroCore derives the id at root commit.
         processId: ZERO_PROCESS_ID,
         buyer: myAddress,
-        compositionHash: a.compositionHash,
+        assemblyHash: a.assemblyHash,
         contentURI: a.contentURI,
         registeredBy: a.registeredBy,
     }));

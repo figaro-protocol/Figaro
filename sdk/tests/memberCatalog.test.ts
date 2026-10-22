@@ -95,7 +95,7 @@ describe("parseMemberCatalogDocument (strict)", () => {
 
     it("carries a data-product dataSold reference through a parse", () => {
         const dataSold = {
-            compositionHash: `0x${"ef".repeat(32)}`,
+            assemblyHash: `0x${"ef".repeat(32)}`,
             clauseKey: keyOf("figaro-geolocation"),
             posture: "buyer",
         };
@@ -107,12 +107,12 @@ describe("parseMemberCatalogDocument (strict)", () => {
         expect(parsed.items[0].dataSold).toEqual(dataSold);
     });
 
-    it("throws on a dataSold with a malformed compositionHash", () => {
+    it("throws on a dataSold with a malformed assemblyHash", () => {
         expect(() => parseMemberCatalogDocument({
             subjectAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
             version: "1",
-            items: [{ id: "i1", name: "Bad", price: "5", available: true, dataSold: { compositionHash: "0x12", clauseKey: keyOf("figaro-geolocation"), posture: "buyer" } }],
-        })).toThrow(/dataSold\.compositionHash must be a 32-byte hex hash/);
+            items: [{ id: "i1", name: "Bad", price: "5", available: true, dataSold: { assemblyHash: "0x12", clauseKey: keyOf("figaro-geolocation"), posture: "buyer" } }],
+        })).toThrow(/dataSold\.assemblyHash must be a 32-byte hex hash/);
     });
 
     it("carries the catalog-sourced clauseValues map through a parse", () => {

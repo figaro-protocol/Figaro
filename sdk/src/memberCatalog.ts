@@ -115,14 +115,14 @@ export interface CatalogItemMetadata {
     /**
      * The DATA this item sells, when the item is a data-market listing —
      * one of the member's own declared data offers (assembly
-     * compositionHash × clauseKey × the posture the member traded on).
+     * assemblyHash × clauseKey × the posture the member traded on).
      * The disclosure policy on the profile declares the TERMS (offered,
      * to whom, from when); this reference is where that class gets its
      * PRICE, through the ordinary price fields above. Absent for every
      * non-data item.
      */
     dataSold?: {
-        compositionHash: `0x${string}`;
+        assemblyHash: `0x${string}`;
         clauseKey: `0x${string}`;
         posture: "buyer" | "seller";
     };
@@ -204,12 +204,12 @@ function parseOptionalDataSold(
 ): CatalogItemMetadata["dataSold"] {
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
-    const compositionHash = record.compositionHash;
-    if (!isBytes32Hex(compositionHash)) {
-        throw new Error(`${path}.compositionHash must be a 32-byte hex hash.`);
+    const assemblyHash = record.assemblyHash;
+    if (!isBytes32Hex(assemblyHash)) {
+        throw new Error(`${path}.assemblyHash must be a 32-byte hex hash.`);
     }
     return {
-        compositionHash,
+        assemblyHash,
         clauseKey: asClauseKey(record.clauseKey, `${path}.clauseKey`),
         posture: asEnum(record.posture, DATA_SOLD_POSTURES, `${path}.posture`),
     };

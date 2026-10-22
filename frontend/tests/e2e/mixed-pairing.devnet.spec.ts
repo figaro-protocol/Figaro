@@ -45,7 +45,7 @@ import {
     seedRegisteredMember,
     memberProfileBindings,
     waitForConnected,
-    anchoredCompositionHash,
+    anchoredAssemblyHash,
     isBindingOf,
     chainProfileReader,
     chainDesignReader,
@@ -159,7 +159,7 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
             //    the two couriers (human posted 2 / agent posted 1.5 +
             //    services.rest), funding. ──
             const deliverySlug = await ensureDeliveryAssembly(page);
-            const deliveryHash = await anchoredCompositionHash(deliverySlug);
+            const deliveryHash = await anchoredAssemblyHash(deliverySlug);
             if (!(await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash))) {
                 await gotoAsWallet(page, MERCHANT, '/members/edit/assemblies?e2e=devnet');
                 const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
@@ -200,7 +200,7 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
                         assemblyBindings: [{
                             bindingId: `race-binding-${address.slice(2, 8).toLowerCase()}`,
                             subjectAddress: address,
-                            compositionHash: deliveryHash,
+                            assemblyHash: deliveryHash,
                             counterpartyBindings: [],
                         }],
                         ...(services ? { services } : {}),

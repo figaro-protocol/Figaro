@@ -143,7 +143,7 @@ describe("member profile metadata parser", () => {
             name: "Bob Pizza",
             disclosurePolicy: [
                 {
-                    compositionHash: HASH,
+                    assemblyHash: HASH,
                     clauseKey: keyOf("figaro-commerce"),
                     posture: "seller",
                     offered: true,
@@ -153,7 +153,7 @@ describe("member profile metadata parser", () => {
                 {
                     // The buyer half is first-class (ruling 7): the same
                     // structure covers records co-produced AS A BUYER.
-                    compositionHash: HASH,
+                    assemblyHash: HASH,
                     clauseKey: keyOf("figaro-commerce"),
                     posture: "buyer",
                     offered: false,
@@ -166,7 +166,7 @@ describe("member profile metadata parser", () => {
 
             expect(result.disclosurePolicy).toHaveLength(2);
             const [seller, buyer] = result.disclosurePolicy!;
-            expect(seller.compositionHash).toBe(HASH);
+            expect(seller.assemblyHash).toBe(HASH);
             expect(seller.clauseKey).toBe(keyOf("figaro-commerce"));
             expect(seller.posture).toBe("seller");
             expect(seller.offered).toBe(true);
@@ -194,28 +194,28 @@ describe("member profile metadata parser", () => {
         it("throws when a clause is named rather than keyed — a published document carries keys", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
-                disclosurePolicy: [{ compositionHash: HASH, clauseKey: "figaro-commerce", posture: "seller", offered: true }],
+                disclosurePolicy: [{ assemblyHash: HASH, clauseKey: "figaro-commerce", posture: "seller", offered: true }],
             })).toThrow(/disclosurePolicy\[0\]\.clauseKey must be a 32-byte clause key/);
         });
 
         it("throws when posture is outside buyer|seller", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
-                disclosurePolicy: [{ compositionHash: HASH, clauseKey: keyOf("figaro-commerce"), posture: "broker", offered: true }],
+                disclosurePolicy: [{ assemblyHash: HASH, clauseKey: keyOf("figaro-commerce"), posture: "broker", offered: true }],
             })).toThrow(/disclosurePolicy\[0\]\.posture/);
         });
 
-        it("throws when compositionHash is not a 32-byte hex hash", () => {
+        it("throws when assemblyHash is not a 32-byte hex hash", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
-                disclosurePolicy: [{ compositionHash: "0x1234", clauseKey: keyOf("figaro-commerce"), posture: "seller", offered: true }],
-            })).toThrow(/disclosurePolicy\[0\]\.compositionHash must be a 32-byte hex hash/);
+                disclosurePolicy: [{ assemblyHash: "0x1234", clauseKey: keyOf("figaro-commerce"), posture: "seller", offered: true }],
+            })).toThrow(/disclosurePolicy\[0\]\.assemblyHash must be a 32-byte hex hash/);
         });
 
         it("throws when offered is not a boolean", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
-                disclosurePolicy: [{ compositionHash: HASH, clauseKey: keyOf("figaro-commerce"), posture: "seller", offered: "yes" }],
+                disclosurePolicy: [{ assemblyHash: HASH, clauseKey: keyOf("figaro-commerce"), posture: "seller", offered: "yes" }],
             })).toThrow(/disclosurePolicy\[0\]\.offered/);
         });
 
@@ -223,7 +223,7 @@ describe("member profile metadata parser", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
                 disclosurePolicy: [{
-                    compositionHash: HASH,
+                    assemblyHash: HASH,
                     clauseKey: keyOf("figaro-commerce"),
                     posture: "seller",
                     offered: true,
@@ -246,12 +246,12 @@ describe("member profile metadata parser", () => {
         it("parses a subscription list and round-trips it", () => {
             const doc = {
                 name: "Bob Pizza",
-                buyerAssemblies: [{ compositionHash: HASH }],
+                buyerAssemblies: [{ assemblyHash: HASH }],
             };
             const first = parseMemberProfileDocument(doc);
 
             expect(first.buyerAssemblies).toHaveLength(1);
-            expect(first.buyerAssemblies?.[0]?.compositionHash).toBe(HASH);
+            expect(first.buyerAssemblies?.[0]?.assemblyHash).toBe(HASH);
 
             const second = parseMemberProfileDocument(first);
             expect(second).toEqual(first);
@@ -263,7 +263,7 @@ describe("member profile metadata parser", () => {
                 assemblyBindings: [{
                     bindingId: "b-1",
                     subjectAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-                    compositionHash: HASH,
+                    assemblyHash: HASH,
                 }],
             });
 
@@ -271,17 +271,17 @@ describe("member profile metadata parser", () => {
             expect(result.assemblyBindings).toHaveLength(1);
         });
 
-        it("throws on a malformed compositionHash", () => {
+        it("throws on a malformed assemblyHash", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
-                buyerAssemblies: [{ compositionHash: "0x1234" }],
-            })).toThrow(/buyerAssemblies\[0\]\.compositionHash must be a 32-byte hex hash/);
+                buyerAssemblies: [{ assemblyHash: "0x1234" }],
+            })).toThrow(/buyerAssemblies\[0\]\.assemblyHash must be a 32-byte hex hash/);
         });
 
         it("throws when the field is not an array", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
-                buyerAssemblies: { compositionHash: HASH },
+                buyerAssemblies: { assemblyHash: HASH },
             })).toThrow(/buyerAssemblies must be an array/);
         });
     });
@@ -341,28 +341,28 @@ describe("member profile metadata parser", () => {
         });
     });
 
-    describe("assembly bindings carry the full compositionHash", () => {
+    describe("assembly bindings carry the full assemblyHash", () => {
         const HASH = `0x${"ab".repeat(32)}`;
         const SUBJECT = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 
-        it("parses a binding's compositionHash and round-trips it", () => {
+        it("parses a binding's assemblyHash and round-trips it", () => {
             const first = parseMemberProfileDocument({
                 name: "Bob",
-                assemblyBindings: [{ bindingId: "b-1", subjectAddress: SUBJECT, compositionHash: HASH }],
+                assemblyBindings: [{ bindingId: "b-1", subjectAddress: SUBJECT, assemblyHash: HASH }],
             });
-            expect(first.assemblyBindings?.[0]?.compositionHash).toBe(HASH);
+            expect(first.assemblyBindings?.[0]?.assemblyHash).toBe(HASH);
             expect(parseMemberProfileDocument(first)).toEqual(first);
         });
 
-        it("refuses a binding that names its assembly by anything but a 32-byte compositionHash", () => {
+        it("refuses a binding that names its assembly by anything but a 32-byte assemblyHash", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
                 assemblyBindings: [{ bindingId: "b-1", subjectAddress: SUBJECT }],
-            })).toThrow(/assemblyBindings\[0\]\.compositionHash must be a 32-byte hex hash/);
+            })).toThrow(/assemblyBindings\[0\]\.assemblyHash must be a 32-byte hex hash/);
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
-                assemblyBindings: [{ bindingId: "b-1", subjectAddress: SUBJECT, compositionHash: deriveAssemblySlug(HASH as `0x${string}`) }],
-            })).toThrow(/assemblyBindings\[0\]\.compositionHash must be a 32-byte hex hash/);
+                assemblyBindings: [{ bindingId: "b-1", subjectAddress: SUBJECT, assemblyHash: deriveAssemblySlug(HASH as `0x${string}`) }],
+            })).toThrow(/assemblyBindings\[0\]\.assemblyHash must be a 32-byte hex hash/);
         });
     });
 });
@@ -374,16 +374,16 @@ describe("checkSellerBindsAssembly — the seller's own bound assemblies, read a
     const OTHER = `0x${"22".repeat(32)}` as const;
     const KEY = `0x${"33".repeat(32)}` as const;
 
-    const agreementUnder = (compositionHash?: `0x${string}`): Agreement => ({
+    const agreementUnder = (assemblyHash?: `0x${string}`): Agreement => ({
         version: "a1",
         buyer: BUYER,
         seller: SELLER,
         clauses: [],
-        ...(compositionHash ? { provenance: { agreementHash: KEY, compositionHash } } : {}),
+        ...(assemblyHash ? { provenance: { agreementHash: KEY, assemblyHash } } : {}),
     });
-    const profileBinding = (compositionHash: `0x${string}`): MemberProfileMetadata => ({
+    const profileBinding = (assemblyHash: `0x${string}`): MemberProfileMetadata => ({
         name: "Seller",
-        assemblyBindings: [{ bindingId: "b", subjectAddress: SELLER, compositionHash }],
+        assemblyBindings: [{ bindingId: "b", subjectAddress: SELLER, assemblyHash }],
     });
 
     it("accepts an order under an assembly the seller's profile binds", async () => {

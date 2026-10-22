@@ -28,7 +28,7 @@ function useSellersByAssembly(): Map<string, Seller[]> {
         for (const row of data ?? []) {
             if (row.stakeWithdrawn || !row.profile) continue;
             const listing = profileToListing(row.profile, row.address);
-            for (const slug of new Set(listing.bindings.map((b) => deriveAssemblySlug(b.compositionHash)))) {
+            for (const slug of new Set(listing.bindings.map((b) => deriveAssemblySlug(b.assemblyHash)))) {
                 const sellers = bySlug.get(slug) ?? [];
                 sellers.push({ address: row.address, name: listing.name || row.address });
                 bySlug.set(slug, sellers);

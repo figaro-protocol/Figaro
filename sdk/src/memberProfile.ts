@@ -117,7 +117,7 @@ export interface CounterpartyBinding {
 
 /**
  * One assembly the member has bound as a seller. The assembly is named by
- * its full `compositionHash` — the `AssemblyRegistry` key, the same identity
+ * its full `assemblyHash` — the `AssemblyRegistry` key, the same identity
  * a buyer's `BuyerAssemblySubscription` and an agreement's provenance leaf
  * carry. A slug shown anywhere is derived from it (`deriveAssemblySlug`),
  * never stored.
@@ -125,8 +125,8 @@ export interface CounterpartyBinding {
 export interface AssemblyBindingRecord {
     bindingId: string;
     subjectAddress: `0x${string}`;
-    /** `AssemblyRegistry` compositionHash of the bound assembly. */
-    compositionHash: `0x${string}`;
+    /** `AssemblyRegistry` assemblyHash of the bound assembly. */
+    assemblyHash: `0x${string}`;
     counterpartyBindings?: CounterpartyBinding[];
 }
 
@@ -139,8 +139,8 @@ export interface AssemblyBindingRecord {
  * machinery; those belong to seller binding.
  */
 export interface BuyerAssemblySubscription {
-    /** `AssemblyRegistry` compositionHash of the subscribed assembly. */
-    compositionHash: `0x${string}`;
+    /** `AssemblyRegistry` assemblyHash of the subscribed assembly. */
+    assemblyHash: `0x${string}`;
 }
 
 /**
@@ -162,7 +162,7 @@ export interface DisclosureCalendar {
  * One row of the member's data-disclosure policy — one kind of DATA.
  *
  * WHAT DATA a row names is derived, never a stored taxonomy: the pair
- * (assembly `compositionHash`, `clauseKey`) — the data of the trades a
+ * (assembly `assemblyHash`, `clauseKey`) — the data of the trades a
  * member trades in comes from its own assembly lists: the BINDINGS for
  * the seller side, the buyer's SUBSCRIPTIONS (`buyerAssemblies`) for
  * the buyer side. Any UI enumerates candidates from those lists, never
@@ -180,9 +180,9 @@ export interface DisclosureCalendar {
  * exactly the same terms structure.
  */
 export interface DisclosurePolicyEntry {
-    /** `AssemblyRegistry` compositionHash of the assembly whose
+    /** `AssemblyRegistry` assemblyHash of the assembly whose
      *  co-produced records this row governs. */
-    compositionHash: `0x${string}`;
+    assemblyHash: `0x${string}`;
     /** Clause key of the record's leaf clause within that assembly's
      *  agreements (the clause half of the pair). */
     clauseKey: `0x${string}`;
@@ -275,7 +275,7 @@ export interface MemberProfileMetadata {
     /**
      * Data-disclosure policy — the member's self-declared terms for the
      * records they CO-PRODUCE inside bonded processes, one entry per
-     * (assembly compositionHash × clauseKey × posture). See
+     * (assembly assemblyHash × clauseKey × posture). See
      * `DisclosurePolicyEntry` for the entry semantics.
      *
      * Default (field absent) is the paper-contract default: each party
@@ -333,7 +333,7 @@ function parseAssemblyBindingDocument(value: unknown, sourceLabel = "institution
     return {
         bindingId: asString(record.bindingId, `${sourceLabel}.bindingId`),
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
-        compositionHash: asCompositionHash(record.compositionHash, `${sourceLabel}.compositionHash`),
+        assemblyHash: asAssemblyHash(record.assemblyHash, `${sourceLabel}.assemblyHash`),
         counterpartyBindings: parseCounterpartyBindingArray(record.counterpartyBindings, `${sourceLabel}.counterpartyBindings`),
     };
 }
@@ -366,7 +366,7 @@ function parseDisclosureWhitelist(value: unknown, path: string): `0x${string}`[]
 function parseDisclosurePolicyEntry(value: unknown, path: string): DisclosurePolicyEntry {
     const record = asRecord(value, path);
     return {
-        compositionHash: asCompositionHash(record.compositionHash, `${path}.compositionHash`),
+        assemblyHash: asAssemblyHash(record.assemblyHash, `${path}.assemblyHash`),
         clauseKey: asClauseKey(record.clauseKey, `${path}.clauseKey`),
         posture: asEnum(record.posture, DISCLOSURE_POSTURES, `${path}.posture`),
         offered: asBoolean(record.offered, `${path}.offered`),
@@ -375,9 +375,9 @@ function parseDisclosurePolicyEntry(value: unknown, path: string): DisclosurePol
     };
 }
 
-/** A compositionHash is a 32-byte keccak digest, not a 20-byte address —
+/** A assemblyHash is a 32-byte keccak digest, not a 20-byte address —
  *  validate the `0x` + hex shape at digest length. */
-function asCompositionHash(value: unknown, path: string): `0x${string}` {
+function asAssemblyHash(value: unknown, path: string): `0x${string}` {
     if (!isBytes32Hex(value)) {
         throw new Error(`${path} must be a 32-byte hex hash.`);
     }
@@ -480,7 +480,7 @@ function parseBuyerAssemblies(value: unknown, path: string): BuyerAssemblySubscr
     return value.map((entry, index) => {
         const record = asRecord(entry, `${path}[${index}]`);
         return {
-            compositionHash: asCompositionHash(record.compositionHash, `${path}[${index}].compositionHash`),
+            assemblyHash: asAssemblyHash(record.assemblyHash, `${path}[${index}].assemblyHash`),
         };
     });
 }
@@ -611,7 +611,7 @@ export interface AssemblyBindingCheck {
 /**
  * Does the seller's own profile bind the assembly the order instantiates?
  * Every process instantiates an assembly: the order's agreement names it in
- * its provenance leaf (`compositionHash`), and a seller accepts only orders
+ * its provenance leaf (`assemblyHash`), and a seller accepts only orders
  * under assemblies it has bound. Run on EVERY seller acceptance path — the
  * offer, the race draft, the quote request — before any signature.
  *
@@ -626,11 +626,11 @@ export async function checkSellerBindsAssembly(
     seller: Address,
     readProfile?: MemberProfileReader,
 ): Promise<AssemblyBindingCheck> {
-    const compositionHash = agreement.provenance?.compositionHash;
-    if (!compositionHash) {
+    const assemblyHash = agreement.provenance?.assemblyHash;
+    if (!assemblyHash) {
         return { ok: false, reason: "the order names no assembly: its agreement carries no provenance leaf, and every process instantiates an assembly" };
     }
-    const named = `assembly ${deriveAssemblySlug(compositionHash)} (${compositionHash})`;
+    const named = `assembly ${deriveAssemblySlug(assemblyHash)} (${assemblyHash})`;
     if (!readProfile) {
         return { ok: false, reason: `no member-profile reader is given, so whether the seller has bound ${named} cannot be read` };
     }
@@ -644,7 +644,7 @@ export async function checkSellerBindsAssembly(
         return { ok: false, reason: `the seller's profile could not be read (MembersRegistry → metadataURI → IPFS), so whether it has bound ${named} cannot be checked` };
     }
     const bound = (profile.assemblyBindings ?? [])
-        .some((b) => b.compositionHash.toLowerCase() === compositionHash.toLowerCase());
+        .some((b) => b.assemblyHash.toLowerCase() === assemblyHash.toLowerCase());
     if (!bound) {
         return { ok: false, reason: `the seller ${seller} has not bound ${named} in its member profile` };
     }

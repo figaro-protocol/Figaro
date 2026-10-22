@@ -284,7 +284,7 @@ function roleCapabilities(
                             kind: "attest-provenance-leaf",
                             orderHash: orderIdStr,
                             agreementHash: agreement.provenance.agreementHash,
-                            compositionHash: agreement.provenance.compositionHash,
+                            assemblyHash: agreement.provenance.assemblyHash,
                             party: "buyer",
                         },
                         mechanismId: "attestation-coordinator",

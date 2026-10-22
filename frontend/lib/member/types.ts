@@ -43,7 +43,7 @@ export interface MemberCatalog {
     /** ERC-8004-compatible service endpoints (optional, for agent-driven members). */
     agentServices?: MemberAgentServices;
     /** The assemblies the member has bound as a seller, each by its full
-     *  composition hash — the set a buyer's checkout reads to offer only
+     *  assembly hash — the set a buyer's checkout reads to offer only
      *  sellers that bound the order's assembly (`bindsAssembly`). */
     assemblyBindings?: AssemblyBindingRecord[];
     /** The member's data-disclosure policy (voluntary data market) —

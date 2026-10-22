@@ -79,7 +79,7 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
         assemblyBindings: state.assemblies?.map((b) => ({
             ...b,
             subjectAddress: wallet,
-            bindingId: `binding:${wallet.toLowerCase()}:${b.compositionHash.toLowerCase()}`,
+            bindingId: `binding:${wallet.toLowerCase()}:${b.assemblyHash.toLowerCase()}`,
         })),
         // Absence is each optional list's no-declaration state — an
         // empty list pins NO field, never `[]`.
@@ -348,7 +348,7 @@ export function OnboardingReview() {
                 {bindings.length > 0 ? (
                     <ul className="space-y-1 text-sm text-ink-body">
                         {bindings.map((b) => (
-                            <li key={b.bindingId} className="font-mono text-xs">{deriveAssemblySlug(b.compositionHash)}</li>
+                            <li key={b.bindingId} className="font-mono text-xs">{deriveAssemblySlug(b.assemblyHash)}</li>
                         ))}
                     </ul>
                 ) : (
@@ -370,7 +370,7 @@ export function OnboardingReview() {
                 {subscriptions.length > 0 ? (
                     <ul className="space-y-1 text-sm text-ink-body" data-testid="review-buyer-subscriptions">
                         {subscriptions.map((s) => (
-                            <li key={s.compositionHash} className="font-mono text-xs">{s.compositionHash}</li>
+                            <li key={s.assemblyHash} className="font-mono text-xs">{s.assemblyHash}</li>
                         ))}
                     </ul>
                 ) : (

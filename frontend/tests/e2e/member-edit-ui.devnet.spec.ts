@@ -268,7 +268,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
             fromBlock: 0n,
         });
         expect(registered.length, 'no anchored assemblies on this devnet — run the devnet-authoring project first').toBeGreaterThan(0);
-        const slug = deriveAssemblySlug(registered[registered.length - 1].args.compositionHash as `0x${string}`);
+        const slug = deriveAssemblySlug(registered[registered.length - 1].args.assemblyHash as `0x${string}`);
 
         // 2. Register the seller (separate from the assembly author —
         //    same key here, fine). Seller starts with no bindings.

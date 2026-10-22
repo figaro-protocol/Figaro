@@ -24,7 +24,7 @@ export function AssemblyFaqs() {
         let live = true;
         Promise.all(
             data.map(async (row) => {
-                const assembly = await fetchAssembly(row.contentURI, row.compositionHash);
+                const assembly = await fetchAssembly(row.contentURI, row.assemblyHash);
                 if (!assembly?.faq?.length) return null;
                 return { slug: row.slug, name: assembly.name ?? row.slug, faq: assembly.faq } satisfies Group;
             }),

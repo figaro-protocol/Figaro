@@ -4,11 +4,11 @@
  *
  * Why a per-run nonce: devnet is a mainnet REHEARSAL — specs leave their state
  * on-chain and DON'T snapshot/revert (lint-no-devnet-revert). Assembly identity
- * is the compositionHash, and `AssemblyRegistry.registerAssembly` reverts on an
+ * is the assemblyHash, and `AssemblyRegistry.registerAssembly` reverts on an
  * anchored composition, so a FIXED composition would collide with a prior run.
  * The nonce lives in the spec's name (`figaro-probe-attest-<Date.now()>`), so
  * each run pins different bytes → a fresh clause key → a genuinely unique
- * assembly → a fresh compositionHash, no collision, no revert.
+ * assembly → a fresh assemblyHash, no collision, no revert.
  *
  * One home for the clause-registration + canvas-publish choreography the publish
  * specs share (permissionless-clause, designer-view, published-list-ui).

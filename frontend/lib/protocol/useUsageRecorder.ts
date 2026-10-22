@@ -9,7 +9,7 @@
  * PERMISSIONLESS by design: UsageCounter re-verifies every fact from state
  * the chain already holds (order RESOLVED + merkle proof against the signed
  * checkoutHash; for an assembly, the agreement's membership under its
- * composition root too), so nothing about the caller is trusted.
+ * assembly root too), so nothing about the caller is trusted.
  * The resolve capability plans these before the buyer resolves
  * (`planUsageRecords`, from the counter's own facts read by
  * `fetchClaimContext`) and sends them right after — count usage when it
@@ -50,14 +50,14 @@ export type UsageWrite =
           order: Commitment;
           /** The registered agreement's hash (`AgreementRegistry`). */
           key: Hex;
-          /** The composition root the provenance leaf names beside it. */
-          compositionHash: Hex;
+          /** The assembly root the provenance leaf names beside it. */
+          assemblyHash: Hex;
           proof: readonly Hex[];
       }
     | {
           kind: "assembly";
           order: Commitment;
-          /** The assembly's compositionHash. */
+          /** The assembly's assemblyHash. */
           key: Hex;
           /** The agreement's agreement hash and the hash of its entry bytes. */
           agreementHash: Hex;
@@ -97,7 +97,7 @@ export function useUsageRecorder() {
             case "clause":
                 return { ...base, functionName: "recordClauseUsage" as const, args: [write.order, write.key, write.clauseDataHash, [...write.proof]] as const };
             case "agreement":
-                return { ...base, functionName: "recordAgreementUsage" as const, args: [write.order, write.key, write.compositionHash, [...write.proof]] as const };
+                return { ...base, functionName: "recordAgreementUsage" as const, args: [write.order, write.key, write.assemblyHash, [...write.proof]] as const };
             case "assembly":
                 return {
                     ...base,

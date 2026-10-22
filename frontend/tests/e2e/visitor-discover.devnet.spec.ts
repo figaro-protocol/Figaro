@@ -26,14 +26,14 @@ const POPULATE_SELLERS = [
 
 test.describe('/discover as a visitor (devnet)', () => {
     test('every populate seller is bound to an anchored reference assembly', async () => {
-        const anchored = new Set((await discoverAnchoredAssemblies()).map((a) => a.compositionHash.toLowerCase()));
+        const anchored = new Set((await discoverAnchoredAssemblies()).map((a) => a.assemblyHash.toLowerCase()));
         expect(anchored.size, 'populate anchored at least one assembly').toBeGreaterThan(0);
         for (const [index, name] of POPULATE_SELLERS) {
             const address = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: index }).address;
             const bindings = await memberProfileBindings(address);
             expect(bindings.length, `${name} (anvil[${index}]) binds an assembly`).toBeGreaterThan(0);
             expect(
-                bindings.some((b) => anchored.has(b.compositionHash?.toLowerCase())),
+                bindings.some((b) => anchored.has(b.assemblyHash?.toLowerCase())),
                 `${name}'s binding names an anchored assembly`,
             ).toBe(true);
         }

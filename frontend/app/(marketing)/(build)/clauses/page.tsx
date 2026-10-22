@@ -13,7 +13,7 @@ import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 // BULLETS, never an exposé; the live registry COUNT plus a link into
 // /registries (the inventory itself lives in the registry explorer); the
 // hash-identity reference (§ "What the hash covers", the clause mirror of
-// /assemblies' § "What the composition hash covers" — it belongs on the concept
+// /assemblies' § "What the assembly hash covers" — it belongs on the concept
 // page, never forked onto the register tool); and the add-your-own + RPGF
 // invitation with EXACTLY ONE link to the register page.
 // The page is not split — no /clauses/authoring route exists. Public/private
@@ -63,7 +63,7 @@ export default function Clauses() {
                     <strong>The shape has a name: a clause spec is a <a href="https://iang.org/papers/ricardian_contract.html" target="_blank" rel="noopener noreferrer" className="underline">Ricardian contract</a></strong> &mdash; Grigg&apos;s single document that people read, programs parse, and a hash over its own content identifies: <code>block</code> is the half people read, <code>fields</code> the half programs parse, and the clause key, the hash of the pinned document that <code>ClauseRegistry</code> registers, is both its identity and its integrity anchor. What Figaro does not take from that lineage is the issuer and the legal backstop &mdash; a clause&apos;s designer is not a party to the trades that use it, and what makes those trades hold is the bonding equilibrium rather than anything the document says; clause design as a discipline is treated on <Link href="/composition" className="underline">Composition</Link>.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    Four different hashes are computed over what you write, and mixing them up is the single most expensive authoring mistake &mdash; registration is permanent and first-write-wins. The <strong>clause key</strong> is the hash of the whole pinned document, and it is the registry key. The <strong><code>agreementHash</code></strong> is what a registered agreement is &mdash; clauses composed once for one order, with the designer&apos;s fills, for any assembly to reuse. The <strong><code>checkoutHash</code></strong> is what a buyer and a seller actually sign, and the <strong><code>compositionHash</code></strong> is what a designer&apos;s assembly is: a merkle root over the registered agreements it holds. Here is exactly which part of your spec reaches which:
+                    Four different hashes are computed over what you write, and mixing them up is the single most expensive authoring mistake &mdash; registration is permanent and first-write-wins. The <strong>clause key</strong> is the hash of the whole pinned document, and it is the registry key. The <strong><code>agreementHash</code></strong> is what a registered agreement is &mdash; clauses composed once for one order, with the designer&apos;s fills, for any assembly to reuse. The <strong><code>checkoutHash</code></strong> is what a buyer and a seller actually sign, and the <strong><code>assemblyHash</code></strong> is what a designer&apos;s assembly is: a merkle root over the registered agreements it holds. Here is exactly which part of your spec reaches which:
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
@@ -92,7 +92,7 @@ export default function Clauses() {
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.design.scope: &quot;assembly&quot;</code></td>
-                                <td className="py-2 pr-4"><strong><code>compositionHash</code></strong> + <strong><code>checkoutHash</code></strong></td>
+                                <td className="py-2 pr-4"><strong><code>assemblyHash</code></strong> + <strong><code>checkoutHash</code></strong></td>
                                 <td className="py-2">Marks a term of the composition itself (a denomination pin, a dispute forum): composed <em>once</em> for the whole design, then folded into <em>every</em> agreement at checkout, so every party signs it. Composing it on a single order is a build error, not a silent no-op.</td>
                             </tr>
                             <tr>
@@ -165,7 +165,7 @@ buildOrderAgreement(buyer, seller, { [clauseKey]: {} }, specs);
                     Off-chain well-formedness gates every signature. The batched, proof-based resolution path then re-checks it on-chain: a single generic SP1 proof engine validates each clause&apos;s content against its spec &mdash; supplied to the proof as a witness &mdash; and <code>FigaroBatchVerifier</code> resolves the batch only if every witness spec&apos;s hash equals the clause key it is bound to and that key is registered on <code>ClauseRegistry</code>. The engine&apos;s verification key covers the <em>engine</em>, not a clause list, so a never-seen clause resolves through the proven path with zero code changes. There are no per-clause validator contracts, by design &mdash; a clause is data, not code. (A local development run sits behind a mock verifier; wherever the deployment names a network with a wired SP1 gateway, it points at Succinct&apos;s SP1 gateway + program vkey from env instead &mdash; a config change, not a code change.)
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mt-4">
-                    The assembly side of the same question &mdash; what enters an assembly&apos;s <code>compositionHash</code>, and what is excluded from it &mdash; is on <Link href="/assemblies" className="underline">Assemblies</Link>.
+                    The assembly side of the same question &mdash; what enters an assembly&apos;s <code>assemblyHash</code>, and what is excluded from it &mdash; is on <Link href="/assemblies" className="underline">Assemblies</Link>.
                 </p>
             </MarketingSection>
 

@@ -66,8 +66,8 @@ describe("validateCatalogClauseValues — off-chain gate, reused validator", () 
 
 /** An `AssemblyChoice`-shaped row, reduced to the two fields the derivation
  *  reads. The real rows come from `useAssemblyChoices` (chain → IPFS). */
-const choice = (compositionHash: string, clauses: readonly string[] | null) => ({ compositionHash, clauses });
-/** A stand-in composition hash per named assembly — a binding names its
+const choice = (assemblyHash: string, clauses: readonly string[] | null) => ({ assemblyHash, clauses });
+/** A stand-in assembly hash per named assembly — a binding names its
  *  assembly by the full hash. */
 const H = (label: string) => keccak256(toHex(label));
 
@@ -82,7 +82,7 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
     it("asks only for the catalog-authored clauses the bound assembly composes", async () => {
         await primeClauseSpecs();
         const derived = catalogClausesForBindings(
-            [{ compositionHash: H("haul") }],
+            [{ assemblyHash: H("haul") }],
             [
                 choice(H("haul"), [KEY("figaro-commerce"), KEY("figaro-topology"), KEY("figaro-freight-class")]),
                 choice(H("reefer"), [KEY("figaro-commerce"), KEY("figaro-cold-chain"), KEY("figaro-hazmat")]),
@@ -97,7 +97,7 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
     it("a seller of one mug, bound to a counter-sale assembly, is asked for no logistics fields", async () => {
         await primeClauseSpecs();
         expect(catalogClausesForBindings(
-            [{ compositionHash: H("pos") }],
+            [{ assemblyHash: H("pos") }],
             [choice(H("pos"), [KEY("figaro-commerce"), KEY("figaro-topology")])],
         )).toEqual([]);
     });
@@ -105,7 +105,7 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
     it("unions the clauses of every bound assembly", async () => {
         await primeClauseSpecs();
         const derived = catalogClausesForBindings(
-            [{ compositionHash: H("haul") }, { compositionHash: H("reefer") }],
+            [{ assemblyHash: H("haul") }, { assemblyHash: H("reefer") }],
             [
                 choice(H("haul"), [KEY("figaro-freight-class")]),
                 choice(H("reefer"), [KEY("figaro-cold-chain")]),
@@ -119,7 +119,7 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
     it("a bound assembly whose assembly has not resolved contributes nothing, not everything", async () => {
         await primeClauseSpecs();
         expect(catalogClausesForBindings(
-            [{ compositionHash: H("haul") }],
+            [{ assemblyHash: H("haul") }],
             [choice(H("haul"), null)],
         )).toEqual([]);
     });
@@ -127,14 +127,14 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
     it("a binding with no matching published assembly asks for nothing", async () => {
         await primeClauseSpecs();
         expect(catalogClausesForBindings(
-            [{ compositionHash: H("withdrawn") }],
+            [{ assemblyHash: H("withdrawn") }],
             [choice(H("haul"), [KEY("figaro-hazmat")])],
         )).toEqual([]);
     });
 
     it("is empty while the clause specs are uncached — resolved-empty, never a guess", () => {
         expect(catalogClausesForBindings(
-            [{ compositionHash: H("haul") }],
+            [{ assemblyHash: H("haul") }],
             [choice(H("haul"), [KEY("figaro-freight-class")])],
         )).toEqual([]);
     });
@@ -144,7 +144,7 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
         // Nothing here names a clause: whatever the registry says declares
         // catalogueFills, and the bound assembly composes, is asked for.
         const everyCatalogClause = catalogClausesForBindings(
-            [{ compositionHash: H("everything") }],
+            [{ assemblyHash: H("everything") }],
             [choice(H("everything"), [
                 KEY("figaro-freight-class"), KEY("figaro-hazmat"), KEY("figaro-cold-chain"), KEY("figaro-data-license"),
             ])],

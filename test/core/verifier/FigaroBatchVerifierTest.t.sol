@@ -1008,7 +1008,7 @@ contract FigaroBatchVerifierTest is Test {
     }
 
     /// The kind separation on the batch path, end to end: a batch credits an
-    /// ASSEMBLY, and a stranger has staked that assembly's composition hash as
+    /// ASSEMBLY, and a stranger has staked that assembly's assembly hash as
     /// a CLAUSE in the live ClauseRegistry. Through `settleBatch`, the counter
     /// and `claim`, the assembly's registrant takes the period's budget and the
     /// stranger takes nothing under either kind. The counter, the minter and

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { agreementHashOf, canonicalContentHash, canonicalize, computeClauseKey, assemblyCompositionHash } from "@figaro-protocol/sdk";
+import { agreementHashOf, canonicalContentHash, canonicalize, computeClauseKey, assemblyHashOf } from "@figaro-protocol/sdk";
 import { keccak256, stringToBytes } from "viem";
 import {
     parseExplorerQuery, serializeExplorerQuery, selectRows, facetValues, explorerBreadcrumb,
@@ -98,7 +98,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
     it("names the anchor each family carries, and none for members", () => {
         expect(anchorForFamily("clauses")).toBe("content-hash");
         expect(anchorForFamily("agreements")).toBe("agreement-hash");
-        expect(anchorForFamily("assemblies")).toBe("composition-hash");
+        expect(anchorForFamily("assemblies")).toBe("assembly-hash");
         expect(anchorForFamily("members")).toBeNull();
     });
 
@@ -106,7 +106,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
         expect(STORED_DOCUMENT_NOTE["content-hash"]).toMatch(/keccak256/);
         expect(STORED_DOCUMENT_NOTE["content-hash"]).toMatch(/exactly these bytes/i);
         expect(STORED_DOCUMENT_NOTE["agreement-hash"]).toMatch(/keccak256/);
-        expect(STORED_DOCUMENT_NOTE["composition-hash"]).toMatch(/merkle root/);
+        expect(STORED_DOCUMENT_NOTE["assembly-hash"]).toMatch(/merkle root/);
     });
 
     it("a clause's served canonical bytes reproduce its clause key", () => {
@@ -146,20 +146,20 @@ describe("the document as stored — the reader re-derives the anchor themselves
         expect(v.matches).toBe(false);
     });
 
-    it("an assembly's served bytes reproduce the registry's compositionHash", () => {
-        const anchored = assemblyCompositionHash(ASSEMBLY as Parameters<typeof assemblyCompositionHash>[0]);
-        const v = storedDocument(JSON.stringify(ASSEMBLY), anchored, "composition-hash");
+    it("an assembly's served bytes reproduce the registry's assemblyHash", () => {
+        const anchored = assemblyHashOf(ASSEMBLY as Parameters<typeof assemblyHashOf>[0]);
+        const v = storedDocument(JSON.stringify(ASSEMBLY), anchored, "assembly-hash");
         expect(v.matches).toBe(true);
-        expect(v.anchor).toBe("composition-hash");
+        expect(v.anchor).toBe("assembly-hash");
     });
 
     it("an assembly's editorial wording is OUTSIDE its anchor — reword it and the hash holds", () => {
-        const anchored = assemblyCompositionHash(ASSEMBLY as Parameters<typeof assemblyCompositionHash>[0]);
+        const anchored = assemblyHashOf(ASSEMBLY as Parameters<typeof assemblyHashOf>[0]);
         const reworded = JSON.stringify({ ...ASSEMBLY, name: "Kit hire", summary: "Different words entirely." });
-        expect(storedDocument(reworded, anchored, "composition-hash").matches).toBe(true);
+        expect(storedDocument(reworded, anchored, "assembly-hash").matches).toBe(true);
         // Changing the COMPOSITION does break it — the anchor is the terms.
         const retermed = JSON.stringify({ ...ASSEMBLY, agreements: [{ id: "order-0", agreementHash: `0x${"a2".repeat(32)}`, clauses: {} }] });
-        expect(storedDocument(retermed, anchored, "composition-hash").matches).toBe(false);
+        expect(storedDocument(retermed, anchored, "assembly-hash").matches).toBe(false);
     });
 
     it("an agreement's served document reproduces its key; its name is outside the key", () => {

@@ -17,7 +17,7 @@ import {
 import { InProcessChannel } from "../src/agent/coordination.js";
 import { computeCheckoutHash } from "../src/agreement.js";
 import { buildDomain, COMMITMENT_TYPES } from "../src/commitments.js";
-import { assemblyCompositionHash } from "../src/assembly.js";
+import { assemblyHashOf } from "../src/assembly.js";
 import type { Address } from "../src/types.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { hydrateAuthored, profileBinding } from "./hydrate.js";
@@ -299,14 +299,14 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
         expect(a.clauses.find((s) => s.clause === keyOf("figaro-utility-token"))?.data.currency).toBe(PIN);
     });
 
-    it("the instantiated agreement carries the assembly's own composition hash as agreement.provenance", () => {
+    it("the instantiated agreement carries the assembly's own assembly hash as agreement.provenance", () => {
         const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address, overrides });
         expect(a.provenance).toEqual({
             agreementHash: pinned.assembly.agreements[0].agreementHash,
-            compositionHash: assemblyCompositionHash(pinned.assembly),
+            assemblyHash: assemblyHashOf(pinned.assembly),
         });
         // The provenance leaf is the format's, not a clause: no clause carries it.
-        expect(a.clauses.some((s) => "compositionHash" in (s.data ?? {}))).toBe(false);
+        expect(a.clauses.some((s) => "assemblyHash" in (s.data ?? {}))).toBe(false);
     });
 
     it("the folded pin now REACHES the sign gate: a pin contradicting the struct refuses to sign", async () => {
@@ -328,7 +328,7 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
             chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides, specs: FOLD_SPECS,
         });
         expect(offer.buyerSig).toBeDefined();
-        expect(offer.agreement.provenance?.compositionHash).toBe(assemblyCompositionHash(pinned.assembly));
+        expect(offer.agreement.provenance?.assemblyHash).toBe(assemblyHashOf(pinned.assembly));
         expect(offer.commitment.checkoutHash).toBe(computeCheckoutHash(offer.agreement));
     });
 });
@@ -391,8 +391,8 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
             account: BUYER, domain: buildDomain(CHAIN, CORE), types: COMMITMENT_TYPES, primaryType: "Commitment", message: commitment,
         });
         const short: CommitmentPayload = { commitment, agreement, buyerSig };
-        const compositionHash = assemblyCompositionHash(designed.assembly);
-        const named = new RegExp(`figaro-consent clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(compositionHash)} \\(${compositionHash}\\) composes`);
+        const assemblyHash = assemblyHashOf(designed.assembly);
+        const named = new RegExp(`figaro-consent clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(assemblyHash)} \\(${assemblyHash}\\) composes`);
         expect((await validateOffer(short, SELLER.address, undefined, DESIGN_SPECS, designed, profileBinding(designed))).reason).toMatch(named);
         await expect(counterSignOffer(sellerW, short, { chainId: CHAIN, core: CORE }, () => true, policy, DESIGN_SPECS, designed, profileBinding(designed)))
             .rejects.toThrow(named);
@@ -408,11 +408,11 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
 
 describe("the seller's bound assemblies — the offer leg refuses an order under an assembly the seller has not bound", () => {
     // A structurally different assembly (its own clause selection), so its
-    // composition hash differs from the one the orders instantiate.
+    // assembly hash differs from the one the orders instantiate.
     const elsewhere = hydrateAuthored({
         agreements: [{ id: "order-0", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
     });
-    const offeredHash = assemblyCompositionHash(assembly.assembly);
+    const offeredHash = assemblyHashOf(assembly.assembly);
     const CTX = { chainId: CHAIN, core: CORE };
     // The handler reads only the chain id from its public client here: the
     // bond approval is switched off, so nothing else touches the chain.

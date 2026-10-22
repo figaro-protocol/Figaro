@@ -166,7 +166,7 @@ export interface MarketCadence {
 }
 
 export interface MarketRow {
-    /** The attribution key — the compositionHash the parties declared. */
+    /** The attribution key — the assemblyHash the parties declared. */
     key: string;
     /** The registered assembly's name when the registry resolves the key,
      *  else the key itself: an unresolved attribution is never given a name

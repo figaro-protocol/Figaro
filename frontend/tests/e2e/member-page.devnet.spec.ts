@@ -52,7 +52,7 @@ const LOCAL_ANVIL = defineChain({
 
 /** Discover an anchored assembly slug from chain (never a roster) — the
  *  seeded profile must bind one to satisfy the even surfacing rule. */
-async function discoverAnchoredCompositionHash(): Promise<Hex> {
+async function discoverAnchoredAssemblyHash(): Promise<Hex> {
     const config = readLocalDeploymentConfig();
     const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY
         ?? config.assemblyRegistry ?? '') as Hex;
@@ -69,7 +69,7 @@ async function discoverAnchoredCompositionHash(): Promise<Hex> {
     if (events.length === 0) {
         throw new Error('no anchored assemblies on this devnet — run frontend/scripts/populate-test-data.mjs first');
     }
-    return events[events.length - 1].args.compositionHash as Hex;
+    return events[events.length - 1].args.assemblyHash as Hex;
 }
 
 const SELLER_KEY = ANVIL_KEYS[1];
@@ -111,7 +111,7 @@ async function seedRegisteredMemberWithCatalog(): Promise<SeededSeller> {
     };
     const { uri: catalogURI } = await pinJSONToIPFS(catalog);
 
-    const anchoredHash = await discoverAnchoredCompositionHash();
+    const anchoredHash = await discoverAnchoredAssemblyHash();
     await seedRegisteredMember({
         walletKey: SELLER_KEY,
         profile: {
@@ -123,7 +123,7 @@ async function seedRegisteredMemberWithCatalog(): Promise<SeededSeller> {
             assemblyBindings: [{
                 bindingId: `seller-page-binding-${Date.now()}`,
                 subjectAddress: SELLER_ADDR as Hex,
-                compositionHash: anchoredHash,
+                assemblyHash: anchoredHash,
                 counterpartyBindings: [],
             }],
         },

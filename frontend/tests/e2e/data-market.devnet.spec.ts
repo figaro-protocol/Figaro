@@ -31,11 +31,11 @@
  *   - Both members hold LIVE MembersRegistry stakes (registered if absent,
  *     idempotent — the rpgf-rewards pattern).
  *   - The open-record sibling (disclosure `open`) is anchored under a
- *     DISTINCT compositionHash — regime variants are sibling assemblies.
+ *     DISTINCT assemblyHash — regime variants are sibling assemblies.
  *
  * Everything consumed is DISCOVERED from chain + IPFS (AssemblyRegistered
  * events → pinned assembly docs, selected by SHAPE; integrity re-hashed via
- * assemblyCompositionHash) and realized through the SDK's ONE assembly walk
+ * assemblyHashOf) and realized through the SDK's ONE assembly walk
  * (reconstructOrdersFromAssembly) — never a hand-coded composition.
  *
  * Wallets: DEDICATED anvil indices 36 (member A) and 37 (member B), inside
@@ -59,7 +59,7 @@ import {
     generateSalt,
     reconstructOrdersFromAssembly,
     hashClauseData,
-    assemblyCompositionHash,
+    assemblyHashOf,
     verifyInclusionProof,
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
@@ -209,13 +209,13 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         // mismatch FAILS instead of being skipped as unresolvable): the
         // adopted documents re-hash to their anchored identities.
         for (const adopted of [aerialSurvey!, aerialOpen!, dataStream!]) {
-            expect(assemblyCompositionHash(adopted.hydrated.assembly), 'the pinned assembly re-hashes to its anchored identity')
-                .toBe(adopted.compositionHash);
+            expect(assemblyHashOf(adopted.hydrated.assembly), 'the pinned assembly re-hashes to its anchored identity')
+                .toBe(adopted.assemblyHash);
         }
         expect(
-            aerialOpen!.compositionHash,
+            aerialOpen!.assemblyHash,
             'one changed design fill = a DIFFERENT assembly: regime variants are siblings, not versions',
-        ).not.toBe(aerialSurvey!.compositionHash);
+        ).not.toBe(aerialSurvey!.assemblyHash);
 
         // ── One bonded single-order process, chain-driven end to end:
         //    reconstruct through the SDK's ONE assembly walk, both parties
@@ -251,7 +251,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             // the agreement's provenance to its agreement's agreement hash and
             // the adopted assembly's own root.
             expect(order.agreement.provenance, `${opts.label}: the agreement names its registered agreement and the adopted assembly`)
-                .toEqual({ agreementHash: opts.adopted.agreements[0].agreementHash, compositionHash: opts.adopted.compositionHash });
+                .toEqual({ agreementHash: opts.adopted.agreements[0].agreementHash, assemblyHash: opts.adopted.assemblyHash });
 
             const buyerSig = await opts.buyerWallet.signTypedData(order.typedData);
             const sellerSig = await opts.sellerWallet.signTypedData(order.typedData);

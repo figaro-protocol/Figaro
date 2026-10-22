@@ -37,7 +37,7 @@ import {
     pinJSONToIPFS,
     readLocalDeploymentConfig,
     referenceAssemblySlug,
-    referenceAssemblyCompositionHash,
+    referenceAssemblyHash,
     resolveIpfsURI,
     seedRegisteredMember,
 } from './devnet-helpers';
@@ -77,7 +77,7 @@ async function seedBaseline(runTag: string): Promise<{ itemName: string; slug: s
             acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
             defaultTokenAddress: token,
             assemblyBindings: [{
-                bindingId: 'wizard-catalog', subjectAddress: WIZARD, compositionHash: referenceAssemblyCompositionHash('pos.json'), counterpartyBindings: [],
+                bindingId: 'wizard-catalog', subjectAddress: WIZARD, assemblyHash: referenceAssemblyHash('pos.json'), counterpartyBindings: [],
             }],
         },
     });
@@ -105,12 +105,12 @@ async function expectedAssemblyOrder(): Promise<string[]> {
         client.getContractEvents({ address, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered', fromBlock: 0n }),
         client.getContractEvents({ address, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'DepositWithdrawn', fromBlock: 0n }),
     ]);
-    const gone = new Set(withdrawn.map((e) => String(e.args.compositionHash).toLowerCase()));
+    const gone = new Set(withdrawn.map((e) => String(e.args.assemblyHash).toLowerCase()));
     return registered
-        .filter((e) => !gone.has(String(e.args.compositionHash).toLowerCase()))
+        .filter((e) => !gone.has(String(e.args.assemblyHash).toLowerCase()))
         .map((e, i) => ({ e, i }))
         .sort((a, b) => Number(b.e.blockNumber! - a.e.blockNumber!) || a.i - b.i)
-        .map(({ e }) => deriveAssemblySlug(e.args.compositionHash as Hex));
+        .map(({ e }) => deriveAssemblySlug(e.args.assemblyHash as Hex));
 }
 
 /** The slugs the Assemblies step lists right now, top to bottom. */
@@ -267,10 +267,10 @@ test.describe('member wizard — catalog and assemblies steps (devnet)', () => {
         expect(await listedAssemblySlugs(page), 'a toggle leaves the order alone').toEqual(expected);
 
         // A reload restores the draft and the same order. The draft's binding
-        // names the assembly by its full composition hash.
+        // names the assembly by its full assembly hash.
         await page.waitForFunction(
             (needle) => Object.keys(window.localStorage).some((k) => (window.localStorage.getItem(k) ?? '').includes(needle)),
-            referenceAssemblyCompositionHash('pos.json'), { timeout: 15_000 },
+            referenceAssemblyHash('pos.json'), { timeout: 15_000 },
         );
         await page.reload({ waitUntil: 'domcontentloaded' });
         await expect(rows).toHaveCount(expected.length, { timeout: 30_000 });

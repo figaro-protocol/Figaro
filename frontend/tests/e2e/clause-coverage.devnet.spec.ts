@@ -22,7 +22,7 @@
  * There is NO probe clause here — the probe (register an UNKNOWN clause at
  * test time) is permissionless-clause's instrument. These clauses are known,
  * so each rung's composition is FIXED, and assembly identity is the
- * composition (editorial names are excluded from the compositionHash). On the
+ * composition (editorial names are excluded from the assemblyHash). On the
  * persistent devnet that means the first run against a deployment ANCHORS
  * each rung's assembly and every later run ADOPTS it — the protocol-correct
  * behavior (identical composition = one binding, first-write-wins). The
@@ -255,7 +255,7 @@ const RUNGS: ClauseRung[] = [
         // THE UTILITY-TOKEN PIN: the designer pins the one ERC-20 the whole
         // assembly's processes run in — an ASSEMBLY-SCOPED designer fill (like
         // the recourse clauses above), identity-bearing in the
-        // compositionHash. Generic: the clause names no token and carries no
+        // assemblyHash. Generic: the clause names no token and carries no
         // economics. Checkout resolves the process currency from the pin,
         // ahead of the buyer's payment-token pick and the seller default; the
         // committed root's commerce clause carries the SAME currency — the

@@ -47,7 +47,7 @@ contract RpgfIntegrationTest is Test {
     ///      instantiates.
     bytes32 constant AGR = keccak256("reference-agreement");
     bytes32 constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
-    /// @dev The reference assembly's compositionHash: the root of a one-leaf
+    /// @dev The reference assembly's assemblyHash: the root of a one-leaf
     ///      tree, which is its agreement's leaf (set in setUp).
     bytes32 ASM;
     bytes constant CLAUSE_DATA = hex"5eed";
@@ -156,16 +156,16 @@ contract RpgfIntegrationTest is Test {
     }
 
     /// @dev A resolved process whose agreement carries the PROVENANCE leaf
-    ///      naming the reference agreement and `compositionHash` — the only way
+    ///      naming the reference agreement and `assemblyHash` — the only way
     ///      an agreement or an assembly is ever provable, because agreement
     ///      leaves are keyed by clause and neither key is ever a leaf key.
-    function _settleUnderAssembly(bytes32 compositionHash, uint256 salt)
+    function _settleUnderAssembly(bytes32 assemblyHash, uint256 salt)
         internal
         returns (CommitmentTypes.Commitment memory c, bytes memory clauseData)
     {
         // Clauses commit as CANONICAL JSON bytes — the same convention the
         // runtime's agreements use (the merkle leaf hashes exactly these).
-        clauseData = AgreementTestHelper.provenanceLeaf(AGR, compositionHash);
+        clauseData = AgreementTestHelper.provenanceLeaf(AGR, assemblyHash);
         c = CommitmentTypes.Commitment({
             processId: bytes32(0),
             buyer: buyer,
@@ -188,12 +188,12 @@ contract RpgfIntegrationTest is Test {
     uint8 constant KIND_ASSEMBLY = 1;
     uint8 constant KIND_AGREEMENT = 2;
 
-    /// @dev Credit `compositionHash` for an order instantiating the reference
+    /// @dev Credit `assemblyHash` for an order instantiating the reference
     ///      assembly's one agreement (a one-leaf tree: the proof is empty).
-    function _recordAssembly(CommitmentTypes.Commitment memory p, bytes32 compositionHash) internal {
+    function _recordAssembly(CommitmentTypes.Commitment memory p, bytes32 assemblyHash) internal {
         counter.recordAssemblyUsage(
             p,
-            compositionHash,
+            assemblyHash,
             AGR,
             keccak256(AgreementTestHelper.agreementLeafBytes(0, "{}")),
             new bytes32[](0),
@@ -291,7 +291,7 @@ contract RpgfIntegrationTest is Test {
 
     function test_provenanceLeafMustNameTheAssemblyClaimed() public {
         (CommitmentTypes.Commitment memory p,) = _settleUnderAssembly(ASM, 1);
-        // The clause content is DERIVED from the claimed compositionHash, so a
+        // The clause content is DERIVED from the claimed assemblyHash, so a
         // different composition derives a different clause data hash whose leaf is
         // simply not in the tree — the old ProvenanceMismatch content-check now
         // collapses into the one inclusion gate (a stronger, structural check).
@@ -310,7 +310,7 @@ contract RpgfIntegrationTest is Test {
     }
 
     /// A registry takes any bytes32, so a stranger can stake an assembly's
-    /// composition hash as a CLAUSE key. The reward keeps the two families
+    /// assembly hash as a CLAUSE key. The reward keeps the two families
     /// apart: the assembly's accrual pays the assembly's registrant, and the
     /// stranger's clause-kind standing on that key earns nothing of it.
     function test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt() public {

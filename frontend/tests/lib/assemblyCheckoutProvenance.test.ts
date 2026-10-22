@@ -2,10 +2,10 @@
  * assemblyCheckoutProvenance.test.ts — the link from a realized order to the
  * assembly it instantiates is the agreement FORMAT's provenance leaf, set by
  * the checkout walk from the agreement's registered agreement hash and the
- * assembly's own composition root; no clause carries it.
+ * assembly's own assembly root; no clause carries it.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { agreementLeaves, computeProvenanceLeaf, assemblyCompositionHash } from "@figaro-protocol/sdk";
+import { agreementLeaves, computeProvenanceLeaf, assemblyHashOf } from "@figaro-protocol/sdk";
 import { planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
 import { referenceAssembly, primeClauseSpecs } from "./primeClauseSpecs";
@@ -26,7 +26,7 @@ describe("assembly checkout — the provenance leaf", () => {
         await primeClauseSpecs();
     });
 
-    it("every realized order names its agreement's agreement hash and the composition root as its provenance, in no clause", async () => {
+    it("every realized order names its agreement's agreement hash and the assembly root as its provenance, in no clause", async () => {
         const hydratedAssembly = referenceAssembly("pos.json");
         const assembly = hydratedAssembly.assembly;
         const bound: BoundAssembly = {
@@ -50,14 +50,14 @@ describe("assembly checkout — the provenance leaf", () => {
             },
             { chainId: 31337 },
         );
-        const compositionHash = assemblyCompositionHash(assembly);
+        const assemblyHash = assemblyHashOf(assembly);
         expect(orders.length).toBe(assembly.agreements.length);
         for (const order of orders) {
             const entry = assembly.agreements.find((s) => s.id === order.nodeId)!;
-            expect(order.agreement.provenance).toEqual({ agreementHash: entry.agreementHash, compositionHash });
-            expect(agreementLeaves(order.agreement)).toContain(computeProvenanceLeaf(entry.agreementHash, compositionHash));
+            expect(order.agreement.provenance).toEqual({ agreementHash: entry.agreementHash, assemblyHash });
+            expect(agreementLeaves(order.agreement)).toContain(computeProvenanceLeaf(entry.agreementHash, assemblyHash));
             for (const clauseEntry of order.agreement.clauses) {
-                expect(JSON.stringify(clauseEntry.data)).not.toContain(compositionHash.slice(2));
+                expect(JSON.stringify(clauseEntry.data)).not.toContain(assemblyHash.slice(2));
             }
         }
     });

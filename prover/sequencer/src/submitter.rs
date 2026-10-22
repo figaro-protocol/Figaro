@@ -476,7 +476,7 @@ sol! {
 sol! {
     #[sol(rpc)]
     interface IAssemblyRegistry {
-        function bindings(bytes32 compositionHash)
+        function bindings(bytes32 assemblyHash)
             external
             view
             returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI);
@@ -1257,7 +1257,7 @@ mod tests {
         let mut claim = dummy_claim();
         claim.clause_or_assembly = key;
         claim.kind = UsageClaimKind::Agreement {
-            composition_hash: B256::repeat_byte(0xA5),
+            assembly_hash: B256::repeat_byte(0xA5),
         };
         claim
     }

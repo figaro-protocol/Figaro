@@ -95,7 +95,7 @@ import {
     ladderLabelsOf,
     readLocalDeploymentConfig,
     memberProfileBindings,
-    anchoredCompositionHash,
+    anchoredAssemblyHash,
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
@@ -215,7 +215,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    the shape; a re-run adopts the anchored one (content-addressed,
         //    first-write-wins — the mainnet ensure-exists semantics). ──
         const deliverySlug = await ensureDeliveryAssembly(page);
-        const deliveryHash = await anchoredCompositionHash(deliverySlug);
+        const deliveryHash = await anchoredAssemblyHash(deliverySlug);
 
         // The registry explorer carries it — author → pin → anchor → visible.
         await page.goto('/registries?family=assemblies&e2e=devnet', { waitUntil: 'domcontentloaded' });

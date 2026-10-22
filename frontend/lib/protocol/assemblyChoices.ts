@@ -96,7 +96,7 @@ type AssemblyFetchState = "loading" | "loaded" | "error";
 export interface AssemblyChoice {
     slug: string;
     registeredBy: `0x${string}`;
-    compositionHash: `0x${string}`;
+    assemblyHash: `0x${string}`;
     contentURI: string;
     blockNumber: bigint;
     networkTargets: readonly string[];
@@ -114,7 +114,7 @@ export interface AssemblyChoice {
     /** Available when state === "loaded". Sorted, deduped clause keys. */
     clauses: readonly string[] | null;
     /** The hydrated assembly when state === "loaded": the assembly verified
-     *  against `compositionHash` and every agreement's registered agreement
+     *  against `assemblyHash` and every agreement's registered agreement
      *  verified against its key. Avoids re-fetching from consumers that need
      *  it (e.g. fork). */
     hydratedAssembly: HydratedAssembly | null;
@@ -163,12 +163,12 @@ export function useAssemblyChoices(
          *  pin exactly like an unreachable one (absence, by its contract), so
          *  absence is re-checked the same way. */
         const read = (event: (typeof events)[number], attempt: number) => {
-            fetchHydratedAssembly(event.contentURI, event.compositionHash).then(
+            fetchHydratedAssembly(event.contentURI, event.assemblyHash).then(
                 (hydratedAssembly) => {
                     setHydratedState((prev) => {
                         const next = new Map(prev);
                         next.set(
-                            event.compositionHash,
+                            event.assemblyHash,
                             hydratedAssembly
                                 ? { state: "loaded", hydratedAssembly }
                                 : { state: "error", hydratedAssembly: null },
@@ -178,15 +178,15 @@ export function useAssemblyChoices(
                     // A served document that is not the one its root anchors —
                     // or a entry whose agreement failed the same way — never
                     // resolves: no re-read, the row says so.
-                    if (!hydratedAssembly && !getAssemblyLoadError(event.compositionHash)) schedule(event, attempt);
+                    if (!hydratedAssembly && !getAssemblyLoadError(event.assemblyHash)) schedule(event, attempt);
                 },
                 () => {
                     setHydratedState((prev) => {
                         const next = new Map(prev);
-                        next.set(event.compositionHash, { state: "error", hydratedAssembly: null });
+                        next.set(event.assemblyHash, { state: "error", hydratedAssembly: null });
                         return next;
                     });
-                    if (!getAssemblyLoadError(event.compositionHash)) schedule(event, attempt);
+                    if (!getAssemblyLoadError(event.assemblyHash)) schedule(event, attempt);
                 },
             );
         };
@@ -198,11 +198,11 @@ export function useAssemblyChoices(
             timers.add(timer);
         };
         for (const event of events) {
-            if (inFlightRef.current.has(event.compositionHash)) continue;
-            inFlightRef.current.add(event.compositionHash);
+            if (inFlightRef.current.has(event.assemblyHash)) continue;
+            inFlightRef.current.add(event.assemblyHash);
             setHydratedState((prev) => {
                 const next = new Map(prev);
-                next.set(event.compositionHash, { state: "loading", hydratedAssembly: null });
+                next.set(event.assemblyHash, { state: "loading", hydratedAssembly: null });
                 return next;
             });
             read(event, 0);
@@ -228,14 +228,14 @@ export function useAssemblyChoices(
         if (!events) return null;
         const networkTarget = chainIdToNetworkTarget(chainId);
         return events.map((event) => {
-            const entry = hydratedState.get(event.compositionHash);
+            const entry = hydratedState.get(event.assemblyHash);
             const state = entry?.state ?? "loading";
             const hydratedAssembly = entry?.hydratedAssembly ?? null;
             const assembly = hydratedAssembly?.assembly ?? null;
             return {
                 slug: event.slug,
                 registeredBy: event.registeredBy,
-                compositionHash: event.compositionHash,
+                assemblyHash: event.assemblyHash,
                 contentURI: event.contentURI,
                 blockNumber: event.blockNumber,
                 stakeWithdrawn: event.stakeWithdrawn,

@@ -100,7 +100,7 @@ test.describe('clause lookalike (devnet)', () => {
         const slug = await publishOrAdoptReviewed(page, handle!);
 
         // Out-of-band: the anchored assembly's agreement binds a registered
-        // agreement keyed by the lookalike's key, and the composition hash
+        // agreement keyed by the lookalike's key, and the assembly hash
         // the chain keys on derives that slug.
         const anchored = (await discoverAnchoredAssemblies()).find((a) => a.slug === slug);
         expect(anchored, 'the published composition is anchored on-chain, its agreements registered').toBeTruthy();

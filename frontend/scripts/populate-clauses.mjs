@@ -118,7 +118,7 @@ import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 // key, and the canonical-JSON convention. Nothing is re-implemented here.
 import {
     CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, computeClauseKey, canonicalize,
-    assemblyCompositionHash, deriveAssemblySlug, parseProjectionHints,
+    assemblyHashOf, deriveAssemblySlug, parseProjectionHints,
     assemblyComposedClauseKeys, resolveAuthoredClauseKeys, composeAuthoredAgreements, assembleAuthored,
     isMandatoryAgreement, agreementHashOf,
 } from '@figaro-protocol/sdk';
@@ -646,22 +646,22 @@ export async function anchorBuiltAssembly({ built, agreementRegistry, ...args })
     return anchorAssembly({ ...args, assembly });
 }
 
-/** Anchor one Assembly (idempotent — compositionHash is content-derived,
+/** Anchor one Assembly (idempotent — assemblyHash is content-derived,
  *  first-write-wins). In vault mode the multisig is msg.sender, so the DAO
  *  becomes the assembly's designer of record. */
 export async function anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, assembly, vault, ownerClients, log = console.log }) {
-    // Composition hash over the COMPOSITION ONLY (editorial excluded); the slug
+    // Assembly hash over the COMPOSITION ONLY (editorial excluded); the slug
     // is presentation, derived off-chain. Both from the SDK single home — the
-    // registry keys bindings by compositionHash.
-    const compositionHash = assemblyCompositionHash(assembly);
-    const slug = deriveAssemblySlug(compositionHash);
+    // registry keys bindings by assemblyHash.
+    const assemblyHash = assemblyHashOf(assembly);
+    const slug = deriveAssemblySlug(assemblyHash);
 
     // Idempotency via STATE, not an event scan: `bindings[hash].registeredAt`
     // is the contract's own already-registered test. A fromBlock:0 log scan
     // works on devnet's short chain but exceeds every public provider's
     // getLogs range cap on a real network (as the Sepolia fork shows).
     const [, registeredAt] = await publicClient.readContract({
-        address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [compositionHash],
+        address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [assemblyHash],
     });
     if (registeredAt !== 0n && registeredAt !== 0) {
         log(`  · ${slug} — already anchored, skipped`);
@@ -673,7 +673,7 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
         address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registrationDeposit',
     });
     if (vault) {
-        // Nonce = the compositionHash itself: unique per assembly,
+        // Nonce = the assemblyHash itself: unique per assembly,
         // deterministic across re-runs.
         await vaultExecute({
             publicClient, vault, ownerClients,
@@ -682,19 +682,19 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
             data: encodeFunctionData({
                 abi: ASSEMBLY_REGISTRY_ABI,
                 functionName: 'registerAssembly',
-                args: [compositionHash, contentURI],
+                args: [assemblyHash, contentURI],
             }),
-            nonce: BigInt(compositionHash),
+            nonce: BigInt(assemblyHash),
             log,
         });
     } else {
         await publicClient.simulateContract({
             account: account.address, address: registry, abi: ASSEMBLY_REGISTRY_ABI,
-            functionName: 'registerAssembly', args: [compositionHash, contentURI], value: deposit,
+            functionName: 'registerAssembly', args: [assemblyHash, contentURI], value: deposit,
         });
         const hash = await walletClient.writeContract({
             address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registerAssembly',
-            args: [compositionHash, contentURI], value: deposit,
+            args: [assemblyHash, contentURI], value: deposit,
         });
         await publicClient.waitForTransactionReceipt({ hash });
     }

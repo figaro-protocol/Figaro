@@ -227,7 +227,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                     const embargo = entry.calendar?.embargoDaysAfterResolution;
                                     return (
                                         <li
-                                            key={`${entry.compositionHash}-${entry.clauseKey}-${entry.posture}`}
+                                            key={`${entry.assemblyHash}-${entry.clauseKey}-${entry.posture}`}
                                             className="flex flex-wrap items-baseline gap-x-2"
                                             data-testid={`disclosure-data-${entry.clauseKey}-${entry.posture}`}
                                         >
@@ -244,7 +244,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                     : "available at resolution"}
                                             </span>
                                             <code className="text-[11px] text-ink-muted font-mono">
-                                                {truncateHex(entry.compositionHash, { head: 10, tail: 0 })}
+                                                {truncateHex(entry.assemblyHash, { head: 10, tail: 0 })}
                                             </code>
                                         </li>
                                     );

@@ -245,7 +245,7 @@ fn bincode_roundtrip_every_usage_claim_kind() {
                 clause_data_hash: B256::repeat_byte(0x01),
             }),
             claim(UsageClaimKind::Agreement {
-                composition_hash: B256::repeat_byte(0x02),
+                assembly_hash: B256::repeat_byte(0x02),
             }),
             claim(UsageClaimKind::Assembly {
                 agreement_hash: B256::repeat_byte(0x03),
@@ -265,8 +265,8 @@ fn bincode_roundtrip_every_usage_claim_kind() {
         vec![USAGE_KIND_CLAUSE, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY]
     );
     match &decoded.usage_claims[1].kind {
-        UsageClaimKind::Agreement { composition_hash } => {
-            assert_eq!(*composition_hash, B256::repeat_byte(0x02))
+        UsageClaimKind::Agreement { assembly_hash } => {
+            assert_eq!(*assembly_hash, B256::repeat_byte(0x02))
         }
         other => panic!("expected Agreement, got {other:?}"),
     }

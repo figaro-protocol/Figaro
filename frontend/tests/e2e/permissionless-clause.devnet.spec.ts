@@ -70,7 +70,7 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 //
 //    The id + title carry a per-run nonce (minted INSIDE the test, below) so each
 //    run certifies a genuinely never-seen clause AND the run's composition
-//    identity (compositionHash → asm-<hash> slug) is unique. The test leaves its
+//    identity (assemblyHash → asm-<hash> slug) is unique. The test leaves its
 //    state on-chain (no revert — devnet is a mainnet rehearsal), so a FIXED
 //    id/content would collide with a prior run's first-write-wins registration
 //    on every re-run and every Playwright retry (registerAssembly reverts:
