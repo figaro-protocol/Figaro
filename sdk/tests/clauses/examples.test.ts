@@ -4,7 +4,7 @@ import { encodeContentFromSpec, decodeContentFromSpec } from "../../src/clauses/
 import dataLicenseSpecRaw from "../../../clauses/figaro-data-license.json" with { type: "json" };
 import dataTermsSpecRaw from "../../../clauses/figaro-data-terms.json" with { type: "json" };
 import chainOfCustodySpecRaw from "../../../clauses/figaro-chain-of-custody.json" with { type: "json" };
-import agreedVariationSpecRaw from "../../../clauses/figaro-agreed-variation.json" with { type: "json" };
+import propertyTransferSpecRaw from "../../../clauses/figaro-property-transfer.json" with { type: "json" };
 import acceptanceCriteriaSpecRaw from "../../../clauses/figaro-acceptance-criteria.json" with { type: "json" };
 import modalitiesSpecRaw from "../../../clauses/figaro-modalities.json" with { type: "json" };
 import { validateContent } from "../../src/clauses/validate.js";
@@ -819,14 +819,14 @@ describe("example clause specs — parse + validate sample content", () => {
         }, parsed.spec, { stage: 1 }).ok).toBe(false);
     });
 
-    // ── figaro-agreed-variation ──
+    // ── figaro-property-transfer ──
 
-    it("figaro-agreed-variation spec parses cleanly", () => {
-        expect(parseClauseSpec(agreedVariationSpecRaw).ok).toBe(true);
+    it("figaro-property-transfer spec parses cleanly", () => {
+        expect(parseClauseSpec(propertyTransferSpecRaw).ok).toBe(true);
     });
 
-    it("figaro-agreed-variation accepts the designer's anticipated events and round-trips through the generic encoder", () => {
-        const parsed = parseClauseSpec(agreedVariationSpecRaw);
+    it("figaro-property-transfer accepts the designer's anticipated events and round-trips through the generic encoder", () => {
+        const parsed = parseClauseSpec(propertyTransferSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const committed = { anticipatedEvents: ["Cargo resold in transit", "Re-routing of the consignment"] };
         expect(validateContent(committed, parsed.spec).ok).toBe(true);
@@ -834,8 +834,8 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(decodeContentFromSpec(parsed.spec, encoded)).toEqual(committed);
     });
 
-    it("figaro-agreed-variation stage-1 witness round-trips a resale in transit netted by two transfers", () => {
-        const parsed = parseClauseSpec(agreedVariationSpecRaw);
+    it("figaro-property-transfer stage-1 witness round-trips a resale in transit netted by two transfers", () => {
+        const parsed = parseClauseSpec(propertyTransferSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         // The external-events paper's worked case: the carrier and the
         // warehouse each send the shipper the payment the schedule owes them.
@@ -855,8 +855,8 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(decodeContentFromSpec(parsed.spec, encoded, { stage: 1 })).toEqual(variation);
     });
 
-    it("figaro-agreed-variation stage-1 accepts a variation that moves no value and names no instrument", () => {
-        const parsed = parseClauseSpec(agreedVariationSpecRaw);
+    it("figaro-property-transfer stage-1 accepts a variation that moves no value and names no instrument", () => {
+        const parsed = parseClauseSpec(propertyTransferSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         const variation = {
             event: "Discharge port changed to Antwerp",
@@ -868,8 +868,8 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(decodeContentFromSpec(parsed.spec, encoded, { stage: 1 })).toMatchObject(variation);
     });
 
-    it("figaro-agreed-variation rejects no anticipated event, a zero transfer, and a variation without its revised terms", () => {
-        const parsed = parseClauseSpec(agreedVariationSpecRaw);
+    it("figaro-property-transfer rejects no anticipated event, a zero transfer, and a variation without its revised terms", () => {
+        const parsed = parseClauseSpec(propertyTransferSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ anticipatedEvents: [] }, parsed.spec).ok).toBe(false);
         const base = {

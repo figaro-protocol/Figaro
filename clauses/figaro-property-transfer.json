@@ -1,7 +1,7 @@
 {
-    "clauseId": "figaro-agreed-variation",
+    "clauseId": "figaro-property-transfer",
     "version": 1,
-    "title": "Agreed variation",
+    "title": "Property transfer",
     "description": "A variation of a process's terms that its parties agree between the commits and the buyer's resolution, in answer to an external event: a cargo resold in transit, a re-routing, a change nobody is at fault for. Composed once for the whole assembly, so every agreement signed under it carries the clause from signing and each party can attest the variation against its own order while the process stands open. The designer names the external events the trade is known to admit; the list anticipates and never closes, and a variation answering an event it does not name is attested the same way. The variation is the stage-1 attestation: the event in the parties' words, the fingerprint of the transferable instrument through which it happened (a bill of lading, a warehouse receipt, a contract of sale) when there is one, the transfers between the process's parties that net the committed schedule to the positions they agreed, and the fingerprint of the revised terms. The parties make the transfers themselves before resolution, out of their own balances; the Core executes the committed schedule unchanged, and every bond stays deposited until the buyer resolves. The instrument and the revised terms stay with the parties and the clause carries their fingerprints. Whether the parties' attestations agree is derived at read time, never stored.",
     "fields": [
         {
@@ -27,7 +27,7 @@
                 "minLength": 1,
                 "maxLength": 140,
                 "label": "External event",
-                "description": "The external event the variation answers, in the parties' words (e.g. \"Consignment resold to a new owner mid-voyage\")."
+                "description": "The external event the variation answers, in the parties' words (e.g. \"Sale of the consignment agreed mid-voyage, ownership passing at resolution\")."
             },
             {
                 "name": "instrumentHash",

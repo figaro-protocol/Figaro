@@ -135,7 +135,7 @@ export async function fillTradelensCheckout(page: Page): Promise<void> {
         .fill('AQL 2.5 per ISO 2859-1 against PO 4711');
     // A compact law TAG (the spec's format pattern) — the jurisdiction label,
     // not prose.
-    // applicable-law, arbitration and agreed-variation are designer-written assembly terms
+    // applicable-law, arbitration and property-transfer are designer-written assembly terms
     // (design.fills) — nothing for the buyer to fill.
     // The emissions methodology is committed at signing by the parties — not
     // catalog-sourced (no block.checkout.catalogueFills on the spec).

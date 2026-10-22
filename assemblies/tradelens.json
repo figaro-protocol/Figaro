@@ -1,6 +1,6 @@
 {
     "assemblyClauses": {
-        "figaro-agreed-variation": {
+        "figaro-property-transfer": {
             "anticipatedEvents": [
                 "Cargo resold in transit",
                 "Re-routing of the consignment"

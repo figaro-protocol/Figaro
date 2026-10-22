@@ -10,7 +10,7 @@
  * Six orders, importer-of-record as root buyer on every one (FigaroCore star):
  *   order-0 root  shipper-of-record   cargo, incoterms, chain-of-custody,
  *                                     acceptance-criteria, applicable-law,
- *                                     arbitration-kleros, agreed-variation (the three
+ *                                     arbitration-kleros, property-transfer (the three
  *                                     assembly terms), geolocation, modalities
  *   order-1 p:0   inspection service  merchant-process, acceptance-criteria
  *   order-2 p:0   freight forwarder   merchant-process, geolocation
