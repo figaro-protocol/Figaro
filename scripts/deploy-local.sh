@@ -258,6 +258,30 @@ echo "   Deployment: $CORE_DEPLOYMENT"
 # AgreementRegistry, then the assembly on AssemblyRegistry, with the devnet's
 # MockERC20 substituted for the checked-in ZERO_ADDRESS currency sentinel
 # (the token populate-test-data.mjs and the e2e specs substitute too).
+# ── The mandatory clauses are the DAO's ──────────────────────────────────────
+# figaro-commerce and figaro-topology are registered by the DAO's wallet, the
+# treasury multisig (deployments/31337.expected.json § registrations.byClause),
+# because the frontend reads the mandatory clauses as the DAO's live
+# registrations whose spec declares the mandatory article. On a devnet the
+# treasury is MockTreasuryMultisig with anvil[0..2] as 2-of-3 owners, so the
+# same vault-mode run the Sepolia genesis uses (work/deploy/seed-sepolia-2-
+# vault-mandatory.sh) runs here with two anvil owner keys; the vault pays the
+# two deposits from its own balance, funded first. Devnet only: the keys are
+# anvil's.
+if [ "$(cast chain-id --rpc-url "$RPC_URL")" = "31337" ]; then
+    echo ""
+    echo "📎 Registering the mandatory clauses under the DAO treasury $DAO_TREASURY_ADDR (vault mode)..."
+    cast send --rpc-url "$RPC_URL" --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+        "$DAO_TREASURY_ADDR" --value 0.1ether > /dev/null
+    (cd "$REPO_ROOT/frontend" && \
+        NEXT_PUBLIC_CLAUSE_REGISTRY="$CLAUSE_ADDR" \
+        NEXT_PUBLIC_AGREEMENT_REGISTRY="$AGREEMENT_ADDR" \
+        REGISTRAR_VAULT="$DAO_TREASURY_ADDR" \
+        VAULT_OWNER_KEYS="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80,0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" \
+        SEED_CLAUSES="figaro-commerce,figaro-topology" \
+        node scripts/populate-clauses.mjs)
+fi
+
 echo ""
 echo "📎 Populating clauses, agreements and reference assemblies (pin → IPFS, anchor → ClauseRegistry, AgreementRegistry, AssemblyRegistry)..."
 (cd "$REPO_ROOT/frontend" && \

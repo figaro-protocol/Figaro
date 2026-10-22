@@ -29,5 +29,11 @@
         "rpgfMinterCap": "600000000000000000000000000",
         "balances": { "dao": "300000000000000000000000000" }
     },
-    "registrations": { "default": "seeder" }
+    "registrations": {
+        "default": "seeder",
+        "byClause": {
+            "figaro-commerce": "dao",
+            "figaro-topology": "dao"
+        }
+    }
 }
