@@ -11,7 +11,7 @@
 
 ## What Figaro is
 
-Every trade is a contract, and a binding contract needs six elements — offer, acceptance,
+Every trade is an agreement, and a binding contract needs six elements — offer, acceptance,
 consideration, capacity, legality, mutual assent — plus two things every contract implies: a body of
 terms and a trail of data. Between strangers the element that fails is **consideration**: promising
 value is easy, nothing makes delivering it credible. Figaro completes the contract by fixing

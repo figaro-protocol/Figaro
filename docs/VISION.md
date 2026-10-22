@@ -1,6 +1,6 @@
 # Figaro — the vision
 
-Every trade is a contract, and between strangers one element of it fails.
+Every trade is an agreement, and between strangers one element of a contract fails.
 Figaro makes that element hold, and the firm stops being necessary.
 
 ## The problem

@@ -25,3 +25,25 @@ Nouns and their definitions. One name per thing.
 **resolution** — The buyer's one act that ends a process: a call on the direct path, a signed operation on the batch path. It must name every open order of the process, and in one transaction every payment transfers and every bond is refunded. Only the buyer can make it, and it is final.
 
 **stake** — The tokens a wallet locks in a registry to register: as a member, or a clause, an agreement or an assembly. While they are locked, the registration is surfaced; once the wallet withdraws them, it leaves view.
+
+## Words from the law and the market
+
+These words are not Figaro's nouns. A sentence uses one only when it tells the law's or the market's side, and it names Figaro's counterpart beside it; every other sentence uses Figaro's noun.
+
+| The outside word | Its outside sense | Figaro's counterpart |
+|---|---|---|
+| `contract`, `terms` | the parties' binding promise and what it says | the agreement: every trade is an agreement |
+| `offer` | the first party's proposal | the buyer's signature over the commitment |
+| `acceptance` | the other party's assent | the seller's counter-signature |
+| `mutual assent` | a meeting of minds | the Core's check of both signatures at commit |
+| `negotiation` | bargaining over the terms | design and selection: the designer composes, the seller binds, the buyer selects |
+| `consideration` | the value given in exchange | the payment |
+| `capacity` | legal status: age, authority | a wallet that can sign and fund its bond |
+| `legality` | a condition of validity | a clause that composes in, or a forum ruling on the data |
+| `warranty`, `representation` | a promise about a fact | an attestation |
+| `refund` (commerce) | a payment reversed | a refund: only of a bond, at resolution |
+| `deposit`, `collateral`, `escrow` | tokens held as security by someone | the bond: the Core holds it, and no third party does |
+| `fee`, `levy` | a charge or a tax | none: the Core takes nothing; designers are rewarded from the reserve, counted by use |
+| `breach` | walking away, at a price | a move that leaves the party worse off than keeping its word |
+| `remedy` | compensation after the fact | put right before the buyer resolves |
+| `enforcement` | the state compelling performance | the equilibrium: keeping one's word is each party's best reply |

@@ -43,7 +43,7 @@
  *                                  the reference clauses + assemblies that are not
  *                                  the mandatory pair — RELEASE_READINESS Task 13)
  *
- * VAULT-REGISTRAR MODE (the LEXICON vault-registrar seam). This script always
+ * VAULT-REGISTRAR MODE (docs/RELEASE_READINESS.md Task 13). This script always
  * acts FOR exactly one registrar per invocation, and registrar is a PER-WALLET
  * role — a wallet registers only what it claims ownership of. The default
  * registrar is an EOA (REGISTRAR_PRIVATE_KEY). When the registrar is a
