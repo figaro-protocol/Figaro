@@ -814,7 +814,10 @@ async function main() {
 
     // Reference assemblies ride the same invocation when the registry and the
     // denomination fill are both provided (testnet/mainnet: Sepolia USDC;
-    // devnet's populate-test-data passes its mock instead).
+    // devnet's populate-test-data passes its mock instead). An assembly's
+    // agreements register on AgreementRegistry before the assembly anchors.
+    const assemblyRegistry = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
+    const agreementRegistry = process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? env.NEXT_PUBLIC_AGREEMENT_REGISTRY;
     const assemblyToken = process.env.ASSEMBLY_TOKEN_ADDRESS;
     if (assemblyRegistry && assemblyToken && !agreementRegistry) {
         throw new Error('NEXT_PUBLIC_ASSEMBLY_REGISTRY is set but NEXT_PUBLIC_AGREEMENT_REGISTRY is not — a reference assembly\'s agreements register before it');
