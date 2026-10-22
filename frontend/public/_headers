@@ -7,10 +7,13 @@
 # `output: 'export'`. Policy provenance: git history of those two files.
 #
 # Static-export adaptations, deliberate:
-#   - script-src: 'unsafe-inline' in place of the former per-request nonce
-#     (no server to mint one). Hash-pinning the inlined bootstrap scripts at
-#     build time is the future hardening; 'wasm-unsafe-eval' stays for
-#     @react-pdf's fontkit (Harfbuzz WASM, the /audit evidence-bundle PDF).
+#   - script-src: 'unsafe-inline' here, narrowed per page: no server mints a
+#     nonce, and this file cannot carry a per-page hash list, so each exported
+#     page carries its own Content-Security-Policy <meta> naming the sha256 of
+#     every inline script it ships (scripts/csp-inline-hashes.mjs, postbuild).
+#     A browser enforces both policies, so only a listed inline script runs.
+#     'wasm-unsafe-eval' stays for @react-pdf's fontkit (Harfbuzz WASM, the
+#     /audit evidence-bundle PDF).
 #   - connect-src: scheme-wide https:/wss:/ws: + loopback. A wallet points
 #     this frontend at its OWN RPC + IPFS endpoints (/members/edit/endpoints),
 #     so the endpoint set is the USER'S, not enumerable here. https: also covers XMTP's :5558 gRPC-web ports.

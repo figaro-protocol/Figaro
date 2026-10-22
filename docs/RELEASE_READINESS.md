@@ -47,7 +47,7 @@ neither line does not delay either.
    field: a pinning service writes its account owner's email into every key it issues.
 6. **The stack is hardened.** The repository's secret scanning, push protection, Dependabot
    security updates and protection of `main` are on; the frontend's high security gaps are
-   closed (inline scripts in the content security policy); the
+   closed; the
    site is built from a clean checkout of a named commit; an automated accessibility check runs
    against WCAG AA; one public page states what is testnet-only, unaudited, or not yet built; and
    the SDK's next major version is published with the redeploy, so what a builder installs
@@ -288,7 +288,7 @@ result to it (the code, the guest key, the gateway). The list below is the proce
 - Kleros subcourt IDs in the deployed dispute config match the target chain on klerosboard.com (Gnosis subcourt IDs differ from Ethereum mainnet) — verify before the deployment is treated as live.
 - Agreement / assembly / profile content is pinned for durable retrieval per Task 6 — on mainnet via sovereign per-party pinning (Option 3), never only a single Kubo node — and is fetchable by CID across the 6-year (5 + 1) retrieval-availability floor.
 - Test-helper flags unset in the deploy build: `NEXT_PUBLIC_ENABLE_TEST_HELPERS`, `NEXT_PUBLIC_USE_TEST_SIGNER`, `NEXT_PUBLIC_TEST_PRIVATE_KEY`, `NEXT_PUBLIC_DEV_ADDRESS` must all be unset (else `?e2e=mock` / the injected test signer inline into the bundle). This is enforced at build time: `frontend/next.config.mjs` ABORTS a `NODE_ENV=production` build with any of these set unless `FIGARO_ALLOW_TEST_HELPERS=1` (the escape only the Playwright e2e build sets). Confirm the CDN build runs without that escape.
-- `public/_headers` CSP/HSTS set is applied at the CDN — verify at the hosting layer (cannot be checked from the repo tree). The CSP ships `'unsafe-inline'` for scripts (a static export cannot do per-request nonces); it is NOT an XSS/exfil backstop — XSS safety rests on React auto-escaping, held by an ESLint error on `dangerouslySetInnerHTML` outside `components/papers/Math.tsx` (`frontend/.eslintrc.json`, run by `frontend-ci` on every push). The script-hash hardening that removes `'unsafe-inline'` is the standing next step (`public/_headers` documents it).
+- `public/_headers` CSP/HSTS set is applied at the CDN — verify at the hosting layer (cannot be checked from the repo tree). The header CSP carries `'unsafe-inline'` for scripts (a static export cannot do per-request nonces), and every exported page narrows it with its own Content-Security-Policy `<meta>` listing the sha256 of each inline script it ships (`frontend/scripts/csp-inline-hashes.mjs`), so an injected inline script does not run. XSS safety also rests on React auto-escaping, held by an ESLint error on `dangerouslySetInnerHTML` outside `components/papers/Math.tsx` (`frontend/.eslintrc.json`, run by `frontend-ci` on every push).
 - `next` npm advisories are static-export-INAPPLICABLE (this deploy ships no Next server: `output:'export'`, no middleware/rewrites/RSC-server/Server-Actions). They are build-host hygiene, NOT runtime blockers — do not conflate with runtime-reachable advisories in browser-shipped dependencies (wagmi/viem tree). A patched 14.2.x bump is advisable for the build host.
 - Ecosystem-agent tier (`ecosystem-agents/`) ships ONLY behind the sandboxed signer
   runtime — **all four components must stand** (`AI_AGENT_COORDINATION.md` § the
