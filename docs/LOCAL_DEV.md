@@ -71,6 +71,9 @@ node scripts/check-deployment.mjs <record.json> deployments/<chainId>.expected.j
 # checkout of a named commit already on origin/main (a temporary git worktree, every
 # package installed with `npm ci` from its lockfile), stops at the first failure, and
 # copies the export into frontend/out/, the one tree a direct upload ships.
+# After the upload, the private probe reads the new deployment's own address
+# (https://<id>.figaro-protocol.pages.dev, never the domain, which the edge cache can hide behind)
+# and passes only when its pages match frontend/out byte for byte.
 cd frontend && env -u NEXT_DISTDIR -u FIGARO_ALLOW_TEST_HELPERS npm run build   # the site's static export → frontend/out/ (NEXT_DISTDIR unset, so the export lands in out/); its postbuild writes each paper's PDF beside its page and fails without Tectonic (§ "Paper PDFs"); a public-network build also sets NEXT_PUBLIC_CHAIN, the record's addresses and the pin key (§ Environment variables)
 cd docs-site && npm run build            # the docs-site's static export → docs-site/out/ (basePath /docs; prebuild assembles the content)
 rm -rf frontend/out/docs && cp -R docs-site/out frontend/out/docs   # the docs-site under the site's /docs: docs-site/out/index.html is served at /docs/
