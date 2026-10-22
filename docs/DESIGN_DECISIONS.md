@@ -391,14 +391,19 @@ tool, by design.
 
 **What this does not close off: the commerce those instruments carry.**
 A cargo resale in transit needs no transferable right and no party
-substitution. Title moves by the outside instrument, and the parties
-square the payments before the buyer's one terminal call, exactly as
-every other outside event is squared: the sellers downstream of the
-transfer point return their committed payment amounts to the buyer, the
-variation is attested, and a single `resolveProcess` nets the legs to
-zero in one bond cycle. The new owner never becomes a process party, so
-no in-protocol right is minted; their protection between payment and
-discharge is the ordinary legal layer plus the attested data.
+substitution. The buyer agrees the sale under the outside instrument; the
+sellers are not asked to agree to it, and ownership does not pass while
+the process stands. The sellers make the sale possible, exactly as every
+other outside event is squared before the buyer's one terminal call: each
+returns to the buyer the whole, or the part, of its committed payment
+that answers to what the buyer will not receive, the variation is
+attested, and a single `resolveProcess` executes the schedule unchanged,
+so the sellers' transfers net inside one bond cycle. Ownership then passes to
+the new owner free and clear of every bond. The new owner never becomes a
+process party, so no in-protocol right is minted; it does what it wants
+with its own property once the transfer is final, and its protection
+between the agreed sale and the resolution is the ordinary legal layer
+plus the attested data.
 
 `/papers/external-events` owns the general rule (§5) and the
 netting-completeness result behind it (§4); `/papers/after-tradelens` §7 works
