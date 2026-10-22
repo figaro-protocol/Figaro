@@ -1,8 +1,0 @@
-{
-    "clauses": {
-        "figaro-commerce": {},
-        "figaro-topology": {}
-    },
-    "name": "Mandatory clauses",
-    "summary": "The clauses no process resolves without: the payment and what it buys, and where the order sits in its process. A designer picks it for each agreement; its clauses merge in."
-}

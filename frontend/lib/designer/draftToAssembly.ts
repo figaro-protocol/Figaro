@@ -15,13 +15,14 @@
  * the draft that can silently fall out of step with them.
  *
  * The walk itself is `buildAssembly` (`@figaro-protocol/sdk`), fed by the
- * live-cache `specSource()` adapter and by the registered agreements the
- * designer bound to agreements and picked in the drawer's mandatory article,
- * read from `AgreementRegistry` and verified against their keys
- * (`getRegisteredAgreement`). It VERIFIES scope placement, refuses an order
- * with no pick, refuses an agreement that both binds and composes, refuses a
- * bound agreement lacking a clause of its pick, and throws on a cold spec
- * cache or an unread bound or picked agreement — loud failures the callers
+ * live-cache `specSource()` adapter, by the DAO's mandatory clauses the
+ * registry states (`mandatoryClausesForCanvas`) and by the registered
+ * agreements the designer bound to agreements, read from `AgreementRegistry`
+ * and verified against their keys (`getRegisteredAgreement`). It VERIFIES
+ * scope placement, refuses an agreement that both binds and composes,
+ * refuses an agreement lacking a clause of commerce's or topology's shape,
+ * and throws on a cold spec cache or an unread bound agreement — loud
+ * failures the callers
  * surface, never silently swallowed here.
  */
 
@@ -35,17 +36,16 @@ import {
     type HydratedAssembly,
 } from "@figaro-protocol/sdk";
 import { getRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
-import { clauseDesignFills, clauseIsMandatory, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
+import { clauseDesignFills, clauseIsMandatory, getClauseSpec, mandatoryClausesForCanvas, specSource } from "@/lib/shared/clauseSpecSource";
 import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
 import { deriveAssemblySlug, type Assembly } from "@/lib/shared/assembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { truncateHex } from "@/lib/shared/formatHex";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 
-/** The registered agreements an order map names (the ones a snapshot binds,
- *  or the ones it picks in the mandatory article), read from this tab's
- *  verified documents. Throws for a key not read yet — the build never uses
- *  an agreement it cannot read. */
+/** The registered agreements an order map names (the ones a snapshot
+ *  binds), read from this tab's verified documents. Throws for a key not read
+ *  yet — the build never uses an agreement it cannot read. */
 function readAgreements(byOrderId: Record<string, `0x${string}`> | undefined, use: string): Record<string, RegisteredAgreement> {
     const out: Record<string, RegisteredAgreement> = {};
     for (const [orderId, agreementHash] of Object.entries(byOrderId ?? {})) {
@@ -60,11 +60,12 @@ function readAgreements(byOrderId: Record<string, `0x${string}`> | undefined, us
 
 /** Project a design snapshot onto the canonical assembly and the
  *  agreements newly composed for it (the ones publish registers before the
- *  assembly). Throws when a clause's spec is not loaded or is composed at
- *  the wrong scope, an order has no pick in the mandatory article, an
- *  agreement both binds and composes, a bound or picked agreement is unread,
- *  or a bound agreement lacks a clause of its pick — the SDK's own refusals,
- *  and this file's one. */
+ *  assembly). The mandatory clauses are the DAO's live commerce and topology
+ *  (`mandatoryClausesForCanvas`), written into every agreement it composes
+ *  before the designer's selection. Throws when a clause's spec is not loaded
+ *  or is composed at the wrong scope, an agreement both binds and composes, a
+ *  bound agreement is unread, or an agreement lacks a clause of commerce's or
+ *  topology's shape — the SDK's own refusals, and this file's one. */
 export function snapshotToAssembly(snapshot: DesignSnapshot): BuiltAssembly {
     return buildAssembly({
         name: snapshot.name.trim() || undefined,
@@ -74,7 +75,7 @@ export function snapshotToAssembly(snapshot: DesignSnapshot): BuiltAssembly {
         clausesByOrderId: snapshot.clausesByOrderId ?? {},
         registeredByOrderId: readAgreements(snapshot.registeredByOrderId, "bound to an agreement"),
         assemblyClauses: snapshot.assemblyClauses,
-        mandatoryByOrderId: readAgreements(snapshot.mandatoryByOrderId, "picked in the mandatory article"),
+        mandatory: mandatoryClausesForCanvas(),
         specs: specSource(),
     });
 }
@@ -158,9 +159,8 @@ export function assemblyComposedClauses(hydrated: HydratedAssembly): Record<stri
     );
 }
 
-/** A clause the assembly carries whose spec marks it mandatory — merged from
- *  the registered agreement picked in the mandatory article, or carried by a
- *  bound agreement. */
+/** A clause the assembly carries whose spec marks it mandatory — the DAO's,
+ *  written in by the canvas, or carried by a bound agreement. */
 export interface MandatoryClause {
     clauseKey: Hex;
     /** The spec's own `clauseId` and `version` — presentation. */

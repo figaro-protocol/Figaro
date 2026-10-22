@@ -44,7 +44,6 @@ import {
     publishOrAdoptReviewed,
     primeRegisteredClauseSpecs,
     isBindingOf,
-    pickMandatoryForEveryOrder,
 } from './devnet-helpers';
 import {
     C,
@@ -164,7 +163,6 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
             await page.getByTestId('designer-name-input').fill('Containerized import chain');
             await page.getByTestId('designer-summary-input').fill('Six bonded value-adders move a reefer container from shipper to consignee.');
             await page.getByTestId('designer-description-input').fill('The TradeLens perimeter as a permissionless bonded composition: shipper, pre-shipment inspection, freight forwarder, reefer ocean carrier, customs agent, and destination inland carrier — each independently bonded, resolved atomically by the importer-of-record.');
-            await pickMandatoryForEveryOrder(page);
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
             await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });

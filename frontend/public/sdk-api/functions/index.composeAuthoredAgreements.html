@@ -17,10 +17,8 @@
 <div class="tsd-signature tsd-anchor-link" id="composeauthoredagreements"><span class="tsd-kind-call-signature">composeAuthoredAgreements</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">authoredByName</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">object</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">specs</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">agreementHash</span><span class="tsd-signature-symbol">:</span> <a href="../types/index.Hex.html" class="tsd-signature-type tsd-kind-type-alias">Hex</a><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">document</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.RegisteredAgreement.html" class="tsd-signature-type tsd-kind-interface">RegisteredAgreement</a> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">&gt;</span><a href="#composeauthoredagreements" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Compose a SET of authored agreements, by name (<code>agreements/*.json</code>, each
-file's basename): first those naming no pick (the agreements a pick
-names), then the rest, each pick resolved within the set
-(<code>composeAuthoredAgreement</code>). Returns each one's document and key, by
-name. Seed time only.</p>
+file's basename), each through <code>composeAuthoredAgreement</code>. Returns each
+one's document and key, by name. Seed time only.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -29,7 +27,7 @@ name. Seed time only.</p>
 <li><span><span class="tsd-kind-parameter">specs</span>: <a href="../interfaces/index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">agreementHash</span><span class="tsd-signature-symbol">:</span> <a href="../types/index.Hex.html" class="tsd-signature-type tsd-kind-type-alias">Hex</a><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">document</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.RegisteredAgreement.html" class="tsd-signature-type tsd-kind-interface">RegisteredAgreement</a> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L1140">projection.ts:1140</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L1144">projection.ts:1144</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

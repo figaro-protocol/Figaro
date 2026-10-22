@@ -43,7 +43,7 @@ import {
 import { buildOrderAgreement, buildAssembly, serializeAssembly } from "@figaro-protocol/sdk";
 import { canonicalize } from "@/lib/shared/canonicalJson";
 import { specSource } from "@/lib/shared/clauseSpecSource";
-import { mandatoryPick, primeClauseSpecs, resolveAuthored } from "./primeClauseSpecs";
+import { mandatoryDefaults, primeClauseSpecs, resolveAuthored } from "./primeClauseSpecs";
 
 /** A clause map authored by NAME, resolved to clause keys over `clauses/` —
  *  the seeding's resolution (`resolveAuthoredClauseKeys`); the inputs below
@@ -111,7 +111,7 @@ function assemblyCase() {
         orders,
         clausesByOrderId: {},
         assemblyClauses: byKey({ "figaro-applicable-law": { applicableLaw: "US-NY" } }),
-        mandatoryByOrderId: Object.fromEntries(orders.map((o) => [o.orderHash, mandatoryPick()])),
+        mandatory: mandatoryDefaults(),
         specs: specSource(),
     });
     return {

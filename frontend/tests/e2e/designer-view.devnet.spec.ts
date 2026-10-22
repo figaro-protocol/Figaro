@@ -24,7 +24,7 @@
 import type { Hex } from 'viem';
 import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { composedClauseChip, publishProbeAssembly } from './probeAssembly';
-import { discoverAnchoredAssemblies, localPublicClient, readLocalDeploymentConfig, pickMandatoryForEveryOrder } from './devnet-helpers';
+import { discoverAnchoredAssemblies, localPublicClient, readLocalDeploymentConfig } from './devnet-helpers';
 import { ASSEMBLY_REGISTRY_ABI } from '@/lib/kernel/contracts';
 import { deriveAssemblySlug } from '@/lib/shared/assembly';
 
@@ -87,7 +87,6 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         await page.getByTestId('designer-name-input').fill(`${name} (fork)`);
         await page.getByTestId('designer-summary-input').fill('The same composition under a new name.');
         await page.getByTestId('designer-description-input').fill('Only the name and the descriptions changed.');
-        await pickMandatoryForEveryOrder(page);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=.*intent=publish/, { timeout: 15000 });

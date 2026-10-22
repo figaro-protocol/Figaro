@@ -171,12 +171,13 @@ constants whatever a registry holds at them: the direct path reverts
 registration. No other key is refused by list. The line they draw is **terms
 versus meter**.
 
-Commerce and topology are contract *terms* the parties agree to. A runtime that
-composes them is making an offer, and the set of terms a designer picks for
-every agreement is disciplined by ordinary competition: an agreement the
-mandatory article lists that carries terms designers do not want is not
-picked. That also answers how many such
-clauses the commons may hold — as many as survive that competition.
+Commerce and topology are contract *terms* the parties agree to. A runtime
+that writes them into every agreement is making an offer, and a runtime whose
+terms designers do not want loses its designers to another: the mandatory set
+is this frontend's reading of the registry (the DAO wallet's live
+mandatory-article registrations), not a rule of the chain. That also answers
+how many such clauses the commons may hold — as many as the DAO develops and
+designers keep using.
 
 The provenance leaf is not a term anyone agreed to. It is the reward system's
 own attribution plumbing, structurally singular, with no competing runtime to

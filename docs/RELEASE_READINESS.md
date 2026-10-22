@@ -27,11 +27,13 @@ neither line does not delay either.
 ## Public on testnet
 
 1. **The model is coherent.** Each open design thread is ruled, built, and held by a
-   test that fails on the old behavior: the mandatory clauses; dispute resolution set by
-   the buyer for every agreement of the process or by each seller when it pins an
-   assembly; the utility token as the designer's pin of the commerce clause's currency,
-   with nothing left assembly-wide; topology's labels and field name; and a seller's
-   attestation only about a clause of its own order.
+   test that fails on the old behavior: the mandatory clauses, the DAO wallet's live
+   commerce and topology written by the designer's canvas into every agreement, nothing
+   picked; dispute resolution chosen by the buyer at checkout for every agreement of the
+   process, its field required once the clause is composed; the utility token as the
+   designer's assembly-level pin that overrides the buyer's selection, the assembly-wide
+   mechanism kept; topology's labels and field name; and a seller's attestation only about
+   a clause of its own order.
 2. **The site tells it correctly.** The maintainer has corrected the home page and the
    three landings, and every door page has had its copy sitting.
 3. **The papers stand.** The corpus passes the peer-review-ready gates, and each paper

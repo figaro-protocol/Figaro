@@ -58,7 +58,7 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, decodeFunctionData, defineChain, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs, pickMandatoryForEveryOrder } from './devnet-helpers';
+import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { keccak256 } from 'viem';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -557,7 +557,6 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await page.getByTestId('designer-name-input').fill(assemblyName);
             await page.getByTestId('designer-summary-input').fill(`Per-clause coverage rung: ${rung.clauseId}.`);
             await page.getByTestId('designer-description-input').fill(`Single-node assembly composing ${rung.clauseId} for the coverage suite.`);
-            await pickMandatoryForEveryOrder(page);
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
 

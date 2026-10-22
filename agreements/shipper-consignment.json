@@ -1,5 +1,7 @@
 {
     "clauses": {
+        "figaro-commerce": {},
+        "figaro-topology": {},
         "figaro-acceptance-criteria": {},
         "figaro-cargo": {},
         "figaro-chain-of-custody": {},
@@ -7,7 +9,6 @@
         "figaro-incoterms": {},
         "figaro-modalities": {}
     },
-    "mandatory": "mandatory-clauses",
     "name": "Shipper consignment",
     "summary": "The shipper's consignment: the cargo, its chain of custody, the delivery terms and what counts as accepted."
 }

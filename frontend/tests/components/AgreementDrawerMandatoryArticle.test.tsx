@@ -1,25 +1,24 @@
 /**
- * The drawer's mandatory article — registered agreements, not clauses.
+ * The drawer's mandatory article — the DAO's clauses, with nothing to choose.
  *
- * The article lists every live `AgreementRegistry` registration whose clauses
- * are all mandatory-article (`isMandatoryAgreement`), whoever registered it:
- * the DAO's and any other wallet's. The designer picks one for the order;
- * nothing is preselected. A registration carrying any other clause is not
- * listed here (it binds on the agreements tab), and no mandatory clause is
- * offered as a checkbox on its own.
+ * An agreement is not an agreement without commerce and topology, so the
+ * canvas writes them into every agreement before the designer composes
+ * anything. The article shows which clauses those are on the network this
+ * site reads: the DAO wallet's live registrations whose spec declares the
+ * mandatory article (`mandatoryClausesForCanvas`), by registrant and stake.
+ * A mandatory-article registration by any other wallet is an ordinary clause
+ * and is not listed here; no mandatory clause is offered as a checkbox.
  */
 import React from "react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { Hex, RegisteredAgreement } from "@figaro-protocol/sdk";
-
-const rows = vi.hoisted(() => ({ agreements: [] as { agreementHash: `0x${string}`; contentURI: string; stakeWithdrawn: boolean }[] }));
+import { computeClauseKey, canonicalize, type Hex } from "@figaro-protocol/sdk";
 
 vi.mock("@/lib/protocol/useAgreementRegistry", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/protocol/useAgreementRegistry")>();
     return {
         ...actual,
-        usePublishedAgreements: () => ({ data: rows.agreements, refetch: async () => undefined }),
+        usePublishedAgreements: () => ({ data: [], refetch: async () => undefined }),
         fetchRegisteredAgreement: async (key: `0x${string}`) => actual.getRegisteredAgreement(key) ?? null,
     };
 });
@@ -34,66 +33,73 @@ vi.mock("@/lib/protocol/useClauseRegistry", async () => {
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
 
 import { AgreementDrawer } from "@/app/(tools)/assemblies/designer/_components/AgreementDrawer";
-import { _primeRegisteredAgreement_TESTING_ONLY } from "@/lib/protocol/useAgreementRegistry";
 import { createSyntheticRootOrder, startSyntheticSession } from "@/lib/designer/syntheticProcess";
-import { keyOf, primeClauseSpecs, primeMandatoryPick } from "../lib/primeClauseSpecs";
+import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
+import { TEST_DAO_TREASURY, canonicalFileBytes, keyOf, primeClauseSpecs } from "../lib/primeClauseSpecs";
 
-let daoPick: Hex;
-let otherPick: Hex;
-let notMandatory: Hex;
+const STRANGER = "0x1111111111111111111111111111111111111111" as const;
+const NOBODY = "0x2222222222222222222222222222222222222222" as const;
+let strangersCommerce: Hex;
+let commerce: Hex;
+let topology: Hex;
+let schedule: Hex;
 
 beforeAll(async () => {
     await primeClauseSpecs(["figaro-commerce", "figaro-topology", "figaro-schedule"]);
-    // The DAO's registration: the reference agreement holding the mandatory clauses alone.
-    daoPick = await primeMandatoryPick();
-    // Another wallet's registration whose clauses are all mandatory-article too.
-    otherPick = _primeRegisteredAgreement_TESTING_ONLY({ name: "Topology only", clauses: { [keyOf("figaro-topology")]: {} } } as RegisteredAgreement);
-    // A registration carrying a clause outside the mandatory article.
-    notMandatory = _primeRegisteredAgreement_TESTING_ONLY({
-        name: "Scheduled work",
-        clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {}, [keyOf("figaro-schedule")]: {} },
-    } as RegisteredAgreement);
-    rows.agreements = [daoPick, otherPick, notMandatory].map((agreementHash) => ({ agreementHash, contentURI: "", stakeWithdrawn: false }));
+    // The DAO's keys, read before a look-alike shares commerce's name.
+    commerce = keyOf("figaro-commerce");
+    topology = keyOf("figaro-topology");
+    schedule = keyOf("figaro-schedule");
+    // Another wallet's registration of a commerce look-alike: the DAO's spec
+    // with another title — same shape, another key, another registrant.
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const raw = JSON.parse(readFileSync(path.resolve(process.cwd(), "../clauses/figaro-commerce.json"), "utf8")) as Record<string, unknown>;
+    const lookalike = { ...raw, title: "Commerce (a stranger's registration)" };
+    const bytes = canonicalize(lookalike);
+    strangersCommerce = computeClauseKey(lookalike);
+    setClauseSpecFetcher(async (uri) => (uri === "mem://strangers-commerce" ? bytes : canonicalFileBytes(uri)));
+    await loadClauseSpec(strangersCommerce, "mem://strangers-commerce", { registeredBy: STRANGER, blockNumber: 99n, stakeWithdrawn: false });
 });
 
-function renderDrawer(props: Partial<React.ComponentProps<typeof AgreementDrawer>> = {}) {
+afterEach(() => {
+    process.env.NEXT_PUBLIC_DAO_TREASURY = TEST_DAO_TREASURY;
+});
+
+function renderDrawer() {
     const order = createSyntheticRootOrder(startSyntheticSession()).order;
-    const onPickMandatory = vi.fn();
-    render(<AgreementDrawer embedded order={order} onClose={() => {}} onPickMandatory={onPickMandatory} {...props} />);
+    render(<AgreementDrawer embedded order={order} onClose={() => {}} />);
     fireEvent.click(screen.getByTestId("drawer-tab-registry"));
-    return { onPickMandatory };
 }
 
-describe("AgreementDrawer — the mandatory article lists registered agreements", () => {
-    it("lists every registration whose clauses are all mandatory-article, any wallet's, and no other", () => {
+describe("AgreementDrawer — the mandatory article shows the DAO's clauses, with nothing to choose", () => {
+    it("lists the DAO wallet's live commerce and topology, and not another wallet's mandatory registration", () => {
         renderDrawer();
         const article = screen.getByTestId("drawer-mandatory-article");
-        expect(article.querySelector(`[data-testid="drawer-mandatory-agreement-${daoPick}"]`)).not.toBeNull();
-        expect(article.querySelector(`[data-testid="drawer-mandatory-agreement-${otherPick}"]`)).not.toBeNull();
-        expect(article.querySelector(`[data-testid="drawer-mandatory-agreement-${notMandatory}"]`)).toBeNull();
-        // The pinned document's name labels the row.
-        expect(article.textContent).toContain("Mandatory clauses");
+        expect(article.querySelector(`[data-testid="drawer-mandatory-clause-${commerce}"]`)).not.toBeNull();
+        expect(article.querySelector(`[data-testid="drawer-mandatory-clause-${topology}"]`)).not.toBeNull();
+        expect(article.querySelector(`[data-testid="drawer-mandatory-clause-${strangersCommerce}"]`)).toBeNull();
+        expect(article.querySelectorAll("input")).toHaveLength(0);
+        expect(article.textContent).toContain("nothing here is chosen");
     });
 
-    it("preselects nothing; a click picks that registration for the order", () => {
-        const { onPickMandatory } = renderDrawer();
-        const rowsShown = screen.getAllByTestId(/^drawer-mandatory-agreement-/) as HTMLInputElement[];
-        expect(rowsShown.length).toBe(2);
-        for (const row of rowsShown) expect(row.checked).toBe(false);
-        fireEvent.click(screen.getByTestId(`drawer-mandatory-agreement-${otherPick}`));
-        expect(onPickMandatory).toHaveBeenCalledWith(otherPick);
+    it("says that nothing publishes when the DAO's wallet holds no live mandatory clause on this network", () => {
+        process.env.NEXT_PUBLIC_DAO_TREASURY = NOBODY;
+        renderDrawer();
+        expect(screen.getByTestId("drawer-mandatory-empty").textContent).toMatch(/nothing publishes/);
+        expect(screen.queryByTestId("drawer-mandatory-list")).toBeNull();
     });
 
-    it("shows the order's pick as checked", () => {
-        renderDrawer({ mandatoryAgreementHash: daoPick });
-        expect((screen.getByTestId(`drawer-mandatory-agreement-${daoPick}`) as HTMLInputElement).checked).toBe(true);
-        expect((screen.getByTestId(`drawer-mandatory-agreement-${otherPick}`) as HTMLInputElement).checked).toBe(false);
+    it("says that nothing publishes when the site names no DAO wallet", () => {
+        delete process.env.NEXT_PUBLIC_DAO_TREASURY;
+        renderDrawer();
+        expect(screen.getByTestId("drawer-mandatory-empty").textContent).toMatch(/names no DAO wallet/);
     });
 
     it("offers no mandatory clause as a checkbox of its own", () => {
         renderDrawer();
-        expect(screen.queryByTestId(`drawer-registry-clause-${keyOf("figaro-commerce")}`)).toBeNull();
-        expect(screen.queryByTestId(`drawer-registry-clause-${keyOf("figaro-topology")}`)).toBeNull();
-        expect(screen.getByTestId(`drawer-registry-clause-${keyOf("figaro-schedule")}`)).toBeTruthy();
+        expect(screen.queryByTestId(`drawer-registry-clause-${commerce}`)).toBeNull();
+        expect(screen.queryByTestId(`drawer-registry-clause-${topology}`)).toBeNull();
+        expect(screen.getByTestId(`drawer-registry-clause-${schedule}`)).toBeTruthy();
     });
 });

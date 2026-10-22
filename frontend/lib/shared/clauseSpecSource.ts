@@ -21,7 +21,10 @@
 import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
 import type { Hex, ProjectionHints, ProjectionSpecView, SpecSource } from "@figaro-protocol/sdk";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
-import { PROVENANCE_LEAF_KEY, anchorClauseSpec, deriveAnchored, specIsMandatory, type Anchored } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, anchorClauseSpec, deriveAnchored, specIsMandatory, type Anchored,
+    mandatoryClauses,
+    type ClauseRegistrationRow,
+} from "@figaro-protocol/sdk";
 import { keccak256 } from "viem";
 import { DEFAULT_IPFS_SERVICE, fetchCappedBinary } from "@/lib/shared/ipfsService";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -81,6 +84,12 @@ export function setClauseSpecFetcher(fetcher: ClauseSpecFetcher): void {
     activeFetcher = fetcher;
 }
 
+/** What the registry said of a clause when its spec was loaded: who
+ *  registered the key, in which block, and whether the stake is withdrawn.
+ *  The mandatory clauses are read from these facts (`mandatoryClausesForCanvas`). */
+export type ClauseRegistration = Pick<ClauseRegistrationRow, "registeredBy" | "blockNumber" | "stakeWithdrawn">;
+const REGISTRATIONS = new Map<string, ClauseRegistration>();
+
 /** Register a loaded spec into the cache + the derived maps, under its key:
  *  two specs that share a name are two cache entries — two clauses. */
 function cacheSpec(spec: Anchored<ClauseSpecWithBlock>): void {
@@ -100,7 +109,8 @@ function cacheSpec(spec: Anchored<ClauseSpecWithBlock>): void {
  * The check runs on the bytes fetched (`anchorClauseSpec`) and
  * re-canonicalizes nothing — a drifted or tampered pin never enters the cache.
  */
-export async function loadClauseSpec(clauseKey: Hex, uri: string): Promise<Anchored<ClauseSpecWithBlock>> {
+export async function loadClauseSpec(clauseKey: Hex, uri: string, registration?: ClauseRegistration): Promise<Anchored<ClauseSpecWithBlock>> {
+    if (registration) REGISTRATIONS.set(norm(clauseKey), registration);
     const cached = SPEC_CACHE.get(norm(clauseKey));
     if (cached !== undefined) return cached;
     const fetched = await activeFetcher(uri);
@@ -150,6 +160,32 @@ export function _resetClauseSpecCache_TESTING_ONLY(): void {
     SPEC_CACHE.clear();
     SPEC_LOAD_ERRORS.clear();
     NESTS_UNDER.clear();
+    REGISTRATIONS.clear();
+}
+
+/** The wallet whose registrations are the mandatory clauses: the DAO's
+ *  treasury, from the chain's deployment record (`NEXT_PUBLIC_DAO_TREASURY`,
+ *  written by the deploy). Read at call time, so a test may set it. Null when
+ *  the site is not configured for a chain. */
+export function mandatoryClauseRegistrant(): Hex | null {
+    const a = process.env.NEXT_PUBLIC_DAO_TREASURY ?? "";
+    return /^0x[0-9a-fA-F]{40}$/.test(a) ? (a as Hex) : null;
+}
+
+/** THE MANDATORY CLAUSES the designer's canvas writes into every agreement it
+ *  registers: the DAO's live registrations whose spec declares the mandatory
+ *  article at agreement scope, one per shape, the later registration winning
+ *  (`mandatoryClauses`, the SDK's one rule), read from what the registry said
+ *  of each loaded spec. Empty — and the canvas publishes nothing — when the
+ *  DAO's wallet holds no live mandatory clause on the network this site reads,
+ *  or the site names no DAO wallet. An agreement is not an agreement without
+ *  commerce and topology; nobody picks them. */
+export function mandatoryClausesForCanvas(): Record<Hex, Record<string, unknown>> {
+    const registrant = mandatoryClauseRegistrant();
+    if (!registrant) return {};
+    const rows: ClauseRegistrationRow[] = [];
+    for (const [key, registration] of REGISTRATIONS) rows.push({ clauseKey: key as Hex, ...registration });
+    return mandatoryClauses(rows, specSource(), registrant);
 }
 
 /** THE live-stake rule (K4): a registration surfaces for NEW compositions

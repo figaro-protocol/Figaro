@@ -45,7 +45,7 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs, pickMandatoryForEveryOrder } from './devnet-helpers';
+import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds } from '@figaro-protocol/sdk';
@@ -130,7 +130,6 @@ test.describe('CATALOG→LEAF fold — physical catalog data derives onto the ca
         await page.getByTestId('designer-name-input').fill(assemblyName);
         await page.getByTestId('designer-summary-input').fill('Catalog→leaf fold: authored physical data lands on the cargo leaf.');
         await page.getByTestId('designer-description-input').fill('Single-node assembly carrying figaro-cargo — the fold derives mass/volume/dimensions from the catalog.');
-        await pickMandatoryForEveryOrder(page);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
 

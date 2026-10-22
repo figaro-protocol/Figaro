@@ -38,7 +38,7 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, createWalletClient, defineChain, http, keccak256, parseAbi, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs, pickMandatoryForEveryOrder } from './devnet-helpers';
+import { readLocalDeploymentConfig, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds, ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
@@ -146,7 +146,6 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         await page.getByTestId('designer-name-input').fill('Freelance deliverable');
         await page.getByTestId('designer-summary-input').fill('A single-order digital hand-off: the artifact travels the encrypted channel.');
         await page.getByTestId('designer-description-input').fill('Composes the content hand-off clause; the deliverable is counterparty-private and completion-evidenced by content hash.');
-        await pickMandatoryForEveryOrder(page);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });

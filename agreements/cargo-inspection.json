@@ -1,9 +1,10 @@
 {
     "clauses": {
+        "figaro-commerce": {},
+        "figaro-topology": {},
         "figaro-acceptance-criteria": {},
         "figaro-merchant-process": {}
     },
-    "mandatory": "mandatory-clauses",
     "name": "Cargo inspection",
     "summary": "An inspection of the consignment against the shipper's acceptance criteria."
 }

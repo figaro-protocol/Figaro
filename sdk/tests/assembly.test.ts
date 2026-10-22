@@ -175,44 +175,37 @@ describe("an agreement's clauses at checkout", () => {
 describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", () => {
     const names = ["figaro-commerce", "figaro-topology", "figaro-applicable-law", "figaro-handoff"];
     const specs = specSourceOf(names.map((n) => viewOf(rawSpecOf(n))));
-    /** The mandatory clauses alone: the registered agreement an authored
-     *  agreement names as its pick. Composed with no pick of its own. */
-    const base = composeAuthoredAgreement({ name: "Mandatory clauses", clauses: { "figaro-commerce": {}, "figaro-topology": {} } }, specs).document;
+    /** The two mandatory clauses, named as the canvas would write them in. */
+    const MANDATORY = { "figaro-commerce": {}, "figaro-topology": {} };
+    /** The mandatory clauses alone: a complete agreement with nothing else composed. */
+    const base = composeAuthoredAgreement({ name: "Mandatory clauses", clauses: { ...MANDATORY } }, specs).document;
 
-    it("composes an authored agreement by name: its pick's clauses merge, the words ride beside the clauses, outside the key", () => {
+    it("composes an authored agreement by name: the words ride beside the clauses, outside the key", () => {
         const { document, agreementHash } = composeAuthoredAgreement(
-            { name: "A hand-off", summary: "one hand-off", clauses: { "figaro-handoff": {} }, mandatory: "base" },
+            { name: "A hand-off", summary: "one hand-off", clauses: { ...MANDATORY, "figaro-handoff": {} } },
             specs,
-            { base },
         );
-        expect(document.clauses).toEqual({ [keyOf("figaro-handoff")]: {}, [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} });
+        expect(document.clauses).toEqual({ [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {}, [keyOf("figaro-handoff")]: {} });
         expect(document.name).toBe("A hand-off");
-        expect(document).not.toHaveProperty("mandatory");
         expect(agreementHash).toBe(agreementHashOf({ clauses: document.clauses }));
         expect(agreementHashOf(document)).toBe(agreementHash);
-        // Written with or without a clause of its pick, the same agreement.
-        expect(composeAuthoredAgreement({ clauses: { "figaro-handoff": {}, "figaro-commerce": {} }, mandatory: "base" }, specs, { base }).agreementHash).toBe(agreementHash);
         expect(() => composeAuthoredAgreement({ name: "none" }, specs)).toThrow(/no clauses/);
-        // An authored agreement naming no pick composes only mandatory-article clauses…
-        expect(() => composeAuthoredAgreement({ clauses: { "figaro-handoff": {} } }, specs)).toThrow(/no registered agreement picked in the mandatory article/);
-        // …and a pick it names must be among the picks supplied.
-        expect(() => composeAuthoredAgreement({ clauses: { "figaro-handoff": {} }, mandatory: "nope" }, specs, { base }))
-            .toThrow(/names "nope" as its mandatory pick/);
+        // An agreement is not an agreement without commerce and topology.
+        expect(() => composeAuthoredAgreement({ clauses: { "figaro-handoff": {} } }, specs)).toThrow(/no clause of commerce's shape/);
+        expect(() => composeAuthoredAgreement({ clauses: { "figaro-commerce": {}, "figaro-handoff": {} } }, specs)).toThrow(/no clause of topology's shape/);
     });
 
-    it("composes a set of authored agreements by name, each pick resolved within the set", () => {
+    it("composes a set of authored agreements by name", () => {
         const composed = composeAuthoredAgreements({
-            handoff: { clauses: { "figaro-handoff": {} }, mandatory: "base" },
-            base: { name: "Mandatory clauses", clauses: { "figaro-commerce": {}, "figaro-topology": {} } },
+            handoff: { clauses: { ...MANDATORY, "figaro-handoff": {} } },
+            base: { name: "Mandatory clauses", clauses: { ...MANDATORY } },
         }, specs);
         expect(composed.base.agreementHash).toBe(agreementHashOf(base));
-        expect(composed.handoff.document.clauses).toEqual({ [keyOf("figaro-handoff")]: {}, ...base.clauses });
-        expect(() => composeAuthoredAgreements({ handoff: { clauses: { "figaro-handoff": {} }, mandatory: "handoff" } }, specs))
-            .toThrow(/names "handoff" as its mandatory pick/);
+        expect(composed.handoff.document.clauses).toEqual({ ...base.clauses, [keyOf("figaro-handoff")]: {} });
     });
 
     it("assembles an authored assembly over named agreements: the entry binds the agreement's hash and carries its own parents", () => {
-        const handoff = composeAuthoredAgreement({ clauses: { "figaro-handoff": {} }, mandatory: "base" }, specs, { base }).document;
+        const handoff = composeAuthoredAgreement({ clauses: { ...MANDATORY, "figaro-handoff": {} } }, specs).document;
         const bare = base;
         const { assembly, agreements } = assembleAuthored({
             name: "editorial",
@@ -240,21 +233,20 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
         expect(() => assembleAuthored({ agreements: [{ id: "o" }] }, { bare }, specs)).toThrow(/names no agreement/);
         expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "nope" }] }, { bare }, specs)).toThrow(/not among the authored agreements/);
         expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "bare", clauses: {} }] }, { bare }, specs)).toThrow(/inline/);
-        // A bound agreement carries every clause of one mandatory agreement
-        // among the authored agreements (one whose clauses are all
-        // mandatory-article), or is refused.
+        // A bound agreement carries one clause of commerce's shape and one of
+        // topology's, or is refused: an agreement is not an agreement without them.
         const short = { clauses: { [keyOf("figaro-handoff")]: {}, [keyOf("figaro-commerce")]: {} } };
         expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "short" }] }, { short, bare }, specs))
-            .toThrow(/o: agreement "short" carries the clauses of no agreement among the authored agreements whose clauses are all mandatory-article/);
+            .toThrow(/o: agreement "short": no clause of topology's shape/);
         expect(() => assembleAuthored({ agreements: [] }, { bare }, specs)).toThrow(/no agreements/);
     });
 
-    it("derives every reference assembly in assemblies/ over agreements/ against clauses/, each agreement file bound or picked", () => {
+    it("derives every reference assembly in assemblies/ over agreements/ against clauses/, each agreement file bound", () => {
         const clausesDir = path.resolve(__dirname, "../../clauses");
         const all = specSourceOf(readdirSync(clausesDir).filter((f) => f.endsWith(".json"))
             .map((f) => viewOf(JSON.parse(readFileSync(path.join(clausesDir, f), "utf8")))));
         const agreementsDir = path.resolve(__dirname, "../../agreements");
-        const authoredByName: Record<string, { mandatory?: string }> = {};
+        const authoredByName: Record<string, object> = {};
         for (const file of readdirSync(agreementsDir).filter((f) => f.endsWith(".json"))) {
             authoredByName[file.replace(/\.json$/, "")] = JSON.parse(readFileSync(path.join(agreementsDir, file), "utf8"));
         }
@@ -264,7 +256,7 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
             expect(agreementHashOf(document)).toBe(agreementHash);
             byName[name] = document;
         }
-        const used = new Set<string>(Object.values(authoredByName).flatMap((a) => (a.mandatory ? [a.mandatory] : [])));
+        const used = new Set<string>();
         const dir = path.resolve(__dirname, "../../assemblies");
         for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
             const authored = JSON.parse(readFileSync(path.join(dir, file), "utf8")) as { agreements: { agreement: string }[] };
@@ -274,7 +266,7 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
             expect(assemblyHashOf(assembly)).toMatch(/^0x[0-9a-f]{64}$/);
             for (const entry of assembly.agreements) expect(agreements[entry.agreementHash], `${file} ${entry.id}`).toBeDefined();
         }
-        for (const name of Object.keys(byName)) expect(used.has(name), `agreements/${name}.json is bound by a reference assembly or picked`).toBe(true);
+        for (const name of Object.keys(byName)) expect(used.has(name), `agreements/${name}.json is bound by a reference assembly`).toBe(true);
     });
 });
 

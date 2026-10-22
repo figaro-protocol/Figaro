@@ -1,5 +1,7 @@
 {
     "clauses": {
+        "figaro-commerce": {},
+        "figaro-topology": {},
         "figaro-credential": {},
         "figaro-data-terms": {
             "disclosure": "each-own"
@@ -8,7 +10,6 @@
         "figaro-modalities": {},
         "figaro-schedule": {}
     },
-    "mandatory": "mandatory-clauses",
     "name": "Aerial survey flight",
     "summary": "A credentialed operator flies a committed window and route; each party keeps its own copy of the flight's data."
 }

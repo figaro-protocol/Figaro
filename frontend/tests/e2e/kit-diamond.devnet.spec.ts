@@ -76,7 +76,6 @@ import {
     publishOrAdoptReviewed,
     anchoredAssemblyHash,
     isBindingOf,
-    pickMandatoryForEveryOrder,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -219,7 +218,6 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             await page.getByTestId('designer-name-input').fill('Kit assembly (diamond)');
             await page.getByTestId('designer-summary-input').fill('A kit from two component suppliers; the final leg depends on both branches.');
             await page.getByTestId('designer-description-input').fill('Multi-parent topology: the leaf order carries two parents — the DAG join FigaroCore never sees, committed in the topology clause.');
-            await pickMandatoryForEveryOrder(page);
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
             await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });

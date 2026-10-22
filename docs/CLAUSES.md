@@ -126,18 +126,23 @@ every kind and skips both on the batch path, `recordAssemblyUsage` refuses an
 `agreementHash` equal to either, and the guest and the relay refuse both the
 same way.
 
-**The mandatory pick — at composition only.** Nothing folds on its own. The
-designer drawer's mandatory article lists registered agreements whose clauses
-are all mandatory-article (`isMandatoryAgreement`), the DAO's and any other
-wallet's; the designer picks one for each agreement in the assembly's list,
-nothing preselected, and `buildAssembly` refuses an order with no pick. When a
-designer composes a new agreement, the pick's clauses merge into it
-(`composeOrderAgreement`), so a registered agreement carries the mandatory
-clauses when it is registered; the agreement and assembly formats are
-unchanged, and a pick holding the clauses the reference agreements carry
-leaves every agreement hash as it was. A registered agreement bound as is must
-already carry every clause of its order's pick, or the build refuses it; the
-designer composes a new agreement for that order instead. Checkout fills
+**The mandatory clauses — written in at composition, never picked.** An
+agreement is not an agreement without commerce and topology, so the designer's
+canvas writes them into every agreement it registers before the designer
+composes anything, and the designer composes the rest. Which clauses they are
+is read from `ClauseRegistry`: the DAO wallet's live registrations whose spec
+declares the mandatory article at agreement scope, one per shape, the later
+registration winning where the DAO holds two of one shape (`mandatoryClauses`
+in the SDK; the frontend's `mandatoryClausesForCanvas` reads the DAO's wallet
+from the chain's deployment record). Mandatory is a shape, never a name:
+commerce is the clause declaring `payment`, `currency` and `lineItems` as
+content, topology the clause declaring `parentOrderHashes`
+(`specIsCommerceShape`, `specIsTopologyShape`), and every reader already finds
+them by those fields. `composeOrderAgreement` refuses an agreement without one
+clause of each shape, or with two; a registered agreement bound as is must
+carry both shapes itself, whatever their keys. A mandatory-article
+registration by any other wallet is an ordinary clause. A reference agreement file
+(`agreements/*.json`) names the two clauses like any other. Checkout fills
 values and writes the topology; it never adds or drops a clause. Each order's agreement is the agreement's hydrated
 registered agreement with the agreement's own fills merged over it (the agreement's fill
 wins for the keys it names) and the assembly-scoped clauses beside it; the
@@ -303,11 +308,10 @@ section a clause reads under. Classification reads the article, never the
 field shape:
 
 - **`mandatory`** — committed content on every order (`figaro-commerce`,
-  `figaro-topology`, both at agreement scope), never selected one by one; they
-  enter an agreement through the registered agreement the designer picks in
-  the mandatory article (§ "The registered agreement and the assembly"). No
-  mandatory clause is at assembly scope, and one registered there joins no
-  composition.
+  `figaro-topology`, both at agreement scope), never selected one by one; the
+  designer's canvas writes the DAO's live ones into every agreement
+  (§ "The registered agreement and the assembly"). No mandatory clause is at
+  assembly scope, and one registered there joins no composition.
 - **`attestations`** — runtime transfer ladders the responsible party advances
   (`figaro-merchant-process`, `figaro-courier-process`; a supply chain runs the
   same structure at length). These are coordination attestations between

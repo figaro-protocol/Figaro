@@ -121,34 +121,29 @@ The DAO Safe is designer of record of the two *scoring* mandatory clauses,
 `figaro-commerce` and `figaro-topology`, and of every mandatory clause it develops
 and registers after them. It holds each as a registration by clause key —
 `keccak256` of that spec's pinned bytes — so what it holds is the exact
-documents, never their names. That assignment is the DAO's incentive. The DAO
-also registers the agreement holding those clauses alone
-(`agreements/mandatory-clauses.json`). The designer drawer's mandatory article
-lists every registered agreement whose clauses are all mandatory-article, the
-DAO's and any other wallet's; a designer picks one for each agreement in an
-assembly's list, and its clauses merge into that agreement
-(`composeOrderAgreement`, `sdk/src/projection.ts`). A designer who picks the
-DAO's composes the DAO's clauses, so the treasury that developed them is
-rewarded, on the uniform meter, each time a trade under that design resolves.
-The treasury
-spends on development, marketing and clauses by judgment, and developing
-mandatory clauses for the community is one of those uses. Nothing is
+documents, never their names. That assignment is the DAO's incentive: an
+agreement is not an agreement without commerce and topology, so the designer's
+canvas writes the DAO's live mandatory clauses into every agreement it
+registers, before the designer composes anything, and the treasury that
+developed them is rewarded, on the uniform meter, each time a trade under that
+design resolves. The canvas reads them from `ClauseRegistry` by registrant and
+stake: the DAO wallet's live registrations whose spec declares the mandatory
+article, all of them, one per shape (`mandatoryClauses`, `sdk/src/projection.ts`).
+The treasury spends on development, marketing and clauses by judgment, and
+developing mandatory clauses for the community is one of those uses. Nothing is
 donated to the DAO but tokens, in any denomination: a clause registered by
-another wallet is that wallet's, and competing under one's own wallet is equally welcome.
+another wallet is that wallet's, and a mandatory-article registration by any
+other wallet is an ordinary clause, never mandatory.
 
-An assembly published through the designer composes the mandatory clauses:
-the drawer publishes no assembly until each of its agreements has a pick in the
-mandatory article, and a pick's clauses merge into the agreement (a registered
-agreement bound as is must already carry them). The convention is the
-registration layer's; nothing on chain requires the clauses (`DESIGNER_REWARDS.md`
-§ "The mandatory clauses earn"). Where the pick is the DAO's, their usage accrues
-to the DAO exactly the way any designer's clauses accrue: **the commons is
-rewarded, from the reserve, for the use of what those trades carry.** The
-protocol takes nothing from a trade, and the DAO's registrations claim no
-privileged weight: they ride the same uniform meter as every other clause. A
-registered agreement that composes them earns under the agreement kind for its
-own designer of record, beside them; nothing is excluded. "Mandatory" is a
-registration-layer convention; nothing on chain privileges it.
+The convention is the registration layer's and this frontend's: nothing on
+chain requires the clauses or privileges the DAO's registrations
+(`DESIGNER_REWARDS.md` § "The mandatory clauses earn"), and another frontend
+may read the registry otherwise. Their usage accrues to the DAO exactly the way
+any designer's clauses accrue: **the commons is rewarded, from the reserve, for
+the use of what those trades carry.** The protocol takes nothing from a trade,
+and the DAO's registrations ride the same uniform meter as every other clause.
+A registered agreement that carries them earns under the agreement kind for its
+own designer of record, beside them; nothing is excluded.
 
 The one thing the DAO's reward may not reach is the meter itself: the
 agreement format's reserved provenance leaf is no clause, and the counter

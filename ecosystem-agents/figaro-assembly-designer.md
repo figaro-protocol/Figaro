@@ -39,8 +39,8 @@ change it, and register the fork under your own key; the fork is yours (RPGF rew
   satisfy. Most of a clause's `block` shapes presentation and affects neither validity nor
   discoverability — but **five hints in it are hash-load-bearing and three of them decide
   what YOUR assembly contains**: `design.article: "mandatory"` (never selected on its own:
-  you pick, for every agreement, a registered agreement whose clauses all carry it —
-  `isMandatoryAgreement` — and its clauses merge in), `design.scope: "assembly"` (composed once for the whole
+  the DAO wallet's live registrations carrying it are written into every agreement —
+  `mandatoryClauses` — before anything you compose), `design.scope: "assembly"` (composed once for the whole
   design, carried by every agreement — composing it on an agreement is a build error, not a
   no-op), and `design.fills` (the only fields whose design-time values survive into a
   agreement; every other clause's entry is `{}`). Read a composed clause's hints with
@@ -119,9 +119,9 @@ computes a hash that matches nothing and cannot be registered. The assembly is
 KEY — `keccak256` of the clause spec's pinned bytes, the `clauseKey` each registry row carries
 — never by the name a spec displays.
 
-**Build it with `buildAssembly` (root `@figaro-protocol/sdk`), not by hand.** It takes,
-per order, the registered agreement you pick in the mandatory article (`mandatoryByOrderId`,
-hydrated — any wallet's registration whose clauses are all mandatory-article), and EITHER the
+**Build it with `buildAssembly` (root `@figaro-protocol/sdk`), not by hand.** It takes the
+mandatory clauses (`mandatory`, from `mandatoryClauses` over the registry's rows, the specs and
+the DAO wallet's address from the chain's deployment record), and per order EITHER the
 registered agreement it binds (`registeredByOrderId`, hydrated) OR the clauses composed for a
 new one (`clausesByOrderId`), plus the assembly-scoped selection and a `SpecSource`, and returns `{ assembly, agreements }` — `agreements` being every NEW composed
 agreement keyed by its `agreementHash`, to register before the assembly. It enforces the rules

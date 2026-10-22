@@ -119,12 +119,6 @@ export interface DesignSnapshot {
      *  here composes no clauses of its own (`clausesByOrderId`); the build
      *  refuses an agreement that does both. */
     registeredByOrderId?: Record<string, `0x${string}`>;
-    /** Per-order pick in the drawer's mandatory article — keyed by order
-     *  id, the `AgreementRegistry` key of a registered agreement whose
-     *  clauses are all mandatory-article. Its clauses merge into the order's
-     *  agreement; a bound agreement must already carry them. Every
-     *  order needs one before publishing; nothing is preselected. */
-    mandatoryByOrderId?: Record<string, `0x${string}`>;
     /** ASSEMBLY-SCOPED composition — clauses declaring
      *  `design.scope: "assembly"`, composed once for the whole design
      *  (clause key → the designer's design.fills values; other clauses `{}`).

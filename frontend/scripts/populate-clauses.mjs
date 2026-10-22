@@ -16,10 +16,8 @@
  * to the key of the loaded spec it names (`resolveAuthoredClauseKeys`) here,
  * at seed time, before anything is pinned — everything pinned carries keys.
  * Each authored agreement (`agreements/*.json`) is composed over the specs
- * (`composeAuthoredAgreements`: the clauses of the agreement it picks in the
- * mandatory article merged, keyed); the agreement holding the mandatory
- * clauses alone registers beside the clauses (`populateMandatoryAgreements`);
- * each
+ * (`composeAuthoredAgreements`, keyed; it names the two mandatory clauses
+ * like any other); each
  * reference assembly is built over the agreements its agreements name
  * (`assembleAuthored`: the entry binds the named agreement's hash and carries
  * its own topology parents); every DISTINCT agreement is pinned and
@@ -120,7 +118,7 @@ import {
     CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, computeClauseKey, canonicalize,
     assemblyHashOf, deriveAssemblySlug, parseProjectionHints,
     assemblyComposedClauseKeys, resolveAuthoredClauseKeys, composeAuthoredAgreements, assembleAuthored,
-    isMandatoryAgreement, agreementHashOf,
+    agreementHashOf,
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 
@@ -417,8 +415,7 @@ export function resolveAuthoredClauseNames(names, authored = loadAuthoredSpecs()
 
 /** Every authored agreement (`agreements/*.json`) composed over the loaded
  *  specs, by its name (the file's basename): the document the seeding pins
- *  and the key it registers under, each pick in the mandatory article
- *  resolved within the set (`composeAuthoredAgreements`). */
+ *  and the key it registers under (`composeAuthoredAgreements`). */
 export function loadAuthoredAgreements(authored = loadAuthoredSpecs()) {
     const authoredByName = {};
     for (const file of fs.readdirSync(AGREEMENTS_DIR).filter((f) => f.endsWith('.json')).sort()) {
@@ -531,27 +528,6 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         }
         registered += 1;
         log(`  ✓ ${label} ${clauseKey} — pinned ${contentURI} (article ${spec.block?.design?.article ?? '-'})`);
-    }
-    return registered;
-}
-
-/**
- * Register every authored agreement whose clauses are all mandatory-article
- * (`isMandatoryAgreement` — `agreements/mandatory-clauses.json`) on
- * AgreementRegistry, beside the mandatory clauses: the registration the
- * designer's mandatory article lists and the reference agreements pick. No
- * assembly binds it as is, so the reference-assembly pass never registers it.
- * Idempotent (`registerAgreement` skips a key already bound). Returns the
- * number newly registered.
- */
-export async function populateMandatoryAgreements({ registry, log = console.log, ...args }) {
-    const authored = loadAuthoredSpecs();
-    let registered = 0;
-    for (const [name, document] of Object.entries(loadAuthoredAgreements(authored))) {
-        if (!isMandatoryAgreement(document, authored)) continue;
-        log(`  · ${name}: its clauses are all mandatory-article`);
-        const result = await registerAgreement({ ...args, registry, agreementHash: agreementHashOf(document), document, log });
-        if (result.registered) registered += 1;
     }
     return registered;
 }
@@ -803,7 +779,7 @@ async function main() {
     // A Ledger-driven founder run registers the founder's own artifacts and
     // never a mandatory clause: those are the DAO vault's (RELEASE_READINESS
     // Task 13), and first write wins forever. An assembly's prerequisite set
-    // carries the mandatory clauses its agreements' picks merged, so they are
+    // carries the mandatory clauses its agreements name, so they are
     // taken back out here unless
     // SEED_CLAUSES names one by hand (a deliberate act, logged as such). The
     // devnet's one-key seeding (no Ledger, no vault) is untouched.
@@ -835,21 +811,6 @@ async function main() {
     console.log(`  IPFS      ${pinService() ? `pin service (${pinService().api})` : ipfsApiUrl}\n`);
     const n = await populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, vault, ownerClients, limit: seedLimit, only: onlyClauses });
     console.log(`\nDone — ${n} clause(s) newly registered + pinned.`);
-
-    // The agreement the mandatory article lists rides beside the mandatory
-    // clauses, under the same registrar: the DAO vault's on a public network,
-    // so a Ledger-driven founder run leaves it, as it leaves the clauses.
-    const assemblyRegistry = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
-    const agreementRegistry = process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? env.NEXT_PUBLIC_AGREEMENT_REGISTRY;
-    if (agreementRegistry) {
-        if (process.env.REGISTRAR_LEDGER_HD_PATH && !vault) {
-            console.log('\nThe agreement holding the mandatory clauses alone is the DAO vault\'s, not the founder\'s — skipped');
-        } else {
-            console.log(`\nPopulating the mandatory article → AgreementRegistry ${agreementRegistry}`);
-            const m = await populateMandatoryAgreements({ publicClient, walletClient, account, registry: agreementRegistry, ipfsApiUrl, vault, ownerClients });
-            console.log(`Done — ${m} agreement(s) newly registered.`);
-        }
-    }
 
     // Reference assemblies ride the same invocation when the registry and the
     // denomination fill are both provided (testnet/mainnet: Sepolia USDC;

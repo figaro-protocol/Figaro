@@ -57,7 +57,7 @@ import { CompositionAssist } from "./CompositionAssist";
 import { AssemblyIdentity } from "./AssemblyIdentity";
 import { assemblyToDraft } from "@/lib/designer/assemblyToDraft";
 import type { HydratedAssembly } from "@figaro-protocol/sdk";
-import { clauseIsMandatory } from "@/lib/shared/clauseSpecSource";
+import { clauseIsMandatory, mandatoryClausesForCanvas } from "@/lib/shared/clauseSpecSource";
 import {
     fetchRegisteredAgreement,
     getRegisteredAgreement,
@@ -82,7 +82,6 @@ interface InitialState {
     slug: string | null;
     clausesByOrderId: Record<string, Record<string, Record<string, unknown>>>;
     registeredByOrderId: Record<string, `0x${string}`>;
-    mandatoryByOrderId: Record<string, `0x${string}`>;
     assemblyClauses: Record<string, Record<string, unknown>>;
 }
 
@@ -100,7 +99,6 @@ function buildBlankInitial(): InitialState {
         slug: null,
         clausesByOrderId: {},
         registeredByOrderId: {},
-        mandatoryByOrderId: {},
         assemblyClauses: {},
     };
 }
@@ -120,7 +118,6 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
         slug: snap.slug || null,
         clausesByOrderId: snap.clausesByOrderId ?? {},
         registeredByOrderId: snap.registeredByOrderId ?? {},
-        mandatoryByOrderId: snap.mandatoryByOrderId ?? {},
         assemblyClauses: snap.assemblyClauses ?? {},
     };
 }
@@ -177,17 +174,10 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     // The bound agreements' documents are read from the registry (chain →
     // IPFS) into the session cache the build reads; a read re-derives the
     // identity and the canvas's per-node clauses.
-    // Per-order pick in the drawer's mandatory article: order id → the
-    // AgreementRegistry key of a registered agreement whose clauses are all
-    // mandatory-article. Nothing is preselected; publishing needs one per order.
-    const [mandatoryByOrderId, setMandatoryByOrderId] = useState<
-        Record<string, `0x${string}`>
-    >(() => initial.mandatoryByOrderId);
     const registeredAgreementsVersion = useRegisteredAgreementsVersion();
     useEffect(() => {
         for (const key of Object.values(registeredByOrderId)) void fetchRegisteredAgreement(key);
-        for (const key of Object.values(mandatoryByOrderId)) void fetchRegisteredAgreement(key);
-    }, [registeredByOrderId, mandatoryByOrderId]);
+    }, [registeredByOrderId]);
     // The assembly-scoped terms, clause key → the designer's values.
     const [assemblyClauses, setAssemblyClauses] = useState<
         Record<string, Record<string, unknown>>
@@ -259,7 +249,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setSlug(restored.slug);
             setClausesByOrderId(restored.clausesByOrderId);
             setRegisteredByOrderId(restored.registeredByOrderId);
-            setMandatoryByOrderId(restored.mandatoryByOrderId);
             setAssemblyClauses(restored.assemblyClauses);
             setHydrated(true);
             return;
@@ -276,7 +265,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setSlug(init.slug);
             setClausesByOrderId(init.clausesByOrderId);
             setRegisteredByOrderId(init.registeredByOrderId);
-            setMandatoryByOrderId(init.mandatoryByOrderId);
             setAssemblyClauses(init.assemblyClauses);
         }
         setHydrated(true);
@@ -299,14 +287,13 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             orders,
             clausesByOrderId,
             ...(Object.keys(registeredByOrderId).length > 0 ? { registeredByOrderId } : {}),
-            ...(Object.keys(mandatoryByOrderId).length > 0 ? { mandatoryByOrderId } : {}),
             ...(Object.keys(assemblyClauses).length > 0 ? { assemblyClauses } : {}),
             createdAt: Date.now(),
             updatedAt: Date.now(),
         };
         saveCurrentSession(snap);
         setSavedAt(Date.now());
-    }, [hydrated, seedError, orders, clausesByOrderId, registeredByOrderId, mandatoryByOrderId, assemblyClauses, name, summary, description, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
+    }, [hydrated, seedError, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, name, summary, description, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
     // Read both chain gas ceilings (each depends on the live block gas limit, so
     // it's a runtime read; recompute when the chain changes).
@@ -344,13 +331,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         });
     }, []);
 
-    /** Pick, for one order, a registered agreement the drawer's mandatory
-     *  article lists: its clauses merge into the order's agreement,
-     *  and a bound agreement must already carry them. */
-    const pickMandatory = useCallback((orderId: string, agreementHash: `0x${string}`) => {
-        setMandatoryByOrderId((prev) => ({ ...prev, [orderId]: agreementHash }));
-    }, []);
-
     /** Register one order's agreement on its own (the drawer's
      *  action): the order's clauses compose through the SDK's one rule, pin,
      *  stake and register on `AgreementRegistry`; then the agreement binds
@@ -362,7 +342,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         const index = orders.findIndex((o) => o.orderHash === orderId);
         const { agreementHash } = await publishAgreement({
             clauses: (clausesByOrderId[orderId] ?? {}) as ComposedClauses,
-            mandatoryAgreementHash: mandatoryByOrderId[orderId],
             ...(name ? { name: `${name} · order ${index + 1}` } : {}),
         });
         setClausesByOrderId((prev) => {
@@ -372,7 +351,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         });
         bindAgreement(orderId, agreementHash);
         return agreementHash;
-    }, [orders, clausesByOrderId, mandatoryByOrderId, name, publishAgreement, bindAgreement]);
+    }, [orders, clausesByOrderId, name, publishAgreement, bindAgreement]);
 
     const setClauseField = useCallback(
         (orderId: string, clauseKey: string, field: string, value: unknown) => {
@@ -440,9 +419,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 setRegisteredByOrderId((bound) => Object.fromEntries(
                     Object.entries(bound).filter(([id]) => !toRemove.has(id)),
                 ));
-                setMandatoryByOrderId((picked) => Object.fromEntries(
-                    Object.entries(picked).filter(([id]) => !toRemove.has(id)),
-                ));
                 return prev.filter((o) => !toRemove.has(o.orderHash));
             });
         },
@@ -481,7 +457,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         setDescription("");
         setSlug(null);
         setRegisteredByOrderId({});
-        setMandatoryByOrderId({});
         clearCurrentSession();
     }, [session]);
 
@@ -516,7 +491,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         setSlug(null);
         setClausesByOrderId(restored.clausesByOrderId);
         setRegisteredByOrderId(restored.registeredByOrderId);
-        setMandatoryByOrderId(restored.mandatoryByOrderId);
         setAssemblyClauses(restored.assemblyClauses);
         setSelectedOrderId(null);
         return true;
@@ -550,13 +524,12 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 orders,
                 clausesByOrderId,
                 ...(Object.keys(registeredByOrderId).length > 0 ? { registeredByOrderId } : {}),
-                ...(Object.keys(mandatoryByOrderId).length > 0 ? { mandatoryByOrderId } : {}),
                 ...(Object.keys(assemblyClauses).length > 0 ? { assemblyClauses } : {}),
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             },
         };
-    }, [slug, name, summary, description, orders, clausesByOrderId, registeredByOrderId, mandatoryByOrderId, assemblyClauses, session]);
+    }, [slug, name, summary, description, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, session]);
 
     function explainSnapshotReason(_reason: "empty-composition"): string {
         return "Add at least one order before publishing.";
@@ -622,8 +595,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         : name.trim() === "" ? "Name your assembly."
         : summary.trim() === "" ? "Add a short description."
         : description.trim() === "" ? "Add a full description."
-        : orders.some((o) => !mandatoryByOrderId[o.orderHash])
-            ? "Pick a registered agreement in the mandatory article for every order."
+        : Object.keys(mandatoryClausesForCanvas()).length === 0
+            ? "No live mandatory clause is registered by the DAO's wallet on this network; nothing publishes."
         : null;
     const canPublish = publishBlockedReason === null;
 
@@ -891,10 +864,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         if (selectedOrderId) toggleClause(selectedOrderId, clauseKey, next);
                     }}
                     boundAgreementHash={selectedOrderId ? registeredByOrderId[selectedOrderId] : undefined}
-                    mandatoryAgreementHash={selectedOrderId ? mandatoryByOrderId[selectedOrderId] : undefined}
-                    onPickMandatory={(agreementHash) => {
-                        if (selectedOrderId) pickMandatory(selectedOrderId, agreementHash);
-                    }}
                     onBindAgreement={(agreementHash) => {
                         if (selectedOrderId) bindAgreement(selectedOrderId, agreementHash);
                     }}

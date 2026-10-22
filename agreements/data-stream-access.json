@@ -1,11 +1,12 @@
 {
     "clauses": {
+        "figaro-commerce": {},
+        "figaro-topology": {},
         "figaro-content-handoff": {},
         "figaro-data-license": {},
         "figaro-modalities": {},
         "figaro-schedule": {}
     },
-    "mandatory": "mandatory-clauses",
     "name": "Data stream access",
     "summary": "A window of licensed access to a member's live data, the credential handed over on the encrypted channel."
 }

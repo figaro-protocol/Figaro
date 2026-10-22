@@ -56,7 +56,7 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, publishOrAdoptReviewed, waitForConnected, pickMandatoryForEveryOrder } from './devnet-helpers';
+import { readLocalDeploymentConfig, publishOrAdoptReviewed, waitForConnected } from './devnet-helpers';
 import { makeProbeSpec } from './probeAssembly';
 import { calculateBonds, computeClauseKey, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -216,7 +216,6 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         await page.getByTestId('designer-name-input').fill(assemblyName);
         await page.getByTestId('designer-summary-input').fill('Clause-authoring coverage: an order composing the UI-registered clause.');
         await page.getByTestId('designer-description-input').fill(`Single-node assembly carrying ${CLAUSE_ID}.`);
-        await pickMandatoryForEveryOrder(page);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });

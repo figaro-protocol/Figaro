@@ -20,7 +20,7 @@ import { test, expect } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, type Hex } from 'viem';
 import { CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { makeProbeSpec, registerProbeClause } from './probeAssembly';
-import { discoverAnchoredAssemblies, readAgreementBinding, readLocalDeploymentConfig, publishOrAdoptReviewed, pickMandatoryForEveryOrder } from './devnet-helpers';
+import { discoverAnchoredAssemblies, readAgreementBinding, readLocalDeploymentConfig, publishOrAdoptReviewed } from './devnet-helpers';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -92,7 +92,6 @@ test.describe('clause lookalike (devnet)', () => {
         await page.getByTestId('designer-name-input').fill(`Lookalike probe assembly ${nonce}`);
         await page.getByTestId('designer-summary-input').fill('Lookalike coverage: composed on the lookalike registration.');
         await page.getByTestId('designer-description-input').fill('Single-node assembly composing a lookalike of a per-run probe clause.');
-        await pickMandatoryForEveryOrder(page);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });

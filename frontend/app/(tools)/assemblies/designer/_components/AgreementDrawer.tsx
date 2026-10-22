@@ -10,11 +10,11 @@
  *     the chain, each labeled by its pinned document's name with its key
  *     shown: the designer binds one to this agreement as is (a reusable
  *     unit), or unbinds it.
- *   - registry — first the mandatory article: every LIVE registration on
- *     `AgreementRegistry` whose clauses are all mandatory-article
- *     (`isMandatoryAgreement`), whoever registered it, one radio per
- *     registration; the designer picks one for the order, nothing
- *     preselected, and its clauses merge into the order's agreement. Then
+ *   - registry — first the mandatory article: the mandatory clauses the
+ *     canvas writes into every agreement, the DAO's live commerce and
+ *     topology read from `ClauseRegistry` by registrant and stake
+ *     (`mandatoryClausesForCanvas`), shown with nothing to choose; an
+ *     agreement is not an agreement without them. Then
  *     every other clause registered on `ClauseRegistry`, read live from the
  *     chain, grouped by `groupClausesByArticle()` (the single clause
  *     classification, shared with the /clauses inventory — grouping + order
@@ -40,8 +40,7 @@ import {
 } from "@/lib/protocol/useAgreementRegistry";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { isMandatoryAgreement } from "@figaro-protocol/sdk";
-import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsAssemblyScoped, clauseDesignFills, isLiveRegistration, specSource } from "@/lib/shared/clauseSpecSource";
+import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsAssemblyScoped, clauseDesignFills, isLiveRegistration, mandatoryClauseRegistrant, mandatoryClausesForCanvas, specSource } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { ClausesByArticle } from "@/components/runtime/ClausesByArticle";
 import { FieldControl } from "@/components/runtime/FieldControl";
@@ -74,11 +73,6 @@ interface Props {
     boundAgreementHash?: `0x${string}`;
     /** Bind a registered agreement to this agreement, or unbind (`null`). */
     onBindAgreement?: (agreementHash: `0x${string}` | null) => void;
-    /** The registered agreement this order picked in the mandatory article
-     *  (`AgreementRegistry` key), when it has picked one. */
-    mandatoryAgreementHash?: `0x${string}`;
-    /** Pick a registered agreement the mandatory article lists for this order. */
-    onPickMandatory?: (agreementHash: `0x${string}`) => void;
     /** Register this order's agreement on its own — pin, stake and
      *  register it on `AgreementRegistry` now, without publishing an
      *  assembly — and bind the agreement to the registered key. Resolves to
@@ -99,8 +93,6 @@ export function AgreementDrawer({
     boundAgreementHash,
     onBindAgreement,
     onRegisterAgreement,
-    mandatoryAgreementHash,
-    onPickMandatory,
 }: Props) {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [minimized, setMinimized] = useState(false);
@@ -358,11 +350,7 @@ export function AgreementDrawer({
 
                     {openSection === "registry" && (
                         <>
-                            <MandatoryArticlePanel
-                                orderHash={order.orderHash}
-                                mandatoryAgreementHash={mandatoryAgreementHash}
-                                onPickMandatory={onPickMandatory}
-                            />
+                            <MandatoryArticlePanel />
                             <ClauseRegistryPanel
                                 selectedClauseValues={selectedClauseValues}
                                 onToggleClause={onToggleClause}
@@ -541,75 +529,44 @@ function RegisteredAgreementsPanel({
  * nothing is preselected. A registration whose document is unread, or whose
  * clauses are not all mandatory-article, is not listed here.
  */
-function MandatoryArticlePanel({
-    orderHash,
-    mandatoryAgreementHash,
-    onPickMandatory,
-}: {
-    orderHash: string;
-    mandatoryAgreementHash?: `0x${string}`;
-    onPickMandatory?: (agreementHash: `0x${string}`) => void;
-}) {
-    const { data: liveAgreements } = usePublishedAgreements(undefined);
-    const agreementsVersion = useRegisteredAgreementsVersion();
-    const { version: clauseSpecsVersion } = useClauseSpecs();
-    useEffect(() => {
-        for (const row of liveAgreements ?? []) void fetchRegisteredAgreement(row.agreementHash, row.contentURI);
-        if (mandatoryAgreementHash) void fetchRegisteredAgreement(mandatoryAgreementHash);
-    }, [liveAgreements, mandatoryAgreementHash]);
-    const listed = useMemo(
-        () => (liveAgreements ?? []).filter((row) => {
-            const doc = getRegisteredAgreement(row.agreementHash);
-            return doc !== undefined && isMandatoryAgreement(doc, specSource());
-        }),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [liveAgreements, agreementsVersion, clauseSpecsVersion],
-    );
+function MandatoryArticlePanel() {
+    // The mandatory clauses are read from the registry: the DAO's live
+    // registrations whose spec declares the mandatory article, one per shape.
+    // A spec load or a registry read re-derives them.
+    const { version: clauseSpecsVersion, loaded } = useClauseSpecs();
+    const registrant = mandatoryClauseRegistrant();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const mandatory = useMemo(() => Object.keys(mandatoryClausesForCanvas()) as `0x${string}`[], [clauseSpecsVersion]);
     return (
         <section data-testid="drawer-mandatory-article" className="mb-5">
             <p className="text-sm font-medium text-ink-heading mb-2">mandatory</p>
             <p className="text-xs text-ink-muted mb-2">
-                Pick one registered agreement for this order. Its clauses merge into the
-                order&rsquo;s agreement, and no process resolves without them. The list is
-                every registration on the on-chain{" "}
-                <code className="font-mono">AgreementRegistry</code> whose clauses are all
-                mandatory, whoever registered it.
+                Written into every agreement before anything is composed: an agreement is not an
+                agreement without the payment, the token and what is bought, and the orders it
+                follows. They are the DAO&rsquo;s live registrations on the on-chain{" "}
+                <code className="font-mono">ClauseRegistry</code>, read by registrant and stake;
+                nothing here is chosen.
             </p>
-            {liveAgreements === null ? (
+            {!loaded ? (
                 <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-loading">
                     Reading the registry&hellip;
                 </p>
-            ) : listed.length === 0 ? (
+            ) : !registrant ? (
                 <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-empty">
-                    No registered agreement whose clauses are all mandatory on the network this site is reading.
+                    This site names no DAO wallet for the network it is reading, so no mandatory clause is known and nothing publishes.
+                </p>
+            ) : mandatory.length === 0 ? (
+                <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-empty">
+                    The DAO&rsquo;s wallet holds no live mandatory clause on the network this site is reading, so nothing publishes.
                 </p>
             ) : (
-                <ul className="space-y-2" data-testid="drawer-mandatory-list">
-                    {listed.map((row) => {
-                        const doc = getRegisteredAgreement(row.agreementHash);
-                        const key = truncateHex(row.agreementHash, { head: 10, tail: 4 });
-                        const picked = !!mandatoryAgreementHash && mandatoryAgreementHash.toLowerCase() === row.agreementHash.toLowerCase();
+                <ul className="space-y-1" data-testid="drawer-mandatory-list">
+                    {mandatory.map((clauseKey) => {
+                        const spec = getClauseSpec(clauseKey);
                         return (
-                            <li key={row.agreementHash}>
-                                <label className="flex items-start gap-2 text-xs text-ink-body" title={row.agreementHash}>
-                                    <input
-                                        type="radio"
-                                        className="h-3.5 w-3.5 mt-0.5"
-                                        name={`mandatory-${orderHash}`}
-                                        checked={picked}
-                                        onChange={() => onPickMandatory?.(row.agreementHash)}
-                                        data-testid={`drawer-mandatory-agreement-${row.agreementHash}`}
-                                    />
-                                    <span className="min-w-0">
-                                        <span className="text-ink-primary">{doc?.name ? `${doc.name} · ` : ""}</span>
-                                        <span className="font-mono text-[10px] text-ink-muted">{key}</span>
-                                        <span className="block text-[11px] text-ink-muted">
-                                            {Object.keys(doc?.clauses ?? {})
-                                                .map((clauseKey) => getClauseSpec(clauseKey)?.title ?? truncateHex(clauseKey, { head: 10, tail: 0 }))
-                                                .join(", ")}
-                                        </span>
-                                    </span>
-                                </label>
+                            <li key={clauseKey} className="text-xs text-ink-body" title={clauseKey} data-testid={`drawer-mandatory-clause-${clauseKey}`}>
+                                <span className="text-ink-primary">{spec?.title ?? truncateHex(clauseKey, { head: 10, tail: 0 })}</span>
+                                <span className="font-mono text-[10px] text-ink-muted"> {truncateHex(clauseKey, { head: 10, tail: 4 })}</span>
                             </li>
                         );
                     })}

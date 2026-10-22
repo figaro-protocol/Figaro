@@ -330,9 +330,10 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildDomain` | root | The EIP-712 domain for a chain id + `FigaroCore` address. |
 | `buildOrderAgreement` | root | Build one order's agreement document and its merkle tree from its clause map. |
 | `buildQuoteRequest` | `/agent` | Build an UNSIGNED RFQ draft, priced at the buyer's ceiling. |
-| `buildAssembly` | root | Design time: the assembly of agreements plus the new agreements to register; every order picks a registered agreement whose clauses are all mandatory-article (`mandatoryByOrderId`); binds a registered agreement as is or composes a new one with the pick's clauses merged in. |
-| `composeOrderAgreement` | root | ONE agreement's registered agreement from the clauses a designer selected for it and the registered agreement picked for it in the mandatory article — the scope check, the value-free rule, the pick's clauses merged — and its `agreementHash`; `buildAssembly` composes every new agreement through it, and a designer registers one on its own through it. |
-| `isMandatoryAgreement` | root | True for a registered agreement the designer's mandatory article lists: one clause or more, every one loaded, mandatory-article and agreement-scoped — any wallet's registration. |
+| `buildAssembly` | root | Design time: the assembly of agreements plus the new agreements to register; the mandatory clauses (`mandatory`, from `mandatoryClauses`) are written into every new agreement first; binds a registered agreement as is (it must carry both mandatory shapes) or composes a new one. |
+| `composeOrderAgreement` | root | ONE agreement's registered agreement from the mandatory clauses written in and the clauses a designer selected — the scope check, the value-free rule, one clause of commerce's shape and one of topology's — and its `agreementHash`; `buildAssembly` composes every new agreement through it, and a designer registers one on its own through it. |
+| `mandatoryClauses` | root | The mandatory clauses a canvas writes into every agreement: the registrant's (the DAO wallet's) live `ClauseRegistry` registrations whose spec declares the mandatory article at agreement scope, one per shape, the later registration winning; `clauseKey → {}`. |
+| `specIsCommerceShape` / `specIsTopologyShape` | root | Mandatory is a shape, never a name: a spec declaring `payment`, `currency` and `lineItems` as content is commerce; one declaring `parentOrderHashes` is topology. |
 | `buildProvenanceInclusionProof` | root | Merkle proof that the agreement's provenance leaf sits under a signed `checkoutHash`. |
 | `buildAgreementInclusionProof` | root | An agreement's membership proof under `assemblyHash`, with its `slotContentHash` — what the assembly reward claim carries. |
 | `buildSignedClauseInclusionProof` | root | Merkle proof that one clause sits under a signed `checkoutHash`. |
@@ -1792,9 +1793,9 @@ import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 // `block.design.article` is normally your clause's own group name (free text:
 // "coordination", "logistics", …). TWO values are RESERVED and change
 // agreement semantics:
-//   "mandatory"    — never selected on its own: an agreement whose clauses
-//                    all are is what a designer picks per order, and its
-//                    clauses merge in (specIsMandatory, isMandatoryAgreement)
+//   "mandatory"    — never selected on its own: the DAO's live ones are
+//                    written into every agreement (specIsMandatory,
+//                    mandatoryClauses)
 //   "attestations" — an empty anchor at commit, content attested later
 //                    (specIsProcessLog)
 // Pick either by accident — say you group an attestation clause under
@@ -1833,13 +1834,13 @@ function makeSpecSource(rawSpecsByKey: Map<Hex, unknown>): SpecSource {
 agreement leaf carries — and nothing reads a clause by name; a spec's
 `clauseId` and `version` are labels. `list` returns every spec the source
 surfaces, each with its `clauseKey`. Nothing folds from it: the mandatory
-clauses enter a NEW agreement through the registered agreement the designer
-picks for that order (`mandatoryByOrderId`) — one whose clauses are all
-`article: "mandatory"` and agreement-scoped (`isMandatoryAgreement`), whoever
-registered it — and its clauses merge into the composition
-(`composeOrderAgreement`). Every order needs a pick (`buildAssembly` refuses
-otherwise); a registered agreement bound as is must already carry every clause
-of its order's pick; and checkout adds no clause.
+clauses enter a NEW agreement as the set the caller passes (`mandatory`, read
+from the registry with `mandatoryClauses` — the DAO wallet's live
+`article: "mandatory"` registrations at agreement scope, one per shape), written
+in before the selection (`composeOrderAgreement`). Every agreement carries one
+clause of commerce's shape and one of topology's (`buildAssembly` refuses
+otherwise); a registered agreement bound as is must carry both shapes itself;
+and checkout adds no clause.
 
 A spec that is not (yet) loaded returns `undefined` from `get`, and the
 projection degrades exactly as the registry-reading frontend does (no defaults
@@ -1925,14 +1926,15 @@ import {
   AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
 } from "@figaro-protocol/sdk";
 
-// DESIGN: per canvas order, pick a registered agreement whose clauses are all
-// mandatory-article (`mandatoryByOrderId`, hydrated; `isMandatoryAgreement`
-// tells which ones qualify), then either bind a registered agreement as is
+// DESIGN: the mandatory clauses come from the registry (`mandatoryClauses`
+// over the ClauseRegistered rows, the specs and the DAO wallet's address);
+// then per canvas order either bind a registered agreement as is
 // (`registeredByOrderId`, the hydrated document — refused if it lacks a clause
-// of its pick) or compose clauses (`clausesByOrderId`), which become a NEW
-// agreement with the pick's clauses merged in.
+// of commerce's or topology's shape) or compose clauses (`clausesByOrderId`),
+// which become a NEW agreement with the mandatory clauses written in first.
+const mandatory = mandatoryClauses(rows, specs, daoTreasury);
 const { assembly, agreements } = buildAssembly({
-  name, orders, clausesByOrderId, registeredByOrderId, mandatoryByOrderId, assemblyClauses, specs,
+  name, orders, clausesByOrderId, registeredByOrderId, mandatory, assemblyClauses, specs,
 });
 // `agreements` holds only the newly composed ones: pin each as canonical JSON
 // and register it (one stake each; a key already registered is skipped).

@@ -173,7 +173,9 @@ async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
         missing.map((s) => {
             const event = registered.find((r) => r.clauseKey.toLowerCase() === s.clause.toLowerCase());
             return event
-                ? loadClauseSpec(event.clauseKey, event.contentURI)
+                ? loadClauseSpec(event.clauseKey, event.contentURI, {
+                    registeredBy: event.registeredBy, blockNumber: BigInt(event.blockNumber), stakeWithdrawn: false,
+                })
                 : Promise.resolve(undefined);
         }),
     );

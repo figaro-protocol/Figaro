@@ -29,7 +29,6 @@ import {
     assembleAuthored,
     composeAuthoredAgreements,
     agreementHashOf,
-    isMandatoryAgreement,
     assemblyHashOf,
     tryParseMemberProfileDocument,
     type Assembly,
@@ -897,60 +896,6 @@ export async function primeRegisteredClauseSpecs(): Promise<{ clauseKey: Hex; co
     return rows;
 }
 
-/**
- * The registrations the designer drawer's mandatory article lists, discovered
- * from chain → IPFS: every `AgreementRegistered` event whose stake is live,
- * its document read by key and verified against it, kept when every clause it
- * carries is mandatory-article (`isMandatoryAgreement`, over the specs read
- * from ClauseRegistry). Whoever registered it. In registration order.
- */
-export async function discoverMandatoryAgreements(): Promise<{ agreementHash: Hex; registeredBy: `0x${string}`; document: RegisteredAgreement }[]> {
-    await primeRegisteredClauseSpecs();
-    const registry = (process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? readLocalDeploymentConfig().agreementRegistry ?? '') as `0x${string}`;
-    const events = await scanContractEvents(localPublicClient() as PublicClient, {
-        address: registry, abi: AGREEMENT_REGISTRY_ABI, eventName: 'AgreementRegistered',
-    });
-    const out: { agreementHash: Hex; registeredBy: `0x${string}`; document: RegisteredAgreement }[] = [];
-    for (const ev of events) {
-        const { agreementHash } = ev.args as { agreementHash?: Hex };
-        if (!agreementHash) continue;
-        const read = await readRegisteredAgreementDocument(agreementHash).catch(() => null);
-        if (!read || read.binding.stakeWithdrawn) continue;
-        if (agreementHashOf(read.document) !== agreementHash) continue;
-        if (!isMandatoryAgreement(read.document, specSource())) continue;
-        out.push({ agreementHash, registeredBy: read.binding.registeredBy, document: read.document });
-    }
-    return out;
-}
-
-/**
- * In the designer drawer, pick a registration in the mandatory article for
- * every order on the canvas, as a designer does: each node's tab, the
- * registry tab, the registration's radio. `agreementHash` defaults to the
- * first registration the article lists, discovered from the chain
- * (`discoverMandatoryAgreements`). Opens the drawer on the first node when no
- * node is selected.
- */
-export async function pickMandatoryForEveryOrder(page: Page, agreementHash?: Hex): Promise<void> {
-    const key = agreementHash ?? (await discoverMandatoryAgreements())[0]?.agreementHash;
-    if (!key) throw new Error('no registered agreement whose clauses are all mandatory-article is on the chain — run populate-test-data');
-    if (await page.getByTestId('agreement-drawer').getAttribute('data-empty') === 'true') {
-        await page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first().click();
-    }
-    const tabs = page.locator('[data-testid^="drawer-node-tab-"]');
-    const ids = await tabs.count() > 0
-        ? await tabs.evaluateAll((els) => els.map((el) => el.getAttribute('data-testid')!.replace('drawer-node-tab-', '')))
-        : [null];
-    for (const id of ids) {
-        if (id) await page.getByTestId(`drawer-node-tab-${id}`).click();
-        await page.getByTestId('drawer-tab-registry').click();
-        const radio = page.getByTestId(`drawer-mandatory-agreement-${key}`);
-        await radio.waitFor({ state: 'visible', timeout: 30000 });
-        await radio.check();
-        await expect(radio).toBeChecked();
-    }
-}
-
 /** A process-log LADDER's stage labels, read from the clause's chain-anchored
  *  spec (primed by `primeRegisteredClauseSpecs`): the enum ladder's values via
  *  its valueLabels — the labels the capability rail renders. Walk a ladder by
@@ -1240,7 +1185,6 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
         await page.getByTestId('designer-name-input').fill('Local commerce');
         await page.getByTestId('designer-summary-input').fill('Merchant delivery: a merchant order plus one co-equal courier order.');
         await page.getByTestId('designer-description-input').fill('The local-commerce runtime: the buyer orders with the delivery modality; the courier order carries the goods; each transfer is attested; one resolve pays both.');
-        await pickMandatoryForEveryOrder(page);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });

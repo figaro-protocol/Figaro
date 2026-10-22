@@ -86,27 +86,27 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // so an empty AssemblyRegistry means zero surfaced members). Seeding is
 // PRE-POPULATION, exactly like clauses and sellers above — never a test
 // (the scenario-era build-order coupling is the cautionary tale). Each seed is
-// authored like a reference: its agreements composed by clause name, each
-// picking the reference agreement holding the mandatory clauses alone
-// (`composeAuthoredAgreements` — its clauses merge in, so a seed writes only
-// what it selects), then the assembly built over them by name
+// authored like a reference: its agreements composed by clause name, the
+// two mandatory clauses named like any other (`composeAuthoredAgreements`),
+// then the assembly built over them by name
 // (`assembleAuthored`): its agreements register on AgreementRegistry, then
 // its assembly anchors — identity (agreement hashes, assemblyHash + slug)
 // and canonical JSON come from the SDK.
 
 /** The seeds' authored agreements, composed once, by name. Design time is
- *  STRUCTURAL: a clause is SELECTED; its values are the buyer's at checkout. */
+ *  STRUCTURAL: a clause is SELECTED; its values are the buyer's at checkout.
+ *  Each names the two mandatory clauses as the canvas would write them in. */
+const MANDATORY = { 'figaro-commerce': {}, 'figaro-topology': {} };
 const SEED_AGREEMENTS = Object.fromEntries(Object.entries(composeAuthoredAgreements({
-    // The blank agreement: the mandatory clauses alone — the reference pick.
-    blank: { mandatory: 'mandatory-clauses', clauses: {} },
+    // The blank agreement: the mandatory clauses alone.
+    blank: { clauses: { ...MANDATORY } },
     // A root merchant agreement: the merchant process and the modality the
     // buyer picks at checkout.
-    merchant: { mandatory: 'mandatory-clauses', clauses: { 'figaro-merchant-process': {}, 'figaro-modalities': {} } },
+    merchant: { clauses: { ...MANDATORY, 'figaro-merchant-process': {}, 'figaro-modalities': {} } },
     // A courier sub-agreement.
-    courier: { mandatory: 'mandatory-clauses', clauses: { 'figaro-courier-process': {} } },
+    courier: { clauses: { ...MANDATORY, 'figaro-courier-process': {} } },
     // A supplier sub-agreement: the merchant process alone.
-    supplier: { mandatory: 'mandatory-clauses', clauses: { 'figaro-merchant-process': {} } },
-    'mandatory-clauses': JSON.parse(fs.readFileSync(path.join(AGREEMENTS_DIR, 'mandatory-clauses.json'), 'utf8')),
+    supplier: { clauses: { ...MANDATORY, 'figaro-merchant-process': {} } },
 }, AUTHORED)).map(([name, { document }]) => [name, document]));
 
 // The zero-address sentinel, the currency fill, and the anchoring itself all

@@ -42,7 +42,7 @@
  */
 import { test, expect } from './devnet-multi-test';
 import type { Hex } from 'viem';
-import { keyOf, primeRegisteredClauseSpecs, pickMandatoryForEveryOrder } from './devnet-helpers';
+import { keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import type { Page } from '@playwright/test';
 import { composedClauseChip } from './probeAssembly';
 
@@ -165,12 +165,11 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
 
         // The canvas states its composition identity as soon as there is a
         // composition to identify — derived from the same walk publish
-        // anchors: the order's pick in the mandatory article first.
+        // anchors, the DAO's mandatory clauses written in first.
         const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
         await rootNode.waitFor({ state: 'visible', timeout: 10000 });
         await rootNode.click();
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
-        await pickMandatoryForEveryOrder(page);
         const hashReadout = page.getByTestId('designer-assembly-hash');
         await expect(hashReadout).toBeVisible({ timeout: 30000 });
         const before = await hashReadout.getAttribute('title');
@@ -178,6 +177,13 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
 
         // Compose the regime clause on the root order.
         await page.getByTestId('drawer-tab-registry').click();
+        // The mandatory article shows the DAO's live commerce and topology,
+        // read from ClauseRegistry by registrant and stake, with nothing to
+        // choose: the canvas writes them into every agreement it registers.
+        const mandatoryArticle = page.getByTestId('drawer-mandatory-article');
+        await expect(mandatoryArticle.getByTestId(`drawer-mandatory-clause-${keyOf('figaro-commerce')}`)).toBeVisible({ timeout: 30000 });
+        await expect(mandatoryArticle.getByTestId(`drawer-mandatory-clause-${keyOf('figaro-topology')}`)).toBeVisible();
+        await expect(mandatoryArticle.locator('input')).toHaveCount(0);
         const regimeToggle = page.getByTestId(`drawer-registry-clause-${REGIME_CLAUSE_KEY}`);
         await expect(regimeToggle, 'the drawer surfaces the regime clause').toHaveCount(1, { timeout: 20000 });
         await regimeToggle.check();
@@ -260,7 +266,6 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         const forumToggle = page.getByTestId(`assembly-terms-clause-${FORUM_CLAUSE_KEY}`);
         await expect(forumToggle, 'the assembly-terms panel surfaces the forum clause').toHaveCount(1, { timeout: 20000 });
         await forumToggle.check();
-        await pickMandatoryForEveryOrder(page);
 
         // The canvas states the composition on the node itself — the reading the
         // review must reproduce. Each chip carries its clause's name and key as its tooltip.

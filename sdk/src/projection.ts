@@ -14,9 +14,9 @@
  * their cache being warm before projecting.
  *
  * Five `block` hints are HASH-LOAD-BEARING and therefore projection
- * vocabulary, not presentation: `design.article: "mandatory"` (the clauses
- * of the registered agreements a designer picks in the mandatory article,
- * merged into each agreement → agreementHash),
+ * vocabulary, not presentation: `design.article: "mandatory"` (the DAO's
+ * live commerce and topology the canvas writes into each agreement →
+ * agreementHash),
  * `design.article: "attestations"` (process-log clauses stay empty anchors at
  * commit → checkoutHash), `design.scope: "assembly"` (composed once for the
  * whole design, folded into EVERY agreement at checkout → assemblyHash +
@@ -212,11 +212,11 @@ export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
 }
 
 /** True for the MANDATORY clauses (`block.design.article: "mandatory"` —
- *  commerce, topology). A designer never selects one on its own: the
- *  mandatory article lists registered agreements whose clauses all are
- *  (`isMandatoryAgreement`), the designer picks one for each agreement, and
- *  its clauses merge in. Never name this article "structural" — that word
- *  collides with the design/DAG sense.
+ *  commerce, topology). An agreement is not an agreement without them, so a
+ *  designer never selects one: the canvas writes the DAO's live mandatory
+ *  clauses into every agreement it registers (`mandatoryClauses`), and the
+ *  designer composes the rest. Never name this article "structural" — that
+ *  word collides with the design/DAG sense.
  *
  *  The article is read from the spec's `block`, which whoever registered the
  *  clause wrote: it confers no protocol standing. A surface that shows a
@@ -225,6 +225,73 @@ export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
  *  them out. */
 export function specIsMandatory(spec: ProjectionSpecView): boolean {
     return spec.hints?.article === "mandatory";
+}
+
+/** The SHAPE of commerce: a clause declaring `payment`, `currency` and
+ *  `lineItems` as content — the fields checkout fills and the sign gate holds
+ *  equal to the signed struct. Mandatory is a shape, never a name: any
+ *  well-formed clause of this shape is commerce to every reader, and an
+ *  agreement carries exactly one. */
+export function specIsCommerceShape(spec: ProjectionSpecView): boolean {
+    return ["payment", "currency", "lineItems"].every((f) => specDeclaresContentField(spec, f));
+}
+
+/** The SHAPE of topology: a clause declaring `parentOrderHashes` as content —
+ *  the orders this order follows, the process's DAG. An agreement carries
+ *  exactly one. */
+export function specIsTopologyShape(spec: ProjectionSpecView): boolean {
+    return specDeclaresContentField(spec, "parentOrderHashes");
+}
+
+/** The shape a mandatory-article spec has: commerce's, topology's, or (for a
+ *  mandatory clause of another shape) the sorted names of the content fields
+ *  it declares. Two mandatory specs of one shape are two versions of one
+ *  clause to the canvas, whatever their names. */
+function mandatoryShape(spec: ProjectionSpecView): string {
+    if (specIsCommerceShape(spec)) return "commerce";
+    if (specIsTopologyShape(spec)) return "topology";
+    return spec.fields.map((f) => f.name).filter((f) => specDeclaresContentField(spec, f)).sort().join(",");
+}
+
+/** One `ClauseRegistered` row as the registry reports it: the key, the wallet
+ *  that registered it, the block of the registration, and whether its stake
+ *  was withdrawn since. */
+export interface ClauseRegistrationRow {
+    clauseKey: Hex;
+    registeredBy: Hex;
+    blockNumber: bigint | number;
+    stakeWithdrawn: boolean;
+}
+
+/** The MANDATORY clauses this canvas writes into every agreement it
+ *  registers: the clauses `registrant` (the DAO's wallet, a fact of the
+ *  chain's deployment record) registered whose stake is live and whose spec
+ *  declares the mandatory article at agreement scope — all of them, one per
+ *  shape, the later registration winning where the DAO holds two live
+ *  clauses of one shape (its own transition; never the version word). An
+ *  agreement is not an agreement without commerce and topology, so the DAO
+ *  develops them and earns wherever they are used; a mandatory-article
+ *  registration by any other wallet is an ordinary clause and enters no
+ *  agreement by this route. Empty when the registrant holds no live
+ *  mandatory clause: the canvas then publishes nothing. */
+export function mandatoryClauses(
+    rows: readonly ClauseRegistrationRow[],
+    specs: SpecSource,
+    registrant: Hex,
+): Record<Hex, Record<string, unknown>> {
+    const byShape = new Map<string, { clauseKey: Hex; blockNumber: bigint }>();
+    for (const row of rows) {
+        if (row.registeredBy.toLowerCase() !== registrant.toLowerCase() || row.stakeWithdrawn) continue;
+        const spec = specs.get(row.clauseKey);
+        if (!spec || !specIsMandatory(spec) || specIsAssemblyScoped(spec)) continue;
+        const shape = mandatoryShape(spec);
+        const block = BigInt(row.blockNumber);
+        const prev = byShape.get(shape);
+        if (!prev || block > prev.blockNumber) byShape.set(shape, { clauseKey: row.clauseKey, blockNumber: block });
+    }
+    const out: Record<Hex, Record<string, unknown>> = {};
+    for (const { clauseKey } of byShape.values()) out[clauseKey] = {};
+    return out;
 }
 
 /** The DESIGNER-authored field names of a clause (`block.design.fills`) —
@@ -800,61 +867,27 @@ function agreementTopologyFills(
     return out;
 }
 
-/** The spec of each clause a registered agreement carries, when that
- *  agreement is one the mandatory article lists: it carries one clause or
- *  more, and every clause it carries is loaded, marked
- *  `block.design.article: "mandatory"` and agreement-scoped. Null otherwise.
- *  Whoever registered it, the DAO or any other wallet. */
-function mandatoryAgreementSpecs(doc: RegisteredAgreement, specs: SpecSource): ProjectionSpecView[] | null {
-    const keys = Object.keys(doc.clauses) as Hex[];
-    if (keys.length === 0) return null;
-    const out: ProjectionSpecView[] = [];
-    for (const clauseKey of keys) {
-        const spec = specs.get(clauseKey);
-        if (!spec || !specIsMandatory(spec) || specIsAssemblyScoped(spec)) return null;
-        out.push(spec);
-    }
-    return out;
-}
-
-/** True for a registered agreement the drawer's mandatory article lists: one
- *  clause or more, every one of them loaded, mandatory-article and
- *  agreement-scoped. The article lists any wallet's registration meeting this,
- *  and a designer picks one of them for each agreement in an assembly's
- *  list; its clauses merge into that agreement. */
-export function isMandatoryAgreement(doc: RegisteredAgreement, specs: SpecSource): boolean {
-    return mandatoryAgreementSpecs(doc, specs) !== null;
-}
-
-/** The clauses a pick brings to one agreement: the picked registered
- *  agreement's clause map, each clause's values reduced to its design fills.
- *  Throws, naming `label`, for a pick that carries no clause, a clause whose
- *  spec is not loaded, or a clause that is not a mandatory-article,
- *  agreement-scoped clause. */
-function pickedMandatoryClauses(
-    pick: RegisteredAgreement,
-    specs: SpecSource,
-    label: string,
-): Record<Hex, Record<string, unknown>> {
-    const keys = Object.keys(pick.clauses) as Hex[];
-    if (keys.length === 0) {
-        throw new Error(`${label}: the registered agreement picked in the mandatory article carries no clause`);
-    }
-    const out: Record<Hex, Record<string, unknown>> = {};
-    for (const clauseKey of keys) {
-        const spec = specs.get(clauseKey);
-        if (!spec) {
-            throw new Error(`clause ${clauseKey} is picked in the mandatory article but its spec is not loaded`);
-        }
-        if (!specIsMandatory(spec) || specIsAssemblyScoped(spec)) {
+/** An agreement is not an agreement without commerce and topology: the
+ *  composed clauses carry exactly one clause of commerce's shape and one of
+ *  topology's, whatever their keys. Throws, naming `label`, on none or two of
+ *  either. */
+function assertMandatoryShapes(clauses: Readonly<Record<Hex, Record<string, unknown>>>, specs: SpecSource, label: string): void {
+    const keys = Object.keys(clauses) as Hex[];
+    for (const [shape, has] of [["commerce", specIsCommerceShape], ["topology", specIsTopologyShape]] as const) {
+        const found = keys.filter((k) => { const spec = specs.get(k); return spec !== undefined && has(spec); });
+        if (found.length === 0) {
             throw new Error(
-                `${label}: ${clauseLabel(clauseKey, spec)} is not a mandatory-article clause composed on an order — ` +
-                `the mandatory article lists only registered agreements whose clauses all are`,
+                `${label}: no clause of ${shape}'s shape — an agreement is not an agreement without ${
+                    shape === "commerce" ? "the payment, the token and what is bought" : "the orders it follows"
+                }; the canvas writes the DAO's live ${shape} into every agreement`,
             );
         }
-        out[clauseKey] = designFillValues(spec, pick.clauses[clauseKey] ?? {});
+        if (found.length > 1) {
+            throw new Error(
+                `${label}: two clauses of ${shape}'s shape (${found.map((k) => clauseLabel(k, specs.get(k))).join(", ")}) — one per agreement`,
+            );
+        }
     }
-    return out;
 }
 
 /** Only the values a clause's `design.fills` declares survive into a assembly
@@ -887,28 +920,31 @@ export interface BuiltAssembly {
     agreements: Record<Hex, RegisteredAgreement>;
 }
 
-/** Compose ONE agreement's agreement from the clauses a designer selected
- *  for it and the registered agreement the designer picked for it in the
- *  mandatory article: the scope check (an assembly-scoped clause never
- *  composes on an order; a composed key's spec must be loaded), the
- *  value-free rule (only `block.design.fills` values survive), and the merge
- *  (the pick's clauses join the selection; a clause both carry keeps the
- *  designer's composition). The result is the registered agreement's
+/** Compose ONE agreement's agreement from the mandatory clauses the canvas
+ *  writes in and the clauses a designer selected: the scope check (an
+ *  assembly-scoped clause never composes on an order; a composed key's spec
+ *  must be loaded), the value-free rule (only `block.design.fills` values
+ *  survive), and the shape rule (exactly one clause of commerce's shape and
+ *  one of topology's; a clause both carry keeps the designer's composition).
+ *  The result is the registered agreement's
  *  document and its key — what `AgreementRegistry` takes, whether the
  *  designer registers it on its own or an assembly's publish registers it
  *  for an agreement. `buildAssembly` composes every new agreement through
  *  this one function.
  *
- *  With no pick, the composition is refused unless every clause it composes
- *  is mandatory-article: that composition is itself an agreement the
- *  mandatory article lists, the kind a pick names. */
+ *  The mandatory clauses (`mandatory`, the DAO's live commerce and topology
+ *  the canvas reads from the registry — `mandatoryClauses`) are written in
+ *  first and the designer's selection over them; the result carries exactly
+ *  one clause of commerce's shape and one of topology's, or it is refused
+ *  (`assertMandatoryShapes`). An authored agreement names the two clauses
+ *  itself and passes none. */
 export function composeOrderAgreement(args: {
     /** clauseKey → the designer's composed values for this order. */
     clauses: Readonly<Record<Hex, Record<string, unknown>>>;
-    /** The registered agreement the designer picked in the mandatory
-     *  article for this order (`isMandatoryAgreement`), hydrated and verified
-     *  against its key. Its clauses merge into the composition. */
-    mandatory?: RegisteredAgreement;
+    /** The mandatory clauses the canvas writes into every agreement
+     *  (`mandatoryClauses`): clauseKey → `{}`. Optional for an authored
+     *  agreement that names them itself. */
+    mandatory?: Readonly<Record<Hex, Record<string, unknown>>>;
     specs: SpecSource;
 }): { composed: RegisteredAgreement; agreementHash: Hex } {
     const { clauses: composedClauses, mandatory, specs } = args;
@@ -933,17 +969,14 @@ export function composeOrderAgreement(args: {
     for (const [clauseKey, values] of Object.entries(composedClauses) as [Hex, Record<string, unknown>][]) {
         selection[clauseKey] = designFillValues(specs.get(clauseKey), values);
     }
-    let clauses: Record<Hex, Record<string, unknown>>;
-    if (mandatory) {
-        clauses = { ...pickedMandatoryClauses(mandatory, specs, "the agreement"), ...selection };
-    } else {
-        if (!isMandatoryAgreement({ clauses: selection }, specs)) {
-            throw new Error(
-                "no registered agreement picked in the mandatory article — pick one: its clauses merge into this agreement, and no process resolves without them",
-            );
-        }
-        clauses = selection;
+    const defaults: Record<Hex, Record<string, unknown>> = {};
+    for (const [clauseKey, values] of Object.entries(mandatory ?? {}) as [Hex, Record<string, unknown>][]) {
+        const spec = specs.get(clauseKey);
+        if (!spec) throw new Error(`mandatory clause ${clauseKey} is not loaded`);
+        defaults[clauseKey] = designFillValues(spec, values);
     }
+    const clauses: Record<Hex, Record<string, unknown>> = { ...defaults, ...selection };
+    assertMandatoryShapes(clauses, specs, "the agreement");
     const composed: RegisteredAgreement = { clauses };
     return { composed, agreementHash: agreementHashOf(composed) };
 }
@@ -952,14 +985,14 @@ export function composeOrderAgreement(args: {
  *  becomes one agreement binding a registered agreement: EITHER a
  *  registered agreement bound as is (`registeredByOrderId`), OR the clauses
  *  the designer composed for it (`clausesByOrderId`), which become a new
- *  agreement — value-free, with the clauses of the registered agreement the
- *  designer picked for it in the mandatory article (`mandatoryByOrderId`)
- *  merged in (composition time is the merge's only place; checkout adds no
- *  clause). Every order has a pick, or the build is refused: no process
- *  resolves without the mandatory clauses. A bound agreement that lacks a
- *  clause of its pick is refused: the designer composes a new agreement for
- *  that order instead. The topology's parents are the agreement's own
- *  fill. */
+ *  agreement — value-free, with the mandatory clauses (`mandatory`, the
+ *  DAO's live commerce and topology the canvas reads from the registry)
+ *  written in first (composition time is the only place; checkout adds no
+ *  clause). Every agreement carries one clause of commerce's shape and one
+ *  of topology's, or the build is refused: an agreement is not an agreement
+ *  without them. A bound registered agreement must carry both shapes
+ *  itself, whatever their keys. The topology's parents are the agreement's
+ *  own fill. */
 export function buildAssembly(args: {
     name?: string;
     summary?: string;
@@ -975,14 +1008,12 @@ export function buildAssembly(args: {
      *  `block.design.scope: "assembly"`, composed ONCE for the whole design
      *  (clauseKey → the designer's values). Optional; absent = none. */
     assemblyClauses?: Readonly<Record<Hex, Record<string, unknown>>>;
-    /** orderId → the registered agreement the designer picked in the
-     *  mandatory article for that order (`isMandatoryAgreement`), hydrated
-     *  and verified against its key. One for every order: nothing is
-     *  preselected, and an order without one is refused. */
-    mandatoryByOrderId: Readonly<Record<string, RegisteredAgreement>>;
+    /** The mandatory clauses the canvas writes into every agreement it
+     *  composes (`mandatoryClauses`): clauseKey → `{}`. */
+    mandatory?: Readonly<Record<Hex, Record<string, unknown>>>;
     specs: SpecSource;
 }): BuiltAssembly {
-    const { name, summary, description, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, mandatoryByOrderId, specs } = args;
+    const { name, summary, description, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, mandatory, specs } = args;
     // SCOPE VERIFICATION: a clause binds where its spec
     // declares — an assembly-scoped clause composed on an order (or an
     // agreement-scoped clause composed at assembly level) is a build error,
@@ -1028,10 +1059,6 @@ export function buildAssembly(args: {
     const entries: AssemblyAgreement[] = orders.map((order, i) => {
         const id = `order-${i}`;
         const parents = (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p);
-        const pick = mandatoryByOrderId[order.orderHash];
-        if (!pick) {
-            throw new Error(`${id} has no registered agreement picked in the mandatory article — pick one for every order`);
-        }
         const bound = registeredByOrderId?.[order.orderHash];
         if (bound) {
             if (Object.keys(clausesByOrderId[order.orderHash] ?? {}).length > 0) {
@@ -1039,24 +1066,15 @@ export function buildAssembly(args: {
             }
             const agreementHash = agreementHashOf(bound);
             assertNotReservedKey(agreementHash, `${id} agreementHash`);
-            const carried = new Set(Object.keys(bound.clauses).map((k) => k.toLowerCase()));
-            const missing = (Object.keys(pickedMandatoryClauses(pick, specs, id)) as Hex[])
-                .filter((clauseKey) => !carried.has(clauseKey.toLowerCase()));
-            if (missing.length > 0) {
-                throw new Error(
-                    `${id}: registered agreement ${agreementHash} lacks ` +
-                    `${missing.map((clauseKey) => clauseLabel(clauseKey, specs.get(clauseKey))).join(", ")} of the registered agreement ` +
-                    `picked in the mandatory article — compose a new agreement for this order`,
-                );
-            }
+            assertMandatoryShapes(bound.clauses, specs, `${id}: registered agreement ${agreementHash}`);
             return { id, agreementHash, clauses: agreementTopologyFills(bound.clauses, parents, specs) };
         }
-        // The one composition rule (`composeOrderAgreement`): the designer's
-        // clause SELECTION, value-free but for design fills, the pick's
-        // clauses merged in.
+        // The one composition rule (`composeOrderAgreement`): the mandatory
+        // clauses written in first, the designer's clause SELECTION over them,
+        // value-free but for design fills.
         const { composed: registeredAgreement, agreementHash } = composeOrderAgreement({
             clauses: clausesByOrderId[order.orderHash] ?? {},
-            mandatory: pick,
+            mandatory,
             specs,
         });
         const { clauses } = registeredAgreement;
@@ -1078,34 +1096,29 @@ export function buildAssembly(args: {
 /**
  * An authored agreement (`agreements/<name>.json`): the clauses a
  * designer selected for one agreement, written by clause NAME with the
- * designer's fills, beside the designer's own words, and the name of the
- * authored agreement it picks in the mandatory article (`mandatory`), whose
- * clauses merge in. An authored agreement whose clauses are all
- * mandatory-article names no pick: it is the kind a pick names. Seed time
- * only.
+ * designer's fills, beside the designer's own words. The two mandatory
+ * clauses are named like any other: an authored agreement states what the
+ * canvas would write in. Seed time only.
  */
 export interface AuthoredAgreement {
     name?: string;
     summary?: string;
     description?: string;
     clauses: Record<string, Record<string, unknown>>;
-    /** The name of the authored agreement picked in the mandatory article. */
-    mandatory?: string;
 }
 
 /**
  * Compose an AUTHORED agreement (`agreements/*.json`, clause names) into the
  * registered agreement it names: the names resolved to keys
- * (`resolveAuthoredClauseKeys`), its pick (`mandatory`, a name in `picks`)
- * looked up, then the one composition rule (`composeOrderAgreement`: the
- * scope check, the value-free rule, the pick's clauses merged). Returns the
- * document the seeding pins — the designer's words beside the composed
- * clauses; the pick's name is not in it — and its key. Seed time only.
+ * (`resolveAuthoredClauseKeys`), then the one composition rule
+ * (`composeOrderAgreement`: the scope check, the value-free rule, one clause
+ * of commerce's shape and one of topology's). Returns the document the
+ * seeding pins — the designer's words beside the composed clauses — and its
+ * key. Seed time only.
  */
 export function composeAuthoredAgreement(
     authored: object,
     specs: SpecSource,
-    picks: Readonly<Record<string, RegisteredAgreement>> = {},
 ): { document: RegisteredAgreement; agreementHash: Hex } {
     const doc = resolveAuthoredClauseKeys(authored, specs) as Partial<AuthoredAgreement> & {
         clauses?: Record<Hex, Record<string, unknown>>;
@@ -1113,14 +1126,7 @@ export function composeAuthoredAgreement(
     if (!doc.clauses || typeof doc.clauses !== "object") {
         throw new Error("the authored agreement has no clauses");
     }
-    let mandatory: RegisteredAgreement | undefined;
-    if (doc.mandatory !== undefined) {
-        mandatory = picks[doc.mandatory];
-        if (!mandatory) {
-            throw new Error(`the authored agreement names "${doc.mandatory}" as its mandatory pick, which is not among the agreements a pick names`);
-        }
-    }
-    const { composed, agreementHash } = composeOrderAgreement({ clauses: doc.clauses, mandatory, specs });
+    const { composed, agreementHash } = composeOrderAgreement({ clauses: doc.clauses, specs });
     const document: RegisteredAgreement = {
         ...(doc.name !== undefined ? { name: doc.name } : {}),
         ...(doc.summary !== undefined ? { summary: doc.summary } : {}),
@@ -1132,25 +1138,14 @@ export function composeAuthoredAgreement(
 
 /**
  * Compose a SET of authored agreements, by name (`agreements/*.json`, each
- * file's basename): first those naming no pick (the agreements a pick
- * names), then the rest, each pick resolved within the set
- * (`composeAuthoredAgreement`). Returns each one's document and key, by
- * name. Seed time only.
+ * file's basename), each through `composeAuthoredAgreement`. Returns each
+ * one's document and key, by name. Seed time only.
  */
 export function composeAuthoredAgreements(
     authoredByName: Readonly<Record<string, object>>,
     specs: SpecSource,
 ): Record<string, { document: RegisteredAgreement; agreementHash: Hex }> {
-    const out: Record<string, { document: RegisteredAgreement; agreementHash: Hex }> = {};
-    const named = (doc: object): boolean => (doc as { mandatory?: unknown }).mandatory !== undefined;
-    for (const [name, doc] of Object.entries(authoredByName)) {
-        if (!named(doc)) out[name] = composeAuthoredAgreement(doc, specs);
-    }
-    const picks = Object.fromEntries(Object.entries(out).map(([name, { document }]) => [name, document]));
-    for (const [name, doc] of Object.entries(authoredByName)) {
-        if (named(doc)) out[name] = composeAuthoredAgreement(doc, specs, picks);
-    }
-    return Object.fromEntries(Object.keys(authoredByName).map((name) => [name, out[name]]));
+    return Object.fromEntries(Object.entries(authoredByName).map(([name, doc]) => [name, composeAuthoredAgreement(doc, specs)]));
 }
 
 /**
@@ -1161,11 +1156,10 @@ export function composeAuthoredAgreements(
  * clause name. The entry binds the named agreement's hash — the same key
  * whether a designer registers that agreement on its own or this seeding
  * registers it — and its fill is the topology clause's parents
- * (`agreementTopologyFills`). A bound agreement must carry every clause of
- * one agreement among `agreementsByName` whose clauses are all
- * mandatory-article (`isMandatoryAgreement`, the rule the drawer's mandatory
- * article lists by), or it is refused. Returns the assembly and each
- * DISTINCT agreement once, keyed. Seed time only.
+ * (`agreementTopologyFills`). A bound agreement must carry one clause of
+ * commerce's shape and one of topology's (`assertMandatoryShapes`), or it is
+ * refused. Returns the assembly and each DISTINCT agreement once, keyed.
+ * Seed time only.
  */
 export function assembleAuthored(
     authored: object,
@@ -1183,7 +1177,6 @@ export function assembleAuthored(
     if (!Array.isArray(doc.agreements) || doc.agreements.length === 0) {
         throw new Error("the authored assembly has no agreements");
     }
-    const mandatoryAgreements = Object.values(agreementsByName).filter((candidate) => isMandatoryAgreement(candidate, specs));
     const agreements: Record<Hex, RegisteredAgreement> = {};
     const entries: AssemblyAgreement[] = doc.agreements.map((entry, i) => {
         const id = entry.id ?? `order-${i}`;
@@ -1197,13 +1190,7 @@ export function assembleAuthored(
         if (!bound) throw new Error(`${id} names agreement "${entry.agreement}", which is not among the authored agreements`);
         const agreementHash = agreementHashOf(bound);
         assertNotReservedKey(agreementHash, `${id} agreementHash`);
-        const carried = new Set(Object.keys(bound.clauses).map((k) => k.toLowerCase()));
-        if (!mandatoryAgreements.some((m) => Object.keys(m.clauses).every((k) => carried.has(k.toLowerCase())))) {
-            throw new Error(
-                `${id}: agreement "${entry.agreement}" carries the clauses of no agreement among the authored agreements ` +
-                `whose clauses are all mandatory-article`,
-            );
-        }
+        assertMandatoryShapes(bound.clauses, specs, `${id}: agreement "${entry.agreement}"`);
         const parents = Array.isArray(entry.parentOrderHashes) ? [...entry.parentOrderHashes] : [];
         agreements[agreementHash] = { clauses: bound.clauses };
         return { id, agreementHash, clauses: agreementTopologyFills(bound.clauses, parents, specs) };

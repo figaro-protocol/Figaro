@@ -19,7 +19,7 @@
  */
 import { test, expect } from './devnet-multi-test';
 import type { Hex } from 'viem';
-import { keyOf, pickMandatoryForEveryOrder, primeRegisteredClauseSpecs } from './devnet-helpers';
+import { keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 
 let PROCESS_CLAUSE: Hex;
 test.beforeAll(async () => {
@@ -67,7 +67,6 @@ test.describe('COMPOSITION-ASSIST — export the draft, import a assembly, compo
         await page.getByTestId('designer-name-input').fill('Assist round trip');
         // The export is the assembly publish would anchor: every order picks
         // a registered agreement in the mandatory article first.
-        await pickMandatoryForEveryOrder(page);
 
         // ── EXPORT: the assist panel serializes the live draft. ──
         await page.getByTestId('designer-assist-open').click();

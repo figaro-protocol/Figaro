@@ -33,7 +33,6 @@ import {
     primeRegisteredClauseSpecs,
     anchoredAssemblyHash,
     isBindingOf,
-    pickMandatoryForEveryOrder,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { geohashCentroidDistanceKm } from '@figaro-protocol/sdk/derive';
@@ -201,7 +200,6 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
             await page.getByTestId('designer-name-input').fill('Rate-priced haul');
             await page.getByTestId('designer-summary-input').fill('A lead order plus one hauled leg priced per started km of its committed endpoints.');
             await page.getByTestId('designer-description-input').fill('Rate-pricing scenario: the hauler lists a per-km rate; checkout derives the payment from the geodistance between the committed origin and destination.');
-            await pickMandatoryForEveryOrder(page);
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
             await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });

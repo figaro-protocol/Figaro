@@ -281,15 +281,13 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
      * clause is read from it, and scope is verified against it), so a warm
      * re-runs the projection.
      */
-    // The registered agreements a draft binds and picks in the mandatory
-    // article are an input to the walk too: read each from the
-    // AgreementRegistry (chain → IPFS, verified against its key) into the
-    // session the build reads; each read re-runs it.
+    // The registered agreements a draft binds are an input to the walk too:
+    // read each from the AgreementRegistry (chain → IPFS, verified against its
+    // key) into the session the build reads; each read re-runs it.
     const agreementsVersion = useRegisteredAgreementsVersion();
     useEffect(() => {
         if (resolved.kind !== "draft") return;
         for (const key of Object.values(resolved.snapshot.registeredByOrderId ?? {})) void fetchRegisteredAgreement(key);
-        for (const key of Object.values(resolved.snapshot.mandatoryByOrderId ?? {})) void fetchRegisteredAgreement(key);
     }, [resolved]);
     const review = useMemo(
         () => (resolved.kind === "draft" ? projectSnapshotForReview(resolved.snapshot) : null),
@@ -729,11 +727,11 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     {review?.ok && review.mandatory.length > 0 && (
                         <div className="mt-2 max-w-3xl space-y-1" data-testid="review-mandatory-clauses">
                             <p className="text-xs text-warning-fg leading-relaxed">
-                                Mandatory clauses: they come from the registered agreement picked
-                                in the mandatory article for each order. Anyone can register a
-                                clause or an agreement, so check that each name, version and key
-                                below is one you mean to publish; confirming publishes them with
-                                this assembly.
+                                Mandatory clauses: the DAO&rsquo;s live commerce and topology, written
+                                into every agreement before anything is composed, read from the
+                                registry by registrant and stake. Check that each name, version and
+                                key below is the one you mean to publish; confirming publishes them
+                                with this assembly.
                             </p>
                             <ul className="text-xs text-warning-fg font-mono space-y-0.5">
                                 {review.mandatory.map((clause) => (

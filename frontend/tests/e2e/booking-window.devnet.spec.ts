@@ -33,7 +33,6 @@ import {
     primeRegisteredClauseSpecs,
     anchoredAssemblyHash,
     isBindingOf,
-    pickMandatoryForEveryOrder,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import type { Page } from '@playwright/test';
@@ -187,7 +186,6 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
             await page.getByTestId('designer-name-input').fill('Booked hourly session');
             await page.getByTestId('designer-summary-input').fill('A lead order plus one booked leg priced per started hour of its committed window.');
             await page.getByTestId('designer-description-input').fill('Booking-window scenario: the provider lists a per-hour rate; checkout derives the payment from the hours between the committed window bounds.');
-            await pickMandatoryForEveryOrder(page);
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
             await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });

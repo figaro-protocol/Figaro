@@ -58,7 +58,6 @@ import {
     referenceAssemblyBuilt,
     readRegisteredAgreementDocument,
     waitForConnected,
-    pickMandatoryForEveryOrder,
 } from './devnet-helpers';
 import { makeProbeSpec, registerProbeClause } from './probeAssembly';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
@@ -129,7 +128,6 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         await page.getByTestId('designer-name-input').fill(`Bound and composed ${nonce}`);
         await page.getByTestId('designer-summary-input').fill('A registered agreement bound as is beside a newly composed one.');
         await page.getByTestId('designer-description-input').fill('Root agreement: a registered agreement. Sub-order: a new agreement composed for it.');
-        await pickMandatoryForEveryOrder(page);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
@@ -265,7 +263,6 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
         await page.getByTestId(`drawer-registry-clause-${probeKey}`).check();
-        await pickMandatoryForEveryOrder(page);
         await page.getByTestId('designer-name-input').fill(`Alone ${nonce}`);
 
         await page.getByTestId('drawer-tab-agreements').click();

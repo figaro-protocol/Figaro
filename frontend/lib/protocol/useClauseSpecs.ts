@@ -68,7 +68,9 @@ export function useClauseSpecs(): ClauseSpecsState {
         /** One read pass over `batch`; the first pass fixes `loaded`, later
          *  passes re-read what is still unresolved and stop when nothing is. */
         const pass = (batch: typeof pending, attempt: number) => {
-            Promise.allSettled(batch.map((e) => loadClauseSpec(e.clauseKey, e.contentURI))).then((results) => {
+            Promise.allSettled(batch.map((e) => loadClauseSpec(e.clauseKey, e.contentURI, {
+                registeredBy: e.registeredBy, blockNumber: e.blockNumber, stakeWithdrawn: e.stakeWithdrawn,
+            }))).then((results) => {
                 if (canceled) return;
                 setErrors(results.flatMap((r) => (r.status === "rejected" ? [String(r.reason)] : [])));
                 setSettled(true);
