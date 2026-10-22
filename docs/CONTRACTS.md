@@ -235,7 +235,7 @@ designer composes an assembly from.
 
 **`src/build/registries/AssemblyRegistry.sol`** — Permissionless assembly
 anchoring under a stake.
-- Identity is the composition: `compositionHash` is a merkle root over the
+- Identity is the composition: `assemblyHash` is a merkle root over the
   assembly's agreements, built with the agreement format's leaf convention
   (`leaf = keccak256(keccak256(key ‖ keccak256(bytes)))`, sorted-pair
   hashing): one leaf per agreement `i`, keyed by the agreement's
@@ -251,13 +251,13 @@ anchoring under a stake.
   agreement: whether it is registered is the agreements registry's fact. Editorial prose is excluded; identical compositions
   collapse to one binding; no caller-chosen name exists on-chain. The
   human-readable slug is derived off-chain (`deriveAssemblySlug`).
-- `registerAssembly(compositionHash, contentURI)` — first-write-wins, requires
+- `registerAssembly(assemblyHash, contentURI)` — first-write-wins, requires
   exactly `registrationDeposit`, emits `AssemblyRegistered`.
-- `withdrawDeposit(compositionHash)` — the registering wallet only, once, no
+- `withdrawDeposit(assemblyHash)` — the registering wallet only, once, no
   time lock; refunds the stake and emits `DepositWithdrawn`. The binding is
   permanent: buyers and sellers that reference the assembly rely on its content
   staying stable.
-- State: `bindings: compositionHash → AssemblyBinding{registeredBy,
+- State: `bindings: assemblyHash → AssemblyBinding{registeredBy,
   registeredAt, depositWithdrawn, contentURI}`. No admin, no transfer, no
   removal. The contract validates no content.
 
@@ -288,11 +288,11 @@ Three permissionless functions and one proof-gated writer:
   attestation is evidence during an open process; usage is counted once it
   has resolved. Recording is opt-in and gas-paid by whoever benefits. It
   counts under the clause kind and checks `ClauseRegistry` only.
-- `recordAgreementUsage(order, agreementHash, compositionHash, proof)` —
+- `recordAgreementUsage(order, agreementHash, assemblyHash, proof)` —
   credits a registered agreement. Agreement leaves are keyed by clause, so
   neither key is ever a leaf key; what is a leaf is the agreement format's
   reserved provenance leaf, whose committed content is exactly
-  `{"agreementHash":"0x<lowercase>","compositionHash":"0x<lowercase>"}`,
+  `{"agreementHash":"0x<lowercase>","assemblyHash":"0x<lowercase>"}`,
   written at checkout from the agreement the order instantiates. The contract
   rebuilds those bytes from both keys and proves that one leaf under
   `order.checkoutHash`; a wrong key derives a leaf that is not in the tree.
@@ -302,13 +302,13 @@ Three permissionless functions and one proof-gated writer:
   `AgreementRegistry` only (`ClauseAgreementOrAssemblyNotRegistered` when the agreement
   holds no live binding). The counter exposes the registry it reads as
   `agreements()` and the terms constant as `assemblyTermsLeaf()`.
-- `recordAssemblyUsage(order, compositionHash, agreementHash, slotContentHash,
+- `recordAssemblyUsage(order, assemblyHash, agreementHash, slotContentHash,
   leafProof, membershipProof)` — credits an assembly. It proves the
   provenance leaf the same way (`leafProof`), refuses an `agreementHash` equal
   to either reserved key (the assembly terms leaf is not an agreement), then
   proves the agreement's leaf
   `keccak256(keccak256(agreementHash ‖ slotContentHash))` under
-  `compositionHash` (`membershipProof`, else `InvalidMembershipProof`, distinct
+  `assemblyHash` (`membershipProof`, else `InvalidMembershipProof`, distinct
   from the leaf's `InvalidInclusionProof`), so the agreement the order names is
   a member of the assembly it names. It counts under the assembly kind and
   checks `AssemblyRegistry` only. An agreement that names no assembly carries

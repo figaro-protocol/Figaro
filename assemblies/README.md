@@ -18,7 +18,7 @@ parents), then the seeding pins and registers each DISTINCT agreement once on
 `AgreementRegistry` (one stake each; a key already registered is skipped) and
 registers the assembly on `AssemblyRegistry`. Identity is content-derived on
 both registries (the `agreementHash`, a merkle root over the composed clauses;
-the `compositionHash`, a merkle root over the agreements), first-write-wins,
+the `assemblyHash`, a merkle root over the agreements), first-write-wins,
 so re-anchoring is a no-op and independently composing the same design
 collapses onto the same on-chain bindings. This directory and `agreements/`
 are `clauses/`' siblings: clauses are the vocabulary, agreements the terms of one
@@ -38,14 +38,14 @@ asserted from chain:
 | `freelancer-value-chain.json` | 3 orders | A lead freelancer + contributors, one resolution | `freelancer-chain.devnet.spec.ts` (full cycle: three encrypted deliveries, one resolution) |
 | `tradelens.json` | 6 orders | The containerized import chain: shipper → inspection → forwarder → reefer carrier → customs → drayage; every agreement carries the property-transfer clause from signing, so a cargo sold in transit is squared by the parties, attested on each order, and passes to its new owner when the buyer resolves | `scenario-tradelens` + `tradelens-runtime` |
 | `aerial-survey.json` | 1 order | A credentialed drone operator flies a committed window and route; the flight's co-produced record is part of the service (each party holds its copy) | `data-market.devnet.spec.ts` (full cycle: adopt, dual posture, ERC-20 balance assertions, self-authenticating data-terms leaf) |
-| `aerial-survey-open-data.json` | 1 order | The SAME flight with the disclosure regime `open` — one changed design fill, a different compositionHash: regime variants are sibling assemblies, and whether a market flies open or closed is decided by adoption, never by the protocol | sibling of the above (`data-market.devnet.spec.ts` asserts both siblings anchored under distinct compositionHashes) |
+| `aerial-survey-open-data.json` | 1 order | The SAME flight with the disclosure regime `open` — one changed design fill, a different assemblyHash: regime variants are sibling assemblies, and whether a market flies open or closed is decided by adoption, never by the protocol | sibling of the above (`data-market.devnet.spec.ts` asserts both siblings anchored under distinct assemblyHashes) |
 | `data-stream-subscription.json` | 1 order | A window of licensed access to another member's live data — credential over the encrypted hand-off, every entry a leaf provable against the resolved agreement that produced it; gas is paid once per window, never per data point | `data-market.devnet.spec.ts` (full cycle: license anchored to the resolved flight process, encrypted hand-off evidence, self-authenticating license leaf) |
 | `equipment-hire.json` | 1 order | A renter books equipment straight from its owner — the same shape as the point-of-sale reference, plus the designer's own denomination pinned once for the whole composition, so no token picker ever appears at checkout | `equipment-hire.devnet.spec.ts` (full cycle: no picker, the pin drives the commitment and every value leg, the commerce/pin provenance pair asserted from the committed agreement) |
 
 `documents/` ships the raw bytes of every document a assembly affixes (consent
 anchors commit the document's keccak256 and `ipfs://` locator INSIDE the
 agreement — the bytes must pin byte-identical on any network for the
-`agreementHash`, and so the composition hash, to reproduce; the populate path
+`agreementHash`, and so the assembly hash, to reproduce; the populate path
 pins them first).
 
 A reference that composes `figaro-utility-token` (`equipment-hire.json`) is the
@@ -53,7 +53,7 @@ one exception to "re-anchoring is a no-op over the checked-in bytes": the
 clause's `currency` is a live ERC-20 address, new on every fresh deploy, so the
 checked-in file carries the zero address as a sentinel and the populate path
 (`populate-clauses.mjs`'s `fillDeployTimeCurrency`) substitutes the real
-deployment's token address before anchoring — the anchored compositionHash is
+deployment's token address before anchoring — the anchored assemblyHash is
 over the SUBSTITUTED assembly, never the sentinel. A spec that wants this
 reference's slug hashes the substituted assembly too
 (`referenceAssemblySlugWithLiveCurrency`, `devnet-helpers.ts`), not the raw file.
@@ -67,7 +67,7 @@ affixed document reproduces its committed hash from the shipped bytes.
 
 Each document may carry a `faq`: the questions a party to that assembly asks and
 the designer's answers (where orders come from, what a party needs in hand, how
-and when each side is paid). It is editorial, excluded from the composition hash,
+and when each side is paid). It is editorial, excluded from the assembly hash,
 and the users' FAQ renders every published assembly's entries from the registry at
 runtime — the site never lists them.
 

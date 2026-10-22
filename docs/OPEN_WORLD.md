@@ -151,7 +151,7 @@ every composition.
 - **Each registry family gets its own anchor** (clauses → ClauseRegistry; agreements →
   AgreementRegistry; assemblies → AssemblyRegistry; members → MembersRegistry) — parallel,
   never nested. Arrows point one way, off-chain: assemblies use agreements; agreements use
-  clauses; neither knows what uses it. An assembly's `compositionHash` is a merkle root
+  clauses; neither knows what uses it. An assembly's `assemblyHash` is a merkle root
   over its agreements' `agreementHash`s, so membership is proved against the root, never
   looked up in another registry. (This is the
   open-world restatement of the Separation of Concerns — Registry Families discipline.)

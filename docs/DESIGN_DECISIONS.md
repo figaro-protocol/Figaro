@@ -221,7 +221,7 @@ registration pins the spec to the designer's OWN node and registers in one atomi
 action, so nothing is publicly observable before the register tx hits the mempool.
 The residual — a mempool front-run of that tx — is the accepted,
 stake-priced cost; no registry has a guessable id to claim in advance,
-since a clause key, an `agreementHash` and an assembly's `compositionHash` are all derived from
+since a clause key, an `agreementHash` and an assembly's `assemblyHash` are all derived from
 content. The same holds on `AgreementRegistry` and `AssemblyRegistry`: anyone can
 compute a pinned agreement's hash or an assembly's root from the document, so a
 front-runner can become designer of record there too, at the same stake and
@@ -732,7 +732,7 @@ under the clause kind and checks `ClauseRegistry` only;
 `recordAgreementUsage` counts under the agreement kind and checks
 `AgreementRegistry` only; `recordAssemblyUsage` counts under the assembly kind
 and checks `AssemblyRegistry` only — it proves the agreement's membership
-under `compositionHash` but never asks whether that agreement is
+under `assemblyHash` but never asks whether that agreement is
 registered; `applyBatchAccrual` gates each `BatchAccrual{clauseOrAssembly,
 kind, c, d}` by its own kind's registry and skips an unknown kind. `RpgfMinter.claim(period, (kind, key)[])` reads
 the counter's slot for each kind, and `_isAuthor(kind, key, account)` reads
@@ -747,9 +747,9 @@ across the boundary — and all three hash-keyed registries already key by
 content, so the bytes look like they should suffice.
 
 **Why it is correct**: Each registry takes any `bytes32` but its own reserved
-keys, so a stranger can register an existing assembly's `compositionHash` as a
+keys, so a stranger can register an existing assembly's `assemblyHash` as a
 clause key or an agreement hash. Nothing on chain tells a clause key, an
-`agreementHash` and a `compositionHash` apart by their bytes, and no registry
+`agreementHash` and a `assemblyHash` apart by their bytes, and no registry
 knows another exists, so the separation cannot live in a registry;
 it lives in the reward's own accounting. With one keyspace, the stranger's
 clause registration at the assembly's bytes would make them a designer of record
@@ -792,7 +792,7 @@ read from another kind's registry.
 
 ## 24. The assembly root is a merkle tree over registered agreement hashes — membership is proved, never looked up
 
-**Pattern**: An assembly's `compositionHash` is a merkle root built with the
+**Pattern**: An assembly's `assemblyHash` is a merkle root built with the
 agreement format's leaf convention over one leaf per agreement — key the
 agreement's `agreementHash`, content the canonical `{"clauses":{…},"slot":i}`
 — plus, when any are composed, the assembly terms leaf
@@ -800,7 +800,7 @@ agreement's `agreementHash`, content the canonical `{"clauses":{…},"slot":i}`
 a URI and checks nothing about the agreements inside it; `AgreementRegistry`
 knows no assembly. The counter's assembly leg takes the agreement's
 `agreementHash`, its `slotContentHash` and a membership proof, and proves the
-agreement leaf under `compositionHash` after proving the order's provenance leaf
+agreement leaf under `assemblyHash` after proving the order's provenance leaf
 under `checkoutHash`.
 
 **Why it looks wrong**: An assembly that composes registered agreements reads
@@ -813,7 +813,7 @@ supplied by the caller reads like trust handed to the caller.
 registry families, and the families are parallel (CLAUDE.md § "Separation of
 Concerns"): assemblies use agreements, agreements use clauses, and neither
 knows what uses it. The root carries the membership instead: a agreement leaf
-either hashes up to the registered `compositionHash` or it does not, so the
+either hashes up to the registered `assemblyHash` or it does not, so the
 caller can supply nothing the root did not already commit, and a wrong
 `agreementHash` or agreement content derives a leaf that is not in the tree. An
 assembly that names an agreement nobody registered is published like any
@@ -826,7 +826,7 @@ assembly. The reserved assembly terms key is refused as an agreement's
 leaves, the terms leaf, the root and the membership proofs of
 `test/fixtures/assembly-vectors.json` (the parity legs, `TESTING.md` §
 "Assembly parity"); in `test/build/rewards/UsageCounterTest.t.sol`,
-`test_aSlotLeafUnderADifferentCompositionHashFails` and
+`test_aSlotLeafUnderADifferentAssemblyHashFails` and
 `test_aSlotLeafWithAnotherSlotsBytesFails` refuse a membership proof that the
 root did not commit, and `test_theTermsLeafNeverPassesAsAnAgreement` refuses
 the reserved terms key as an agreement's `agreementHash`; the guest's twins

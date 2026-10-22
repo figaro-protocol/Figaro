@@ -19,7 +19,7 @@ of the allocation table in `docs/FLORIN_TOKEN.md`.
 clause, a registered agreement or an assembly; it is the designer of record
 for as long as it holds a live stake against that entry in the entry's own
 registry. An entry is a (kind, key) pair — a clause key under the clause kind
-(0), an assembly's `compositionHash` under the assembly kind (1), a registered
+(0), an assembly's `assemblyHash` under the assembly kind (1), a registered
 agreement's `agreementHash` under the agreement kind (2) — and the meter, the
 claim and the check of the designer of record are all keyed by it, so a stake
 in one family never earns another family's usage at the same bytes

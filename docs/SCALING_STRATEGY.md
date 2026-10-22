@@ -486,7 +486,7 @@ trigger — every N seconds, or at M operations, whichever comes first —
 together with the sequencer's local state snapshot, the usage claims for
 batch-resolved orders (kind 0 a clause, 1 an assembly with its agreement's
 `agreementHash`, `slotContentHash` and membership proof, 2 a registered
-agreement with its assembly's `compositionHash`), the period, and the
+agreement with its assembly's `assemblyHash`), the period, and the
 provenance leaf key the relay reads from `UsageCounter.provenanceLeaf()`. The
 relay's pre-filter checks each claim against its own kind's registry —
 `AgreementRegistry.bindings` for kind 2 — and drops a claim keyed on either

@@ -77,7 +77,7 @@ ones this document uses; `docs/LEXICON.md` defines every other.
   clause key and the designer's fills, under the agreement format's leaf
   convention). An
   **assembly** is registered agreements composed into a reusable design, its
-  `compositionHash` the merkle root over its agreements, registered in
+  `assemblyHash` the merkle root over its agreements, registered in
   `AssemblyRegistry`. A **designer** is the wallet that registers a clause, a
   registered agreement or an assembly, under a registration stake.
 - An **attestation** is a signed statement a party makes about an open order,
@@ -253,8 +253,10 @@ results — every figure under § "Verification evidence" — are those measured
 at the commits each row names, the last full production at `eeb903b7`; the
 code has moved since, and each result stands for its own commit alone. The
 guest has changed since `eeb903b7`: a seller's attestation is checked
-against the attested order's own seller, so the verification key moves and
-the Sepolia verifier's pinned key is the earlier guest's. When an audit is
+against the attested order's own seller, and the provenance leaf's bytes
+name the assembly's root `assemblyHash` where they named `compositionHash`,
+so the verification key moves and the Sepolia verifier's pinned key is the
+earlier guest's. When an audit is
 engaged, this section names the commit it reviews, the line counts and the
 results are measured there once, and a tag is placed at it. The descriptive
 sections of this document stay true of the code throughout.
@@ -865,7 +867,7 @@ read it first.
   (`KIND_CLAUSE = 0`, `KIND_ASSEMBLY = 1`, `KIND_AGREEMENT = 2`,
   `UsageCounter.sol:161-167`). Each registry takes any `bytes32` but the
   reserved keys, so a stranger can register an existing assembly's
-  `compositionHash` as a clause key or an agreementHash; nothing on chain
+  `assemblyHash` as a clause key or an agreementHash; nothing on chain
   tells the families apart by bytes. `UsageCounter` keys every accrual,
   count, counted process and score by (kind, key); `recordClauseUsage` checks
   `ClauseRegistry` only, `recordAgreementUsage` `AgreementRegistry` only,
@@ -926,7 +928,7 @@ read it first.
   one reserved merkle leaf beside the clause leaves, keyed by
   `keccak256("figaro-agreement-provenance")` (`0x26dc18a2…7dc6`), whose
   committed bytes are exactly
-  `{"agreementHash":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`
+  `{"agreementHash":"0x<64 lowercase hex>","assemblyHash":"0x<64 lowercase hex>"}`
   and whose leaf follows the clause-leaf convention. `UsageCounter.provenanceLeaf`
   is that key as a public constant, taken from no constructor argument
   (`test_provenanceLeafIsAConstantOfTheFormat`,
@@ -938,7 +940,7 @@ read it first.
   `recordAgreementUsage` proves that leaf alone and credits the agreementHash
   (`:525-541`). `recordAssemblyUsage` proves it, then proves the
   agreement's leaf `keccak256(keccak256(agreementHash ‖ slotContentHash))` under
-  `compositionHash` and reverts `InvalidMembershipProof` when it does not
+  `assemblyHash` and reverts `InvalidMembershipProof` when it does not
   open (`:581-586`); one order credits its agreement and its assembly apart
   (`test_oneOrderCreditsItsAgreementAndItsAssembly`). `ClauseRegistry` and
   `AssemblyRegistry` accept any non-zero key, so a wallet can register a
@@ -959,7 +961,7 @@ read it first.
   edge to `AgreementRegistry`. The terms leaf opens under the root
   (`test_theTermsLeafIsALeafOfTheAssemblyTree`) and never passes as an order
   agreement (`test_theTermsLeafNeverPassesAsAnAgreement`); an agreement leaf opens under
-  its own root only (`test_anAgreementLeafUnderADifferentCompositionHashFails`) and
+  its own root only (`test_anAgreementLeafUnderADifferentAssemblyHashFails`) and
   with its own bytes only (`test_anAgreementLeafWithAnotherAgreementsBytesFails`).
   `test/fixtures/assembly-vectors.json` carries three agreements and three
   assemblies (keys, agreement leaves, terms leaf, roots, membership proofs and
@@ -1006,7 +1008,7 @@ read it first.
   try/catch around the call lets the batch resolve with its accrual dropped.
 - The guest verifies an attestation on the provenance key by the format's
   own rule: the committed bytes are reproduced from the agreementHash and the
-  compositionHash they carry, the attestation's `contentRef` is their
+  assemblyHash they carry, the attestation's `contentRef` is their
   keccak, and the leaf opens against the signed `checkoutHash`; it consults
   no clause spec and emits no spec binding (`prover/lib/src/kernel.rs:361`,
   `validate_provenance_attestation`, reached at `:438`;

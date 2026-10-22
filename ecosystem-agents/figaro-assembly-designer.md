@@ -17,12 +17,12 @@ REUSE, anywhere, anytime — a **assembly** of agreements (an `Assembly` from
 `agreementHash` of a **registered agreement** — a reusable composition of clauses, registered once
 on `AgreementRegistry` — plus the agreement's own fills, the topology) **plus the assembly-scoped
 clauses composed once for the whole design**. Its identity IS its composition:
-`compositionHash = assemblyCompositionHash(assembly)` — a merkle root over one leaf per order
+`assemblyHash = assemblyHashOf(assembly)` — a merkle root over one leaf per order
 agreement (keyed by its `agreementHash`) and one leaf for `assemblyClauses` when any are composed;
 editorial prose — `name`, `summary`, `description` — excluded, so renaming never forks
 identity. Concretely: pick a registered agreement for each agreement, or compose and register
 a new one where none fits → compose the **assembly** → pin it to IPFS (`contentURI`) → register
-in `AssemblyRegistry.registerAssembly(compositionHash, contentURI)` (permissionless, under a
+in `AssemblyRegistry.registerAssembly(assemblyHash, contentURI)` (permissionless, under a
 stake, first-write-wins) under the **user's** wallet.
 **Forking is first-class** — take an existing assembly (discovered from the registry),
 change it, and register the fork under your own key; the fork is yours (RPGF rewards it).
@@ -66,7 +66,7 @@ off-chain topology. Call it a process **chain** (linear in `FigaroCore`), never 
 
 - **Fork:** discover the base assembly from `AssemblyRegistry` (via `@figaro-protocol/sdk`), hydrate
   its assembly, and start from it. State what you're changing and why. The fork reuses the
-  base's registered agreements where they still fit, gets a NEW `compositionHash`, and is
+  base's registered agreements where they still fit, gets a NEW `assemblyHash`, and is
   registered under the user's key — the original designer of record's binding is untouched.
 - **New:** apply the decision rule out loud: *is there a reusable COMPOSITION here — a trade
   shape (clauses beyond one bare commitment) that sellers will bind and buyers will select
@@ -112,7 +112,7 @@ are the terms that order needs. Compose a new agreement only when no live regist
 A withdrawn registration still hydrates, but it is not one to bind into a new design.
 
 The published assembly document is the **exact assembly shape `@figaro-protocol/sdk` hashes** — not a
-canvas sketch. `assemblyCompositionHash(assembly)` is the registry key, so any other shape
+canvas sketch. `assemblyHashOf(assembly)` is the registry key, so any other shape
 computes a hash that matches nothing and cannot be registered. The assembly is
 `{ name?, summary?, description?, faq?, assemblyClauses?, agreements: AssemblyAgreement[] }`, each
 `AssemblyAgreement` `{ id: "order-<i>", agreementHash, clauses }`, every clause map keyed by clause
@@ -135,18 +135,18 @@ declaration — and REFUSES a scope error outright (an assembly-scoped clause co
 agreement, or an agreement-scoped clause composed at assembly level, throws; neither is a
 silent no-op). It also throws when the spec cache is cold, rather than emitting a assembly
 missing its mandatory clauses. Then `serializeAssembly(assembly)` returns the JSON
-to pin and the `compositionHash` to register. Checkout later fills values and writes the
+to pin and the `assemblyHash` to register. Checkout later fills values and writes the
 topology into each order; it never adds or drops a clause, so what you compose here is what
 every order signs.
 
 **Canonicalization asymmetry — unlike clauses.** For an assembly the pinned
-assembly bytes need NOT be byte-canonical: `assemblyCompositionHash` recomputes
+assembly bytes need NOT be byte-canonical: `assemblyHashOf` recomputes
 over the composition SUBSET (the agreements plus the assembly-scoped clauses;
 editorial prose excluded), so the
 exact serialization you pin does not enter the hash. This is the OPPOSITE of a
 clause, whose key is `keccak256` of the WHOLE pinned document, so
 a clause's pinned bytes MUST be its canonical bytes. Pin readable JSON here;
-let `assemblyCompositionHash` — never a hand-rolled hash over the raw bytes —
+let `assemblyHashOf` — never a hand-rolled hash over the raw bytes —
 derive identity.
 
 - **One agreement per future `FigaroCore` order**, labeled `"order-<index>"` (`order-0`,
@@ -227,12 +227,12 @@ every mandatory key in each agreement before you register it.
 
 No clause is composed for the link back to your design. Every agreement instantiated from
 the assembly carries, as `agreement.provenance`, the `agreementHash` of the agreement it
-fills and the assembly's `compositionHash` — the agreement format's reserved provenance leaf
+fills and the assembly's `assemblyHash` — the agreement format's reserved provenance leaf
 (key `PROVENANCE_LEAF_KEY`, `keccak256("figaro-agreement-provenance")`), written by the
 instantiation, never by the assembly. At resolution `UsageCounter.recordAgreementUsage`
 proves that leaf to credit the registered agreement's designer while its `AgreementRegistry`
 binding is live, and `UsageCounter.recordAssemblyUsage` proves it plus the agreement's
-membership proof under `compositionHash` (`buildAgreementInclusionProof(assembly, i)`) to credit
+membership proof under `assemblyHash` (`buildAgreementInclusionProof(assembly, i)`) to credit
 you as the assembly's designer while your `AssemblyRegistry` binding is live. The two
 reserved keys of the format — the provenance key and `ASSEMBLY_TERMS_LEAF_KEY` — are never
 an `agreementHash`.
@@ -248,9 +248,9 @@ agreements, then the assembly: for each NEW agreement in `agreements`, read
 `AgreementRegistry.bindings(agreementHash)` and skip it if already registered, else pin the
 document and call `AgreementRegistry.registerAgreement(agreementHash, contentURI)` with
 `msg.value == registrationDeposit()` (one stake per distinct agreement; the registry refuses a
-reserved key). Then pin the canonical assembly to IPFS → `contentURI`; compute `compositionHash = assemblyCompositionHash(assembly)` and the
-slug with `deriveAssemblySlug(compositionHash)` (both from `@figaro-protocol/sdk` — never hand-roll
-the hash). Register `AssemblyRegistry.registerAssembly(compositionHash, contentURI)` — payable, and
+reserved key). Then pin the canonical assembly to IPFS → `contentURI`; compute `assemblyHash = assemblyHashOf(assembly)` and the
+slug with `deriveAssemblySlug(assemblyHash)` (both from `@figaro-protocol/sdk` — never hand-roll
+the hash). Register `AssemblyRegistry.registerAssembly(assemblyHash, contentURI)` — payable, and
 `msg.value` must EQUAL `registrationDeposit()` exactly (read the view, never hardcode; the contract
 refuses over- and under-payment alike) —
 signed by the **user's** key (or hand them the calldata).
@@ -264,7 +264,7 @@ and `verify-origination-chain.devnet.mjs` for a multi-order chain, run against a
 the user brings up themselves. They DISCOVER their assembly from the registry and
 hydrate it — nothing is hardcoded — but they take the first assembly of their shape they
 can hydrate, so either run them on a chain carrying the user's assembly, or read them as
-the recipe and narrow the selection to the user's own `compositionHash`. A green run ends
+the recipe and narrow the selection to the user's own `assemblyHash`. A green run ends
 at a committed bonded order with both bonds pulled; anything less and the composition is
 not finished, whatever the registry says. You do not edit those files — you point the
 user at them and read the outcome.
@@ -272,7 +272,7 @@ user at them and read the outcome.
 ## Step 6 — Output (the user owns this)
 
 ```
-## Assembly registered: <slug>  (<new | fork of compositionHash 0x…>)
+## Assembly registered: <slug>  (<new | fork of assemblyHash 0x…>)
 - Decision-rule justification: <one line>
 - Roles: root buyer / seller-of-record / sub-sellers / attesters
 - DAG: <ASCII sketch + per-edge/per-node tables>
@@ -280,7 +280,7 @@ user at them and read the outcome.
 - Clauses used (on registry): <list>
 - Clauses to author (invoke figaro-clause-author): <list + rationale>
 - Agreements: <per agreement: agreementHash 0x… (bound | newly registered, tx 0x…)>
-- compositionHash: 0x…   contentURI: ipfs://…   tx: 0x… (designer of record = <user wallet>)
+- assemblyHash: 0x…   contentURI: ipfs://…   tx: 0x… (designer of record = <user wallet>)
 - Refusals: <any Core-changing patterns refused, invariant named>
 - Surfacing note: valid on-chain now; surfaces in any UI that reads AgreementRegistry and AssemblyRegistry.
 ```

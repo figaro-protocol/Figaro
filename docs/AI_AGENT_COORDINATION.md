@@ -220,7 +220,7 @@ over the orders they chose to treat as comparable, and the protocol neither
 publishes that comparison nor endorses it.
 
 **Provenance rides committed leaves.** The agreement format's reserved
-provenance leaf carries the `agreementHash` and the `compositionHash` that name
+provenance leaf carries the `agreementHash` and the `assemblyHash` that name
 which registered agreement and which registered assembly an order instantiated —
 the same values the once-per-process agreement and assembly credits are claimed
 from, each counting only while its own registry holds a live binding, the
@@ -303,7 +303,7 @@ What is emitted, and what each thing is evidence of:
   `UsageCounter.UsageRecorded(kind, clauseOrAssembly, period, processId, seller, c, d, score)`,
   plus `BatchUsageRecorded` on the batch path (cumulative — it REPLACES rather than adds);
   `scoreOf(kind, clauseOrAssembly, period)` sums both, kind `0` for a clause key,
-  `1` for an assembly's `compositionHash` and `2` for a registered agreement's
+  `1` for an assembly's `assemblyHash` and `2` for a registered agreement's
   `agreementHash`. The `d` term counts DISTINCT LIVE-STAKED
   sellers, so it reads as adoption breadth priced at one deposit per seller — the nearest
   thing on the network to a demand signal for a clause, an agreement or an assembly. It exists only
@@ -365,7 +365,7 @@ composes.
   deposit-backed; the capacity's prompt is `ecosystem-agents/figaro-clause-author.md`.
 - **Assembly designer** — `AgreementRegistry.registerAgreement(agreementHash, contentURI)`
   for each agreement no registration already carries, then
-  `AssemblyRegistry.registerAssembly(compositionHash, contentURI)` over a published
+  `AssemblyRegistry.registerAssembly(assemblyHash, contentURI)` over a published
   assembly whose agreements name registered agreements. Composition is the designer's act and happens only there,
   never mid-checkout and never mid-process (`OPEN_WORLD.md` §1, pattern 1); the prompt is
   `ecosystem-agents/figaro-assembly-designer.md`.

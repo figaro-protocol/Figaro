@@ -36,7 +36,7 @@ Beside the clause leaves, the agreement format carries one reserved leaf: the
 assembly it instantiated. Its key is `keccak256("figaro-agreement-provenance")`
 (`0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6`), its
 committed content is exactly the canonical JSON
-`{"agreementHash":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`,
+`{"agreementHash":"0x<64 lowercase hex>","assemblyHash":"0x<64 lowercase hex>"}`,
 and its leaf follows the clause-leaf convention,
 `keccak256(keccak256(key ‖ keccak256(content)))`, the same convention as a
 clause, whose leaf key is the clause key. The provenance key is a
@@ -48,7 +48,7 @@ direct path reverts (`UsageCounter._accrue`,
 it (`apply_usage_claims` in `prover/lib/src/kernel.rs`), and the counter's
 batch path skips it (`applyBatchAccrual`). Checkout writes the leaf from the
 agreement the order instantiates — the agreement's `agreementHash` and the assembly's
-`compositionHash`; an agreement that names no assembly carries no provenance
+`assemblyHash`; an agreement that names no assembly carries no provenance
 leaf. The SDK owns the format (`PROVENANCE_LEAF_KEY`,
 `provenanceLeafBytes`, `computeProvenanceLeaf`, `agreementLeaves`,
 `buildProvenanceInclusionProof`, `provenanceLeafAttestation` in
@@ -56,7 +56,7 @@ leaf. The SDK owns the format (`PROVENANCE_LEAF_KEY`,
 `PROVENANCE_LEAF_KEY` hold the same constant, and the guest verifies an
 attestation of the leaf by inclusion with the bytes reproduced, consulting no
 spec. `decodeProvenanceContent(bytes)` returns `{ agreementHash,
-compositionHash }` or `null`.
+assemblyHash }` or `null`.
 
 ## The registered agreement and the assembly — units above the clause
 
@@ -103,7 +103,7 @@ a position that holds one registered agreement and the fills that belong to
 the position — the topology clause's `{ "parentOrderHashes": ["order-<j>",
 …] }`, naming the agreements it follows. The topology stays a clause: at design
 time in the assembly's agreement, at runtime in the signed agreement. The
-assembly's key, `compositionHash`, is the merkle root built with the clause-leaf
+assembly's key, `assemblyHash`, is the merkle root built with the clause-leaf
 convention above over one leaf per agreement `i` (0-based, assembly order) — key
 the agreement's `agreementHash`, content the canonical JSON `{"clauses":{…},"slot":i}`
 (object keys sorted, arrays in assembly order) — and, when any
@@ -113,9 +113,9 @@ canonical JSON of `assemblyClauses`. A one-leaf tree's root is its leaf.
 Agreements are ordered, so one registered agreement may hold two. The
 editorial fields are excluded from the root. Membership of an agreement in an
 assembly is a membership proof: the sorted-pair proof of its agreement leaf under
-`compositionHash` (`buildAgreementInclusionProof(assembly, i)`, with
+`assemblyHash` (`buildAgreementInclusionProof(assembly, i)`, with
 `agreementLeafBytes(slot, i)` giving the content and `slotContentHash` its
-hash). The SDK owns the format (`assemblyCompositionHash`, `AssemblyAgreement`,
+hash). The SDK owns the format (`assemblyHashOf`, `AssemblyAgreement`,
 `ASSEMBLY_TERMS_LEAF_KEY` in `sdk/src/assembly.ts`).
 
 **Two reserved keys.** `PROVENANCE_LEAF_KEY` and `ASSEMBLY_TERMS_LEAF_KEY` are
@@ -340,7 +340,7 @@ Two structural notes that no single spec can carry:
   through the agreement format's provenance leaf (§ "Every clause is a merkle
   leaf"), never through a clause: `UsageCounter.recordAgreementUsage` proves
   that one leaf, and `recordAssemblyUsage` proves it and the agreement's
-  membership proof under `compositionHash`. The leaf earns
+  membership proof under `assemblyHash`. The leaf earns
   nothing itself: it is refused at accrual by comparison with the constant,
   whatever a registry holds at that key (above).
 

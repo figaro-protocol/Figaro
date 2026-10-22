@@ -72,7 +72,7 @@ once — so docs-site STATES the whole (the two mechanisms, the six nouns, the
 forest) before any per-object detail, and never assumes the reader induces it.
 
 **Where the technical detail behind the doors goes:** the four hashes and the
-clause-spec format, how an assembly is composed and the composition hash,
+clause-spec format, how an assembly is composed and the assembly hash,
 document-anchoring, on-chain and off-chain composition, sharp edges, the invariant
 list, the contract catalog with its inheritance/install/deployments/errors, and
 the verification stack with its counts all move to docs-site. Each marketing door

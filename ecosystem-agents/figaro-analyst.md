@@ -225,12 +225,12 @@ const rec   = walletRecord(process, wallet);
   agreement format's own: a buyer may attest the agreement's provenance leaf while the
   process is open, and those attestations form the overlay whose `provenanceLeaf` is
   `true` — no spec; each entry's `processId` is attributable to the registered agreement
-  and the registered assembly whose `provenanceContentRef(agreementHash, compositionHash)`
+  and the registered assembly whose `provenanceContentRef(agreementHash, assemblyHash)`
   equals its `contentRef`, so the overlay carries both keys: which registered agreement the
   order instantiated and which assembly held it (the agreement's membership in that assembly
   is a merkle proof under its root, `buildAgreementInclusionProof`). An admitted agreement
   document yields the same pair directly: `decodeProvenanceContent(bytes)` returns
-  `{ agreementHash, compositionHash }`, or `null` for bytes that are not a provenance leaf. **Say the
+  `{ agreementHash, assemblyHash }`, or `null` for bytes that are not a provenance leaf. **Say the
   number.** It is the most honest sentence in the answer.
 - **Wallet-record** — one wallet's public history: the processes it resolves as root buyer
   and the orders it holds either side of. A wallet with no history returns empty arrays;

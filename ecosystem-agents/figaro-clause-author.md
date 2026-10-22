@@ -91,7 +91,7 @@ these five and nothing else:
 |---|---|---|
 | `block.design.article: "mandatory"` | `agreementHash` + `checkoutHash` | the clause is never selected on its own: a registered agreement whose clauses are all mandatory-article is what a designer picks for each agreement of an assembly (any wallet's registration), and its clauses merge into that agreement; a registered agreement bound as is must already carry its pick's clauses |
 | `block.design.article: "attestations"` | `checkoutHash` | the clause is committed as an EMPTY anchor, filled by attestation later; field `default`s are NOT applied |
-| `block.design.scope: "assembly"` | `compositionHash` + `checkoutHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
+| `block.design.scope: "assembly"` | `assemblyHash` + `checkoutHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
 | `block.design.fills` | `agreementHash` | names the fields whose DESIGN-TIME values survive into a agreement; name nothing and the agreement carries `{}` |
 | `block.checkout.catalogueFills` / `profileFills` | `checkoutHash` | names which fields the seller's catalog / profile folds write onto the leaf at checkout |
 

@@ -34,7 +34,7 @@ counts only trade new to it), the **member-stake gate on the seller of record** 
 not registered; a seller who leaves the registry stops counting), **uniform scoring across clauses, agreements and assemblies** (no
 category, tag, or weight), the agreement and assembly legs from one provenance leaf
 (`test_oneOrderCreditsItsAgreementAndItsAssembly`), the membership proof refused under
-another `compositionHash` or with another agreement's bytes, the agreement kind gated by
+another `assemblyHash` or with another agreement's bytes, the agreement kind gated by
 `AgreementRegistry` on both paths (`test_revertsWhenAgreementNotRegistered`,
 `test_batchAccrualGatesTheAgreementKindByTheAgreementRegistry`), the three kinds never
 sharing a count, both reserved keys refused under the agreement kind and the terms leaf
@@ -276,7 +276,7 @@ usage bridge in
 replay rejection (the reason the counted set rides the state root), breadth
 vs depth, the agreement leg via the two-key provenance reproduction
 (`credits_an_agreement_through_the_provenance_leaf`, refused on a wrong
-`agreementHash` or `compositionHash`), the assembly leg via the same leaf plus
+`agreementHash` or `assemblyHash`), the assembly leg via the same leaf plus
 the agreement's membership proof (refused on another agreement's hash, a proof
 under another root, or the wrong agreement content), one provenance leaf crediting
 the agreement and the assembly apart, both reserved keys refused on every kind
@@ -408,12 +408,12 @@ the OpenZeppelin library they call; `prover/lib/tests/merkle_parity.rs` does
 the same through the guest's verifier. Three implementations, one fixture.
 Each clause in the fixture carries its `clauseKey`, the leaf's key, and its
 provenance entries carry the two-key bytes
-(`{"agreementHash":…,"compositionHash":…}`).
+(`{"agreementHash":…,"assemblyHash":…}`).
 
 **Assembly parity — the three-way composition-tree lock.**
 `sdk/tests/assemblyParity.test.ts` freezes, for the three vector composed
 agreements, each `agreementHash` with its key bytes, the agreement bytes and
-leaves, the assembly terms leaf, the composition root, every agreement's
+leaves, the assembly terms leaf, the assembly root, every agreement's
 membership proof, and the provenance bytes and leaf for each agreement's two keys
 into `test/fixtures/assembly-vectors.json` (`HARVEST_ASSEMBLY_VECTORS=1`
 regenerates); it also asserts a membership proof does not verify under
@@ -605,7 +605,7 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   order → accept/commit → resolve → audit), every step asserted out-of-band from
   Sepolia; the resolved order's committed agreement, fetched from IPFS and verified
   against its `checkoutHash`, carries a provenance leaf that decodes to
-  `{ agreementHash, compositionHash }`, each bound on its own registry. `E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… npx playwright
+  `{ agreementHash, assemblyHash }`, each bound on its own registry. `E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… npx playwright
   test --project=sepolia` builds the site from the committed deployment record
   (`deployments/11155111.json`, publicnode RPC, test helpers on, dist
   `.next-e2e-sepolia`, port 3200) and drives it with the local-key signer bridge
@@ -691,7 +691,7 @@ correct throughout):
 
 | what was broken | what it looked like | the assertion that caught it |
 |---|---|---|
-| `recordAssemblyUsage` unreachable — sequenced after a call that always reverts, so the **assembly-designer half of the 600M counted nothing, on every deployment** | clause designers accrued normally; the reward looked fine | `compositionHash` ∈ the `UsageRecorded` clauses and assemblies, read from chain |
+| `recordAssemblyUsage` unreachable — sequenced after a call that always reverts, so the **assembly-designer half of the 600M counted nothing, on every deployment** | clause designers accrued normally; the reward looked fine | `assemblyHash` ∈ the `UsageRecorded` clauses and assemblies, read from chain |
 | the audit's witness decode read calldata for a preimage WS2 had removed; the throw landed in a swallowed `catch` | the page rendered, just with zero evidence rows | witness receipts `toHaveCount(3)` |
 | the claim button compared `Date.now()` to a **block** timestamp | button simply disabled; no error anywhere | drive the claim, assert the ETH moves |
 | `UsageCounter` itself | — | *correct throughout; that is the point* |

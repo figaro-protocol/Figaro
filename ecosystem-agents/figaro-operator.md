@@ -177,7 +177,7 @@ without the clause, term and designer checks.
   and the mountable handlers `makeSellerRaceHandler` / `makeSellerQuoteHandler` accept
   `specs`, `readDesign` and `readProfile` in their opts. `design` is the hydrated assembly the
   payload's provenance leaf names; `readDesign` reads it per payload (`(provenance) =>
-  Promise<HydratedAssembly | null>`: the assembly by its composition hash, verified with
+  Promise<HydratedAssembly | null>`: the assembly by its assembly hash, verified with
   `anchorAssembly`, its registered agreements with `hydrateAssembly`). `readProfile` reads the
   seller's OWN member profile when the payload arrives (`(member) =>
   Promise<MemberProfileMetadata | null>`: MembersRegistry's latest metadataURI for the
@@ -190,7 +190,7 @@ without the clause, term and designer checks.
   `readProfile` it cannot read your bound assemblies and refuses. A payload with no provenance leaf, under an assembly your profile
   does not bind, or arriving while your profile cannot be read is refused too
   (`checkSellerBindsAssembly`) — bind the assembly in your profile's `assemblyBindings` (by its
-  full `compositionHash`) before you serve it.
+  full `assemblyHash`) before you serve it.
 
 ```ts
 channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, addresses, {
@@ -236,12 +236,12 @@ the gate stops objecting.
 Two of them are not yours to write. The **denomination** — the `currency` leaf — is a TERM
 that the commitment struct MIRRORS: write the same address into both, or the gate refuses.
 And the **provenance** — the agreement's `agreementHash` and the assembly's
-`compositionHash` — is written by the instantiation itself, with or without `specs`:
+`assemblyHash` — is written by the instantiation itself, with or without `specs`:
 `instantiateRootAgreement` and the assembly walk set `agreement.provenance` on every order to
-the registered agreement its agreement holds and `assemblyCompositionHash(assembly)` — the
+the registered agreement its agreement holds and `assemblyHashOf(assembly)` — the
 agreement format's reserved provenance leaf (key `PROVENANCE_LEAF_KEY`,
 `keccak256("figaro-agreement-provenance")`; bytes
-`{"agreementHash":"0x<lowercase hex>","compositionHash":"0x<lowercase hex>"}`), a leaf of the
+`{"agreementHash":"0x<lowercase hex>","assemblyHash":"0x<lowercase hex>"}`), a leaf of the
 agreement and never a clause. Do not hand-write provenance: an agreement naming a
 different pair than the agreement you instantiated is a claim to a different design, and the
 SDK throws on it. Instantiation adds and drops no clause: it fills values and writes the
@@ -250,7 +250,7 @@ While the process is OPEN you may attest that leaf as the buyer —
 `attestAsBuyer(walletClient, coordinator, target, p.clauseId, p.stage, p.clauseDataHash,
 p.proof, p.contentRef)` with `p = provenanceLeafAttestation(agreement)` — which makes the
 process-to-design link public: a reader matches the attestation's `contentRef` against
-`provenanceContentRef(agreementHash, compositionHash)` for a registered agreement and assembly. The coordinator refuses
+`provenanceContentRef(agreementHash, assemblyHash)` for a registered agreement and assembly. The coordinator refuses
 every attestation once the order is resolved (`OrderResolved`).
 
 **5. Resolve — and count the usage in the same breath.** Only the buyer can end a process,
@@ -279,7 +279,7 @@ INDEPENDENT legs (`agreementRecorded`, `assemblyRecorded`): `recordAgreementUsag
 with the agreement's `provenance` (both keys) and the provenance leaf's inclusion proof — the
 counter rebuilds the leaf under its `provenanceLeaf()` key, proves it, and requires the
 agreement to hold a live `AgreementRegistry` binding; `recordAssemblyUsage` proves the same
-leaf plus the agreement's membership proof under `compositionHash` and requires a live
+leaf plus the agreement's membership proof under `assemblyHash` and requires a live
 `AssemblyRegistry` binding. An agreement with no `provenance` credits neither designer. A leg that reverts lands in `report.failures` with its reason, nothing thrown. Report
 the report, never "it reverted, so it failed".
 
@@ -330,7 +330,7 @@ README. Read the section; never reconstruct one from the ABI.
 - **Claiming what the owner's clauses, agreements and assemblies earned** — `RpgfMinter.claim`, once
   per wallet per CLOSED period, carrying every `(kind, key)` pair the wallet designed —
   `{ kind: USAGE_KIND_CLAUSE, key: clauseKey }`, `{ kind: USAGE_KIND_ASSEMBLY, key:
-  compositionHash }` or `{ kind: USAGE_KIND_AGREEMENT, key: agreementHash }`, each checked
+  assemblyHash }` or `{ kind: USAGE_KIND_AGREEMENT, key: agreementHash }`, each checked
   against the one registry its kind names (a duplicate
   pair or a key it did not register under that kind reverts): "Claiming the designer's mint".
 
@@ -338,7 +338,7 @@ README. Read the section; never reconstruct one from the ABI.
 
 If the owner registered a clause, an agreement or an assembly, its stake comes back with one call
 (`ClauseRegistry.withdrawDeposit(clauseKey)` / `AgreementRegistry.withdrawDeposit(agreementHash)` /
-`AssemblyRegistry.withdrawDeposit(compositionHash)`)
+`AssemblyRegistry.withdrawDeposit(assemblyHash)`)
 — which **de-surfaces the entry for new compositions while the binding stays permanent**,
 because orders already committed against it still resolve. The rule the stake
 encodes: do not reclaim it while processes composed from that clause, agreement or assembly are still
@@ -360,7 +360,7 @@ const inFlight = deriveInFlightOrders(
 const gate = deriveClauseWithdrawGate(clauseKey, agreements);  // the key you registered, never a name
 if (!gate.canWithdraw) { /* report inFlightCount + unverifiedCount; do not withdraw */ }
 // an agreement or an assembly: the same shape, attributed by each verified agreement's
-// decoded provenance { agreementHash, compositionHash }
+// decoded provenance { agreementHash, assemblyHash }
 ```
 
 `canWithdraw === (inFlightCount === 0)`; `unverifiedCount` is a caveat to surface, never a
@@ -485,7 +485,7 @@ deployment record's `batchVerifier` address, with `BATCH_VERIFIER_ABI` from
 Exactly one thing crosses the seam: the usage accrual behind designer rewards, carried by
 the proof into `UsageCounter.applyBatchAccrual` as proved numbers. So if the owner asks what
 their clauses, agreements and assemblies earned, read `scoreOf(kind, clauseOrAssembly, period)` — kind `0`
-a clause key, `1` an assembly `compositionHash`, `2` an `agreementHash` — (it sums both
+a clause key, `1` an assembly `assemblyHash`, `2` an `agreementHash` — (it sums both
 paths) — never `accrualOf` alone, and if you mirror the events off-chain, fold
 `UsageRecorded` **and** `BatchUsageRecorded` (the batch one is CUMULATIVE — it REPLACES, it
 does not add).

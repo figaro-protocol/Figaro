@@ -115,7 +115,7 @@ What it does, in order:
 1. **Discovers the network.** `new FigaroContext(publicClient, addresses)` +
    `await ctx.sync()` folds the registry event streams into a live catalog. It
    picks its assembly by HYDRATING each `contentURI` from the IPFS gateway —
-   the assembly checked against its composition hash (`anchorAssembly`), each
+   the assembly checked against its assembly hash (`anchorAssembly`), each
    agreement's registered agreement read from `AgreementRegistry`'s binding and
    checked against its key (`hydrateAssembly`) — and taking the first
    single-order assembly — no hardcoded id — and locates the
@@ -196,10 +196,10 @@ await executeAction(walletClient, publicClient, addresses, resolve);
 // clause EARNS — commerce and topology are scored for their author of record
 // like any other — and the designers of the registered agreement and of the
 // assembly accrue through recordAgreementUsage and recordAssemblyUsage from the
-// agreement's provenance leaf (the agreement hash and composition hash the
+// agreement's provenance leaf (the agreement hash and assembly hash the
 // agreement names; the call reads the counter's provenanceLeaf() and proves
 // that leaf, and the assembly leg adds the agreement's membership proof under
-// the composition hash). Read the report, not the absence of an exception:
+// the assembly hash). Read the report, not the absence of an exception:
 import { instantiateRootAgreement, recordProcessUsage } from "@figaro-protocol/sdk/agent";
 // The agreement is REBUILT, never stored: step 4's hydrated assembly + the same overrides
 // re-instantiate it identically, and its merkle root IS the committed
@@ -320,7 +320,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `agreementClauseLeaves` | root | The sorted leaves of a registered agreement's tree, one per composed clause. |
 | `buildRegisteredClauseInclusionProof` | root | A composed clause's membership proof under `agreementHashOf`: its leaf, its sorted-pair proof, and the hash of the designer's fills for it. |
 | `anchorRegisteredAgreement` | root | A fetched registered agreement as `Anchored<RegisteredAgreement>` when `agreementHashOf` of it is the key; null (absence) otherwise. |
-| `anchorAssembly` | root | A fetched assembly as `Anchored<Assembly>` when its merkle root over the agreements and terms is `AssemblyRegistry`'s `compositionHash`; null otherwise. |
+| `anchorAssembly` | root | A fetched assembly as `Anchored<Assembly>` when its merkle root over the agreements and terms is `AssemblyRegistry`'s `assemblyHash`; null otherwise. |
 | `assertAgreementSignable` | root | The ONE pre-signature thrower: every clause conforms to its spec, the terms equal the struct, every clause of the design is carried, and the designer's values equal the design's. |
 | `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond `FigaroCore` will pull. |
 | `attestAsBuyer` | `/agent` | Submit a root-buyer attestation for one leaf of a committed order — a clause, or the provenance leaf. |
@@ -334,7 +334,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `composeOrderAgreement` | root | ONE agreement's registered agreement from the clauses a designer selected for it and the registered agreement picked for it in the mandatory article — the scope check, the value-free rule, the pick's clauses merged — and its `agreementHash`; `buildAssembly` composes every new agreement through it, and a designer registers one on its own through it. |
 | `isMandatoryAgreement` | root | True for a registered agreement the designer's mandatory article lists: one clause or more, every one loaded, mandatory-article and agreement-scoped — any wallet's registration. |
 | `buildProvenanceInclusionProof` | root | Merkle proof that the agreement's provenance leaf sits under a signed `checkoutHash`. |
-| `buildAgreementInclusionProof` | root | An agreement's membership proof under `compositionHash`, with its `slotContentHash` — what the assembly reward claim carries. |
+| `buildAgreementInclusionProof` | root | An agreement's membership proof under `assemblyHash`, with its `slotContentHash` — what the assembly reward claim carries. |
 | `buildSignedClauseInclusionProof` | root | Merkle proof that one clause sits under a signed `checkoutHash`. |
 | `buildSwapWitnessTypedData` | root | Permit2 witness typed data for the swap-and-commit funding leg. |
 | `buildUsageClaims` | root | Turn a resolved order plus its agreement (and the assembly its provenance names) into the clause, agreement and assembly usage claims. |
@@ -358,7 +358,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `depthsOverParents` | root | Depth per node over in-set parent edges — root = 0, child = max(parent depths) + 1. |
 | `deriveAnchored` | root | What is read out of an `Anchored` document, typed `Anchored` too; a rejecting parse throws through. |
 | `deriveAgreementWithdrawGate` | `/derive` | Whether a registered agreement's stake is withdrawable: in-flight processes whose provenance names its key. |
-| `deriveAssemblyWithdrawGate` | `/derive` | Whether an assembly's stake is withdrawable: in-flight processes whose provenance names its composition hash. |
+| `deriveAssemblyWithdrawGate` | `/derive` | Whether an assembly's stake is withdrawable: in-flight processes whose provenance names its assembly hash. |
 | `deriveClauseWithdrawGate` | `/derive` | Whether a clause's stake is withdrawable, and what still blocks it. |
 | `deriveInFlightOrders` | `/derive` | Every committed order whose process has not resolved. |
 | `deriveSharedSecretAsReceiver` | `/handoff` | ECDH shared secret from the sender's public key and your private key. |
@@ -425,7 +425,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `reconstruct` | root | Rebuild the full process topology from parsed core events. |
 | `reconstructDiscovery` | root | Rebuild the live registry view; a member's current profile URI is EVENT-derived, not a getter. |
 | `reconstructOrdersFromAssembly` | root | THE hydrated-assembly→orders walk: root signs `processId = 0`, children carry real parent order hashes. |
-| `provenanceContentRef` | root | The provenance leaf's fingerprint for an agreement hash and a composition hash — its data hash, and the `contentRef` its attestation carries. |
+| `provenanceContentRef` | root | The provenance leaf's fingerprint for an agreement hash and a assembly hash — its data hash, and the `contentRef` its attestation carries. |
 | `provenanceLeafAttestation` | root | The provenance leaf's attestation inputs — reserved key, fingerprint, proof, content ref — for `attestAsBuyer`. |
 | `recordProcessUsage` | `/agent` | File direct-path usage at resolution: one leg per distinct clause key plus the agreement and assembly legs from the provenance leaf; a sent leg that reverts lands in `failures`, never thrown. |
 | `registerRateQuantitySource` | root | Register a resolver for a catalog's rate-quantity source (a composition tenant, no core edit). |
@@ -443,12 +443,12 @@ definition) and `RPGF_*` constant is a **root** export.
 | `socketSignerAccount` | `/signer` | A viem account backed by the policy-signer daemon's socket. |
 | `strippingReviver` | root | A `JSON.parse` reviver that drops `__proto__`/`constructor`/`prototype` keys. |
 | `tagAttestationUniverses` | root | The pure fold under `fetchAttestationRecords`: tag two address-filtered log streams and merge in block order. |
-| `serializeAssembly` | root | The pinned assembly's canonical JSON beside its `compositionHash`. |
+| `serializeAssembly` | root | The pinned assembly's canonical JSON beside its `assemblyHash`. |
 | `agreementClauses` | root | The clauses an agreement instantiates: its registered agreement's, with the agreement's own fills over them. |
 | `composeAuthoredAgreement` | root | SEED-TIME only: a written agreement file (`agreements/*.json`, clause names, the designer's fills) → the document the seeding pins and its key. |
 | `assembleAuthored` | root | SEED-TIME only: a written assembly (`assemblies/*.json`, agreements naming their agreements) over the composed written agreements → the assembly and each distinct agreement once. |
 | `assemblyComposedClauseKeys` | root | Every clause key a hydrated assembly composes, sorted — each must be live on `ClauseRegistry` for the design to check out. |
-| `assemblyCompositionHash` | root | The `compositionHash` `AssemblyRegistry` binds — the merkle root over the agreements and the assembly terms. |
+| `assemblyHashOf` | root | The `assemblyHash` `AssemblyRegistry` binds — the merkle root over the agreements and the assembly terms. |
 | `topologicalOrder` | root | Order ids so every node follows its parents; `throw` or degrade on a cycle. |
 | `Topology` | root | The mutable shadow state an agent keeps, updated incrementally as events arrive. |
 | `TRUTH_BOUNDARY_GLOSS` | `/derive` | The one-line meaning of each truth boundary — render-ready gloss text, one home. |
@@ -1041,7 +1041,7 @@ channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, 
            // or missing required term REFUSES before counter-signing; omit it
            // and every offer is REFUSED
     readDesign, // (provenance) => the hydrated assembly the offer names, read
-           // by its composition hash and verified (`anchorAssembly` +
+           // by its assembly hash and verified (`anchorAssembly` +
            // `hydrateAssembly`), or null. An offer whose design is not read,
            // which drops a clause of that design, or whose designer values
            // differ, is REFUSED
@@ -1173,7 +1173,7 @@ import { deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { anchorClauseSpec, anchorAssembly, hydrateAssembly, type Anchored, type Assembly } from "@figaro-protocol/sdk";
 const spec = anchorClauseSpec(specBytes, clause.clauseKey); // Uint8Array or the exact text
 const assembly: Anchored<Assembly> | null =
-    anchorAssembly(JSON.parse(assemblyText, strippingReviver), registered.compositionHash);
+    anchorAssembly(JSON.parse(assemblyText, strippingReviver), registered.assemblyHash);
 // Each agreement of the list is a registered agreement, read by key: read its binding from
 // AgreementRegistry (whatever its stake — a binding is never cleared), fetch,
 // and check it against the key. Any agreement that fails makes the assembly absent.
@@ -1407,7 +1407,7 @@ const inFlight = deriveInFlightOrders(events); // committed, process unresolved
 // by the two keys each verified agreement's provenance leaf names.
 const clauseGate = deriveClauseWithdrawGate(clauseKey, agreements);
 const agreementGate = deriveAgreementWithdrawGate(agreementHash, agreements);
-const assemblyGate = deriveAssemblyWithdrawGate(compositionHash, agreements);
+const assemblyGate = deriveAssemblyWithdrawGate(assemblyHash, agreements);
 // gate.canWithdraw === (inFlightCount === 0); unverifiedCount is a caveat
 ```
 
@@ -1445,9 +1445,9 @@ const overlays = extractOverlays(atts.map((event) => ({ event, content: null }))
 // One overlay is the agreement format's own: `provenanceLeaf: true` marks the
 // buyer's attestations of the provenance leaf (key `PROVENANCE_LEAF_KEY`). It
 // has no spec; an entry whose bytes you supply decodes to
-// `{ agreementHash, compositionHash }`, and with no bytes the contentRef alone
+// `{ agreementHash, assemblyHash }`, and with no bytes the contentRef alone
 // matches a registered agreement in a registered assembly —
-// provenanceContentRef(agreementHash, compositionHash) === entry.contentRef.
+// provenanceContentRef(agreementHash, assemblyHash) === entry.contentRef.
 
 // Composition: the swap legs are the value flowing between denominations.
 // The coordinator emits nothing of its own; each commit transaction's receipt
@@ -1769,7 +1769,7 @@ checkout — `assembly.d.ts`). Turning a hydrated assembly into the filled,
 hashed `Agreement` that
 `buildCommitment` signs is a **deterministic projection**: both parties, and any
 second frontend, must reproduce it byte-exactly because its outputs are hashed
-(`checkoutHash` — the merkle root the commitment signs; `compositionHash` —
+(`checkoutHash` — the merkle root the commitment signs; `assemblyHash` —
 assembly identity). The SDK now ships that projection (`dist/projection.d.ts`) —
 you do not hand-assemble clauses.
 
@@ -1909,7 +1909,7 @@ value-free, with the designer's fills — the topology clause composed with
 (`AgreementRegistry`, `AGREEMENT_REGISTRY_ABI`). An **assembly** is ordered
 agreements, each binding a registered agreement by key and carrying the
 agreement's own fills (today the topology's `{ parentOrderHashes:
-["order-<j>", …] }`), plus the assembly-scoped terms; its `compositionHash` is
+["order-<j>", …] }`), plus the assembly-scoped terms; its `assemblyHash` is
 the MERKLE ROOT over one leaf per agreement (key = the agreement hash, bytes =
 canonical `{"clauses":{…},"slot":i}`) and one terms leaf (key
 `ASSEMBLY_TERMS_LEAF_KEY`, bytes = canonical `assemblyClauses`, present only
@@ -1948,7 +1948,7 @@ for (const [agreementHash, composed] of Object.entries(agreements)) {
   });
 }
 // Then the assembly, keyed by its root.
-const { json, compositionHash } = serializeAssembly(assembly);
+const { json, assemblyHash } = serializeAssembly(assembly);
 ```
 
 Readers go the other way. `parseAgreementRegistryLogs` and
@@ -1962,7 +1962,7 @@ keeps hydrating.
 ```ts
 import { anchorAssembly, hydrateAssembly, agreementClauses, buildAgreementInclusionProof } from "@figaro-protocol/sdk";
 
-const anchored = anchorAssembly(JSON.parse(assemblyText, strippingReviver), registered.compositionHash);
+const anchored = anchorAssembly(JSON.parse(assemblyText, strippingReviver), registered.assemblyHash);
 const assembly = anchored && await hydrateAssembly(anchored, async (agreementHash) => {
   const binding = graph.getAgreementBinding(agreementHash);
   return binding ? fetchText(binding.contentURI) : null;   // anchorRegisteredAgreement checks it
@@ -2060,11 +2060,11 @@ const orders = await reconstructOrdersFromAssembly(assembly, {
 ```
 
 Every realized order carries `agreement.provenance` — `{ agreementHash,
-compositionHash }`: the registered agreement its agreement binds and the
-assembly's own `assemblyCompositionHash`, the agreement format's reserved
+assemblyHash }`: the registered agreement its agreement binds and the
+assembly's own `assemblyHashOf`, the agreement format's reserved
 provenance leaf (`PROVENANCE_LEAF_KEY`, the keccak256 of
 `"figaro-agreement-provenance"`; its committed bytes are
-`{"agreementHash":"0x<lowercase hex>","compositionHash":"0x<lowercase hex>"}`).
+`{"agreementHash":"0x<lowercase hex>","assemblyHash":"0x<lowercase hex>"}`).
 It is a leaf of the agreement, never a clause: no spec declares it,
 and the walk writes it on every order, with or without `specs`. An agreement
 already naming a different key or hash is refused before hashing. The leaf is
@@ -2236,8 +2236,8 @@ registration at all.
     document.
   - `assemblyBindings` is an array of `AssemblyBindingRecord` — one entry per
     assembly the wallet sells through, each
-    `{ bindingId, subjectAddress, compositionHash, counterpartyBindings? }`.
-    `compositionHash` is the bound assembly's full `AssemblyRegistry` key — the
+    `{ bindingId, subjectAddress, assemblyHash, counterpartyBindings? }`.
+    `assemblyHash` is the bound assembly's full `AssemblyRegistry` key — the
     same identity a `buyerAssemblies` entry and an agreement's provenance leaf
     carry; a slug shown anywhere is derived from it (`deriveAssemblySlug`),
     never stored. A seller accepts an order only under an assembly this list
@@ -2253,8 +2253,8 @@ registration at all.
   - `disclosurePolicy` is an array of `DisclosurePolicyEntry` — the member's
     self-declared terms for the data they co-produce inside bonded processes
     (the voluntary data market), each
-    `{ compositionHash, clauseKey, posture, offered, whitelist?, calendar? }`. The
-    data a row names is DERIVED, never a stored taxonomy: `compositionHash` (the
+    `{ assemblyHash, clauseKey, posture, offered, whitelist?, calendar? }`. The
+    data a row names is DERIVED, never a stored taxonomy: `assemblyHash` (the
     `AssemblyRegistry` key of an assembly the member binds) × `clauseKey` (the data's leaf clause) name clauses the member already composes.
     `posture: "buyer" | "seller"` says which side the member co-produced the data on — members hold both, on the same terms structure. `offered` is the
     toggle (`false` = explicit withholding); `whitelist` narrows who may buy/see
@@ -2265,7 +2265,7 @@ registration at all.
     Field absent = the paper-contract default: each party holds its own
     copy; absence of a policy is NOT a policy of openness.
   - `buyerAssemblies` is an array of `BuyerAssemblySubscription` — the buyer's
-    assembly SUBSCRIPTIONS, `{ compositionHash }` each: which registered
+    assembly SUBSCRIPTIONS, `{ assemblyHash }` each: which registered
     assemblies this member buys through and monetizes data from.
     Independent of `assemblyBindings` (the seller's list — a wallet does not
     buy through the assemblies it sells through); subscribing is the buyer's
@@ -2277,7 +2277,7 @@ registration at all.
   throws `…version must be a string.` on a number rather than coercing it.
   Each item requires `id`, `name`, `price`, `available`; optional are
   `description`, `category`, `image`, `dataSold` (marks a DATA-PRODUCT
-  item: `{ compositionHash, clauseKey, posture }` referencing one of the
+  item: `{ assemblyHash, clauseKey, posture }` referencing one of the
   member's own declared data offers — the policy declares the terms,
   this item is the price), physical measures (`massGrams`,
   `volumeMl`, `lengthMm`/`widthMm`/`heightMm`), rate pricing
@@ -2345,7 +2345,7 @@ function registerClause(bytes32 clauseKey, string calldata contentURI) external 
 function registerAgreement(bytes32 agreementHash, string calldata contentURI) external payable
 
 // AssemblyRegistry — cast selector: registerAssembly(bytes32,string)
-function registerAssembly(bytes32 compositionHash, string calldata contentURI) external payable
+function registerAssembly(bytes32 assemblyHash, string calldata contentURI) external payable
 
 // ClauseRegistry — a composed MECHANISM contract declaring which clause it
 // speaks. Permissionless, not payable, writes no storage: it only emits
@@ -2356,7 +2356,7 @@ function setMechanismClause(bytes32 clauseKey) external
 
 The three registries key by content: `clauseKey` is the hash of the pinned spec
 bytes, `agreementHash` the merkle root over an agreement's composed clauses,
-`compositionHash` the merkle root of the composition; none takes a name or
+`assemblyHash` the merkle root of the composition; none takes a name or
 a version. The registering calls are `payable`; `msg.value` must equal
 `registrationDeposit()` exactly (`setMechanismClause` is not — it takes no deposit).
 
@@ -2367,7 +2367,7 @@ the registering call (`register` / `registerClause` / `registerAgreement` / `reg
 must equal it EXACTLY (there is no sweep). The amount is a deploy-time immutable;
 read it from the contract's `registrationDeposit()` view rather than hardcoding a
 figure. Clause, agreement and assembly stakes come back in one call —
-`withdrawDeposit(clauseKey | agreementHash | compositionHash)`, which de-surfaces the entry while
+`withdrawDeposit(clauseKey | agreementHash | assemblyHash)`, which de-surfaces the entry while
 leaving the binding permanent, because orders already committed against them still
 resolve.
 
@@ -2389,7 +2389,7 @@ different moments — nobody is held on a surface they asked to leave, while the
 capital stays committed. **Anything tracking who is currently surfaced must fold
 `MemberWithdrawalRequested`, not `MemberWithdrawn`**; the latter is the release event and can arrive a whole cooldown later. `reconstructDiscovery` already does.
 
-**Reading an assembly binding.** `AssemblyRegistry.bindings(compositionHash)` returns
+**Reading an assembly binding.** `AssemblyRegistry.bindings(assemblyHash)` returns
 the tuple `(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)`.
 The existence check is `registeredAt != 0`, NOT the bool: after a normal registration
 `depositWithdrawn` is `false` and stays false while the deposit is still staked (the
@@ -2437,13 +2437,13 @@ above), each carrying exactly half of the offer:
 
 - The **profile's `disclosurePolicy`** carries the DISCLOSURE terms: one entry
   per kind of data,
-  `{ compositionHash, clauseKey, posture, offered, whitelist?, calendar? }`.
+  `{ assemblyHash, clauseKey, posture, offered, whitelist?, calendar? }`.
   What a row names is derived, never a stored taxonomy — the assembly you bind
   or subscribe to × the clause whose leaf holds the data × the side you traded
   on. Absence of a row is the paper-contract default (each party holds its own
   copy), **not** a policy of openness; `offered: false` is an explicit
   withholding, which is a different statement.
-- The **catalog item's `dataSold`** carries the PRICE: `{ compositionHash,
+- The **catalog item's `dataSold`** carries the PRICE: `{ assemblyHash,
   clauseKey, posture }` pointing at one of your own declared rows, plus the
   ordinary `price` / `pricingPolicy` fields every other item uses. Prices never
   appear in the policy, and the terms of the SALE (§2) ride the item's
@@ -2457,7 +2457,7 @@ import { parseMemberProfileDocument, parseMemberCatalogDocument } from "@figaro-
 // it by reading the assembly's own composed clauses, never from a list of
 // "data clauses": any leaf of any assembly you traded under can be a product.
 const dataOffer = {
-  compositionHash: surveyCompositionHash,
+  assemblyHash: surveyAssemblyHash,
   clauseKey: flightRecordKey,         // the leaf's clause key, read off the assembly's composed clauses
   posture: "seller" as const,
 };
@@ -2653,7 +2653,7 @@ which is the correct answer, not an error):
 ```ts
 const graph = reconstructDiscovery(await fetchDiscoveryEvents(client, addresses, fromBlock));
 for (const a of graph.getAssemblies()) {
-  const assembly = anchorAssembly(await (await fetch(gateway(a.contentURI))).json(), a.compositionHash);
+  const assembly = anchorAssembly(await (await fetch(gateway(a.contentURI))).json(), a.assemblyHash);
   const assembly = assembly && await hydrateAssembly(assembly, async (key) => {
     const binding = graph.getAgreementBinding(key);
     return binding ? (await fetch(gateway(binding.contentURI))).text() : null;
@@ -2681,12 +2681,12 @@ import { USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE, RPGF_MINT
 // Each entry is a (kind, key) pair: the kind names the one registry the
 // minter checks you against, so a stake in one family never earns the
 // other's. A clause's key is the hash of its pinned spec bytes; a registered
-// agreement's is agreementHashOf(document); an assembly's is its compositionHash. (`computeRpgfAllocations` hands back this list per
+// agreement's is agreementHashOf(document); an assembly's is its assemblyHash. (`computeRpgfAllocations` hands back this list per
 // wallet as `allocation.claims`.)
 const mine = [
   { kind: USAGE_KIND_CLAUSE, key: myClauseKey },
   { kind: USAGE_KIND_AGREEMENT, key: myAgreementHash },
-  { kind: USAGE_KIND_ASSEMBLY, key: myCompositionHash },
+  { kind: USAGE_KIND_ASSEMBLY, key: myAssemblyHash },
 ];
 
 // A period must be CLOSED before it can be claimed (claim reverts
