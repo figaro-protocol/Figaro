@@ -314,12 +314,19 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
             {/* Topology */}
             <Text style={styles.h2}>Topology</Text>
             <View style={styles.section}>
-                {contract.topology.parentOrderHashes.length === 0 ? (
-                    <Text style={styles.sectionBody}>Root order — no parent commitments.</Text>
+                <Text style={styles.sectionBody}>
+                    {contract.topology.position === "root"
+                        ? "Root order of its process (on chain, its cumulative value equals its payment)."
+                        : "Later order of its process (on chain, its cumulative value exceeds its payment)."}
+                </Text>
+                {!contract.topology.composed ? (
+                    <Text style={styles.sectionBody}>Its agreement composes no parent links.</Text>
+                ) : contract.topology.parentOrderHashes.length === 0 ? (
+                    <Text style={styles.sectionBody}>Parent links composed: none.</Text>
                 ) : (
                     <>
                         <Text style={styles.sectionBody}>
-                            Parent order(s):
+                            Parent order(s), as its agreement composes them:
                         </Text>
                         {contract.topology.parentOrderHashes.map((p) => (
                             <Text key={p} style={[styles.mono, { marginTop: 1 }]}>{p}</Text>

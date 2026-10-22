@@ -64,15 +64,16 @@ export interface ContractDocument extends ExtractedDocument {
         language?: string;
     };
     /**
-     * Process topology for this order. Surfaces the topology-clause
-     * data so the auditor can locate this order in its process topology without
-     * having to dig into the generic clauses array.
-     *
-     *   - `parentOrderHashes` is empty for a root order.
-     *   - For a sub-order it lists each parent order's hash; for a
-     *     diamond / fan-in node it lists multiple parents.
+     * This order's place in its process, each part from its own evidence:
+     *   - `position` from the chain: a root order's cumulative value equals its
+     *     payment, and every later order's is larger.
+     *   - `composed`: whether the agreement composes a topology clause.
+     *   - `parentOrderHashes`: the parent links that clause holds (several for a
+     *     fan-in node), empty when it composes none.
      */
     topology: {
+        position: "root" | "sub-order";
+        composed: boolean;
         parentOrderHashes: string[];
     };
     /** Canonical method — the modality clause's raw value (consume-onsite |
@@ -111,13 +112,17 @@ function extractJurisdictionSummary(agreement: Agreement) {
     };
 }
 
-function extractTopology(agreement: Agreement) {
+function extractTopology(order: Order, agreement: Agreement): ContractDocument["topology"] {
     const topology = clauseByField(agreement, "parentOrderHashes", specSource());
     const data = topology?.data as { parentOrderHashes?: unknown } | undefined;
     const parentOrderHashes = Array.isArray(data?.parentOrderHashes)
         ? (data.parentOrderHashes.filter((p) => typeof p === "string") as string[])
         : [];
-    return { parentOrderHashes };
+    return {
+        position: order.cumulativeValue === order.payment ? "root" : "sub-order",
+        composed: topology !== undefined,
+        parentOrderHashes,
+    };
 }
 
 function extractMethodSummary(agreement: Agreement) {
@@ -160,7 +165,7 @@ export function extractContract(
         deadline: order.deadline,
         clauses: agreement.clauses.map(contractClauseFrom),
         jurisdiction: extractJurisdictionSummary(agreement),
-        topology: extractTopology(agreement),
+        topology: extractTopology(order, agreement),
         method: extractMethodSummary(agreement),
         committedAtBlock: order.blockNumber,
     };
