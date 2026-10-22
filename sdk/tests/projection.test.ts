@@ -75,7 +75,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
     it("passes a conforming agreement whose hash matches its merkle root", () => {
         const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
-            [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" },
+            [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY", forum: "us-federal-court" },
         }, SPECS);
         expect(() => assertAgreementSignable(agreement, checkoutHash, SPECS, STRUCT, null)).not.toThrow();
     });
@@ -137,7 +137,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
     it("refuses a clause carrying BOTH data and dataHash — the what-you-see-is-what-you-sign invariant", () => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
-            [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" },
+            [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY", forum: "us-federal-court" },
         }, SPECS);
         // The attack: keep the benign `data` a review renders, and ALSO attach a
         // `dataHash` fingerprint of hidden content, which the merkle leaf would
@@ -256,7 +256,7 @@ describe("projection — golden-vector byte-exactness", () => {
         const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-topology")]: { parentOrderHashes: [] },
-            [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" },
+            [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY", forum: "us-federal-court" },
         }, SPECS);
         expect(canonicalize(agreement)).toBe(vectors.agreementProjection.defaults.canonicalAgreement);
         expect(checkoutHash).toBe(vectors.agreementProjection.defaults.checkoutHash);
@@ -274,11 +274,11 @@ describe("projection — golden-vector byte-exactness", () => {
         expect(checkoutHash).toBe(vectors.agreementProjection.processLog.checkoutHash);
     });
 
-    it("the mandatory pick + relabeling + assembly terms reproduce the frozen assembly + assemblyHash", () => {
+    it("the mandatory clauses + relabeling + assembly terms reproduce the frozen assembly + assemblyHash", () => {
         // figaro-applicable-law is ASSEMBLY-SCOPED (design.scope: "assembly")
-        // and DESIGNER-AUTHORED (design.fills — recourse
-        // terms are part of the assembly's identity, never buyer-authored),
-        // so its typed value SURVIVES into the frozen output.
+        // with no design fill: the designer composes it with no values and the
+        // buyer fills it at checkout, so the assembly carries the clause under
+        // its key with an empty value, and that is what the frozen output holds.
         const built = buildAssembly({
             name: "Golden Vector Chain",
             orders: [
@@ -286,7 +286,7 @@ describe("projection — golden-vector byte-exactness", () => {
                 { orderHash: "synthetic-child", parentOrderHashes: ["synthetic-root"] },
             ],
             clausesByOrderId: {},
-            assemblyClauses: { [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" } },
+            assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
             mandatory: MANDATORY,
             specs: SPECS,
         });
@@ -709,46 +709,48 @@ describe("composeOrderAgreement — one agreement's registered agreement, on its
 });
 
 describe("the sign gate's design check — the designer's values against the design the agreement names", () => {
-    const DESIGN_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-consent", "figaro-applicable-law"]);
+    const DESIGN_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-consent", "figaro-property-transfer"]);
     const DOCS = [{ documentHash: `0x${"d0".repeat(32)}`, documentVersion: "1.0.0", documentTitle: "Terms of Service" }];
+    // The designer's value of an ASSEMBLY-SCOPED clause with a design fill.
+    const EVENTS = ["Sale of the consignment agreed mid-voyage, ownership passing at resolution"];
     const registered = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-consent")]: { documents: DOCS } } };
     const agreementHash = agreementHashOf(registered);
     const design: HydratedAssembly = {
         assembly: {
-            assemblyClauses: { [keyOf("figaro-applicable-law")]: { applicableLaw: "England-Wales" } },
+            assemblyClauses: { [keyOf("figaro-property-transfer")]: { anticipatedEvents: EVENTS } },
             agreements: [{ id: "order-0", agreementHash, clauses: {} }],
         },
         agreements: { [agreementHash.toLowerCase() as `0x${string}`]: registered },
     };
     const assemblyHash = assemblyHashOf(design.assembly);
-    const instantiate = (consent: Record<string, unknown>, law: Record<string, unknown>, provenance = { agreementHash, assemblyHash }) => {
+    const instantiate = (consent: Record<string, unknown>, transfer: Record<string, unknown>, provenance = { agreementHash, assemblyHash }) => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-consent")]: consent,
-            [keyOf("figaro-applicable-law")]: law,
+            [keyOf("figaro-property-transfer")]: transfer,
         }, DESIGN_SPECS);
         const named = { ...agreement, provenance };
         return { agreement: named, checkoutHash: computeCheckoutHash(named) };
     };
 
     it("passes an agreement carrying the design's values", () => {
-        const { agreement, checkoutHash } = instantiate({ documents: DOCS }, { applicableLaw: "England-Wales" });
+        const { agreement, checkoutHash } = instantiate({ documents: DOCS }, { anticipatedEvents: EVENTS });
         expect(validateCommitmentAgreement(agreement, checkoutHash, DESIGN_SPECS, STRUCT, design).ok).toBe(true);
     });
 
     it("refuses a designer value a party changed, agreement-scoped and assembly-scoped alike", () => {
         const forged = [{ ...DOCS[0], documentHash: `0x${"ee".repeat(32)}` }];
-        const a = instantiate({ documents: forged }, { applicableLaw: "England-Wales" });
+        const a = instantiate({ documents: forged }, { anticipatedEvents: EVENTS });
         expect(() => assertAgreementSignable(a.agreement, a.checkoutHash, DESIGN_SPECS, STRUCT, design))
             .toThrow(/figaro-consent documents: .*designer/);
-        const b = instantiate({ documents: DOCS }, { applicableLaw: "US-NY" });
+        const b = instantiate({ documents: DOCS }, { anticipatedEvents: ["Another event"] });
         expect(() => assertAgreementSignable(b.agreement, b.checkoutHash, DESIGN_SPECS, STRUCT, design))
-            .toThrow(/figaro-applicable-law applicableLaw: .*designer/);
+            .toThrow(/figaro-property-transfer anticipatedEvents: .*designer/);
     });
 
     it("refuses an order missing a clause of the registered agreement it names, agreement-scoped and assembly-scoped alike, by slug and full hash", () => {
-        const { agreement: full } = instantiate({ documents: DOCS }, { applicableLaw: "England-Wales" });
-        for (const dropped of ["figaro-consent", "figaro-applicable-law"]) {
+        const { agreement: full } = instantiate({ documents: DOCS }, { anticipatedEvents: EVENTS });
+        for (const dropped of ["figaro-consent", "figaro-property-transfer"]) {
             const short = { ...full, clauses: full.clauses.filter((s) => s.clause !== keyOf(dropped)) };
             const check = validateCommitmentAgreement(short, computeCheckoutHash(short), DESIGN_SPECS, STRUCT, design);
             expect(check.ok).toBe(false);

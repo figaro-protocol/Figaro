@@ -133,10 +133,15 @@ export async function fillTradelensCheckout(page: Page): Promise<void> {
         .fill('ISO 17712 high-security bolt seal on ISO 6346 container');
     await checkoutFields(page, C.acceptance, 'acceptanceBasis').first()
         .fill('AQL 2.5 per ISO 2859-1 against PO 4711');
-    // A compact law TAG (the spec's format pattern) — the jurisdiction label,
-    // not prose.
-    // applicable-law, arbitration and property-transfer are designer-written assembly terms
-    // (design.fills) — nothing for the buyer to fill.
+    // Dispute resolution is the BUYER's choice at checkout, once for every
+    // agreement of the process: a compact law TAG (the spec's format pattern —
+    // the jurisdiction label, not prose), the forum, and the Kleros subcourt;
+    // each is required once the designer composed the clause. The
+    // property-transfer clause is designer-filled (design.fills) — nothing
+    // for the buyer to fill there.
+    await checkoutFields(page, C.law, 'applicableLaw').first().fill('England-Wales');
+    await checkoutFields(page, C.law, 'forum').first().fill('LCIA-arbitration');
+    await checkoutFields(page, C.kleros, 'klerosCourt-general').first().check();
     // The emissions methodology is committed at signing by the parties — not
     // catalog-sourced (no block.checkout.catalogueFills on the spec).
     await forEachCheckoutField(page, C.emissions, 'standard', (c) => c.fill('EN 16258'));

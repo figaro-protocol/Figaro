@@ -77,14 +77,15 @@ function commerceData() {
     };
 }
 
-/** The projection cases the fixture freezes: spec-default injection
- *  (applicable-law), and the process-log empty-anchor skip (merchant-process). */
+/** The projection cases the fixture freezes: a buyer-filled assembly-scoped
+ *  clause carried in an order's agreement (applicable-law, the forum the buyer
+ *  chose at checkout), and the process-log empty-anchor skip (merchant-process). */
 function projectionCases() {
     return {
         defaults: buildOrderAgreement(BUYER, SELLER, byKey({
             "figaro-commerce": commerceData(),
             "figaro-topology": { parentOrderHashes: [] },
-            "figaro-applicable-law": { applicableLaw: "US-NY" },
+            "figaro-applicable-law": { applicableLaw: "US-NY", forum: "us-federal-court" },
         }), specSource()),
         processLog: buildOrderAgreement(BUYER, SELLER, byKey({
             "figaro-commerce": commerceData(),
@@ -94,13 +95,12 @@ function projectionCases() {
     };
 }
 
-/** Two-node parent-edged design (root + child) exercising the mandatory pick
- *  (each order picks the reference agreement holding the mandatory clauses
- *  alone, so the agreement hashes are the ones frozen before the pick existed),
- *  the local relabeling, the sparse-version normalization, and the
- *  ASSEMBLY-SCOPE placement (applicable-law declares design.scope "assembly"
- *  — so it composes once at the assembly level and its
- *  typed value strips to {}). */
+/** Two-node parent-edged design (root + child) exercising the mandatory
+ *  clauses the canvas writes into every agreement (the DAO's commerce and
+ *  topology, nothing picked), the local relabeling, the sparse-version
+ *  normalization, and the ASSEMBLY-SCOPE placement (applicable-law declares
+ *  design.scope "assembly" and no design fill — the designer composes it once
+ *  at the assembly level with no values, and the buyer fills it at checkout). */
 function assemblyCase() {
     const orders = [
         { orderHash: "synthetic-root", parentOrderHashes: [] },
@@ -110,7 +110,7 @@ function assemblyCase() {
         name: "Golden Vector Chain",
         orders,
         clausesByOrderId: {},
-        assemblyClauses: byKey({ "figaro-applicable-law": { applicableLaw: "US-NY" } }),
+        assemblyClauses: byKey({ "figaro-applicable-law": {} }),
         mandatory: mandatoryDefaults(),
         specs: specSource(),
     });

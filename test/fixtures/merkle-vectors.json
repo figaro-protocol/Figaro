@@ -3,7 +3,7 @@
     "agreements": [
         {
             "label": "three-clauses",
-            "checkoutHash": "0x91aaf49835ba7c1174460e18c2af8a59a8d3c7959abbeb64dd2adaf52613fef2",
+            "checkoutHash": "0x291cce83a8674739e7b30f64161d76181cb73940852439b50c09e7b211eb056b",
             "clauseCount": 3,
             "clauses": [
                 {
@@ -11,7 +11,7 @@
                     "clauseData": "{\"modality\":\"delivery\"}",
                     "leaf": "0x464a25f8a976b2c06f658df8bb516cb72dfc523a89ddc49262ecb06168ef2415",
                     "proof": [
-                        "0x9db4f5441164a3331869723e51056f15c04466632cff70b20f17f25c039a40c5",
+                        "0xa74bb7feb15d94fa3f144b6ab432d179fbab57d91789a701fc37f887a5e72f9b",
                         "0xf538fadf4fd4a06dc77d7b1027629170549b0f64e9c09c3a30b621a827ea9b95"
                     ]
                 },
@@ -20,13 +20,13 @@
                     "clauseData": "{\"hops\":2,\"origin\":\"site-7\"}",
                     "leaf": "0xf538fadf4fd4a06dc77d7b1027629170549b0f64e9c09c3a30b621a827ea9b95",
                     "proof": [
-                        "0x07841435cfed94eb4be4e09f23efc73c94253f8e56f843c65888cd1103967b81"
+                        "0x1316f9f0641b1db23e8cbede2834d4e77977c4ea623d9dc209e4244f05a62d95"
                     ]
                 },
                 {
-                    "clauseKey": "0x0c6201f012f7844817072d3d0d312ae832fd84d67f9b702d887de60d1d224d1a",
+                    "clauseKey": "0x2ced3b8e78296ca742ff72d14954050401b8e349512d0f83e14fa144038e69e8",
                     "clauseData": "{\"law\":\"ch\"}",
-                    "leaf": "0x9db4f5441164a3331869723e51056f15c04466632cff70b20f17f25c039a40c5",
+                    "leaf": "0xa74bb7feb15d94fa3f144b6ab432d179fbab57d91789a701fc37f887a5e72f9b",
                     "proof": [
                         "0x464a25f8a976b2c06f658df8bb516cb72dfc523a89ddc49262ecb06168ef2415",
                         "0xf538fadf4fd4a06dc77d7b1027629170549b0f64e9c09c3a30b621a827ea9b95"
@@ -49,17 +49,16 @@
         },
         {
             "label": "two-clauses-and-a-design",
-            "checkoutHash": "0x7fddcd620c93c5465f790ef339caa0d1c2dcf990f715c707de0ae3cac1c8b220",
+            "checkoutHash": "0x1fc793660a4c23fb74eeaa24448366111cd0cce5f2c17c6125132d9fe671f303",
             "clauseCount": 2,
             "provenance": {
                 "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                 "agreementHash": "0xe1b361fafeec77be3d073c1c86b7f1a1351cb7c2c697ee6dbabbfcc0d7b0fc42",
-                "assemblyHash": "0xb87a01061e2fbaa78adbbb3b0918a9c0c394d4d67ba08b0d4a7869c6e66d5c51",
-                "clauseData": "{\"agreementHash\":\"0xe1b361fafeec77be3d073c1c86b7f1a1351cb7c2c697ee6dbabbfcc0d7b0fc42\",\"assemblyHash\":\"0xb87a01061e2fbaa78adbbb3b0918a9c0c394d4d67ba08b0d4a7869c6e66d5c51\"}",
-                "leaf": "0x0ca5a99d5ff9ca17c1a4dfd40a5e5a2a9829f2b18ad616fc4fd436f02c4a366c",
+                "assemblyHash": "0xdb4e9c76b9d983e2e99d4931b86f546b46634abfd77f83f4601eea3f99ca64c8",
+                "clauseData": "{\"agreementHash\":\"0xe1b361fafeec77be3d073c1c86b7f1a1351cb7c2c697ee6dbabbfcc0d7b0fc42\",\"assemblyHash\":\"0xdb4e9c76b9d983e2e99d4931b86f546b46634abfd77f83f4601eea3f99ca64c8\"}",
+                "leaf": "0xdbd2325af5e6b8294f78d5a4d0c969f73e39075c9f8614613961484f9ee6813f",
                 "proof": [
-                    "0x22ec5a14ed3ea2f821792e06337d55132c137690e2d38b1e63e10e4d413889a7",
-                    "0x44dce91b683ba8bfb475d0d61802ae2f2b59567be849ff4d32b5124159feb1f6"
+                    "0x93c27a4d12c7ea4b1cb8f426ba3cbebd3dd755ac165182e2eec19072210a9ec1"
                 ]
             },
             "clauses": [
@@ -68,7 +67,8 @@
                     "clauseData": "{\"currency\":\"0x0000000000000000000000000000000000000000\",\"payment\":\"7\"}",
                     "leaf": "0x44dce91b683ba8bfb475d0d61802ae2f2b59567be849ff4d32b5124159feb1f6",
                     "proof": [
-                        "0x340fc4483f8e5c2e92b5ea47033e61ad7209ba6fbebc025ac215695f57d5c1c3"
+                        "0x22ec5a14ed3ea2f821792e06337d55132c137690e2d38b1e63e10e4d413889a7",
+                        "0xdbd2325af5e6b8294f78d5a4d0c969f73e39075c9f8614613961484f9ee6813f"
                     ]
                 },
                 {
@@ -76,8 +76,8 @@
                     "clauseData": "{\"parentOrderHashes\":[]}",
                     "leaf": "0x22ec5a14ed3ea2f821792e06337d55132c137690e2d38b1e63e10e4d413889a7",
                     "proof": [
-                        "0x0ca5a99d5ff9ca17c1a4dfd40a5e5a2a9829f2b18ad616fc4fd436f02c4a366c",
-                        "0x44dce91b683ba8bfb475d0d61802ae2f2b59567be849ff4d32b5124159feb1f6"
+                        "0x44dce91b683ba8bfb475d0d61802ae2f2b59567be849ff4d32b5124159feb1f6",
+                        "0xdbd2325af5e6b8294f78d5a4d0c969f73e39075c9f8614613961484f9ee6813f"
                     ]
                 }
             ]

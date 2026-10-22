@@ -306,6 +306,19 @@ function isDemandedOfBuyer(field: FieldSpec): boolean {
     return field.type !== "bigint";
 }
 
+/** The values of ONE assembly-scoped clause as checkout writes them into every
+ *  order: the designer's values (`assemblyClauses`, the design fills) are the
+ *  floor and the buyer's entries fill only the buyer's fields — a buyer entry
+ *  never stands where a designer's value stands. The sign gate refuses a
+ *  changed designer value anyway (`designerValueIssues`); this keeps the form
+ *  and the walk from ever showing one. */
+export function mergeAssemblyTermFills(
+    designerValues: Readonly<Record<string, unknown>> | undefined,
+    buyerFills: Readonly<Record<string, unknown>> | undefined,
+): Record<string, unknown> {
+    return { ...(buyerFills ?? {}), ...(designerValues ?? {}) };
+}
+
 /** One required buyer fill still empty, named the way the buyer reads it. */
 export interface MissingFill {
     groupKey: string;

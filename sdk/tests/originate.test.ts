@@ -337,11 +337,19 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
     // The ruling: a design fill (`block.design.fills`) the designer set is the
     // designer's value; the sign gate refuses an agreement whose clause
     // carries another, wherever the override came from.
-    const DESIGN_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology", "figaro-consent", "figaro-applicable-law"]);
+    const DESIGN_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology", "figaro-consent", "figaro-applicable-law", "figaro-property-transfer"]);
     const DOCS = [{ documentHash: `0x${"d0".repeat(32)}`, documentVersion: "1.0.0", documentTitle: "Terms of Service" }];
     const FORGED = [{ documentHash: `0x${"ee".repeat(32)}`, documentVersion: "1.0.0", documentTitle: "Terms of Service" }];
+    // The designer's value of an ASSEMBLY-SCOPED clause with a design fill …
+    const EVENTS = ["Sale of the consignment agreed mid-voyage, ownership passing at resolution"];
+    // … and the buyer's fill, at checkout, of the forum clause the designer
+    // composed with no values — once for the whole process.
+    const FORUM = { applicableLaw: "England-Wales", forum: "LCIA-arbitration" };
     const designed = hydrateAuthored({
-        assemblyClauses: { [keyOf("figaro-applicable-law")]: { applicableLaw: "England-Wales" } },
+        assemblyClauses: {
+            [keyOf("figaro-property-transfer")]: { anticipatedEvents: EVENTS },
+            [keyOf("figaro-applicable-law")]: {},
+        },
         agreements: [{
             id: "order-0",
             clauses: {
@@ -354,7 +362,7 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
     const params = (extra: Record<string, Record<string, unknown>>) => ({
         assembly: designed, seller: SELLER.address, currency: CURRENCY, payment: 1000n,
         chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, specs: DESIGN_SPECS,
-        overrides: { ...overrides, ...extra },
+        overrides: { ...overrides, [keyOf("figaro-applicable-law")]: FORUM, ...extra },
     });
 
     it("signs an offer that keeps every designer value", async () => {
@@ -368,8 +376,8 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
     });
 
     it("refuses an override that replaces an assembly-scoped designer value", async () => {
-        await expect(buildBuyerOffer(buyerW, params({ [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" } })))
-            .rejects.toThrow(/figaro-applicable-law applicableLaw: .*designer/);
+        await expect(buildBuyerOffer(buyerW, params({ [keyOf("figaro-property-transfer")]: { anticipatedEvents: ["Another event"] } })))
+            .rejects.toThrow(/figaro-property-transfer anticipatedEvents: .*designer/);
     });
 
     it("the seller refuses an offer whose designer value a buyer changed, and one whose design it cannot read", async () => {
@@ -398,11 +406,15 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
             .rejects.toThrow(named);
     });
 
-    it("lets a party fill a design field the designer left unset", async () => {
-        const offer = await buildBuyerOffer(buyerW, params({
-            [keyOf("figaro-applicable-law")]: { applicableLaw: "England-Wales", forum: "London" },
-        }));
-        expect(offer.buyerSig).toBeDefined();
+    it("the buyer fills the forum clause the designer composed with no values, and the offer carries the buyer's choice", async () => {
+        const offer = await buildBuyerOffer(buyerW, params({}));
+        expect(offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-applicable-law"))?.data).toEqual(FORUM);
+        const other = { applicableLaw: "US-NY", forum: "JAMS-arbitration" };
+        const chosen = await buildBuyerOffer(buyerW, params({ [keyOf("figaro-applicable-law")]: other }));
+        expect(chosen.agreement.clauses.find((s) => s.clause === keyOf("figaro-applicable-law"))?.data).toEqual(other);
+        // A forum clause left empty is not an offer: the field is required once composed.
+        await expect(buildBuyerOffer(buyerW, params({ [keyOf("figaro-applicable-law")]: {} })))
+            .rejects.toThrow(/figaro-applicable-law \$\.forum/);
     });
 });
 

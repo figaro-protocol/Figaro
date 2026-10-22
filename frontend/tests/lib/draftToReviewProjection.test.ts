@@ -97,8 +97,10 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
                 [drawn.orders[1].orderHash]: { [keyOf("figaro-acceptance-criteria")]: {} },
             },
             assemblyClauses: {
-                [keyOf("figaro-arbitration-kleros")]: { klerosCourt: "general", klerosMinJurors: 3 },
-                [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" },
+                // The forum clauses carry no design fill: the designer composes
+                // them with no values and the buyer fills them at checkout.
+                [keyOf("figaro-arbitration-kleros")]: {},
+                [keyOf("figaro-applicable-law")]: {},
                 [keyOf("figaro-utility-token")]: { currency: "MOCK" },
             },
         });
@@ -177,7 +179,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
             expect(review.assemblyClauses).toHaveProperty(clauseKey);
         }
         expect(review.assemblyClauses[keyOf("figaro-utility-token")]).toEqual({ currency: "MOCK" });
-        expect(review.assemblyClauses[keyOf("figaro-applicable-law")]).toEqual({ applicableLaw: "US-NY" });
+        expect(review.assemblyClauses[keyOf("figaro-applicable-law")]).toEqual({});
     });
 
     it("moves the hash when a composed value moves — the gate is value-sensitive", () => {
@@ -287,10 +289,34 @@ describe("unfilledAssemblyTerms", () => {
 // required fill with a default is filled from the first moment; one without
 // a default stays for the designer.
 describe("assemblyClauseDefaults", () => {
-    it("seeds a required design fill from its declared default", () => {
-        const seeded = assemblyClauseDefaults(keyOf("figaro-arbitration-kleros"));
+    it("seeds a required design fill from its declared default", async () => {
+        // No protocol clause declares a default on an assembly-scoped design
+        // fill (the forum clauses are the buyer's), so the exemplar is a
+        // registered spec of its own: the kleros spec with the subcourt as a
+        // defaulted design fill, under another id.
+        const CLAUSES_DIR = path.resolve(process.cwd(), "../clauses");
+        const kleros = JSON.parse(readFileSync(path.join(CLAUSES_DIR, "figaro-arbitration-kleros.json"), "utf8")) as {
+            fields: Record<string, unknown>[]; block: { design: Record<string, unknown> };
+        };
+        const defaulted = {
+            ...kleros,
+            clauseId: "figaro-arbitration-defaulted",
+            title: "A forum the designer pins, with a default",
+            fields: kleros.fields.map((f) => (f.name === "klerosCourt" ? { ...f, default: "general" } : f)),
+            block: { ...kleros.block, design: { ...kleros.block.design, fills: ["klerosCourt"] } },
+        };
+        const { clauseKey, bytes } = pinSpec(defaulted);
+        const uri = "mem://arbitration-defaulted";
+        setClauseSpecFetcher(async (u) => (u === uri ? bytes : canonicalFileBytes(u)));
+        await loadClauseSpec(clauseKey, uri);
+        const seeded = assemblyClauseDefaults(clauseKey);
         expect(seeded.klerosCourt).toBe("general");
-        expect(unfilledAssemblyTerms({ [keyOf("figaro-arbitration-kleros")]: seeded })).toEqual([]);
+        expect(unfilledAssemblyTerms({ [clauseKey]: seeded })).toEqual([]);
+    });
+
+    it("seeds nothing for a buyer-filled clause — the forum clauses have no design fill", () => {
+        expect(assemblyClauseDefaults(keyOf("figaro-arbitration-kleros"))).toEqual({});
+        expect(assemblyClauseDefaults(keyOf("figaro-applicable-law"))).toEqual({});
     });
 
     it("leaves a fill with no default empty, and an unknown clause seeds nothing", () => {
@@ -300,12 +326,13 @@ describe("assemblyClauseDefaults", () => {
 });
 
 // A spec marks itself mandatory in its own `block`, written by whoever
-// registered it, and any registration is anyone's. Nothing folds: a mandatory
-// clause enters an agreement only through the registered agreement the
-// designer picks for it in the mandatory article, and the review lists every
-// mandatory clause the bytes carry, by key, for the designer to confirm.
+// registered it, and any registration is anyone's. The canvas writes the DAO
+// wallet's live mandatory clauses into every agreement, nothing picked; a
+// stranger's mandatory registration enters an agreement only when a bound
+// registered agreement carries it. The review lists every mandatory clause the
+// bytes carry, by key, for the designer to confirm.
 // Runs LAST in this file: it adds strangers' specs to the module cache.
-describe("the mandatory pick — its clauses merged, each listed on the review", () => {
+describe("the mandatory clauses — written into every agreement, each listed on the review", () => {
     let drawn: ReturnType<typeof drawCanvas>;
     const CLAUSES_DIR = path.resolve(process.cwd(), "../clauses");
     const commerce = JSON.parse(readFileSync(path.join(CLAUSES_DIR, "figaro-commerce.json"), "utf8")) as Record<string, unknown>;

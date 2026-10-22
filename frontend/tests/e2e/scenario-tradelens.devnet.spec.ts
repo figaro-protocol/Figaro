@@ -125,15 +125,12 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
                 nodeIds.push(after.find((id) => !before.has(id))!);
             }
 
-            // ASSEMBLY TERMS (design.scope: "assembly"):
-            // the dispute clauses compose ONCE in the AssemblyTermsPanel and
-            // the DESIGNER authors their values — terms of the composition's
-            // identity, folded into every agreement at checkout; never
-            // buyer-authored.
+            // ASSEMBLY TERMS (design.scope: "assembly"): the dispute clauses
+            // compose ONCE in the AssemblyTermsPanel with no values — the BUYER
+            // chooses the law, the forum and the subcourt at checkout, once for
+            // every agreement of the process (fillTradelensCheckout).
             await page.getByTestId(`assembly-terms-clause-${C.law}`).check();
-            await page.getByTestId(`assembly-terms-field-${C.law}-applicableLaw`).fill('England-Wales');
             await page.getByTestId(`assembly-terms-clause-${C.kleros}`).check();
-            await page.getByTestId(`assembly-terms-field-${C.kleros}-klerosCourt-general`).check();
 
             // Compose each node's clauses through the drawer's registry tab.
             for (let i = 0; i < nodePlan().length; i++) {

@@ -24,6 +24,7 @@ import {
     buyerAuthoredFields,
     deriveAgreementGroups,
     isFilledValue,
+    mergeAssemblyTermFills,
     unfilledRequiredFills,
 } from "@/lib/checkout/checkoutDerivations";
 import { isSiblingFormatSource } from "@/components/runtime/fieldFormatInputs";
@@ -85,6 +86,9 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
     it("demands every required buyer term the validator will check", () => {
         expect(demanded("tradelens.json")).toEqual([
             "figaro-acceptance-criteria.acceptanceBasis",
+            "figaro-applicable-law.applicableLaw",
+            "figaro-applicable-law.forum",
+            "figaro-arbitration-kleros.klerosCourt",
             "figaro-chain-of-custody.custodyScheme",
             "figaro-emissions.standard",
             "figaro-geolocation.destination",
@@ -121,8 +125,13 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
         expect(all).not.toContain("figaro-chain-of-custody.unitIdentifier");
         // Designer-filled (`block.design.fills`), valued on the assembly.
         expect(all).not.toContain("figaro-consent.documents");
-        expect(all).not.toContain("figaro-applicable-law.applicableLaw");
+        expect(all).not.toContain("figaro-property-transfer.anticipatedEvents");
         expect(all).not.toContain("figaro-geolocation.geocoder");
+        // The forum clauses are the buyer's at assembly scope, once for the
+        // process: their required fields ARE demanded (the list above); the
+        // optional language and the defaulted juror count are not.
+        expect(all).not.toContain("figaro-applicable-law.language");
+        expect(all).not.toContain("figaro-arbitration-kleros.klerosMinJurors");
         // Seller-sourced: the carrier's catalog fills the cold chain.
         expect(all).not.toContain("figaro-cold-chain.tempClass");
         expect(all).not.toContain("figaro-freight-class.nmfcClass");
@@ -208,5 +217,17 @@ describe("unfilledRequiredFills — a value already composed on the assembly cou
         });
         const acceptance = unfilledRequiredFills(groups, {}).filter((m) => m.fieldName === "acceptanceBasis");
         expect(acceptance.map((m) => m.groupKey)).toEqual(["order-1"]);
+    });
+});
+
+describe("mergeAssemblyTermFills — the designer's values are the floor of an assembly-scoped clause", () => {
+    it("writes the buyer's entries only into the buyer's fields; a designer's value is never overwritten", () => {
+        const designer = { currency: "0x0000000000000000000000000000000000000001" };
+        const buyer = { currency: "0x0000000000000000000000000000000000000002", forum: "LCIA-arbitration" };
+        expect(mergeAssemblyTermFills(designer, buyer)).toEqual({ currency: designer.currency, forum: "LCIA-arbitration" });
+        // A clause with no design fills (the buyer-filled forum clauses) carries the buyer's entries whole.
+        expect(mergeAssemblyTermFills({}, { applicableLaw: "England-Wales", forum: "LCIA-arbitration" }))
+            .toEqual({ applicableLaw: "England-Wales", forum: "LCIA-arbitration" });
+        expect(mergeAssemblyTermFills(undefined, undefined)).toEqual({});
     });
 });

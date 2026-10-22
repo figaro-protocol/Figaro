@@ -2,7 +2,7 @@
     "clauseId": "figaro-applicable-law",
     "version": 1,
     "title": "Applicable law and forum",
-    "description": "State / ADR / traditional-jurisdiction recourse layer. Identifies the body of law governing the agreement and, optionally, the named adjudication venue and proceedings language. Provider-agnostic by construction: every field is a free-form string whose pattern enforces SHAPE only \u2014 the named external standard (ISO 3166 for jurisdiction, ISO 639 / BCP 47 for language) remains the source of truth, and the clause never holds a closed list of jurisdictions, forums, or languages. Compose with `figaro-arbitration-kleros` (or another `figaro-arbitration-<provider>`) to add a decentralized ODR layer. WRITTEN BY THE DESIGNER AT DESIGN TIME: every field is a design fill (block.design.fills) \u2014 the recourse terms are part of the assembly's identity (assemblyHash); a seller accepts them by binding the assembly; never written by the buyer.",
+    "description": "State / ADR / traditional-jurisdiction recourse layer. Identifies the body of law governing the agreement, the named adjudication forum and, optionally, the proceedings language. Provider-agnostic by construction: every field is a free-form string whose pattern enforces SHAPE only — the named external standard (ISO 3166 for jurisdiction, ISO 639 / BCP 47 for language) remains the source of truth, and the clause never holds a closed list of jurisdictions, forums, or languages. Compose with `figaro-arbitration-kleros` (or another `figaro-arbitration-<provider>`) to add a decentralized ODR layer. CHOSEN BY THE BUYER AT CHECKOUT, once for every agreement of the process: the designer composes the clause at assembly scope with no values (no field is a design fill); the buyer fills it at checkout and checkout writes the one value into every order's agreement, so the law and the forum stand in every order's checkoutHash; each seller accepts them by counter-signing its order. Dispute resolution is optional to compose; once composed, the law and the forum are required — the buyer chose and executes, and a seller receiving an empty term does not sign.",
     "fields": [
         {
             "name": "applicableLaw",
@@ -12,17 +12,17 @@
             "maxLength": 16,
             "pattern": "^[A-Za-z][A-Za-z0-9-]{1,15}$",
             "label": "Applicable law",
-            "description": "Identifier for the body of law that governs the contract. Conventionally an ISO 3166-1 alpha-2 country code (e.g. 'US', 'NL', 'JP'), optionally with an ISO 3166-2 subdivision (e.g. 'US-CA', 'CA-ON'); 'EU' for European Union law; 'INTL' for international / treaty law. Free-form for non-state legal orders (e.g. 'Sharia', 'ICANN-UDRP'). The pattern admits a hyphen-joined alphanumeric token that starts with a letter \u2014 it enforces shape only, never a fixed list of jurisdictions; the cited standard is the source of truth."
+            "description": "Identifier for the body of law that governs the contract. Conventionally an ISO 3166-1 alpha-2 country code (e.g. 'US', 'NL', 'JP'), optionally with an ISO 3166-2 subdivision (e.g. 'US-CA', 'CA-ON'); 'EU' for European Union law; 'INTL' for international / treaty law. Free-form for non-state legal orders (e.g. 'Sharia', 'ICANN-UDRP'). The pattern admits a hyphen-joined alphanumeric token that starts with a letter — it enforces shape only, never a fixed list of jurisdictions; the cited standard is the source of truth."
         },
         {
             "name": "forum",
             "type": "string",
-            "required": false,
+            "required": true,
             "minLength": 1,
             "maxLength": 64,
             "pattern": "^[A-Za-z0-9][A-Za-z0-9 ./-]{0,63}$",
             "label": "Adjudication forum",
-            "description": "Named adjudication venue (e.g. 'JAMS-arbitration', 'AAA-arbitration', 'ICC-arbitration', 'us-federal-court', 'small-claims-court', or a spelled-out court such as 'Courts of England and Wales'). OMIT the field to mean: courts of competent jurisdiction within applicableLaw \u2014 absence, not a stored blank."
+            "description": "Named adjudication forum (e.g. 'JAMS-arbitration', 'AAA-arbitration', 'ICC-arbitration', 'us-federal-court', 'small-claims-court', or a spelled-out court such as 'Courts of England and Wales'), chosen by the buyer at checkout. Required once the clause is composed: a process with this clause names its forum."
         },
         {
             "name": "language",
@@ -41,11 +41,7 @@
             "article": "dispute-resolution",
             "scope": "assembly",
             "nestsUnder": null,
-            "fills": [
-                "applicableLaw",
-                "forum",
-                "language"
-            ],
+            "fills": [],
             "composes": null
         },
         "checkout": {

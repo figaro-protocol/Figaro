@@ -148,16 +148,12 @@ const checkoutFill = (name: string, field: string, value: string) =>
 const checkoutPick = (name: string, field: string, option: string) =>
     async (page: Page) =>
         page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf(name)}-${field}-${option}"]`).first().check();
-/** Assembly-terms panel scalar input (`assembly-terms-field-<clauseKey>-<field>`
- *  — the designer fill for an ASSEMBLY-SCOPED clause, composed once for the
- *  whole design instead of per order). */
-const assemblyTermsFill = (name: string, field: string, value: string) =>
+/** Assembly-terms panel checkbox (`assembly-terms-clause-<clauseKey>`): compose an
+ *  ASSEMBLY-SCOPED clause with no design fills — its values are the buyer's at
+ *  checkout, once for every agreement of the process. */
+const assemblyTermsCompose = (name: string) =>
     async (page: Page) =>
-        page.getByTestId(`assembly-terms-field-${keyOf(name)}-${field}`).fill(value);
-/** Assembly-terms panel enum radio (`assembly-terms-field-<clauseKey>-<field>-<option>`). */
-const assemblyTermsPick = (name: string, field: string, option: string) =>
-    async (page: Page) =>
-        page.getByTestId(`assembly-terms-field-${keyOf(name)}-${field}-${option}`).check();
+        page.getByTestId(`assembly-terms-clause-${keyOf(name)}`).check();
 /** Wizard catalog clause-values input (suffix-matched — the item uid is dynamic). */
 const catalogFill = (name: string, field: string, value: string) =>
     async (page: Page) =>
@@ -226,23 +222,32 @@ const RUNGS: ClauseRung[] = [
         },
     },
     {
-        // ASSEMBLY-SCOPED (design.scope: "assembly"): the
-        // recourse terms are part of the assembly's identity, composed ONCE
-        // on the AssemblyTermsPanel — never per order, never buyer-authored
-        // at checkout. The spec constrains applicableLaw to a shaped
-        // jurisdiction token (pattern ^[A-Za-z][A-Za-z0-9-]{1,15}$; prose
-        // fails off-chain validation); convention per the field description is
-        // ISO 3166-2 — 'US-NY'.
+        // ASSEMBLY-SCOPED (design.scope: "assembly"), BUYER-FILLED: the designer
+        // composes the clause once on the AssemblyTermsPanel with no values;
+        // the buyer chooses the law and the forum at checkout, once for every
+        // agreement of the process, and both are required once the clause is
+        // composed. The spec constrains applicableLaw to a shaped jurisdiction
+        // token (pattern ^[A-Za-z][A-Za-z0-9-]{1,15}$; prose fails off-chain
+        // validation); convention per the field description is ISO 3166-2 — 'US-NY'.
         clauseId: 'figaro-applicable-law',
-        design: assemblyTermsFill('figaro-applicable-law', 'applicableLaw', 'US-NY'),
-        auditTexts: ['Applicable law and forum', 'US-NY'],
-        leaf: (data) => expect(data.applicableLaw).toBe('US-NY'),
+        design: assemblyTermsCompose('figaro-applicable-law'),
+        checkout: all(
+            checkoutFill('figaro-applicable-law', 'applicableLaw', 'US-NY'),
+            checkoutFill('figaro-applicable-law', 'forum', 'JAMS-arbitration'),
+        ),
+        auditTexts: ['Applicable law and forum', 'US-NY', 'JAMS-arbitration'],
+        leaf: (data) => {
+            expect(data.applicableLaw).toBe('US-NY');
+            expect(data.forum).toBe('JAMS-arbitration');
+        },
     },
     {
-        // ASSEMBLY-SCOPED (design.scope: "assembly"): same
-        // designer-authored recourse family as figaro-applicable-law.
+        // ASSEMBLY-SCOPED (design.scope: "assembly"), BUYER-FILLED: the same
+        // recourse family as figaro-applicable-law; the subcourt is the buyer's
+        // choice at checkout and carries no default.
         clauseId: 'figaro-arbitration-kleros',
-        design: assemblyTermsPick('figaro-arbitration-kleros', 'klerosCourt', 'blockchain-technical'),
+        design: assemblyTermsCompose('figaro-arbitration-kleros'),
+        checkout: checkoutPick('figaro-arbitration-kleros', 'klerosCourt', 'blockchain-technical'),
         auditTexts: ['Kleros decentralized arbitration', 'Blockchain — Technical'],
         leaf: (data) => {
             expect(data.klerosCourt).toBe('blockchain-technical');

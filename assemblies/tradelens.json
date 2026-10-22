@@ -6,12 +6,8 @@
                 "Re-routing of the consignment"
             ]
         },
-        "figaro-applicable-law": {
-            "applicableLaw": "England-Wales"
-        },
-        "figaro-arbitration-kleros": {
-            "klerosCourt": "general"
-        }
+        "figaro-applicable-law": {},
+        "figaro-arbitration-kleros": {}
     },
     "agreements": [
         {

@@ -481,12 +481,10 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ applicableLaw: "US-CA", forum: "JAMS-arbitration", language: "en" }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-applicable-law accepts non-state legal order (forum omitted, not blank)", () => {
+    it("figaro-applicable-law accepts a non-state legal order with its forum", () => {
         const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        // forum is OMITTED — absence expresses "courts of competent jurisdiction",
-        // never a stored empty string (which the hardened minLength now rejects).
-        expect(validateContent({ applicableLaw: "Sharia", language: "ar" }, parsed.spec).ok).toBe(true);
+        expect(validateContent({ applicableLaw: "Sharia", forum: "Sharia-council", language: "ar" }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-applicable-law hardening rejects malformed shapes", () => {
@@ -495,16 +493,17 @@ describe("example clause specs — parse + validate sample content", () => {
         // applicableLaw: must be a hyphen-joined alnum token starting with a letter.
         expect(validateContent({ applicableLaw: "US CA" }, parsed.spec).ok).toBe(false);
         expect(validateContent({ applicableLaw: "-US" }, parsed.spec).ok).toBe(false);
-        // forum: empty string is not a valid value (omit instead).
+        // forum: empty string is not a valid value.
         expect(validateContent({ applicableLaw: "US", forum: "" }, parsed.spec).ok).toBe(false);
         // language: ISO 639 / BCP 47 shape — a full word is not a code.
         expect(validateContent({ applicableLaw: "US", language: "english" }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-applicable-law accepts minimal applicableLaw only", () => {
+    it("figaro-applicable-law requires the forum once the clause is composed; the language stays optional", () => {
         const parsed = parseClauseSpec(applicableLawSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ applicableLaw: "EU" }, parsed.spec).ok).toBe(true);
+        expect(validateContent({ applicableLaw: "EU" }, parsed.spec).ok).toBe(false);
+        expect(validateContent({ applicableLaw: "EU", forum: "ICC-arbitration" }, parsed.spec).ok).toBe(true);
     });
 
     it("figaro-applicable-law rejects missing applicableLaw", () => {

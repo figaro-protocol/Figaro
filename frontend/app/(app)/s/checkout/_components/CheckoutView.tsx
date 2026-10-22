@@ -36,6 +36,7 @@ import {
     deriveKitBreakdown,
     isFilledValue,
     unfilledRequiredFills,
+    mergeAssemblyTermFills,
 } from "@/lib/checkout/checkoutDerivations";
 import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
@@ -303,14 +304,16 @@ export function CheckoutView({ sellerAddress }: Props) {
     // read-only here (edited on the browse page).
     const cartItems = items.filter((it) => it.sellerId === sellerAddressLower);
     // Assembly-level fills (the "assembly" review group) apply to EVERY
-    // node: expand them under each assembly order id, designer values under
-    // buyer values, so the walk and the price preview see one merged map.
+    // node: expand them under each assembly order id, the designer's values
+    // the floor and the buyer's entries filling only the buyer's fields
+    // (`mergeAssemblyTermFills`), so the walk and the price preview see one
+    // merged map.
     const assemblyClauseFills = pickedAssembly?.hydratedAssembly.assembly.assemblyClauses ?? {};
     const assemblyFills = clauseFills["assembly"] ?? {};
     const mergedAssemblyEntries = Object.fromEntries(
         (Object.keys(assemblyClauseFills) as `0x${string}`[]).map((clauseKey) => [
             clauseKey,
-            { ...assemblyClauseFills[clauseKey], ...(assemblyFills[clauseKey] ?? {}) },
+            mergeAssemblyTermFills(assemblyClauseFills[clauseKey], assemblyFills[clauseKey]),
         ]),
     );
     const expandedClauseFills: typeof clauseFills = Object.fromEntries(
