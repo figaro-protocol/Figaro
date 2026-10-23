@@ -81,6 +81,11 @@ function forgedValue(clauseKey: Hex, data: Record<string, unknown>, field: strin
     if (declared?.values) candidates.push(...declared.values.filter((v) => v !== value));
     if (typeof value === 'string') candidates.push(`${value}x`, value.slice(0, -1));
     if (typeof value === 'number') candidates.push(value + 1);
+    // A string array (the property-transfer clause's anticipated events): one more
+    // item, or the first item changed.
+    if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
+        candidates.push([...value, 'forged'], value.map((v, i) => (i === 0 ? `${v}x` : v)));
+    }
     return candidates.find((c) => spec && validateContent({ ...data, [field]: c }, spec).ok);
 }
 

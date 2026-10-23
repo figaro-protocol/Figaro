@@ -54,6 +54,8 @@ export interface RegisteredClauseEvent {
     contentURI: string;
     registeredBy: `0x${string}`;
     blockNumber: bigint;
+    /** The event's index in its block, for the order of registrations within one block. */
+    logIndex?: number;
     transactionHash: `0x${string}`;
     /** True when the registeredBy reclaimed the registration stake (K4:
      *  surfacing derives from the live stake — withdraw = de-surface for
@@ -75,6 +77,7 @@ function toRegisteredClauseEvents(registeredLogs: Log[], withdrawnLogs: Log[]): 
         contentURI: row.contentURI,
         registeredBy: row.registeredBy,
         blockNumber: BigInt(row.blockNumber),
+        logIndex: row.logIndex,
         transactionHash: row.transactionHash ?? "0x",
         stakeWithdrawn: withdrawnKeys.has(row.clauseKey.toLowerCase()),
     }));

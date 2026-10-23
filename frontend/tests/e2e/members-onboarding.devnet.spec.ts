@@ -40,8 +40,9 @@ import { clampPublicGeohash } from "../../lib/shared/geohash";
 import { expect, type Page } from "@playwright/test";
 import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, type Hex } from "viem";
-import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverMembers, discoverSeedAssemblies, isBindingOf, readLocalDeploymentConfig, type DiscoveredAssembly } from "./devnet-helpers";
-import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverMembers, discoverSeedAssemblies, isBindingOf, primeRegisteredClauseSpecs, readLocalDeploymentConfig, type DiscoveredAssembly } from "./devnet-helpers";
+import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI, readUtilityTokenPin } from '@figaro-protocol/sdk';
+import { specSource } from '@/lib/shared/clauseSpecSource';
 // The one place the seller-page route is written — the spec follows the same
 // route the site links, never a second copy of the string.
 import { sellerPageHref } from '@/lib/member/memberListing';
@@ -145,6 +146,19 @@ async function onboardViaWizard(
     // consumes), and the cleared state also makes the refusal assertable.
     const rows = page.locator('[data-testid^="seller-assembly-row-"]');
     await rows.first().waitFor({ state: 'visible', timeout: 30_000 });
+    // The binding surface tells a seller what a designer's token pin means
+    // before it binds: every payment and bond under the assembly moves in
+    // that token. Discovered from chain — the anchored assembly whose
+    // assembly-scoped terms pin a token, read by its declared field — and
+    // read off its row, with the pinned address verbatim.
+    await primeRegisteredClauseSpecs();
+    const pinOf = (a: DiscoveredAssembly) => readUtilityTokenPin(a.hydrated.assembly.assemblyClauses ?? {}, specSource());
+    const pinned = (await discoverAnchoredAssemblies()).find((a) => pinOf(a) !== undefined);
+    expect(pinned, 'an anchored assembly whose designer pinned its token').toBeDefined();
+    await expect(page.getByTestId(`seller-assembly-pinned-token-${pinned!.slug}`)).toContainText(pinOf(pinned!)!);
+    // An assembly with no pin carries no such note.
+    const open = (await discoverAnchoredAssemblies()).find((a) => pinOf(a) === undefined);
+    if (open) await expect(page.getByTestId(`seller-assembly-pinned-token-${open.slug}`)).toHaveCount(0);
     const checkedBoxes = page.locator('[data-testid^="seller-assembly-row-"] input[type="checkbox"]:checked');
     while (await checkedBoxes.count() > 0) {
         await checkedBoxes.first().uncheck();

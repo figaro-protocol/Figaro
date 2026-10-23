@@ -85,9 +85,11 @@ export function setClauseSpecFetcher(fetcher: ClauseSpecFetcher): void {
 }
 
 /** What the registry said of a clause when its spec was loaded: who
- *  registered the key, in which block, and whether the stake is withdrawn.
- *  The mandatory clauses are read from these facts (`mandatoryClausesForCanvas`). */
-export type ClauseRegistration = Pick<ClauseRegistrationRow, "registeredBy" | "blockNumber" | "stakeWithdrawn">;
+ *  registered the key, in which block and at which log index, and whether the
+ *  stake is withdrawn. The mandatory clauses are read from these facts
+ *  (`mandatoryClausesForCanvas`). Written only by a reader of the registry's
+ *  events; a withdrawal is terminal, so a row never goes back to live. */
+export type ClauseRegistration = Pick<ClauseRegistrationRow, "registeredBy" | "blockNumber" | "logIndex" | "stakeWithdrawn">;
 const REGISTRATIONS = new Map<string, ClauseRegistration>();
 
 /** Register a loaded spec into the cache + the derived maps, under its key:
@@ -110,7 +112,12 @@ function cacheSpec(spec: Anchored<ClauseSpecWithBlock>): void {
  * re-canonicalizes nothing — a drifted or tampered pin never enters the cache.
  */
 export async function loadClauseSpec(clauseKey: Hex, uri: string, registration?: ClauseRegistration): Promise<Anchored<ClauseSpecWithBlock>> {
-    if (registration) REGISTRATIONS.set(norm(clauseKey), registration);
+    if (registration) {
+        const prev = REGISTRATIONS.get(norm(clauseKey));
+        // Live → withdrawn is the only change a registration makes on chain,
+        // so a row stating a live stake never replaces one stating a withdrawal.
+        if (!prev || registration.stakeWithdrawn || !prev.stakeWithdrawn) REGISTRATIONS.set(norm(clauseKey), registration);
+    }
     const cached = SPEC_CACHE.get(norm(clauseKey));
     if (cached !== undefined) return cached;
     const fetched = await activeFetcher(uri);
@@ -182,10 +189,37 @@ export function mandatoryClauseRegistrant(): Hex | null {
  *  commerce and topology; nobody picks them. */
 export function mandatoryClausesForCanvas(): Record<Hex, Record<string, unknown>> {
     const registrant = mandatoryClauseRegistrant();
-    if (!registrant) return {};
+    if (!registrant || mandatoryClausesPending()) return {};
     const rows: ClauseRegistrationRow[] = [];
     for (const [key, registration] of REGISTRATIONS) rows.push({ clauseKey: key as Hex, ...registration });
     return mandatoryClauses(rows, specSource(), registrant);
+}
+
+/** True while a LIVE registration by the DAO's wallet has a spec not yet read
+ *  and not refused (no integrity or parse failure stands against it): the
+ *  mandatory set is not known yet, so the canvas writes nothing and publishes
+ *  nothing, instead of falling back to an earlier registration of a shape
+ *  whose later one is still in flight. The registry reader retries such a
+ *  spec until it is read or refused. */
+export function mandatoryClausesPending(): boolean {
+    const registrant = mandatoryClauseRegistrant();
+    if (!registrant) return false;
+    for (const [key, registration] of REGISTRATIONS) {
+        if (registration.stakeWithdrawn) continue;
+        if (registration.registeredBy.toLowerCase() !== registrant.toLowerCase()) continue;
+        if (SPEC_CACHE.has(key) || SPEC_LOAD_ERRORS.has(key)) continue;
+        return true;
+    }
+    return false;
+}
+
+/** True if `clauseKey` is one of THE mandatory clauses the canvas writes
+ *  (`mandatoryClausesForCanvas`). The designer's surfaces leave exactly these
+ *  out of what can be chosen; a mandatory-article registration by any other
+ *  wallet is an ordinary clause, offered like any other. */
+export function clauseIsCanvasMandatory(clauseKey: string): boolean {
+    const key = norm(clauseKey);
+    return Object.keys(mandatoryClausesForCanvas()).some((k) => norm(k) === key);
 }
 
 /** THE live-stake rule (K4): a registration surfaces for NEW compositions
@@ -266,12 +300,12 @@ export function clauseNestsUnder(clauseKey: string): string | null {
 
 /** True if a clause is MANDATORY (`block.design.article: "mandatory"`,
  *  commerce + topology among them). The SDK's `specIsMandatory` is the one
- *  predicate, applied to the clause at `clauseKey`. A designer never selects
- *  one on its own: generic surfaces leave mandatory clauses out of
- *  selectable lists, and the drawer's mandatory article lists registered
- *  agreements whose clauses all are (`isMandatoryAgreement`), one picked per
- *  order. ANY registered clause declaring the article participates —
- *  including one this codebase has never seen. */
+ *  predicate, applied to the clause at `clauseKey`. This is the ARTICLE, not
+ *  the canvas's set: the review and the checkout read it to tell a carried
+ *  mandatory-article clause apart from a composed one, by key, whoever
+ *  registered it. What the designer may not choose is `clauseIsCanvasMandatory`.
+ *  ANY registered clause declaring the article participates — including one
+ *  this codebase has never seen. */
 export function clauseIsMandatory(clauseKey: string): boolean {
     const spec = SPEC_SOURCE.get(clauseKey as Hex);
     return spec !== undefined && specIsMandatory(spec);

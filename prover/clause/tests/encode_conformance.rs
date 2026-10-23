@@ -186,7 +186,7 @@ fn hazmat_absent_optional_enum_encodes_zero() {
 }
 
 #[test]
-fn applicable_law_absent_optional_strings() {
+fn applicable_law_absent_optional_string() {
     assert_encode(
         "figaro-applicable-law",
         json!({ "applicableLaw": "CH", "forum": "Swiss-Chambers-arbitration" }),

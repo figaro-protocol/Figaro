@@ -34,7 +34,8 @@ vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ versi
 
 import { AgreementDrawer } from "@/app/(tools)/assemblies/designer/_components/AgreementDrawer";
 import { createSyntheticRootOrder, startSyntheticSession } from "@/lib/designer/syntheticProcess";
-import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
+import { loadClauseSpec, mandatoryClausesForCanvas, mandatoryClausesPending, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
+import path from "node:path";
 import { TEST_DAO_TREASURY, canonicalFileBytes, keyOf, primeClauseSpecs } from "../lib/primeClauseSpecs";
 
 const STRANGER = "0x1111111111111111111111111111111111111111" as const;
@@ -101,5 +102,49 @@ describe("AgreementDrawer — the mandatory article shows the DAO's clauses, wit
         expect(screen.queryByTestId(`drawer-registry-clause-${commerce}`)).toBeNull();
         expect(screen.queryByTestId(`drawer-registry-clause-${topology}`)).toBeNull();
         expect(screen.getByTestId(`drawer-registry-clause-${schedule}`)).toBeTruthy();
+    });
+
+    it("offers another wallet's mandatory-article registration as an ordinary clause", () => {
+        // A stranger's commerce look-alike declares the mandatory article, but
+        // the article is not the canvas's set: it is a clause like any other,
+        // chosen or not, and the build refuses a second commerce shape.
+        renderDrawer();
+        expect(screen.getByTestId(`drawer-registry-clause-${strangersCommerce}`)).toBeTruthy();
+    });
+
+    it("a withdrawn DAO registration is never revived by a later load stating no registration fact", async () => {
+        // The registry reader states a withdrawal; a spec warm (the agreement
+        // fetch path) then loads the same key with no registration. The row
+        // stays withdrawn, so the canvas writes the DAO's other commerce.
+        const { readFileSync } = await import("node:fs");
+        const path = await import("node:path");
+        const raw = JSON.parse(readFileSync(path.resolve(process.cwd(), "../clauses/figaro-commerce.json"), "utf8")) as Record<string, unknown>;
+        const withdrawn = { ...raw, title: "Commerce (the DAO's withdrawn registration)" };
+        const bytes = canonicalize(withdrawn);
+        const key = computeClauseKey(withdrawn);
+        setClauseSpecFetcher(async (uri) => (uri === "mem://dao-withdrawn" ? bytes : canonicalFileBytes(uri)));
+        await loadClauseSpec(key, "mem://dao-withdrawn", { registeredBy: TEST_DAO_TREASURY, blockNumber: 500n, stakeWithdrawn: true });
+        await loadClauseSpec(key, "mem://dao-withdrawn");
+        await loadClauseSpec(key, "mem://dao-withdrawn", { registeredBy: TEST_DAO_TREASURY, blockNumber: 500n, stakeWithdrawn: false });
+        expect(Object.keys(mandatoryClausesForCanvas())).toContain(commerce);
+        expect(Object.keys(mandatoryClausesForCanvas())).not.toContain(key);
+    });
+
+    it("says a DAO registration is still being read, and writes nothing, while a live DAO spec is unread", async () => {
+        const unread = `0x${"77".repeat(32)}` as const;
+        setClauseSpecFetcher(async (uri) => {
+            if (uri === "mem://dao-unread") throw new Error("gateway unreachable");
+            return canonicalFileBytes(uri);
+        });
+        await expect(loadClauseSpec(unread, "mem://dao-unread", { registeredBy: TEST_DAO_TREASURY, blockNumber: 900n, stakeWithdrawn: false })).rejects.toThrow();
+        expect(mandatoryClausesPending()).toBe(true);
+        expect(mandatoryClausesForCanvas()).toEqual({});
+        renderDrawer();
+        expect(screen.getByTestId("drawer-mandatory-empty").textContent).toMatch(/still being read/);
+        // Read at last: the set is known again.
+        setClauseSpecFetcher(async (uri) => (uri === "mem://dao-unread" ? canonicalFileBytes(path.resolve(process.cwd(), "../clauses/figaro-schedule.json")) : canonicalFileBytes(uri)));
+        await expect(loadClauseSpec(unread, "mem://dao-unread")).rejects.toThrow(/integrity/);
+        expect(mandatoryClausesPending()).toBe(false);
+        expect(Object.keys(mandatoryClausesForCanvas())).toContain(commerce);
     });
 });

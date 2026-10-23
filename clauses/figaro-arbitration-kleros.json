@@ -2,7 +2,7 @@
     "clauseId": "figaro-arbitration-kleros",
     "version": 1,
     "title": "Kleros decentralized arbitration",
-    "description": "Off-chain dispute resolution via Kleros, the decentralized juror court. Selects a Kleros subcourt and a minimum juror count for any dispute escalated from this order. This clause covers one specific arbitration provider; sister `figaro-arbitration-<provider>` clauses would cover other decentralized ODR providers as they integrate with Figaro. Compose with `figaro-applicable-law` to add a state-law / ADR recourse layer. CHOSEN BY THE BUYER AT CHECKOUT, once for every agreement of the process: the designer composes the clause at assembly scope with no values (no field is a design fill); the buyer chooses the subcourt at checkout and checkout writes the one value into every order's agreement; each seller accepts it by counter-signing its order. Once composed, the subcourt is required and carries no default — the buyer chose and executes, and a seller receiving an empty term does not sign. CONFORMANCE: this clause's court set, value ordering, and position-as-index encoding CONFORM TO THE KLEROS DEVELOPER DOCUMENTATION, from which it was designed; the court enum is the declared conformant subset, extended by spec edit — do not re-flag the list against the live court tree.",
+    "description": "Off-chain dispute resolution via Kleros, the decentralized juror court. Selects a Kleros subcourt and a minimum juror count for any dispute escalated from this process. This clause names one forum; another forum is another clause. Compose with `figaro-applicable-law` to name the governing law beside it. CHOSEN BY THE BUYER AT CHECKOUT, once for every agreement of the process: the designer composes the clause at assembly scope with no values (no field is a design fill); the buyer chooses the subcourt at checkout, and may set the minimum juror count, 3 when left empty; checkout writes the values into every order's agreement; each seller accepts them by counter-signing its order. Once composed, the subcourt is required and carries no default — the buyer chooses it, and an agreement with the subcourt empty fails the sign gate on both sides. The court set, its value ordering and its position-as-index encoding follow the Kleros developer documentation; the court enum is the declared subset, extended by editing the spec.",
     "fields": [
         {
             "name": "klerosCourt",
@@ -31,7 +31,7 @@
             "default": 3,
             "required": false,
             "label": "Minimum jurors",
-            "description": "Minimum jurors for the Kleros subcourt. Kleros default is 3."
+            "description": "Minimum jurors for the Kleros subcourt, set by the buyer at checkout; 3 when left empty."
         }
     ],
     "stages": {},

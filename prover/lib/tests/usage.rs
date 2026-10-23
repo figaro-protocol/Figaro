@@ -117,8 +117,8 @@ fn sorted_pair(a: B256, b: B256) -> B256 {
 }
 
 /// The canonical bytes of an agreement, `{"clauses":{…},"slot":i}` — the
-/// agreement's own clause fills (here the topology clause's parents, when
-/// it follows another agreement) and its index. The guest never parses
+/// agreement's own clause fills (here the topology clause's `follows`, the
+/// agreement it follows, when it follows one) and its index. The guest never parses
 /// them; it takes their hash.
 fn slot_content_hash(entry: u64, follows: Option<&str>) -> B256 {
     let clauses = match follows {
@@ -133,8 +133,8 @@ fn slot_content_hash(entry: u64, follows: Option<&str>) -> B256 {
 /// A synthetic topology clause key for the agreements' fills.
 const TOPOLOGY_KEY: &str = "0x63c71d25d0aa1a36dffb9e5303aaa48ae132d7403be72cc6c3cdc3eccd168f5c";
 
-/// A two-order-entry assembly root: agreement 0 holds `agreement_hash`, order
-/// entry 1 another agreement following it. Returns the root, agreement 0's
+/// A two-agreement assembly root: agreement 0 holds `agreement_hash`,
+/// agreement 1 another agreement following it. Returns the root, agreement 0's
 /// content hash and its membership proof (agreement 1's leaf).
 fn two_slot_assembly(agreement_hash: &B256) -> (B256, B256, Vec<B256>) {
     let slot0 = slot_content_hash(0, None);

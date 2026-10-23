@@ -698,6 +698,15 @@ describe("composeOrderAgreement — one agreement's registered agreement, on its
         expect(mandatoryClauses(rows, specs, STRANGER)).toEqual({});
         expect(() => buildAssembly({ orders: [{ orderHash: "r", follows: [] }], clausesByOrderId: {}, mandatory: mandatoryClauses(rows, specs, STRANGER), specs }))
             .toThrow(/no clause of commerce's shape/);
+        // Two of one shape in ONE block are ordered by the event's index in it
+        // — the chain's order, never the order the rows were read in.
+        const sameBlock = [
+            { clauseKey: keyOf("figaro-topology"), registeredBy: DAO, blockNumber: 10n, stakeWithdrawn: false },
+            { clauseKey: newer.clauseKey, registeredBy: DAO, blockNumber: 20n, logIndex: 3, stakeWithdrawn: false },
+            { clauseKey: keyOf("figaro-commerce"), registeredBy: DAO, blockNumber: 20n, logIndex: 1, stakeWithdrawn: false },
+        ];
+        expect(mandatoryClauses(sameBlock, specs, DAO)).toEqual({ [newer.clauseKey]: {}, [keyOf("figaro-topology")]: {} });
+        expect(mandatoryClauses([...sameBlock].reverse(), specs, DAO)).toEqual({ [newer.clauseKey]: {}, [keyOf("figaro-topology")]: {} });
     });
 
     it("refuses an assembly-scoped clause and a clause whose spec is not loaded", () => {

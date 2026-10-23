@@ -22,6 +22,7 @@ import {
     useAssemblyChoices,
 } from "@/lib/protocol/assemblyChoices";
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
+import { PinnedTokenNote } from "@/components/members/PinnedTokenNote";
 import { DisclosurePolicyEditor } from "@/components/members/DisclosurePolicyEditor";
 import { ProfileClauseValues } from "@/components/members/ProfileClauseValues";
 import { finishStep, type OnboardingStepChromeProps, toggledSet, usePostureDisclosure } from "@/components/members/OnboardingStepChrome";
@@ -252,6 +253,12 @@ export function OnboardingAssembliesForm({
                             onToggle={() => toggle(assemblyKey(choice))}
                             testIdPrefix="seller-assembly"
                         >
+                            {/* What binding accepts, before the checkbox: a
+                                designer-pinned token denominates every payment
+                                and bond under the assembly. */}
+                            {choice.state === "loaded" && choice.hydratedAssembly && (
+                                <PinnedTokenNote assembly={choice.hydratedAssembly.assembly} slug={choice.slug} />
+                            )}
                             {isSelected && requiredClauses.length > 0 && (
                                 <div
                                     className="mt-4 pt-4 border-t border-default space-y-4"

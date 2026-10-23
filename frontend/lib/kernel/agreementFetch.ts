@@ -159,7 +159,10 @@ async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
         // Minimal ClauseRegistered read via the standalone client + SDK log
         // parser (legal in lib/kernel — no protocol/ import). The withdraw fold is
         // irrelevant here: a committed agreement resolves its clauses regardless
-        // of whether the registration stake was later reclaimed.
+        // of whether the registration stake was later reclaimed — so this warm
+        // states NO registration fact: the registry reader (`useClauseSpecs`)
+        // alone writes who registered a key and whether its stake stands, and
+        // the canvas's mandatory clauses are read from those facts.
         const logs = await cachedGetContractEvents(publicClient, publicClient.chain?.id ?? activeChain.id, {
             address: addr,
             abi: CLAUSE_REGISTRY_ABI,
@@ -172,11 +175,7 @@ async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
     await Promise.allSettled(
         missing.map((s) => {
             const event = registered.find((r) => r.clauseKey.toLowerCase() === s.clause.toLowerCase());
-            return event
-                ? loadClauseSpec(event.clauseKey, event.contentURI, {
-                    registeredBy: event.registeredBy, blockNumber: BigInt(event.blockNumber), stakeWithdrawn: false,
-                })
-                : Promise.resolve(undefined);
+            return event ? loadClauseSpec(event.clauseKey, event.contentURI) : Promise.resolve(undefined);
         }),
     );
 }

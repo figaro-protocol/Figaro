@@ -1,7 +1,7 @@
 {
     "figaro-acceptance-criteria": "0x9fe0ea921f4afeda40811a6ab6496e94f729af1654b08b7b8ea19c7c8dae5fd9",
-    "figaro-applicable-law": "0x2ced3b8e78296ca742ff72d14954050401b8e349512d0f83e14fa144038e69e8",
-    "figaro-arbitration-kleros": "0x464f6839d90cea3dad0b1c7b44cc5cbb6b13d9573cc9a1a8e3bb449eb0ff5b2b",
+    "figaro-applicable-law": "0xfff36c93839957eef95099aa0f053bfda7a9a405592986e2ff870abc733f9d36",
+    "figaro-arbitration-kleros": "0x3a774a33669049fe8b5a9d15fbe76d9be572eb3b680a6ed100a0aaef46d6a4b5",
     "figaro-cargo": "0x3af042f4e7fe9797604adcb54a2381ad2e6f81e8bcc40f68633409ed805f951d",
     "figaro-chain-of-custody": "0x1f7b9bc841b2f0564aee19e3c7f2e349132f3c44a92485fa64e0d4880806cec5",
     "figaro-cold-chain": "0xfb78b6f8df5ee36da7061e16bb6b6bb92fc4547fba9b1d1aaa7b66de11dd9a4d",
@@ -24,6 +24,6 @@
     "figaro-property-transfer": "0x7966300260f4c72469effbc51a805f4286c248e9b1497db0fdbe64d521e174c5",
     "figaro-proximity-policy": "0x79d1219d6ed719b8613d998ec222dc32376b3a7f66bd217b63b49fe0d6f9613e",
     "figaro-schedule": "0xe5ea29a1885e18f22d53572578a29333c610c8078f39c0e2983af1d54798bada",
-    "figaro-topology": "0x966209d1e2d2d4bb6d650deb8c4cc65b3a035a2376d25a192338f974813068e1",
-    "figaro-utility-token": "0x9e569a309b4295faa11c65753978f42d4d0c9c08aeaede067075201374f2d42c"
+    "figaro-topology": "0x6a0a59d4fc6a2cd9733e58d456fdfbbcbdcf5bb06d6704f84f1555e1d7d4a7f8",
+    "figaro-utility-token": "0x77fbd4d71d74e12399690e38ae1ab7b5b2215a335740cb041f32c335845e2d9e"
 }

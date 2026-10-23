@@ -99,10 +99,10 @@ function builtToHydrated(built: BuiltAssembly): HydratedAssembly {
  *  publish (review) or has already published (`/view`): each agreement's
  *  registered agreement with the agreement's own fills merged over it.
  *
- *  Keyed by the assembly's own agreement ids (`agreement-<i>`). The MANDATORY
- *  clauses are left out here: they come from the registered agreement picked
- *  in the mandatory article, and `assemblyMandatoryClauses` lists them on
- *  their own, by key.
+ *  Keyed by the assembly's own agreement ids (`agreement-<i>`). The
+ *  mandatory-article clauses are left out here: the canvas writes the DAO's
+ *  into every agreement and a bound registered agreement carries its own, and
+ *  `assemblyMandatoryClauses` lists them on their own, by key.
  *  Everything shown here comes from the pinned bytes, never from a second walk
  *  over the draft — that divergence is the defect this exists to make
  *  impossible. */

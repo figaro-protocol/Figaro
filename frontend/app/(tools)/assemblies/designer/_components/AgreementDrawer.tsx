@@ -40,7 +40,7 @@ import {
 } from "@/lib/protocol/useAgreementRegistry";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsAssemblyScoped, clauseDesignFills, isLiveRegistration, mandatoryClauseRegistrant, mandatoryClausesForCanvas, specSource } from "@/lib/shared/clauseSpecSource";
+import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsCanvasMandatory, clauseIsAssemblyScoped, clauseDesignFills, isLiveRegistration, mandatoryClauseRegistrant, mandatoryClausesForCanvas, mandatoryClausesPending, specSource } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { ClausesByArticle } from "@/components/runtime/ClausesByArticle";
 import { FieldControl } from "@/components/runtime/FieldControl";
@@ -521,13 +521,12 @@ function RegisteredAgreementsPanel({
 }
 
 /**
- * The drawer's mandatory article: every LIVE registration on
- * `AgreementRegistry` whose clauses are all mandatory-article
- * (`isMandatoryAgreement` over the loaded specs), the DAO's and any other
- * wallet's, each labeled by its pinned document's name, its key and its
- * clauses. One radio per registration; the order's pick is checked and
- * nothing is preselected. A registration whose document is unread, or whose
- * clauses are not all mandatory-article, is not listed here.
+ * The drawer's mandatory article: THE mandatory clauses the canvas writes into
+ * every agreement — the DAO wallet's live registrations whose spec declares
+ * the mandatory article, one per shape (`mandatoryClausesForCanvas`) — listed
+ * by title and key with nothing to choose. Says what stands instead when the
+ * site names no DAO wallet, when a DAO registration's spec is still being
+ * read, or when the DAO holds no live mandatory clause on this network.
  */
 function MandatoryArticlePanel() {
     // The mandatory clauses are read from the registry: the DAO's live
@@ -537,6 +536,8 @@ function MandatoryArticlePanel() {
     const registrant = mandatoryClauseRegistrant();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const mandatory = useMemo(() => Object.keys(mandatoryClausesForCanvas()) as `0x${string}`[], [clauseSpecsVersion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const pending = useMemo(() => mandatoryClausesPending(), [clauseSpecsVersion]);
     return (
         <section data-testid="drawer-mandatory-article" className="mb-5">
             <p className="text-sm font-medium text-ink-heading mb-2">mandatory</p>
@@ -554,6 +555,10 @@ function MandatoryArticlePanel() {
             ) : !registrant ? (
                 <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-empty">
                     This site names no DAO wallet for the network it is reading, so no mandatory clause is known and nothing publishes.
+                </p>
+            ) : pending ? (
+                <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-empty">
+                    A registration by the DAO&rsquo;s wallet is still being read, so the mandatory clauses are not known yet and nothing publishes until it is.
                 </p>
             ) : mandatory.length === 0 ? (
                 <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-empty">
@@ -629,12 +634,14 @@ function ClauseRegistryPanel({
             .map((g) => ({
                 article: g.article,
                 entries: g.clauses
-                    // Mandatory clauses enter through the mandatory article's
-                    // pick, never one by one; ASSEMBLY-SCOPED clauses
-                    // (design.scope: "assembly") compose once at the assembly
-                    // level, never per order — the drawer offering them here
-                    // is how duplicates would happen.
-                    .filter((c) => !clauseIsMandatory(c.clauseKey) && !clauseIsAssemblyScoped(c.clauseKey))
+                    // The canvas's mandatory clauses are written into every
+                    // agreement, never chosen — a mandatory-article
+                    // registration by another wallet is an ordinary clause and
+                    // is offered; ASSEMBLY-SCOPED clauses (design.scope:
+                    // "assembly") compose once at the assembly level, never
+                    // per order — the drawer offering them here is how
+                    // duplicates would happen.
+                    .filter((c) => !clauseIsCanvasMandatory(c.clauseKey) && !clauseIsAssemblyScoped(c.clauseKey))
                     .map((c) => eventByKey.get(c.clauseKey.toLowerCase()))
                     .filter((e): e is RegisteredClauseEvent => e !== undefined),
             }))

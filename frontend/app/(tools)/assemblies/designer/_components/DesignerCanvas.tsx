@@ -57,7 +57,7 @@ import { CompositionAssist } from "./CompositionAssist";
 import { AssemblyIdentity } from "./AssemblyIdentity";
 import { assemblyToDraft } from "@/lib/designer/assemblyToDraft";
 import type { HydratedAssembly } from "@figaro-protocol/sdk";
-import { clauseIsMandatory, mandatoryClausesForCanvas } from "@/lib/shared/clauseSpecSource";
+import { clauseIsCanvasMandatory, mandatoryClausesForCanvas, mandatoryClausesPending } from "@/lib/shared/clauseSpecSource";
 import {
     fetchRegisteredAgreement,
     getRegisteredAgreement,
@@ -595,6 +595,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         : name.trim() === "" ? "Name your assembly."
         : summary.trim() === "" ? "Add a short description."
         : description.trim() === "" ? "Add a full description."
+        : mandatoryClausesPending()
+            ? "A registration by the DAO's wallet is still being read; publishing waits for the mandatory clauses."
         : Object.keys(mandatoryClausesForCanvas()).length === 0
             ? "No live mandatory clause is registered by the DAO's wallet on this network; nothing publishes."
         : null;
@@ -616,7 +618,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             const doc = getRegisteredAgreement(key);
             if (!doc) continue;
             out[orderId] = {
-                ...Object.fromEntries(Object.entries(doc.clauses).filter(([clauseKey]) => !clauseIsMandatory(clauseKey))),
+                ...Object.fromEntries(Object.entries(doc.clauses).filter(([clauseKey]) => !clauseIsCanvasMandatory(clauseKey))),
                 ...(clausesByOrderId[orderId] ?? {}),
             };
         }

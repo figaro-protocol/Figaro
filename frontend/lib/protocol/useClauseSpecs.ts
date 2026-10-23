@@ -69,7 +69,7 @@ export function useClauseSpecs(): ClauseSpecsState {
          *  passes re-read what is still unresolved and stop when nothing is. */
         const pass = (batch: typeof pending, attempt: number) => {
             Promise.allSettled(batch.map((e) => loadClauseSpec(e.clauseKey, e.contentURI, {
-                registeredBy: e.registeredBy, blockNumber: e.blockNumber, stakeWithdrawn: e.stakeWithdrawn,
+                registeredBy: e.registeredBy, blockNumber: e.blockNumber, logIndex: e.logIndex, stakeWithdrawn: e.stakeWithdrawn,
             }))).then((results) => {
                 if (canceled) return;
                 setErrors(results.flatMap((r) => (r.status === "rejected" ? [String(r.reason)] : [])));

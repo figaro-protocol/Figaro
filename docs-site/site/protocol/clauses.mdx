@@ -73,7 +73,7 @@ A **agreement** is the clauses composed for one agreement, with the fills the de
 
 Register it once and every designer can reuse it:
 
-1. Compose the clauses, read live from `ClauseRegistry`, and pick a registered agreement whose clauses are all mandatory-article; its clauses merge in (below).
+1. Compose the clauses, read live from `ClauseRegistry`; the mandatory clauses are written in, nothing picked (below).
 2. Compute `agreementHash = agreementHashOf(doc)` and read `AgreementRegistry.bindings(agreementHash)`: a live binding means the agreement is already registered — bind it as is.
 3. Otherwise pin the document and call `registerAgreement(agreementHash, contentURI)` with `value = registrationDeposit()` ([AgreementRegistry](/protocol/contracts/)).
 

@@ -15,7 +15,7 @@
                 "name": "parent",
                 "required": true
             },
-            "description": "The order hashes (bytes32 hex) of the orders this order follows; at design time, the labels of the agreements the agreement follows. Empty for a root order."
+            "description": "The order hashes (bytes32 hex) of the orders this order follows; at design time, the labels of the agreements the agreement follows. Empty for a root order, or at design time a root agreement."
         }
     ],
     "stages": {},

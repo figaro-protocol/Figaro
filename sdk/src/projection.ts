@@ -260,6 +260,9 @@ export interface ClauseRegistrationRow {
     clauseKey: Hex;
     registeredBy: Hex;
     blockNumber: bigint | number;
+    /** The event's index in its block: two registrations of one shape in one
+     *  block are ordered by it, the later winning. */
+    logIndex?: number;
     stakeWithdrawn: boolean;
 }
 
@@ -279,15 +282,19 @@ export function mandatoryClauses(
     specs: SpecSource,
     registrant: Hex,
 ): Record<Hex, Record<string, unknown>> {
-    const byShape = new Map<string, { clauseKey: Hex; blockNumber: bigint }>();
+    const byShape = new Map<string, { clauseKey: Hex; blockNumber: bigint; logIndex: number }>();
     for (const row of rows) {
         if (row.registeredBy.toLowerCase() !== registrant.toLowerCase() || row.stakeWithdrawn) continue;
         const spec = specs.get(row.clauseKey);
         if (!spec || !specIsMandatory(spec) || specIsAssemblyScoped(spec)) continue;
         const shape = mandatoryShape(spec);
         const block = BigInt(row.blockNumber);
+        const logIndex = row.logIndex ?? 0;
         const prev = byShape.get(shape);
-        if (!prev || block > prev.blockNumber) byShape.set(shape, { clauseKey: row.clauseKey, blockNumber: block });
+        // Later wins: by block, then by the event's index within the block —
+        // the chain's own order, never the order the rows were read in.
+        const later = !prev || block > prev.blockNumber || (block === prev.blockNumber && logIndex > prev.logIndex);
+        if (later) byShape.set(shape, { clauseKey: row.clauseKey, blockNumber: block, logIndex });
     }
     const out: Record<Hex, Record<string, unknown>> = {};
     for (const { clauseKey } of byShape.values()) out[clauseKey] = {};
