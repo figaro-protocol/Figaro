@@ -17,7 +17,8 @@ use alloy_primitives::{keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::{apply_batch_with_state, derive_commitment_ids};
+use figaro_kernel::kernel::{apply_batch_with_state, apply_operations, derive_commitment_ids};
+use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
 
 const BUYER_KEY: u64 = 0xB0B;
@@ -184,6 +185,27 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
         };
         let (_pv, positions, _events, state) =
             apply_batch_with_state(&input).unwrap_or_else(|e| panic!("{name}: {e:?}"));
+
+        // ── The relay's trial path reaches the batch's own state ──
+        // One operation at a time on a running state, as `trial_apply`
+        // runs, with no root until the end: the same root and the same
+        // positions as the batch.
+        let mut running = KernelState::from_snapshot(&input.prev_state);
+        let mut trial_positions: BTreeMap<(Address, Address), (U256, U256)> = BTreeMap::new();
+        for op in &input.operations {
+            let effects = apply_operations(&mut running, chain_id, core, BLOCK_TIMESTAMP, std::slice::from_ref(op))
+                .unwrap_or_else(|e| panic!("{name}: the trial path refused an operation the batch applied: {e:?}"));
+            for p in effects.positions {
+                let e = trial_positions.entry((p.token, p.user)).or_default();
+                e.0 += p.deposit;
+                e.1 += p.payout;
+            }
+        }
+        assert_eq!(running.compute_root(), state.compute_root(), "{name}: the trial path's root is the batch's");
+        for p in &positions {
+            let got = trial_positions.get(&(p.token, p.user)).copied().unwrap_or_default();
+            assert_eq!(got, (p.deposit, p.payout), "{name}: the trial path's positions are the batch's for {}", p.user);
+        }
 
         // ── Every party's deposit and payout, exactly ──
         let parties = count(&sc["partyCount"]);

@@ -259,8 +259,14 @@ and an assembly claim's membership leaf carries the assembly tree's own
 domain (`assembly_leaf`), so the verification key moves; on the Solidity side
 `CommitmentTypes` gained the agreement format's one leaf function, which the
 coordinator and the counter now call in place of three inline copies, and the
-counter builds the assembly leaf in one internal function. The Sepolia
-verifier's pinned key is the earlier guest's. When an audit is
+counter builds the assembly leaf in one internal function. The guest's batch
+runs its operations through one function, `apply_operations`, and its claims
+through `apply_claims`, neither computing a root; the relay's trials call the
+same two on a clone of their running state, so a trial costs one operation
+where it cost the whole state's keccak and a snapshot rebuild — the public
+values are unchanged (the transition vectors and the executor tests), the
+verification key moves with the guest's bytes. The Sepolia verifier's pinned
+key is the earlier guest's. When an audit is
 engaged, this section names the commit it reviews, the line counts and the
 results are measured there once, and a tag is placed at it. The descriptive
 sections of this document stay true of the code throughout.

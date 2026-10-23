@@ -14,6 +14,12 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **Relay: a trial costs one operation.** The kernel applies a batch's operations through
+  `apply_operations` and its claims through `apply_claims`, neither computing a root; the relay's
+  formation filter, its refilter after drops, its permanent-refusal split and its claim filter
+  run each trial on a clone of the running mirror state through those two, where each trial
+  rebuilt the state from a snapshot and hashed it twice. The public values are unchanged; the
+  guest's verification key moves.
 - **SDK: the sign gate refuses a clause the named design does not compose.** `validateCommitmentAgreement`
   (through `assertAgreementSignable`) refuses, by key, any clause outside the registered agreement's
   clauses and the assembly's folded terms, registered or not, with content or withheld, as it refuses

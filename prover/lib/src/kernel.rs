@@ -938,20 +938,36 @@ pub fn apply_batch_with_state(
     apply_batch_inner(input)
 }
 
-/// Internal batch execution returning (PublicValues, positions, events, state).
-/// Both public entry points delegate to this.
-fn apply_batch_inner(
-    input: &BatchInput,
-) -> Result<(PublicValues, Vec<NetPosition>, BatchEvents, KernelState), KernelError> {
-    let domain = domain_separator(input.chain_id, input.verifying_contract);
-    let mut state = KernelState::from_snapshot(&input.prev_state);
-    let prev_root = state.compute_root();
+/// What a run of operations produced beside the state it moved: the net
+/// token positions, the attestation events and the spec bindings. The proof
+/// path hashes them into the public values; a trial discards them.
+pub struct OperationEffects {
+    pub positions: Vec<NetPosition>,
+    pub attestations: Vec<AttestationEventData>,
+    pub spec_bindings: BTreeSet<SpecBinding>,
+}
 
+/// Apply `operations` to `state`, in order, under the Core's rules, with no
+/// root computed before or after. The one home of the rules: the proof
+/// path (`apply_batch`) runs its operations through it and then hashes, and
+/// the relay's trials run through it on a CLONE of their running state — a
+/// trial that fails leaves the clone to be dropped, a trial that passes
+/// replaces the running state with it — so a trial costs one operation,
+/// never the whole state's keccak and a snapshot rebuild. On `Err` the
+/// state is left as the failing operation found it.
+pub fn apply_operations(
+    state: &mut KernelState,
+    chain_id: u64,
+    verifying_contract: Address,
+    block_timestamp: u64,
+    operations: &[KernelOp],
+) -> Result<OperationEffects, KernelError> {
+    let domain = domain_separator(chain_id, verifying_contract);
     let mut tracker = TokenTracker::new();
-    let mut attestation_events = Vec::new();
+    let mut attestations = Vec::new();
     let mut spec_bindings: BTreeSet<SpecBinding> = BTreeSet::new();
 
-    for op in &input.operations {
+    for op in operations {
         match op {
             KernelOp::Commit {
                 commitment,
@@ -959,12 +975,12 @@ fn apply_batch_inner(
                 seller_sig,
             } => {
                 apply_commit(
-                    &mut state,
+                    state,
                     &domain,
                     commitment,
                     buyer_sig,
                     seller_sig,
-                    input.block_timestamp,
+                    block_timestamp,
                     &mut tracker,
                 )?;
             }
@@ -974,7 +990,7 @@ fn apply_batch_inner(
                 buyer_sig,
             } => {
                 apply_resolve(
-                    &mut state,
+                    state,
                     &domain,
                     process_id,
                     commitments,
@@ -991,7 +1007,7 @@ fn apply_batch_inner(
                 proof,
             } => {
                 apply_attest_as_seller(
-                    &state,
+                    state,
                     &domain,
                     target,
                     clause_id,
@@ -999,7 +1015,7 @@ fn apply_batch_inner(
                     content_ref,
                     seller_sig,
                     proof,
-                    &mut attestation_events,
+                    &mut attestations,
                     &mut spec_bindings,
                 )?;
             }
@@ -1012,7 +1028,7 @@ fn apply_batch_inner(
                 proof,
             } => {
                 apply_attest_as_buyer(
-                    &state,
+                    state,
                     &domain,
                     target,
                     clause_id,
@@ -1020,29 +1036,70 @@ fn apply_batch_inner(
                     content_ref,
                     buyer_sig,
                     proof,
-                    &mut attestation_events,
+                    &mut attestations,
                     &mut spec_bindings,
                 )?;
             }
         }
     }
 
-    // ── RPGF usage accrual ────────────────────────────────────────
+    Ok(OperationEffects {
+        positions: tracker.net_positions(),
+        attestations,
+        spec_bindings,
+    })
+}
+
+/// Apply `claims` to `state` under the counter's rules, with no root
+/// computed: the relay's claim trials run through it on a clone of the
+/// batch's post-operation state, as the proof path's accrual runs after its
+/// operations. Returns the accruals touched and the sellers of record.
+pub fn apply_claims(
+    state: &mut KernelState,
+    chain_id: u64,
+    verifying_contract: Address,
+    claims: &[UsageClaim],
+    period: u8,
+    provenance_leaf: &B256,
+) -> Result<(Vec<UsageAccrual>, Vec<Address>), KernelError> {
+    let domain = domain_separator(chain_id, verifying_contract);
+    apply_usage_claims(state, &domain, claims, period, provenance_leaf)
+}
+
+/// Internal batch execution returning (PublicValues, positions, events, state).
+/// Both public entry points delegate to this.
+fn apply_batch_inner(
+    input: &BatchInput,
+) -> Result<(PublicValues, Vec<NetPosition>, BatchEvents, KernelState), KernelError> {
+    let mut state = KernelState::from_snapshot(&input.prev_state);
+    let prev_root = state.compute_root();
+
+    let effects = apply_operations(
+        &mut state,
+        input.chain_id,
+        input.verifying_contract,
+        input.block_timestamp,
+        &input.operations,
+    )?;
+
+    // ── Designer-reward usage accrual ────────────────────────────
     // Runs AFTER every operation, against the post-state, so a process
     // resolved by this very batch can be credited in the same batch.
-    let (usage_accruals, usage_sellers) = apply_usage_claims(
+    let (usage_accruals, usage_sellers) = apply_claims(
         &mut state,
-        &domain,
+        input.chain_id,
+        input.verifying_contract,
         &input.usage_claims,
         input.usage_period,
         &input.provenance_leaf,
     )?;
 
     let new_root = state.compute_root();
-    let positions = tracker.net_positions();
+    let positions = effects.positions;
+    let attestation_events = effects.attestations;
     let ops_hash = compute_positions_hash(&positions);
     let att_hash = compute_attestation_events_hash(&attestation_events);
-    let bindings: Vec<SpecBinding> = spec_bindings.into_iter().collect();
+    let bindings: Vec<SpecBinding> = effects.spec_bindings.into_iter().collect();
     let bindings_hash = compute_spec_bindings_hash(&bindings);
     let usage_hash = compute_usage_accrual_hash(
         input.usage_period,
