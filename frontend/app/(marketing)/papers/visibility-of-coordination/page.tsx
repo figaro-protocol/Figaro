@@ -37,7 +37,7 @@ export default function VisibilityOfCoordinationPaper() {
                 <>
                     <li>Albæk, Svend, Peter Møllgaard, and Per B. Overgaard. 1997. &ldquo;Government-Assisted Oligopoly Coordination? A Concrete Case.&rdquo; <em>Journal of Industrial Economics</em> 45 (4): 429&ndash;443. https://doi.org/10.1111/1467-6451.00057.</li>
                     <li>Anderson, Perry. 1976. &ldquo;The Antinomies of Antonio Gramsci.&rdquo; <em>New Left Review</em> I/100: 5&ndash;78. https://doi.org/10.64590/lrz.</li>
-                    <li>Coase, R. H. 1937. &ldquo;The Nature of the Firm.&rdquo; <em>Economica</em> 4 (16): 386&ndash;405. https://doi.org/10.1111/j.1468-0335.1937.tb00002.x.</li>
+                    <li>Coase, Ronald H. 1937. &ldquo;The Nature of the Firm.&rdquo; <em>Economica</em> 4 (16): 386&ndash;405. https://doi.org/10.1111/j.1468-0335.1937.tb00002.x.</li>
                     <li>Dahlman, Carl J. 1979. &ldquo;The Problem of Externality.&rdquo; <em>Journal of Law and Economics</em> 22 (1): 141&ndash;162. https://doi.org/10.1086/466936.</li>
                     <li>Edelman. 2025. <em>2025 Edelman Trust Barometer: Trust and the Crisis of Grievance</em>. Global report, twenty-fifth annual edition; 33,000 respondents in 28 countries. New York: Edelman Trust Institute. https://www.edelman.com/trust/2025/trust-barometer. Accessed October 19, 2026.</li>
                     <li>Edwards, Jeremy, and Sheilagh Ogilvie. 2012. &ldquo;Contract Enforcement, Institutions, and Social Capital: The Maghribi Traders Reappraised.&rdquo; <em>Economic History Review</em> 65 (2): 421&ndash;444. https://doi.org/10.1111/j.1468-0289.2011.00635.x.</li>

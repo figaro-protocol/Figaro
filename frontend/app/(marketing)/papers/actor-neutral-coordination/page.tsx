@@ -55,7 +55,7 @@ export default function ActorNeutralCoordinationPaper() {
                     <li>Shoham, Yoav, and Kevin Leyton-Brown. 2009. <em>Multiagent Systems: Algorithmic, Game-Theoretic, and Logical Foundations</em>. Cambridge: Cambridge University Press. https://doi.org/10.1017/CBO9780511811654.</li>
                     <li>W3C. 2022. <em>Decentralized Identifiers (DIDs) v1.0: Core Architecture, Data Model, and Representations</em>. W3C Recommendation, July 19, 2022. https://www.w3.org/TR/2022/REC-did-core-20220719/. Accessed October 20, 2026.</li>
                     <li>Wu, Qingyun, Gagan Bansal, Jieyu Zhang, Yiran Wu, Beibin Li, Erkang Zhu, Li Jiang, et al. 2023. &ldquo;AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation.&rdquo; Preprint, arXiv:2308.08155. https://arxiv.org/abs/2308.08155.</li>
-                    <li>Yao, Shunyu, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. 2023. &ldquo;ReAct: Synergizing Reasoning and Acting in Language Models.&rdquo; Paper presented at the Eleventh International Conference on Learning Representations, Kigali, Rwanda, May 1&ndash;5, 2023. https://arxiv.org/abs/2210.03629.</li>
+                    <li>Yao, Shunyu, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. 2023. &ldquo;ReAct: Synergizing Reasoning and Acting in Language Models.&rdquo; Paper presented at the Eleventh International Conference on Learning Representations, Kigali, Rwanda, May 1&ndash;5, 2023. arXiv:2210.03629. https://arxiv.org/abs/2210.03629.</li>
                 </>
             }
         >

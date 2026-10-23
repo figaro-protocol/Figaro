@@ -71,7 +71,7 @@ export default function MarketsWithoutAVenuePaper() {
                     <li>Bulow, Jeremy, and Paul Klemperer. 1996. &ldquo;Auctions versus Negotiations.&rdquo; <em>American Economic Review</em> 86 (1): 180&ndash;194.</li>
                     <li>Diamond, Peter A. 1971. &ldquo;A Model of Price Adjustment.&rdquo; <em>Journal of Economic Theory</em> 3 (2): 156&ndash;168. https://doi.org/10.1016/0022-0531(71)90013-5.</li>
                     <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 18, 2026.</li>
-                    <li>Gale, D., and L. S. Shapley. 1962. &ldquo;College Admissions and the Stability of Marriage.&rdquo; <em>American Mathematical Monthly</em> 69 (1): 9&ndash;15. https://doi.org/10.1080/00029890.1962.11989827.</li>
+                    <li>Gale, David, and Lloyd S. Shapley. 1962. &ldquo;College Admissions and the Stability of Marriage.&rdquo; <em>American Mathematical Monthly</em> 69 (1): 9&ndash;15. https://doi.org/10.1080/00029890.1962.11989827.</li>
                     <li>Gibbard, Allan. 1973. &ldquo;Manipulation of Voting Schemes: A General Result.&rdquo; <em>Econometrica</em> 41 (4): 587&ndash;601. https://doi.org/10.2307/1914083.</li>
                     <li>Hagerty, Kathleen M., and William P. Rogerson. 1987. &ldquo;Robust Trading Mechanisms.&rdquo; <em>Journal of Economic Theory</em> 42 (1): 94&ndash;107. https://doi.org/10.1016/0022-0531(87)90104-9.</li>
                     <li>Hayek, F. A. 1945. &ldquo;The Use of Knowledge in Society.&rdquo; <em>American Economic Review</em> 35 (4): 519&ndash;530.</li>

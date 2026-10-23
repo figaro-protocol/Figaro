@@ -84,7 +84,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
                     <li>Pacioli, Luca. 1494. <em>Summa de arithmetica, geometria, proportioni et proportionalita</em>. Venice: Paganino de Paganini. Treatise XI, <em>Particularis de computis et scripturis</em>.</li>
                     <li>Power, Michael. 1997. <em>The Audit Society: Rituals of Verification</em>. Oxford: Oxford University Press.</li>
                     <li>Sombart, Werner. 1916&ndash;1927. <em>Der moderne Kapitalismus</em>. 2nd ed. Munich and Leipzig: Duncker &amp; Humblot.</li>
-                    <li>Yamey, B. S. 1949. &ldquo;Scientific Bookkeeping and the Rise of Capitalism.&rdquo; <em>Economic History Review</em> 1 (2&ndash;3): 99&ndash;113. https://doi.org/10.2307/2589824.</li>
+                    <li>Yamey, Basil S. 1949. &ldquo;Scientific Bookkeeping and the Rise of Capitalism.&rdquo; <em>Economic History Review</em> 1 (2&ndash;3): 99&ndash;113. https://doi.org/10.2307/2589824.</li>
                     <li>Yermack, David. 2017. &ldquo;Corporate Governance and Blockchains.&rdquo; <em>Review of Finance</em> 21 (1): 7&ndash;31. https://doi.org/10.1093/rof/rfw074.</li>
                 </>
             }
