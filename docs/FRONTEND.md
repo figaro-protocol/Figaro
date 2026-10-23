@@ -213,9 +213,11 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
     writes into every agreement, the DAO wallet's live `ClauseRegistry`
     registrations whose spec declares the mandatory article
     (`mandatoryClausesForCanvas`), shown with nothing to choose; a mandatory-article
-    registration by another wallet is an ordinary clause. They join the order's composed
-    agreement; a bound agreement must already carry them. The canvas closes
-    Review, and the review refuses publish, until every order has a pick.
+    registration by another wallet is an ordinary clause, offered like any other. They join
+    the clauses the order composes; a bound agreement must already carry them. The canvas
+    closes Review, and the review refuses publish, while the mandatory clauses are not known:
+    the site names no DAO wallet, a live DAO registration's spec is still being read
+    (`mandatoryClausesPending`), or the DAO holds no live mandatory clause on the network.
   - *Registry — the clauses:* every other clause registered on `ClauseRegistry`, grouped by
     `block.design.article`, each a checkbox — read from the network, never a
     hardcoded roster. MANDATORY clauses are not offered one by one. ASSEMBLY-SCOPED clauses (`design.scope: "assembly"`) are
