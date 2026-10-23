@@ -43,7 +43,8 @@ interface IFigaroCore {
 ///      the inclusion proof won't open. This closes the drift where runtime
 ///      declarations could contradict the signed agreement.
 ///
-///      Leaf format: `keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, keccak256(clauseData)))))`
+///      Leaf format: `CommitmentTypes.clauseLeaf(clauseId, keccak256(clauseData))`, the agreement format's
+///      leaf `keccak256(keccak256(clauseId ‖ keccak256(clauseData)))`
 ///      — double-hashed so the leaf domain (32-byte preimage) can never collide
 ///      with the internal-node domain (64-byte preimage); a crafted agreement
 ///      cannot replay one of its own internal nodes as a signed clause leaf.
@@ -150,14 +151,15 @@ contract AttestationCoordinator {
     ///      preimage, so a `private` clause's plaintext never touches calldata; a
     ///      wrong hash simply fails to open, so this is exactly as sound as taking
     ///      the preimage.
-    ///      Leaf = `keccak256(keccak256(clauseId || clauseDataHash))` (double-hashed —
+    ///      Leaf = `CommitmentTypes.clauseLeaf(clauseId, clauseDataHash)`, i.e.
+    ///      `keccak256(keccak256(clauseId || clauseDataHash))` (double-hashed —
     ///      leaf/node domain separation), sorted-pair merkle tree as produced by
     ///      the off-chain agreement helpers.
     function _verifyInclusion(bytes32 checkoutHash, bytes32 clauseId, bytes32 clauseDataHash, bytes32[] calldata proof)
         internal
         pure
     {
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, clauseDataHash))));
+        bytes32 leaf = CommitmentTypes.clauseLeaf(clauseId, clauseDataHash);
         if (!MerkleProof.verify(proof, checkoutHash, leaf)) {
             revert InvalidInclusionProof(checkoutHash, clauseId);
         }

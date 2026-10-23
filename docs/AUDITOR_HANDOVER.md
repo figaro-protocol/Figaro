@@ -256,8 +256,11 @@ guest has changed since `eeb903b7`: a seller's attestation is checked
 against the attested order's own seller, the provenance leaf's bytes
 name the assembly's root `assemblyHash` where they named `compositionHash`,
 and an assembly claim's membership leaf carries the assembly tree's own
-domain (`assembly_leaf`), so the verification key moves and the Sepolia verifier's pinned key is the
-earlier guest's. When an audit is
+domain (`assembly_leaf`), so the verification key moves; on the Solidity side
+`CommitmentTypes` gained the agreement format's one leaf function, which the
+coordinator and the counter now call in place of three inline copies, and the
+counter builds the assembly leaf in one internal function. The Sepolia
+verifier's pinned key is the earlier guest's. When an audit is
 engaged, this section names the commit it reviews, the line counts and the
 results are measured there once, and a tag is placed at it. The descriptive
 sections of this document stay true of the code throughout.
@@ -375,7 +378,7 @@ the guest's test files under `prover/lib/tests/`.
   (`provenanceLeaf`, `assemblyTermsLeaf`, `UsageCounter.sol:188`, `:198`),
   are refused as registrations wherever a key is taken: `_accrue` reverts
   `ReservedKeyIsNotARegistration(bytes32)` on either under every kind
-  (`:779-781`), `applyBatchAccrual` skips either (`:724`), and
+  (`:788-790`), `applyBatchAccrual` skips either (`:733`), and
   `recordAssemblyUsage` refuses either as an agreementKey (`:586-588`). The
   error replaces `ProvenanceLeafIsNotARegistration`, which no longer exists
   in the counter or the guest.
@@ -474,10 +477,13 @@ the baseline.
 
 ### The Core
 
-The Core — `FigaroCore.sol` and `CommitmentTypes.sol` — last changed in
-CODE at `c7f85d0d`. Since then the two files moved directory and comment
-lines changed in place; their code is byte-identical to the baseline. The
-diff prints as two renames whose every hunk is a comment:
+`FigaroCore.sol` last changed in CODE at `c7f85d0d`; since then it moved
+directory and comment lines changed in place, so its code is byte-identical
+to the baseline. `CommitmentTypes.sol` holds one code change after that
+commit: the agreement format's leaf function `clauseLeaf`, `internal pure`,
+which adds no selector and leaves `COMMITMENT_TYPEHASH` and `hashStruct`
+unchanged. The diff against the baseline prints as two renames whose every
+hunk is a comment, plus that one function:
 
 ```bash
 git diff -M c7f85d0d ec0e1993 -- src/kernel/ src/core/kernel/
@@ -874,7 +880,7 @@ read it first.
   `ClauseRegistry` only, `recordAgreementUsage` `AgreementRegistry` only,
   `recordAssemblyUsage` `AssemblyRegistry` only, and `applyBatchAccrual`
   gates each `BatchAccrual{clauseOrAssembly, kind, c, d}` by its own kind's
-  registry and skips an unknown kind (`UsageCounter.sol:729-737`). No kind
+  registry and skips an unknown kind (`UsageCounter.sol:734-746`). No kind
   gates another: an assembly accrues without its agreements' agreements
   being live, and an agreement without its assembly being live.
   `RpgfMinter.claim(period, (kind, key)[])` reads the counter's slot for each
@@ -979,14 +985,14 @@ read it first.
 - The two reserved keys never accrue, whatever a registry holds at them. The
   direct path reverts: `_accrue` reverts
   `ReservedKeyIsNotARegistration(bytes32)` on either under every kind
-  (`UsageCounter.sol:779-781`; the error at `:384`), and
+  (`UsageCounter.sol:788-790`; the error at `:384`), and
   `recordAssemblyUsage` refuses either as an agreement's agreementHash
   (`:586-588`). `AgreementRegistry.registerAgreement` refuses both as
   registrations (`AgreementRegistry.sol:162-164`). The guest refuses a claim
   keyed on either, of any kind, and an assembly claim naming either as its
   agreementHash (`prover/lib/src/kernel.rs:787-794`, `apply_usage_claims`).
   The counter's batch path skips either: `applyBatchAccrual` continues past
-  them before the registration gate (`UsageCounter.sol:724`). The relay drops
+  them before the registration gate (`UsageCounter.sol:733`). The relay drops
   such a claim before proving (`submitter.rs`, `names_a_reserved_key`;
   `drops_claims_naming_either_reserved_key_without_touching_the_chain`,
   `drops_a_claim_keyed_on_the_provenance_leaf_without_touching_the_chain`).
@@ -1228,7 +1234,7 @@ read it first.
 
 Every other function in the Solidity in scope is at 6 or below.
 
-**The one `unchecked` block** (`UsageCounter.sol:814-817`) increments two
+**The one `unchecked` block** (`UsageCounter.sol:823-826`) increments two
 `uint64` counters by one: `c`, the distinct processes counted for a key, and
 `d`, the distinct sellers. Each process is counted once ever
 (`processCounted`), so `c` cannot exceed the number of resolved processes on

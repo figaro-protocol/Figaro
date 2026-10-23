@@ -83,7 +83,7 @@ checkoutHash, salt, deadline}`. `salt` makes repeat orders hash distinctly;
 `deadline` bounds the window in which an unconsummated pair of signatures can
 be committed (`DeadlineExpired`) — a signature cannot be revoked, so it ages
 out; nothing expires after commit. `DESIGN_DECISIONS.md` §12 owns the
-reasoning.
+reasoning. It also holds the agreement format's one leaf, `clauseLeaf(key, dataHash)` = `keccak256(keccak256(key ‖ dataHash))`, which `AttestationCoordinator` and `UsageCounter` open every inclusion proof against; an assembly's tree has its own leaf shape, with a domain, which the Core never builds (`UsageCounter._assemblyLeaf`).
 
 ### `src/core/attestation/` — `AttestationCoordinator`
 

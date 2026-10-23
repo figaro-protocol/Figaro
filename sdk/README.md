@@ -594,7 +594,7 @@ const cap = await maxOrdersResolvablePerProcess(client);
 //
 // THE FIELD ORDER BELOW IS CANONICAL, NOT STYLISTIC. There is exactly one
 // authoritative ordering: `CommitmentTypes.COMMITMENT_TYPEHASH`
-// (`src/core/kernel/CommitmentTypes.sol:31-33`), the type string FigaroCore hashes
+// (`src/core/kernel/CommitmentTypes.sol:32-34`), the type string FigaroCore hashes
 // and recovers both signatures against. The SDK derives its own typehash from
 // the same field list and exports it — `COMMITMENT_TYPEHASH` (a root
 // `@figaro-protocol/sdk` export) is
@@ -629,7 +629,7 @@ resolveProcess(bytes32 processId, <that same tuple>[] commitments)   // buyer on
 ```
 
 That tuple's field order is the same canonical one — `COMMITMENT_TYPEHASH` in
-`src/core/kernel/CommitmentTypes.sol:31-33`. The sketch above and the
+`src/core/kernel/CommitmentTypes.sol:32-34`. The sketch above and the
 `buildCommitment` literal earlier are two transcriptions of that one source;
 check either against the SDK's re-export
 (`COMMITMENT_TYPEHASH === keccak256(toBytes(yourTypeString))`) before signing

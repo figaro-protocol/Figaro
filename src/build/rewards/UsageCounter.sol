@@ -501,11 +501,11 @@ contract UsageCounter {
         (bytes32 orderHash, bytes32 processId) = _requireResolvedOrder(order);
 
         // 2. The clause is committed in the agreement both parties signed.
-        //    Leaf shape is AttestationCoordinator's, byte for byte — one leaf
-        //    convention across the protocol, double-hashed for leaf/node domain
-        //    separation. A wrong `clauseDataHash` simply fails to open the proof, so
-        //    taking the hash is exactly as sound as taking the preimage.
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(clauseOrAssembly, clauseDataHash))));
+        //    The agreement format's leaf, `CommitmentTypes.clauseLeaf` — the one
+        //    definition the coordinator opens proofs against too. A wrong
+        //    `clauseDataHash` simply fails to open the proof, so taking the hash is
+        //    exactly as sound as taking the preimage.
+        bytes32 leaf = CommitmentTypes.clauseLeaf(clauseOrAssembly, clauseDataHash);
         if (!MerkleProof.verify(proof, order.checkoutHash, leaf)) revert InvalidInclusionProof();
 
         // 3. DESIGNER-SIDE STAKE GATE. A clause earns only while its own
@@ -592,8 +592,7 @@ contract UsageCounter {
         // The agreement's leaf in the assembly's tree: the assembly leaf
         // domain, the agreementHash and the content hash, double-hashed as
         // every leaf of the format is.
-        bytes32 slotLeaf =
-            keccak256(bytes.concat(keccak256(abi.encodePacked(assemblyLeafDomain, agreementHash, slotContentHash))));
+        bytes32 slotLeaf = _assemblyLeaf(agreementHash, slotContentHash);
         if (!MerkleProof.verify(membershipProof, assemblyHash, slotLeaf)) revert InvalidMembershipProof();
 
         // DESIGNER-SIDE STAKE GATE, assembly form — the composition must hold a
@@ -628,8 +627,17 @@ contract UsageCounter {
             _toLowerHexString(assemblyHash),
             '"}'
         );
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(provenanceLeaf, keccak256(expected)))));
+        bytes32 leaf = CommitmentTypes.clauseLeaf(provenanceLeaf, keccak256(expected));
         if (!MerkleProof.verify(proof, checkoutHash, leaf)) revert InvalidInclusionProof();
+    }
+
+    /// @dev A leaf of an assembly's tree: the assembly leaf domain, the key (an
+    ///      agreement's agreementHash, or the terms key) and the keccak256 of its
+    ///      committed bytes, double-hashed as every leaf of the format is. The
+    ///      Core never builds this shape; the SDK's `computeAssemblyLeaf` and the
+    ///      guest's `assembly_leaf` are its other two definitions.
+    function _assemblyLeaf(bytes32 key, bytes32 dataHash) internal pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encodePacked(assemblyLeafDomain, key, dataHash))));
     }
 
     // ── Recording (batch path, proof-gated) ─────────────────────────
