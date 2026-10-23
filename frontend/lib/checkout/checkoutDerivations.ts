@@ -143,8 +143,13 @@ export interface AgreementGroup {
      *  spec read the row makes is keyed on it. `mandatory` marks a clause whose spec's
      *  article is "mandatory" (commerce, topology, or anyone's
      *  registration so marked): it is listed like every other clause, since
-     *  the buyer signs it, and is never fillable — the checkout walk fills it. */
-    clauses: Array<{ clauseKey: string; values: string; data: Record<string, unknown>; fillable: boolean; mandatory: boolean }>;
+     *  the buyer signs it, and is never fillable — the checkout walk fills it.
+     *  `fields` is the buyer's field complement for THIS row — the spec's
+     *  content fields named in no fills list (`buyerAuthoredFields`, with the
+     *  walk's mechanical fills for a per-order row) — the ONE list the form
+     *  renders and the place-order gate checks; `fillable` is that list being
+     *  non-empty on a clause that is neither mandatory nor a process log. */
+    clauses: Array<{ clauseKey: string; values: string; data: Record<string, unknown>; fields: readonly FieldSpec[]; fillable: boolean; mandatory: boolean }>;
 }
 
 /**
@@ -186,22 +191,19 @@ export function deriveAgreementGroups(args: {
         label: "Assembly terms (every agreement)",
         clauses: Object.entries(assemblyClauseFills)
             .map(([clauseKey, fields]) => {
-            const specFields = getClauseSpec(clauseKey)?.fields ?? [];
             const mandatory = clauseIsMandatory(clauseKey);
+            // Every fills list is FIELD-level, not clause-level: a clause the
+            // designer tailored (a pinned geocoder, a consent document) can
+            // still carry transaction particulars the buyer fills here — it
+            // is fillable iff the buyer's field complement is non-empty.
+            const buyerFields = buyerAuthoredFields(clauseKey);
             return {
                 clauseKey,
                 values: clauseValueSummary(fields),
                 data: fields as Record<string, unknown>,
+                fields: buyerFields,
                 mandatory,
-                // Design fills are FIELD-level, not clause-level: a clause the
-                // designer tailored (a pinned geocoder, a consent document) can
-                // still carry transaction particulars the buyer fills here —
-                // it is fillable iff at least one field is NOT designer-owned.
-                fillable: !mandatory
-                    && specFields.some((f) => !clauseDesignFills(clauseKey).includes(f.name))
-                    && !clauseIsProcessLog(clauseKey)
-                    && clauseCatalogFills(clauseKey).length === 0
-                    && clauseProfileFills(clauseKey).length === 0,
+                fillable: !mandatory && !clauseIsProcessLog(clauseKey) && buyerFields.length > 0,
             };
         }),
     }];
@@ -241,34 +243,33 @@ export function deriveAgreementGroups(args: {
                             clauseKey,
                             values: clauseValueSummary(fields),
                             data: fields as Record<string, unknown>,
+                            fields: [],
                             mandatory: true,
                             fillable: false,
                         };
                     }
                     const fields = previewClauses[clauseKey];
-                    const specFields = getClauseSpec(clauseKey)?.fields ?? [];
+                    // A GENERAL clause's fields are transaction particulars
+                    // the buyer fills here — every content field named in no
+                    // fills list: not the designer's tailoring (from the
+                    // assembly), not the seller's catalog items, not the
+                    // seller's standing declarations (the profile), not a
+                    // field the walk fills mechanically. The complement is
+                    // FIELD-granular, so a clause the seller's catalog fills
+                    // in part still offers the buyer its own fields; a
+                    // process-log anchor (attested at runtime, empty at
+                    // commit) is never fillable. A COMPOSING clause's content
+                    // fields ARE fillable — the composition surface collects
+                    // only its block.runtime.fields runtime params, never its
+                    // content.
+                    const buyerFields = buyerAuthoredFields(clauseKey, mechanicalFields);
                     return {
                         clauseKey,
                         values: clauseValueSummary(fields),
                         data: fields as Record<string, unknown>,
+                        fields: buyerFields,
                         mandatory: false,
-                        // A GENERAL clause's fields are transaction particulars
-                        // the buyer fills here. Not fillable: designer-fills
-                        // values (the designer's tailoring, from the assembly),
-                        // process-log anchors (attested at runtime, empty at
-                        // commit), catalog-sourced clauses (the seller's
-                        // items fill them), profile-sourced clauses (the
-                        // seller's standing declarations fill them), and
-                        // clauses whose every field the walk fills
-                        // mechanically. A COMPOSING clause's content fields
-                        // ARE fillable — the composition surface collects
-                        // only its block.runtime.fields runtime params, never its
-                        // content.
-                        fillable: specFields.some((f) =>
-                            !clauseDesignFills(clauseKey).includes(f.name) && !mechanicalFields.has(f.name))
-                            && !clauseIsProcessLog(clauseKey)
-                            && clauseCatalogFills(clauseKey).length === 0
-                            && clauseProfileFills(clauseKey).length === 0,
+                        fillable: !clauseIsProcessLog(clauseKey) && buyerFields.length > 0,
                     };
                 }),
         };
@@ -276,17 +277,30 @@ export function deriveAgreementGroups(args: {
 }
 
 /**
- * The fields of a fillable clause the checkout OFFERS the buyer: the spec's own
- * fields minus the designer's tailoring (`block.design.fills`, already valued on
- * the assembly). ONE list — the form renders it and the place-order gate below
- * checks it, so the sign gate can never demand a term the form never offered.
- * Read from the EXACT spec the clause's key names: another spec of the same
- * name changes no field offered here.
+ * The buyer's field complement: the fields of a clause the checkout OFFERS the
+ * buyer — the spec's content fields named in NO fills list. The spec's rule is
+ * field-granular (`clauseBlockBinding`: the buyer owns every content field no
+ * phase's actor fills, derived as the complement, never stored): subtracted
+ * are the designer's tailoring (`block.design.fills`, already valued on the
+ * assembly), the seller's catalog items (`block.checkout.catalogueFills`), the
+ * seller's standing declarations (`block.checkout.profileFills`) and, for a
+ * per-order row, the fields the checkout walk fills mechanically
+ * (`mechanicalFields`, the planner's own set). ONE list — the form renders it
+ * and the place-order gate below checks it, so the sign gate can never demand
+ * a term the form never offered. Read from the EXACT spec the clause's key
+ * names: another spec of the same name changes no field offered here.
  */
-export function buyerAuthoredFields(clauseKey: string): readonly FieldSpec[] {
-    const designFills = clauseDesignFills(clauseKey);
-    return (getClauseSpec(clauseKey)?.fields ?? []).filter((f) => !designFills.includes(f.name));
+export function buyerAuthoredFields(clauseKey: string, mechanicalFields: ReadonlySet<string> = NO_FIELDS): readonly FieldSpec[] {
+    const sourced = new Set([
+        ...clauseDesignFills(clauseKey),
+        ...clauseCatalogFills(clauseKey),
+        ...clauseProfileFills(clauseKey),
+        ...mechanicalFields,
+    ]);
+    return (getClauseSpec(clauseKey)?.fields ?? []).filter((f) => !sourced.has(f.name));
 }
+
+const NO_FIELDS: ReadonlySet<string> = new Set();
 
 /** A value counts as filled when it is present and non-empty — the same
  *  emptiness the off-chain validator treats as "missing". */
@@ -349,7 +363,7 @@ export function unfilledRequiredFills(
         for (const clause of group.clauses) {
             if (!clause.fillable) continue;
             const values = { ...clause.data, ...(fills[group.key]?.[clause.clauseKey] ?? {}) };
-            for (const field of buyerAuthoredFields(clause.clauseKey)) {
+            for (const field of clause.fields) {
                 if (!isDemandedOfBuyer(field)) continue;
                 if (isFilledValue(values[field.name])) continue;
                 missing.push({

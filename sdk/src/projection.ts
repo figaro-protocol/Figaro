@@ -52,7 +52,7 @@ import {
     type HydratedAssembly,
 } from "./assembly.js";
 import { validateContent, type ClauseSpec } from "./clauses/index.js";
-import { isAddressHex, isBytes32Hex, type Hex } from "./types.js";
+import { isAddressHex, isBytes32Hex, type Address, type Hex } from "./types.js";
 
 // ── The spec seam ───────────────────────────────────────────────────────────
 
@@ -1218,6 +1218,47 @@ export function assembleAuthored(
         },
         agreements,
     };
+}
+
+/**
+ * Fill the deployment's denomination into a built assembly. A reference
+ * assembly is written once and anchored on every chain, but the token it is
+ * denominated in exists only on a deployed chain (the devnet's deployment,
+ * Sepolia's ruled token), so the written file leaves the pin unfilled and the
+ * seeding fills it before anchoring: the anchored `assemblyHash` is over the
+ * filled assembly, never the written one. Unfilled, the pin is what the format
+ * reads it as, a required field missing, so the written file signs nothing as
+ * it stands. Read by the spec's shape, never by a clause or field name: every
+ * ASSEMBLY-SCOPED clause of the denomination article (`block.design.article:
+ * "denomination"`) has each designer-filled `address-hex` field the file left
+ * unfilled set to `tokenAddress`. A field already filled is never overwritten;
+ * an assembly with no such field is returned as it was. Seed time only.
+ */
+export function fillDeployTimeCurrency<T extends { assemblyClauses?: Record<string, Record<string, unknown>> }>(
+    assembly: T,
+    tokenAddress: Address,
+    specs: SpecSource,
+): T {
+    if (!isAddressHex(tokenAddress) || /^0x0{40}$/.test(tokenAddress)) {
+        throw new Error(`the deployment's token is not an address: ${String(tokenAddress)}`);
+    }
+    const entries = assembly.assemblyClauses ?? {};
+    let filledAny = false;
+    const filled = Object.fromEntries(Object.entries(entries).map(([clauseKey, values]) => {
+        const spec = specs.get(clauseKey as Hex);
+        if (!spec || !specIsAssemblyScoped(spec) || spec.hints?.article !== "denomination") return [clauseKey, values];
+        const next: Record<string, unknown> = { ...(values ?? {}) };
+        for (const field of spec.fields) {
+            if (field.type !== "string" || field.format !== "address-hex") continue;
+            if (!specDeclaresDesignFill(spec, field.name)) continue;
+            const current = next[field.name];
+            if (current !== undefined && current !== null && current !== "") continue;
+            next[field.name] = tokenAddress;
+            filledAny = true;
+        }
+        return [clauseKey, next];
+    }));
+    return filledAny ? { ...assembly, assemblyClauses: filled } : assembly;
 }
 
 export function serializeAssembly(assembly: Assembly): {

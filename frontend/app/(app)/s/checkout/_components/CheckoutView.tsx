@@ -31,7 +31,6 @@ import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import { assemblyHashOf, planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses } from "@figaro-protocol/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import {
-    buyerAuthoredFields,
     deriveAgreementGroups,
     deriveKitBreakdown,
     isFilledValue,
@@ -1067,7 +1066,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             <p className="text-[11px] font-medium text-ink-muted">{group.label}</p>
                                         )}
                                         <ul className="text-xs text-ink-body space-y-0.5">
-                                            {group.clauses.map(({ clauseKey, values, data, fillable, mandatory }) => {
+                                            {group.clauses.map(({ clauseKey, values, data, fields, fillable, mandatory }) => {
                                                 const spec = getClauseSpec(clauseKey);
                                                 const specFields = spec?.fields ?? [];
                                                 return (
@@ -1080,11 +1079,12 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                     <CredentialVerifyButton data={data} />
                                                     {fillable && (
                                                         <div className="mt-1 mb-2 ml-3 space-y-2">
-                                                            {/* The SAME list the place-order gate
-                                                                checks (`buyerAuthoredFields`), so no
-                                                                required term can be demanded without
-                                                                a control on screen. */}
-                                                            {buyerAuthoredFields(clauseKey).map((field) => {
+                                                            {/* The row's buyer field complement — the
+                                                                SAME list the place-order gate checks
+                                                                (`buyerAuthoredFields`), so no required
+                                                                term can be demanded without a control
+                                                                on screen. */}
+                                                            {fields.map((field) => {
                                                                 const inputFormat = resolveInputFormat(field, specFields, clauseFills[group.key]?.[clauseKey]);
                                                                 return (
                                                                 <FieldControl

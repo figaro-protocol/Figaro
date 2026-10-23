@@ -246,6 +246,7 @@ export {
     composeAuthoredAgreement,
     composeAuthoredAgreements,
     assembleAuthored,
+    fillDeployTimeCurrency,
     specDeclaresField,
     specDeclaresContentField,
     specDeclaresDesignFill,

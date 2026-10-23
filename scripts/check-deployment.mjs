@@ -99,6 +99,7 @@ const ABI = parseAbi([
     "function counter() view returns (address)",
     "function provenanceLeaf() view returns (bytes32)",
     "function assemblyTermsLeaf() view returns (bytes32)",
+    "function assemblyLeafDomain() view returns (bytes32)",
     "function minSellers() view returns (uint64)",
     "function periodCount() view returns (uint256)",
     "function periodAmount(uint256) view returns (uint256)",

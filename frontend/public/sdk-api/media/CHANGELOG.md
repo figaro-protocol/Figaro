@@ -14,6 +14,14 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **SDK: `fillDeployTimeCurrency(assembly, tokenAddress, specs)`.** A written reference assembly
+  leaves its denomination pin unfilled (`assemblies/equipment-hire.json` composes
+  `figaro-utility-token` as `{}`); the seeding fills the deployment's token into it before
+  anchoring through this one function, read by the spec's shape (an assembly-scoped clause of the
+  denomination article, its designer-filled `address-hex` field) and never by a clause or field
+  name. The zero-address sentinel the file carried, and the two copies of the substitution in the
+  seeder and the devnet helpers, are gone.
+
 - **SDK: the registered agreement and the assembly as a merkle tree over agreement hashes.**
   A designer composes the clauses for ONE agreement into a `ComposedAgreement`
   (`{ name?, summary?, description?, clauses }`, the topology clause composed as `{}`), keyed by

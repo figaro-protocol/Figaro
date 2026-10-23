@@ -28,11 +28,11 @@ import { mnemonicToAccount } from 'viem/accounts';
 // identity (assemblyHash). Nothing is re-implemented here.
 import { MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import {
-    AGREEMENTS_DIR, ASSEMBLIES_DIR, LOCAL_ANVIL, anchorBuiltAssembly, fillDeployTimeCurrency, loadAuthoredSpecs, pinFile, pinJSON,
+    AGREEMENTS_DIR, ASSEMBLIES_DIR, LOCAL_ANVIL, anchorBuiltAssembly, loadAuthoredSpecs, pinFile, pinJSON,
     loadAuthoredAgreements, readBuiltAssembly,
     populateClauses, populateReferenceAssemblies, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
-import { assemblyHashOf, resolveAuthoredClauseKeys, composeAuthoredAgreements, assembleAuthored } from '@figaro-protocol/sdk';
+import { assemblyHashOf, resolveAuthoredClauseKeys, composeAuthoredAgreements, assembleAuthored, fillDeployTimeCurrency } from '@figaro-protocol/sdk';
 
 // The specs in clauses/, each with its key — the set every authored clause
 // NAME below resolves against at seed time (`resolveAuthoredClauseKeys`);
@@ -73,7 +73,7 @@ const SELLERS = [
  *  records it in full. */
 function referenceAssemblyHash(file, tokenAddress) {
     const { assembly } = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), AUTHORED, AUTHORED_AGREEMENTS);
-    return assemblyHashOf(fillDeployTimeCurrency(assembly, tokenAddress));
+    return assemblyHashOf(fillDeployTimeCurrency(assembly, tokenAddress, AUTHORED));
 }
 
 const slugifyId = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -109,10 +109,11 @@ const SEED_AGREEMENTS = Object.fromEntries(Object.entries(composeAuthoredAgreeme
     supplier: { clauses: { ...MANDATORY, 'figaro-merchant-process': {} } },
 }, AUTHORED)).map(([name, { document }]) => [name, document]));
 
-// The zero-address sentinel, the currency fill, and the anchoring itself all
-// live in populate-clauses.mjs now — the ONE reference-assembly population
-// path, shared by devnet (EOA + mock token, here) and testnet/mainnet
-// (treasury + ruled token). This file keeps only the devnet TEST SCAFFOLDING.
+// The anchoring lives in populate-clauses.mjs — the ONE reference-assembly
+// population path, shared by devnet (EOA + mock token, here) and
+// testnet/mainnet (treasury + ruled token) — and the deployment's token fills
+// the denomination pin through the SDK's `fillDeployTimeCurrency`. This file
+// keeps only the devnet TEST SCAFFOLDING.
 
 /** The blank single-agreement composition: mandatory clauses only — the
  *  minimal bindable assembly the single-order specs run against. */

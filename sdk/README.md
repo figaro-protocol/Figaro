@@ -448,6 +448,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `agreementClauses` | root | The clauses an agreement instantiates: its registered agreement's, with the agreement's own fills over them. |
 | `composeAuthoredAgreement` | root | SEED-TIME only: a written agreement file (`agreements/*.json`, clause names, the designer's fills) → the document the seeding pins and its key. |
 | `assembleAuthored` | root | SEED-TIME only: a written assembly (`assemblies/*.json`, agreements naming their agreements) over the composed written agreements → the assembly and each distinct agreement once. |
+| `fillDeployTimeCurrency` | root | SEED-TIME only: the deployment's token filled into the denomination pin a written reference assembly leaves unfilled (an assembly-scoped clause of the denomination article, its designer-filled `address-hex` field), before anchoring. |
 | `assemblyComposedClauseKeys` | root | Every clause key a hydrated assembly composes, sorted — each must be live on `ClauseRegistry` for the design to check out. |
 | `assemblyHashOf` | root | The `assemblyHash` `AssemblyRegistry` binds — the merkle root over the agreements and the assembly terms. |
 | `topologicalOrder` | root | Order ids so every node follows its parents; `throw` or degrade on a cycle. |

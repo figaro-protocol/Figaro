@@ -84,8 +84,8 @@ fi
 # prod/testnet/mainnet use). This step is therefore only needed when the deploy
 # above was SKIPPED (already-deployed path) — it self-heals registries whose
 # clauses, agreements or reference assemblies went missing, with the same env the
-# deploy passes: the registries and the MockERC20 (substituted for the reference
-# assemblies' ZERO_ADDRESS currency sentinel), read from frontend/.env.local.
+# deploy passes: the registries and the MockERC20 (filled into the denomination
+# pin a written reference assembly leaves unfilled), read from frontend/.env.local.
 # Idempotent: a key a registry already binds is skipped.
 if [[ "${DEPLOY_SKIPPED:-0}" == "1" ]]; then
     note "Clauses, agreements, reference assemblies (pin → IPFS, anchor → the registries)"

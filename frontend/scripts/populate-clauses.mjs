@@ -70,9 +70,9 @@
  *   NEXT_PUBLIC_AGREEMENT_REGISTRY — the AgreementRegistry address (each
  *                                   reference assembly's agreements register
  *                                   there first)
- *   ASSEMBLY_TOKEN_ADDRESS        — the denomination substituted for the
- *                                   checked-in ZERO_ADDRESS sentinel (Sepolia:
- *                                   USDC)
+ *   ASSEMBLY_TOKEN_ADDRESS        — the deployment's token, filled into the
+ *                                   denomination pin a written reference
+ *                                   leaves unfilled (Sepolia: USDC)
  *
  * INCREMENTAL RELEASE controls (the nudge-per-session Sepolia rollout):
  *   SEED_ASSEMBLIES       — comma-separated reference-assembly names (the
@@ -118,7 +118,7 @@ import {
     CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, computeClauseKey, canonicalize,
     assemblyHashOf, deriveAssemblySlug, parseProjectionHints,
     assemblyComposedClauseKeys, resolveAuthoredClauseKeys, composeAuthoredAgreements, assembleAuthored,
-    agreementHashOf,
+    agreementHashOf, fillDeployTimeCurrency,
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 
@@ -534,30 +534,6 @@ export async function populateClauses({ publicClient, walletClient, account, reg
 
 // ── Reference assemblies (`assemblies/*.json`, `clauses/`' sibling) ─────────
 
-/** The codebase's standing sentinel for an unset address-hex value (mirrors
- *  `ZERO_ADDRESS` in frontend/lib/shared/evm.ts). A checked-in reference
- *  assembly cannot ship a real token address, so the seed path substitutes
- *  the live deployment's token at anchor time. */
-export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-
-/** Fill the deploy-time currency pin on a RESOLVED assembly: every
- *  assembly-scoped clause whose `currency` is the ZERO_ADDRESS sentinel (a
- *  denomination pin the checked-in file cannot fill) gets the live token
- *  address substituted before anchoring. Read by the sentinel value, never by
- *  a clause name; a assembly with no such clause passes through unchanged. */
-export function fillDeployTimeCurrency(assembly, tokenAddress) {
-    const clauseEntries = assembly.assemblyClauses ?? {};
-    const pinned = Object.keys(clauseEntries).filter((key) => clauseEntries[key]?.currency === ZERO_ADDRESS);
-    if (pinned.length === 0) return assembly;
-    return {
-        ...assembly,
-        assemblyClauses: Object.fromEntries(Object.entries(clauseEntries).map(([key, values]) => [
-            key,
-            pinned.includes(key) ? { ...values, currency: tokenAddress } : values,
-        ])),
-    };
-}
-
 /** Register one agreement on AgreementRegistry (idempotent — the
  *  key is content-derived, first-write-wins: a key the registry already
  *  binds is skipped). The pinned document carries the editorial `name` beside
@@ -703,7 +679,9 @@ export async function populateReferenceAssemblies({ publicClient, walletClient, 
             break;
         }
         const built = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), authored, agreementsByName);
-        const assembly = fillDeployTimeCurrency(built.assembly, tokenAddress);
+        // The deployment's token fills the denomination pin the written file
+        // leaves unfilled (the SDK's fill, read by the spec's shape).
+        const assembly = fillDeployTimeCurrency(built.assembly, tokenAddress, authored);
         const result = await anchorBuiltAssembly({
             built: { assembly, agreements: built.agreements }, agreementRegistry,
             publicClient, walletClient, account, registry, ipfsApiUrl, vault, ownerClients, log,

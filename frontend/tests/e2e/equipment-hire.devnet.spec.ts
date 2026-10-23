@@ -13,11 +13,10 @@
  * checkoutHash, carrying the SAME address.
  *
  *   discover → the reference is identified by IDENTITY (assemblyHash →
- *              slug), computed from the checked-in assembly with its
- *              ZERO_ADDRESS currency sentinel substituted for the live
- *              deployment's token address — the exact substitution
- *              populate-test-data performs before anchoring (the sentinel
- *              exists because `assemblies/*.json` is checked in once but a
+ *              slug), computed from the written assembly with the live
+ *              deployment's token filled into the denomination pin the file
+ *              leaves unfilled — the exact fill populate-test-data performs
+ *              before anchoring (`assemblies/*.json` is written once but a
  *              fresh devnet deploys a new token address every time)
  *   bind     → a fresh member registers (accepting BOTH devnet tokens, so
  *              the picker would normally render) and binds the reference

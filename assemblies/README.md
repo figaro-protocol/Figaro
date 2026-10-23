@@ -51,12 +51,15 @@ pins them first).
 A reference that composes `figaro-utility-token` (`equipment-hire.json`) is the
 one exception to "re-anchoring is a no-op over the checked-in bytes": the
 clause's `currency` is a live ERC-20 address, new on every fresh deploy, so the
-checked-in file carries the zero address as a sentinel and the populate path
-(`populate-clauses.mjs`'s `fillDeployTimeCurrency`) substitutes the real
-deployment's token address before anchoring — the anchored assemblyHash is
-over the SUBSTITUTED assembly, never the sentinel. A spec that wants this
-reference's slug hashes the substituted assembly too
-(`referenceAssemblySlugWithLiveCurrency`, `devnet-helpers.ts`), not the raw file.
+written file leaves the pin unfilled (`"figaro-utility-token": {}` — a required
+field missing, which the format refuses to sign) and the populate path fills
+the deployment's token into it before anchoring (the SDK's
+`fillDeployTimeCurrency`, which reads the pin by the spec's shape: an
+assembly-scoped clause of the denomination article, its designer-filled
+`address-hex` field) — the anchored assemblyHash is over the FILLED assembly,
+never the written one. A spec that wants this reference's slug hashes the
+filled assembly too (`referenceAssemblySlugWithLiveCurrency`,
+`devnet-helpers.ts`), not the raw file.
 
 The written shape is published as a JSON Schema beside the clause's,
 `sdk/src/assembly.schema.json`, which also describes the pinned form;

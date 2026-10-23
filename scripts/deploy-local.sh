@@ -256,8 +256,8 @@ echo "   Deployment: $CORE_DEPLOYMENT"
 # The same invocation registers the reference assemblies, as the Sepolia
 # genesis does: each assembly's distinct registered agreements on
 # AgreementRegistry, then the assembly on AssemblyRegistry, with the devnet's
-# MockERC20 substituted for the checked-in ZERO_ADDRESS currency sentinel
-# (the token populate-test-data.mjs and the e2e specs substitute too).
+# MockERC20 filled into the denomination pin a written reference leaves
+# unfilled (the token populate-test-data.mjs and the e2e specs fill too).
 # ── The mandatory clauses are the DAO's ──────────────────────────────────────
 # figaro-commerce and figaro-topology are registered by the DAO's wallet, the
 # treasury multisig (deployments/31337.expected.json § registrations.byClause),

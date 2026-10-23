@@ -27,6 +27,7 @@ import {
     parseProjectionHints,
     agreementClauses,
     assembleAuthored,
+    fillDeployTimeCurrency,
     composeAuthoredAgreements,
     agreementHashOf,
     assemblyHashOf,
@@ -43,7 +44,6 @@ import {
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 import { encodeGeohash } from '@figaro-protocol/sdk/derive';
 import { deriveAssemblySlug } from '@/lib/shared/assembly';
-import { ZERO_ADDRESS } from '@/lib/shared/evm';
 import { clauseLadderField, labelEnumValue, loadClauseSpec, setClauseSpecFetcher, specSource } from '@/lib/shared/clauseSpecSource';
 import { keyOf } from '../lib/primeClauseSpecs';
 
@@ -724,22 +724,6 @@ export function referenceAssemblyBuilt(name: string): BuiltAssembly {
     return assembleAuthored(doc, authoredAgreementsBuilt(), authoredSpecSource());
 }
 
-/** Substitute the live token into every assembly-scoped clause whose
- *  `currency` is the ZERO_ADDRESS sentinel — by value, never by clause name;
- *  mirrors `populate-clauses.mjs`'s `fillDeployTimeCurrency`, which the
- *  seeding applies BEFORE anchoring. */
-function fillSentinelCurrency<T extends { assemblyClauses?: Record<string, Record<string, unknown>> }>(assembly: T, tokenAddress: `0x${string}`): T {
-    const clauseEntries = assembly.assemblyClauses ?? {};
-    if (!Object.values(clauseEntries).some((v) => v?.currency === ZERO_ADDRESS)) return assembly;
-    return {
-        ...assembly,
-        assemblyClauses: Object.fromEntries(Object.entries(clauseEntries).map(([key, values]) => [
-            key,
-            values?.currency === ZERO_ADDRESS ? { ...values, currency: tokenAddress } : values,
-        ])),
-    };
-}
-
 /** The slug of a REFERENCE assembly identified by its IDENTITY — the
  *  assemblyHash over its canonical composition, the same one
  *  populate-test-data anchors it under (names resolved to keys first). An
@@ -758,15 +742,15 @@ export function referenceAssemblyHash(name: string): `0x${string}` {
     return assemblyHashOf(referenceAssemblyBuilt(name).assembly);
 }
 
-/** Identity of a reference whose checked-in copy carries the ZERO_ADDRESS
- *  currency sentinel in an assembly-scoped clause (a live token address is
- *  new every fresh deploy, so `assemblies/*.json` cannot ship a real one). The
- *  seeding substitutes the live token into the sentinel BEFORE anchoring, so a
- *  spec wanting such a reference's slug hashes the SUBSTITUTED, key-resolved
- *  assembly — the raw file's hash never matches what's anchored. `name` is the
- *  file in `assemblies/`. */
+/** Identity of a reference whose written copy leaves its denomination pin
+ *  unfilled (a live token address is new every fresh deploy, so
+ *  `assemblies/*.json` cannot ship a real one). The seeding fills the
+ *  deployment's token into the pin BEFORE anchoring (the SDK's
+ *  `fillDeployTimeCurrency`), so a spec wanting such a reference's slug hashes
+ *  the FILLED, key-resolved assembly — the raw file's hash never matches what
+ *  is anchored. `name` is the file in `assemblies/`. */
 export function referenceAssemblySlugWithLiveCurrency(name: string, tokenAddress: `0x${string}`): string {
-    const assembly = fillSentinelCurrency(referenceAssemblyBuilt(name).assembly, tokenAddress);
+    const assembly = fillDeployTimeCurrency(referenceAssemblyBuilt(name).assembly, tokenAddress, authoredSpecSource());
     return deriveAssemblySlug(assemblyHashOf(assembly));
 }
 
