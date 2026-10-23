@@ -17,8 +17,9 @@
 <div class="tsd-signature tsd-anchor-link" id="assemblyhashof"><span class="tsd-kind-call-signature">assemblyHashOf</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">assembly</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.Assembly.html" class="tsd-signature-type tsd-kind-interface">Assembly</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><a href="#assemblyhashof" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>The assembly's identity — the merkle root over its agreement leaves and its
-assembly-terms leaf (<code>assemblyLeaves</code>), built by the agreement format's
-own tree (<code>buildMerkleRoot</code>): a one-leaf tree's root is its leaf.
+assembly-terms leaf (<code>assemblyLeaves</code>, each in the assembly tree's own
+leaf shape, <code>computeAssemblyLeaf</code>), built by the format's tree
+(<code>buildMerkleRoot</code>): a one-leaf tree's root is its leaf.
 Editorial prose is excluded, so renaming never forks identity. This is
 the hash <code>AssemblyRegistry</code> keys bindings on. Publishers anchor it;
 readers recompute it from a fetched document to verify integrity.</p>
@@ -29,7 +30,7 @@ readers recompute it from a fetched document to verify integrity.</p>
 <li><span><span class="tsd-kind-parameter">assembly</span>: <a href="../interfaces/index.Assembly.html" class="tsd-signature-type tsd-kind-interface">Assembly</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/assembly.ts#L275">assembly.ts:275</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/assembly.ts#L299">assembly.ts:299</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

@@ -150,7 +150,7 @@ function registerAssembly(bytes32 assemblyHash, string calldata contentURI) exte
 function withdrawDeposit(bytes32 assemblyHash) external;                                        // :175
 ```
 
-`assemblyHash` is a merkle root over the assembly's agreements, built with the agreement format's leaf convention (`keccak256(keccak256(key ‖ keccak256(bytes)))`, sorted-pair hashing): one leaf per agreement `i`, key the agreement's `agreementHash`, bytes the canonical JSON `{"clauses":{…},"slot":i}` (the agreement's own fills — the topology clause's `follows`); and, when any assembly-scoped clauses are composed, one leaf keyed `keccak256("figaro-assembly-terms")` over the canonical JSON of `assemblyClauses`. Editorial prose is excluded, so identical compositions collapse to one binding and no caller-chosen name exists on chain; the human slug is derived off-chain. Membership of an agreement in an assembly is a merkle proof of its agreement leaf under the root — the registry stores no list and checks nothing about the agreements a root names. `bindings(assemblyHash)` returns `(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)` — everything the chain stores for the binding. Withdrawal refunds the stake and de-surfaces the assembly; the binding stays, because buyers and sellers referencing it rely on stable content.
+`assemblyHash` is a merkle root over the assembly's agreements, built with the assembly tree's own leaf convention (`keccak256(keccak256(assemblyLeafDomain ‖ key ‖ keccak256(bytes)))`, `assemblyLeafDomain = keccak256("figaro-assembly-leaf")`, sorted-pair hashing; the agreement format's leaf carries no domain, so the two trees never share a shape): one leaf per agreement `i`, key the agreement's `agreementHash`, bytes the canonical JSON `{"clauses":{…},"slot":i}` (the agreement's own fills — the topology clause's `follows`); and, when any assembly-scoped clauses are composed, one leaf keyed `keccak256("figaro-assembly-terms")` over the canonical JSON of `assemblyClauses`. Editorial prose is excluded, so identical compositions collapse to one binding and no caller-chosen name exists on chain; the human slug is derived off-chain. Membership of an agreement in an assembly is a merkle proof of its agreement leaf under the root — the registry stores no list and checks nothing about the agreements a root names. `bindings(assemblyHash)` returns `(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)` — everything the chain stores for the binding. Withdrawal refunds the stake and de-surfaces the assembly; the binding stays, because buyers and sellers referencing it rely on stable content.
 
 **Errors** (`:120-127`): `EmptyContentURI`, `ZeroAssemblyHash`, `AssemblyAlreadyRegistered(assemblyHash)`, `WrongDeposit(provided, required)`, `NotRegistered`, `NotRegisteredBy(caller, registeredBy)`, `AlreadyWithdrawn`, `TransferFailed`. **Events:** `AssemblyRegistered`, `DepositWithdrawn`. Compute the root off-chain with `assemblyHashOf(assembly)` from the SDK, and a agreement's membership proof with `buildAgreementInclusionProof(assembly, i)` — see [Clauses and agreements](/protocol/clauses/).
 
@@ -251,27 +251,28 @@ Counts how much real trade a clause, a registered agreement or an assembly carri
 
 ```solidity
 function recordClauseUsage(CommitmentTypes.Commitment calldata order, bytes32 clauseOrAssembly,
-    bytes32 clauseDataHash, bytes32[] calldata proof) external;                     // :482  (kind 0, clause)
+    bytes32 clauseDataHash, bytes32[] calldata proof) external;                     // :491  (kind 0, clause)
 function recordAgreementUsage(CommitmentTypes.Commitment calldata order, bytes32 agreementHash,
-    bytes32 assemblyHash, bytes32[] calldata proof) external;                 // :525  (kind 2, agreement)
+    bytes32 assemblyHash, bytes32[] calldata proof) external;                 // :534  (kind 2, agreement)
 function recordAssemblyUsage(CommitmentTypes.Commitment calldata order, bytes32 assemblyHash,
     bytes32 agreementHash, bytes32 slotContentHash,
-    bytes32[] calldata leafProof, bytes32[] calldata membershipProof) external;  // :563  (kind 1, assembly)
+    bytes32[] calldata leafProof, bytes32[] calldata membershipProof) external;  // :572  (kind 1, assembly)
 function applyBatchAccrual(uint8 period, bytes32 claimedProvenanceLeaf,
-    BatchAccrual[] calldata accruals, address[] calldata sellers) external;      // :670  (batchVerifier only)
-// struct BatchAccrual { bytes32 clauseOrAssembly; uint8 kind; uint64 c; uint64 d; }  // :632
+    BatchAccrual[] calldata accruals, address[] calldata sellers) external;      // :680  (batchVerifier only)
+// struct BatchAccrual { bytes32 clauseOrAssembly; uint8 kind; uint64 c; uint64 d; }  // :642
 function provenanceLeaf() external view returns (bytes32);                       // :188  (constant)
 function assemblyTermsLeaf() external view returns (bytes32);                    // :198  (constant)
+function assemblyLeafDomain() external view returns (bytes32);                   // :207  (constant, the assembly tree's leaf domain)
 function agreements() external view returns (address);                           // :128  (the AgreementRegistry the kind-2 gate reads)
 function KIND_CLAUSE() external view returns (uint8);                            // :161  (constant 0)
 function KIND_ASSEMBLY() external view returns (uint8);                          // :164  (constant 1)
 function KIND_AGREEMENT() external view returns (uint8);                         // :167  (constant 2)
-function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);  // :459
+function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);  // :468
 function accrualOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period)
     external view returns (uint64 c, uint64 d, uint256 score);                   // :242  (direct path)
-function currentPeriod() external view returns (uint8);                          // :440
-function periodClosed(uint8 period) external view returns (bool);                // :450
-function periodCount() external view returns (uint256);                          // :435
+function currentPeriod() external view returns (uint8);                          // :449
+function periodClosed(uint8 period) external view returns (bool);                // :459
+function periodCount() external view returns (uint256);                          // :444
 ```
 
 Every accrual, count and score is keyed by `(kind, key)`: kind `0` is a clause key, kind `1` an assembly `assemblyHash`, kind `2` a registered agreement's `agreementHash`. A registry takes any bytes32 but its reserved keys and nothing in a key's bytes names its family, so each kind's gate reads its own registry only — `recordClauseUsage` checks `ClauseRegistry`, `recordAgreementUsage` checks `AgreementRegistry`, `recordAssemblyUsage` checks `AssemblyRegistry`, and a batch accrual is gated by the registry its `kind` names. A wallet that registers an assembly's `assemblyHash` as a clause key or an agreement hash earns nothing of that assembly's accrual.

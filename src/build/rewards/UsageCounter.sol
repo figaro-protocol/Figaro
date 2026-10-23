@@ -197,6 +197,15 @@ contract UsageCounter {
     ///         leaf never passes as an agreement.
     bytes32 public constant assemblyTermsLeaf = keccak256("figaro-assembly-terms");
 
+    /// @notice The domain mixed into every leaf of an assembly's tree,
+    ///         `keccak256("figaro-assembly-leaf")`: an assembly leaf is
+    ///         `keccak256(keccak256(assemblyLeafDomain ‖ key ‖ dataHash))` where
+    ///         the agreement format's leaf is `keccak256(keccak256(key ‖ dataHash))`,
+    ///         so a tree over agreements never shares a shape with a tree over
+    ///         clauses and no tree over agreement-format leaves opens an assembly leaf. The SDK
+    ///         (`ASSEMBLY_LEAF_DOMAIN`) and the guest hold the same constant.
+    bytes32 public constant assemblyLeafDomain = keccak256("figaro-assembly-leaf");
+
     /// @notice The minimum-support floor: a clause, agreement
     ///         or assembly scores
     ///         ZERO in a period until at least this many DISTINCT LIVE-STAKED
@@ -545,7 +554,7 @@ contract UsageCounter {
     ///         two steps: the provenance leaf, exactly as `recordAgreementUsage`
     ///         proves it, shows the order names this assemblyHash and the
     ///         agreementHash of the agreement it instantiated; the agreement's
-    ///         leaf `keccak256(keccak256(agreementHash ‖ slotContentHash))` then
+    ///         leaf `keccak256(keccak256(assemblyLeafDomain ‖ agreementHash ‖ slotContentHash))` then
     ///         opens under the assemblyHash, which is the root of the
     ///         assembly's tree — so the assembly composes that agreement.
     ///         The agreement's own stake is never read here.
@@ -580,9 +589,11 @@ contract UsageCounter {
 
         _requireProvenance(order.checkoutHash, agreementHash, assemblyHash, leafProof);
 
-        // The agreement's leaf, by the agreement format's leaf convention —
-        // the same functions that make `checkoutHash` make the assembly root.
-        bytes32 slotLeaf = keccak256(bytes.concat(keccak256(abi.encodePacked(agreementHash, slotContentHash))));
+        // The agreement's leaf in the assembly's tree: the assembly leaf
+        // domain, the agreementHash and the content hash, double-hashed as
+        // every leaf of the format is.
+        bytes32 slotLeaf =
+            keccak256(bytes.concat(keccak256(abi.encodePacked(assemblyLeafDomain, agreementHash, slotContentHash))));
         if (!MerkleProof.verify(membershipProof, assemblyHash, slotLeaf)) revert InvalidMembershipProof();
 
         // DESIGNER-SIDE STAKE GATE, assembly form — the composition must hold a

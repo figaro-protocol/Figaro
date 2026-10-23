@@ -28,7 +28,7 @@ where `c` is the count of distinct resolved processes that used it and `d` the n
 
 **There is no tag, category, weight, per-wallet cap, match round, or quadratic component, and none may be added.** A per-clause multiplier would say some kinds of contribution are worth more than their use — a judgment the mechanism exists to avoid. That judgment lives at a different tier, in the DAO treasury.
 
-`icbrt(c · d² · 1e18)` is the formula in `UsageCounter._score` (`src/build/rewards/UsageCounter.sol:834`), and the on-chain `icbrt` (`:850`) mirrors the SDK's so an off-chain recompute agrees exactly.
+`icbrt(c · d² · 1e18)` is the formula in `UsageCounter._score` (`src/build/rewards/UsageCounter.sol:844`), and the on-chain `icbrt` (`:850`) mirrors the SDK's so an off-chain recompute agrees exactly.
 
 ## Neutrality comes from the stake
 

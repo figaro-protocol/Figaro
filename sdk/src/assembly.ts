@@ -17,7 +17,7 @@
  * published document carries.
  */
 
-import { keccak256, toHex } from "viem";
+import { keccak256, toHex, concat } from "viem";
 import type { Hex } from "./types.js";
 import { isBytes32Hex } from "./types.js";
 import {
@@ -27,6 +27,7 @@ import {
     computeClauseLeaf,
     PROVENANCE_LEAF_KEY,
     sortLeaves,
+    hashClauseData,
 } from "./agreement.js";
 import type { ProjectionSpecView } from "./projection.js";
 
@@ -228,6 +229,28 @@ export const ASSEMBLY_TERMS_LEAF_LABEL = "figaro-assembly-terms";
  *  bytes are the canonical JSON of `assemblyClauses`. */
 export const ASSEMBLY_TERMS_LEAF_KEY: Hex = keccak256(toHex(ASSEMBLY_TERMS_LEAF_LABEL));
 
+/** The label the assembly tree's leaf domain is the hash of — a bare string
+ *  no spec or agreement document serializes to. */
+export const ASSEMBLY_LEAF_DOMAIN_LABEL = "figaro-assembly-leaf";
+
+/** The domain mixed into every leaf of the assembly tree (the agreement
+ *  leaves and the assembly-terms leaf), `keccak256("figaro-assembly-leaf")`:
+ *  an assembly root is built as `keccak256(keccak256(domain ‖ key ‖ dataHash))`
+ *  per leaf where the agreement format builds `keccak256(keccak256(key ‖
+ *  dataHash))`, so a tree over agreements and a tree over clauses never share
+ *  one shape and no agreement root can pass as an assembly root. The same
+ *  constant is `UsageCounter.assemblyLeafDomain` on chain and
+ *  `ASSEMBLY_LEAF_DOMAIN` in the guest. */
+export const ASSEMBLY_LEAF_DOMAIN: Hex = keccak256(toHex(ASSEMBLY_LEAF_DOMAIN_LABEL));
+
+/** A leaf of the assembly tree: the domain, the leaf's key (an agreement's
+ *  `agreementHash`, or the assembly-terms key) and the keccak256 of its
+ *  committed bytes, double-hashed as every leaf of the format is. */
+export function computeAssemblyLeaf(key: Hex, dataHash: Hex): Hex {
+    if (!isBytes32Hex(key) || !isBytes32Hex(dataHash)) throw new Error("an assembly leaf takes a 32-byte key and a 32-byte data hash");
+    return keccak256(keccak256(concat([ASSEMBLY_LEAF_DOMAIN, key, dataHash])));
+}
+
 /** An agreement leaf's committed bytes — canonical JSON
  *  `{"clauses":{…},"slot":i}` (`slot`, the wire name for the agreement's index) of the agreement's own fills (object keys
  *  sorted, arrays in authored order). `i` is the agreement's 0-based
@@ -246,12 +269,12 @@ export function assertNotReservedKey(agreementHash: Hex, where = "agreementHash"
     }
 }
 
-/** An agreement's leaf — the agreement leaf convention with the agreement
- *  own `agreementHash` as the key and `keccak256(agreementLeafBytes)` as the
- *  clause data hash. Throws for a reserved key. */
+/** An agreement's leaf in the assembly tree — the assembly leaf shape with
+ *  the agreement's own `agreementHash` as the key and
+ *  `keccak256(agreementLeafBytes)` as the data hash. Throws for a reserved key. */
 function agreementLeaf(entry: AssemblyAgreement, i: number): Hex {
     assertNotReservedKey(entry.agreementHash, `agreement ${i} agreementHash`);
-    return computeClauseLeaf({ clause: entry.agreementHash, dataHash: keccak256(agreementLeafBytes(entry, i)) });
+    return computeAssemblyLeaf(entry.agreementHash, keccak256(agreementLeafBytes(entry, i)));
 }
 
 /** Every leaf of the composition tree, sorted as the tree is built: one per
@@ -261,14 +284,15 @@ export function assemblyLeaves(assembly: Assembly): Hex[] {
     const leaves = assembly.agreements.map((entry, i) => agreementLeaf(entry, i));
     const terms = assembly.assemblyClauses;
     if (terms && Object.keys(terms).length > 0) {
-        leaves.push(computeClauseLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: terms }));
+        leaves.push(computeAssemblyLeaf(ASSEMBLY_TERMS_LEAF_KEY, hashClauseData({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: terms })));
     }
     return sortLeaves(leaves);
 }
 
 /** The assembly's identity — the merkle root over its agreement leaves and its
- *  assembly-terms leaf (`assemblyLeaves`), built by the agreement format's
- *  own tree (`buildMerkleRoot`): a one-leaf tree's root is its leaf.
+ *  assembly-terms leaf (`assemblyLeaves`, each in the assembly tree's own
+ *  leaf shape, `computeAssemblyLeaf`), built by the format's tree
+ *  (`buildMerkleRoot`): a one-leaf tree's root is its leaf.
  *  Editorial prose is excluded, so renaming never forks identity. This is
  *  the hash `AssemblyRegistry` keys bindings on. Publishers anchor it;
  *  readers recompute it from a fetched document to verify integrity. */

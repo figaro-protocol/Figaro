@@ -19,6 +19,7 @@ import path from "node:path";
 import { keccak256, toHex, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
 import {
+    computeAssemblyLeaf,
     ASSEMBLY_TERMS_LEAF_KEY,
     agreementHashOf,
     buildRegisteredClauseInclusionProof,
@@ -29,6 +30,7 @@ import {
     type RegisteredAgreement,
 } from "../src/assembly.js";
 import {
+    hashClauseData,
     PROVENANCE_LEAF_KEY,
     buildMerkleRoot,
     canonicalize,
@@ -55,7 +57,7 @@ const SHAPE =
     "(a one-clause agreement's hash is its leaf). assemblies[]: { label, assemblyHash, entries[], terms|null }. " +
     "slots[i]: { id, agreementHash, agreementBytes, slotContentHash, leaf, membershipProof, provenance } — " +
     "agreementBytes is the canonical JSON {\"clauses\":{…},\"slot\":i}, slotContentHash = keccak256(agreementBytes), " +
-    "leaf = keccak256(keccak256(agreementHash ‖ slotContentHash)), membershipProof is the sorted-pair proof of leaf " +
+    "leaf = keccak256(keccak256(assemblyLeafDomain ‖ agreementHash ‖ slotContentHash)) with assemblyLeafDomain = keccak256(\"figaro-assembly-leaf\"), the assembly tree's own leaf shape (the terms leaf takes it too), membershipProof is the sorted-pair proof of leaf " +
     "under assemblyHash. terms: { leafKey (keccak256(\"figaro-assembly-terms\")), termsBytes (canonical JSON of " +
     "assemblyClauses), clauseDataHash, leaf } or null when no assembly-scoped clause is composed. " +
     "provenance: { leafKey (keccak256(\"figaro-agreement-provenance\")), agreementHash, assemblyHash, clauseData " +
@@ -83,7 +85,7 @@ function assemblyVector(label: string, assembly: Assembly) {
                 leafKey: ASSEMBLY_TERMS_LEAF_KEY,
                 termsBytes,
                 clauseDataHash: keccak256(toHex(termsBytes)),
-                leaf: computeClauseLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: assembly.assemblyClauses }),
+                leaf: computeAssemblyLeaf(ASSEMBLY_TERMS_LEAF_KEY, hashClauseData({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: assembly.assemblyClauses })),
             };
         })()
         : null;
@@ -158,7 +160,7 @@ describe("Assembly parity vectors — the composition tree's lock", () => {
         for (const asm of frozen.assemblies) {
             for (const entry of asm.agreements) {
                 expect(keccak256(toHex(entry.agreementBytes))).toBe(entry.slotContentHash);
-                expect(computeClauseLeaf({ clause: entry.agreementHash, dataHash: entry.slotContentHash })).toBe(entry.leaf);
+                expect(computeAssemblyLeaf(entry.agreementHash, entry.slotContentHash)).toBe(entry.leaf);
                 expect(verifyInclusionProof(asm.assemblyHash, entry.leaf, entry.membershipProof)).toBe(true);
                 expect(keccak256(toHex(entry.provenance.clauseData))).toBe(entry.provenance.clauseDataHash);
                 expect(computeClauseLeaf({ clause: entry.provenance.leafKey, dataHash: entry.provenance.clauseDataHash }))
@@ -167,7 +169,7 @@ describe("Assembly parity vectors — the composition tree's lock", () => {
             const leaves = [...asm.agreements.map((entry: { leaf: Hex }) => entry.leaf), ...(asm.terms ? [asm.terms.leaf] : [])];
             if (asm.terms) {
                 expect(keccak256(toHex(asm.terms.termsBytes))).toBe(asm.terms.clauseDataHash);
-                expect(computeClauseLeaf({ clause: asm.terms.leafKey, dataHash: asm.terms.clauseDataHash })).toBe(asm.terms.leaf);
+                expect(computeAssemblyLeaf(asm.terms.leafKey, asm.terms.clauseDataHash)).toBe(asm.terms.leaf);
             }
             expect(buildMerkleRoot(sortLeaves(leaves))).toBe(asm.assemblyHash);
         }

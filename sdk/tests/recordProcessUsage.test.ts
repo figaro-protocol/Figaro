@@ -9,7 +9,8 @@ import { encodePacked, keccak256, type Address, type Hex, type PublicClient, typ
 import { recordProcessUsage } from "../src/agent/index.js";
 import { computeClauseKey } from "../src/discovery.js";
 import { PROVENANCE_LEAF_KEY, type Agreement } from "../src/agreement.js";
-import { ASSEMBLY_TERMS_LEAF_KEY, buildAgreementInclusionProof, assemblyHashOf, type Assembly } from "../src/assembly.js";
+import {
+    ASSEMBLY_LEAF_DOMAIN, ASSEMBLY_TERMS_LEAF_KEY, buildAgreementInclusionProof, assemblyHashOf, type Assembly } from "../src/assembly.js";
 import type { Commitment } from "../src/types.js";
 import { keyOf } from "./specFixtures.js";
 
@@ -59,6 +60,7 @@ function clients(opts: { failOn?: Hex } = {}) {
             if (functionName === "core") return CORE;
             if (functionName === "provenanceLeaf") return PROVENANCE_LEAF_KEY;
             if (functionName === "assemblyTermsLeaf") return ASSEMBLY_TERMS_LEAF_KEY;
+            if (functionName === "assemblyLeafDomain") return ASSEMBLY_LEAF_DOMAIN;
             throw new Error(`unexpected read ${functionName}(${(args ?? []).join(",")})`);
         },
         waitForTransactionReceipt: async () => ({ status: "success" }),

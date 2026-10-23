@@ -342,6 +342,16 @@ pub const PROVENANCE_LEAF_KEY: B256 =
 pub const ASSEMBLY_TERMS_LEAF_KEY: B256 =
     b256!("efe0eaa5bce6c7b996059fedd6d0e4827f99c474563f43ff55e6e593e5915860");
 
+/// The domain mixed into every leaf of an assembly's tree,
+/// `keccak256("figaro-assembly-leaf")`: an assembly leaf is
+/// `keccak256(keccak256(domain ‖ key ‖ content_hash))` where the agreement
+/// format's leaf is `keccak256(keccak256(key ‖ content_hash))`, so a tree over
+/// agreements never shares a shape with a tree over clauses.
+/// `UsageCounter.assemblyLeafDomain` and the SDK's `ASSEMBLY_LEAF_DOMAIN` hold
+/// the same constant.
+pub const ASSEMBLY_LEAF_DOMAIN: B256 =
+    b256!("b44cab2cf6dbf97cfe57060c8f30ee31552bc93f52859b4f32bd145f2882dfc6");
+
 /// Whether `key` is one of the format's two reserved leaf keys, refused
 /// wherever a key is taken: as a usage claim's key of any kind, and as the
 /// agreementHash of an assembly claim's agreement position.
@@ -735,12 +745,24 @@ pub fn provenance_leaf_bytes(agreement_hash: &B256, assembly_hash: &B256) -> Vec
 }
 
 /// A leaf of the agreement format, `keccak256(keccak256(key ‖ content_hash))`
-/// — the one convention for a clause of an agreement and for an agreement's position in an
-/// assembly's root.
+/// — the convention for a clause of an agreement, the provenance leaf among
+/// them.
 fn format_leaf(key: &B256, content_hash: &B256) -> B256 {
     let mut preimage = [0u8; 64];
     preimage[..32].copy_from_slice(key.as_slice());
     preimage[32..].copy_from_slice(content_hash.as_slice());
+    keccak256(keccak256(preimage))
+}
+
+/// A leaf of an assembly's tree,
+/// `keccak256(keccak256(ASSEMBLY_LEAF_DOMAIN ‖ key ‖ content_hash))` — the
+/// convention for an agreement's position in an assembly's root and for the
+/// assembly-terms leaf, distinct in shape from the agreement format's leaf.
+pub fn assembly_leaf(key: &B256, content_hash: &B256) -> B256 {
+    let mut preimage = [0u8; 96];
+    preimage[..32].copy_from_slice(ASSEMBLY_LEAF_DOMAIN.as_slice());
+    preimage[32..64].copy_from_slice(key.as_slice());
+    preimage[64..].copy_from_slice(content_hash.as_slice());
     keccak256(keccak256(preimage))
 }
 
@@ -838,7 +860,7 @@ fn apply_usage_claims(
             if !crate::merkle::verify_inclusion(
                 membership_proof,
                 claim.clause_or_assembly,
-                format_leaf(agreement_hash, slot_content_hash),
+                assembly_leaf(agreement_hash, slot_content_hash),
             ) {
                 return Err(KernelError::UsageInvalidInclusionProof);
             }

@@ -149,7 +149,9 @@ async fn guest_program_rejects_substituted_witness_spec() {
 
 // ── The agreement and assembly claims inside the VM ──────────────────
 
-/// A leaf of the agreement format, `keccak256(keccak256(key ‖ content))`.
+/// A leaf of the agreement format, `keccak256(keccak256(key ‖ content))` — the
+/// provenance leaf under `checkoutHash`; an assembly's leaves take the tree's
+/// own domain (`figaro_kernel::kernel::assembly_leaf`).
 fn format_leaf(key: &B256, content: &B256) -> B256 {
     let mut preimage = [0u8; 64];
     preimage[..32].copy_from_slice(key.as_slice());
@@ -178,15 +180,15 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
 
     let agreement = keccak256(b"an-agreement");
     let slot0 = keccak256(br#"{"clauses":{},"slot":0}"#);
-    let slot1_leaf = format_leaf(
+    let slot1_leaf = figaro_kernel::kernel::assembly_leaf(
         &keccak256(b"the-following-agreement"),
         &keccak256(br#"{"clauses":{"0x01":{"follows":["agreement-0"]}},"slot":1}"#),
     );
-    let composition = sorted_pair(format_leaf(&agreement, &slot0), slot1_leaf);
+    let composition = sorted_pair(figaro_kernel::kernel::assembly_leaf(&agreement, &slot0), slot1_leaf);
     let membership = if membership_root_is_the_claimed_one {
         vec![slot1_leaf]
     } else {
-        vec![format_leaf(&keccak256(b"some-other-agreement"), &slot0)]
+        vec![figaro_kernel::kernel::assembly_leaf(&keccak256(b"some-other-agreement"), &slot0)]
     };
 
     let clause_data_hash = keccak256(provenance_leaf_bytes(&agreement, &composition));

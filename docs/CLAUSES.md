@@ -120,9 +120,17 @@ Agreements are ordered, so one registered agreement may hold two. The
 editorial fields are excluded from the root. Membership of an agreement in an
 assembly is a membership proof: the sorted-pair proof of its agreement leaf under
 `assemblyHash` (`buildAgreementInclusionProof(assembly, i)`, with
-`agreementLeafBytes(slot, i)` giving the content and `slotContentHash` its
-hash). The SDK owns the format (`assemblyHashOf`, `AssemblyAgreement`,
-`ASSEMBLY_TERMS_LEAF_KEY` in `sdk/src/assembly.ts`).
+`agreementLeafBytes(entry, i)` giving the content and `slotContentHash` its
+hash). Every leaf of the assembly tree, the agreement leaves and the terms leaf,
+is built in the assembly tree's own shape,
+`keccak256(keccak256(assemblyLeafDomain ‖ key ‖ dataHash))` with
+`assemblyLeafDomain = keccak256("figaro-assembly-leaf")`, where the agreement format's leaf is
+`keccak256(keccak256(key ‖ dataHash))`: a tree over agreements and a tree over
+clauses never share one shape, so no agreement root opens an assembly
+leaf. The SDK owns the format (`assemblyHashOf`, `computeAssemblyLeaf`,
+`ASSEMBLY_LEAF_DOMAIN`, `AssemblyAgreement`, `ASSEMBLY_TERMS_LEAF_KEY` in
+`sdk/src/assembly.ts`); `UsageCounter.assemblyLeafDomain` and the guest hold the
+same constant.
 
 **Two reserved keys.** `PROVENANCE_LEAF_KEY` and `ASSEMBLY_TERMS_LEAF_KEY` are
 constants of the format, never a registration and never an `agreementHash`:

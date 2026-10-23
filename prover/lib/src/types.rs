@@ -191,7 +191,7 @@ pub enum UsageClaimKind {
     /// Assembly usage; the claim's key is the assemblyHash. The
     /// provenance leaf is proved exactly as for an agreement claim, from
     /// `agreement_hash` and the assemblyHash; then the agreement's leaf
-    /// `keccak256(keccak256(agreement_hash ‖ slot_content_hash))` is proved
+    /// `keccak256(keccak256(ASSEMBLY_LEAF_DOMAIN ‖ agreement_hash ‖ slot_content_hash))` is proved
     /// under the assemblyHash by `membership_proof`, with the same
     /// sorted-pair verifier — the assembly's root is a merkle tree over its
     /// order slots.

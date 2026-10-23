@@ -46,6 +46,16 @@ library AgreementTestHelper {
         return keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, keccak256(clauseData)))));
     }
 
+    /// @dev The assembly tree's leaf domain, `keccak256("figaro-assembly-leaf")` —
+    ///      the counter's `assemblyLeafDomain`, the SDK's `ASSEMBLY_LEAF_DOMAIN`.
+    bytes32 internal constant ASSEMBLY_LEAF_DOMAIN = keccak256("figaro-assembly-leaf");
+
+    /// @dev A leaf of an assembly's tree: `keccak256(keccak256(ASSEMBLY_LEAF_DOMAIN ‖ key ‖ keccak256(bytes)))`
+    ///      — an agreement's position keyed by its agreementHash, or the terms leaf.
+    function assemblyLeafFor(bytes32 key, bytes memory leafBytes) internal pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encodePacked(ASSEMBLY_LEAF_DOMAIN, key, keccak256(leafBytes)))));
+    }
+
     /// @dev Compute the agreement merkle root for an ordered list of leaves.
     ///      Leaves are sorted internally so the caller order doesn't matter.
     function rootFor(bytes32[] memory leaves) internal pure returns (bytes32) {

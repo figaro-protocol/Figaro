@@ -1,5 +1,5 @@
 {
-    "shape": "agreements[]: { label, agreementHash, clauses[] } — clauses[j]: { clauseKey, fillsBytes, fillsHash, leaf, membershipProof }: fillsBytes is the canonical JSON of the designer's fills for that clause, fillsHash = keccak256(fillsBytes), leaf = keccak256(keccak256(clauseKey ‖ fillsHash)), membershipProof is the sorted-pair proof of leaf under agreementHash, and agreementHash is the sorted-pair merkle root over every clause leaf (a one-clause agreement's hash is its leaf). assemblies[]: { label, assemblyHash, entries[], terms|null }. slots[i]: { id, agreementHash, agreementBytes, slotContentHash, leaf, membershipProof, provenance } — agreementBytes is the canonical JSON {\"clauses\":{…},\"slot\":i}, slotContentHash = keccak256(agreementBytes), leaf = keccak256(keccak256(agreementHash ‖ slotContentHash)), membershipProof is the sorted-pair proof of leaf under assemblyHash. terms: { leafKey (keccak256(\"figaro-assembly-terms\")), termsBytes (canonical JSON of assemblyClauses), clauseDataHash, leaf } or null when no assembly-scoped clause is composed. provenance: { leafKey (keccak256(\"figaro-agreement-provenance\")), agreementHash, assemblyHash, clauseData (canonical JSON {\"agreementHash\":\"0x…\",\"assemblyHash\":\"0x…\"}, lowercase hex), clauseDataHash = keccak256(clauseData), leaf = keccak256(keccak256(leafKey ‖ clauseDataHash)) }. assemblyHash is the sorted-pair merkle root over every entry leaf and the terms leaf; a one-leaf tree's root is its leaf.",
+    "shape": "agreements[]: { label, agreementHash, clauses[] } — clauses[j]: { clauseKey, fillsBytes, fillsHash, leaf, membershipProof }: fillsBytes is the canonical JSON of the designer's fills for that clause, fillsHash = keccak256(fillsBytes), leaf = keccak256(keccak256(clauseKey ‖ fillsHash)), membershipProof is the sorted-pair proof of leaf under agreementHash, and agreementHash is the sorted-pair merkle root over every clause leaf (a one-clause agreement's hash is its leaf). assemblies[]: { label, assemblyHash, entries[], terms|null }. slots[i]: { id, agreementHash, agreementBytes, slotContentHash, leaf, membershipProof, provenance } — agreementBytes is the canonical JSON {\"clauses\":{…},\"slot\":i}, slotContentHash = keccak256(agreementBytes), leaf = keccak256(keccak256(assemblyLeafDomain ‖ agreementHash ‖ slotContentHash)) with assemblyLeafDomain = keccak256(\"figaro-assembly-leaf\"), the assembly tree's own leaf shape (the terms leaf takes it too), membershipProof is the sorted-pair proof of leaf under assemblyHash. terms: { leafKey (keccak256(\"figaro-assembly-terms\")), termsBytes (canonical JSON of assemblyClauses), clauseDataHash, leaf } or null when no assembly-scoped clause is composed. provenance: { leafKey (keccak256(\"figaro-agreement-provenance\")), agreementHash, assemblyHash, clauseData (canonical JSON {\"agreementHash\":\"0x…\",\"assemblyHash\":\"0x…\"}, lowercase hex), clauseDataHash = keccak256(clauseData), leaf = keccak256(keccak256(leafKey ‖ clauseDataHash)) }. assemblyHash is the sorted-pair merkle root over every entry leaf and the terms leaf; a one-leaf tree's root is its leaf.",
     "agreements": [
         {
             "label": "three-clauses",
@@ -77,22 +77,22 @@
     "assemblies": [
         {
             "label": "one-agreement",
-            "assemblyHash": "0xcc488a8d21e075e1d463c1ab9cc73774816f3aa0a992fc1576f98f7be0ff19b1",
+            "assemblyHash": "0x5fcea7fa4b756b2f0246afbc236a52bc4f354d01d5cffae80885f8324a566961",
             "agreements": [
                 {
                     "id": "agreement-0",
                     "agreementHash": "0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b",
                     "agreementBytes": "{\"clauses\":{},\"slot\":0}",
                     "slotContentHash": "0x766cc2b7e2f69a39e9bbbc6181f1f70c4fbea97094c92d74288928ba71b38406",
-                    "leaf": "0xcc488a8d21e075e1d463c1ab9cc73774816f3aa0a992fc1576f98f7be0ff19b1",
+                    "leaf": "0x5fcea7fa4b756b2f0246afbc236a52bc4f354d01d5cffae80885f8324a566961",
                     "membershipProof": [],
                     "provenance": {
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementHash": "0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b",
-                        "assemblyHash": "0xcc488a8d21e075e1d463c1ab9cc73774816f3aa0a992fc1576f98f7be0ff19b1",
-                        "clauseData": "{\"agreementHash\":\"0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b\",\"assemblyHash\":\"0xcc488a8d21e075e1d463c1ab9cc73774816f3aa0a992fc1576f98f7be0ff19b1\"}",
-                        "clauseDataHash": "0x67087e4a125341f845817a3b94732e9897c08c87346169aabcf7aa331a595414",
-                        "leaf": "0x9e033b08314c2128851e500606187f0e4a4a53270fc40cbcb34ab71fcd88e58a"
+                        "assemblyHash": "0x5fcea7fa4b756b2f0246afbc236a52bc4f354d01d5cffae80885f8324a566961",
+                        "clauseData": "{\"agreementHash\":\"0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b\",\"assemblyHash\":\"0x5fcea7fa4b756b2f0246afbc236a52bc4f354d01d5cffae80885f8324a566961\"}",
+                        "clauseDataHash": "0xb4922a962ae3f3250f9036e119f14a984fd7850fe55c19b5f6dc95ffe48b0b76",
+                        "leaf": "0x35a7c4b42daea1214182c788525f6e4dc2950368d5b07a443bb5270d1c35f283"
                     }
                 }
             ],
@@ -100,24 +100,24 @@
         },
         {
             "label": "two-agreements",
-            "assemblyHash": "0xaaf8368332c646299bb99047af39743974da3ece135aa8f749d01be2270a18dd",
+            "assemblyHash": "0xbcccfa56753a375b9233199213c4fb10a4aa77a226a8928300898631a02fa865",
             "agreements": [
                 {
                     "id": "agreement-0",
                     "agreementHash": "0x085763f104481422ddeb90474c87e9a2c2228460172ff5c39f47b4e3ecb3d2bd",
                     "agreementBytes": "{\"clauses\":{},\"slot\":0}",
                     "slotContentHash": "0x766cc2b7e2f69a39e9bbbc6181f1f70c4fbea97094c92d74288928ba71b38406",
-                    "leaf": "0x44340a1caca0e95a6e2f7453ddb620ae7b6945bb72f4495db09e5e60cdadf237",
+                    "leaf": "0x7b3aeb768f5f90941d213db812e8d56b8a47b63d858c7b2a23d58fa58bb01ef7",
                     "membershipProof": [
-                        "0x3709e518c54f574578b2ed2768584cdc45c58ed33c8a3f7ca5e211ce8cf01998"
+                        "0x741405af115ed10165a38085c38f89c82c6b531352fa82a7951637dc9358f201"
                     ],
                     "provenance": {
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementHash": "0x085763f104481422ddeb90474c87e9a2c2228460172ff5c39f47b4e3ecb3d2bd",
-                        "assemblyHash": "0xaaf8368332c646299bb99047af39743974da3ece135aa8f749d01be2270a18dd",
-                        "clauseData": "{\"agreementHash\":\"0x085763f104481422ddeb90474c87e9a2c2228460172ff5c39f47b4e3ecb3d2bd\",\"assemblyHash\":\"0xaaf8368332c646299bb99047af39743974da3ece135aa8f749d01be2270a18dd\"}",
-                        "clauseDataHash": "0xddb6825d265a971f35028f73c56ac801d2040cd1dd48e51127df919aa2c55978",
-                        "leaf": "0xad1099d614ea94a84e6475ccc44876e7c3b31b6fd562ee15dd44a685a8fcf52c"
+                        "assemblyHash": "0xbcccfa56753a375b9233199213c4fb10a4aa77a226a8928300898631a02fa865",
+                        "clauseData": "{\"agreementHash\":\"0x085763f104481422ddeb90474c87e9a2c2228460172ff5c39f47b4e3ecb3d2bd\",\"assemblyHash\":\"0xbcccfa56753a375b9233199213c4fb10a4aa77a226a8928300898631a02fa865\"}",
+                        "clauseDataHash": "0xdeef041a116a097f96c4bcd0c37f61277cae645e25177a19d8060b367b4ecdcc",
+                        "leaf": "0xbb9717cb7b39f0fdd9c88e37f73c172615336e00666b9286aef41f80c98691a4"
                     }
                 },
                 {
@@ -125,17 +125,17 @@
                     "agreementHash": "0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b",
                     "agreementBytes": "{\"clauses\":{},\"slot\":1}",
                     "slotContentHash": "0x3ef60931a82f4be74a452e2135653cd3965a22f181687abd23607f77c1ff5110",
-                    "leaf": "0x3709e518c54f574578b2ed2768584cdc45c58ed33c8a3f7ca5e211ce8cf01998",
+                    "leaf": "0x741405af115ed10165a38085c38f89c82c6b531352fa82a7951637dc9358f201",
                     "membershipProof": [
-                        "0x44340a1caca0e95a6e2f7453ddb620ae7b6945bb72f4495db09e5e60cdadf237"
+                        "0x7b3aeb768f5f90941d213db812e8d56b8a47b63d858c7b2a23d58fa58bb01ef7"
                     ],
                     "provenance": {
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementHash": "0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b",
-                        "assemblyHash": "0xaaf8368332c646299bb99047af39743974da3ece135aa8f749d01be2270a18dd",
-                        "clauseData": "{\"agreementHash\":\"0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b\",\"assemblyHash\":\"0xaaf8368332c646299bb99047af39743974da3ece135aa8f749d01be2270a18dd\"}",
-                        "clauseDataHash": "0xe5b2cd6ca7ca2c93acbfe2345d6567bc97cf85aade622020cefb4b177b8cd7d2",
-                        "leaf": "0x9d55183432bad63949535f89f2228865f94a29d34d4a650c790e82f4d5fe9089"
+                        "assemblyHash": "0xbcccfa56753a375b9233199213c4fb10a4aa77a226a8928300898631a02fa865",
+                        "clauseData": "{\"agreementHash\":\"0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b\",\"assemblyHash\":\"0xbcccfa56753a375b9233199213c4fb10a4aa77a226a8928300898631a02fa865\"}",
+                        "clauseDataHash": "0x8843507faeb60ea057f4a204c8285067d64008d48541c31af4dce84281f6355f",
+                        "leaf": "0xd48f8b7252528fd35a9edcbb6999233166b8ea9aaeb415fbf753c0af4bbdd1f8"
                     }
                 }
             ],
@@ -143,25 +143,25 @@
         },
         {
             "label": "three-entries-a-parent-edge-and-terms",
-            "assemblyHash": "0x517fc796b0e6ad73eadf865952d13f1ada37b93a755ca88b52ab33274bc5a454",
+            "assemblyHash": "0xd883189a2df3390dcf7097a705dd14215eccfadf698f526e9f7fe4a0a3962698",
             "agreements": [
                 {
                     "id": "agreement-0",
                     "agreementHash": "0x48f9f4ecd26f7ce1eefa0da1852ae3f1892d5db3bd47451bf9222c17985ef5d3",
                     "agreementBytes": "{\"clauses\":{\"0x6a0a59d4fc6a2cd9733e58d456fdfbbcbdcf5bb06d6704f84f1555e1d7d4a7f8\":{\"follows\":[]}},\"slot\":0}",
                     "slotContentHash": "0x6483af4f92c286f1417fa1249bd17dc125b652743380c909bcf4fa99f66ac6eb",
-                    "leaf": "0xf97e55b8d1bac248b286d827cb542f53e2e08a5c3e7d4415171e45d13f2f02a9",
+                    "leaf": "0x0b10495f68c2e261b7c678d814d0922445af75e87b0e9e5795857d015ba73302",
                     "membershipProof": [
-                        "0x7c6b41ccd3704a9ac9239ce33ff6024fc1a7e10fd2431cf906aa6d4c2e5b93ba",
-                        "0x62b87b0a2638dade94ac2a30c4a5bd6f3aa2f4386356b31f435008aeffb7bde6"
+                        "0x3dc4f6489881a06134ee350ce0433175dc6a01517e0ab9d37a41fa24009d656a",
+                        "0x49689e4e180205ccdeb774408a512a3fa567b8a7bbcbd56b6f7bcf16a4847f0c"
                     ],
                     "provenance": {
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementHash": "0x48f9f4ecd26f7ce1eefa0da1852ae3f1892d5db3bd47451bf9222c17985ef5d3",
-                        "assemblyHash": "0x517fc796b0e6ad73eadf865952d13f1ada37b93a755ca88b52ab33274bc5a454",
-                        "clauseData": "{\"agreementHash\":\"0x48f9f4ecd26f7ce1eefa0da1852ae3f1892d5db3bd47451bf9222c17985ef5d3\",\"assemblyHash\":\"0x517fc796b0e6ad73eadf865952d13f1ada37b93a755ca88b52ab33274bc5a454\"}",
-                        "clauseDataHash": "0x2c1d4697e6e20d86c95b08ac2a4ef75068e2af8a2cc89d214318d2a8a21185d8",
-                        "leaf": "0xd59d5eae06cc1dbd5caf42d421e478fbfd2be3bc255eba0e14dcdf5b56e54ac2"
+                        "assemblyHash": "0xd883189a2df3390dcf7097a705dd14215eccfadf698f526e9f7fe4a0a3962698",
+                        "clauseData": "{\"agreementHash\":\"0x48f9f4ecd26f7ce1eefa0da1852ae3f1892d5db3bd47451bf9222c17985ef5d3\",\"assemblyHash\":\"0xd883189a2df3390dcf7097a705dd14215eccfadf698f526e9f7fe4a0a3962698\"}",
+                        "clauseDataHash": "0x220b2ac6ff87a52d41a1c166f9b0ad301e674399c85828d78d76f704945cb7b4",
+                        "leaf": "0xbced06e1eb0a0e73524ea60405a78d18b16ec50078bc980c73b509818abc6e79"
                     }
                 },
                 {
@@ -169,18 +169,18 @@
                     "agreementHash": "0x48f9f4ecd26f7ce1eefa0da1852ae3f1892d5db3bd47451bf9222c17985ef5d3",
                     "agreementBytes": "{\"clauses\":{\"0x6a0a59d4fc6a2cd9733e58d456fdfbbcbdcf5bb06d6704f84f1555e1d7d4a7f8\":{\"follows\":[\"agreement-0\"]}},\"slot\":1}",
                     "slotContentHash": "0x2231208b94a85fa64d8d6b4a124ca36eafcd17ac3f250d26048ec6e4b5674de7",
-                    "leaf": "0x6c76d3f6cc4c56e1d021404fa821ce035144eeb4f20cd4c951c34796b8336d3a",
+                    "leaf": "0x3dc4f6489881a06134ee350ce0433175dc6a01517e0ab9d37a41fa24009d656a",
                     "membershipProof": [
-                        "0x27780a96f666c3caec9420a91b644d85ec98d653898d30f4add21d36d439e714",
-                        "0x427a3b3fdcd9e6757ac6ed9845975842032542a4f9349a2977b06ac395c5a5b7"
+                        "0x0b10495f68c2e261b7c678d814d0922445af75e87b0e9e5795857d015ba73302",
+                        "0x49689e4e180205ccdeb774408a512a3fa567b8a7bbcbd56b6f7bcf16a4847f0c"
                     ],
                     "provenance": {
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementHash": "0x48f9f4ecd26f7ce1eefa0da1852ae3f1892d5db3bd47451bf9222c17985ef5d3",
-                        "assemblyHash": "0x517fc796b0e6ad73eadf865952d13f1ada37b93a755ca88b52ab33274bc5a454",
-                        "clauseData": "{\"agreementHash\":\"0x48f9f4ecd26f7ce1eefa0da1852ae3f1892d5db3bd47451bf9222c17985ef5d3\",\"assemblyHash\":\"0x517fc796b0e6ad73eadf865952d13f1ada37b93a755ca88b52ab33274bc5a454\"}",
-                        "clauseDataHash": "0x2c1d4697e6e20d86c95b08ac2a4ef75068e2af8a2cc89d214318d2a8a21185d8",
-                        "leaf": "0xd59d5eae06cc1dbd5caf42d421e478fbfd2be3bc255eba0e14dcdf5b56e54ac2"
+                        "assemblyHash": "0xd883189a2df3390dcf7097a705dd14215eccfadf698f526e9f7fe4a0a3962698",
+                        "clauseData": "{\"agreementHash\":\"0x48f9f4ecd26f7ce1eefa0da1852ae3f1892d5db3bd47451bf9222c17985ef5d3\",\"assemblyHash\":\"0xd883189a2df3390dcf7097a705dd14215eccfadf698f526e9f7fe4a0a3962698\"}",
+                        "clauseDataHash": "0x220b2ac6ff87a52d41a1c166f9b0ad301e674399c85828d78d76f704945cb7b4",
+                        "leaf": "0xbced06e1eb0a0e73524ea60405a78d18b16ec50078bc980c73b509818abc6e79"
                     }
                 },
                 {
@@ -188,18 +188,18 @@
                     "agreementHash": "0x085763f104481422ddeb90474c87e9a2c2228460172ff5c39f47b4e3ecb3d2bd",
                     "agreementBytes": "{\"clauses\":{},\"slot\":2}",
                     "slotContentHash": "0x9e0df0dc19ad2aa90e459c925c8b6eb18432a79d34876427113fe91c41c1d86a",
-                    "leaf": "0x7c6b41ccd3704a9ac9239ce33ff6024fc1a7e10fd2431cf906aa6d4c2e5b93ba",
+                    "leaf": "0xf3960db0a3a1200a49e1c98bf76bd947d0157fca9816f1a97c239bfe32dcdb2f",
                     "membershipProof": [
-                        "0xf97e55b8d1bac248b286d827cb542f53e2e08a5c3e7d4415171e45d13f2f02a9",
-                        "0x62b87b0a2638dade94ac2a30c4a5bd6f3aa2f4386356b31f435008aeffb7bde6"
+                        "0x73bdf42ff112c3bcc572ceb1e9ca716eb6e6f8772877a5edf02c598c98da1798",
+                        "0x1886f5082846c395c8195986f0518bad01fca9f2ca1346ed2af52427f078ae29"
                     ],
                     "provenance": {
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementHash": "0x085763f104481422ddeb90474c87e9a2c2228460172ff5c39f47b4e3ecb3d2bd",
-                        "assemblyHash": "0x517fc796b0e6ad73eadf865952d13f1ada37b93a755ca88b52ab33274bc5a454",
-                        "clauseData": "{\"agreementHash\":\"0x085763f104481422ddeb90474c87e9a2c2228460172ff5c39f47b4e3ecb3d2bd\",\"assemblyHash\":\"0x517fc796b0e6ad73eadf865952d13f1ada37b93a755ca88b52ab33274bc5a454\"}",
-                        "clauseDataHash": "0x7ef8a4581147cd835c0c5828ffffcc7f33a705b384b9ff8f4054458a510649e5",
-                        "leaf": "0x615e02fae2a776f94dad40762a8fd8fc48d98ea915226e80ba770dfbf2aa2eda"
+                        "assemblyHash": "0xd883189a2df3390dcf7097a705dd14215eccfadf698f526e9f7fe4a0a3962698",
+                        "clauseData": "{\"agreementHash\":\"0x085763f104481422ddeb90474c87e9a2c2228460172ff5c39f47b4e3ecb3d2bd\",\"assemblyHash\":\"0xd883189a2df3390dcf7097a705dd14215eccfadf698f526e9f7fe4a0a3962698\"}",
+                        "clauseDataHash": "0xf017f3cfa712faa14d543b604f541977408a1f00fb10f71335653a530e29ce18",
+                        "leaf": "0x67cdf02fa4fe0139def711d57268a8361d15e1ec25e4923d10ce0c800d309b57"
                     }
                 }
             ],
@@ -207,7 +207,7 @@
                 "leafKey": "0xefe0eaa5bce6c7b996059fedd6d0e4827f99c474563f43ff55e6e593e5915860",
                 "termsBytes": "{\"0xfff36c93839957eef95099aa0f053bfda7a9a405592986e2ff870abc733f9d36\":{\"applicableLaw\":\"ch\",\"forum\":\"Zurich\",\"language\":\"en\"}}",
                 "clauseDataHash": "0xec36fbbffc7b13ca2e4d602d924213d0b5bf2acf960d82038600bcedba4224c8",
-                "leaf": "0x27780a96f666c3caec9420a91b644d85ec98d653898d30f4add21d36d439e714"
+                "leaf": "0x73bdf42ff112c3bcc572ceb1e9ca716eb6e6f8772877a5edf02c598c98da1798"
             }
         }
     ]

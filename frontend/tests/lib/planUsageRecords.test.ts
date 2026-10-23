@@ -8,6 +8,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { encodePacked, keccak256, type Address, type Hex } from "viem";
 import {
+    ASSEMBLY_LEAF_DOMAIN,
     ASSEMBLY_TERMS_LEAF_KEY,
     PROVENANCE_LEAF_KEY,
     agreementHashOf,
@@ -43,7 +44,7 @@ const BUYER = "0x0000000000000000000000000000000000000b0b" as Address;
 const CURRENCY = "0x00000000000000000000000000000000000007ed" as Address;
 const PROCESS = ZERO_BYTES32 as Hex;
 
-const CONTEXT: UsageClaimContext = { provenanceLeaf: PROVENANCE_LEAF_KEY, assemblyTermsLeaf: ASSEMBLY_TERMS_LEAF_KEY };
+const CONTEXT: UsageClaimContext = { provenanceLeaf: PROVENANCE_LEAF_KEY, assemblyTermsLeaf: ASSEMBLY_TERMS_LEAF_KEY, assemblyLeafDomain: ASSEMBLY_LEAF_DOMAIN };
 
 function commitment(salt: bigint, seller: Address): Commitment {
     return {
@@ -127,7 +128,7 @@ describe("planUsageRecords", () => {
     });
 
     it("refuses a counter whose provenance leaf is not the agreement format's", () => {
-        const foreign: UsageClaimContext = { provenanceLeaf: COMMERCE, assemblyTermsLeaf: ASSEMBLY_TERMS_LEAF_KEY };
+        const foreign: UsageClaimContext = { provenanceLeaf: COMMERCE, assemblyTermsLeaf: ASSEMBLY_TERMS_LEAF_KEY, assemblyLeafDomain: ASSEMBLY_LEAF_DOMAIN };
         const { writes, problems } = planUsageRecords([{ ...entry(1n, SELLER_A), context: foreign }]);
         expect(writes).toHaveLength(0);
         expect(problems.join("\n")).toMatch(/not the agreement format's/);

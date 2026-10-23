@@ -1,8 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { keccak256, toHex, type Hex } from "viem";
+import { keccak256, toHex, concat, type Hex } from "viem";
 import {
+    computeAssemblyLeaf,
+    ASSEMBLY_LEAF_DOMAIN,
+    ASSEMBLY_LEAF_DOMAIN_LABEL,
     ASSEMBLY_TERMS_LEAF_KEY,
     agreementHashOf,
     assertNotReservedKey,
@@ -18,7 +21,7 @@ import {
     buildRegisteredClauseInclusionProof,
 } from "../src/assembly.js";
 import type { Assembly, RegisteredAgreement } from "../src/assembly.js";
-import { PROVENANCE_LEAF_KEY, buildMerkleRoot, canonicalize, computeClauseLeaf, sortLeaves, verifyInclusionProof } from "../src/agreement.js";
+import { PROVENANCE_LEAF_KEY, buildMerkleRoot, canonicalize, computeClauseLeaf, hashClauseData, sortLeaves, verifyInclusionProof } from "../src/agreement.js";
 import { assembleAuthored, composeAuthoredAgreement, composeAuthoredAgreements } from "../src/projection.js";
 import { hydrateAuthored } from "./hydrate.js";
 import { keyOf, rawSpecOf, specSourceOf, viewOf } from "./specFixtures.js";
@@ -104,11 +107,11 @@ describe("the composition tree", () => {
         expect(proof).toEqual([]);
         expect(assemblyHashOf(one)).toBe(leaf);
         expect(slotContentHash).toBe(keccak256(agreementLeafBytes({ clauses: {} }, 0)));
-        expect(leaf).toBe(computeClauseLeaf({ clause: A, dataHash: slotContentHash }));
+        expect(leaf).toBe(computeAssemblyLeaf(A, slotContentHash));
         const termed = { ...one, assemblyClauses: { [keyOf("figaro-applicable-law")]: { law: "x" } } };
         expect(assemblyLeaves(termed)).toHaveLength(2);
         expect(assemblyLeaves(termed)).toContain(
-            computeClauseLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: termed.assemblyClauses }),
+            computeAssemblyLeaf(ASSEMBLY_TERMS_LEAF_KEY, hashClauseData({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: termed.assemblyClauses })),
         );
         expect(assemblyHashOf(termed)).not.toBe(assemblyHashOf(one));
         // Empty terms are no leaf.
@@ -129,6 +132,19 @@ describe("the composition tree", () => {
             expect(verifyInclusionProof(assemblyHashOf(two), leaf, proof)).toBe(true);
         }
         expect(() => buildAgreementInclusionProof(two, 2)).toThrow(/not in the assembly/);
+    });
+
+    it("an assembly leaf carries the assembly tree's domain, so an assembly root never shares the agreement format's shape", () => {
+        expect(ASSEMBLY_LEAF_DOMAIN).toBe(keccak256(toHex(ASSEMBLY_LEAF_DOMAIN_LABEL)));
+        const dataHash = keccak256(agreementLeafBytes({ clauses: {} }, 0));
+        const assemblyLeaf = computeAssemblyLeaf(A, dataHash);
+        const agreementFormatLeaf = computeClauseLeaf({ clause: A, dataHash });
+        expect(assemblyLeaf).not.toBe(agreementFormatLeaf);
+        expect(assemblyLeaf).toBe(keccak256(keccak256(concat([ASSEMBLY_LEAF_DOMAIN, A, dataHash]))));
+        // a one-agreement assembly's root is its assembly leaf, never the clause-shaped leaf of the same key and bytes
+        const one = { agreements: [{ id: "agreement-0", agreementHash: A, clauses: {} }] };
+        expect(assemblyHashOf(one)).toBe(assemblyLeaf);
+        expect(assemblyHashOf(one)).not.toBe(agreementHashOf({ clauses: { [A]: {} } }));
     });
 
     it("a membership proof under a different root does not verify", () => {

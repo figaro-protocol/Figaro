@@ -793,10 +793,13 @@ read from another kind's registry.
 ## 24. The assembly root is a merkle tree over registered agreement hashes — membership is proved, never looked up
 
 **Pattern**: An assembly's `assemblyHash` is a merkle root built with the
-agreement format's leaf convention over one leaf per agreement — key the
-agreement's `agreementHash`, content the canonical `{"clauses":{…},"slot":i}`
-— plus, when any are composed, the assembly terms leaf
-(`keccak256("figaro-assembly-terms")`). `AssemblyRegistry` stores the root and
+assembly tree's own leaf convention, `keccak256(keccak256(assemblyLeafDomain ‖
+key ‖ dataHash))` with `assemblyLeafDomain = keccak256("figaro-assembly-leaf")`, over one
+leaf per agreement — key the agreement's `agreementHash`, content the canonical
+`{"clauses":{…},"slot":i}` — plus, when any are composed, the assembly terms
+leaf (`keccak256("figaro-assembly-terms")`). The agreement format's leaf carries
+no domain, so a tree over agreements and a tree over clauses never share one
+shape and no tree over agreement-format leaves opens an assembly leaf. `AssemblyRegistry` stores the root and
 a URI and checks nothing about the agreements inside it; `AgreementRegistry`
 knows no assembly. The counter's assembly leg takes the agreement's
 `agreementHash`, its `slotContentHash` and a membership proof, and proves the

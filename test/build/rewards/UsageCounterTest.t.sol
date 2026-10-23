@@ -244,9 +244,9 @@ contract UsageCounterTest is Test {
     ///      agreementHash, bytes = the agreement clause) and the terms leaf.
     function _assemblyLeaves() internal pure returns (bytes32[] memory leaves) {
         leaves = new bytes32[](3);
-        leaves[0] = AgreementTestHelper.leafFor(AGR_KEY, _agreementLeafBytes(0));
-        leaves[1] = AgreementTestHelper.leafFor(AGR2_KEY, _agreementLeafBytes(1));
-        leaves[2] = AgreementTestHelper.leafFor(AgreementTestHelper.ASSEMBLY_TERMS_LEAF_KEY, TERMS);
+        leaves[0] = AgreementTestHelper.assemblyLeafFor(AGR_KEY, _agreementLeafBytes(0));
+        leaves[1] = AgreementTestHelper.assemblyLeafFor(AGR2_KEY, _agreementLeafBytes(1));
+        leaves[2] = AgreementTestHelper.assemblyLeafFor(AgreementTestHelper.ASSEMBLY_TERMS_LEAF_KEY, TERMS);
     }
 
     /// @dev The test assembly's assemblyHash: the root of its tree.
@@ -666,7 +666,7 @@ contract UsageCounterTest is Test {
     /// with its proof from the test assembly's tree fails under its root.
     function test_anAgreementLeafUnderADifferentAssemblyHashFails() public {
         bytes32[] memory otherLeaves = new bytes32[](1);
-        otherLeaves[0] = AgreementTestHelper.leafFor(AGR2_KEY, AgreementTestHelper.agreementLeafBytes(0, "{}"));
+        otherLeaves[0] = AgreementTestHelper.assemblyLeafFor(AGR2_KEY, AgreementTestHelper.agreementLeafBytes(0, "{}"));
         bytes32 otherRoot = AgreementTestHelper.rootFor(otherLeaves);
 
         (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderAgreement(AGR_KEY, otherRoot, 1);

@@ -71,7 +71,7 @@ contract RpgfIntegrationTest is Test {
         clauses = new ClauseRegistry(0);
         assemblies = new AssemblyRegistry(0);
         agreements = new AgreementRegistry(0);
-        ASM = AgreementTestHelper.leafFor(AGR, AgreementTestHelper.agreementLeafBytes(0, "{}"));
+        ASM = AgreementTestHelper.assemblyLeafFor(AGR, AgreementTestHelper.agreementLeafBytes(0, "{}"));
         members = new MembersRegistry(0, 0);
         florin = new FlorinToken();
 

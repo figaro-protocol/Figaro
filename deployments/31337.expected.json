@@ -20,7 +20,8 @@
         "minSellers": "3",
         "periodCount": "9",
         "provenanceLeaf": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
-        "assemblyTermsLeaf": "0xefe0eaa5bce6c7b996059fedd6d0e4827f99c474563f43ff55e6e593e5915860"
+        "assemblyTermsLeaf": "0xefe0eaa5bce6c7b996059fedd6d0e4827f99c474563f43ff55e6e593e5915860",
+        "assemblyLeafDomain": "0xb44cab2cf6dbf97cfe57060c8f30ee31552bc93f52859b4f32bd145f2882dfc6"
     },
     "rpgfMinter": { "periodAmountSum": "600000000000000000000000000" },
     "florin": {

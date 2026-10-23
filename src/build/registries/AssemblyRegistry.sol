@@ -11,7 +11,8 @@ pragma solidity 0.8.26;
 ///
 ///         An assembly is a list of registered agreements; its
 ///         identity IS its composition: assemblyHash is the merkle root,
-///         under the agreement format's leaf convention, over one leaf per
+///         under the assembly tree's own leaf convention (the leaf domain
+///         `keccak256("figaro-assembly-leaf")` mixed in), over one leaf per
 ///         agreement (key: its agreementHash; bytes: `{"clauses":…,"slot":i}`)
 ///         and the terms leaf when assembly-scoped clauses are composed
 ///         (editorial prose excluded). The registry keys bindings by assemblyHash:

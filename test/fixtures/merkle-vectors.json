@@ -49,14 +49,14 @@
         },
         {
             "label": "two-clauses-and-a-design",
-            "checkoutHash": "0xf3ec8cfa3d751e0ea7b4cde4b9570b3e45e6fd8b8df79fca5ee3cfdba1561bf7",
+            "checkoutHash": "0x3d3aaeb64dfaea27c11297b1a102ae94750bc45827df111ff093a550bf42983b",
             "clauseCount": 2,
             "provenance": {
                 "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                 "agreementHash": "0x48f9f4ecd26f7ce1eefa0da1852ae3f1892d5db3bd47451bf9222c17985ef5d3",
-                "assemblyHash": "0x517fc796b0e6ad73eadf865952d13f1ada37b93a755ca88b52ab33274bc5a454",
-                "clauseData": "{\"agreementHash\":\"0x48f9f4ecd26f7ce1eefa0da1852ae3f1892d5db3bd47451bf9222c17985ef5d3\",\"assemblyHash\":\"0x517fc796b0e6ad73eadf865952d13f1ada37b93a755ca88b52ab33274bc5a454\"}",
-                "leaf": "0xd59d5eae06cc1dbd5caf42d421e478fbfd2be3bc255eba0e14dcdf5b56e54ac2",
+                "assemblyHash": "0xd883189a2df3390dcf7097a705dd14215eccfadf698f526e9f7fe4a0a3962698",
+                "clauseData": "{\"agreementHash\":\"0x48f9f4ecd26f7ce1eefa0da1852ae3f1892d5db3bd47451bf9222c17985ef5d3\",\"assemblyHash\":\"0xd883189a2df3390dcf7097a705dd14215eccfadf698f526e9f7fe4a0a3962698\"}",
+                "leaf": "0xbced06e1eb0a0e73524ea60405a78d18b16ec50078bc980c73b509818abc6e79",
                 "proof": [
                     "0xea46c697dd6e5b78eadd4b35c1788d568fe84597042104ca02a65e52e73aaae6"
                 ]
@@ -68,7 +68,7 @@
                     "leaf": "0x44dce91b683ba8bfb475d0d61802ae2f2b59567be849ff4d32b5124159feb1f6",
                     "proof": [
                         "0x22bb60c0085a7a3a16c7272db87b02ee9ab24a8776c45f88f789c4ad120f9925",
-                        "0xd59d5eae06cc1dbd5caf42d421e478fbfd2be3bc255eba0e14dcdf5b56e54ac2"
+                        "0xbced06e1eb0a0e73524ea60405a78d18b16ec50078bc980c73b509818abc6e79"
                     ]
                 },
                 {
@@ -77,7 +77,7 @@
                     "leaf": "0x22bb60c0085a7a3a16c7272db87b02ee9ab24a8776c45f88f789c4ad120f9925",
                     "proof": [
                         "0x44dce91b683ba8bfb475d0d61802ae2f2b59567be849ff4d32b5124159feb1f6",
-                        "0xd59d5eae06cc1dbd5caf42d421e478fbfd2be3bc255eba0e14dcdf5b56e54ac2"
+                        "0xbced06e1eb0a0e73524ea60405a78d18b16ec50078bc980c73b509818abc6e79"
                     ]
                 }
             ]

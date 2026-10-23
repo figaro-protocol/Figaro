@@ -243,7 +243,7 @@ does NOT, and neither does hand-rolled `cast`.
 
 *`AccrualClosed()`.* `recordClauseUsage`, `recordAgreementUsage` and `recordAssemblyUsage` all open by
 calling `UsageCounter.currentPeriod()`, which reverts `AccrualClosed()` once the
-last accrual period has ended (`src/build/rewards/UsageCounter.sol:389-395`) —
+last accrual period has ended (`src/build/rewards/UsageCounter.sol:398-404`) —
 the nine annual periods are the reward's whole life, and after the ninth
 boundary usage is permanently unrecordable. Two consequences before that day: a recording is attributed to the period **open when you call**, not the one the
 process resolved in, so crossing a boundary between resolving and recording moves the
@@ -1914,8 +1914,10 @@ agreement's own fills (today the topology's `{ follows:
 the MERKLE ROOT over one leaf per agreement (key = the agreement hash, bytes =
 canonical `{"clauses":{…},"slot":i}`) and one terms leaf (key
 `ASSEMBLY_TERMS_LEAF_KEY`, bytes = canonical `assemblyClauses`, present only
-when any is composed), built with the agreement format's own leaf convention
-(`AssemblyRegistry`). Membership of an agreement in an assembly is a merkle
+when any is composed), built with the assembly tree's own leaf convention,
+`computeAssemblyLeaf(key, dataHash) = keccak256(keccak256(ASSEMBLY_LEAF_DOMAIN ‖ key ‖ dataHash))`
+with `ASSEMBLY_LEAF_DOMAIN = keccak256("figaro-assembly-leaf")` (the agreement format's
+leaf carries no domain, so the two trees never share a shape; `AssemblyRegistry`). Membership of an agreement in an assembly is a merkle
 proof (`buildAgreementInclusionProof`). `PROVENANCE_LEAF_KEY` and
 `ASSEMBLY_TERMS_LEAF_KEY` are format keys, never an agreement hash
 (`assertNotReservedKey`).

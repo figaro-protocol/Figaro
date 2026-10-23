@@ -139,8 +139,8 @@ const TOPOLOGY_KEY: &str = "0x63c71d25d0aa1a36dffb9e5303aaa48ae132d7403be72cc6c3
 fn two_slot_assembly(agreement_hash: &B256) -> (B256, B256, Vec<B256>) {
     let slot0 = slot_content_hash(0, None);
     let slot1 = slot_content_hash(1, Some("agreement-0"));
-    let leaf0 = single_clause_root(agreement_hash, &slot0);
-    let leaf1 = single_clause_root(&keccak256(b"the-following-agreement"), &slot1);
+    let leaf0 = figaro_kernel::kernel::assembly_leaf(agreement_hash, &slot0);
+    let leaf1 = figaro_kernel::kernel::assembly_leaf(&keccak256(b"the-following-agreement"), &slot1);
     (sorted_pair(leaf0, leaf1), slot0, vec![leaf1])
 }
 
@@ -653,7 +653,7 @@ fn rejects_an_assembly_claim_whose_membership_proof_is_under_another_root() {
     // Another assembly holding the same agreement in its agreement 0,
     // beside a different follower: its proof opens the agreement under ITS
     // root only.
-    let elsewhere = single_clause_root(&keccak256(b"some-other-agreement"), &slot_content_hash(1, Some("agreement-0")));
+    let elsewhere = figaro_kernel::kernel::assembly_leaf(&keccak256(b"some-other-agreement"), &slot_content_hash(1, Some("agreement-0")));
     let claim = assembly_claim(&order, composition, agreement, entry, vec![elsewhere]);
 
     match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
@@ -882,7 +882,7 @@ fn a_clause_and_an_assembly_on_the_same_key_accrue_apart() {
     // empty membership proof. The same word is also taken as a clause key.
     let agreement = keccak256(b"an-agreement");
     let entry = slot_content_hash(0, None);
-    let shared = single_clause_root(&agreement, &entry);
+    let shared = figaro_kernel::kernel::assembly_leaf(&agreement, &entry);
 
     let clause_leaf = single_clause_root(&shared, &clause_data_hash);
     let provenance_leaf =

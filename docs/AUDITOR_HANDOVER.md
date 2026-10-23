@@ -253,9 +253,10 @@ results — every figure under § "Verification evidence" — are those measured
 at the commits each row names, the last full production at `eeb903b7`; the
 code has moved since, and each result stands for its own commit alone. The
 guest has changed since `eeb903b7`: a seller's attestation is checked
-against the attested order's own seller, and the provenance leaf's bytes
+against the attested order's own seller, the provenance leaf's bytes
 name the assembly's root `assemblyHash` where they named `compositionHash`,
-so the verification key moves and the Sepolia verifier's pinned key is the
+and an assembly claim's membership leaf carries the assembly tree's own
+domain (`assembly_leaf`), so the verification key moves and the Sepolia verifier's pinned key is the
 earlier guest's. When an audit is
 engaged, this section names the commit it reviews, the line counts and the
 results are measured there once, and a tag is placed at it. The descriptive
@@ -364,18 +365,18 @@ the guest's test files under `prover/lib/tests/`.
   the claim (`_requireProvenance`, `:607-622`). `recordAgreementUsage(order,
   agreementKey, compositionHash, proof)` proves that leaf and accrues under
   `KIND_AGREEMENT` while the agreement's stake is live in `AgreementRegistry`
-  (`:525-541`). `recordAssemblyUsage(order, compositionHash, agreementKey,
+  (`:534-550`). `recordAssemblyUsage(order, compositionHash, agreementKey,
   slotContentHash, leafProof, membershipProof)` proves the same leaf, then
-  the agreement's leaf `keccak256(keccak256(agreementKey ‖ slotContentHash))`
+  the agreement's leaf `keccak256(keccak256(assemblyLeafDomain ‖ agreementKey ‖ slotContentHash))`
   under `compositionHash`, reverting `InvalidMembershipProof` when it does not
-  open (`:563-593`). `applyBatchAccrual` gains the `KIND_AGREEMENT` branch.
+  open (`:572-603`). `applyBatchAccrual` gains the `KIND_AGREEMENT` branch.
 - Two reserved keys, the provenance leaf's `keccak256("figaro-agreement-provenance")`
   and the assembly terms leaf's `keccak256("figaro-assembly-terms")`
   (`provenanceLeaf`, `assemblyTermsLeaf`, `UsageCounter.sol:188`, `:198`),
   are refused as registrations wherever a key is taken: `_accrue` reverts
   `ReservedKeyIsNotARegistration(bytes32)` on either under every kind
-  (`:769-771`), `applyBatchAccrual` skips either (`:714`), and
-  `recordAssemblyUsage` refuses either as an agreementKey (`:577-579`). The
+  (`:779-781`), `applyBatchAccrual` skips either (`:724`), and
+  `recordAssemblyUsage` refuses either as an agreementKey (`:586-588`). The
   error replaces `ProvenanceLeafIsNotARegistration`, which no longer exists
   in the counter or the guest.
 - `RpgfMinter` takes `_agreements` after `_assemblies`; `_isAuthor(2, key,
@@ -873,7 +874,7 @@ read it first.
   `ClauseRegistry` only, `recordAgreementUsage` `AgreementRegistry` only,
   `recordAssemblyUsage` `AssemblyRegistry` only, and `applyBatchAccrual`
   gates each `BatchAccrual{clauseOrAssembly, kind, c, d}` by its own kind's
-  registry and skips an unknown kind (`UsageCounter.sol:719-727`). No kind
+  registry and skips an unknown kind (`UsageCounter.sol:729-737`). No kind
   gates another: an assembly accrues without its agreements' agreements
   being live, and an agreement without its assembly being live.
   `RpgfMinter.claim(period, (kind, key)[])` reads the counter's slot for each
@@ -934,14 +935,14 @@ read it first.
   (`test_provenanceLeafIsAConstantOfTheFormat`,
   `test/build/rewards/UsageCounterTest.t.sol`). `_requireProvenance`
   reproduces the bytes from the two claimed keys and proves that one leaf
-  under `checkoutHash` (`UsageCounter.sol:607-622`); a claim naming another
+  under `checkoutHash` (`UsageCounter.sol:617-632`); a claim naming another
   agreement or another assembly derives a leaf that is not in the tree
   (`test_aProvenanceLeafNamingAnotherAgreementIsNotInTheTree`).
   `recordAgreementUsage` proves that leaf alone and credits the agreementHash
-  (`:525-541`). `recordAssemblyUsage` proves it, then proves the
-  agreement's leaf `keccak256(keccak256(agreementHash ‖ slotContentHash))` under
+  (`:534-550`). `recordAssemblyUsage` proves it, then proves the
+  agreement's leaf `keccak256(keccak256(assemblyLeafDomain ‖ agreementHash ‖ slotContentHash))` under
   `assemblyHash` and reverts `InvalidMembershipProof` when it does not
-  open (`:581-586`); one order credits its agreement and its assembly apart
+  open (`:590-596`); one order credits its agreement and its assembly apart
   (`test_oneOrderCreditsItsAgreementAndItsAssembly`). `ClauseRegistry` and
   `AssemblyRegistry` accept any non-zero key, so a wallet can register a
   clause or an assembly at a reserved key; each reserved key is distinct
@@ -952,8 +953,10 @@ read it first.
   SDK's key, bytes, leaf and proof equal to the counter's on the third
   agreement of `test/fixtures/merkle-vectors.json`; `merkle_parity.rs` holds
   the guest's side of the same fixture.
-- The assembly root is a merkle tree over its agreements, with the agreement
-  format's leaf convention: one leaf per agreement, keyed by the agreement's
+- The assembly root is a merkle tree over its agreements, with the assembly
+  tree's own leaf convention (`assemblyLeafDomain = keccak256("figaro-assembly-leaf")`
+  mixed into every leaf, so the tree never shares the agreement format's shape):
+  one leaf per agreement, keyed by the agreement's
   agreementHash over the canonical bytes `{"clauses":{…},"slot":i}`, and one
   terms leaf keyed by `keccak256("figaro-assembly-terms")` over the
   assembly-scoped clauses when there are any (`DESIGN_DECISIONS.md` § 24,
@@ -976,14 +979,14 @@ read it first.
 - The two reserved keys never accrue, whatever a registry holds at them. The
   direct path reverts: `_accrue` reverts
   `ReservedKeyIsNotARegistration(bytes32)` on either under every kind
-  (`UsageCounter.sol:769-771`; the error at `:375`), and
+  (`UsageCounter.sol:779-781`; the error at `:384`), and
   `recordAssemblyUsage` refuses either as an agreement's agreementHash
-  (`:577-579`). `AgreementRegistry.registerAgreement` refuses both as
+  (`:586-588`). `AgreementRegistry.registerAgreement` refuses both as
   registrations (`AgreementRegistry.sol:162-164`). The guest refuses a claim
   keyed on either, of any kind, and an assembly claim naming either as its
   agreementHash (`prover/lib/src/kernel.rs:787-794`, `apply_usage_claims`).
   The counter's batch path skips either: `applyBatchAccrual` continues past
-  them before the registration gate (`UsageCounter.sol:714`). The relay drops
+  them before the registration gate (`UsageCounter.sol:724`). The relay drops
   such a claim before proving (`submitter.rs`, `names_a_reserved_key`;
   `drops_claims_naming_either_reserved_key_without_touching_the_chain`,
   `drops_a_claim_keyed_on_the_provenance_leaf_without_touching_the_chain`).
@@ -1225,7 +1228,7 @@ read it first.
 
 Every other function in the Solidity in scope is at 6 or below.
 
-**The one `unchecked` block** (`UsageCounter.sol:804-807`) increments two
+**The one `unchecked` block** (`UsageCounter.sol:814-817`) increments two
 `uint64` counters by one: `c`, the distinct processes counted for a key, and
 `d`, the distinct sellers. Each process is counted once ever
 (`processCounted`), so `c` cannot exceed the number of resolved processes on

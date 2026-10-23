@@ -272,6 +272,9 @@ async function main() {
     // The assembly format's reserved terms leaf: a constant of the counter,
     // keccak256("figaro-assembly-terms") — never an agreementHash.
     await expectValue("usageCounter.assemblyTermsLeaf()", u.assemblyTermsLeaf, await read(record.usageCounter, "assemblyTermsLeaf"));
+    // The assembly tree's leaf domain: a constant of the counter,
+    // keccak256("figaro-assembly-leaf") — a counter without it is in the old leaf shape.
+    await expectValue("usageCounter.assemblyLeafDomain()", u.assemblyLeafDomain, await read(record.usageCounter, "assemblyLeafDomain"));
     const minterPeriods = await read(record.rpgfMinter, "periodCount");
     let sum = 0n;
     for (let i = 0n; i < minterPeriods; i++) sum += await read(record.rpgfMinter, "periodAmount", [i]);

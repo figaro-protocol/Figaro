@@ -183,7 +183,7 @@ the lower-level <code>resolveProcess(walletClient, core, processId, commitments)
 does NOT, and neither does hand-rolled <code>cast</code>.</p>
 <p><em><code>AccrualClosed()</code>.</em> <code>recordClauseUsage</code>, <code>recordAgreementUsage</code> and <code>recordAssemblyUsage</code> all open by
 calling <code>UsageCounter.currentPeriod()</code>, which reverts <code>AccrualClosed()</code> once the
-last accrual period has ended (<code>src/build/rewards/UsageCounter.sol:389-395</code>) —
+last accrual period has ended (<code>src/build/rewards/UsageCounter.sol:398-404</code>) —
 the nine annual periods are the reward's whole life, and after the ninth
 boundary usage is permanently unrecordable. Two consequences before that day: a recording is attributed to the period <strong>open when you call</strong>, not the one the
 process resolved in, so crossing a boundary between resolving and recording moves the
@@ -1731,8 +1731,10 @@ agreement's own fills (today the topology's <code>{ follows: [&quot;agreement-&l
 the MERKLE ROOT over one leaf per agreement (key = the agreement hash, bytes =
 canonical <code>{&quot;clauses&quot;:{…},&quot;slot&quot;:i}</code>) and one terms leaf (key
 <code>ASSEMBLY_TERMS_LEAF_KEY</code>, bytes = canonical <code>assemblyClauses</code>, present only
-when any is composed), built with the agreement format's own leaf convention
-(<code>AssemblyRegistry</code>). Membership of an agreement in an assembly is a merkle
+when any is composed), built with the assembly tree's own leaf convention,
+<code>computeAssemblyLeaf(key, dataHash) = keccak256(keccak256(ASSEMBLY_LEAF_DOMAIN ‖ key ‖ dataHash))</code>
+with <code>ASSEMBLY_LEAF_DOMAIN = keccak256(&quot;figaro-assembly-leaf&quot;)</code> (the agreement format's
+leaf carries no domain, so the two trees never share a shape; <code>AssemblyRegistry</code>). Membership of an agreement in an assembly is a merkle
 proof (<code>buildAgreementInclusionProof</code>). <code>PROVENANCE_LEAF_KEY</code> and
 <code>ASSEMBLY_TERMS_LEAF_KEY</code> are format keys, never an agreement hash
 (<code>assertNotReservedKey</code>).</p>

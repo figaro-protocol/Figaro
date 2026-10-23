@@ -384,6 +384,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "function batchVerifier() view returns (address)",
     "function provenanceLeaf() view returns (bytes32)",
     "function assemblyTermsLeaf() view returns (bytes32)",
+    "function assemblyLeafDomain() view returns (bytes32)",
     "function periodEnd(uint256) view returns (uint64)",
     "function periodCount() view returns (uint256)",
     "function currentPeriod() view returns (uint8)",

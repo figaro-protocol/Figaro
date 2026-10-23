@@ -50,6 +50,11 @@ fn b256(v: &serde_json::Value) -> B256 {
     B256::from_str(v.as_str().expect("hex string")).expect("bytes32")
 }
 
+/// The assembly tree's own leaf, `assembly_leaf` over the key and the bytes' hash.
+fn assembly_leaf_under(key: B256, bytes: &str) -> B256 {
+    figaro_kernel::kernel::assembly_leaf(&key, &keccak256(bytes.as_bytes()))
+}
+
 fn leaf_under(key: B256, clause_data: &str) -> B256 {
     let clause_data_hash = keccak256(clause_data.as_bytes());
     let mut preimage = [0u8; 64];
@@ -252,8 +257,13 @@ fn every_agreement_opens_under_its_own_root_and_no_other() {
         for entry in assembly["agreements"].as_array().unwrap() {
             let content = keccak256(entry["agreementBytes"].as_str().unwrap().as_bytes());
             assert_eq!(content, b256(&entry["slotContentHash"]), "the agreement's content hash");
-            let leaf = leaf_under(b256(&entry["agreementHash"]), entry["agreementBytes"].as_str().unwrap());
-            assert_eq!(leaf, b256(&entry["leaf"]), "the rebuilt order-entry leaf is the SDK's");
+            let leaf = assembly_leaf_under(b256(&entry["agreementHash"]), entry["agreementBytes"].as_str().unwrap());
+            assert_eq!(leaf, b256(&entry["leaf"]), "the rebuilt agreement leaf is the SDK's");
+            assert_ne!(
+                leaf,
+                leaf_under(b256(&entry["agreementHash"]), entry["agreementBytes"].as_str().unwrap()),
+                "an assembly leaf never has the agreement format's shape"
+            );
             let proof = proof_of(&entry["membershipProof"]);
             assert!(verify_inclusion(&proof, root, leaf), "the membership proof opens");
             for (j, other) in roots.iter().enumerate() {
@@ -267,7 +277,7 @@ fn every_agreement_opens_under_its_own_root_and_no_other() {
             let mut wrong_key = b256(&entry["agreementHash"]);
             wrong_key.0[0] ^= 1;
             assert!(
-                !verify_inclusion(&proof, root, leaf_under(wrong_key, entry["agreementBytes"].as_str().unwrap())),
+                !verify_inclusion(&proof, root, assembly_leaf_under(wrong_key, entry["agreementBytes"].as_str().unwrap())),
                 "another agreement in the same agreement does not open"
             );
         }
@@ -307,7 +317,7 @@ fn the_terms_leaf_is_keyed_on_the_reserved_terms_key() {
         assert_eq!(b256(&terms["leafKey"]), ASSEMBLY_TERMS_LEAF_KEY);
         let bytes = terms["termsBytes"].as_str().unwrap();
         assert_eq!(keccak256(bytes.as_bytes()), b256(&terms["clauseDataHash"]));
-        assert_eq!(leaf_under(ASSEMBLY_TERMS_LEAF_KEY, bytes), b256(&terms["leaf"]));
+        assert_eq!(assembly_leaf_under(ASSEMBLY_TERMS_LEAF_KEY, bytes), b256(&terms["leaf"]));
     }
     assert!(carriers >= 1, "the lock covers the terms leaf");
 }

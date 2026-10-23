@@ -236,9 +236,10 @@ designer composes an assembly from.
 **`src/build/registries/AssemblyRegistry.sol`** — Permissionless assembly
 anchoring under a stake.
 - Identity is the composition: `assemblyHash` is a merkle root over the
-  assembly's agreements, built with the agreement format's leaf convention
-  (`leaf = keccak256(keccak256(key ‖ keccak256(bytes)))`, sorted-pair
-  hashing): one leaf per agreement `i`, keyed by the agreement's
+  assembly's agreements, built with the assembly tree's own leaf convention
+  (`leaf = keccak256(keccak256(assemblyLeafDomain ‖ key ‖ keccak256(bytes)))`,
+  `assemblyLeafDomain = keccak256("figaro-assembly-leaf")`, sorted-pair hashing; the
+  agreement format's leaf has no domain, so the two trees never share a shape): one leaf per agreement `i`, keyed by the agreement's
   `agreementHash`, whose bytes are the canonical JSON
   `{"clauses":{…},"slot":i}` (the agreement's own fills — the topology
   clause's `follows` naming the agreements it follows); and one
@@ -307,7 +308,7 @@ Three permissionless functions and one proof-gated writer:
   provenance leaf the same way (`leafProof`), refuses an `agreementHash` equal
   to either reserved key (the assembly terms leaf is not an agreement), then
   proves the agreement's leaf
-  `keccak256(keccak256(agreementHash ‖ slotContentHash))` under
+  `keccak256(keccak256(assemblyLeafDomain ‖ agreementHash ‖ slotContentHash))` under
   `assemblyHash` (`membershipProof`, else `InvalidMembershipProof`, distinct
   from the leaf's `InvalidInclusionProof`), so the agreement the order names is
   a member of the assembly it names. It counts under the assembly kind and

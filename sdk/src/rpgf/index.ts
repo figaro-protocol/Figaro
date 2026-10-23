@@ -23,6 +23,7 @@ import { USAGE_COUNTER_ABI } from "../abis.js";
 import type { Agreement } from "../agreement.js";
 import { PROVENANCE_LEAF_KEY, buildProvenanceInclusionProof, buildSignedClauseInclusionProof, hashClauseData } from "../agreement.js";
 import {
+    ASSEMBLY_LEAF_DOMAIN,
     ASSEMBLY_TERMS_LEAF_KEY,
     assertNotReservedKey,
     buildAgreementInclusionProof,
@@ -424,6 +425,10 @@ export interface UsageClaimContext {
     /** `UsageCounter.assemblyTermsLeaf()` — the composition tree's reserved
      *  terms key (`ASSEMBLY_TERMS_LEAF_KEY`), checked the same way. */
     assemblyTermsLeaf: Hex;
+    /** `UsageCounter.assemblyLeafDomain()` — the assembly tree's leaf domain
+     *  (`ASSEMBLY_LEAF_DOMAIN`), checked the same way: a counter in the old leaf
+     *  shape would refuse every assembly claim's membership proof. */
+    assemblyLeafDomain: Hex;
 }
 
 /**
@@ -476,6 +481,12 @@ export function buildUsageClaims(
         throw new Error(
             `the counter's assembly-terms leaf ${context.assemblyTermsLeaf} is not the composition format's ` +
             `${ASSEMBLY_TERMS_LEAF_KEY}: every assembly claim against it would revert`,
+        );
+    }
+    if (context.assemblyLeafDomain.toLowerCase() !== ASSEMBLY_LEAF_DOMAIN.toLowerCase()) {
+        throw new Error(
+            `the counter's assembly leaf domain ${context.assemblyLeafDomain} is not the assembly tree's ` +
+            `${ASSEMBLY_LEAF_DOMAIN}: every assembly claim against it would revert`,
         );
     }
     const wireOrder = toSequencerCommitment(order);
@@ -547,9 +558,10 @@ export async function fetchUsageClaimContext(
     client: PublicClient,
     usageCounter: Address,
 ): Promise<UsageClaimContext> {
-    const [provenanceLeaf, assemblyTermsLeaf] = await Promise.all([
+    const [provenanceLeaf, assemblyTermsLeaf, assemblyLeafDomain] = await Promise.all([
         client.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "provenanceLeaf" }) as Promise<Hex>,
         client.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "assemblyTermsLeaf" }) as Promise<Hex>,
+        client.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "assemblyLeafDomain" }) as Promise<Hex>,
     ]);
-    return { provenanceLeaf, assemblyTermsLeaf };
+    return { provenanceLeaf, assemblyTermsLeaf, assemblyLeafDomain };
 }

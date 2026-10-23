@@ -24,7 +24,7 @@
   },
   "assembly": {
     "canonicalJson": "{\"agreements\":[{\"agreementHash\":\"0x2a478517a51e17d0624582b6f0cd45533d192c02ff6a9922e832935f63f6d677\",\"clauses\":{\"0x6a0a59d4fc6a2cd9733e58d456fdfbbcbdcf5bb06d6704f84f1555e1d7d4a7f8\":{\"follows\":[]}},\"id\":\"agreement-0\"},{\"agreementHash\":\"0x2a478517a51e17d0624582b6f0cd45533d192c02ff6a9922e832935f63f6d677\",\"clauses\":{\"0x6a0a59d4fc6a2cd9733e58d456fdfbbcbdcf5bb06d6704f84f1555e1d7d4a7f8\":{\"follows\":[\"agreement-0\"]}},\"id\":\"agreement-1\"}],\"assemblyClauses\":{\"0xfff36c93839957eef95099aa0f053bfda7a9a405592986e2ff870abc733f9d36\":{}},\"name\":\"Golden Vector Chain\"}",
-    "assemblyHash": "0x5410788222c0c5f8d6fb866feeb36237ba6d0889e56bf273abfe54795bcd4251",
+    "assemblyHash": "0x473f738257d5b6966a19b633484b7a81f70a1775c9b6d8c23d3e2290276aa4c2",
     "agreements": {
       "0x2a478517a51e17d0624582b6f0cd45533d192c02ff6a9922e832935f63f6d677": "{\"clauses\":{\"0x6a0a59d4fc6a2cd9733e58d456fdfbbcbdcf5bb06d6704f84f1555e1d7d4a7f8\":{},\"0xa0713b585d8e3dbf9b23bf942b4360025d0dc0035c62325c96a8a717e5b0ed99\":{}}}"
     }

@@ -32,6 +32,8 @@ import {
 } from "../src/agreement.js";
 import type { Commitment } from "../src/types.js";
 import {
+    ASSEMBLY_LEAF_DOMAIN,
+    computeAssemblyLeaf,
     ASSEMBLY_TERMS_LEAF_KEY,
     buildAgreementInclusionProof,
     assemblyHashOf,
@@ -525,7 +527,7 @@ describe("computeRpgfAllocations", () => {
 
 describe("buildUsageClaims", () => {
     /** What `UsageCounter.provenanceLeaf()` / `assemblyTermsLeaf()` answer: the formats' reserved keys. */
-    const CONTEXT = { provenanceLeaf: PROVENANCE_LEAF_KEY, assemblyTermsLeaf: ASSEMBLY_TERMS_LEAF_KEY };
+    const CONTEXT = { provenanceLeaf: PROVENANCE_LEAF_KEY, assemblyTermsLeaf: ASSEMBLY_TERMS_LEAF_KEY, assemblyLeafDomain: ASSEMBLY_LEAF_DOMAIN };
     const AGREEMENT_HASH = keccak256(encodePacked(["string"], ["an-agreement"]));
     const OTHER_KEY = keccak256(encodePacked(["string"], ["another-agreement"]));
     const ASSEMBLY: Assembly = {
@@ -605,7 +607,7 @@ describe("buildUsageClaims", () => {
         const { agreement_hash, slot_content_hash, membership_proof } = (assembly.kind as {
             Assembly: { agreement_hash: Hex; slot_content_hash: Hex; membership_proof: Hex[] };
         }).Assembly;
-        const leaf = computeClauseLeaf({ clause: agreement_hash, dataHash: slot_content_hash });
+        const leaf = computeAssemblyLeaf(agreement_hash, slot_content_hash);
         expect(verifyInclusionProof(COMPOSITION, leaf, membership_proof)).toBe(true);
         const other = assemblyHashOf({ agreements: [...ASSEMBLY.agreements].reverse() });
         expect(verifyInclusionProof(other, leaf, membership_proof)).toBe(false);
@@ -641,6 +643,9 @@ describe("buildUsageClaims", () => {
         expect(() => buildUsageClaims(order, agreementWith([modalities]), {
             ...CONTEXT, assemblyTermsLeaf: keyOf("figaro-modalities"),
         })).toThrow(/assembly-terms leaf/);
+        expect(() => buildUsageClaims(order, agreementWith([modalities]), {
+            ...CONTEXT, assemblyLeafDomain: keyOf("figaro-modalities"),
+        })).toThrow(/assembly leaf domain/);
         // Case does not matter.
         expect(buildUsageClaims(order, agreementWith([modalities], PROVENANCE), {
             ...CONTEXT, provenanceLeaf: PROVENANCE_LEAF_KEY.toUpperCase().replace("0X", "0x") as Hex,
