@@ -55,6 +55,12 @@ export interface ProcessTimeline {
     chainId: number;
     /** FigaroCore contract address. */
     coreAddress: string;
+    /** The AttestationCoordinator whose attestations were scanned — the site's
+     *  for the site's own deployment, the one the link names otherwise; null
+     *  when none was named, so no attestation was scanned. */
+    coordinatorAddress: `0x${string}` | null;
+    /** The first block the scans read from. */
+    scannedFromBlock: bigint;
     /** When the timeline was generated (ISO-8601). */
     generatedAt: string;
     /** Chronological list of events. */
@@ -114,17 +120,28 @@ export async function buildProcessTimeline(
     coreAddressOverride?: string,
     /** `sharedCache: false` for a client the site did not configure (an RPC a
      *  link names): its logs are read directly and never written into the
-     *  event cache every other page reads. */
-    options: { sharedCache?: boolean } = {},
+     *  event cache every other page reads. `coordinatorAddress` is the
+     *  AttestationCoordinator the link names for a core other than the site's
+     *  (the Core holds no pointer to its coordinator, so only the link can
+     *  name it); `fromBlock` is the block the link names its deployment at.
+     *  Neither given, an outside core is scanned from genesis for FigaroCore
+     *  events alone. */
+    options: { sharedCache?: boolean; coordinatorAddress?: `0x${string}` | null; fromBlock?: bigint } = {},
 ): Promise<ProcessTimeline> {
     const coreAddress = (coreAddressOverride ?? CONTRACTS.core) as `0x${string}`;
     if (!coreAddress) throw new Error("Core contract address is not configured");
 
     const chainId = await client.getChainId();
     const sharedCache = options.sharedCache ?? true;
-    // An outside read starts at the site's deployment block only when it reads
-    // the site's own deployment; any other core is scanned from genesis.
+    // The site's own deployment is read from its deployment block with its
+    // own coordinator; any other core is read from the block the link names
+    // (else genesis) with the coordinator the link names (else none) — the
+    // site's coordinator address means nothing on another deployment.
     const ownDeployment = chainId === activeChain.id && coreAddress.toLowerCase() === CONTRACTS.core?.toLowerCase();
+    const scannedFromBlock = options.fromBlock ?? (ownDeployment ? deploymentBlock() : 0n);
+    const coordinatorAddr: `0x${string}` | null = options.coordinatorAddress !== undefined
+        ? options.coordinatorAddress
+        : ownDeployment ? getAttestationCoordinator() : null;
     const scanEvents = (params: { address: `0x${string}`; abi: Abi | readonly unknown[]; eventName: string }) => {
         if (sharedCache) return cachedGetContractEvents(client, chainId, params);
         const event = getAbiItem({ abi: params.abi as Abi, name: params.eventName });
@@ -132,7 +149,7 @@ export async function buildProcessTimeline(
         return getLogsAdaptive(client as unknown as LogScanClient, {
             address: params.address,
             event: event as Parameters<typeof getLogsAdaptive>[1]["event"],
-            fromBlock: ownDeployment ? deploymentBlock() : 0n,
+            fromBlock: scannedFromBlock,
         });
     };
     const blockCache = new Map<string, number>();
@@ -240,7 +257,6 @@ export async function buildProcessTimeline(
     // clause falls back to a short hash + stage (describeAttestation handles
     // it). The event's `contentRef = keccak256(content)` is a verification
     // digest, not an off-chain pointer.
-    const coordinatorAddr = getAttestationCoordinator();
     if (coordinatorAddr) {
         const attestLogs = byProcess(await scanEvents({
             address: coordinatorAddr,
@@ -287,6 +303,8 @@ export async function buildProcessTimeline(
         processId,
         chainId,
         coreAddress,
+        coordinatorAddress: coordinatorAddr,
+        scannedFromBlock,
         generatedAt: new Date().toISOString(),
         events,
         participants: Array.from(participantSet),

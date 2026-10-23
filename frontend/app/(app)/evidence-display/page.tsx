@@ -13,7 +13,13 @@
  *   - processId:            The Figaro process ID (bytes32-hex)   [required]
  *   - coreAddress:          FigaroCore contract address (the core the process resolved on)
  *   - chainID:              Chain ID (e.g. 31337, 1, 100)
- *   - arbitrableJsonRpcUrl: (optional) RPC URL to read events from
+ *   - arbitrableJsonRpcUrl: RPC URL to read events from (the page errors without it)
+ *   - coordinatorAddress:   (optional) the AttestationCoordinator of that core — a
+ *                           core other than this site's has its attestations read
+ *                           only when the link names its coordinator (the Core holds
+ *                           no pointer to it); this site's own is read by default
+ *   - fromBlock:            (optional) the block that core was deployed at — a core
+ *                           other than this site's is scanned from genesis without it
  *   - disputeID:            (optional) a forum-side dispute reference, shown for context
  */
 
@@ -171,11 +177,14 @@ function EvidenceDisplayContent() {
     const processId = searchParams.get("processId") as `0x${string}` | null;
     const chainIdRaw = searchParams.get("chainID");
     const coreAddressParam = searchParams.get("coreAddress") as `0x${string}` | null;
+    const coordinatorParam = searchParams.get("coordinatorAddress") as `0x${string}` | null;
+    const fromBlockRaw = searchParams.get("fromBlock");
     const rpcUrl = searchParams.get("arbitrableJsonRpcUrl");
     const disputeIdRaw = searchParams.get("disputeID");
 
-    // RA-3: Validate chainID and disputeID as positive integers
+    // RA-3: Validate chainID, fromBlock and disputeID as positive integers
     const chainIdParam = chainIdRaw && /^\d{1,10}$/.test(chainIdRaw) ? chainIdRaw : null;
+    const fromBlockParam = fromBlockRaw && /^\d{1,15}$/.test(fromBlockRaw) ? BigInt(fromBlockRaw) : undefined;
     const disputeID = disputeIdRaw && /^\d{1,20}$/.test(disputeIdRaw) ? disputeIdRaw : null;
 
     const [timeline, setTimeline] = useState<ProcessTimeline | null>(null);
@@ -216,11 +225,21 @@ function EvidenceDisplayContent() {
             setLoading(false);
             return;
         }
+        if (coordinatorParam && !isAddress(coordinatorParam)) {
+            setError("Invalid coordinatorAddress — must be a valid EVM address.");
+            setLoading(false);
+            return;
+        }
 
         try {
             // The RPC is the link's choice, so its logs never enter the
-            // site's shared event cache.
-            const tl = await buildProcessTimeline(client, processId, coreAddressParam ?? undefined, { sharedCache: false });
+            // site's shared event cache; the coordinator and the first block
+            // are the link's too, when it names them.
+            const tl = await buildProcessTimeline(client, processId, coreAddressParam ?? undefined, {
+                sharedCache: false,
+                ...(coordinatorParam ? { coordinatorAddress: coordinatorParam } : {}),
+                ...(fromBlockParam !== undefined ? { fromBlock: fromBlockParam } : {}),
+            });
             if (chainIdParam && Number(chainIdParam) !== tl.chainId) {
                 setError(`The link names chain ${chainIdParam}, but its RPC answers for chain ${tl.chainId}.`);
                 return;
@@ -231,7 +250,7 @@ function EvidenceDisplayContent() {
         } finally {
             setLoading(false);
         }
-    }, [client, clientError, processId, coreAddressParam, chainIdParam]);
+    }, [client, clientError, processId, coreAddressParam, coordinatorParam, fromBlockParam, chainIdParam]);
 
     useEffect(() => {
         fetchTimeline();
@@ -278,6 +297,10 @@ function EvidenceDisplayContent() {
                         <span>process: {timeline.processId}</span>
                         <span>chain: {timeline.chainId}</span>
                         <span>core: {truncateHex(timeline.coreAddress)}</span>
+                        <span data-testid="evidence-coordinator">
+                            coordinator: {timeline.coordinatorAddress ? truncateHex(timeline.coordinatorAddress) : "none named — attestations not read"}
+                        </span>
+                        <span data-testid="evidence-from-block">scanned from block {timeline.scannedFromBlock.toString()}</span>
                         <span>rpc: {rpcOrigin(rpcUrl)}</span>
                         <span>generated: {formatTimestamp(timeline.generatedAt)}</span>
                     </div>
@@ -289,8 +312,8 @@ function EvidenceDisplayContent() {
                             data-testid="evidence-outside-deployment"
                         >
                             The link chose what this page reads ({rpcOrigin(rpcUrl)}), not this site&rsquo;s own
-                            deployment. The events below come from the address and the RPC the link names; check both
-                            against the chain before relying on them.
+                            deployment. The events below come from the core, the coordinator, the first block and the
+                            RPC the link names; check each against the chain before relying on them.
                         </p>
                     )}
                 </header>

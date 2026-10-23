@@ -77,7 +77,12 @@ rather than re-deriving it.
 DESIGN — it is the iframe target a recognized arbitration forum embeds (hence the
 `frame-ancestors` override for it in `public/_headers`), reached by a
 forum-composed URL, never by navigation. It is excluded from `app/sitemap.ts` for
-the same reason. Reachability audits should not flag it.
+the same reason. Reachability audits should not flag it. The URL names what the
+page reads — `processId`, `coreAddress`, `chainID`, `arbitrableJsonRpcUrl`, and for
+a core other than the site's, `coordinatorAddress` (the Core holds no pointer to
+its coordinator, so attestations are read only when the link names one) and
+`fromBlock` (else genesis); the header states the coordinator and the first block
+it read (`lib/audit/processTimeline.ts`).
 
 **API:** none — the app has zero server routes. The geocoder is a user endpoint
 (`lib/shared/userEndpoints.ts`, OpenStreetMap's public instance by default) called
