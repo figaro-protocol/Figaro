@@ -52,6 +52,24 @@ if [ "${VERIFY:-}" = "true" ] || [ "${VERIFY:-}" = "1" ]; then
     fi
 fi
 
+# The guest fingerprint the batch verifier pins: the sequencer this tree
+# built reports its own (`sequencer --vkey`; the first derivation takes
+# minutes, cached per guest after), so a relay started against this devnet
+# passes its startup check (a relay refuses a verifier that pins a key its
+# guest does not carry — the audit-relay e2e runs one here). With no binary
+# built, Deploy.s.sol pins a dev constant; an explicit SP1_PROGRAM_VKEY wins.
+SEQUENCER_BIN="$REPO_ROOT/prover/target/release/sequencer"
+if [ -z "${SP1_PROGRAM_VKEY:-}" ] && [ -x "$SEQUENCER_BIN" ]; then
+    echo "🔑 Reading the built sequencer's guest fingerprint (minutes on a first run)..."
+    SP1_PROGRAM_VKEY=$("$SEQUENCER_BIN" --vkey 2>/dev/null | sed -n 's/^SP1_PROGRAM_VKEY=//p' | tail -n 1)
+    if [ -n "$SP1_PROGRAM_VKEY" ]; then
+        export SP1_PROGRAM_VKEY
+        echo "   the verifier pins $SP1_PROGRAM_VKEY"
+    else
+        echo "   the binary printed no fingerprint — the verifier pins the dev constant"
+    fi
+fi
+
 echo "🚀 Deploying Figaro Protocol stack..."
 echo "   rpc=$RPC_URL"
 echo ""

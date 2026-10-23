@@ -187,9 +187,11 @@ NEXT_PUBLIC_DAO_TREASURY=0x...
 # uniform pro rata on real usage.
 
 # Batch-resolution proof path (FigaroBatchVerifier; MockSP1Verifier accepts
-# any proof on devnet — a real deployment wires Succinct's SP1 verifier
-# gateway + the program vkey via DeployMainnet's SP1_VERIFIER_GATEWAY /
-# SP1_PROGRAM_VKEY env)
+# any proof on devnet; the devnet verifier pins the guest fingerprint of the
+# sequencer the tree built when prover/target/release/sequencer is present,
+# else a dev constant, so a relay can start against it — a real deployment
+# wires Succinct's SP1 verifier gateway + the program vkey via DeployMainnet's
+# SP1_VERIFIER_GATEWAY / SP1_PROGRAM_VKEY env)
 NEXT_PUBLIC_BATCH_VERIFIER=0x...
 
 # Batch-resolution RELAY the frontend READS batched trade from (prover/sequencer,

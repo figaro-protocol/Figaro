@@ -35,6 +35,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import { createPublicClient, http, parseAbi } from "viem";
 // The SDK's own canonical hash — the clause key is keccak256 of the spec's
 // canonical bytes, the form every pin writes. Built output: run
@@ -170,8 +171,28 @@ function resolveAddress(spec, label) {
 }
 
 /** Check one value the chain reads against its expectation. */
+/** The guest fingerprint of the sequencer this tree built, or null when no
+ *  binary stands at prover/target/release/sequencer. The devnet's verifier
+ *  pins it when the binary is present (scripts/deploy-local.sh exports it to
+ *  Deploy.s.sol), so a relay can start against the devnet. */
+function builtSequencerGuest() {
+    const bin = path.join(root, "prover/target/release/sequencer");
+    if (!fs.existsSync(bin)) return null;
+    const run = spawnSync(bin, ["--vkey"], { encoding: "utf8" });
+    const line = (run.stdout ?? "").split("\n").find((l) => l.startsWith("SP1_PROGRAM_VKEY="));
+    return line ? line.slice("SP1_PROGRAM_VKEY=".length).trim() : null;
+}
+
 async function expectValue(label, spec, got) {
     if (spec === null || spec === undefined) return bad(label, "not decided — write the value in the expectations file before the deployment");
+    if (typeof spec === "object" && spec.guest) {
+        // `{ guest }`: the key the built sequencer carries when a binary is
+        // present, else the stated constant (the devnet's rule).
+        const built = builtSequencerGuest();
+        const want = built ?? spec.guest;
+        const which = built ? "the built sequencer's guest" : "the dev constant (no sequencer binary built)";
+        return same(got, want) ? ok(`${label} is ${which} ${want}`) : bad(label, `reads ${got}, expected ${which} ${want}`);
+    }
     if (typeof spec === "object" && (spec.record || spec.code || spec.wallet)) {
         const r = resolveAddress(spec, label);
         if (r.undecided) return bad(label, `not decided — wallet "${spec.wallet}" has no address in the expectations file`);

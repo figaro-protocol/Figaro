@@ -344,6 +344,15 @@ next batch — the balances, the one `BatchSettled` and the per-order answers
 read from the chain, the dead-letter count and its reason from `/status`.
 Same gate as the batch test; `prover-ci` runs both.
 
+`frontend/tests/e2e/audit-relay.devnet.spec.ts` is the audit page's end of the
+same path: it starts the built sequencer against the DEVNET's own verifier (the
+devnet pins that binary's guest, `scripts/deploy-local.sh`), commits one order
+through the relay as an agent would (`SequencerClient`), waits for the batch,
+reads the verifier's `stateRoot()` and the relay's `GET /state` out of band and
+holds the recomputed root to the chain's, then opens `/audit/view` with the
+relay as the browser's endpoint and asserts the order's verdict and its
+`state-inclusion` check on screen. Skips when no binary is built.
+
 ## Frontend Vitest (`frontend/tests/`) — 2 tiers
 
 `npx vitest run`. UI logic that needs neither a chain nor a real browser.

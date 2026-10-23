@@ -92,7 +92,10 @@ check fails on it until it is decided.
 - `1.expected.json` — mainnet. The deposits, the cooldown and the wallets are
   `null` today.
 - `31337.expected.json` — the devnet, where `scripts/deploy-local.sh` runs the
-  check after every deploy: the rehearsal.
+  check after every deploy: the rehearsal. Its `programVKey` is written
+  `{ "guest": "<constant>" }`: the key the sequencer this tree built carries
+  when `prover/target/release/sequencer` is present (the deploy wrapper pins
+  it, so a relay can start against the devnet), else the stated constant.
 
 ## The record discipline
 

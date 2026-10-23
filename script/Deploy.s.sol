@@ -297,9 +297,14 @@ contract Deploy is Script {
         // KernelState::compute_root on the empty state.
         bytes32 emptyMapHash = keccak256("");
         bytes32 emptyUsageHash = keccak256(abi.encodePacked(uint64(0), uint64(0), uint64(0)));
+        // The guest fingerprint the verifier pins: the sequencer this tree
+        // built reports its own (`sequencer --vkey`, exported by the deploy
+        // wrapper when the binary is present), so a relay can start against
+        // this verifier — a relay refuses a verifier that pins a key its
+        // guest does not carry; with no binary built, a dev constant.
         FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
             address(mockSp1),
-            keccak256(abi.encodePacked("figaro-kernel-dev")),
+            vm.envOr("SP1_PROGRAM_VKEY", keccak256(abi.encodePacked("figaro-kernel-dev"))),
             clauseRegistry,
             _usageCounter,
             keccak256(abi.encodePacked(emptyMapHash, emptyMapHash, emptyMapHash, emptyUsageHash))

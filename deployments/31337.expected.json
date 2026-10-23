@@ -6,7 +6,7 @@
         "dao": { "record": "daoTreasury" }
     },
     "batchVerifier": {
-        "programVKey": "0xe14b43dabfe8ce719bfb7a9177cb30f6353e144ac96b0efe165c56fe892eb8aa",
+        "programVKey": { "guest": "0xe14b43dabfe8ce719bfb7a9177cb30f6353e144ac96b0efe165c56fe892eb8aa" },
         "verifier": { "code": "MockSP1Verifier" }
     },
     "registries": {
