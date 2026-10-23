@@ -201,7 +201,7 @@ export default function MarketsWithoutAVenuePaper() {
 
                 <PaperSubsection title="2.2 The equilibrium the argument uses">
                     <p>
-                        The Core&rsquo;s equilibrium is a comparison over its transfers plus what a party retains off-chain, credited at the figures the parties signed. The retention term is the reason the schedule doubles: value passes off-chain, so a party that walks away keeps what it holds, and a bond equal to that value would be exactly canceled by the taking. Three comparisons follow, with the seller performing or holding out and the buyer resolving or withholding.
+                        The Core&rsquo;s equilibrium is a comparison over its transfers plus what a party retains off-chain, credited at the figures the parties signed. The retention term is the reason the schedule doubles: value passes off-chain, so a party that walks away keeps what it holds, and a bond equal to that value would be exactly canceled by the taking (Figaro 2026, Definition 7). Three comparisons follow, with the seller performing or holding out and the buyer resolving or withholding.
                     </p>
                     <ol className="space-y-2 list-decimal pl-6 text-sm">
                         <li><strong>After performance, the buyer resolves.</strong> Resolving ends at <Math>{"-2P + P + P = 0"}</Math>: it is refunded its bond less the payment, and it holds a delivery worth <Math>{"P"}</Math>. Never resolving ends at <Math>{"-2P + P = -P"}</Math>, its bond held against the delivery it keeps. This comparison needs no assumption about the seller.</li>
