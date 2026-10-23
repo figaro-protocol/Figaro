@@ -283,7 +283,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "The Wallet Without a Polity",
                 href: "/papers/wallet-without-polity",
-                summary: "Between strangers the contract element that fails is consideration, and refugees, stateless people and others beyond stable banking and courts lack what ordinarily makes a promise credible. A bonded commitment makes it credible by two acts no state is asked about, a signature and a bond; the boundary is a bond they can deposit.",
+                summary: "Between strangers the contract element that fails is consideration, and refugees, stateless people and others beyond stable banking and courts lack what ordinarily makes a promise credible. A bonded commitment makes it credible by two acts no state is asked about, a signature and a bond; the boundary is a bond they can lock.",
                 keywords: ["statelessness", "refugee economies", "displaced populations", "consideration", "Arendt", "humanitarian economics", "commerce without recognition"],
                 industries: ["Humanitarian"],
                 question: "What does a mechanism whose precondition is a key and a bond, not recognition by a state, offer refugees, stateless people and others beyond stable banking and courts?",

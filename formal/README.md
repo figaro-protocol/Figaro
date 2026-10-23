@@ -99,7 +99,7 @@ The TLA+ spec mirrors the two external functions of `FigaroCore.sol`:
 
 | Contract Function | TLA+ Action | What It Models |
 |---|---|---|
-| `commit()` (root) | `CommitRoot(buyer, seller, payment)` | New process creation, bond deposit |
+| `commit()` (root) | `CommitRoot(buyer, seller, payment)` | New process creation, bonds locked |
 | `commit()` (sub) | `CommitSub(pid, seller, payment)` | Process extension, cumulative bonding |
 | `resolveProcess()` | `ResolveProcess(pid)` | Atomic resolution, payout distribution |
 

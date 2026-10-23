@@ -5,7 +5,7 @@
 Every trade is an agreement, and between strangers the element of a contract that
 fails is consideration — promising value is easy; nothing makes delivering it credible.
 Figaro completes the contract. When a buyer and a seller commit to an order,
-each deposits a bond into one contract: the buyer twice the payment, the
+each locks a bond in one contract: the buyer twice the payment, the
 seller twice the cumulative value through its order. A bond is its owner's own
 deterrent — whatever a party could gain by walking away, it leaves more behind.
 Only the buyer resolves the process, and resolution pays every seller and

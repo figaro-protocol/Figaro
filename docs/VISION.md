@@ -23,7 +23,7 @@ reaches.
 ## What Figaro does
 
 Figaro makes consideration credible with nobody in charge of it. When a buyer
-and a seller commit to an order, each deposits a bond: the buyer twice the
+and a seller commit to an order, each locks a bond: the buyer twice the
 payment, the seller twice the cumulative value through its order. Half the
 buyer's bond is the consideration, the payments traveling inside it; the other
 half, and the whole of each seller's bond, is its owner's own deterrent —

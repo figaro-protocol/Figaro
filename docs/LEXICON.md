@@ -20,7 +20,7 @@ Nouns and their definitions. One name per thing.
 
 **process** — The runtime instance of an assembly: opened by a buyer's first commitment, extended by each further commitment in the same token, and ended by the buyer's resolution. The Core identifies it by the hash of its first commitment and holds its buyer, its token, its running total and its open commitments.
 
-**refund** — The return of a bond to the party that deposited it, at resolution: each seller's whole, the buyer's less the payments it carried. Only a bond is ever refunded; a payment transfers.
+**refund** — The return of a bond to the party that locked it, at resolution: each seller's whole, the buyer's less the payments it carried. Only a bond is ever refunded; a payment transfers.
 
 **resolution** — The buyer's one act that ends a process: a call on the direct path, a signed operation on the batch path. It must name every open order of the process, and in one transaction every payment transfers and every bond is refunded. Only the buyer can make it, and it is final.
 

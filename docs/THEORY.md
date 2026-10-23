@@ -17,8 +17,8 @@ surfaces disagrees with the module. `VISION.md` says why the mechanism matters;
 `FigaroCore` exposes two operations, `commit` and `resolveProcess`, and each
 carries a mechanism design of its own.
 
-**Asymmetric bonding.** When an order is committed, each party deposits a bond
-into `FigaroCore`: the buyer twice the payment `P`, the seller twice the
+**Asymmetric bonding.** When an order is committed, each party locks a bond
+in `FigaroCore`: the buyer twice the payment `P`, the seller twice the
 cumulative value `G` through its order — every payment the process has
 accumulated so far, this order's own included. The doubling answers retention:
 value passes off-chain, so a party that walks away keeps what is in its hands,
@@ -282,7 +282,7 @@ its calldata and the transaction landing reverts the call
 (`IncompleteOrderList`) and the buyer rebuilds and resends — a retry, not a
 denial, and only a party the buyer has already signed for can force it, only
 while that signature is valid. The residue — a party that neither performs,
-nor remedies, nor answers a ruling — simply stands: bonds deposited, the seller
+nor remedies, nor answers a ruling — simply stands: bonds locked, the seller
 at best at `−G`, the data marking an undertaking never closed.
 
 ## Exit paths, permanently excluded
