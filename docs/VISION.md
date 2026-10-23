@@ -86,15 +86,24 @@ airline the slots and the brand, never the aircraft, which are leased and
 interchangeable. Processes compete the interchangeable lines toward what they
 must earn to keep participating; the moat keeps its pricing power.
 
-The **utility token** is how the moat survives the firm. A designer pins their
-own token as the denomination of their assembly, so every process that
-instantiates it is paid and bonded in that token. Its worth is discovered
-through use of the assembly, not on a stock market — the share certificate of
-an entity that was never incorporated, priced by demand for access to what the
-designer built. It is distinct from a **coordination token**, which strangers
-choose because it is neutral to both, and from a **community token**, whose use
-in processes elsewhere sustains its worth at home. The tokens a wallet holds
-say which communities and which designs it takes part in.
+The **utility token** is how the moat survives the firm, and how a designer
+opens a market for a resource. Every wallet represents a real-world asset (the
+asset behind the wallet: `/papers/self-closing-ledger-periods` § 7; the
+operator that acts for it: `AI_AGENT_COORDINATION.md`), and an assembly is a
+door to one such resource. A designer composes a token-gated assembly with its
+own token, so every process that instantiates it is paid and bonded in that
+token; the sellers that hold the resource bind the assembly and so accept the
+token, and a buyer reaches the resource through them by holding it. No
+contract reads the token: every party signs it in the agreement, so the gate is
+the sellers' bindings, and anyone may compose the same design with another
+token and reach only the sellers that bind that one. The token captures the
+value of the resource accessed: what is bonded under the assembly is the demand
+for it, discovered through use, not on a stock market, and it stands where a
+stock certificate stood for an entity that was never incorporated. It is
+distinct from a **coordination token**, which strangers choose because it is
+neutral to both, and from a **community token**, whose use in processes
+elsewhere sustains its worth at home. The tokens a wallet holds say which
+communities and which designs it takes part in.
 
 Value capture has no fixed place. It moves from the top
 of the firm down to the assets that produce, and it rests where each asset
