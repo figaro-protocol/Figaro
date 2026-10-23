@@ -235,7 +235,7 @@ export interface SeedMemberProfile {
         subjectAddress: `0x${string}`;
         /** The bound assembly's full `AssemblyRegistry` assembly hash. */
         assemblyHash: `0x${string}`;
-        counterpartyBindings: Array<{ clauseKey: string; addresses: string[] }>;
+        coSellerBindings: Array<{ clauseKey: string; addresses: string[] }>;
     }>;
     /** Agent service endpoints (`MemberAgentServices`) — a declared `rest`
      *  makes the wallet an AGENT candidate: race/quote drafts POST there. */
@@ -469,7 +469,7 @@ export interface DiscoveredMember {
     geohash?: string;
     assemblyBindings: Array<{
         assemblyHash: `0x${string}`;
-        counterpartyBindings?: Array<{ clauseKey: string; addresses: string[] }>;
+        coSellerBindings?: Array<{ clauseKey: string; addresses: string[] }>;
     }>;
 }
 

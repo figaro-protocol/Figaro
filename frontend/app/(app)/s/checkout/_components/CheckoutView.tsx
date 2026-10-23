@@ -9,7 +9,7 @@
  * validates the off-chain spec, runs the bilateral / multi-order commit, and redirects to
  * `/orders/view?process=<processId>`. Every order's clauses come straight from the assembly
  * assembly; every sub-order's seller is resolved generically from the assembly's
- * `counterpartyBindings`. No courier picker, no modality taxonomy, no
+ * `coSellerBindings`. No courier picker, no modality taxonomy, no
  * buyer-set pricing — those are the assembly's concerns, not the checkout's.
  *
  * The cart is read-only here: it is the buyer's line-item selection, edited on
@@ -61,7 +61,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual, normalizeAddressParam, ZERO_ADDRESS } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
-import { useMemberBoundAssemblies, withBoundCounterparties } from "@/lib/member/useMemberBoundAssemblies";
+import { useMemberBoundAssemblies, withBoundCoSellers } from "@/lib/member/useMemberBoundAssemblies";
 import { displayNameForAddress } from "@/lib/member/memberListing";
 import { formatMass, formatVolume } from "@/lib/member/unitConversion";
 import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
@@ -119,17 +119,17 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     const { assemblies: sellerBoundAssemblies } = useMemberBoundAssemblies(sellerAddressTyped);
     // Every seller in a process must have bound the order's assembly: a
-    // counterparty the lead seller designates is used only when its own
+    // co-seller the lead seller designates is used only when its own
     // profile binds the assembly too — otherwise its sub-order falls to the
     // buyer's checkout choice, never to a seller that would refuse it.
     const boundAssemblies = useMemo(
-        () => sellerBoundAssemblies.map((a) => withBoundCounterparties(a, sellerCatalogs)),
+        () => sellerBoundAssemblies.map((a) => withBoundCoSellers(a, sellerCatalogs)),
         [sellerBoundAssemblies, sellerCatalogs],
     );
 
     // The buyer's options ARE the seller's bound assemblies — each is one
     // option, labeled by the assembly's own name and keyed by its slug.
-    // Fill-mechanism variants (a catalog-bound counterparty, a buyer pick)
+    // Fill-mechanism variants (a catalog-bound co-seller, a buyer pick)
     // are DISTINCT assemblies, so picking the assembly picks the mechanism;
     // the checkout hardcodes no taxonomy and reads no coordination field —
     // the mechanism is derived from binding state.
@@ -277,7 +277,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         owner: buyer ?? undefined,
         spender: (swapFundingContracts?.permit2 ?? ZERO_ADDRESS) as `0x${string}`,
     });
-    // The buyer's checkout-time counterparty choice for a sub-order the
+    // The buyer's checkout-time co-seller choice for a sub-order the
     // adopting seller's catalog leaves unbound (the buyer assigns it).
     const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
     // The dispatch race — the OTHER way to fill the same unbound sub-order:
@@ -496,24 +496,24 @@ export function CheckoutView({ sellerAddress }: Props) {
         }
         return out;
     })();
-    // A composition never supplies a counterparty: it invokes an on-network
+    // A composition never supplies a co-seller: it invokes an on-network
     // contract, it does not name a seller. So every unbound sub-order is the
     // buyer's pick, whether or not the order also composes.
     const buyerPickSubOrders = unboundSubOrders;
-    const buyerChoosesCounterparty = buyerPickSubOrders.length > 0;
+    const buyerChoosesCoSeller = buyerPickSubOrders.length > 0;
     // Every composition's REQUIRED block.runtime.fields must be filled before
     // placing — the same emptiness rule the general-clause fill gate applies.
     const compositionsReady = orderCompositions.every((c) =>
         c.fields.every((f) => !f.required || isFilledValue(compositionInputs[c.nodeId]?.[f.name])),
     );
     // Ready to place when a profile-bound assembly is resolved (chosen, when the
-    // seller offers more than one), any buyer-chosen counterparty is selected,
+    // seller offers more than one), any buyer-chosen co-seller is selected,
     // and every composition's runtime inputs are complete.
     const orderReady = !!pickedAssembly
         && !!currency
         && decimalsReady
         && !translationHeld
-        && (!buyerChoosesCounterparty || !!sellerSelection || !!raceOutcome)
+        && (!buyerChoosesCoSeller || !!sellerSelection || !!raceOutcome)
         && compositionsReady;
     // The root order carries the design-time clauses the buyer is bonding to.
     // Surfaced inline below so the buyer reviews the terms before placing the
@@ -606,7 +606,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // the prerequisites the checkout guards on are present.
     const buildWalkParams = (): AssemblyCheckoutParams | null => {
         if (!buyer || !pickedAssembly || !currency) return null;
-        const manualSelections = buyerChoosesCounterparty && sellerSelection
+        const manualSelections = buyerChoosesCoSeller && sellerSelection
             ? Object.fromEntries(buyerPickSubOrders.map(({ node }) => [
                 node.nodeId,
                 {
@@ -1170,13 +1170,13 @@ export function CheckoutView({ sellerAddress }: Props) {
                         )}
 
                         {/* Buyer-assigned: the catalog leaves the sub-order
-                            unbound — the buyer chooses the counterparty here,
+                            unbound — the buyer chooses the co-seller here,
                             priced from that seller's own catalog.
                             Checkout-phase data, like the cart. The dispatch
                             race below fills the SAME derived absence by racing
                             the market instead — race vs manual pick is
                             checkout-time buyer behavior, never stored. */}
-                        {buyerChoosesCounterparty && (
+                        {buyerChoosesCoSeller && (
                             <>
                                 {!raceOutcome && pickedAssembly && (
                                     <SellerCatalogPicker

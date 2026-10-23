@@ -36,7 +36,7 @@ const GEO_SPECS = specSourceFromFixtures(["figaro-geolocation"]);
 const SCHEDULE_SPECS = specSourceFromFixtures(["figaro-schedule"]);
 
 const assembly: BoundAssemblyPlanInput = {
-    counterpartyBindings: [
+    coSellerBindings: [
         { clauseKey: PROX, addresses: [SWIFT, MERCATO] },
         { clauseKey: EMISSIONS, addresses: [ROSSO] },
     ],
@@ -96,7 +96,7 @@ describe("planSubOrderSellers", () => {
     });
 
     it("returns a null seller when no binding covers the order's clause", () => {
-        const unbound: BoundAssemblyPlanInput = { ...assembly, counterpartyBindings: [] };
+        const unbound: BoundAssemblyPlanInput = { ...assembly, coSellerBindings: [] };
         expect(planSubOrderSellers(unbound).every((p) => p.seller === null)).toBe(true);
     });
 });

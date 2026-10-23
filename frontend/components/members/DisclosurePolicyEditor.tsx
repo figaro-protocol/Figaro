@@ -161,7 +161,7 @@ function PolicyLeafRow({
     const offered = entry?.offered === true;
     // Raw whitelist text stays local so partially-typed addresses don't
     // vanish; only valid, deduped addresses propagate to the entry
-    // (the CounterpartyClauseEditor idiom).
+    // (the CoSellerClauseEditor idiom).
     const [whitelistText, setWhitelistText] = useState<string>(
         () => (entry?.whitelist ?? []).join(", "),
     );

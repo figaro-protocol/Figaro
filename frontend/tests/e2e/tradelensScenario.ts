@@ -7,7 +7,7 @@
  *
  * Wallets: buyer = anvil[14]; the six sellers re-assert their profiles
  * idempotently each run (every index is shared world-state on the persisted
- * devnet). The shipper's binding designates the five sub-order counterparties
+ * devnet). The shipper's binding designates the five sub-order co-sellers
  * — the per-clause commit-order cursor maps merchant-process →
  * [inspector, forwarder, customs] and courier-process → [carrier, inland].
  */
@@ -165,13 +165,13 @@ export async function fillTradelensCheckout(page: Page): Promise<void> {
 /** Onboard + bind the six sellers (idempotent re-assert): pinned catalog
  *  per seller (cargo master data on the shipper's ITEM — the fold channel;
  *  catalog-sourced cold-chain + freight-class on the carrier's), the
- *  shipper's binding carrying the five counterparty designations. */
+ *  shipper's binding carrying the five co-seller designations. */
 export async function seedTradelensSellers(slug: string, token: Hex): Promise<void> {
     const assemblyHash = await anchoredAssemblyHash(slug);
     const seed = async (
         who: { address: Hex }, keyIndex: number, name: string, itemName: string, price: string,
         itemProps?: Record<string, unknown>,
-        counterpartyBindings: Array<{ clauseKey: Hex; addresses: string[] }> = [],
+        coSellerBindings: Array<{ clauseKey: Hex; addresses: string[] }> = [],
     ) => {
         const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: who.address,
@@ -200,7 +200,7 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
                     bindingId: `tradelens-${who.address.slice(2, 8).toLowerCase()}`,
                     subjectAddress: who.address,
                     assemblyHash,
-                    counterpartyBindings,
+                    coSellerBindings,
                 }],
             },
         });
@@ -209,7 +209,7 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
     const conformant = async (): Promise<boolean> => {
         const bindings = await memberProfileBindings(SHIPPER.address as Hex);
         const b = bindings.find((x) => isBindingOf(x, assemblyHash));
-        if (!b || !(b.counterpartyBindings ?? []).some((cb) => cb.clauseKey.toLowerCase() === C.merchant && cb.addresses.length === 3)) return false;
+        if (!b || !(b.coSellerBindings ?? []).some((cb) => cb.clauseKey.toLowerCase() === C.merchant && cb.addresses.length === 3)) return false;
         // The cargo master data must ride the ITEM level (massGrams/volumeMl)
         // — the channel figaro-cargo folds from; a clauseValues copy does NOT
         // fold. Re-seed a stale catalog.

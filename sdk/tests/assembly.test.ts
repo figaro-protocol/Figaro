@@ -297,14 +297,14 @@ describe("resolveAuthoredClauseKeys (seed-time authoring resolver)", () => {
         const profile = {
             name: "m",
             disclosurePolicy: [{ assemblyHash: `0x${"1".repeat(64)}`, clauseId: "figaro-data-license", posture: "buyer", offered: true }],
-            assemblyBindings: [{ bindingId: "b", counterpartyBindings: [{ clauseId: "figaro-commerce", addresses: [] }] }],
+            assemblyBindings: [{ bindingId: "b", coSellerBindings: [{ clauseId: "figaro-commerce", addresses: [] }] }],
             profileClauseValues: { "figaro-commerce": { a: 1 } },
         };
         const resolved = resolveAuthoredClauseKeys(profile, specs) as unknown as Record<string, any>;
         expect(resolved.disclosurePolicy[0]).toEqual({
             assemblyHash: `0x${"1".repeat(64)}`, clauseKey: keyOf("figaro-data-license"), posture: "buyer", offered: true,
         });
-        expect(resolved.assemblyBindings[0].counterpartyBindings[0]).toEqual({ clauseKey: keyOf("figaro-commerce"), addresses: [] });
+        expect(resolved.assemblyBindings[0].coSellerBindings[0]).toEqual({ clauseKey: keyOf("figaro-commerce"), addresses: [] });
         expect(resolved.profileClauseValues).toEqual({ [keyOf("figaro-commerce")]: { a: 1 } });
 
         const catalog = { items: [{ id: "i", clauseValues: { "figaro-commerce": {} }, dataSold: { assemblyHash: "0x", clauseId: "figaro-data-license", posture: "seller" } }] };

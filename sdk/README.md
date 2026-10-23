@@ -1601,7 +1601,7 @@ A reader verifies a fetched spec by hashing the BYTES it fetched:
 writes an assembly or a member document by clause NAME; a published
 document carries keys. `resolveAuthoredClauseKeys` rewrites your OWN
 file — the `clauses` keys in a written agreement, `assemblyClauses` keys in a assembly;
-`disclosurePolicy[].clauseId`, `assemblyBindings[].counterpartyBindings[].clauseId`
+`disclosurePolicy[].clauseId`, `assemblyBindings[].coSellerBindings[].clauseId`
 (each becomes `clauseKey`) and `profileClauseValues` keys in a profile;
 `items[].clauseValues` keys and `items[].dataSold.clauseId` in a catalog — to
 the keys of the specs you loaded (`specs.list()`), matching each spec's
@@ -2112,9 +2112,9 @@ import {
   `block.checkout.profileFills` subset, with the registered agreement's committed terms winning),
   and the DERIVED `fillDimweightClause` (`billed = max(gross, volumetric)`,
   divisor read from the profile-folded leaf).
-- **Sub-order sellers**: `planSubOrderSellers({ hydratedAssembly, counterpartyBindings })`
+- **Sub-order sellers**: `planSubOrderSellers({ hydratedAssembly, coSellerBindings })`
   topologically orders the non-root agreements and resolves each one's seller
-  from the adopting seller's counterparty bindings (matched against the order
+  from the adopting seller's co-seller bindings (matched against the order
   agreement's own clauses, `agreementClauses`) via a per-clause binding cursor — a clause shared by sibling orders
   draws distinct wallets by commit order, so the ordering must match the
   checkout's commit order (throws on a cyclic topology; `topologicalOrder` is the
@@ -2238,19 +2238,19 @@ registration at all.
     document.
   - `assemblyBindings` is an array of `AssemblyBindingRecord` — one entry per
     assembly the wallet sells through, each
-    `{ bindingId, subjectAddress, assemblyHash, counterpartyBindings? }`.
+    `{ bindingId, subjectAddress, assemblyHash, coSellerBindings? }`.
     `assemblyHash` is the bound assembly's full `AssemblyRegistry` key — the
     same identity a `buyerAssemblies` entry and an agreement's provenance leaf
     carry; a slug shown anywhere is derived from it (`deriveAssemblySlug`),
     never stored. A seller accepts an order only under an assembly this list
     binds (`checkSellerBindsAssembly`), and every seller in a process must have
-    bound it, the designated sub-order counterparties included. Each
-    `counterpartyBindings` entry is `{ clauseKey, addresses[] }`: the wallets the
+    bound it, the designated sub-order co-sellers included. Each
+    `coSellerBindings` entry is `{ clauseKey, addresses[] }`: the wallets the
     seller designates for a sub-order carrying that process clause (e.g. a
     courier-process clause → the courier wallets checkout fills the courier
     sub-order from; order is significant — checkout takes the first reachable, or
     surfaces the list). Without this field the cart has nowhere to read a
-    sub-order counterparty's wallet from. The seller's ROLE in the assembly is
+    sub-order co-seller's wallet from. The seller's ROLE in the assembly is
     event-derived, never declared here.
   - `disclosurePolicy` is an array of `DisclosurePolicyEntry` — the member's
     self-declared terms for the data they co-produce inside bonded processes

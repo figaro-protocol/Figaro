@@ -1540,7 +1540,7 @@ every agreement clause's <code>clause</code>, the <code>clauseId</code> argument
 writes an assembly or a member document by clause NAME; a published
 document carries keys. <code>resolveAuthoredClauseKeys</code> rewrites your OWN
 file — the <code>clauses</code> keys in a written agreement, <code>assemblyClauses</code> keys in a assembly;
-<code>disclosurePolicy[].clauseId</code>, <code>assemblyBindings[].counterpartyBindings[].clauseId</code>
+<code>disclosurePolicy[].clauseId</code>, <code>assemblyBindings[].coSellerBindings[].clauseId</code>
 (each becomes <code>clauseKey</code>) and <code>profileClauseValues</code> keys in a profile;
 <code>items[].clauseValues</code> keys and <code>items[].dataSold.clauseId</code> in a catalog — to
 the keys of the specs you loaded (<code>specs.list()</code>), matching each spec's
@@ -1823,9 +1823,9 @@ divisor, a declared credential id — restricted to each spec's declared
 <code>block.checkout.profileFills</code> subset, with the registered agreement's committed terms winning),
 and the DERIVED <code>fillDimweightClause</code> (<code>billed = max(gross, volumetric)</code>,
 divisor read from the profile-folded leaf).</li>
-<li><strong>Sub-order sellers</strong>: <code>planSubOrderSellers({ hydratedAssembly, counterpartyBindings })</code>
+<li><strong>Sub-order sellers</strong>: <code>planSubOrderSellers({ hydratedAssembly, coSellerBindings })</code>
 topologically orders the non-root agreements and resolves each one's seller
-from the adopting seller's counterparty bindings (matched against the order
+from the adopting seller's co-seller bindings (matched against the order
 agreement's own clauses, <code>agreementClauses</code>) via a per-clause binding cursor — a clause shared by sibling orders
 draws distinct wallets by commit order, so the ordering must match the
 checkout's commit order (throws on a cyclic topology; <code>topologicalOrder</code> is the
@@ -1902,19 +1902,19 @@ non-clearable once set; a patch that drops it silently orphans the
 document.</li>
 <li><code>assemblyBindings</code> is an array of <code>AssemblyBindingRecord</code> — one entry per
 assembly the wallet sells through, each
-<code>{ bindingId, subjectAddress, assemblyHash, counterpartyBindings? }</code>.
+<code>{ bindingId, subjectAddress, assemblyHash, coSellerBindings? }</code>.
 <code>assemblyHash</code> is the bound assembly's full <code>AssemblyRegistry</code> key — the
 same identity a <code>buyerAssemblies</code> entry and an agreement's provenance leaf
 carry; a slug shown anywhere is derived from it (<code>deriveAssemblySlug</code>),
 never stored. A seller accepts an order only under an assembly this list
 binds (<code>checkSellerBindsAssembly</code>), and every seller in a process must have
-bound it, the designated sub-order counterparties included. Each
-<code>counterpartyBindings</code> entry is <code>{ clauseKey, addresses[] }</code>: the wallets the
+bound it, the designated sub-order co-sellers included. Each
+<code>coSellerBindings</code> entry is <code>{ clauseKey, addresses[] }</code>: the wallets the
 seller designates for a sub-order carrying that process clause (e.g. a
 courier-process clause → the courier wallets checkout fills the courier
 sub-order from; order is significant — checkout takes the first reachable, or
 surfaces the list). Without this field the cart has nowhere to read a
-sub-order counterparty's wallet from. The seller's ROLE in the assembly is
+sub-order co-seller's wallet from. The seller's ROLE in the assembly is
 event-derived, never declared here.</li>
 <li><code>disclosurePolicy</code> is an array of <code>DisclosurePolicyEntry</code> — the member's
 self-declared terms for the data they co-produce inside bonded processes

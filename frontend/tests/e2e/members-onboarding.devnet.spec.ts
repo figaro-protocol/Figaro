@@ -30,7 +30,7 @@
  * the live registry by SHAPE (one order), never by slug or list position —
  * this wallet's scenario is the bilateral single-order flow (orders-accept
  * orders from it); a multi-order or second binding would gate its checkout
- * behind counterparty designation / the method picker. This test has nothing
+ * behind co-seller designation / the method picker. This test has nothing
  * to do with how other tests get members on-chain: runtime specs DISCOVER
  * sellers from MembersRegistry → IPFS, never from here.
  *

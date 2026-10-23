@@ -40,7 +40,7 @@ import { useMemberBoundAssemblies } from "@/lib/member/useMemberBoundAssemblies"
 
 const PROFILE = {
     name: "Seller",
-    assemblyBindings: [{ bindingId: "b1", subjectAddress: SELLER, assemblyHash: `0x${"01".repeat(32)}`, counterpartyBindings: [] }],
+    assemblyBindings: [{ bindingId: "b1", subjectAddress: SELLER, assemblyHash: `0x${"01".repeat(32)}`, coSellerBindings: [] }],
 };
 
 describe("useMemberBoundAssemblies", () => {

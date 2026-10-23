@@ -124,7 +124,7 @@ async function seedRegisteredMemberWithCatalog(): Promise<SeededSeller> {
                 bindingId: `seller-page-binding-${Date.now()}`,
                 subjectAddress: SELLER_ADDR as Hex,
                 assemblyHash: anchoredHash,
-                counterpartyBindings: [],
+                coSellerBindings: [],
             }],
         },
     });

@@ -122,7 +122,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
                         bindingId: `race-binding-${address.slice(2, 8).toLowerCase()}`,
                         subjectAddress: address,
                         assemblyHash: deliveryHash,
-                        counterpartyBindings: [],
+                        coSellerBindings: [],
                     }],
                 },
             });

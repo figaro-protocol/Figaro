@@ -197,7 +197,7 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
                 name: 'Sign gate seller',
                 description: 'Seeded by sign-gate-design.devnet.spec.ts',
                 assemblyBindings: [forgedCase!.found.assemblyHash, unanchored].map((assemblyHash, i) => ({
-                    bindingId: `sign-gate-design-${i}`, subjectAddress: SELLER.address, assemblyHash, counterpartyBindings: [],
+                    bindingId: `sign-gate-design-${i}`, subjectAddress: SELLER.address, assemblyHash, coSellerBindings: [],
                 })),
             },
         });

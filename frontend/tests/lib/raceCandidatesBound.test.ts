@@ -2,9 +2,9 @@
  * Every seller in a process must have bound the order's assembly, so the
  * buyer's checkout offers no seller that has not: a dispatch-race or quote
  * candidate is drawn only from members whose profile binds the assembly's
- * assembly hash (`pricedRaceCandidates`), and a counterparty the lead
+ * assembly hash (`pricedRaceCandidates`), and a co-seller the lead
  * seller designates for a sub-order is used only when its own profile binds
- * it (`withBoundCounterparties`) — otherwise the race or the checkout would end
+ * it (`withBoundCoSellers`) — otherwise the race or the checkout would end
  * in a seller's refusal. Whether a member binds an assembly is read from its
  * discovered profile (`bindsAssembly`).
  */
@@ -13,7 +13,7 @@ import { assemblyHashOf, type Hex, type HydratedAssembly } from "@figaro-protoco
 import { primeClauseSpecs, referenceAssembly, keyOf } from "./primeClauseSpecs";
 import type { MemberCatalog } from "@/lib/member/types";
 import { bindsAssembly } from "@/lib/member/memberListing";
-import { withBoundCounterparties, type BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
+import { withBoundCoSellers, type BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
 import { pricedRaceCandidates } from "@/lib/checkout/dispatchRace";
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as Hex;
@@ -42,7 +42,7 @@ function bound(designated: Hex[]): BoundAssembly {
         slug: "s",
         name: "n",
         hydratedAssembly: hydrated,
-        counterpartyBindings: [{ clauseKey: keyOf("figaro-courier-process"), addresses: designated }],
+        coSellerBindings: [{ clauseKey: keyOf("figaro-courier-process"), addresses: designated }],
     };
 }
 
@@ -86,20 +86,20 @@ describe("the buyer offers only sellers that bound the assembly", () => {
         expect(candidates.map((c) => c.address)).toEqual([BOUND_A, BOUND_B, LEAD]);
     });
 
-    it("withBoundCounterparties keeps a designated counterparty only when its own profile binds the assembly", () => {
+    it("withBoundCoSellers keeps a designated co-seller only when its own profile binds the assembly", () => {
         const sellerCatalogs = [
             catalog(NOT_BINDING, "1", [OTHER_ASSEMBLY]),
             catalog(BOUND_A, "1", [assemblyHash]),
         ];
-        const kept = withBoundCounterparties(bound([NOT_BINDING, BOUND_A]), sellerCatalogs);
-        expect(kept.counterpartyBindings).toEqual([{ clauseKey: keyOf("figaro-courier-process"), addresses: [BOUND_A] }]);
+        const kept = withBoundCoSellers(bound([NOT_BINDING, BOUND_A]), sellerCatalogs);
+        expect(kept.coSellerBindings).toEqual([{ clauseKey: keyOf("figaro-courier-process"), addresses: [BOUND_A] }]);
         // A designation none of whose wallets bound the assembly is no
         // designation: the sub-order is left to the buyer's checkout choice.
-        const none = withBoundCounterparties(bound([NOT_BINDING]), sellerCatalogs);
-        expect(none.counterpartyBindings).toEqual([]);
+        const none = withBoundCoSellers(bound([NOT_BINDING]), sellerCatalogs);
+        expect(none.coSellerBindings).toEqual([]);
         // A designated wallet the discovered members do not include has no
         // profile to read a binding from.
-        const absent = withBoundCounterparties(bound([BOUND_B]), sellerCatalogs);
-        expect(absent.counterpartyBindings).toEqual([]);
+        const absent = withBoundCoSellers(bound([BOUND_B]), sellerCatalogs);
+        expect(absent.coSellerBindings).toEqual([]);
     });
 });

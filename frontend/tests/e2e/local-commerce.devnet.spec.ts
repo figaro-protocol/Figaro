@@ -228,7 +228,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         const merchantConformant = async (): Promise<boolean> => {
             const bindings = await memberProfileBindings(MERCHANT);
             const binding = bindings.find((b) => isBindingOf(b, deliveryHash));
-            return !!binding && (binding.counterpartyBindings ?? []).some(
+            return !!binding && (binding.coSellerBindings ?? []).some(
                 (cb) => cb.clauseKey.toLowerCase() === COURIER_CLAUSE
                     && cb.addresses.some((a) => a.toLowerCase() === COURIER.toLowerCase()),
             );
@@ -238,9 +238,9 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
             const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
-            const counterparties = page.getByTestId(`seller-assembly-counterparties-${deliverySlug}`);
-            await counterparties.waitFor({ state: 'visible', timeout: 30000 });
-            await counterparties.getByTestId(`counterparty-${COURIER_CLAUSE}-input-0`).fill(COURIER);
+            const coSellers = page.getByTestId(`seller-assembly-co-sellers-${deliverySlug}`);
+            await coSellers.waitFor({ state: 'visible', timeout: 30000 });
+            await coSellers.getByTestId(`co-seller-${COURIER_CLAUSE}-input-0`).fill(COURIER);
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(merchantConformant, {
                 timeout: 60000, message: "the merchant's re-pinned profile carries the binding + courier designation",

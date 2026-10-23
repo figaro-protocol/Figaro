@@ -17,10 +17,10 @@
 <div class="tsd-signature tsd-anchor-link" id="plansubordersellers"><span class="tsd-kind-call-signature">planSubOrderSellers</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">bound</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.BoundAssemblyPlanInput.html" class="tsd-signature-type tsd-kind-interface">BoundAssemblyPlanInput</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">node</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.PlannedAssemblyOrder.html" class="tsd-signature-type tsd-kind-interface">PlannedAssemblyOrder</a><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">seller</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span><a href="#plansubordersellers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Topologically order an assembly's non-root orders and resolve each one's
-seller from the seller's counterparty bindings. A clause shared by sibling
+seller from the seller's co-seller bindings. A clause shared by sibling
 orders draws distinct wallets by commit order (the per-clause cursor), so the
 ordering is significant and must match the checkout's commit order. <code>seller</code>
-is <code>null</code> when the assembly binds no counterparty for that order's clause.</p>
+is <code>null</code> when the assembly binds no co-seller for that order's clause.</p>
 <p>Throws when the topology has a cycle (a sub-order's parents are
 unresolvable) — the same guard the checkout relies on.</p>
 </div>

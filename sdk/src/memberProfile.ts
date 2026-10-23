@@ -93,18 +93,18 @@ interface MemberLocation {
 }
 
 /**
- * Designates the wallets the member entrusts as counterparties on
- * this assembly's sub-orders, keyed by the sub-order's process clause.
+ * Designates the wallets the member entrusts as co-sellers on
+ * this assembly's other orders, keyed by that order's process clause.
  *
  * Example: a member bound to `local-commerce-merchant-delivery` has
- * a `counterpartyBindings[{ clauseKey: <the courier-process clause's key>,
+ * a `coSellerBindings[{ clauseKey: <the courier-process clause's key>,
  * addresses: [0xA, 0xB] }]` entry. At checkout, the cart fills the
  * courier sub-order's seller field from this list. Without this field
- * the cart has nowhere to read the counterparty's wallet from — the
+ * the cart has nowhere to read the co-seller's wallet from — the
  * assembly defines the topology, but the member's profile binds it
  * to concrete wallets.
  */
-export interface CounterpartyBinding {
+export interface CoSellerBinding {
     /** Key of the process clause anchored on the sub-order this binding
      *  targets (e.g. a courier-process clause) — the structural marker for
      *  what kind of off-chain seller the sub-order needs. */
@@ -127,7 +127,7 @@ export interface AssemblyBindingRecord {
     subjectAddress: `0x${string}`;
     /** `AssemblyRegistry` assemblyHash of the bound assembly. */
     assemblyHash: `0x${string}`;
-    counterpartyBindings?: CounterpartyBinding[];
+    coSellerBindings?: CoSellerBinding[];
 }
 
 /**
@@ -135,7 +135,7 @@ export interface AssemblyBindingRecord {
  * through and monetizes records from. Subscribing is the buyer's verb;
  * BINDING (`AssemblyBindingRecord`) stays the seller's, and the two lists
  * are independent: a wallet does not buy through the assemblies it sells
- * through. Deliberately minimal — no counterparty bindings, no role
+ * through. Deliberately minimal — no co-seller bindings, no role
  * machinery; those belong to seller binding.
  */
 export interface BuyerAssemblySubscription {
@@ -258,8 +258,8 @@ export interface MemberProfileMetadata {
     profileClauseValues?: Record<string, Record<string, unknown>>;
     /**
      * Assembly bindings — one entry per assembly the wallet
-     * participates in. Counterparty wallet designations live inside
-     * each binding's `counterpartyBindings`. The role the seller
+     * participates in. Co-seller wallet designations live inside
+     * each binding's `coSellerBindings`. The role the seller
      * plays in an assembly is event-derived, not declared here. See
      * `AssemblyBindingRecord` above for the shape.
      */
@@ -307,7 +307,7 @@ function parseProfileClauseValues(
 
 // ── Assembly-binding parser helpers ──────────────────────────────────────────
 
-function parseCounterpartyBindingArray(value: unknown, path: string): CounterpartyBinding[] | undefined {
+function parseCoSellerBindingArray(value: unknown, path: string): CoSellerBinding[] | undefined {
     if (value === undefined) return undefined;
     if (!Array.isArray(value)) {
         throw new Error(`${path} must be an array.`);
@@ -334,7 +334,7 @@ function parseAssemblyBindingDocument(value: unknown, sourceLabel = "institution
         bindingId: asString(record.bindingId, `${sourceLabel}.bindingId`),
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
         assemblyHash: asAssemblyHash(record.assemblyHash, `${sourceLabel}.assemblyHash`),
-        counterpartyBindings: parseCounterpartyBindingArray(record.counterpartyBindings, `${sourceLabel}.counterpartyBindings`),
+        coSellerBindings: parseCoSellerBindingArray(record.coSellerBindings, `${sourceLabel}.coSellerBindings`),
     };
 }
 

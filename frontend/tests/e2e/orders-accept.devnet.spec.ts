@@ -121,7 +121,7 @@ async function ensurePosSeller(token: Hex): Promise<Hex> {
                     bindingId: 'pos-reference',
                     subjectAddress: POS_SELLER,
                     assemblyHash,
-                    counterpartyBindings: [],
+                    coSellerBindings: [],
                 }],
             },
         });

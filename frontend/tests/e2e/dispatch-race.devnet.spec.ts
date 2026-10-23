@@ -120,7 +120,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
         }
         const binding = (await memberProfileBindings(MERCHANT)).find((b) => isBindingOf(b, deliveryHash));
         expect(
-            (binding?.counterpartyBindings ?? []).some((cb) => cb.clauseKey.toLowerCase() === deliveryClauseKeys().courier),
+            (binding?.coSellerBindings ?? []).some((cb) => cb.clauseKey.toLowerCase() === deliveryClauseKeys().courier),
             'the merchant binding designates no courier — the node is genuinely unbound',
         ).toBe(false);
 
@@ -153,7 +153,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
                         bindingId: `race-binding-${address.slice(2, 8).toLowerCase()}`,
                         subjectAddress: address,
                         assemblyHash: deliveryHash,
-                        counterpartyBindings: [],
+                        coSellerBindings: [],
                     }],
                 },
             });

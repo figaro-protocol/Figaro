@@ -17,7 +17,7 @@ import type { HydratedAssembly } from "@figaro-protocol/sdk";
 import { useMemberProfile } from "@/lib/member/useMembersRegistry";
 import {
     tryParseMemberProfileDocument,
-    type CounterpartyBinding,
+    type CoSellerBinding,
 } from "@/lib/member/memberProfileMetadata";
 import { assemblyHashOf } from "@figaro-protocol/sdk";
 import { bindsAssembly, findListingByAddress } from "@/lib/member/memberListing";
@@ -35,12 +35,12 @@ export interface BoundAssembly {
     /** The assembly verified against its assembly hash, beside every
      *  agreement's registered agreement verified against its key. */
     hydratedAssembly: HydratedAssembly;
-    /** The member's designated counterparty wallets for this assembly,
+    /** The member's designated co-seller wallets for this assembly,
      *  keyed by sub-order process clause (the runtime ladder clause the
      *  sub-order carries). Sourced from the member profile's
      *  AssemblyBindingRecord — checkout reads it to fill a delegated
      *  order's seller. */
-    counterpartyBindings: CounterpartyBinding[];
+    coSellerBindings: CoSellerBinding[];
 }
 
 export interface MemberBoundAssemblies {
@@ -143,7 +143,7 @@ export function useMemberBoundAssemblies(
                         slug,
                         name: slug,
                         hydratedAssembly: m,
-                        counterpartyBindings: binding?.counterpartyBindings ?? [],
+                        coSellerBindings: binding?.coSellerBindings ?? [],
                     });
                 });
 
@@ -168,7 +168,7 @@ export function useMemberBoundAssemblies(
 }
 
 /**
- * The bound assembly with each designated counterparty kept only when its
+ * The bound assembly with each designated co-seller kept only when its
  * OWN profile binds the assembly too: every seller in a process must have
  * bound the order's assembly, so a designated wallet that has not is never
  * offered — it would refuse the sub-order. `members` is the discovered member
@@ -176,12 +176,12 @@ export function useMemberBoundAssemblies(
  * to read a binding from. A designation left with no wallet is dropped, and
  * the sub-order falls to the buyer's checkout choice.
  */
-export function withBoundCounterparties(
+export function withBoundCoSellers(
     bound: BoundAssembly,
     members: readonly { address: string; assemblyBindings?: readonly { assemblyHash: string }[] }[],
 ): BoundAssembly {
     const assemblyHash = assemblyHashOf(bound.hydratedAssembly.assembly);
-    const counterpartyBindings = bound.counterpartyBindings
+    const coSellerBindings = bound.coSellerBindings
         .map((cb) => ({
             ...cb,
             addresses: cb.addresses.filter((a) => {
@@ -190,5 +190,5 @@ export function withBoundCounterparties(
             }),
         }))
         .filter((cb) => cb.addresses.length > 0);
-    return { ...bound, counterpartyBindings };
+    return { ...bound, coSellerBindings };
 }

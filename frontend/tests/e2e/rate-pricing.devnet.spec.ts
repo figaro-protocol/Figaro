@@ -103,7 +103,7 @@ async function onboardSeller(page: Page, opts: {
     geohash: string;
     slug: string;
     product: { name: string; price: string; rate?: { unit: string; source: string } };
-    designate?: { clauseKey: Hex; counterparty: Hex };
+    designate?: { clauseKey: Hex; coSeller: Hex };
 }) {
     await gotoAsWallet(page, opts.wallet, '/members/identity?e2e=devnet');
     await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
@@ -119,11 +119,11 @@ async function onboardSeller(page: Page, opts: {
     await row.waitFor({ state: 'visible', timeout: 30000 });
     await row.locator('input[type="checkbox"]').first().check();
     if (opts.designate) {
-        const counterparties = page.getByTestId(`seller-assembly-counterparties-${opts.slug}`);
-        await counterparties.waitFor({ state: 'visible', timeout: 30000 });
-        await counterparties
-            .getByTestId(`counterparty-${opts.designate.clauseKey}-input-0`)
-            .fill(opts.designate.counterparty);
+        const coSellers = page.getByTestId(`seller-assembly-co-sellers-${opts.slug}`);
+        await coSellers.waitFor({ state: 'visible', timeout: 30000 });
+        await coSellers
+            .getByTestId(`co-seller-${opts.designate.clauseKey}-input-0`)
+            .fill(opts.designate.coSeller);
     }
     await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/buyer/);
@@ -218,7 +218,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
         const leadConformant = async (): Promise<boolean> => {
             const bindings = await memberProfileBindings(LEAD);
             const binding = bindings.find((b) => isBindingOf(b, assemblyHash));
-            return !!binding && (binding.counterpartyBindings ?? []).some(
+            return !!binding && (binding.coSellerBindings ?? []).some(
                 (cb) => cb.clauseKey.toLowerCase() === PROCESS_CLAUSE
                     && cb.addresses.some((a) => a.toLowerCase() === HAULER.toLowerCase()),
             );
@@ -231,7 +231,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
                 geohash: ORIGIN_GEOHASH,
                 slug: slug!,
                 product: { name: 'Crate of provisions', price: '1' },
-                designate: { clauseKey: PROCESS_CLAUSE, counterparty: HAULER },
+                designate: { clauseKey: PROCESS_CLAUSE, coSeller: HAULER },
             });
             await expect.poll(leadConformant, {
                 timeout: 60000, message: "the lead's pinned profile carries the binding + hauler designation",

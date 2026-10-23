@@ -29,7 +29,7 @@ import {
 import { agreementClauses, assemblyFollows, type HydratedAssembly, type AssemblyAgreement } from "./assembly.js";
 import { planAssemblyOrders, type PlannedAssemblyOrder } from "./reconstructOrders.js";
 import { isAddressHex, type Hex } from "./types.js";
-import type { CounterpartyBinding } from "./memberProfile.js";
+import type { CoSellerBinding } from "./memberProfile.js";
 import type { CatalogItemMetadata } from "./memberCatalog.js";
 
 /** An order's clause fields — the same map the agreement commits. */
@@ -437,18 +437,18 @@ export function profileValuesFor(
 
 /** The binding slice of a bound assembly — the hydrated assembly (assembly
  *  plus each agreement's registered agreement) and the adopting seller's
- *  counterparty bindings (any richer projection passes structurally). */
+ *  co-seller bindings (any richer projection passes structurally). */
 export interface BoundAssemblyPlanInput {
     hydratedAssembly: HydratedAssembly;
-    counterpartyBindings: readonly CounterpartyBinding[];
+    coSellerBindings: readonly CoSellerBinding[];
 }
 
 /**
  * Topologically order an assembly's non-root orders and resolve each one's
- * seller from the seller's counterparty bindings. A clause shared by sibling
+ * seller from the seller's co-seller bindings. A clause shared by sibling
  * orders draws distinct wallets by commit order (the per-clause cursor), so the
  * ordering is significant and must match the checkout's commit order. `seller`
- * is `null` when the assembly binds no counterparty for that order's clause.
+ * is `null` when the assembly binds no co-seller for that order's clause.
  *
  * Throws when the topology has a cycle (a sub-order's parents are
  * unresolvable) — the same guard the checkout relies on.
@@ -470,7 +470,7 @@ export function planSubOrderSellers(
         // the assembly-scoped terms every order carries.
         const entry = byId.get(node.nodeId) as AssemblyAgreement;
         const nodeClauses = Object.keys(agreementClauses(bound.hydratedAssembly, entry)).map((k) => k.toLowerCase());
-        const binding = bound.counterpartyBindings.find((cb) => nodeClauses.includes(cb.clauseKey.toLowerCase()));
+        const binding = bound.coSellerBindings.find((cb) => nodeClauses.includes(cb.clauseKey.toLowerCase()));
         if (!binding || binding.addresses.length === 0) return { node, seller: null };
         const bindingKey = binding.clauseKey.toLowerCase();
         const c = cursor.get(bindingKey) ?? 0;

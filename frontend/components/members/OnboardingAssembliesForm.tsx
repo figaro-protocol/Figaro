@@ -13,12 +13,12 @@ import { useMounted } from "@/hooks/useMounted";
 import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
 import type {
     AssemblyBindingRecord,
-    CounterpartyBinding,
+    CoSellerBinding,
     DisclosurePolicyEntry,
 } from "@/lib/member/memberProfileMetadata";
 import {
     type AssemblyChoice,
-    requiredCounterpartyClauses,
+    requiredCoSellerClauses,
     useAssemblyChoices,
 } from "@/lib/protocol/assemblyChoices";
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
@@ -32,12 +32,12 @@ import { finishStep, type OnboardingStepChromeProps, toggledSet, usePostureDiscl
  * assemblies they participate in. Each selected assembly becomes an
  * `AssemblyBindingRecord` on `state.assemblies`.
  *
- * Per-binding counterparty editing: assemblies whose hydrated assembly contains
+ * Per-binding co-seller editing: assemblies whose hydrated assembly contains
  * a non-root order with a per-role process clause (e.g. a courier
- * sub-order carrying a counterparty-process clause) require the member
+ * sub-order carrying a co-seller's process clause) require the member
  * to designate at least one wallet for that role. The picker surfaces an
  * inline editor when those rows are checked. Without these addresses
- * the cart has nowhere to read the counterparty's seller field from at
+ * the cart has nowhere to read the co-seller's seller field from at
  * checkout time.
  *
  * MANDATORY: at least one assembly binding is required — a member
@@ -49,19 +49,19 @@ import { finishStep, type OnboardingStepChromeProps, toggledSet, usePostureDiscl
 function buildBinding(
     wallet: `0x${string}`,
     choice: AssemblyChoice,
-    counterpartyBindings: CounterpartyBinding[],
+    coSellerBindings: CoSellerBinding[],
 ): AssemblyBindingRecord {
     return {
         bindingId: `binding:${wallet.toLowerCase()}:${choice.assemblyHash.toLowerCase()}`,
         subjectAddress: wallet,
         assemblyHash: choice.assemblyHash,
-        counterpartyBindings: counterpartyBindings.length > 0 ? counterpartyBindings : undefined,
+        coSellerBindings: coSellerBindings.length > 0 ? coSellerBindings : undefined,
     };
 }
 
-/** Build the full bindings array from the live selection + counterparty
+/** Build the full bindings array from the live selection + co-seller
  *  state. Used both for the autosave effect and the submit handler so
- *  they can't drift. The selection and the counterparty state are keyed by
+ *  they can't drift. The selection and the co-seller state are keyed by
  *  each assembly's full assembly hash, lowercased — the identity a
  *  binding carries; the slug is only shown. */
 // A draft made before a wallet connects carries this subject; the review step
@@ -72,11 +72,11 @@ function buildBindings(
     wallet: `0x${string}`,
     selected: Set<string>,
     choices: AssemblyChoice[],
-    counterpartiesByAssembly: Map<string, CounterpartyBinding[]>,
+    coSellersByAssembly: Map<string, CoSellerBinding[]>,
 ): AssemblyBindingRecord[] {
     return choices
         .filter((c) => selected.has(assemblyKey(c)))
-        .map((c) => buildBinding(wallet, c, counterpartiesByAssembly.get(assemblyKey(c)) ?? []));
+        .map((c) => buildBinding(wallet, c, coSellersByAssembly.get(assemblyKey(c)) ?? []));
 }
 
 /** The key the selection is held under: the assembly's full assembly hash. */
@@ -133,8 +133,8 @@ export function OnboardingAssembliesForm({
     const choices: AssemblyChoice[] = choicesData ?? [];
 
     const [selected, setSelected] = useState<Set<string>>(new Set());
-    const [counterpartiesByAssembly, setCounterpartiesByAssembly] = useState<
-        Map<string, CounterpartyBinding[]>
+    const [coSellersByAssembly, setCoSellersByAssembly] = useState<
+        Map<string, CoSellerBinding[]>
     >(new Map());
     // This step edits SELLER-posture disclosure entries only (classes
     // derive from the bindings). Buyer-posture entries belong to the
@@ -147,34 +147,34 @@ export function OnboardingAssembliesForm({
         if (hydrated || !loaded) return;
         const existing = state.assemblies ?? [];
         setSelected(new Set(existing.map(assemblyKey)));
-        const cps = new Map<string, CounterpartyBinding[]>();
+        const cps = new Map<string, CoSellerBinding[]>();
         for (const b of existing) {
-            if (b.counterpartyBindings && b.counterpartyBindings.length > 0) {
-                cps.set(assemblyKey(b), b.counterpartyBindings);
+            if (b.coSellerBindings && b.coSellerBindings.length > 0) {
+                cps.set(assemblyKey(b), b.coSellerBindings);
             }
         }
-        setCounterpartiesByAssembly(cps);
+        setCoSellersByAssembly(cps);
         hydrate(state.disclosurePolicy ?? []);
     }, [hydrated, loaded, hydrate, state.assemblies, state.disclosurePolicy]);
 
     useEffect(() => {
         if (!hydrated || !choicesLoaded) return;
         update({
-            assemblies: buildBindings(address ?? DRAFT_SUBJECT, selected, choices, counterpartiesByAssembly),
+            assemblies: buildBindings(address ?? DRAFT_SUBJECT, selected, choices, coSellersByAssembly),
             disclosurePolicy: [
                 ...otherPostureEntries,
                 ...activePolicy(policyEntries, selected, choices),
             ],
         });
-    }, [selected, counterpartiesByAssembly, policyEntries, otherPostureEntries, hydrated, address, choices, choicesLoaded, update]);
+    }, [selected, coSellersByAssembly, policyEntries, otherPostureEntries, hydrated, address, choices, choicesLoaded, update]);
 
     function toggle(key: string) {
         setSelected((prev) => toggledSet(prev, key));
     }
 
-    const updateCounterparties = useCallback(
+    const updateCoSellers = useCallback(
         (key: string, clauseKey: `0x${string}`, addresses: `0x${string}`[]) => {
-            setCounterpartiesByAssembly((prev) => {
+            setCoSellersByAssembly((prev) => {
                 const next = new Map(prev);
                 const existing = (next.get(key) ?? []).filter((cb) => cb.clauseKey.toLowerCase() !== clauseKey.toLowerCase());
                 if (addresses.length > 0) {
@@ -200,7 +200,7 @@ export function OnboardingAssembliesForm({
         setSubmitError(null);
         finishStep(
             onSave && (() => onSave(
-                buildBindings(address ?? DRAFT_SUBJECT, selected, choices, counterpartiesByAssembly),
+                buildBindings(address ?? DRAFT_SUBJECT, selected, choices, coSellersByAssembly),
                 [...otherPostureEntries, ...activePolicy(policyEntries, selected, choices)],
             )),
             () => router.push(onboardingNextHref("assemblies")),
@@ -233,7 +233,7 @@ export function OnboardingAssembliesForm({
                     Assemblies that include sub-orders you organize (e.g. a
                     delivery courier) prompt for the wallets you trust to fill
                     those sub-orders. Without those addresses the cart has
-                    nowhere to read your counterparties from at checkout time.
+                    nowhere to read your co-sellers from at checkout time.
                 </p>
             </Card>
 
@@ -242,9 +242,9 @@ export function OnboardingAssembliesForm({
                     const isSelected = selected.has(assemblyKey(choice));
                     const requiredClauses =
                         choice.state === "loaded" && choice.hydratedAssembly
-                            ? requiredCounterpartyClauses(choice.hydratedAssembly)
+                            ? requiredCoSellerClauses(choice.hydratedAssembly)
                             : [];
-                    const counterparties = counterpartiesByAssembly.get(assemblyKey(choice)) ?? [];
+                    const coSellers = coSellersByAssembly.get(assemblyKey(choice)) ?? [];
                     return (
                         <AssemblyChoiceRow
                             key={choice.assemblyHash}
@@ -262,18 +262,18 @@ export function OnboardingAssembliesForm({
                             {isSelected && requiredClauses.length > 0 && (
                                 <div
                                     className="mt-4 pt-4 border-t border-default space-y-4"
-                                    data-testid={`seller-assembly-counterparties-${choice.slug}`}
+                                    data-testid={`seller-assembly-co-sellers-${choice.slug}`}
                                 >
                                     {requiredClauses.map((clauseKey) => {
-                                        const entry = counterparties.find((cb) => cb.clauseKey.toLowerCase() === clauseKey.toLowerCase());
+                                        const entry = coSellers.find((cb) => cb.clauseKey.toLowerCase() === clauseKey.toLowerCase());
                                         const addresses = entry?.addresses ?? [];
                                         return (
-                                            <CounterpartyClauseEditor
+                                            <CoSellerClauseEditor
                                                 key={clauseKey}
                                                 clauseKey={clauseKey}
                                                 addresses={addresses}
                                                 onChange={(next) =>
-                                                    updateCounterparties(assemblyKey(choice), clauseKey as `0x${string}`, next)
+                                                    updateCoSellers(assemblyKey(choice), clauseKey as `0x${string}`, next)
                                                 }
                                             />
                                         );
@@ -342,7 +342,7 @@ export function OnboardingAssembliesForm({
  *  partial values; the parent only sees validated addresses. Basic
  *  shape validation (viem `isAddress`) only; MembersRegistry-membership
  *  lookup is deferred. */
-function CounterpartyClauseEditor({
+function CoSellerClauseEditor({
     clauseKey,
     addresses,
     onChange,
@@ -426,7 +426,7 @@ function CounterpartyClauseEditor({
                                 className={`flex-1 text-xs font-mono px-2 py-1.5 rounded border min-h-9 ${
                                     valid ? "border-default" : "border-error"
                                 }`}
-                                data-testid={`counterparty-${clauseKey}-input-${i}`}
+                                data-testid={`co-seller-${clauseKey}-input-${i}`}
                             />
                             {rows.length > 1 && (
                                 <button
@@ -434,7 +434,7 @@ function CounterpartyClauseEditor({
                                     onClick={() => removeRow(i)}
                                     className="text-xs text-ink-muted hover:text-error-fg px-2"
                                     aria-label={`Remove address ${i + 1}`}
-                                    data-testid={`counterparty-${clauseKey}-remove-${i}`}
+                                    data-testid={`co-seller-${clauseKey}-remove-${i}`}
                                 >
                                     ×
                                 </button>
@@ -446,7 +446,7 @@ function CounterpartyClauseEditor({
                     type="button"
                     onClick={addRow}
                     className="text-xs text-ink-muted hover:text-ink-heading"
-                    data-testid={`counterparty-${clauseKey}-add`}
+                    data-testid={`co-seller-${clauseKey}-add`}
                 >
                     + Add another
                 </button>

@@ -13,7 +13,7 @@ export type {
     MemberProfileMetadata,
     MemberAgentServices,
     MemberAssetReferences,
-    CounterpartyBinding,
+    CoSellerBinding,
     AssemblyBindingRecord,
     BuyerAssemblySubscription,
     DisclosurePolicyEntry,

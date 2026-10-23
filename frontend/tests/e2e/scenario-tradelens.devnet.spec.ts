@@ -183,7 +183,7 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
         const shipperBindings = await memberProfileBindings(SHIPPER.address as Hex);
         const plan = planSubOrderSellers({
             hydratedAssembly: anchored.hydrated,
-            counterpartyBindings: (shipperBindings.find((b) => isBindingOf(b, anchored.assemblyHash))?.counterpartyBindings ?? [])
+            coSellerBindings: (shipperBindings.find((b) => isBindingOf(b, anchored.assemblyHash))?.coSellerBindings ?? [])
                 .map((cb) => ({ clauseKey: cb.clauseKey as Hex, addresses: cb.addresses as `0x${string}`[] })),
         });
         expect(plan.map((p) => p.seller?.toLowerCase()), 'five sub-order sellers resolve in commit order').toEqual([

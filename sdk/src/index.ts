@@ -364,7 +364,7 @@ export type {
     MemberBrandingMetadata,
     MemberAgentServices,
     MemberAssetReferences,
-    CounterpartyBinding,
+    CoSellerBinding,
     AssemblyBindingRecord,
     BuyerAssemblySubscription,
     DisclosureCalendar,

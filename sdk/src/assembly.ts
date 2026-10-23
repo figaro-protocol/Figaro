@@ -328,7 +328,7 @@ export interface AuthoredSpecSet {
  * Rewritten in an authored agreement: the top-level `clauses` keys. In a
  * assembly: every `agreements[].clauses` and `assemblyClauses` key. In a
  * member profile: `disclosurePolicy[].clauseId` and
- * `assemblyBindings[].counterpartyBindings[].clauseId` (each becomes
+ * `assemblyBindings[].coSellerBindings[].clauseId` (each becomes
  * `clauseKey`), and the `profileClauseValues` keys. In a catalog: every
  * `items[].clauseValues` key and `items[].dataSold.clauseId` (→ `clauseKey`).
  * Everything else is copied unchanged. The input is not mutated.
@@ -399,9 +399,9 @@ export function resolveAuthoredClauseKeys<T extends object>(doc: T, specs: Autho
             if (!isPlainRecord(binding)) return binding;
             return {
                 ...binding,
-                ...("counterpartyBindings" in binding && {
-                    counterpartyBindings: mapArray(binding.counterpartyBindings, (e, j) =>
-                        renameClauseId(e, `assemblyBindings[${i}].counterpartyBindings[${j}]`)),
+                ...("coSellerBindings" in binding && {
+                    coSellerBindings: mapArray(binding.coSellerBindings, (e, j) =>
+                        renameClauseId(e, `assemblyBindings[${i}].coSellerBindings[${j}]`)),
                 }),
             };
         });

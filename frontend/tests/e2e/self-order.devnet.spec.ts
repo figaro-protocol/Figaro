@@ -101,7 +101,7 @@ test.describe('A wallet orders from its own listing (buyer == seller, devnet)', 
                     bindingId: 'self-order',
                     subjectAddress: SELF,
                     assemblyHash,
-                    counterpartyBindings: [],
+                    coSellerBindings: [],
                 }],
             },
         });

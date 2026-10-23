@@ -11,7 +11,7 @@
  * carries no editorial prose (or has not resolved yet) — never invented words.
  *
  * `children` renders inside the Card below the row (e.g. the assemblies step's
- * counterparty editors for a checked row).
+ * co-seller editors for a checked row).
  *
  * `testIdPrefix` namespaces the row/shape/inspect testids — these are
  * e2e contracts (`seller-assembly-*` / `buyer-assembly-*`); keep them

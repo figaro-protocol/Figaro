@@ -52,7 +52,7 @@ const REGISTRATION_DEPOSIT = 1_000_000_000_000_000n; // 0.001 ETH
 // promise the directory makes: a member surfaces only with an anchored
 // binding, and the deploy anchors the references first. DEVNET ONLY — on a
 // public chain a seller binds through the real flow. A courier designation
-// (`courierIndex`) names anvil[8] as the delivery counterparty on the
+// (`courierIndex`) names anvil[8] as the delivery co-seller on the
 // local-commerce composition; undesignated sellers leave the courier to the
 // buyer's checkout choice or dispatch race.
 const COURIER_CLAUSE = 'figaro-courier-process';
@@ -130,7 +130,7 @@ function seedBlank() {
  *  modality) plus courier and supplier sub-agreements. Which agreements
  *  compose which agreement is scenario DATA (a designed assembly this seed
  *  reproduces byte-for-byte), exactly like the member roster above.
- *  Counterparties are NOT seeded — the lead binds + designates them through
+ *  Co-sellers are NOT seeded — the lead binds + designates them through
  *  the real UI flow. */
 function seedChain() {
     return assembleAuthored({
@@ -247,7 +247,7 @@ async function main() {
                 bindingId: `seed-${s.addressIndex}`,
                 subjectAddress: account.address,
                 assemblyHash: referenceAssemblyHash(s.binds, mockErc20),
-                counterpartyBindings: s.courierIndex == null
+                coSellerBindings: s.courierIndex == null
                     ? []
                     : [{ clauseId: COURIER_CLAUSE, addresses: [mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: s.courierIndex }).address] }],
             }],

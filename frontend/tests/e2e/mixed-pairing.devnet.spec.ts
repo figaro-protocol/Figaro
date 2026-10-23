@@ -201,7 +201,7 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
                             bindingId: `race-binding-${address.slice(2, 8).toLowerCase()}`,
                             subjectAddress: address,
                             assemblyHash: deliveryHash,
-                            counterpartyBindings: [],
+                            coSellerBindings: [],
                         }],
                         ...(services ? { services } : {}),
                     },

@@ -34,7 +34,7 @@ function anchoredBinding(subjectAddress: string) {
         bindingId: 'binding-1',
         subjectAddress,
         assemblyHash: ANCHORED_HASH,
-        counterpartyBindings: [],
+        coSellerBindings: [],
     }];
 }
 
@@ -207,7 +207,7 @@ describe('discoveryService', () => {
                 bindingId: 'binding-x',
                 subjectAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
                 assemblyHash: `0x${'b2'.repeat(32)}`,
-                counterpartyBindings: [],
+                coSellerBindings: [],
             }],
         }));
 

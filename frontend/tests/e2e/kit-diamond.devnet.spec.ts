@@ -18,7 +18,7 @@
  *              component suppliers (B, C) compose the merchant PROCESS ladder
  *              (the sovereign log a sub-order's seller advances — the clause
  *              that marks which KIND of off-chain seller the node needs, and
- *              the key the counterparty editor designates by); B additionally
+ *              the key the co-seller editor designates by); B additionally
  *              composes hand-off + the single-band proximity witness, C the
  *              emissions disclosure. The final leg (D) composes the courier
  *              PROCESS ladder + hand-off + proximity. Idempotent: discovered
@@ -28,11 +28,11 @@
  *              and designates seeded sellers per PROCESS clause:
  *              merchant-process → [Cardinal, Sterling] (the per-clause cursor
  *              hands B the first, C the second, by commit order),
- *              courier-process → [Harbor]. Each counterparty pins the
+ *              courier-process → [Harbor]. Each co-seller pins the
  *              assembly to its own profile (the even-surfacing rule).
  *   checkout → the buyer orders the kit from the lead: ONE place signs all
  *              FOUR orders through the same confirm gate; every sub priced
- *              live from its counterparty's own catalog.
+ *              live from its co-seller's own catalog.
  *   accept   → walk order (root, B, C, D — FigaroCore's exact-match cumulative
  *              accumulator enforces the sequence): after every commit the
  *              exact bond-driven BALANCE deltas are asserted for every party,
@@ -100,7 +100,7 @@ const LEAD = {
     geohash: '9q8yyk8z5',
     product: { name: 'Component kit', price: '1' },
 };
-// Seeded counterparties (their catalogs price the sub-orders live).
+// Seeded co-sellers (their catalogs price the sub-orders live).
 const SUPPLIER_B = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 8 }).address as Hex; // Cardinal Couriers
 const SUPPLIER_D = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 11 }).address as Hex; // Fernhill Nursery
 const SUPPLIER_C = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 12 }).address as Hex; // Sterling Goods
@@ -231,12 +231,12 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         const kitHash = await anchoredAssemblyHash(kitSlug!);
 
         // ── BIND (idempotent): the lead registers through the wizard, binds the
-        //    diamond, and designates the seeded counterparties per clause. ──
+        //    diamond, and designates the seeded co-sellers per clause. ──
         type ProfileBindings = Awaited<ReturnType<typeof memberProfileBindings>>;
         const isConformant = (bindings: ProfileBindings): boolean => {
             const b = bindings.find((x) => isBindingOf(x, kitHash));
             const designated = (clauseKey: Hex, addr: Hex) =>
-                (b?.counterpartyBindings ?? []).some(
+                (b?.coSellerBindings ?? []).some(
                     (cb) => cb.clauseKey.toLowerCase() === clauseKey && cb.addresses.some((a) => a.toLowerCase() === addr.toLowerCase()),
                 );
             return !!b
@@ -259,20 +259,20 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             const row = page.getByTestId(`seller-assembly-row-${kitSlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
-            // The counterparty editor keys on the sub-orders' PROCESS clauses
+            // The co-seller editor keys on the sub-orders' PROCESS clauses
             // (the sovereign-log clause marks which KIND of off-chain seller a
             // node needs): TWO merchant-process nodes (B, C — the per-clause
             // cursor hands them out by commit order) and ONE courier-process
             // node (D).
-            const counterparties = page.getByTestId(`seller-assembly-counterparties-${kitSlug}`);
-            await counterparties.waitFor({ state: 'visible', timeout: 30000 });
-            await counterparties.getByTestId(`counterparty-${DELIVERY_CLAUSES.merchant}-input-0`).fill(SUPPLIER_B);
+            const coSellers = page.getByTestId(`seller-assembly-co-sellers-${kitSlug}`);
+            await coSellers.waitFor({ state: 'visible', timeout: 30000 });
+            await coSellers.getByTestId(`co-seller-${DELIVERY_CLAUSES.merchant}-input-0`).fill(SUPPLIER_B);
             // A second address row appears via the editor's "+ Add another";
             // ORDER is significant — the per-clause cursor hands B the first
             // address, C the second, by commit order.
-            await counterparties.getByTestId(`counterparty-${DELIVERY_CLAUSES.merchant}-add`).click();
-            await counterparties.getByTestId(`counterparty-${DELIVERY_CLAUSES.merchant}-input-1`).fill(SUPPLIER_C);
-            await counterparties.getByTestId(`counterparty-${DELIVERY_CLAUSES.courier}-input-0`).fill(SUPPLIER_D);
+            await coSellers.getByTestId(`co-seller-${DELIVERY_CLAUSES.merchant}-add`).click();
+            await coSellers.getByTestId(`co-seller-${DELIVERY_CLAUSES.merchant}-input-1`).fill(SUPPLIER_C);
+            await coSellers.getByTestId(`co-seller-${DELIVERY_CLAUSES.courier}-input-0`).fill(SUPPLIER_D);
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/buyer/);
             await page.getByRole('button', { name: /^Next/ }).click();
@@ -293,7 +293,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             ).toBe(true);
         }
 
-        // Each counterparty pins the assembly it participates in (even-surfacing).
+        // Each co-seller pins the assembly it participates in (even-surfacing).
         const ensureBound = async (seller: Hex, label: string) => {
             if ((await memberProfileBindings(seller)).some((b) => isBindingOf(b, kitHash))) return;
             await gotoAsWallet(page, seller, '/members/edit/assemblies?e2e=devnet');

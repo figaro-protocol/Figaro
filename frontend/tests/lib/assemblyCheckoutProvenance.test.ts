@@ -33,7 +33,7 @@ describe("assembly checkout — the provenance leaf", () => {
             slug: "asm-test",
             name: "Point of sale",
             hydratedAssembly,
-            counterpartyBindings: [],
+            coSellerBindings: [],
         };
         const orders = await planAssemblyOrders(
             {

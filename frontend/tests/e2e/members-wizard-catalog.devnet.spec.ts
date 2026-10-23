@@ -77,7 +77,7 @@ async function seedBaseline(runTag: string): Promise<{ itemName: string; slug: s
             acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
             defaultTokenAddress: token,
             assemblyBindings: [{
-                bindingId: 'wizard-catalog', subjectAddress: WIZARD, assemblyHash: referenceAssemblyHash('pos.json'), counterpartyBindings: [],
+                bindingId: 'wizard-catalog', subjectAddress: WIZARD, assemblyHash: referenceAssemblyHash('pos.json'), coSellerBindings: [],
             }],
         },
     });

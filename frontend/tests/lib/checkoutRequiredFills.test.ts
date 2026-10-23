@@ -39,7 +39,7 @@ const hydrated = (file: string) =>
 
 const groupsFor = (file: string) =>
     deriveAgreementGroups({
-        pickedAssembly: { hydratedAssembly: hydrated(file), counterpartyBindings: [] },
+        pickedAssembly: { hydratedAssembly: hydrated(file), coSellerBindings: [] },
         leadAddress: LEAD,
         sellerCatalogs: [] as never,
     });
@@ -211,7 +211,7 @@ describe("unfilledRequiredFills — a value already composed on the assembly cou
         const order0 = composed.agreements[composed.assembly.agreements[0].agreementHash.toLowerCase() as `0x${string}`];
         order0.clauses[keyOf("figaro-acceptance-criteria")] = { acceptanceBasis: "AQL 2.5 per ISO 2859-1" };
         const groups = deriveAgreementGroups({
-            pickedAssembly: { hydratedAssembly: composed, counterpartyBindings: [] },
+            pickedAssembly: { hydratedAssembly: composed, coSellerBindings: [] },
             leadAddress: LEAD,
             sellerCatalogs: [] as never,
         });

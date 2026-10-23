@@ -97,7 +97,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         const deliveryHash = await anchoredAssemblyHash(deliverySlug);
 
         // ── BIND (idempotent): Aurora pins the assembly and designates NOBODY.
-        //    The counterparty editor is left untouched — the ABSENCE of a
+        //    The co-seller editor is left untouched — the ABSENCE of a
         //    designation is what makes this adoption buyer-assigned. ──
         if (!(await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash))) {
             await gotoAsWallet(page, MERCHANT, '/members/edit/assemblies?e2e=devnet');
@@ -114,7 +114,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         // NO courier — the node is genuinely unbound.
         const binding = (await memberProfileBindings(MERCHANT)).find((b) => isBindingOf(b, deliveryHash));
         expect(
-            (binding?.counterpartyBindings ?? []).some((cb) => cb.clauseKey.toLowerCase() === deliveryClauseKeys().courier),
+            (binding?.coSellerBindings ?? []).some((cb) => cb.clauseKey.toLowerCase() === deliveryClauseKeys().courier),
             'the merchant binding designates no courier (buyer-assigned adoption)',
         ).toBe(false);
 

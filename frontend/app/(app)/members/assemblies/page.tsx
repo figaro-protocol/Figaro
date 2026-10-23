@@ -15,7 +15,7 @@ export default function OnboardingAssembliesPage() {
             title="Assemblies you sell through"
             description={
                 <p>
-                    Pick the assemblies registered on this network that you bind to. Per-assembly customization (trusted counterparties, mechanism configuration) is added after first registration.
+                    Pick the assemblies registered on this network that you bind to. Per-assembly customization (trusted co-sellers, mechanism configuration) is added after first registration.
                 </p>
             }
         >

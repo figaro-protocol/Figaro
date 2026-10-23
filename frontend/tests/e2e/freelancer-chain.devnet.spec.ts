@@ -159,7 +159,7 @@ async function seedChainSellers(
                     bindingId: `chain-${s.label}`,
                     subjectAddress: s.address,
                     assemblyHash,
-                    counterpartyBindings: s.label === 'lead'
+                    coSellerBindings: s.label === 'lead'
                         ? [{ clauseKey: CONTENT_CLAUSE, addresses: contributors.map((c) => c.address) }]
                         : [],
                 }],

@@ -7,7 +7,7 @@
  * THROUGH THE UI at every leg — with the process P&L externalized:
  *
  *   bind     → the LEAD registers as a member through the real wizard, binding BOTH
- *              seeded assemblies and DESIGNATING its chain counterparties
+ *              seeded assemblies and DESIGNATING its chain co-sellers
  *              (courier + supplier wallets) on the chain assembly's binding;
  *              the courier + supplier each pin the chain assembly to their OWN
  *              profiles through the seller-edit surface — the even-surfacing
@@ -42,10 +42,10 @@
  *
  * Everything the spec consumes is DISCOVERED from chain + IPFS (the anchored
  * assemblies by their assembly shape, the lead's profile by its registry
- * events) — never a bundled roster. The lead's own identity + counterparty
+ * events) — never a bundled roster. The lead's own identity + co-seller
  * designations are this test's INPUT DATA (an authoring act), exactly as
  * members-onboarding's wizard member is. anvil[15] is used by no other spec;
- * the courier/supplier counterparties are the seeded Cardinal Couriers
+ * the courier/supplier co-sellers are the seeded Cardinal Couriers
  * (anvil[8]) and Fernhill Nursery (anvil[11]) — pre-populated sellers whose
  * catalogs price the sub-orders live.
  *
@@ -94,7 +94,7 @@ const BUYER = ANVIL_ACCOUNTS[0] as Hex; // anvil[0] — the fixture's default bu
 // ── This test's own INPUT DATA (an authoring act, like members-onboarding's
 //    wizard member): the lead's identity, and the wallets the lead designates
 //    to fill the chain's sub-orders. anvil[15]: outside the buyer range and
-//    every other spec's seller set. The counterparties are seeded sellers —
+//    every other spec's seller set. The co-sellers are seeded sellers —
 //    their catalogs price the sub-orders live at checkout.
 const LEAD = {
     address: mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 15 }).address as Hex,
@@ -107,7 +107,7 @@ const COURIER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 8 }).address a
 const SUPPLIER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 11 }).address as Hex; // Fernhill Nursery
 
 // The chain assembly's sub-order process clauses — the designation keys the
-// lead fills in the counterparty editor (scenario input, mirrored from the
+// lead fills in the co-seller editor (scenario input, mirrored from the
 // seeded assembly's shape).
 let COURIER_CLAUSE: Hex;
 let SUPPLIER_CLAUSE: Hex;
@@ -161,14 +161,14 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         const singleHash = single!.assemblyHash;
 
         // ── GATE (idempotent): the LEAD binds both assemblies + designates the
-        //    chain counterparties THROUGH THE WIZARD. Mainnet semantics: register
+        //    chain co-sellers THROUGH THE WIZARD. Mainnet semantics: register
         //    once, persist — skip when the lead's latest profile already carries
         //    the conformant bindings. ──
         type ProfileBindings = Awaited<ReturnType<typeof memberProfileBindings>>;
         const isConformant = (bindings: ProfileBindings): boolean => {
             const chainBinding = bindings.find((b) => isBindingOf(b, chainHash));
             const designated = (clauseKey: Hex, addr: Hex) =>
-                (chainBinding?.counterpartyBindings ?? []).some(
+                (chainBinding?.coSellerBindings ?? []).some(
                     (cb) => cb.clauseKey.toLowerCase() === clauseKey
                         && cb.addresses.some((a) => a.toLowerCase() === addr.toLowerCase()),
                 );
@@ -200,14 +200,14 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             await chainRow.waitFor({ state: 'visible', timeout: 30000 });
             await chainRow.locator('input[type="checkbox"]').first().check();
 
-            // Designate the chain counterparties — the wallets the lead trusts to
+            // Designate the chain co-sellers — the wallets the lead trusts to
             // fill the courier + supplier sub-orders. The editor surfaces per
             // required process clause once the chain row is checked (its assembly
             // resolved from IPFS).
-            const counterparties = page.getByTestId(`seller-assembly-counterparties-${chainSlug}`);
-            await counterparties.waitFor({ state: 'visible', timeout: 30000 });
-            await counterparties.getByTestId(`counterparty-${COURIER_CLAUSE}-input-0`).fill(COURIER);
-            await counterparties.getByTestId(`counterparty-${SUPPLIER_CLAUSE}-input-0`).fill(SUPPLIER);
+            const coSellers = page.getByTestId(`seller-assembly-co-sellers-${chainSlug}`);
+            await coSellers.waitFor({ state: 'visible', timeout: 30000 });
+            await coSellers.getByTestId(`co-seller-${COURIER_CLAUSE}-input-0`).fill(COURIER);
+            await coSellers.getByTestId(`co-seller-${SUPPLIER_CLAUSE}-input-0`).fill(SUPPLIER);
 
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/buyer/);
@@ -231,14 +231,14 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             expect(uriAfter, 'the lead profile is anchored on MembersRegistry').toMatch(/^ipfs:\/\//);
             expect(
                 isConformant(await memberProfileBindings(LEAD.address)),
-                'the pinned profile carries both bindings + the chain counterparty designations',
+                'the pinned profile carries both bindings + the chain co-seller designations',
             ).toBe(true);
         }
 
         // ── GATE, second half (idempotent): the courier + supplier PIN the chain
         //    assembly to their own profiles through the seller-edit surface. The
         //    even-surfacing rule admits a seller's catalog to every read
-        //    (discovery, checkout counterparty pricing) only with an anchored
+        //    (discovery, checkout co-seller pricing) only with an anchored
         //    binding — a participating seller binds the assembly it participates
         //    in. Verified out-of-band from the registry events + IPFS. ──
         const ensureBound = async (seller: Hex, label: string) => {

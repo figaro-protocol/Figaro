@@ -78,7 +78,7 @@ async function onboardViaWizard(page: Page, slugs: string[]) {
     await expect(page).toHaveURL(/\/members\/assemblies/);
 
     // Step 2 — Assemblies: clear hydrated bindings, then bind BOTH target
-    // assemblies. The multi-order chain binds WITHOUT counterparty
+    // assemblies. The multi-order chain binds WITHOUT co-seller
     // designation — undesignated sub-orders become buyer-assigned picks at
     // checkout, and this spec's buyer picks the single-order assembly anyway.
     const rows = page.locator('[data-testid^="seller-assembly-row-"]');

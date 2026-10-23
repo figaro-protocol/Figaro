@@ -115,7 +115,7 @@ export interface AssemblyCheckoutParams {
      *  own seller's catalog). */
     sellerCatalogs: MemberCatalog[];
     tokenDecimals: number;
-    /** The buyer's checkout-time counterparty choices, keyed by assembly
+    /** The buyer's checkout-time co-seller choices, keyed by assembly
      *  node id — fills sub-orders the adopting seller's profile leaves
      *  unbound (buyer-assigned coordination). The price is the picker's
      *  resolved figure and `item` the picked catalog item (it becomes
@@ -215,7 +215,7 @@ export async function executeAssemblyCheckout(
         assembly.agreements[0]?.id;
     if (rootId === undefined) throw new Error("This assembly has no root order.");
 
-    // A profile binding designates each sub-order's counterparty (the
+    // A profile binding designates each sub-order's co-seller (the
     // per-clause cursor); a node the profile leaves unbound takes the buyer's
     // checkout-time choice.
     const boundSellerByNode = new Map(
@@ -342,7 +342,7 @@ function checkoutNodes(
         const selection = boundSeller ? undefined : subOrderSelections?.[planned.nodeId];
         const subSeller = boundSeller ?? selection?.seller ?? null;
         if (!subSeller) {
-            throw new Error("This assembly has a sub-order with no counterparty — the seller's profile must designate one, or the buyer chooses one at checkout.");
+            throw new Error("This assembly has a sub-order with no co-seller — the seller's profile must designate one, or the buyer chooses one at checkout.");
         }
         // The buyer's checkout fills join the node's clauses BEFORE pricing:
         // a rate quantity source (e.g. order-geodistance) derives from the

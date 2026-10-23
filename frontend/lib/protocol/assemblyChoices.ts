@@ -42,7 +42,7 @@ function chainIdToNetworkTarget(chainId: number): string {
 }
 
 
-/** Process clauses the seller may bind counterparty wallets to when they
+/** Process clauses the seller may bind co-seller wallets to when they
  *  adopt this assembly. Emitted for every non-root order that carries a
  *  process-log clause — whatever the seller binds in their catalog is
  *  seller-assigned; whatever they leave unbound becomes the buyer's
@@ -58,10 +58,10 @@ function chainIdToNetworkTarget(chainId: number): string {
  *
  *  Root order is excluded — the rootBuyer is the connected wallet at
  *  checkout, not designated by the seller's profile. */
-export function requiredCounterpartyClauses(hydrated: HydratedAssembly): string[] {
+export function requiredCoSellerClauses(hydrated: HydratedAssembly): string[] {
     const clauses = new Set<string>();
     for (const entry of hydrated.assembly.agreements) {
-        if (assemblyFollows(entry).length === 0) continue; // root has no counterparty
+        if (assemblyFollows(entry).length === 0) continue; // root has no co-seller
         for (const clauseKey of Object.keys(agreementClauses(hydrated, entry))) {
             if (clauseIsProcessLog(clauseKey)) clauses.add(clauseKey);
         }

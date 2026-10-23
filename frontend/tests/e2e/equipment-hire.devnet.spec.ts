@@ -142,7 +142,7 @@ async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Prom
                     bindingId: 'equipment-hire-reference',
                     subjectAddress: SELLER,
                     assemblyHash,
-                    counterpartyBindings: [],
+                    coSellerBindings: [],
                 }],
             },
         });
