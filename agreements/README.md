@@ -22,4 +22,8 @@ assembly from the registry's bindings and verifies each document against its
 key.
 
 Editorial prose here is audience-owned (the general-public register).
+The written shape is published as a JSON Schema beside the clause's,
+`sdk/src/agreement.schema.json`, which also describes the registered form the
+seeding pins; `sdk/tests/documents/schema-conformance.test.ts` keeps that `.schema.json`
+and `composeAuthoredAgreement` in lockstep over these files.
 Conformance: `frontend/tests/lib/referenceAssemblies.test.ts`.

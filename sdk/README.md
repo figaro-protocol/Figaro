@@ -1976,15 +1976,17 @@ const clauses = agreementClauses(assembly, assembly.assembly.agreements[i]);
 const { leaf, proof, slotContentHash } = buildAgreementInclusionProof(assembly.assembly, i);
 ```
 
-`composeAuthoredAgreement(doc, specs, picks)`, `composeAuthoredAgreements(docsByName, specs)` and `assembleAuthored(doc, agreementsByName, specs)`
+`composeAuthoredAgreement(doc, specs)`, `composeAuthoredAgreements(docsByName, specs)` and `assembleAuthored(doc, agreementsByName, specs)`
 are the SEED-TIME derivation for the reference set written by hand: an agreement file (`agreements/*.json`, clause names with the
-designer's fills and `mandatory`, the name of the agreement it picks) resolves its names (`resolveAuthoredClauseKeys`) and composes
+designer's fills, the two mandatory clauses named like any other) resolves its names (`resolveAuthoredClauseKeys`) and composes
 through the one composition rule (`composeOrderAgreement`: the scope check, the
-value-free rule, the pick's clauses merged) into the document the seeding pins and its
-key (`composeAuthoredAgreements` composes a whole set by name, each pick resolved within it); an assembly file binds an agreement only when it carries every clause of one agreement in the set whose clauses are all mandatory-article; an assembly file (`assemblies/*.json`, agreements naming their agreements
+value-free rule, one clause of commerce's shape and one of topology's) into the document the seeding pins and its
+key (`composeAuthoredAgreements` composes a whole set by name); an assembly file (agreements naming the written agreements they bind
 and carrying their own `follows`) binds each named agreement's hash
 and takes the topology parents as the agreement's fill, returning each DISTINCT
-agreement once beside the assembly. Neither runs on a read path.
+agreement once beside the assembly. Neither runs on a read path. The published shape of each document is a JSON Schema beside the
+clause's: `src/agreement.schema.json` and `src/assembly.schema.json`, each covering the written form and the registered or pinned
+form, each `.schema.json` kept in lockstep with the composer and the builder over the reference files by `tests/documents/schema-conformance.test.ts`.
 
 ## From Adopted Assembly to Signed Agreement — the ONE walk
 

@@ -182,12 +182,15 @@ derive identity.
   designer's fills), the assembly as agreements naming those agreements and carrying their
   own `follows` — `composeAuthoredAgreement(doc, specs)` from `@figaro-protocol/sdk`
   resolves the names (`resolveAuthoredClauseKeys`: the keys of the specs in `specs.list()` whose
-  `clauseId` matches; write `name@version` to match the `version` too), merges the clauses of
-  the agreement the document names as its pick (`mandatory`, a name in `picks` — or compose
+  `clauseId` matches; write `name@version` to match the `version` too), composes them through
+  the one composition rule (the two mandatory clauses named like any other; or compose
   the whole set by name with `composeAuthoredAgreements(docsByName, specs)`) and keys the agreement, and `assembleAuthored(doc, agreementsByName, specs)`
   binds each one to the named agreement's hash and returns `{ assembly, agreements }` with each
   DISTINCT agreement once. They refuse a name two loaded specs share unless the file
-  says which, and a name no loaded spec carries. Run them once, before
+  says which, and a name no loaded spec carries. Validate each written file first against
+  its published JSON Schema in the SDK — `sdk/src/agreement.schema.json` for an agreement,
+  `sdk/src/assembly.schema.json` for an assembly — which also describe the registered and
+  pinned forms a reader fetches. Run them once, before
   pinning, over a spec set you chose and inspected; it is never a read path, and the pinned
   documents carry keys.
 

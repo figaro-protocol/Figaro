@@ -1130,8 +1130,13 @@ export function composeAuthoredAgreement(
     const doc = resolveAuthoredClauseKeys(authored, specs) as Partial<AuthoredAgreement> & {
         clauses?: Record<Hex, Record<string, unknown>>;
     };
-    if (!doc.clauses || typeof doc.clauses !== "object") {
+    if (!doc.clauses || typeof doc.clauses !== "object" || Array.isArray(doc.clauses)) {
         throw new Error("the authored agreement has no clauses");
+    }
+    for (const [clauseKey, fills] of Object.entries(doc.clauses)) {
+        if (fills === null || typeof fills !== "object" || Array.isArray(fills)) {
+            throw new Error(`clause ${clauseKey}: the designer's fills are not an object — write {} for a clause only selected`);
+        }
     }
     const { composed, agreementHash } = composeOrderAgreement({ clauses: doc.clauses, specs });
     const document: RegisteredAgreement = {

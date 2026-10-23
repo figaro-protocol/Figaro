@@ -67,7 +67,13 @@ a sequence of agreements holding registered agreements plus the assembly-scoped 
 (`AssemblyRegistry`). Assemblies use agreements, agreements use clauses, and
 neither knows what uses it; every arrow is off-chain, in the pinned documents.
 `AssemblyRegistry` checks nothing about an assembly's agreements, and each kind of
-designer reward is gated by its own registry alone.
+designer reward is gated by its own registry alone. Each document's published
+shape is a JSON Schema beside the clause's: `sdk/src/agreement.schema.json` and
+`sdk/src/assembly.schema.json`, each covering the written form (clauses and
+agreements by name, as `agreements/` and `assemblies/` are written) and the
+registered or pinned form (by key), each `.schema.json` kept in lockstep with the
+composer and the builder over the reference files by
+`sdk/tests/documents/schema-conformance.test.ts` beside `sdk/src/agreement.schema.json`.
 
 **The agreement.** The reusable unit a designer composes an assembly
 from. Its document, `RegisteredAgreement`, is `{ name?, summary?, description?,

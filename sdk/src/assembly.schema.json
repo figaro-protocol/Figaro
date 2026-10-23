@@ -1,0 +1,74 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://figaro.org/schemas/assembly.json",
+    "title": "Figaro Assembly (written and pinned forms)",
+    "description": "The shape of an assembly's document — the agreements composed for one design, one per order, each binding a registered agreement and carrying its own topology, beside the designer's words and the designer's answers. The document has two forms with one shape. WRITTEN: each entry names the written agreement it binds (`agreement`, a file name under `agreements/`) and the entries it follows (`follows`, `agreement-<j>` labels), and `assemblyClauses` are written by clause name, as the files under `assemblies/` do; the reference builder is `assembleAuthored` (sdk/src/projection.ts), which binds each named agreement's hash and lifts `follows` into the topology clause's fill. PINNED: each entry carries the bound agreement's `agreementHash` (the `AgreementRegistry` key) and its own fills by clause key, the topology clause's `{ follows: [...] }` among them; the `assemblyHash` is the merkle root over the agreement leaves (`assemblyHashOf`, sdk/src/assembly.ts), the key `AssemblyRegistry` takes, recomputed by every reader from the fetched bytes. The editorial fields and the designer's answers are excluded from the hash. A conformance test (sdk/tests/documents/schema-conformance.test.ts) keeps this schema and the builder in lockstep over the reference files. The schema is OPEN (additionalProperties allowed): unknown fields are tolerated and ignored by conforming readers.",
+    "type": "object",
+    "required": ["agreements"],
+    "additionalProperties": true,
+    "properties": {
+        "name": { "type": "string", "description": "The designer's own words, for a reader; never part of the hash." },
+        "summary": { "type": "string", "description": "One sentence a stranger reads first; never part of the hash." },
+        "description": { "type": "string", "description": "The designer's longer telling; never part of the hash." },
+        "faq": {
+            "type": "array",
+            "description": "Questions a designer answers about the assembly, in plain words; never part of the hash.",
+            "items": {
+                "type": "object",
+                "required": ["question", "answer"],
+                "properties": {
+                    "question": { "type": "string", "minLength": 1 },
+                    "answer": { "type": "string", "minLength": 1 }
+                }
+            }
+        },
+        "assemblyClauses": {
+            "type": "object",
+            "description": "The clauses composed once for the whole design (a clause whose `block.design.scope` is `assembly`), keyed as the agreement document keys its clauses, each value the designer's fills.",
+            "propertyNames": { "$ref": "#/$defs/clauseRef" },
+            "additionalProperties": { "type": "object" }
+        },
+        "agreements": {
+            "type": "array",
+            "minItems": 1,
+            "description": "One entry per order of the design, in commit order. The first is the root, which follows nothing; every other names the entries it follows by label.",
+            "items": { "oneOf": [{ "$ref": "#/$defs/writtenEntry" }, { "$ref": "#/$defs/pinnedEntry" }] }
+        }
+    },
+    "$defs": {
+        "clauseKey": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" },
+        "clauseName": { "type": "string", "pattern": "^[^@\\s]+(@[1-9][0-9]*)?$" },
+        "clauseRef": { "anyOf": [{ "$ref": "#/$defs/clauseKey" }, { "$ref": "#/$defs/clauseName" }] },
+        "agreementLabel": {
+            "type": "string",
+            "pattern": "^agreement-[0-9]+$",
+            "description": "The entry's label within the assembly, `agreement-<index>`, the target `follows` names. Not a chain id and not a party: the assembly is party-agnostic."
+        },
+        "writtenEntry": {
+            "type": "object",
+            "required": ["agreement"],
+            "additionalProperties": true,
+            "properties": {
+                "id": { "$ref": "#/$defs/agreementLabel" },
+                "agreement": { "type": "string", "minLength": 1, "description": "The written agreement this entry binds: a file name under `agreements/`, without its extension." },
+                "follows": { "type": "array", "items": { "$ref": "#/$defs/agreementLabel" }, "description": "The entries this order follows; empty or absent on the root." }
+            },
+            "not": { "required": ["clauses"] }
+        },
+        "pinnedEntry": {
+            "type": "object",
+            "required": ["id", "agreementHash", "clauses"],
+            "additionalProperties": true,
+            "properties": {
+                "id": { "$ref": "#/$defs/agreementLabel" },
+                "agreementHash": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$", "description": "The registered agreement this entry binds: the merkle root over its composed clauses, the `AgreementRegistry` key." },
+                "clauses": {
+                    "type": "object",
+                    "description": "The entry's own fills over the registered agreement, by clause key, merged over the agreement's clauses at checkout (the entry's fill wins for the keys it names): the topology clause's `{ follows: [\"agreement-<j>\", ...] }`, empty on the root.",
+                    "propertyNames": { "$ref": "#/$defs/clauseKey" },
+                    "additionalProperties": { "type": "object" }
+                }
+            }
+        }
+    }
+}

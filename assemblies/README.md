@@ -58,6 +58,10 @@ over the SUBSTITUTED assembly, never the sentinel. A spec that wants this
 reference's slug hashes the substituted assembly too
 (`referenceAssemblySlugWithLiveCurrency`, `devnet-helpers.ts`), not the raw file.
 
+The written shape is published as a JSON Schema beside the clause's,
+`sdk/src/assembly.schema.json`, which also describes the pinned form;
+`sdk/tests/documents/schema-conformance.test.ts` keeps that `.schema.json` and
+`assembleAuthored` in lockstep over these files.
 Conformance: `frontend/tests/lib/referenceAssemblies.test.ts` — every written
 agreement names itself, says what it is and is bound by a reference assembly;
 every assembly parses, hashes, resolves its topology, composes only registered

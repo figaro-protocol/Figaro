@@ -1,0 +1,40 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://figaro.org/schemas/agreement.json",
+    "title": "Figaro Agreement (written and registered forms)",
+    "description": "The shape of one agreement's document — the clauses a designer selects for one order, each with the designer's own fills (`block.design.fills` values only; `{}` for a clause the designer only selects), beside the designer's words. The document has two forms with one shape. WRITTEN: the designer writes each clause by its name (`name`, or `name@version` where two registered specs share a name), as the files under `agreements/` do; the reference composer is `composeAuthoredAgreement` (sdk/src/projection.ts), which resolves every name to its clause key, checks the one composition rule (one clause of commerce's shape and one of topology's, every composed field value-free in scope), and derives the key. REGISTERED: the pinned document keys every clause by its clause key (keccak256 of the spec's canonical bytes); its `agreementHash` is the merkle root over the composed clause leaves (`agreementHashOf`, sdk/src/assembly.ts), the key `AgreementRegistry.registerAgreement` takes, and a reader recomputes it from the fetched bytes (`anchorRegisteredAgreement`). The editorial fields are excluded from the hash, so renaming never forks the key. A conformance test (sdk/tests/documents/schema-conformance.test.ts) keeps this schema and the composer in lockstep over the reference files. The schema is OPEN (additionalProperties allowed): unknown fields are tolerated and ignored by conforming readers.",
+    "type": "object",
+    "required": ["clauses"],
+    "additionalProperties": true,
+    "properties": {
+        "name": { "type": "string", "description": "The designer's own words, for a reader; never part of the key." },
+        "summary": { "type": "string", "description": "One sentence a stranger reads first; never part of the key." },
+        "description": { "type": "string", "description": "The designer's longer telling; never part of the key." },
+        "clauses": {
+            "type": "object",
+            "minProperties": 2,
+            "description": "The composed clauses: each key names one clause (WRITTEN: its name or `name@version`; REGISTERED: its 0x-prefixed 32-byte clause key), each value is the designer's fills for it, `{}` when the designer only selects it. At least two: one clause of commerce's shape and one of topology's, the mandatory article every order carries.",
+            "propertyNames": { "$ref": "#/$defs/clauseRef" },
+            "additionalProperties": { "$ref": "#/$defs/fills" }
+        }
+    },
+    "$defs": {
+        "clauseKey": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{64}$",
+            "description": "A clause key: keccak256 of the spec's pinned canonical bytes, the `ClauseRegistry` key."
+        },
+        "clauseName": {
+            "type": "string",
+            "pattern": "^[^@\\s]+(@[1-9][0-9]*)?$",
+            "description": "A clause written by name as the registry lists it (`clauseId`), with `@<version>` only where two registered specs share the name."
+        },
+        "clauseRef": {
+            "anyOf": [{ "$ref": "#/$defs/clauseKey" }, { "$ref": "#/$defs/clauseName" }]
+        },
+        "fills": {
+            "type": "object",
+            "description": "The designer's values for the clause's `block.design.fills` fields, keyed by field name; `{}` for a clause the designer only selects. Every other field of the clause is the buyer's at checkout, or a seller's by its profile, never written here."
+        }
+    }
+}
