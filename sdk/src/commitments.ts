@@ -1,20 +1,26 @@
 /**
  * @figaro-protocol/sdk — Commitment Builder
  *
- * Produces EIP-712 typed data payloads for the unified Commitment struct.
- * These are ready to be signed by any wallet (MetaMask, Safe, programmatic signer).
+ * Produces the EIP-712 typed data of the unified Commitment struct, for any
+ * wallet to sign (MetaMask, Safe, a programmatic signer) — AFTER the sign
+ * gate: no signature leaves without `assertAgreementSignable` over the
+ * agreement the struct's `checkoutHash` roots (the clause checks, the term
+ * mirror, the designer's values, the merkle root). The agent helpers
+ * (`@figaro-protocol/sdk/agent`: `originate`, `counterSignOffer`,
+ * `counterSignDraft`, `quoteDraft`) and the frontend's sign step run that gate
+ * for you; a caller that signs `typedData` itself runs it first.
  *
- * The builder automatically handles:
- *   - Salt generation (random uint256)
- *   - Deadline computation (current time + TTL)
- *   - CumulativeValue fetching for sub-orders (prevents CumulativeValueMismatch reverts)
+ * The builder handles:
+ *   - the salt (a random uint256, or the one given)
+ *   - the deadline you pass in CHAIN time (`computeDeadline(await
+ *     readChainTimestamp(client))`) — never the machine clock
+ *   - the sub-order's cumulative value (`buildCommitmentSafe`: the process's
+ *     current cumulative value plus this order's payment, what FigaroCore
+ *     checks at commit)
  *
- * Usage (agent-assists-human):
- *   const typedData = buildCommitment({ ... }, domain);
- *   // Send to wallet for signing
- *
- * Usage (autonomous agent):
+ * Usage:
  *   const { commitment, typedData } = buildCommitment({ ... }, domain);
+ *   assertAgreementSignable(agreement, commitment.checkoutHash, specs, commitment, design);
  *   const sig = await walletClient.signTypedData(typedData);
  */
 

@@ -20,7 +20,8 @@
 
 import { formatToken } from "@/lib/shared/utils";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
-import type { Commitment, Agreement, AgreementClause } from "@figaro-protocol/sdk";
+import { calculateBonds, type Commitment, type Agreement, type AgreementClause } from "@figaro-protocol/sdk";
+import { ZERO_BYTES32 } from "@figaro-protocol/sdk";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { describeClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
@@ -116,7 +117,12 @@ function ConsentValueToken({ token }: { token: string }) {
 }
 
 export function AgreementReview({ commitment, agreement }: Props) {
-    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals, ready: decimalsReady } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    // A figure is shown only once the token's decimals are READ: until then
+    // the raw integer stands alone, never a magnitude formatted on a default.
+    const figure = (amount: bigint) => decimalsReady ? formatPayment(amount, decimals) : "(token decimals loading)";
+    const isRoot = commitment.processId === ZERO_BYTES32;
+    const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
     const lineItems = commerceLineItems(agreement);
     const dumpedClauses = fullDumpClauses(agreement);
     const consented = consentClauses(agreement);
@@ -151,12 +157,38 @@ export function AgreementReview({ commitment, agreement }: Props) {
                     <dd className="font-mono text-xs text-ink-primary break-all">{commitment.currency}</dd>
                     <dt className="text-ink-muted">Amount</dt>
                     <dd className="text-ink-primary" data-testid="preview-payment">
-                        {formatPayment(commitment.payment, decimals)} <span className="text-ink-muted text-xs">(raw: {commitment.payment.toString()})</span>
+                        {figure(commitment.payment)} <span className="text-ink-muted text-xs">(raw: {commitment.payment.toString()})</span>
                     </dd>
                     <dt className="text-ink-muted">Deadline</dt>
                     <dd className="text-ink-primary">
                         {formatBlockTimestamp(commitment.deadline)} <span className="text-ink-muted text-xs">(unix {commitment.deadline.toString()})</span>
                     </dd>
+                </dl>
+            </section>
+
+            {/* The process and the bonds — every field of the signed struct the
+                sections above do not show, so the one shared gate shows them all */}
+            <section>
+                <h3 className="text-xs font-semibold text-ink-muted mb-2">Process and bonds</h3>
+                <dl className="grid grid-cols-[80px_1fr] gap-y-1 text-sm">
+                    <dt className="text-ink-muted">Process</dt>
+                    <dd className="font-mono text-xs text-ink-primary break-all" data-testid="preview-process">
+                        {isRoot ? "a new process — this is its root order" : commitment.processId}
+                    </dd>
+                    <dt className="text-ink-muted">Cumulative</dt>
+                    <dd className="text-ink-primary" data-testid="preview-cumulative">
+                        {figure(commitment.expectedCumulativeValue)} <span className="text-ink-muted text-xs">(raw: {commitment.expectedCumulativeValue.toString()} — the process&rsquo;s value through this order)</span>
+                    </dd>
+                    <dt className="text-ink-muted">Buyer bond</dt>
+                    <dd className="text-ink-primary" data-testid="preview-buyer-bond">
+                        {figure(bonds.buyerBond)} <span className="text-ink-muted text-xs">(raw: {bonds.buyerBond.toString()} — twice the payment, locked at commit)</span>
+                    </dd>
+                    <dt className="text-ink-muted">Seller bond</dt>
+                    <dd className="text-ink-primary" data-testid="preview-seller-bond">
+                        {figure(bonds.sellerBond)} <span className="text-ink-muted text-xs">(raw: {bonds.sellerBond.toString()} — twice the cumulative value, locked at commit)</span>
+                    </dd>
+                    <dt className="text-ink-muted">Salt</dt>
+                    <dd className="font-mono text-xs text-ink-muted break-all">{commitment.salt.toString()}</dd>
                 </dl>
             </section>
 

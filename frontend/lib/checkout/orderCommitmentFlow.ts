@@ -416,7 +416,9 @@ export function useOrderCommitmentFlow() {
         if (!address) throw new Error("Connect a wallet first.");
         setError(null);
         try {
-            const check = await validateDraft(incoming, address, undefined, undefined, null, profileReaderForChain(publicClient, chainId));
+            // The FULL draft gate — the specs and the design the agreement names —
+            // so a bad request is refused before the person is asked anything.
+            const check = await validateDraft(incoming, address, undefined, specSource(), await readSigningDesign(incoming.agreement), profileReaderForChain(publicClient, chainId));
             if (!check.ok) throw new Error(`Refusing this draft — ${check.reason}`);
             setStep("signing");
             const sellerSig = await signAs(incoming.commitment, incoming.agreement);
@@ -456,7 +458,9 @@ export function useOrderCommitmentFlow() {
         if (!address) throw new Error("Connect a wallet first.");
         setError(null);
         try {
-            const check = await validateDraft(incoming, address, undefined, undefined, null, profileReaderForChain(publicClient, chainId));
+            // The FULL draft gate — the specs and the design the agreement names —
+            // so a bad request is refused before the person is asked anything.
+            const check = await validateDraft(incoming, address, undefined, specSource(), await readSigningDesign(incoming.agreement), profileReaderForChain(publicClient, chainId));
             if (!check.ok) throw new Error(`Refusing this draft — ${check.reason}`);
             const terms = incoming.quoteRequest;
             if (!terms || terms.pricedFields.length === 0) {
