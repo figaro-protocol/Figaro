@@ -109,7 +109,7 @@ becomes a viable strategy).
 both parties by ECDSA recovery alone (`FigaroCore.sol:161-165`), so a contract
 wallet — multi-sig, ERC-1271 smart account — can never hold the buyer role,
 and `FigaroCore` as deployed forecloses adding contract-signature support. The live
-mitigation is **pre-installed EIP-7702 delegation**: before committing, the
+mitigation is **pre-installed EIP-7702 delegation**: while it still holds its key, the
 buyer sets a delegation (carrying its own guardian/recovery authorization) on
 the buyer EOA. `resolveProcess` authorizes by `msg.sender`
 (`FigaroCore.sol:268`), so after key loss the delegated code can still

@@ -217,7 +217,7 @@ export default function MarketsWithoutAVenuePaper() {
                         <li>They stand beyond each other&rsquo;s coercive reach.</li>
                         <li>Performance has no observer but the parties themselves, and the buyer&rsquo;s resolution is its own judgment of it.</li>
                         <li>Resolution is terminal and the buyer&rsquo;s alone; withholding is not terminal.</li>
-                        <li>No clock runs once the bonds are locked. A buyer that loses its key, with no recovery arrangement installed on its wallet before it commits, strands every bond in its process. The arrangement is the wallet&rsquo;s, never the Core&rsquo;s, and it reaches a resolution called on the direct path, not one signed for the batch path.</li>
+                        <li>No clock runs once the bonds are locked. A buyer that loses its key, with no recovery arrangement installed on its wallet while it still holds its key, strands every bond in its process. The arrangement is the wallet&rsquo;s, never the Core&rsquo;s, and it reaches a resolution called on the direct path, not one signed for the batch path.</li>
                         <li>Either party may adopt any plan at its nodes.</li>
                     </ul>
                     <p>
