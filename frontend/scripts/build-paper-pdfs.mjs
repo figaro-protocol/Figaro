@@ -21,6 +21,7 @@
 // Usage: node scripts/build-paper-pdfs.mjs   (cwd = frontend/; the export
 // root is the one `next build` records in <distDir>/export-detail.json)
 
+/* global document -- the page.evaluate callbacks below run in the browser, where `document` is the page's */
 import { spawn, spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir, cpus } from "node:os";
