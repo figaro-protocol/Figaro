@@ -6,7 +6,7 @@ import { Math } from "@/components/papers/Math";
 export const metadata: Metadata = withOg({
     title: "The Coercion Variable — Figaro Protocol",
     description:
-        "Bonds the parties lock at consent enforce bilateral commerce by themselves: the only decision left after consent is the buyer's resolution, made against its own locked bond. Coercion becomes a variable of the enforcement architecture, and the question of legitimate coercion moves to a bounded domain.",
+        "Bonds the parties lock at consent enforce priceable, bilateral, voluntary commerce without a coercive backstop: the only decision left after consent is the buyer's resolution, made against its own locked bond. Coercion becomes a variable of the enforcement architecture, and the question of legitimate coercion moves to a bounded domain.",
 });
 
 export default function CoercionVariablePaper() {

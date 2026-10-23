@@ -12,7 +12,7 @@ import { Math } from "@/components/papers/Math";
 export const metadata: Metadata = withOg({
     title: "Actor-Neutral Coordination over Bonded Commitments — Figaro Protocol",
     description:
-        "A bonded commitment reads signatures, bond amounts, and the state of one process, never the kind of entity behind a key. Its equilibrium is computed in those quantities alone, so it binds a person and an agent alike. The agent's wallet read as a controller: the bond bounds what one commit can cost, the policy bounds the rest.",
+        "A bonded commitment reads signatures, the fields they sign, and the state of one process, never the kind of entity behind a key. Its equilibrium is computed in those quantities alone, so it binds a person and an agent alike. The agent's wallet read as a controller: the bond bounds what one commit can cost, the policy bounds the rest.",
 });
 
 function FormalBlock({ label, children }: { label: string; children: React.ReactNode }) {
@@ -35,7 +35,7 @@ export default function ActorNeutralCoordinationPaper() {
             abstract={
                 <>
                     <p>
-                        A bonded commitment reads two signatures, two bond amounts, and the state of one process; it reads nothing about the kind of entity that holds either key. We show that this is enough for its incentive result to carry to autonomous agents unchanged. The buyer bonds twice the payment, each seller bonds twice the cumulative value through its order, and only the buyer resolves, atomically across the process. The equilibrium is computed wholly from the tokens the mechanism moves and the value each party keeps off-chain. A transition function blind to party type therefore yields an equilibrium blind to it. Vetting becomes each party&rsquo;s choice before it signs.
+                        A bonded commitment reads two signatures, the fields they sign, and the state of one process; it reads nothing about the kind of entity that holds either key. We show that this is enough for its incentive result to carry to autonomous agents unchanged. The buyer bonds twice the payment, each seller bonds twice the cumulative value through its order, and only the buyer resolves, atomically across the process. The equilibrium is computed wholly from the tokens the mechanism moves and the value each party keeps off-chain. A transition function blind to party type therefore yields an equilibrium blind to it. Vetting becomes each party&rsquo;s choice before it signs.
                     </p>
                     <p>
                         We then read an agent&rsquo;s wallet as a controller over the chain: it observes process state, enumerates the actions open to its address, and signs only what a policy approves. The loss one approved commit can cause is bounded by the bond the mechanism pulls; aggregate exposure and every outflow outside the mechanism are bounded by the policy. Discovery, through ERC-8004 identity documents and <code>did:web</code>, is kept apart from trust, which the bond supplies.

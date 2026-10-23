@@ -12,7 +12,7 @@ import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphColla
 export const metadata: Metadata = withOg({
     title: "After TradeLens: A Permissionless Bonded Replacement — Figaro Protocol",
     description:
-        "TradeLens failed for a structural reason no governance fix resolves: a competitor-controlled platform asks rival carriers to ratify a competitor's gatekeeping. The fix is a published composition each party signs into, one order at a time; bonded and permissionless, it coordinates the inter-logistics perimeter.",
+        "We read TradeLens's failure as structural: a competitor-controlled platform asks rival carriers to ratify a competitor's gatekeeping, and no governance fix removes that request. On that reading the fix is a published composition each party signs into, one order at a time; bonded and permissionless, it coordinates the inter-logistics perimeter.",
 });
 
 const HANDOFF_CHAIN = `        shipper (origin country)
@@ -76,7 +76,7 @@ export default function AfterTradeLensPaper() {
             abstract={
                 <>
                     <p>
-                        TradeLens, the IBM&ndash;Maersk container-shipping platform, was switched off in 2023 although carriers covering more than half the world&rsquo;s ocean container cargo had joined it. We read the failure as one of governance shape rather than software. A platform controlled by one carrier asks its rivals to ratify that carrier&rsquo;s gatekeeping, and the rivals joined while hedging across a competing consortium. On this reading no formal-governance fix removes that requirement, because the requirement comes from the shape and not from any promise the controller makes.
+                        TradeLens, the IBM&ndash;Maersk container-shipping platform, was switched off in 2023 although, by Maersk&rsquo;s count, carriers covering more than half the world&rsquo;s ocean container cargo had joined it. We read the failure as one of governance shape rather than software. A platform controlled by one carrier asks its rivals to ratify that carrier&rsquo;s gatekeeping, and the rivals joined while hedging across a competing consortium. On this reading no formal-governance fix removes that requirement, because the requirement comes from the shape and not from any promise the controller makes.
                     </p>
                     <p>
                         We then develop a permissionless, decentralized alternative at the same perimeter, built on Figaro&rsquo;s two mechanisms: asymmetric bonding, and buyer dominance with atomic resolution. Every carrier, port, forwarder, inspector, insurer, credit issuer, and customs authority is a wallet, and each is a seller to one buyer, the importer. At each commit the importer bonds twice that leg&rsquo;s payment and the seller twice the value the process has accumulated through its order. The importer alone resolves, and resolution pays every seller and refunds every bond at once. We work the bonds through a thirteen-order shipment, derive the interest each seller holds in every other seller&rsquo;s performance, map the published clauses onto the legs, and treat a cargo sale in transit as an outside event squared before resolution. The contribution is the composition and its operational properties, in the register of industrial engineering; the mechanism-design results it rests on are restated, not extended.
@@ -441,7 +441,7 @@ export default function AfterTradeLensPaper() {
 
             <PaperSection title="10. Conclusion">
                 <p>
-                    Consolidation under a rival is a request competitors refuse, and the bonded composition never makes it. The interest that holds a shipment&rsquo;s sellers together is arithmetic on the accumulator, not trust in a controller: each seller bonds twice the value accumulated through its order, and one atomic resolution by the importer pays every seller and refunds every bond. What the composition leaves outside, namely the sovereign&rsquo;s decision, the port&rsquo;s market power, and the circulating title, stays where law and markets already hold it. The composition offers per shipment the coordination TradeLens sought by asking an industry to consolidate under one of its members, to parties who need agree on nothing but the shipment.
+                    On the reading TradeLens supports, consolidation under a rival is a request competitors refuse, and the bonded composition never makes it. The interest each of a shipment&rsquo;s sellers holds in the others&rsquo; performance is arithmetic on the accumulator, not trust in a controller: each seller bonds twice the value accumulated through its order, and one atomic resolution by the importer pays every seller and refunds every bond. What the composition leaves outside, namely the sovereign&rsquo;s decision, the port&rsquo;s market power, and the circulating title, stays where law and markets already hold it. The composition offers per shipment the coordination TradeLens sought by asking an industry to consolidate under one of its members, to parties who need agree on nothing but the shipment.
                 </p>
             </PaperSection>
         </PaperLayout>
