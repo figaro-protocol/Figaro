@@ -14,6 +14,12 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **SDK: the sign gate refuses a clause the named design does not compose.** `validateCommitmentAgreement`
+  (through `assertAgreementSignable`) refuses, by key, any clause outside the registered agreement's
+  clauses and the assembly's folded terms, registered or not, with content or withheld, as it refuses
+  a missing one; the frontend's review modal says a content-withheld leaf in words beside its
+  fingerprint where it rendered an empty box.
+
 - **SDK: `buildCommitmentSafe` builds a sub-order FigaroCore accepts.** Its
   `expectedCumulativeValue` is the process's current cumulative value plus the order's payment,
   which the Core checks at commit; it was the current value alone, which the Core refuses.

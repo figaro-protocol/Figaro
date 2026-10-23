@@ -86,6 +86,15 @@ export function fullDumpClauses(agreement: Agreement | null): AgreementClause[] 
     return agreement.clauses;
 }
 
+/** What the dump says of a clause whose content is WITHHELD — a leaf carrying
+ *  a `dataHash` and no `data`: the signer binds a leaf it cannot read, and the
+ *  review says so in words beside the hash, never an empty box. Null for a
+ *  clause with content. */
+export function withheldLeafNotice(clauseEntry: AgreementClause): string | null {
+    if (clauseEntry.data !== undefined) return null;
+    return `Content withheld by the party that wrote it — you sign the fingerprint ${clauseEntry.dataHash ?? "(none)"} without reading what it stands for.`;
+}
+
 /** Clauses whose clause declares the `consent` ARTICLE — the spec's own
  *  classification, never a clause name; a never-seen consent-article clause
  *  gets the same notice. */
@@ -212,9 +221,15 @@ export function AgreementReview({ commitment, agreement }: Props) {
                         {dumpedClauses.map((clauseEntry) => (
                             <li key={clauseEntry.clause} className="border border-default rounded px-3 py-2">
                                 <p className="font-mono text-ink-muted mb-1">{clauseEntry.clause}</p>
-                                <pre className="text-ink-primary whitespace-pre-wrap break-words">
-                                    {JSON.stringify(clauseEntry.data, null, 2)}
-                                </pre>
+                                {withheldLeafNotice(clauseEntry) ? (
+                                    <p className="text-warning-fg break-words" data-testid={`preview-clause-withheld-${clauseEntry.clause}`}>
+                                        {withheldLeafNotice(clauseEntry)}
+                                    </p>
+                                ) : (
+                                    <pre className="text-ink-primary whitespace-pre-wrap break-words">
+                                        {JSON.stringify(clauseEntry.data, null, 2)}
+                                    </pre>
+                                )}
                             </li>
                         ))}
                     </ul>

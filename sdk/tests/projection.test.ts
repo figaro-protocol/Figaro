@@ -823,6 +823,31 @@ describe("the sign gate's design check — the designer's values against the des
             .toThrow(/figaro-topology clause: the order does not carry this clause/);
     });
 
+    it("refuses an order carrying a clause the design does not compose — a registered one with content, and an unregistered one withheld", () => {
+        const { agreement } = instantiate({ documents: DOCS }, { anticipatedEvents: EVENTS });
+        // A clause of a REGISTERED spec the design never composed, well-formed
+        // (a process log's empty anchor), so the one issue is the design's.
+        const withLog = specSourceOf([...DESIGN_SPECS.list(), viewOf(rawSpecOf("figaro-merchant-process"))]);
+        const extra = {
+            ...agreement,
+            clauses: [...agreement.clauses, { clause: keyOf("figaro-merchant-process"), data: {} }],
+        };
+        const extraCheck = validateCommitmentAgreement(extra, computeCheckoutHash(extra), withLog, STRUCT, design);
+        expect(extraCheck.ok).toBe(false);
+        expect(extraCheck.issues.map((i) => `${i.clause}:${i.path}`)).toEqual([`${keyOf("figaro-merchant-process")}:clause`]);
+        expect(() => assertAgreementSignable(extra, computeCheckoutHash(extra), withLog, STRUCT, design))
+            .toThrow(/the order carries this clause, which assembly .* does not compose/);
+        // A content-withheld leaf under a key no registry knows: nothing to
+        // validate, nothing to show, and not the design's — refused by the
+        // same rule, before any spec is asked for.
+        const stray = { ...agreement, clauses: [...agreement.clauses, { clause: `0x${"ab".repeat(32)}` as const, dataHash: `0x${"cd".repeat(32)}` as const }] };
+        const strayCheck = validateCommitmentAgreement(stray, computeCheckoutHash(stray), DESIGN_SPECS, STRUCT, design);
+        expect(strayCheck.ok).toBe(false);
+        expect(strayCheck.issues.map((i) => i.path)).toEqual(["clause"]);
+        expect(() => assertAgreementSignable(stray, computeCheckoutHash(stray), DESIGN_SPECS, STRUCT, design))
+            .toThrow(/does not compose/);
+    });
+
     it("refuses a design that is not the one the agreement's provenance names", () => {
         const { agreement, checkoutHash } = instantiate({ documents: DOCS }, { applicableLaw: "England-Wales" },
             { agreementHash, assemblyHash: `0x${"5e".repeat(32)}` });

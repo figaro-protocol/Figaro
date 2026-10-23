@@ -659,11 +659,15 @@ function designIssues(
         }];
     }
     // The order matches one of the design's orders for that registered
-    // agreement — every clause carried, every designer value unchanged;
-    // report against the first when it matches none. Carried is a check on
-    // KEYS alone: a withheld clause (`dataHash`), a clause whose spec is not
-    // loaded and a value-free clause (a process-log clause's empty anchor)
-    // each count, so an order never names a design it does not carry.
+    // agreement — every clause carried, no clause beyond them, every designer
+    // value unchanged; report against the first when it matches none.
+    // Carried is a check on KEYS alone: a withheld clause (`dataHash`), a
+    // clause whose spec is not loaded and a value-free clause (a process-log
+    // clause's empty anchor) each count, so an order never names a design it
+    // does not carry. The converse is a check on keys too: a clause the
+    // design does not compose — under any key, registered or not, with
+    // content or withheld — is a term the signer never selected, so it is
+    // refused whatever it carries.
     const carried = new Set(agreement.clauses.map((s) => s.clause.toLowerCase()));
     const named = `assembly ${deriveAssemblySlug(provenance.assemblyHash)} (${provenance.assemblyHash})`;
     let first: CommitmentAgreementIssue[] | undefined;
@@ -675,6 +679,15 @@ function designIssues(
                 path: "clause",
                 message: `the order does not carry this clause, which ${named} composes for registered agreement ${provenance.agreementHash}`,
             }));
+        const composed = new Set(Object.keys(bag.clauses));
+        for (const clause of carried) {
+            if (composed.has(clause)) continue;
+            found.push({
+                clause,
+                path: "clause",
+                message: `the order carries this clause, which ${named} does not compose for registered agreement ${provenance.agreementHash}`,
+            });
+        }
         found.push(...designerValueIssues(agreement, bag.clauses, specs));
         if (found.length === 0) return [];
         first ??= found;

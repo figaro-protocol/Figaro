@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Agreement } from "@figaro-protocol/sdk";
-import { commerceLineItems, fullDumpClauses } from "@/components/runtime/AgreementReview";
+import { commerceLineItems, fullDumpClauses, withheldLeafNotice } from "@/components/runtime/AgreementReview";
 
 /**
  * Regression for the signing-integrity finding (frontend security audit,
@@ -60,5 +60,14 @@ describe("AgreementReview renders every committed clauseEntry (finding 1)", () =
     it("returns empty for a null agreement", () => {
         expect(fullDumpClauses(null)).toEqual([]);
         expect(commerceLineItems(null)).toEqual([]);
+    });
+
+    it("a content-withheld leaf is said in words beside its fingerprint, never dumped as an empty box", () => {
+        const withheld = { clause: `0x${"ab".repeat(32)}`, dataHash: `0x${"cd".repeat(32)}` } as unknown as Agreement["clauses"][number];
+        const notice = withheldLeafNotice(withheld);
+        expect(notice).toMatch(/withheld/);
+        expect(notice).toContain(`0x${"cd".repeat(32)}`);
+        expect(notice).toMatch(/without reading/);
+        expect(withheldLeafNotice(agreement.clauses[0])).toBeNull();
     });
 });
