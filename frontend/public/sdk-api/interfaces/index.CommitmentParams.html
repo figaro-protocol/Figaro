@@ -43,7 +43,7 @@
 <h3 class="tsd-anchor-link" id="checkouthash"><span>checkout<wbr/>Hash</span><a href="#checkouthash" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">checkoutHash</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L326">commitments.ts:326</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L328">commitments.ts:328</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="currency"><span>currency</span><a href="#currency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">currency</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
@@ -57,16 +57,18 @@ REQUIRED: there is deliberately no machine-clock default (maintainer
 rule — FigaroCore checks <code>block.timestamp</code>, not your clock).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L332">commitments.ts:332</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L334">commitments.ts:334</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="expectedcumulativevalue"><span>expected<wbr/>Cumulative<wbr/>Value</span><a href="#expectedcumulativevalue" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">expectedCumulativeValue</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
 <div class="tsd-comment tsd-typography"><p>Expected cumulative value of the process after this order.
 For root orders: equals payment (first order sets the baseline).
-For sub-orders: must match the current on-chain cumulativeValue.</p>
+For sub-orders: the process's current on-chain cumulativeValue PLUS
+this order's payment — what FigaroCore checks at commit
+(<code>expectedCumulativeValue == cumulativeValue + payment</code>).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L325">commitments.ts:325</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L327">commitments.ts:327</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="payment"><span>payment</span><a href="#payment" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">payment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div><aside class="tsd-sources">
@@ -85,7 +87,7 @@ For sub-orders: must match the current on-chain cumulativeValue.</p>
 <div class="tsd-comment tsd-typography"><p>Override random salt. Useful for deterministic testing.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L328">commitments.ts:328</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L330">commitments.ts:330</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="seller"><span>seller</span><a href="#seller" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">seller</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">

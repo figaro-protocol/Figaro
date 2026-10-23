@@ -14,6 +14,10 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **SDK: `buildCommitmentSafe` builds a sub-order FigaroCore accepts.** Its
+  `expectedCumulativeValue` is the process's current cumulative value plus the order's payment,
+  which the Core checks at commit; it was the current value alone, which the Core refuses.
+
 - **SDK: `fillDeployTimeCurrency(assembly, tokenAddress, specs)`.** A written reference assembly
   leaves its denomination pin unfilled (`assemblies/equipment-hire.json` composes
   `figaro-utility-token` as `{}`); the seeding fills the deployment's token into it before

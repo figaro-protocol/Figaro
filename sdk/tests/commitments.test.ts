@@ -5,6 +5,7 @@ import {
     generateSalt,
     computeDeadline,
     buildCommitment,
+    buildCommitmentSafe,
     COMMITMENT_TYPES,
     COMMITMENT_TYPEHASH,
     hashCommitmentStruct,
@@ -191,5 +192,23 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
     it("a sub-order keeps its target processId (no digest)", () => {
         const sub: Commitment = { ...root, processId: `0x${"11".repeat(32)}` as Hex };
         expect(computeCommitmentProcessId(sub, 1, CORE_ADDR)).toBe(sub.processId);
+    });
+});
+
+describe("buildCommitmentSafe — the sub-order's cumulative value is what FigaroCore checks", () => {
+    const processes = async () => [BUYER, TOKEN, 700n, 2n] as const; // rootBuyer, currency, cumulativeValue, activeOrderCount
+    const client = { readContract: processes } as unknown as Parameters<typeof buildCommitmentSafe>[0];
+    const addresses = { core: CORE_ADDR } as Parameters<typeof buildCommitmentSafe>[1];
+    const domain = buildDomain(31337, CORE_ADDR);
+
+    it("sets expectedCumulativeValue to the process's current cumulative value PLUS this order's payment", async () => {
+        const { commitment } = await buildCommitmentSafe(client, addresses, {
+            processId: PROCESS_ID, buyer: BUYER, seller: SELLER, currency: TOKEN, payment: 50n,
+            checkoutHash: AGREEMENT, salt: 1n, deadline: 2_000_000n,
+        }, domain);
+        // FigaroCore: expectedCumulativeValue == cumulativeValue + payment, else CumulativeValueMismatch.
+        expect(commitment.expectedCumulativeValue).toBe(700n + 50n);
+        expect(commitment.payment).toBe(50n);
+        expect(commitment.processId).toBe(PROCESS_ID);
     });
 });

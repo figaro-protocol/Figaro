@@ -320,7 +320,9 @@ export interface CommitmentParams {
     /**
      * Expected cumulative value of the process after this order.
      * For root orders: equals payment (first order sets the baseline).
-     * For sub-orders: must match the current on-chain cumulativeValue.
+     * For sub-orders: the process's current on-chain cumulativeValue PLUS
+     * this order's payment — what FigaroCore checks at commit
+     * (`expectedCumulativeValue == cumulativeValue + payment`).
      */
     expectedCumulativeValue: bigint;
     checkoutHash: Hex;
@@ -360,8 +362,11 @@ export function buildCommitment(params: CommitmentParams, domain: EIP712Domain) 
 }
 
 /**
- * Convenience: fetch current cumulative value and build a sub-order commitment
- * in one call. This is the safe path — prevents CumulativeValueMismatch.
+ * Convenience: fetch the process's current cumulative value and build a
+ * sub-order commitment in one call, its `expectedCumulativeValue` the value
+ * FigaroCore will check — the process's cumulative value PLUS this order's
+ * payment — so the struct cannot revert `CumulativeValueMismatch` against
+ * the state it was built on.
  */
 export async function buildCommitmentSafe(
     client: PublicClient,
@@ -376,7 +381,7 @@ export async function buildCommitmentSafe(
     );
 
     return buildCommitment(
-        { ...params, expectedCumulativeValue: currentCumulativeValue },
+        { ...params, expectedCumulativeValue: currentCumulativeValue + params.payment },
         domain,
     );
 }
