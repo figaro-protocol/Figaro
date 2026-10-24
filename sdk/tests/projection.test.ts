@@ -785,11 +785,18 @@ describe("the sign gate's design check — the designer's values against the des
         const anchored = { ...agreement, provenance };
         expect(validateCommitmentAgreement(anchored, computeCheckoutHash(anchored), LOG_SPECS, STRUCT, logDesign).issues).toEqual([]);
         // Carried is a check on keys: a withheld clause and a clause whose
-        // spec is not loaded each count as carried.
+        // spec is not loaded each count as carried for the DESIGN check — and
+        // each is refused by the content check, since the sign gate refuses
+        // what it cannot read (the ruling): the design issue list stays empty
+        // and the one issue names the clause's own fault.
         const withheld = { ...anchored, clauses: anchored.clauses.map((s) => s.clause === keyOf("figaro-merchant-process") ? withholdClauseContent(s) : s) };
-        expect(validateCommitmentAgreement(withheld, computeCheckoutHash(withheld), LOG_SPECS, STRUCT, logDesign).issues).toEqual([]);
+        const withheldCheck = validateCommitmentAgreement(withheld, computeCheckoutHash(withheld), LOG_SPECS, STRUCT, logDesign);
+        expect(withheldCheck.issues.map((i) => `${i.clause}:${i.path}`)).toEqual([`${keyOf("figaro-merchant-process")}:dataHash`]);
+        expect(() => assertAgreementSignable(withheld, computeCheckoutHash(withheld), LOG_SPECS, STRUCT, logDesign)).toThrow(/content is withheld/);
         const commerceOnly = specSourceFromFixtures(["figaro-commerce"]);
-        expect(validateCommitmentAgreement(anchored, computeCheckoutHash(anchored), commerceOnly, STRUCT, logDesign).issues).toEqual([]);
+        const unloadedCheck = validateCommitmentAgreement(anchored, computeCheckoutHash(anchored), commerceOnly, STRUCT, logDesign);
+        expect(unloadedCheck.issues.map((i) => `${i.clause}:${i.path}`)).toEqual([`${keyOf("figaro-merchant-process")}:clause`]);
+        expect(() => assertAgreementSignable(anchored, computeCheckoutHash(anchored), commerceOnly, STRUCT, logDesign)).toThrow(/spec is not loaded/);
         const dropped = { ...anchored, clauses: anchored.clauses.filter((s) => s.clause !== keyOf("figaro-merchant-process")) };
         expect(() => assertAgreementSignable(dropped, computeCheckoutHash(dropped), LOG_SPECS, STRUCT, logDesign))
             .toThrow(/figaro-merchant-process clause: the order does not carry this clause/);
@@ -843,7 +850,8 @@ describe("the sign gate's design check — the designer's values against the des
         const stray = { ...agreement, clauses: [...agreement.clauses, { clause: `0x${"ab".repeat(32)}` as const, dataHash: `0x${"cd".repeat(32)}` as const }] };
         const strayCheck = validateCommitmentAgreement(stray, computeCheckoutHash(stray), DESIGN_SPECS, STRUCT, design);
         expect(strayCheck.ok).toBe(false);
-        expect(strayCheck.issues.map((i) => i.path)).toEqual(["clause"]);
+        // Two faults, each named: the leaf is withheld (unreadable at sign), and the design does not compose it.
+        expect(strayCheck.issues.map((i) => i.path)).toEqual(["dataHash", "clause"]);
         expect(() => assertAgreementSignable(stray, computeCheckoutHash(stray), DESIGN_SPECS, STRUCT, design))
             .toThrow(/does not compose/);
     });

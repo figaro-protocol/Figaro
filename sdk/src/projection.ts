@@ -718,8 +718,30 @@ export function validateCommitmentAgreement(
             });
             continue;
         }
+        // The sign gate refuses what it cannot read (the maintainer's ruling):
+        // a content-withheld clause is a leaf the signer binds unread — the
+        // public form withholds AFTER the signatures (`publicForm`, at the
+        // pin), never before — and a clause whose spec is not in the
+        // signer's SpecSource is a term no check can run on. Neither is
+        // skipped: "not loaded" never reads as "nothing to check". A display
+        // surface keeps resolved-empty as absence; a signature does not.
+        if (clauseEntry.data === undefined) {
+            issues.push({
+                clause: clauseEntry.clause,
+                path: "dataHash",
+                message: "the clause's content is withheld — a signer binds no leaf it cannot read; sign the agreement with every clause's content, and withhold at the pin",
+            });
+            continue;
+        }
         const spec = specs.get(clauseEntry.clause);
-        if (!spec) continue;
+        if (!spec) {
+            issues.push({
+                clause: clauseEntry.clause,
+                path: "clause",
+                message: "the clause's spec is not loaded, so its terms cannot be checked — resolve the key through ClauseRegistry before signing; a key no registry holds is not signed",
+            });
+            continue;
+        }
         // A runtime-lifecycle clause is an empty anchor at commit — its content
         // is attested later, so there is nothing to validate here.
         if (specIsProcessLog(spec)) continue;

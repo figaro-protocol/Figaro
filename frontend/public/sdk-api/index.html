@@ -348,7 +348,7 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <tr>
 <td><code>assertAgreementSignable</code></td>
 <td>root</td>
-<td>The ONE pre-signature thrower: every clause conforms to its spec, the terms equal the struct, every clause of the design is carried, and the designer's values equal the design's.</td>
+<td>The ONE pre-signature thrower: every clause conforms to its spec, the terms equal the struct, every clause of the design is carried and none beyond it, and the designer's values equal the design's; it refuses what it cannot read — a clause whose spec is not in the <code>SpecSource</code>, and a content-withheld clause.</td>
 </tr>
 <tr>
 <td><code>assertApprovalCoversBond</code></td>
@@ -1705,9 +1705,15 @@ reads and verifies (<code>anchorAssembly</code> + <code>hydrateAssembly</code>),
 read none — <code>null</code> refuses any agreement that names a design, so a design that
 cannot be fetched or does not verify is never signed. The order carries every
 clause of the design it names — its registered agreement's and the assembly-scoped
-ones — by key: a withheld clause and a process-log clause's empty anchor count
-as carried; a clause dropped is refused, naming the clause and the assembly by
-slug and full hash. A value the design sets
+ones — by key, and no clause beyond them: a clause the design does not compose
+is refused whatever it carries; a clause dropped is refused, naming the clause
+and the assembly by slug and full hash. The gate refuses what it cannot read:
+a clause whose spec is not in the <code>SpecSource</code> (a caller resolves every key
+through <code>ClauseRegistry</code> before gating — the frontend does, so a key the cache
+had not warmed is read and a key no registry holds is never signed), and a
+content-withheld clause (<code>dataHash</code> with no <code>data</code>) — a signer binds no leaf it
+cannot read; <code>publicForm</code> withholds at the pin, after the signatures. A
+process-log clause's empty anchor is read as what it is. A value the design sets
 is the designer's and arrives unchanged; a design field the designer left
 unset is a party's to fill. The mirror check is why the gate takes the commitment's
 <code>{ currency, payment }</code> pair (a full <code>Commitment</code> satisfies it): both are

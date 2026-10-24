@@ -14,6 +14,12 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **SDK: the sign gate refuses what it cannot read.** `validateCommitmentAgreement` (through
+  `assertAgreementSignable`) refuses a clause whose spec is not loaded and a clause whose content is
+  withheld (a `dataHash` alone), where both counted as carried; the frontend resolves every unloaded
+  key through `ClauseRegistry` and its pinned spec before the gate runs, so a key no registry holds
+  is never signed and a key the cache had not warmed is.
+
 - **Relay: a trial costs one operation.** The kernel applies a batch's operations through
   `apply_operations` and its claims through `apply_claims`, neither computing a root; the relay's
   formation filter, its refilter after drops, its permanent-refusal split and its claim filter

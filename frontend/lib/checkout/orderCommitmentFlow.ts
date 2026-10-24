@@ -41,9 +41,10 @@ import {
     type Hex,
     type SwapFundingLeg,
 } from "@figaro-protocol/sdk";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
+import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { assertAgreementSignable, type HydratedAssembly } from "@figaro-protocol/sdk";
-import { specSource } from "@/lib/shared/clauseSpecSource";
+import { specSource, getClauseSpec, loadClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { fetchHydratedAssemblyByHash } from "@/lib/protocol/useAssemblyRegistry";
 import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
@@ -129,6 +130,33 @@ export async function readSigningDesign(agreement: Agreement): Promise<HydratedA
     }
 }
 
+/** The specs of the agreement's clauses, resolved through `ClauseRegistry`
+ *  before the sign gate runs: every clause key the cache does not hold is
+ *  looked up among the registry's registrations and its pinned spec loaded.
+ *  The gate refuses a clause whose spec is still not loaded (the maintainer's
+ *  ruling: a sign gate refuses what it cannot read), so a key no registry holds
+ *  is never signed, and a key the cache merely had not warmed yet is. A read
+ *  that fails loads nothing and leaves the refusal to the gate. */
+async function readSigningSpecs(agreement: Agreement, client: { getBlockNumber?: unknown } | undefined, chainId: number): Promise<void> {
+    const missing = agreement.clauses.map((c) => c.clause).filter((key) => getClauseSpec(key) === undefined);
+    if (missing.length === 0 || !client) return;
+    const registry = CONTRACTS.clauseRegistry;
+    if (!registry) return;
+    let rows: { args?: { clauseKey?: `0x${string}`; contentURI?: string; registeredBy?: `0x${string}` } }[] = [];
+    try {
+        rows = await cachedGetContractEvents(client as Parameters<typeof cachedGetContractEvents>[0], chainId, {
+            address: registry as `0x${string}`, abi: CLAUSE_REGISTRY_ABI, eventName: "ClauseRegistered",
+        }) as typeof rows;
+    } catch {
+        return;
+    }
+    for (const key of missing) {
+        const row = rows.find((r) => String(r.args?.clauseKey ?? "").toLowerCase() === key.toLowerCase());
+        if (!row?.args?.contentURI) continue;
+        try { await loadClauseSpec(key as `0x${string}`, row.args.contentURI); } catch { /* the gate refuses an unloaded spec */ }
+    }
+}
+
 export function useOrderCommitmentFlow() {
     const { address } = useAccount();
     const chainId = useChainId();
@@ -154,6 +182,10 @@ export function useOrderCommitmentFlow() {
         swap: SwapConfirmationDetails | null = null,
     ): Promise<Hex> => {
         assertSigningDomain(CONTRACTS.core, chainId);
+        // The agreement's specs first: a key the cache had not warmed is read
+        // through the registry; a key no registry holds stays unloaded and the
+        // gate below refuses it.
+        await readSigningSpecs(agreement, publicClient, chainId);
         // Off-chain validation — the FULL gate at the sign step, so no caller can bypass
         // it: every clause conforms to its clause spec AND the agreement's
         // recomputed merkle root equals the hash being signed. The /orders
@@ -184,7 +216,7 @@ export function useOrderCommitmentFlow() {
             },
         });
         return sig as Hex;
-    }, [chainId, signTypedDataAsync]);
+    }, [chainId, signTypedDataAsync, publicClient]);
 
     /**
      * BUYER side: sign the previewed order WITHOUT relaying it. Returns the
@@ -416,8 +448,10 @@ export function useOrderCommitmentFlow() {
         if (!address) throw new Error("Connect a wallet first.");
         setError(null);
         try {
-            // The FULL draft gate — the specs and the design the agreement names —
-            // so a bad request is refused before the person is asked anything.
+            // The FULL draft gate — the specs (resolved through the registry
+            // first) and the design the agreement names — so a bad request is
+            // refused before the person is asked anything.
+            await readSigningSpecs(incoming.agreement, publicClient, chainId);
             const check = await validateDraft(incoming, address, undefined, specSource(), await readSigningDesign(incoming.agreement), profileReaderForChain(publicClient, chainId));
             if (!check.ok) throw new Error(`Refusing this draft — ${check.reason}`);
             setStep("signing");
@@ -458,8 +492,10 @@ export function useOrderCommitmentFlow() {
         if (!address) throw new Error("Connect a wallet first.");
         setError(null);
         try {
-            // The FULL draft gate — the specs and the design the agreement names —
-            // so a bad request is refused before the person is asked anything.
+            // The FULL draft gate — the specs (resolved through the registry
+            // first) and the design the agreement names — so a bad request is
+            // refused before the person is asked anything.
+            await readSigningSpecs(incoming.agreement, publicClient, chainId);
             const check = await validateDraft(incoming, address, undefined, specSource(), await readSigningDesign(incoming.agreement), profileReaderForChain(publicClient, chainId));
             if (!check.ok) throw new Error(`Refusing this draft — ${check.reason}`);
             const terms = incoming.quoteRequest;

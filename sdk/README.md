@@ -321,7 +321,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildRegisteredClauseInclusionProof` | root | A composed clause's membership proof under `agreementHashOf`: its leaf, its sorted-pair proof, and the hash of the designer's fills for it. |
 | `anchorRegisteredAgreement` | root | A fetched registered agreement as `Anchored<RegisteredAgreement>` when `agreementHashOf` of it is the key; null (absence) otherwise. |
 | `anchorAssembly` | root | A fetched assembly as `Anchored<Assembly>` when its merkle root over the agreements and terms is `AssemblyRegistry`'s `assemblyHash`; null otherwise. |
-| `assertAgreementSignable` | root | The ONE pre-signature thrower: every clause conforms to its spec, the terms equal the struct, every clause of the design is carried, and the designer's values equal the design's. |
+| `assertAgreementSignable` | root | The ONE pre-signature thrower: every clause conforms to its spec, the terms equal the struct, every clause of the design is carried and none beyond it, and the designer's values equal the design's; it refuses what it cannot read — a clause whose spec is not in the `SpecSource`, and a content-withheld clause. |
 | `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond `FigaroCore` will pull. |
 | `attestAsBuyer` | `/agent` | Submit a root-buyer attestation for one leaf of a committed order — a clause, or the provenance leaf. |
 | `attestAsSeller` | `/agent` | Submit a seller attestation for one clause of a committed order. |
@@ -1867,9 +1867,15 @@ reads and verifies (`anchorAssembly` + `hydrateAssembly`), or `null` when it
 read none — `null` refuses any agreement that names a design, so a design that
 cannot be fetched or does not verify is never signed. The order carries every
 clause of the design it names — its registered agreement's and the assembly-scoped
-ones — by key: a withheld clause and a process-log clause's empty anchor count
-as carried; a clause dropped is refused, naming the clause and the assembly by
-slug and full hash. A value the design sets
+ones — by key, and no clause beyond them: a clause the design does not compose
+is refused whatever it carries; a clause dropped is refused, naming the clause
+and the assembly by slug and full hash. The gate refuses what it cannot read:
+a clause whose spec is not in the `SpecSource` (a caller resolves every key
+through `ClauseRegistry` before gating — the frontend does, so a key the cache
+had not warmed is read and a key no registry holds is never signed), and a
+content-withheld clause (`dataHash` with no `data`) — a signer binds no leaf it
+cannot read; `publicForm` withholds at the pin, after the signatures. A
+process-log clause's empty anchor is read as what it is. A value the design sets
 is the designer's and arrives unchanged; a design field the designer left
 unset is a party's to fill. The mirror check is why the gate takes the commitment's
 `{ currency, payment }` pair (a full `Commitment` satisfies it): both are

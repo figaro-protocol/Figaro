@@ -25,10 +25,15 @@ import {
     type Commitment,
     type Hex,
     type RegisteredAgreement,
+    canonicalize,
+    computeClauseKey,
+    withholdClauseContent,
 } from "@figaro-protocol/sdk";
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
-import { specSource } from "@/lib/shared/clauseSpecSource";
+import { specSource, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 
 const BUYER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as Hex;
 const SELLER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as Hex;
@@ -39,7 +44,7 @@ const AGREEMENT_REGISTRY = `0x${"a6".repeat(20)}` as Hex;
 vi.mock("wagmi", () => ({
     useAccount: () => ({ address: SELLER }),
     useChainId: () => 31337,
-    usePublicClient: () => ({}),
+    usePublicClient: () => chainClient,
     useWalletClient: () => ({ data: null }),
     useSignTypedData: () => ({ signTypedDataAsync: async () => `0x${"11".repeat(65)}` }),
 }));
@@ -53,24 +58,39 @@ vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
             core: "0x00000000000000000000000000000000000000c0",
             assemblyRegistry: ASSEMBLY_REGISTRY,
             agreementRegistry: AGREEMENT_REGISTRY,
+            clauseRegistry: `0x${"c1".repeat(20)}`,
         },
     };
 });
 
 // The chain: each registry's `bindings(key)` → the contentURI the key is
-// pinned at, or unregistered.
+// pinned at, or unregistered; and ClauseRegistry's `ClauseRegistered` events
+// (the sign path resolves a clause key the cache has not warmed through them).
 const bindings = new Map<string, string>();
+const registeredClauses: { clauseKey: Hex; contentURI: string }[] = [];
+// The event cache is a module singleton that scans forward from its last
+// cursor, so the head advances with each registration and a registration
+// lands at the head: a case that registers a clause after an earlier scan
+// is still read.
+const head = () => BigInt(100 + registeredClauses.length * 100);
+const chainClient = {
+    chain: { id: 31337 },
+    getBlockNumber: async () => head(),
+    getLogs: async ({ event, fromBlock }: { event?: { name?: string }; fromBlock?: bigint }) =>
+        event?.name === "ClauseRegistered"
+            ? registeredClauses.map((r, i) => ({
+                args: { clauseKey: r.clauseKey, contentURI: r.contentURI, registeredBy: BUYER },
+                blockNumber: head(), logIndex: i, transactionHash: `0x${"ab".repeat(32)}`, address: `0x${"c1".repeat(20)}`,
+            })).filter((l) => fromBlock === undefined || l.blockNumber >= fromBlock)
+            : [],
+    readContract: async ({ args }: { args: [Hex] }) => {
+        const uri = bindings.get(args[0].toLowerCase());
+        return uri ? [BUYER, 1n, false, uri] : [`0x${"00".repeat(20)}`, 0n, false, ""];
+    },
+};
 vi.mock("@/lib/shared/wagmi", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/shared/wagmi")>();
-    return {
-        ...actual,
-        publicClient: {
-            readContract: async ({ args }: { args: [Hex] }) => {
-                const uri = bindings.get(args[0].toLowerCase());
-                return uri ? [BUYER, 1n, false, uri] : [`0x${"00".repeat(20)}`, 0n, false, ""];
-            },
-        },
-    };
+    return { ...actual, publicClient: chainClient };
 });
 
 // IPFS: the bytes pinned at each URI.
@@ -115,10 +135,10 @@ const { useOrderCommitmentFlow } = await import("@/lib/checkout/orderCommitmentF
 /** A design of its own per case (a distinct consent document), so the
  *  registered-agreement read cache never carries one case into the next. */
 let caseId = 0;
-function design() {
+function design(extraClauses: Record<string, Record<string, unknown>> = {}) {
     caseId += 1;
     const documents = [{ documentHash: `0x${"d0".repeat(32)}`, documentVersion: "1.0.0", documentTitle: `Terms ${caseId}` }];
-    const registered: RegisteredAgreement = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-consent")]: { documents } } };
+    const registered: RegisteredAgreement = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-consent")]: { documents }, ...extraClauses } };
     const agreementHash = agreementHashOf(registered);
     const assembly: Assembly = { agreements: [{ id: "agreement-0", agreementHash, clauses: {} }] };
     const assemblyHash = assemblyHashOf(assembly);
@@ -135,7 +155,11 @@ function design() {
 /** The order `d` designs, its consent clause carrying `consent` — or, with
  *  `null`, the order without the consent clause its registered agreement
  *  composes. */
-function payloadFor(d: ReturnType<typeof design>, consent: Record<string, unknown> | null = { documents: d.documents }): CommitmentPayload {
+function payloadFor(
+    d: ReturnType<typeof design>,
+    consent: Record<string, unknown> | null = { documents: d.documents },
+    extra: { clause: Hex; data?: Record<string, unknown>; dataHash?: Hex }[] = [],
+): CommitmentPayload {
     const { agreement: built } = buildOrderAgreement(BUYER, SELLER, {
         [keyOf("figaro-commerce")]: {
             currency: CURRENCY,
@@ -144,7 +168,7 @@ function payloadFor(d: ReturnType<typeof design>, consent: Record<string, unknow
         },
         ...(consent === null ? {} : { [keyOf("figaro-consent")]: consent }),
     }, specSource());
-    const agreement: Agreement = { ...built, provenance: { agreementHash: d.agreementHash, assemblyHash: d.assemblyHash } };
+    const agreement: Agreement = { ...built, clauses: [...built.clauses, ...extra], provenance: { agreementHash: d.agreementHash, assemblyHash: d.assemblyHash } };
     const commitment: Commitment = {
         processId: `0x${"00".repeat(32)}` as Hex,
         buyer: BUYER,
@@ -231,6 +255,57 @@ describe("both sign flows read and verify the design the agreement names", () =>
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.acceptOrder(tampered)).rejects.toThrow(/checkoutHash/);
         await expect(result.current.commitOrder(signed(tampered))).rejects.toThrow(/checkoutHash/);
+        expect(commitSignedOrder).not.toHaveBeenCalled();
+    });
+});
+
+describe("the sign gate refuses what it cannot read — and reads a registered spec the cache had not warmed", () => {
+    // A clause whose spec this file never primes: its key is the hash of the
+    // spec's pinned bytes, the bytes `clauses/figaro-geolocation.json` holds.
+    const raw = readFileSync(path.resolve(process.cwd(), "../clauses/figaro-geolocation.json"), "utf8");
+    const geoBytes = canonicalize(JSON.parse(raw));
+    const geoKey = computeClauseKey(JSON.parse(raw));
+    const geoData = { geocodeStandard: "geohash", origin: "u4pruydqqvj", destination: "u4pruydqqvm" };
+    beforeAll(async () => {
+        await primeClauseSpecs(["figaro-commerce", "figaro-consent"]);
+        // From here the spec bytes come from the pinned map, as the assemblies do.
+        setClauseSpecFetcher(async (uri) => {
+            const body = pinned.get(uri);
+            if (body === undefined) throw new Error(`not pinned: ${uri}`);
+            return body;
+        });
+    });
+    beforeEach(() => { commitSignedOrder.mockClear(); registeredClauses.length = 0; });
+
+    // The cache is a module singleton: the refusal runs while the spec is unloaded,
+    // and the read that loads it comes after.
+    it("refuses an order carrying a clause no registry holds — its spec cannot be read, so nothing is signed", async () => {
+        const d = design({ [geoKey]: {} });
+        d.anchor();
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        await expect(result.current.acceptOrder(payloadFor(d, undefined, [{ clause: geoKey, data: geoData }]))).rejects.toThrow(/spec is not loaded/);
+        expect(commitSignedOrder).not.toHaveBeenCalled();
+    });
+
+    it("signs an order whose clause the registry holds: the spec is read through ClauseRegistered and the gate runs on it", async () => {
+        const d = design({ [geoKey]: {} });
+        d.anchor();
+        registeredClauses.push({ clauseKey: geoKey, contentURI: "ipfs://geo-spec" });
+        pinned.set("ipfs://geo-spec", geoBytes);
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        await expect(result.current.acceptOrder(payloadFor(d, undefined, [{ clause: geoKey, data: geoData }]))).resolves.toMatch(/^0x/);
+        expect(commitSignedOrder).toHaveBeenCalledTimes(1);
+    });
+
+    it("refuses an order carrying a content-withheld leaf — a signer binds no leaf it cannot read", async () => {
+        const d = design();
+        d.anchor();
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        // The design composes consent, so the leaf is the design's; withheld, it is still unreadable.
+        const full = payloadFor(d);
+        const agreement = { ...full.agreement, clauses: full.agreement.clauses.map((c) => c.clause === keyOf("figaro-consent") ? withholdClauseContent(c) : c) };
+        const p = { ...full, agreement, commitment: { ...full.commitment, checkoutHash: computeCheckoutHash(agreement) } };
+        await expect(result.current.acceptOrder(p)).rejects.toThrow(/content is withheld/);
         expect(commitSignedOrder).not.toHaveBeenCalled();
     });
 });
