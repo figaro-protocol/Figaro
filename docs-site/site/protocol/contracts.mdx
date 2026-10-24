@@ -37,7 +37,7 @@ Both are `nonReentrant`. `commit` verifies both EIP-712 signatures over `c`, the
 
 **Public reads:** `orderStatus(bytes32 orderHash) → uint8` (0 unknown, 1 committed, 2 resolved), `orderProcessId(bytes32) → bytes32`, the `processes` mapping (`ProcessState{rootBuyer, currency, cumulativeValue, activeOrderCount}`), and `DOMAIN_SEPARATOR() → bytes32` (`src/core/kernel/FigaroCore.sol:52-115`). `orderStatus` answers for the **direct path only** — a batch-resolved order reads `0` here forever, so `0` means "not on this path," never "not resolved."
 
-**The EIP-712 domain is `{ name: "FigaroCore", version: "3", chainId, verifyingContract }`** (`src/core/kernel/FigaroCore.sol:107`). The version is a schema counter, not a deploy sequence.
+**The EIP-712 domain is `{ name: "FigaroCore", version: "3", chainId, verifyingContract }`** (`src/core/kernel/FigaroCore.sol:107`). The version counts changes to the commitment struct's layout, not deploys.
 
 **Custom errors** (`src/core/kernel/FigaroCore.sol:64-79`): `DeadlineExpired`, `InvalidBuyerSignature`, `InvalidSellerSignature`, `ZeroPayment`, `ProcessAlreadyExists`, `UnknownProcess`, `CumulativeValueMismatch(expected, actual)`, `NotProcessBuyer`, `CurrencyMismatch`, `OrderNotCommitted(orderHash)`, `NoActiveOrders`, `IncompleteOrderList(required, provided)`, `DuplicateCommitment`, `FeeOnTransferDetected`, `InvalidRootCumulativeValue`, `ProcessAlreadyResolved`. Decode them by name with `CORE_ABI` from `@figaro-protocol/sdk`, which also carries the standard ERC-20 error fragments (`ERC20InsufficientAllowance` shows up when a sub-order approval falls short — `FigaroCore` pulls the full per-order bond every time and nets nothing against bonds it already holds).
 

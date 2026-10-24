@@ -9,6 +9,8 @@ const __dirname = path.dirname(__filename);
 const envPath = path.resolve(__dirname, '../.env.local');
 const rpcUrl = process.env.FIGARO_DEVNET_RPC_URL || 'http://127.0.0.1:8545';
 const expectedChainId = '0x7a69';
+// keccak256("currentPeriod()")[0..4] — UsageCounter's view of the period open for accrual.
+const CURRENT_PERIOD_SELECTOR = '0x06040618';
 
 const requiredContracts = [
     { key: 'NEXT_PUBLIC_FIGARO_CORE', label: 'FigaroCore' },
@@ -129,7 +131,31 @@ async function main() {
         fail(`Configured contracts have no bytecode on ${rpcUrl}:\n[devnet-preflight]   ${missingCode.join('\n[devnet-preflight]   ')}`);
     }
 
-    console.log(`[devnet-preflight] Verified ${configuredContracts.length} contract addresses against ${rpcUrl}.`);
+    // The devnet compresses the nine accrual periods to thirty minutes each
+    // (script/Deploy.s.sol), so about four and a half hours after a deploy every
+    // period has ended: UsageCounter.currentPeriod() reverts AccrualClosed, every
+    // usage recording reverts with it, and the specs that hold usage to the
+    // counter fail on a devnet that is otherwise whole. A closed accrual is a
+    // devnet to redeploy — devup redeploys when this preflight fails.
+    const usageCounter = env.NEXT_PUBLIC_USAGE_COUNTER;
+    if (usageCounter && isAddress(usageCounter)) {
+        const call = await fetch(rpcUrl, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 2,
+                method: 'eth_call',
+                params: [{ to: usageCounter, data: CURRENT_PERIOD_SELECTOR }, 'latest'],
+            }),
+        });
+        const payload = await call.json();
+        if (payload.error) {
+            fail(`UsageCounter.currentPeriod() reverts on ${rpcUrl}: every accrual period of this devnet has ended (the devnet's nine periods last thirty minutes each), so every usage recording reverts AccrualClosed. Redeploy: FORCE_REDEPLOY=1 ./scripts/devup.sh`);
+        }
+    }
+
+    console.log(`[devnet-preflight] Verified ${configuredContracts.length} contract addresses against ${rpcUrl}; the accrual is open.`);
 }
 
 await main();

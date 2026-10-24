@@ -56,7 +56,7 @@ cd sdk && npm run build                  # tsc → dist/
 cd sdk && npm run lint                   # tsc --noEmit
 
 # --- Deploy to local Anvil ---
-./scripts/devup.sh                       # ⭐ one-shot, idempotent: clean-rebuilds sdk/dist, ensures Anvil + IPFS, deploys the protocol; on an already-deployed chain it re-runs the deploy's genesis population (clauses, agreements, reference assemblies — a key already bound is skipped)
+./scripts/devup.sh                       # ⭐ one-shot, idempotent: clean-rebuilds sdk/dist, ensures Anvil + IPFS, deploys the protocol; on an already-deployed chain it re-runs the deploy's genesis population (clauses, agreements, reference assemblies — a key already bound is skipped). "Already deployed" is the devnet preflight passing (frontend/scripts/verify-devnet-deployment.mjs), which also requires an OPEN accrual: the devnet's nine reward periods last thirty minutes each, so about four and a half hours after a deploy every usage recording reverts AccrualClosed and the usage specs fail — the preflight refuses that chain and devup redeploys it
 ./scripts/devdown.sh                     # the inverse: stops Anvil + Kubo (and ONLY those). KEEP_IPFS=1 leaves Kubo pinning
 # …or the individual steps it wraps:
 ./scripts/deploy-local.sh                # deploys the stack AND pins+anchors clauses (incl. mandatory commerce/topology), then each reference assembly's distinct agreements (one stake each; a key already registered is skipped), then the assemblies, the MockERC20 standing for their ZERO_ADDRESS currency — the Sepolia genesis on a devnet, registered by anvil[0]; no member. Self-sufficient
