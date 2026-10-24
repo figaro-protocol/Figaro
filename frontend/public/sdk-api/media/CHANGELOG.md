@@ -30,6 +30,11 @@ release lives under **Unreleased**.
   sale, the business system and the relay as actors, composition with the systems of the web, what
   lasts and what limits), and names the system: an ex-ante institution for exchange. `docs/VISION.md`
   and the builder manual's Vision page go; every reference points at the paper.
+- **Clause `figaro-property-transfer` is re-keyed.** Its stage text says the Core executes the committed
+  payments unchanged and every bond stays locked until the buyer resolves (where it said "the committed
+  schedule" and "stays deposited"); the netting field is "Netting transfers". The key in
+  `test/fixtures/clause-keys.json` moves with the bytes; the Sepolia registration is still to come. The
+  data-stream-subscription reference assembly's description says a committed term, not a schedule.
 - **Devnet: one reward schedule everywhere.** The devnet's `UsageCounter` runs the nine annual
   periods of every public network; the rewards spec closes a period by advancing the chain's clock
   past it, and the devnet preflight refuses a chain whose accrual has closed (every period ended),
