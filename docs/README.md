@@ -14,7 +14,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 
 | Concept | Owner |
 |---|---|
-| The system: 2 Core mechanisms + 6 nouns | maintainer-private build tooling — `THEORY.md` carries the public restatement |
+| The system: 2 Core mechanisms + 6 nouns | the cryptoeconomic-system paper, `/papers/figaro-as-a-cryptoeconomic-system` (public); `THEORY.md` carries the mechanism's restatement; the agent frame is maintainer-private build tooling |
 | The `clause.block` seam (fields = protocol, block = presentation) | `CLAUSES.md` § "Clause-spec format" |
 | The coordinator pattern (composing the Core) | `CONTRACTS.md` § Coordinators |
 | The data layer — the public/sealed seam, and the rule that decides it | `DATA_LAYER.md` |
