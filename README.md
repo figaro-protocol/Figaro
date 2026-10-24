@@ -22,7 +22,7 @@ legality composes in, or an outside forum rules on the same data while the
 process stands open;
 the data a process leaves is public in aggregate and the parties' own in
 detail; designers are rewarded from the commons in proportion to real use of what
-they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
+they published. The paper at `/papers/figaro-as-a-cryptoeconomic-system` says why; `docs/THEORY.md` derives it;
 `docs/LEXICON.md` is the vocabulary every document here uses.
 
 ## What this repository contains
@@ -137,7 +137,7 @@ audit's handover is `docs/AUDITOR_HANDOVER.md`.
 
 All in `docs/`; `docs/README.md` is the map and states one owner per concept.
 Inventories: `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`,
-`LOCAL_DEV.md`. Design: `VISION.md`, `THEORY.md`, `LEXICON.md`,
+`LOCAL_DEV.md`. Design: `THEORY.md`, `LEXICON.md`,
 `FLORIN_TOKEN.md`, `DESIGNER_REWARDS.md`, `DAO.md`, `SCALING_STRATEGY.md`,
 `OPEN_WORLD.md`,
 `DATA_LAYER.md`. Security: `DESIGN_DECISIONS.md` (patterns that look

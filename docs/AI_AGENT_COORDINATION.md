@@ -320,7 +320,7 @@ unknown, not idle, and nothing stands in for it.
 Whether these signals add up to a usable map of the network is therefore not a protocol
 guarantee — it depends on which clauses got composed and filled
 (`DATA_LAYER.md` § "Why the flow-map gets built" owns that incentive argument;
-the economics it serves are `VISION.md`'s).
+the economics it serves are the cryptoeconomic-system paper's, `/papers/figaro-as-a-cryptoeconomic-system` § 5).
 
 ---
 

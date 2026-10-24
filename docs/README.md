@@ -21,7 +21,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Open-world lens, composition model, semantic layer | `OPEN_WORLD.md` §1–§3 |
 | The equilibrium theorem and its proof | the asymmetric-bonding paper (`frontend/app/(marketing)/papers/asymmetric-bonding/page.tsx`); its figures once in `sdk/src/equilibrium.json`, guarded |
 | The equilibrium bound to the Core's transfers, the six properties | `THEORY.md` |
-| Vision, post-firm economy, where value goes after the firm | `VISION.md` |
+| Vision, post-firm economy, where value goes after the firm | the cryptoeconomic-system paper, `/papers/figaro-as-a-cryptoeconomic-system` (public; the agent's frame is `CLAUDE.md` § "What this is") |
 | Intentional vulnerability-lookalike patterns | `DESIGN_DECISIONS.md` |
 | What the protocol has no contract for (not listed = does not exist) | `CONTRACTS.md` § "What the protocol has no contract for" |
 | Contract inventory | `CONTRACTS.md` |
@@ -97,13 +97,13 @@ Each layer owns one thing; every other layer states it as a summary plus a point
 
 ## Start Here
 
-1. `VISION.md` — protocol vision (post-firm economy, bonded commitment, the florin)
+1. `/papers/figaro-as-a-cryptoeconomic-system` — the whole, read through the field's definitions (what it governs, guarantees and is; the markets; the institution); `CLAUDE.md` § "What this is" is the agent's frame of the same
 2. `THEORY.md` — the equilibrium bound to the Core's transfers, and the six properties; the theorem itself is the asymmetric-bonding paper's
 3. `FLORIN_TOKEN.md` — token canonical reference (`DESIGNER_REWARDS.md` and `DAO.md` sit beside it: three concepts, three files)
 
 ## Main Groups
 
-- **Protocol and framing**: `VISION.md`, `THEORY.md`, `FLORIN_TOKEN.md`, `DESIGNER_REWARDS.md`, `DAO.md`
+- **Protocol and framing**: `THEORY.md`, `FLORIN_TOKEN.md`, `DESIGNER_REWARDS.md`, `DAO.md` (the whole is the cryptoeconomic-system paper's)
 - **Runtime and frontend**: `OPEN_WORLD.md` (the open-world paradigm + runtime composition model + semantic-derivation layer), `FRONTEND.md` (route + lib catalog), `DESIGN_TOKENS.md` (MUJI theme spec), `AI_AGENT_COORDINATION.md`
 - **Inventories**: `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md` — the five split-out inventory docs (contracts / clauses / frontend / tests / commands; `CLAUSES.md` also carries the anchoring doctrine)
 - **Composition and disclosure**: `DATA_LAYER.md` (the emissions clause + witness-stage disclosure channel is owned by `CLAUSES.md`, which also carries the two load-bearing disclosure rulings: reader-derived scope, offsets out of scope)

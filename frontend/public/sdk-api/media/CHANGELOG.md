@@ -24,6 +24,12 @@ release lives under **Unreleased**.
   `UsageRecorded` and `BatchUsageRecorded` streams and reads scores for those alone, where it read
   three views for every designed key in every period (thousands of calls for a prolific designer, and
   a page that never rendered).
+- **The whole has one public owner.** The cryptoeconomic-system paper carries what `docs/VISION.md`
+  held (the post-firm economy, where value goes, the moat priced by the utility token, denominations,
+  one deployment, recourse), closes four gaps its coverage check found (the instrument of privacy and
+  sale, the business system and the relay as actors, composition with the systems of the web, what
+  lasts and what limits), and names the system: an ex-ante institution for exchange. `docs/VISION.md`
+  and the builder manual's Vision page go; every reference points at the paper.
 - **Devnet: one reward schedule everywhere.** The devnet's `UsageCounter` runs the nine annual
   periods of every public network; the rewards spec closes a period by advancing the chain's clock
   past it, and the devnet preflight refuses a chain whose accrual has closed (every period ended),

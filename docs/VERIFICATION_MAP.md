@@ -4,7 +4,7 @@
 
 This document ties every protocol property to its enforcement across five layers:
 
-- **Theory** — the game-theoretic invariant (from THEORY.md / VISION.md)
+- **Theory** — the game-theoretic invariant (from THEORY.md)
 - **Code** — what is actually enforced on-chain (Solidity)
 - **Tests** — what is regression-checked (Foundry, Echidna, the Rust suites, SDK Vitest)
 - **TLA+** — what is exhaustively model-checked (models and their counts: `TESTING.md` § TLA+)

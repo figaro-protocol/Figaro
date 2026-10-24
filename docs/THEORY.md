@@ -9,7 +9,7 @@ argument rests on. The figures themselves live once, in
 `sdk/src/equilibrium.json`; the Lean proof, the TLA+ models, and the Certora
 rules named in `VERIFICATION_MAP.md` reason over exactly those amounts, and
 `scripts/lint-equilibrium-owner.sh` fails a commit on which any of these
-surfaces disagrees with the module. `VISION.md` says why the mechanism matters;
+surfaces disagrees with the module. The cryptoeconomic-system paper (`/papers/figaro-as-a-cryptoeconomic-system`) says why the mechanism matters;
 `CONTRACTS.md` describes the contract surface.
 
 ## The two mechanisms
