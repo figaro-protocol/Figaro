@@ -16,6 +16,7 @@ import {
     type PublicClient,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { ANVIL_KEYS } from '../anvilAccounts';
 import {
     AGREEMENT_REGISTRY_ABI,
     ASSEMBLY_REGISTRY_ABI,
@@ -103,6 +104,39 @@ export const LOCAL_ANVIL = defineChain({
 // wiring that every spec was re-declaring (the bulk of the e2e clone %). Import
 // these instead of restamping a LOCAL_ANVIL / createPublicClient / parseAbi block
 // at the top of each spec.
+
+/** The devnet swap venue's one linear rate (`MockSwapVenue`: amountOut = amountIn·num/den). */
+export const VENUE_ABI = parseAbi([
+    'function rateNumerator() view returns (uint256)',
+    'function rateDenominator() view returns (uint256)',
+    'function setRate(uint256 numerator, uint256 denominator)',
+]);
+
+/** Scenario pre-population (never the action under test): set the devnet
+ *  venue's rate. ONE writer for every spec, a gas-only wallet no browser flow
+ *  drives (anvil[4], the audit-relay spec's settle signer too), its nonce read
+ *  from the chain at `pending` for each write and the write repeated once on
+ *  "nonce too low": the buyer's key sends from the browser while a spec
+ *  restores the rate (the usage records after a resolve), and two senders on
+ *  one key met at the same nonce in full-suite runs. `venue` defaults to the
+ *  deployment's swap router. */
+export async function setVenueRate(num: bigint, den: bigint, venue?: `0x${string}`): Promise<void> {
+    const address = (venue ?? readLocalDeploymentConfig().swapRouter) as `0x${string}`;
+    const account = privateKeyToAccount(ANVIL_KEYS[4] as `0x${string}`);
+    const wallet = createWalletClient({ account, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+    const publicClient = localPublicClient();
+    for (let attempt = 0; ; attempt++) {
+        const nonce = await publicClient.getTransactionCount({ address: account.address, blockTag: 'pending' });
+        try {
+            const hash = await wallet.writeContract({ address, abi: VENUE_ABI, functionName: 'setRate', args: [num, den], nonce });
+            await publicClient.waitForTransactionReceipt({ hash });
+            return;
+        } catch (e) {
+            if (attempt === 0 && /nonce too low/i.test(e instanceof Error ? e.message : String(e))) continue;
+            throw e;
+        }
+    }
+}
 
 /** A read-only viem client on the local Anvil chain. */
 export function localPublicClient() {

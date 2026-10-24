@@ -50,6 +50,8 @@ import {
     localPublicClient,
     readLocalDeploymentConfig,
     resolveIpfsURI,
+    setVenueRate,
+    VENUE_ABI,
     LOCAL_ANVIL,
     RPC_URL,
 } from './devnet-helpers';
@@ -65,12 +67,6 @@ async function waitForConnected(page: Page) {
         { timeout: 30000 },
     );
 }
-
-const VENUE_ABI = parseAbi([
-    'function rateNumerator() view returns (uint256)',
-    'function rateDenominator() view returns (uint256)',
-    'function setRate(uint256 numerator, uint256 denominator)',
-]);
 
 const ERC20_ABI = parseAbi([
     'function decimals() view returns (uint8)',
@@ -129,15 +125,6 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
         args: { buyer: BUYER }, fromBlock: 0n,
     });
     type CommittedLog = Awaited<ReturnType<typeof queryCommitted>>[number];
-
-    /** Scenario pre-population (NOT the action under test): the devnet
-     *  venue's one linear rate (amountOut = amountIn·num/den). */
-    async function setVenueRate(num: bigint, den: bigint) {
-        const hash = await walletFor(BUYER_KEY).writeContract({
-            address: venue, abi: VENUE_ABI, functionName: 'setRate', args: [num, den],
-        });
-        await publicClient.waitForTransactionReceipt({ hash });
-    }
 
     /** The seller's listed price for one item, read out-of-band from its
      *  pinned catalog (chain events → IPFS): the decimal string, and the

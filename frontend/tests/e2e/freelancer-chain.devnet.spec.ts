@@ -70,6 +70,8 @@ import {
     keyOf,
     primeRegisteredClauseSpecs,
     anchoredAssemblyHash,
+    setVenueRate,
+    VENUE_ABI,
 } from './devnet-helpers';
 import { formatToken } from '@/lib/shared/utils';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -90,12 +92,6 @@ const ERC20_ABI = parseAbi([
     'function transfer(address, uint256) returns (bool)',
     'function mint(address to, uint256 amount) external',
 ]);
-const VENUE_ABI = parseAbi([
-    'function rateNumerator() view returns (uint256)',
-    'function rateDenominator() view returns (uint256)',
-    'function setRate(uint256 numerator, uint256 denominator)',
-]);
-
 const BUYER = ANVIL_ACCOUNTS[0] as Hex;
 // Shared-world wallets, re-seeded unconditionally each run (the
 // dispatch-race idempotency style — other specs re-assert their own).
@@ -465,10 +461,6 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             publicClient.readContract({ address: venue, abi: VENUE_ABI, functionName: 'rateNumerator' }),
             publicClient.readContract({ address: venue, abi: VENUE_ABI, functionName: 'rateDenominator' }),
         ]);
-        const setVenueRate = async (num: bigint, den: bigint) => {
-            const h = await minter.writeContract({ address: venue, abi: VENUE_ABI, functionName: 'setRate', args: [num, den] });
-            await publicClient.waitForTransactionReceipt({ hash: h });
-        };
         await setVenueRate(3n, 7n);
         try {
             const queryCommitted = () => publicClient.getContractEvents({
