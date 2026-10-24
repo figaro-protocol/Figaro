@@ -163,7 +163,7 @@ jobs:
 
                   cat > "$SBX/policy.json" <<'EOF'
                   {
-                      "egress": ["http://127.0.0.1:9999"],
+                      "egress": ["http://127.0.0.1:9999", "http://127.0.0.1:9998"],
                       "rpcUrl": "http://127.0.0.1:1"
                   }
                   EOF
@@ -187,7 +187,25 @@ jobs:
                   const echo = http.createServer((_req, res) => res.end("reached"));
                   await new Promise((r) => echo.listen(9999, "127.0.0.1", r));
 
-                  const proxy = await startEgressProxy({ policy, port: 0 });
+                  // A JSON-RPC node standing in for the chain the launcher relays
+                  // to: it answers eth_chainId and echoes the request id. Its URL
+                  // carries a path that stands in for a provider key — what the
+                  // relay exists to keep on this side of the boundary.
+                  const rpc = http.createServer((req, res) => {
+                      let body = "";
+                      req.on("data", (d) => (body += d));
+                      req.on("end", () => {
+                          let id = null;
+                          try { id = JSON.parse(body).id ?? null; } catch {}
+                          res.writeHead(200, { "content-type": "application/json" });
+                          res.end(JSON.stringify({ jsonrpc: "2.0", id, result: "0x7a69" }));
+                      });
+                  });
+                  await new Promise((r) => rpc.listen(9998, "127.0.0.1", r));
+
+                  // The proxy as run-sandboxed.mjs starts it: the RPC endpoint is
+                  // the proxy's, relayed at /rpc/0; the agent never holds its URL.
+                  const proxy = await startEgressProxy({ policy, port: 0, rpcUpstreams: ["http://127.0.0.1:9998/key-that-never-crosses"] });
 
                   const relay = net.createServer((c) => {
                       const u = net.connect(proxy.port, "127.0.0.1");
@@ -287,6 +305,35 @@ jobs:
                   });
                   assert.equal(greeting.trim(), "figaro-signer-stub", "the signer socket did not cross the boundary");
                   console.log("PASS signer socket crosses the boundary");
+
+                  // 7. The RPC relay the launcher provides: RPC_URL is the proxy's
+                  //    relay path, a JSON-RPC POST through it reaches the node
+                  //    behind the proxy and comes back with its answer, a read
+                  //    method is refused, a relay past the endpoints given answers
+                  //    404, and no answer names the upstream URL (it carries the key).
+                  const relayUrl = new URL(process.env.RPC_URL);
+                  assert.equal(`${relayUrl.hostname}:${relayUrl.port}`, `${proxyUrl.hostname}:${proxyUrl.port}`, "RPC_URL is not the proxy's own relay");
+                  const relayRequest = (method, path, body) => new Promise((resolve, reject) => {
+                      const req = http.request({ host: relayUrl.hostname, port: relayUrl.port, method, path, headers: body ? { "content-type": "application/json" } : {} }, (res) => {
+                          let text = "";
+                          res.on("data", (d) => (text += d));
+                          res.on("end", () => resolve({ status: res.statusCode, text }));
+                      });
+                      req.on("error", reject);
+                      if (body) req.write(body);
+                      req.end();
+                  });
+                  const call = JSON.stringify({ jsonrpc: "2.0", id: 7, method: "eth_chainId", params: [] });
+                  const relayed = await relayRequest("POST", relayUrl.pathname, call);
+                  assert.equal(relayed.status, 200, `the relay did not answer the JSON-RPC POST: ${relayed.status} ${relayed.text}`);
+                  assert.deepEqual(JSON.parse(relayed.text), { jsonrpc: "2.0", id: 7, result: "0x7a69" }, "the relay did not return the node's answer");
+                  assert.equal((await relayRequest("GET", relayUrl.pathname)).status, 405, "the relay took a non-POST");
+                  const past = await relayRequest("POST", "/rpc/5", call);
+                  assert.equal(past.status, 404, "a relay path past the endpoints given was not refused");
+                  for (const answer of [relayed.text, past.text]) {
+                      assert.ok(!answer.includes("key-that-never-crosses") && !answer.includes("9998"), "an answer named the upstream URL");
+                  }
+                  console.log("PASS JSON-RPC relayed through the proxy, the endpoint's URL kept on the host side");
                   EOF
 
             # The container shape the README documents: an --internal network
@@ -317,7 +364,8 @@ jobs:
             # The agent container: read-only rootfs, only /workspace and /tmp
             # writable, the repo read-only, no secret mounts, no key-shaped
             # env forwarded (the canary below is deliberately NOT passed), the
-            # proxy env + preload set exactly as run-sandboxed.mjs sets them.
+            # proxy env + preload set exactly as run-sandboxed.mjs sets them, and
+            # RPC_URL the proxy's relay path, as the launcher hands it over.
             - name: Run the deny cases inside the container
               env:
                   PRIVATE_KEY: canary-must-not-cross
@@ -334,6 +382,7 @@ jobs:
                       -e HTTP_PROXY=http://figaro-sbx-proxy:8888 \
                       -e HTTPS_PROXY=http://figaro-sbx-proxy:8888 \
                       -e NO_PROXY= \
+                      -e RPC_URL=http://figaro-sbx-proxy:8888/rpc/0 \
                       -e NODE_OPTIONS="--import /repo/ecosystem-agents/runtime/proxy-bootstrap.mjs" \
                       -e FIGARO_SIGNER_SOCKET=/signer.sock \
                       node:22-bookworm-slim node /agent-checks.mjs

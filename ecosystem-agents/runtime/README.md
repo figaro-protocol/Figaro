@@ -193,7 +193,7 @@ plus the composed proof: a framed live fetch from inside the sandbox through
 the proxy.
 
 **The Linux variant** (exercised in CI on demand — `on-demand-docker.yml` Job 2
-runs the write, secret, egress and socket cases on ubuntu runners; the
+runs the write, secret, egress, RPC-relay and socket cases on ubuntu runners; the
 signer-directory cases run on macOS, since the container mounts the socket
 alone and the journal never enters it; never on the authoring host, which has no
 container runtime): run the same launcher minus `sandbox-exec` inside a

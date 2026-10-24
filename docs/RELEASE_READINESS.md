@@ -301,7 +301,7 @@ result to it (the code, the guest key, the gateway). The list below is the proce
   loopback is the egress proxy's port + policy-driven egress proxy + scrubbed
   environment, F5/F6; deny cases tested on macOS). Honest residuals, named where they live: the Linux container
   variant is EXERCISED in CI on demand (`on-demand-docker.yml` Job 2, "Linux sandbox
-  variant", runs the container deny cases) but never on the
+  variant", runs the container deny cases and the RPC relay) but never on the
   authoring host — CI-on-demand only; the read surface inside
   the sandbox denies the known secret paths by default and allows the rest — acceptable
   because the signing key is never on the sandboxed side at all; and `Bash` remains in

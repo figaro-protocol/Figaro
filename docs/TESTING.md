@@ -889,7 +889,9 @@ Per workflow, what it runs and when:
   issue, guarded by a marker.
 - **`on-demand-docker`** — `workflow_dispatch` ONLY, never push/schedule. Two
   independent jobs: the xmtpd stack proof (hermetic broker bring-up) and the
-  Linux sandbox variant (the signer runtime's container deny cases).
+  Linux sandbox variant (the signer runtime's container deny cases and the
+  launcher's RPC relay: a JSON-RPC POST through the proxy's relay path reaches
+  the node behind it, and no answer names the endpoint's URL).
 - **`sequencer-release`** — publishes the prebuilt `figaro-sequencer` relay
   binary as a GitHub Release artifact (pinned toolchains + the computed vkey
   printed into the release body for rebuild-and-compare, and a Sigstore
