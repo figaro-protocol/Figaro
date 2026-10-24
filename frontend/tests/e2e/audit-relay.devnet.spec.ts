@@ -65,11 +65,22 @@ const RELAY_SIGNER_KEY = ANVIL_KEYS[4] as Hex;
 
 const PAYMENT = 1n * 10n ** 18n;
 
+/** The relay's own words for a kept state behind the verifier's root. */
+const BEHIND_THE_ROOT = 'does not hold the state behind the verifier\'s root';
+
 async function waitForRelay(child: ChildProcess, exit: { code: number | null; stderr: string[] }, timeoutMs: number): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         if (exit.code !== null) {
-            throw new Error(`the relay exited with code ${exit.code} before serving /status — a code 2 with "guest fingerprint" names a verifier that pins another key: redeploy the devnet (devup) so it pins this binary's.\n${exit.stderr.slice(-12).join('\n')}`);
+            // The exit event can land before the last output chunk: let it arrive.
+            await new Promise((r) => setTimeout(r, 300));
+            // Another settler moved the verifier's root since this relay's last batch
+            // (data-explore settles on the verifier directly): the relay holds no state
+            // behind that root and refuses, as it must — a relay builds only on a state
+            // it holds. This spec then has nothing to drive until the devnet is redeployed.
+            test.skip(exit.stderr.some((l) => l.includes(BEHIND_THE_ROOT)),
+                `the verifier's root moved past this relay's kept state since its last run (another spec settled a batch directly); the relay refuses to build on a state it does not hold — redeploy the devnet (devup) to run this spec again`);
+            throw new Error(`the relay exited with code ${exit.code} before serving /status — a code 2 is the relay's own refusal, printed below: a guest fingerprint the verifier does not pin (redeploy the devnet so it pins this binary's), or a state file that is not the one behind the verifier's root (this spec keeps it under the system temp directory, named by the verifier).\n${exit.stderr.slice(-12).join('\n')}`);
         }
         try {
             const res = await fetch(`${RELAY_URL}/status`, { signal: AbortSignal.timeout(1000) });
@@ -105,7 +116,12 @@ test.describe('AUDIT RELAY — /audit/view reads a batch-resolved order from a r
         const chainRoot = () => publicClient.readContract({ address: verifier, abi: BATCH_VERIFIER_ABI, functionName: 'stateRoot' }) as Promise<Hex>;
 
         // ── The relay, on the devnet's verifier, with a state of its own. ──
-        const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'figaro-audit-relay-'));
+        // The relay's state lives where a later run on the SAME devnet finds it: a
+        // relay refuses to start without the state behind the verifier's root, and
+        // this spec moves that root every run. The directory is named by the
+        // verifier, so a fresh devnet (a new verifier) starts from a fresh state.
+        const scratch = path.join(os.tmpdir(), `figaro-audit-relay-${verifier.toLowerCase()}`);
+        fs.mkdirSync(scratch, { recursive: true });
         const exit = { code: null as number | null, stderr: [] as string[] };
         const relay = spawn(SEQUENCER_BIN, [], {
             env: {
@@ -128,9 +144,12 @@ test.describe('AUDIT RELAY — /audit/view reads a batch-resolved order from a r
                 MAX_BATCH_OPS: '50',
                 RUST_LOG: 'figaro_sequencer=info,sequencer=info',
             },
-            stdio: ['ignore', 'ignore', 'pipe'],
+            // The relay's log (tracing) goes to stdout; both streams are kept.
+            stdio: ['ignore', 'pipe', 'pipe'],
         });
-        relay.stderr?.on('data', (chunk: Buffer) => { exit.stderr.push(...chunk.toString().split('\n').filter(Boolean)); });
+        const collect = (chunk: Buffer) => { exit.stderr.push(...chunk.toString().split('\n').filter(Boolean)); };
+        relay.stdout?.on('data', collect);
+        relay.stderr?.on('data', collect);
         relay.on('exit', (code) => { exit.code = code ?? -1; });
 
         try {
@@ -212,7 +231,7 @@ test.describe('AUDIT RELAY — /audit/view reads a batch-resolved order from a r
                 .toContainText(orderHash);
         } finally {
             await stopRelay(relay);
-            fs.rmSync(scratch, { recursive: true, force: true });
+            // The state stays: the next run on this devnet resumes from it.
         }
     });
 });

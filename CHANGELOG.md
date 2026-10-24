@@ -19,6 +19,15 @@ release lives under **Unreleased**.
   withheld (a `dataHash` alone), where both counted as carried; the frontend resolves every unloaded
   key through `ClauseRegistry` and its pinned spec before the gate runs, so a key no registry holds
   is never signed and a key the cache had not warmed is.
+- **Rewards page: reads scale with use, not with the catalog.** `/rewards` learns which of the
+  wallet's clauses, agreements and assemblies carried usage in which period from the counter's
+  `UsageRecorded` and `BatchUsageRecorded` streams and reads scores for those alone, where it read
+  three views for every designed key in every period (thousands of calls for a prolific designer, and
+  a page that never rendered).
+- **Devnet: one reward schedule everywhere.** The devnet's `UsageCounter` runs the nine annual
+  periods of every public network; the rewards spec closes a period by advancing the chain's clock
+  past it, and the devnet preflight refuses a chain whose accrual has closed (every period ended),
+  which devup redeploys.
 
 - **Relay: a trial costs one operation.** The kernel applies a batch's operations through
   `apply_operations` and its claims through `apply_claims`, neither computing a root; the relay's

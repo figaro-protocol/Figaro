@@ -131,12 +131,13 @@ async function main() {
         fail(`Configured contracts have no bytecode on ${rpcUrl}:\n[devnet-preflight]   ${missingCode.join('\n[devnet-preflight]   ')}`);
     }
 
-    // The devnet compresses the nine accrual periods to thirty minutes each
-    // (script/Deploy.s.sol), so about four and a half hours after a deploy every
-    // period has ended: UsageCounter.currentPeriod() reverts AccrualClosed, every
-    // usage recording reverts with it, and the specs that hold usage to the
-    // counter fail on a devnet that is otherwise whole. A closed accrual is a
-    // devnet to redeploy — devup redeploys when this preflight fails.
+    // The devnet runs the nine annual accrual periods of every public network
+    // (script/Deploy.s.sol), and the rewards spec closes one per run by advancing
+    // the chain's clock past it; after nine such runs every period has ended:
+    // UsageCounter.currentPeriod() reverts AccrualClosed, every usage recording
+    // reverts with it, and the specs that hold usage to the counter fail on a
+    // devnet that is otherwise whole. A closed accrual is a devnet to redeploy —
+    // devup redeploys when this preflight fails.
     const usageCounter = env.NEXT_PUBLIC_USAGE_COUNTER;
     if (usageCounter && isAddress(usageCounter)) {
         const call = await fetch(rpcUrl, {
@@ -149,9 +150,10 @@ async function main() {
                 params: [{ to: usageCounter, data: CURRENT_PERIOD_SELECTOR }, 'latest'],
             }),
         });
+        // eslint-disable-next-line no-restricted-syntax -- the local anvil node's answer, read for its error field alone
         const payload = await call.json();
         if (payload.error) {
-            fail(`UsageCounter.currentPeriod() reverts on ${rpcUrl}: every accrual period of this devnet has ended (the devnet's nine periods last thirty minutes each), so every usage recording reverts AccrualClosed. Redeploy: FORCE_REDEPLOY=1 ./scripts/devup.sh`);
+            fail(`UsageCounter.currentPeriod() reverts on ${rpcUrl}: every accrual period of this devnet has ended (each run of the rewards spec advances the chain past one of its nine annual periods), so every usage recording reverts AccrualClosed. Redeploy: FORCE_REDEPLOY=1 ./scripts/devup.sh`);
         }
     }
 

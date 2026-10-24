@@ -177,8 +177,8 @@ registers the RpgfMinter at 600M, registers itself with a 400M cap, mints 100M
 to its own wallet (founder + supporters stand-in; mainnet splits this into 70M
 `FOUNDER_WALLET` + 30M `SUPPORTERS_WALLET`) and 300M to `MockTreasuryMultisig`
 (the DAO stand-in), and renounces. The `UsageCounter` it stands up runs the same
-nine-period structure as mainnet, compressed — `DESIGNER_REWARDS.md` owns the
-schedule and the gates it wires.
+nine annual periods as mainnet — `DESIGNER_REWARDS.md` owns the schedule and the
+gates it wires.
 
 ---
 

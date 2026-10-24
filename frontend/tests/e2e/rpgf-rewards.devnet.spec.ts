@@ -8,12 +8,14 @@
  * pro rata (no cap), to live-staked authors. There is no root to post, no bond,
  * no challenge and no forum, so this spec drives none of that.
  *
- * TIME IS COMPRESSED, NOT WARPED. `claim` gates on `UsageCounter.periodClosed`,
- * so the reward leg is undrivable against a schedule measured in years —
- * accrual would run and nothing could ever be claimed. `Deploy.s.sol` therefore
- * rehearses the ruled nine-period annual structure at 30-minute periods
- * (the maintainer's rule: "we can write the e2e test by compressing
- * time"). This spec records usage, advances the chain just past the open
+ * TIME IS ADVANCED, NOT COMPRESSED. `claim` gates on `UsageCounter.periodClosed`,
+ * and the devnet runs the same nine annual periods as every public network
+ * (`Deploy.s.sol`): a schedule measured in years is never waited out. This
+ * spec closes a period the way a chain does — it moves the chain's clock
+ * (`evm_increaseTime`) just past the open period's end, a jump of up to a
+ * year that expires nothing, since every deadline a spec signs is derived
+ * from chain time at signing and the specs run one at a time.
+ * This spec records usage, advances the chain just past the open
  * period's own end, and claims — the same shape mainnet runs over years, at a
  * scale a test run can observe. Devnet is a mainnet REHEARSAL, not a sandbox.
  *
@@ -320,10 +322,11 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
         await expect(page.getByTestId(`claim-${period}`), 'an open period offers no claim').toHaveCount(0);
 
         // ── Close the period by advancing the chain, not by sleeping ──────
-        // Devnet periods are minutes (Deploy.s.sol), so waiting them out would
-        // stall the suite. Advance just past THIS period's end — a jump of
-        // minutes, which cannot expire the hour-scale deadlines other specs
-        // sign with. Nothing is snapshotted or reverted.
+        // Devnet periods are the year of every public network (Deploy.s.sol).
+        // Advance just past THIS period's end — a jump of up to a year, which
+        // expires nothing: every deadline a spec signs is derived from chain
+        // time at signing, and the specs that follow sign after the jump.
+        // Nothing is snapshotted or reverted.
         const periodEnd = (await publicClient.readContract({
             address: counter, abi: USAGE_COUNTER_ABI, functionName: 'periodEnd', args: [BigInt(period)],
         })) as bigint;

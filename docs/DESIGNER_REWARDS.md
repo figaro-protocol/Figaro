@@ -147,10 +147,11 @@ period's pool; it can never inflate it. `RpgfMinter.claim` pays uniform pro
 rata from the period's fixed budget, once per wallet per closed period, with no
 per-wallet cap.
 
-**Every public deployment runs the real annual schedule** — a testnet is the
-full-dress rehearsal for mainnet and rehearses mainnet's real timing. Only
-devnet compresses the same nine-period structure to thirty-minute periods, so
-that an end-to-end run can cross a period boundary in a single session.
+**Every deployment runs the real annual schedule** — a testnet is the
+full-dress rehearsal for mainnet and rehearses mainnet's real timing, and the
+devnet runs the same nine annual periods. An end-to-end run that needs a closed
+period advances the chain's clock just past the open period's end (the rewards
+spec); the schedule is never shortened to be crossed.
 
 ---
 

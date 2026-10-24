@@ -39,8 +39,9 @@ import "../src/build/registries/AgreementRegistry.sol";
 ///         plus UsageCounter + the RpgfMinter registered at 600M before
 ///         renounce. Nothing is posted, bonded, or challenged: the counter
 ///         records verified usage as it happens and the minter pays pro rata
-///         from a period that has closed. Devnet compresses the nine-period
-///         annual schedule to 30-minute periods so one can close in a test run.
+///         from a period that has closed. Devnet runs the same nine annual
+///         periods as every public network; a test that needs a closed period
+///         advances the chain's clock past the open period's end.
 contract Deploy is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -356,26 +357,25 @@ contract Deploy is Script {
         // periods whose budgets group into three rising tranches; devnet
         // rehearses the same nine-period structure.
         //
-        // TIME IS COMPRESSED ON DEVNET — minutes, not years. The claim path
-        // gates on `periodClosed`, so a schedule measured in days makes the
-        // whole reward leg undrivable in a test run: usage accrues and nothing
-        // can ever be claimed. (Devnet is the ONLY compressed deployment —
-        // public networks, Sepolia included, run the real annual schedule.)
-        //
-        // Thirty-minute periods, not seconds or ten minutes: deploy + clause
-        // population alone takes over a minute, and RESOLVE-TIME USAGE
-        // RECORDING (the resolve capability records every
-        // committed clause or assembly) needs accrual OPEN for every value-legs spec in
-        // a full suite run — a 3×10-minute schedule closed the book ~30
-        // minutes after deploy and every later recordClauseUsage reverted
-        // AccrualClosed (measured, not guessed: the tradelens batch). Thirty
-        // -minute periods give a 4.5-hour accrual life; the rewards spec
-        // still advances the chain past its own period boundary rather than
-        // sleeping through it, and its minutes-scale jump cannot expire the
-        // hour-scale deadlines other specs sign with.
+        // ONE SCHEDULE EVERYWHERE — the devnet's periods are the year of
+        // every public network (DeploySepolia.s.sol, DeployMainnet.s.sol).
+        // The claim path gates on `periodClosed`, and the rewards spec closes
+        // a period the way a chain does: it advances the chain's clock just
+        // past the open period's end (evm_increaseTime), never by waiting.
+        // The jump's length is harmless — every deadline a spec signs is
+        // derived from chain time at signing, the specs run one at a time
+        // and sign after any earlier jump, and the genesis population seeds
+        // nothing time-bound. A short devnet schedule tested nothing and cost
+        // the devnet its life: RESOLVE-TIME USAGE RECORDING (the resolve
+        // capability records every committed clause or assembly) needs the
+        // accrual OPEN, and with the last period ended every recording
+        // reverted AccrualClosed on a chain that was otherwise whole. With
+        // annual periods a devnet closes for accrual only after nine runs of
+        // the rewards spec; the devnet preflight reads `currentPeriod()` and
+        // devup redeploys a closed chain.
         uint64[] memory periods = new uint64[](9);
         for (uint256 i = 0; i < 9; ++i) {
-            periods[i] = uint64(block.timestamp + (i + 1) * 30 minutes);
+            periods[i] = uint64(block.timestamp + (i + 1) * 365 days);
         }
 
         UsageCounter counter = new UsageCounter(

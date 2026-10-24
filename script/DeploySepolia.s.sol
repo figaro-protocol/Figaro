@@ -50,7 +50,7 @@ contract DeploySepolia is Script {
     /// @dev The REAL accrual period — mainnet's value (no weekly compression;
     ///      this deployment is the release).
     uint64 constant PERIOD = 365 days;
-    /// @dev Mainnet's cooldown — its compression fell with the period's.
+    /// @dev Mainnet's cooldown, as the period is mainnet's.
     uint256 constant MEMBER_COOLDOWN = 28 days;
 
     address internal _core;

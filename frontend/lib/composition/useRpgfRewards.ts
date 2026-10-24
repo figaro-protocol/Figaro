@@ -189,10 +189,35 @@ export function useRpgfRewards(subject?: `0x${string}`) {
         (async () => {
             const minterBase = { address: minter, abi: RPGF_MINTER_ABI } as const;
             const counterBase = { address: counter, abi: USAGE_COUNTER_ABI } as const;
-            const [periodCount, mine] = await Promise.all([
+            // Which of the wallet's clauses, agreements and assemblies carried
+            // usage in which period, from the counter's two event streams (the
+            // direct path's UsageRecorded, the batch path's BatchUsageRecorded):
+            // every write to the counter emits one of them, so a key with no
+            // event in a period has no accrual there — resolved-empty is
+            // absence. The per-period reads below cover those keys alone, so
+            // the page's cost scales with the wallet's USE, never with the size
+            // of its catalog (a wallet that designed hundreds of clauses, read
+            // in every period, was thousands of calls and a page that never
+            // rendered).
+            const [periodCount, mine, directEvents, batchEvents] = await Promise.all([
                 publicClient.readContract({ ...minterBase, functionName: "periodCount" }),
                 discoverClausesAndAssemblies(),
+                cachedGetContractEvents(publicClient, chainId, {
+                    address: counter, abi: USAGE_COUNTER_ABI, eventName: "UsageRecorded",
+                }),
+                cachedGetContractEvents(publicClient, chainId, {
+                    address: counter, abi: USAGE_COUNTER_ABI, eventName: "BatchUsageRecorded",
+                }),
             ]);
+            type UsageArgs = { kind?: number; clauseOrAssembly?: `0x${string}`; period?: number };
+            const usedIn = new Map<number, Set<string>>();
+            for (const ev of [...directEvents, ...batchEvents]) {
+                const a = ev.args as UsageArgs | undefined;
+                if (a?.kind === undefined || !a.clauseOrAssembly || a.period === undefined) continue;
+                let set = usedIn.get(Number(a.period));
+                if (!set) { set = new Set(); usedIn.set(Number(a.period), set); }
+                set.add(usageKeyId(a.kind as UsageKind, a.clauseOrAssembly));
+            }
             const clausesOrAssemblies: UsageKey[] = mine.map((m) => ({ kind: m.kind, key: m.clauseOrAssembly }));
             const ids = Array.from({ length: Number(periodCount) }, (_, i) => i);
             const rows = await Promise.all(
@@ -235,7 +260,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                                   })
                                 : Promise.resolve(0n),
                             Promise.all(
-                                mine.map(async (m) => {
+                                mine.filter((m) => usedIn.get(period)?.has(usageKeyId(m.kind, m.clauseOrAssembly))).map(async (m) => {
                                     // BOTH resolution paths. `scoreOf` is the
                                     // merged figure the minter rewards on; the
                                     // components stay separate because they
@@ -290,7 +315,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
         return () => {
             canceled = true;
         };
-    }, [minter, counter, publicClient, account, discoverClausesAndAssemblies, refreshNonce]);
+    }, [minter, counter, publicClient, chainId, account, discoverClausesAndAssemblies, refreshNonce]);
 
     /** Claim a closed period: one call per wallet per period, carrying every
      *  clause, agreement or assembly the wallet designed. simulate → write → receipt → refresh, per
