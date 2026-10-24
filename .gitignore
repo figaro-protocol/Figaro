@@ -14,11 +14,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # Next.js
-frontend/.next/
-frontend/.next-e2e/
-frontend/.next-e2e-sepolia/
-frontend/.next-export/
-frontend/.next-probe/
+# Every Next build directory, whatever NEXT_DISTDIR names it: the tree guards read
+# untracked files, and an export built into an unlisted name failed a commit on its pages.
+frontend/.next*/
 frontend/out/
 frontend/build/
 frontend/playwright-report/
