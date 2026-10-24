@@ -1,63 +1,32 @@
 /**
  * registries.devnet.spec.ts
  *
- * Smoke for the registry explorer (`/registries`) — the ONE search surface
- * over the three protocol registries (it took
- * over the inventories the `/clauses` and `/assemblies` marketing pages
- * carried). The page reads `ClauseRegistered`, `AssemblyRegistered`, and
- * `MemberRegistered` events through the standalone viem `publicClient`
- * (marketing tier: no wallet provider) and pairs each row with its pinned
- * content from IPFS.
+ * The registry explorer (`/registries`), the ONE search surface over the
+ * protocol registries, on the populated devnet — what the shared walletless
+ * spec does NOT hold. `registries.sepolia.spec.ts` (the `sepolia` project,
+ * run on both chains) holds the row sets, the count lines and the resolved
+ * content of all four families to the chain's event streams; this spec holds
+ * the disclosures and the facets on top of those rows, each discovered from
+ * chain (the network is the source of truth; nothing here is a hand-written
+ * roster):
  *
- * Smoke, not a scenario: the navigation is the action, the rendered rows are
- * the reaction. Each family DISCOVERS its expected rows from chain (the
- * network is the source of truth; nothing here is a hand-written roster) and
- * asserts the explorer surfaces only real registrations. Requires Anvil +
- * ./deploy-local.sh + frontend/scripts/populate-test-data.mjs (which anchors
- * the reference assemblies and registers the seeded members).
+ *   - a clause's pinned document AS STORED — the served bytes verbatim, their
+ *     hash to the anchor on chain, and the permalink that opens it;
+ *   - an agreement row's stake label and the stored-document verdict;
+ *   - an assembly row's link to its detail route;
+ *   - the "assemblies composing it" facet, holding its promise;
+ *   - a deep link with a facet: the trail and the narrowed rows.
+ *
+ * Requires Anvil + ./deploy-local.sh + frontend/scripts/populate-test-data.mjs
+ * (which anchors the reference assemblies and registers the seeded members).
  */
 import { test, expect } from '@playwright/test';
 import { keccak256 } from 'viem';
-import {
-    AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI,
-} from '@figaro-protocol/sdk';
+import { AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assembly';
 import { discoverAnchoredAssemblies, localPublicClient, readAgreementBinding, readLocalDeploymentConfig, resolveIpfsURI } from './devnet-helpers';
 
-test.describe('Registry explorer (devnet)', () => {
-    test('clauses: every surfaced row is an on-chain registration, grouped by article by default', async ({ page }) => {
-        const publicClient = localPublicClient();
-        const registry = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? readLocalDeploymentConfig().clauseRegistry) as `0x${string}`;
-        const registered = await publicClient.getContractEvents({
-            address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered', fromBlock: 0n,
-        });
-        const onChain = new Set(
-            registered.map((e) => (e.args as { clauseKey?: string }).clauseKey?.toLowerCase()).filter((key): key is string => !!key),
-        );
-        expect(onChain.size, 'the deploy registered clauses on-chain').toBeGreaterThan(0);
-
-        await page.goto('/registries?family=clauses');
-        // Rows are `<li id="clause-<clauseKey>">` — the anchor a clause's permalink,
-        // `/registries#clause-<key>`, lands on. Waiting for the first row proves the event read
-        // resolved (not stuck on "Reading the registry…") and rows surfaced.
-        const rows = page.locator('li[id^="clause-"]');
-        await rows.first().waitFor({ state: 'visible', timeout: 30_000 });
-        const renderedKeys = await rows.evaluateAll((els) => els.map((e) => e.id.replace(/^clause-/, '')));
-        expect(renderedKeys.length).toBeGreaterThan(0);
-        for (const key of renderedKeys) {
-            expect(onChain.has(key.toLowerCase()), `surfaced clause "${key}" is registered on-chain`).toBe(true);
-        }
-        // Default sort is by article: each list sits under its article heading.
-        await expect(rows.first().locator('xpath=ancestor::ul[1]/preceding-sibling::h3[1]')).toBeVisible();
-        // A row whose spec the gateway has not served yet says so (never
-        // "(unclassified)"); on devnet's local node every spec resolves, so the
-        // note clears for every row and every heading is a real article.
-        await expect(page.getByTestId('content-resolving')).toHaveCount(0, { timeout: 30_000 });
-        await expect(page.getByTestId('content-unavailable')).toHaveCount(0);
-        // The count line reflects the same read.
-        await expect(page.getByTestId('registry-count')).toContainText(/of \d+ clauses/);
-    });
-
+test.describe('Registry explorer (devnet) — the disclosures and facets over the chain\'s rows', () => {
     test('a clause shows the pinned document AS STORED, and its bytes hash to the anchor on chain', async ({ page }) => {
         // The lawyer's ask: the page describes a clause in the spec's own
         // words but never showed the document those words came from. The
@@ -127,7 +96,7 @@ test.describe('Registry explorer (devnet)', () => {
         await expect(page.getByTestId(`stored-json-clause-${found.clauseKey}`), 'the permalink opens the stored document').toBeVisible({ timeout: 30_000 });
     });
 
-    test('agreements: a registered agreement discovered from chain renders its key, designer of record, stake and pinned document', async ({ page }) => {
+    test('an agreement row names its stake as the registry binds it, and its stored document reproduces the key', async ({ page }) => {
         const publicClient = localPublicClient();
         const registry = (process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? readLocalDeploymentConfig().agreementRegistry) as `0x${string}`;
         const events = await publicClient.getContractEvents({
@@ -135,15 +104,13 @@ test.describe('Registry explorer (devnet)', () => {
         });
         expect(events.length, 'no registered agreements on this devnet — run populate-test-data first').toBeGreaterThan(0);
         const agreementHash = (events[events.length - 1].args.agreementHash as `0x${string}`).toLowerCase();
-        // CHAIN FACT, read by key: the binding names its designer of record and stake.
+        // CHAIN FACT, read by key: the binding names its stake.
         const binding = await readAgreementBinding(agreementHash as `0x${string}`);
         expect(binding, 'the registry binds the key').not.toBeNull();
 
         await page.goto('/registries?family=agreements&stake=all');
         const row = page.getByTestId(`agreement-row-${agreementHash}`);
         await expect(row).toBeVisible({ timeout: 30_000 });
-        await expect(row.getByTestId(`agreement-hash-${agreementHash}`)).toHaveText(new RegExp(agreementHash, 'i'));
-        await expect(row).toContainText(new RegExp(binding!.registeredBy.slice(0, 6), 'i'));
         await expect(row.getByTestId(`agreement-stake-${agreementHash}`))
             .toHaveText(binding!.stakeWithdrawn ? '(stake withdrawn)' : '(live stake)');
         // The pinned document, read back and checked against the key.
@@ -151,7 +118,7 @@ test.describe('Registry explorer (devnet)', () => {
         await expect(row.getByTestId(`stored-verdict-agreement-${agreementHash}`)).toContainText(/reproduces the anchor/i, { timeout: 30_000 });
     });
 
-    test('assemblies: an anchored assembly discovered from chain renders its row', async ({ page }) => {
+    test('an assembly row links to its detail route', async ({ page }) => {
         const publicClient = localPublicClient();
         const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? readLocalDeploymentConfig().assemblyRegistry) as `0x${string}`;
         const events = await publicClient.getContractEvents({
@@ -163,8 +130,6 @@ test.describe('Registry explorer (devnet)', () => {
         await page.goto('/registries?family=assemblies');
         const row = page.locator(`#assembly-${slug}`);
         await expect(row).toBeVisible({ timeout: 30_000 });
-        await expect(row).toContainText(slug);
-        // The row links to the assembly's existing detail route.
         await expect(row.getByTestId(`assembly-view-${slug}`)).toHaveAttribute('href', /\/assemblies\/designer\/view\/?\?slug=/);
     });
 
@@ -200,26 +165,6 @@ test.describe('Registry explorer (devnet)', () => {
             return ids.sort();
         }, { timeout: 30_000 }).toEqual(composing);
         expect(composing.length).toBeLessThan(assemblies.length);
-    });
-
-    test('members: every registered wallet surfaces — the registry, not the buyer list', async ({ page }) => {
-        const publicClient = localPublicClient();
-        const registry = (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY ?? readLocalDeploymentConfig().membersRegistry) as `0x${string}`;
-        const events = await publicClient.getContractEvents({
-            address: registry, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberRegistered', fromBlock: 0n,
-        });
-        const onChain = new Set(events.map((e) => String((e.args as { member?: string }).member ?? '').toLowerCase()).filter(Boolean));
-        expect(onChain.size, 'populate-test-data registered members').toBeGreaterThan(0);
-
-        await page.goto('/registries?family=members');
-        const rows = page.locator('li[data-testid^="member-row-"]');
-        await rows.first().waitFor({ state: 'visible', timeout: 30_000 });
-        const rendered = await rows.evaluateAll((els) => els.map((e) => (e.getAttribute('data-testid') ?? '').replace(/^member-row-/, '')));
-        for (const addr of rendered) {
-            expect(onChain.has(addr), `surfaced member ${addr} is registered on-chain`).toBe(true);
-        }
-        // Names resolve from the pinned profiles (the seed's first seller name).
-        await expect(page.getByTestId('registry-count')).toContainText(/of \d+ members/);
     });
 
     test('a deep link with a facet renders the trail and narrows the rows', async ({ page }) => {

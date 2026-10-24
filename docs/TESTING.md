@@ -668,10 +668,17 @@ acceptance specs (`clause-coverage`, `permissionless-clause`,
 "full e2e green" claim. A `devnet`-only run is NOT the whole suite.
 
 **One smoke per event-driven inventory family** (`/registries` — clauses,
-assemblies, members): navigate → assert the resolved-state count line + a few
-row ids discovered from chain. A marketing inventory has no user action — the
+agreements, assemblies, members): navigate → assert the row set, the
+resolved-state count line and every row's resolved content against the
+chain's event streams. A marketing inventory has no user action — the
 navigation IS the read — so a smoke, not a scenario; it catches the read path
-breaking or silently reverting to bundled data.
+breaking or silently reverting to bundled data. ONE set of those assertions:
+the walletless `registries.sepolia.spec.ts`, run on both chains, holds the
+row sets; `registries.devnet.spec.ts` holds only what sits on top of the rows
+and needs the populated devnet — a clause's stored-document disclosure (bytes
+as served, hash to anchor, permalink), an agreement row's stake label and
+stored verdict, an assembly row's detail link, the "assemblies composing it"
+facet and a deep-linked facet's trail.
 
 **e2e means end-to-end: action → reaction, both in the UI** (the canonical
 definition — owned here). A genuine e2e test performs an action
