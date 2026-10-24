@@ -286,6 +286,34 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
         expect(d, 'three distinct staked sellers carried the clause').toBeGreaterThanOrEqual(minSellers);
         expect(score, 'the third seller springs the score').toBeGreaterThan(0n);
 
+        // ── The designer-side membership gate: the author is not a member yet ──
+        // populate registers no member at anvil[0], so the page says what a claim
+        // needs before the author holds a live member stake; then the author
+        // registers (idempotent across runs, as the sellers above) and is paid.
+        const authorAccount = privateKeyToAccount(ANVIL_KEYS[0] as Hex);
+        const authorWallet = createWalletClient({ account: authorAccount, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+        const authorRegistrations = await publicClient.getContractEvents({
+            address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberRegistered',
+            args: { member: AUTHOR }, fromBlock: 0n,
+        });
+        if (authorRegistrations.length === 0) {
+            await gotoAsWallet(page, AUTHOR, '/rewards?e2e=devnet');
+            await page.getByTestId('rewards-page').waitFor({ timeout: 30000 });
+            await waitForConnected(page);
+            await expect(page.getByTestId(`member-stake-note-${period}`), 'the page names the live member stake a claim needs')
+                .toBeVisible({ timeout: 60000 });
+            const deposit = (await publicClient.readContract({
+                address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, functionName: 'registrationDeposit',
+            })) as bigint;
+            await receipt(await authorWallet.writeContract({
+                address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, functionName: 'register',
+                args: ['ipfs://rpgf-e2e-author'], value: deposit,
+            }));
+        }
+        expect(await publicClient.readContract({
+            address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, functionName: 'registered', args: [AUTHOR],
+        }), 'the author holds a live member stake (chain fact)').toBe(true);
+
         // ── The UI reads it: the author of record opens /rewards ──────────
         await gotoAsWallet(page, AUTHOR, '/rewards?e2e=devnet');
         await page.getByTestId('rewards-page').waitFor({ timeout: 30000 });

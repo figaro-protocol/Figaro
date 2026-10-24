@@ -13,6 +13,11 @@
         "internalType": "address"
       },
       {
+        "name": "_members",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
         "name": "_clauses",
         "type": "address",
         "internalType": "address"
@@ -236,6 +241,19 @@
   },
   {
     "type": "function",
+    "name": "members",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IMemberStake"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "minted",
     "inputs": [
       {
@@ -385,6 +403,17 @@
       },
       {
         "name": "caller",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotLiveMember",
+    "inputs": [
+      {
+        "name": "account",
         "type": "address",
         "internalType": "address"
       }

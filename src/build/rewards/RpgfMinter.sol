@@ -14,6 +14,15 @@ interface IUsageCounter {
     function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);
 }
 
+/// @notice The one MembersRegistry field this contract reads — whether an
+///         address holds a LIVE MEMBER stake. The stake is a member's; this
+///         contract applies it to the CLAIMANT, the designer of record — the
+///         designer-side membership gate, the arrow `UsageCounter` draws to the
+///         same registry for the seller of record.
+interface IMemberStake {
+    function registered(address member) external view returns (bool);
+}
+
 /// @notice Designer of record for a clause — `ClauseRegistry.depositOf`.
 interface IClauseAuthor {
     function depositOf(bytes32 clauseKey) external view returns (address registeredBy, bool withdrawn);
@@ -94,6 +103,9 @@ contract RpgfMinter {
 
     IFlorinMinter public immutable florin;
     IUsageCounter public immutable counter;
+    /// @notice MembersRegistry — the claimant's live member stake, the
+    ///         designer-side membership gate (`NotLiveMember`).
+    IMemberStake public immutable members;
     IClauseAuthor public immutable clauses;
     IAssemblyAuthor public immutable assemblies;
     IAgreementAuthor public immutable agreements;
@@ -140,6 +152,11 @@ contract RpgfMinter {
     // ── Errors ──────────────────────────────────────────────────────
 
     error ZeroAddress();
+    /// @notice The claimant holds no live member stake: a designer is paid only
+    ///         while it is a member (`MembersRegistry.registered`), the
+    ///         designer-side membership gate. Membership ends at the withdrawal
+    ///         request, and a wallet that registers again is paid again.
+    error NotLiveMember(address account);
     error UnknownPeriod(uint8 periodId);
     error AmountsPeriodsMismatch(uint256 amounts, uint256 periods);
     error PeriodStillAccruing(uint8 periodId);
@@ -155,6 +172,7 @@ contract RpgfMinter {
 
     /// @param _florin      FlorinToken, via the minter interface it registers under.
     /// @param _counter     UsageCounter — the accrual this pays from.
+    /// @param _members     MembersRegistry — the claimant's live member stake (the designer-side membership gate).
     /// @param _clauses     ClauseRegistry — clause designer of record.
     /// @param _assemblies  AssemblyRegistry — assembly designer of record.
     /// @param _agreements  AgreementRegistry — registered agreement designer of record.
@@ -162,14 +180,15 @@ contract RpgfMinter {
     constructor(
         address _florin,
         address _counter,
+        address _members,
         address _clauses,
         address _assemblies,
         address _agreements,
         uint256[] memory _amounts
     ) {
         if (
-            _florin == address(0) || _counter == address(0) || _clauses == address(0) || _assemblies == address(0)
-                || _agreements == address(0)
+            _florin == address(0) || _counter == address(0) || _members == address(0) || _clauses == address(0)
+                || _assemblies == address(0) || _agreements == address(0)
         ) {
             revert ZeroAddress();
         }
@@ -177,6 +196,7 @@ contract RpgfMinter {
         if (_amounts.length != periods) revert AmountsPeriodsMismatch(_amounts.length, periods);
         florin = IFlorinMinter(_florin);
         counter = IUsageCounter(_counter);
+        members = IMemberStake(_members);
         clauses = IClauseAuthor(_clauses);
         assemblies = IAssemblyAuthor(_assemblies);
         agreements = IAgreementAuthor(_agreements);
@@ -192,7 +212,7 @@ contract RpgfMinter {
 
     /// @notice What `account` could claim for `periodId` with
     ///         `clausesOrAssemblies`, without sending a transaction. Zero once
-    ///         claimed.
+    ///         claimed, and zero for a wallet that holds no live member stake.
     function claimable(uint8 periodId, address account, ClauseOrAssemblyKey[] calldata clausesOrAssemblies)
         external
         view
@@ -200,6 +220,9 @@ contract RpgfMinter {
     {
         if (periodId >= periodAmount.length) revert UnknownPeriod(periodId);
         if (claimed[periodId][account]) return 0;
+        // The quote reads the gates the claim reads: a wallet that is not a
+        // live member is quoted zero, the answer its claim would give.
+        if (!members.registered(account)) return 0;
         (uint256 amount,) = _entitlement(periodId, account, clausesOrAssemblies);
         return amount;
     }
@@ -208,6 +231,8 @@ contract RpgfMinter {
 
     /// @notice Mint your share of a closed period. Once per wallet per period;
     ///         pass every clause, agreement and assembly you are designer of record for in one call.
+    ///         The claimant holds a live member stake (`NotLiveMember` otherwise),
+    ///         read before any key: the designer-side membership gate.
     /// @param periodId  The accrual period being claimed.
     /// @param clausesOrAssemblies (kind, key) pairs — clause keys under
     ///                  `KIND_CLAUSE`, assemblyHashes under
@@ -221,6 +246,11 @@ contract RpgfMinter {
         if (!counter.periodClosed(periodId)) revert PeriodStillAccruing(periodId);
         if (claimed[periodId][msg.sender]) revert AlreadyClaimed(periodId, msg.sender);
         if (clausesOrAssemblies.length == 0) revert NoClausesOrAssemblies();
+        // The designer-side membership gate, read at the claim: the claimant
+        // holds a live member stake, as the seller of record held one when its
+        // usage counted. Both halves of the two-sided stake are live here —
+        // this one on the wallet, `_isAuthor`'s on each key's registration.
+        if (!members.registered(msg.sender)) revert NotLiveMember(msg.sender);
 
         (uint256 amount, uint256 score) = _entitlement(periodId, msg.sender, clausesOrAssemblies);
         if (amount == 0) revert NothingToClaim();
@@ -286,10 +316,12 @@ contract RpgfMinter {
     ///      families are parallel, none knows another exists, and a stake in
     ///      one at the same bytes is no designer's claim on another.
     ///
-    ///      The `!withdrawn` requirement is the DESIGNER-SIDE half of the two-sided
-    ///      live-ETH-stake gate (its seller-side half lives in `UsageCounter`):
-    ///      you earn designer rewards only while your clause's, agreement's or assembly's stake stays
-    ///      live. A withdrawn stake de-surfaces and earns no further reward — the
+    ///      The `!withdrawn` requirement is one of the two DESIGNER-SIDE checks of
+    ///      the two-sided live-stake gate (its seller-side half lives in
+    ///      `UsageCounter`): you earn designer rewards only while your clause's,
+    ///      agreement's or assembly's registration stake stays live, AND while you
+    ///      hold a live member stake (`claim`'s `NotLiveMember`, read on the
+    ///      claimant before any key). A withdrawn stake de-surfaces and earns no further reward — the
     ///      stake is aligned
     ///      upside (more trade → more base-currency demand → ETH appreciates for
     ///      every registry staker), not a cost, so keeping it live is the honest

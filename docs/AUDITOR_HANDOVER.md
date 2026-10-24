@@ -141,7 +141,7 @@ program: the Rust that decides what a valid proof proves.
 | `src/core/attestation/` | `AttestationCoordinator.sol` | 195 |
 | `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 609, 15 |
 | `src/build/registries/` | `ClauseRegistry.sol`, `AssemblyRegistry.sol`, `AgreementRegistry.sol` | 196, 188, 201 |
-| `src/build/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol` | 914, 312 |
+| `src/build/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol` | 914, 344 |
 | `src/build/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` | 83, 9 |
 | `src/app/` | `MembersRegistry.sol`, `WitnessSwapAndCommitCoordinator.sol` | 210, 239 |
 | `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) | 428 |
@@ -266,7 +266,12 @@ same two on a clone of their running state, so a trial costs one operation
 where it cost the whole state's keccak and a snapshot rebuild — the public
 values are unchanged (the transition vectors and the executor tests), the
 verification key moves with the guest's bytes. The Sepolia verifier's pinned
-key is the earlier guest's. When an audit is
+key is the earlier guest's. `RpgfMinter` takes the members registry after the
+counter and rewards a designer only while it holds a live member stake
+(`NotLiveMember`, read on the claimant before any key; `claimable` quotes a
+non-member zero), the designer-side membership gate the powers table below
+already stated; the Sepolia minter predates it, a stated divergence in its
+expectations until the pair redeploy. When an audit is
 engaged, this section names the commit it reviews, the line counts and the
 results are measured there once, and a tag is placed at it. The descriptive
 sections of this document stay true of the code throughout.
@@ -388,9 +393,11 @@ the guest's test files under `prover/lib/tests/`.
   `recordAssemblyUsage` refuses either as an agreementKey (`:586-588`). The
   error replaces `ProvenanceLeafIsNotARegistration`, which no longer exists
   in the counter or the guest.
-- `RpgfMinter` takes `_agreements` after `_assemblies`; `_isAuthor(2, key,
-  account)` reads `AgreementRegistry.bindings` and no other registry, and any
-  kind above 2 reverts `UnknownKind` (`RpgfMinter.sol:297-311`).
+- `RpgfMinter` takes `_members` after `_counter` and `_agreements` after
+  `_assemblies`; `_isAuthor(2, key, account)` reads `AgreementRegistry.bindings`
+  and no other registry, and any kind above 2 reverts `UnknownKind`
+  (`RpgfMinter.sol:329-343`); `claim` reads `members.registered(msg.sender)`
+  before any key and reverts `NotLiveMember` for a non-member.
 - No kind gates another: each recording path reads its own kind's registry
   only, and `_isAuthor` the one registry its kind names.
 - The guest: `UsageClaimKind` has three variants, `Clause { section_hash }`,
@@ -675,7 +682,7 @@ and pure functions are omitted.
 | `AgreementRegistry` | `withdrawDeposit` | the registrant |
 | `UsageCounter` | `recordClauseUsage`, `recordAgreementUsage`, `recordAssemblyUsage` | anyone, with merkle proofs over a resolved direct-path order (and, for an assembly, the agreement's membership proof) |
 | `UsageCounter` | `applyBatchAccrual` | `FigaroBatchVerifier` only, immutable |
-| `RpgfMinter` | `claim` | the designer of record of every key it passes, once per closed period |
+| `RpgfMinter` | `claim` | a live member that is the designer of record of every key it passes, once per closed period |
 | `FlorinToken` | `registerMinter` | the deployer, until `renounceDeployerMint` |
 | `FlorinToken` | `mint` | a registered minter, within its cap; the deployer's own registration ends at the renounce |
 | `FlorinToken` | `renounceDeployerMint` | the deployer; one-way |
@@ -891,7 +898,7 @@ read it first.
   being live, and an agreement without its assembly being live.
   `RpgfMinter.claim(period, (kind, key)[])` reads the counter's slot for each
   kind, and `_isAuthor(kind, key, account)` reads the one registry the kind
-  names (`RpgfMinter.sol:297-311`). The verifier's `_hashUsage` packs
+  names (`RpgfMinter.sol:329-343`). The verifier's `_hashUsage` packs
   `key(32) ‖ kind(1) ‖ c(8) ‖ d(8)` per accrual, span `49 + 49n + 20m`
   (`FigaroBatchVerifier.sol:488-516`), and the guest's
   `compute_usage_accrual_hash` mirrors it. `DESIGN_DECISIONS.md` § 23 states
@@ -1236,7 +1243,7 @@ read it first.
 | `FigaroBatchVerifier.settleBatch` | 12 | length, proof, five public-value checks, four calldata hashes, registry anchor, token legs, events, the accrual try/catch |
 | `FigaroCore.resolveProcess` | 8 | presence, count, per-order status and overflow guards |
 | `UsageCounter` constructor | 7 | six zero-address checks, the floor, the period list's length and order |
-| `RpgfMinter.claim` | 7 | period closed, not claimed, per-key designer of record and stake |
+| `RpgfMinter.claim` | 8 | period closed, not claimed, the claimant's member stake, per-key designer of record and stake |
 
 Every other function in the Solidity in scope is at 6 or below.
 

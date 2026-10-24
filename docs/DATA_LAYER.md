@@ -148,7 +148,9 @@ pro-rata for that real usage.
 reward honest is the two-sided **live ETH stake**, not a per-category multiplier.
 Usage counts only when the process's seller of record
 holds a live `MembersRegistry` stake (`UsageCounter` reads `MembersRegistry.registered`,
-else `SellerNotStaked`), and a designer is rewarded only while their registration stake is
+else `SellerNotStaked`), and a designer is rewarded only while it is itself a live member
+(`RpgfMinter.claim` reads `MembersRegistry.registered` on the claimant, else `NotLiveMember`)
+and while their registration stake is
 un-withdrawn (`RpgfMinter._isAuthor` requires clause `depositOf.withdrawn == false`,
 assembly `bindings.depositWithdrawn == false`); withdraw and you forfeit future rewards.
 The ETH stake is a **value loop**: every process pays its gas in the base chain's own

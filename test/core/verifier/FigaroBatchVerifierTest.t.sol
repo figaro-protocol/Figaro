@@ -1015,7 +1015,13 @@ contract FigaroBatchVerifierTest is Test {
     /// the registries are the real contracts; only SP1 is the mock.
     function test_settleBatch_anAssemblyAccrualPaysNoStrangerWhoStakedItsKeyAsAClause() public {
         address designer = address(0xDE519);
+        // A member: a designer is paid only while it holds a live member stake.
+        vm.prank(designer);
+        members.register("ipfs://designer");
         address stranger = address(0x5745);
+        // A member, so the claim reaches the kind gate this test is about.
+        vm.prank(stranger);
+        members.register("ipfs://stranger");
         bytes32 asmKey = keccak256("an-assembly-credited-on-the-batch-path");
 
         AssemblyRegistry assemblies = new AssemblyRegistry(0);
@@ -1089,7 +1095,13 @@ contract FigaroBatchVerifierTest is Test {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 45_000_000 ether;
         minter = new RpgfMinter(
-            address(florin), address(counter), address(registry), address(assemblies), address(agreements), amounts
+            address(florin),
+            address(counter),
+            address(members),
+            address(registry),
+            address(assemblies),
+            address(agreements),
+            amounts
         );
         florin.registerMinter(address(minter), amounts[0]);
     }

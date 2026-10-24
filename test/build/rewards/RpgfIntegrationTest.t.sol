@@ -85,6 +85,14 @@ contract RpgfIntegrationTest is Test {
         // for its resolved trades to count toward the reward.
         vm.prank(seller);
         members.register("ipfs://seller");
+        // The designer-side membership gate: a designer of record is paid only
+        // while it is a live member. The three designers here are.
+        vm.prank(author);
+        members.register("ipfs://author");
+        vm.prank(designer);
+        members.register("ipfs://designer");
+        vm.prank(agreementDesigner);
+        members.register("ipfs://agreement-designer");
 
         uint64[] memory periods = new uint64[](3);
         periods[0] = P0_END;
@@ -106,7 +114,13 @@ contract RpgfIntegrationTest is Test {
         amounts[1] = T1;
         amounts[2] = T2;
         minter = new RpgfMinter(
-            address(florin), address(counter), address(clauses), address(assemblies), address(agreements), amounts
+            address(florin),
+            address(counter),
+            address(members),
+            address(clauses),
+            address(assemblies),
+            address(agreements),
+            amounts
         );
         florin.registerMinter(address(minter), 600_000_000 ether);
 
@@ -315,6 +329,9 @@ contract RpgfIntegrationTest is Test {
     /// stranger's clause-kind standing on that key earns nothing of it.
     function test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt() public {
         address stranger = address(0x5745);
+        // A member, so the claim reaches the kind gate this test is about.
+        vm.prank(stranger);
+        members.register("ipfs://stranger");
         vm.prank(stranger);
         clauses.registerClause(ASM, "ipfs://a-stranger-stakes-an-assembly-key-as-a-clause");
 
@@ -370,6 +387,9 @@ contract RpgfIntegrationTest is Test {
     /// stranger's assembly-kind standing on that key earns nothing of it.
     function test_aStrangerWhoStakesAClausesKeyAsAnAssemblyTakesNothingOfIt() public {
         address stranger = address(0x5745);
+        // A member, so the claim reaches the kind gate this test is about.
+        vm.prank(stranger);
+        members.register("ipfs://stranger");
         vm.prank(stranger);
         assemblies.registerAssembly(GEO_KEY, "ipfs://a-stranger-stakes-a-clause-key-as-an-assembly");
 
@@ -400,6 +420,9 @@ contract RpgfIntegrationTest is Test {
     /// the whole share for each family's own designer of record.
     function test_claimableQuotesNothingUnderACrossedKind() public {
         address stranger = address(0x5745);
+        // A member, so the claim reaches the kind gate this test is about.
+        vm.prank(stranger);
+        members.register("ipfs://stranger");
         vm.startPrank(stranger);
         clauses.registerClause(ASM, "ipfs://a-stranger-stakes-an-assembly-key-as-a-clause");
         assemblies.registerAssembly(GEO_KEY, "ipfs://a-stranger-stakes-a-clause-key-as-an-assembly");

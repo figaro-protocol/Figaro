@@ -30,6 +30,14 @@ release lives under **Unreleased**.
   sale, the business system and the relay as actors, composition with the systems of the web, what
   lasts and what limits), and names the system: an ex-ante institution for exchange. `docs/VISION.md`
   and the builder manual's Vision page go; every reference points at the paper.
+- **The designer-side membership gate.** `RpgfMinter` takes `MembersRegistry` after the counter and pays a
+  designer only while it holds a live member stake: `claim` reverts `NotLiveMember` for a non-member
+  before any key is read, and `claimable` quotes a non-member zero. It is the arrow `UsageCounter`
+  already draws to the same registry for the seller of record, and the power the auditor handover
+  already stated. Membership ends at the withdrawal request; a wallet that registers again is paid
+  again. The deploy scripts pass the registry; the deployment check reads the link and states the
+  Sepolia minter's divergence (it predates the getter) until the pair redeploy; the rewards page says
+  what a claim needs; the SDK's minter ABI gains `members()` and the error.
 - **Clause `figaro-property-transfer` is re-keyed.** Its stage text says the Core executes the committed
   payments unchanged and every bond stays locked until the buyer resolves (where it said "the committed
   schedule" and "stays deposited"); the netting field is "Netting transfers". The key in

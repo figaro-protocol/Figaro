@@ -18,7 +18,9 @@
 //   { "code": "<Name>" }    an address that must hold the compiled <Name>'s code
 //
 // "links" maps "<contract>.<getter>" to a literal address a wired link must
-// read INSTEAD of the record's — a stated divergence, never a skip.
+// read INSTEAD of the record's — a stated divergence, never a skip — or to
+// "absent": the deployed contract predates the getter, so the read must
+// revert (a stated divergence until that contract's redeploy).
 //
 // Checked, whatever the expectations: the RPC's chain is the record's; every
 // record address holds code; every contract-to-contract link the deploy wires
@@ -244,6 +246,7 @@ async function main() {
         ["batchVerifier", "clauseRegistry", "clauseRegistry"],
         ["rpgfMinter", "florin", "florinToken"],
         ["rpgfMinter", "counter", "usageCounter"],
+        ["rpgfMinter", "members", "membersRegistry"],
         ["rpgfMinter", "clauses", "clauseRegistry"],
         ["rpgfMinter", "assemblies", "assemblyRegistry"],
         ["rpgfMinter", "agreements", "agreementRegistry"],
@@ -260,6 +263,23 @@ async function main() {
         const override = linkOverrides[`${from}.${getter}`];
         if (override !== undefined) {
             if (!record[from]) { bad(`${from}.${getter}()`, `the record lacks ${from}`); continue; }
+            // "absent": the deployed contract predates the getter (a stated
+            // divergence until its redeploy), so the read must fail, not answer.
+            if (override === "absent") {
+                // The getter must REVERT (no such function: the call returns no
+                // data); an RPC failure is a failure of the check, never the divergence.
+                let answered;
+                try {
+                    answered = await read(record[from], getter);
+                } catch (err) {
+                    const text = String(err?.shortMessage ?? err?.message ?? err);
+                    if (!/returned no data|reverted|execution reverted/i.test(text)) throw err;
+                    answered = undefined;
+                }
+                if (answered === undefined) ok(`${from}.${getter}() is absent — the stated divergence (the deployed ${from} predates it)`);
+                else bad(`${from}.${getter}()`, `reads ${answered}, the stated divergence is that the getter is absent`);
+                continue;
+            }
             const got = await read(record[from], getter);
             if (same(got, override)) ok(`${from}.${getter}() is the stated divergence ${override}`);
             else bad(`${from}.${getter}()`, `reads ${got}, the stated divergence is ${override}`);

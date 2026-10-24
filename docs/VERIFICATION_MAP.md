@@ -489,11 +489,13 @@ Foundry-covered companion:
 
 Mutation-checked, all three: with the `StateRootMismatch` check blanked and `++batchCount` replaced by `batchCount + 1` in the verifier, and a root-setting function added to the harness, each rule FAILED on its own mutation and on nothing else; the files were restored byte-identical. Report: https://prover.certora.com/output/9512759/9fb2a938b04847b8b44c83fee498631a
 
-**RpgfMinter (8 declared rules — deps summarized via ghosts/wildcard dispatch)**
+**RpgfMinter (10 declared rules — deps summarized via ghosts/wildcard dispatch)**
 
 | CVL rule | Maps to | Type |
 |---|---|---|
 | `mintedNeverExceedsPeriodBudget` | E-6 (600M budget) | Inductive conservation — the tranche-overdraw bug class |
+| `nonMemberCannotBePaid` | the designer-side membership gate (`NotLiveMember`) | A claimant with no live member stake (`_.registered` summarized to a ghost) reverts whatever its keys say, and mints nothing |
+| `nonMemberIsQuotedZero` | the same gate on the view path | `claimable` quotes a non-member zero in every known period |
 | `noDoubleClaimPerWalletPerPeriod` | E-5/E-6 | State-machine guard |
 | `cannotClaimWhilePeriodOpen` | E-6 | Period gating |
 | `duplicateClauseOrAssemblyReverts` | E-6 | Input-hygiene guard |

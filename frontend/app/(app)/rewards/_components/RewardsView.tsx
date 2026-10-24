@@ -217,11 +217,17 @@ export function RewardsView() {
                                     {t.periodClosed && !t.claimed && (
                                         <Button
                                             data-testid={`claim-${t.periodId}`}
-                                            disabled={busy !== null || t.claimable === 0n}
+                                            disabled={busy !== null || t.claimable === 0n || rewards.memberLive === false}
                                             onClick={() => act("claim", () => rewards.claim(t.periodId))}
                                         >
                                             {busy === "claim" ? "Claiming…" : "Claim my share"}
                                         </Button>
+                                    )}
+                                    {account && rewards.memberLive === false && !t.claimed && status !== "upcoming" && (
+                                        <p className="text-sm text-ink-muted" data-testid={`member-stake-note-${t.periodId}`}>
+                                            A claim needs a live member stake: the minter rewards a designer only while it is a member.{" "}
+                                            <Link href="/members" className="underline">Register as a member</Link>, then claim.
+                                        </p>
                                     )}
                                     {t.claimed && (
                                         <p className="text-sm text-ink-muted" data-testid={`period-claimed-${t.periodId}`}>

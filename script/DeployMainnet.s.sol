@@ -306,7 +306,7 @@ contract DeployMainnet is Script {
         }
         require(amountsSum == RPGF_ALLOC, "RPGF period budgets must sum to the allocation");
         RpgfMinter rpgfMinter =
-            new RpgfMinter(address(florin), _usageCounter, _clauses, _assemblies, _agreements, amounts);
+            new RpgfMinter(address(florin), _usageCounter, _members, _clauses, _assemblies, _agreements, amounts);
         _rpgfMinter = address(rpgfMinter);
         console.log("RpgfMinter:             ", _rpgfMinter);
         florin.registerMinter(_rpgfMinter, RPGF_ALLOC);

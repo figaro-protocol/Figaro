@@ -29,6 +29,7 @@ import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { hexEqual } from "@/lib/shared/evm";
 import {
     AGREEMENT_REGISTRY_ABI,
+    MEMBERS_REGISTRY_ABI,
     RPGF_MINTER_ABI,
     USAGE_COUNTER_ABI,
     USAGE_KIND_AGREEMENT,
@@ -88,8 +89,9 @@ export interface RpgfPeriodState {
     accruals: RpgfClauseOrAssemblyAccrual[];
     /** Summed score of those clauses, agreements and assemblies. */
     myScore: bigint;
-    /** What the minter says the wallet can take right now (0 once claimed,
-     *  or while the period is still accruing). */
+    /** What the minter says the wallet can take right now: 0 once claimed, and
+     *  0 for a wallet that holds no live member stake (`claimable` reads the
+     *  same gates `claim` reads; it does not read whether the period closed). */
     claimable: bigint;
     /** True once the wallet has claimed this period. */
     claimed: boolean;
@@ -107,6 +109,10 @@ export function useRpgfRewards(subject?: `0x${string}`) {
     const { writeContractAsync } = useWriteContract();
 
     const [periods, setPeriods] = useState<RpgfPeriodState[]>([]);
+    /** Whether the wallet holds a live member stake — the designer-side
+     *  membership gate the minter reads at the claim. `null` until read, or
+     *  with no wallet named. */
+    const [memberLive, setMemberLive] = useState<boolean | null>(null);
     const [readState, setReadState] = useState<"loading" | "ready" | "error">("loading");
     const [readError, setReadError] = useState("");
     const [refreshNonce, setRefreshNonce] = useState(0);
@@ -199,7 +205,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             // of its catalog (a wallet that designed hundreds of clauses, read
             // in every period, was thousands of calls and a page that never
             // rendered).
-            const [periodCount, mine, directEvents, batchEvents] = await Promise.all([
+            const [periodCount, mine, directEvents, batchEvents, live] = await Promise.all([
                 publicClient.readContract({ ...minterBase, functionName: "periodCount" }),
                 discoverClausesAndAssemblies(),
                 cachedGetContractEvents(publicClient, chainId, {
@@ -208,6 +214,13 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                 cachedGetContractEvents(publicClient, chainId, {
                     address: counter, abi: USAGE_COUNTER_ABI, eventName: "BatchUsageRecorded",
                 }),
+                // The designer-side membership gate, read where the minter reads it:
+                // the wallet's live member stake. A page says what a claim needs.
+                account && CONTRACTS.membersRegistry
+                    ? (publicClient.readContract({
+                        address: CONTRACTS.membersRegistry, abi: MEMBERS_REGISTRY_ABI, functionName: "registered", args: [account],
+                    }) as Promise<boolean>)
+                    : Promise.resolve(null),
             ]);
             type UsageArgs = { kind?: number; clauseOrAssembly?: `0x${string}`; period?: number };
             const usedIn = new Map<number, Set<string>>();
@@ -303,6 +316,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             );
             if (canceled) return;
             setPeriods(rows);
+            setMemberLive(live);
             setReadState("ready");
         })().catch((e) => {
             if (canceled) return;
@@ -349,6 +363,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
         readState,
         readError,
         periods,
+        memberLive,
         claim,
         refresh,
     };

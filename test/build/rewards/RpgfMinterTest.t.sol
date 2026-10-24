@@ -7,6 +7,7 @@ import {FlorinToken} from "src/build/florin/FlorinToken.sol";
 import {ClauseRegistry} from "src/build/registries/ClauseRegistry.sol";
 import {AssemblyRegistry} from "src/build/registries/AssemblyRegistry.sol";
 import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
+import {MembersRegistry} from "src/app/MembersRegistry.sol";
 
 /// @notice Stand-in for UsageCounter so payout maths can be exercised directly,
 ///         including shapes a real accrual would take many resolved processes to
@@ -59,15 +60,19 @@ contract RpgfMinterTest is Test {
     ClauseRegistry clauses;
     AssemblyRegistry assemblies;
     AgreementRegistry agreements;
+    MembersRegistry members;
 
     address alice = address(0xA11CE);
     address bob = address(0xB0B);
     address carol = address(0xCA401);
     address dave = address(0xDA7E);
+    /// A designer of record who is not a member: registered a clause, never a member stake.
+    address eve = address(0xE5E);
 
     // Each clause key is keccak256 of a spec's pinned bytes.
     bytes32 constant A_KEY = keccak256('{"clauseId":"clause-a","version":1}');
     bytes32 constant B_KEY = keccak256('{"clauseId":"clause-b","version":1}');
+    bytes32 constant E_KEY = keccak256('{"clauseId":"clause-e","version":1}');
     bytes32 constant ASM = keccak256("an-assembly");
     bytes32 constant AGR = keccak256("an-agreement");
 
@@ -100,9 +105,27 @@ contract RpgfMinterTest is Test {
         assemblies.registerAssembly(ASM, "ipfs://asm");
         vm.prank(dave);
         agreements.registerAgreement(AGR, "ipfs://agr");
+        vm.prank(eve);
+        clauses.registerClause(E_KEY, "ipfs://e");
+
+        // The designer-side membership gate: a designer is paid only while it
+        // holds a live member stake. Every designer of record here is a member
+        // but eve, whose clause is registered and whose membership is not.
+        members = new MembersRegistry(0, 0);
+        address[4] memory designers = [alice, bob, carol, dave];
+        for (uint256 i = 0; i < designers.length; ++i) {
+            vm.prank(designers[i]);
+            members.register("ipfs://member");
+        }
 
         minter = new RpgfMinter(
-            address(florin), address(counter), address(clauses), address(assemblies), address(agreements), _amounts()
+            address(florin),
+            address(counter),
+            address(members),
+            address(clauses),
+            address(assemblies),
+            address(agreements),
+            _amounts()
         );
         florin.registerMinter(address(minter), 600_000_000 ether);
     }
@@ -515,18 +538,118 @@ contract RpgfMinterTest is Test {
 
     // ── Constructor ─────────────────────────────────────────────────
 
+    // ── The designer-side membership gate ─────────────────────────────────
+    // A designer is paid only while it holds a LIVE member stake — the same
+    // arrow the counter draws to MembersRegistry for the seller of record. The
+    // registration stake (the clause's, the assembly's, the agreement's) is the
+    // other half: both must be live at the claim.
+
+    /// A designer of record whose clause carried trade, and who is not a member,
+    /// is refused at the claim with its own error, before any registry is read.
+    function test_revertsWhenTheDesignerIsNotALiveMember() public {
+        counter.setScore(KIND_CLAUSE, E_KEY, 0, 100);
+        counter.setClosed(0, true);
+        vm.prank(eve);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotLiveMember.selector, eve));
+        minter.claim(0, _clause(E_KEY));
+        assertEq(florin.balanceOf(eve), 0);
+    }
+
+    /// `claimable` quotes zero for a non-member, so a page reads the same
+    /// answer the claim would give.
+    function test_claimableQuotesZeroForANonMember() public {
+        counter.setScore(KIND_CLAUSE, E_KEY, 0, 100);
+        counter.setClosed(0, true);
+        assertEq(minter.claimable(0, eve, _clause(E_KEY)), 0);
+        // The same wallet, a member: the quote is its share.
+        vm.prank(eve);
+        members.register("ipfs://eve");
+        assertEq(minter.claimable(0, eve, _clause(E_KEY)), T0);
+    }
+
+    /// Membership ends at the withdrawal REQUEST (the registry de-surfaces the
+    /// member there, before the cooldown pays out), and the reward is withheld
+    /// with it — withheld, not forfeited: the next test registers again and is paid.
+    function test_designerWhoRequestedWithdrawalIsRefusedUntilItRegistersAgain() public {
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
+        counter.setClosed(0, true);
+        vm.prank(alice);
+        members.requestWithdrawal();
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotLiveMember.selector, alice));
+        minter.claim(0, _clause(A_KEY));
+    }
+
+    /// A designer who registers again is paid again: the gate reads the live
+    /// stake at the claim, never a history.
+    function test_reRegisteredDesignerIsPaidAgain() public {
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
+        counter.setClosed(0, true);
+        vm.prank(alice);
+        members.requestWithdrawal();
+        vm.prank(alice);
+        members.register("ipfs://alice-again");
+        vm.prank(alice);
+        minter.claim(0, _clause(A_KEY));
+        assertEq(florin.balanceOf(alice), T0);
+    }
+
+    /// The membership gate reads the claimant alone: a member claiming a key
+    /// whose designer of record is someone else is still refused on the key,
+    /// and a member's own live key pays whatever any other designer's state is.
+    function test_membershipGateIsTheClaimantsAlone() public {
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, E_KEY, 0, 100);
+        counter.setClosed(0, true);
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_CLAUSE, E_KEY, bob));
+        minter.claim(0, _clause(E_KEY));
+        vm.prank(alice);
+        minter.claim(0, _clause(A_KEY));
+        assertEq(florin.balanceOf(alice), T0 / 2);
+    }
+
+    /// The gate's place in the order: after the period, claimed and empty-list
+    /// checks, before any key is read. A non-member in an OPEN period learns
+    /// the period is open; a non-member with a duplicate list learns it is not
+    /// a member, never the duplicate.
+    function test_membershipGateComesAfterThePeriodChecksAndBeforeAnyKey() public {
+        counter.setScore(KIND_CLAUSE, E_KEY, 0, 100);
+        vm.prank(eve);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.PeriodStillAccruing.selector, 0));
+        minter.claim(0, _clause(E_KEY));
+
+        counter.setClosed(0, true);
+        RpgfMinter.ClauseOrAssemblyKey[] memory twice = new RpgfMinter.ClauseOrAssemblyKey[](2);
+        twice[0] = _entry(KIND_CLAUSE, E_KEY);
+        twice[1] = _entry(KIND_CLAUSE, E_KEY);
+        vm.prank(eve);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotLiveMember.selector, eve));
+        minter.claim(0, twice);
+    }
+
+    // ── Constructor ───────────────────────────────────────────────────────
+
     function test_constructor_rejectsZeroAddresses() public {
         uint256[] memory amts = _amounts();
+        address f = address(florin);
+        address c = address(counter);
+        address m = address(members);
+        address cl = address(clauses);
+        address asm_ = address(assemblies);
+        address ag = address(agreements);
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
-        new RpgfMinter(address(0), address(counter), address(clauses), address(assemblies), address(agreements), amts);
+        new RpgfMinter(address(0), c, m, cl, asm_, ag, amts);
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
-        new RpgfMinter(address(florin), address(0), address(clauses), address(assemblies), address(agreements), amts);
+        new RpgfMinter(f, address(0), m, cl, asm_, ag, amts);
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
-        new RpgfMinter(address(florin), address(counter), address(0), address(assemblies), address(agreements), amts);
+        new RpgfMinter(f, c, address(0), cl, asm_, ag, amts);
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
-        new RpgfMinter(address(florin), address(counter), address(clauses), address(0), address(agreements), amts);
+        new RpgfMinter(f, c, m, address(0), asm_, ag, amts);
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
-        new RpgfMinter(address(florin), address(counter), address(clauses), address(assemblies), address(0), amts);
+        new RpgfMinter(f, c, m, cl, address(0), ag, amts);
+        vm.expectRevert(RpgfMinter.ZeroAddress.selector);
+        new RpgfMinter(f, c, m, cl, asm_, address(0), amts);
     }
 
     /// The budget array and the counter's period schedule are ONE schedule —
@@ -537,7 +660,13 @@ contract RpgfMinterTest is Test {
         tooFew[1] = T1;
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.AmountsPeriodsMismatch.selector, 2, 3));
         new RpgfMinter(
-            address(florin), address(counter), address(clauses), address(assemblies), address(agreements), tooFew
+            address(florin),
+            address(counter),
+            address(members),
+            address(clauses),
+            address(assemblies),
+            address(agreements),
+            tooFew
         );
     }
 }

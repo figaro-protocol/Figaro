@@ -665,6 +665,27 @@ window. The residual grief is self-limiting — to deny a designer the griefer m
 through the period end, forfeiting their own eligibility and locking their deposit. Accepted as
 the cost of the stateless Core.
 
+## 20a. The member-stake gate on the designer is read at the claim, not across the period
+
+**Looks wrong because:** `RpgfMinter.claim` requires the claimant to hold a live
+`MembersRegistry` stake in the claim's block only (`NotLiveMember`; `claimable`
+quotes a non-member zero). A designer can register, claim and request withdrawal
+in one transaction from a contract wallet, so the gate does not require membership
+across the period the usage accrued in. That reads like a gate a wallet can rent
+for one block.
+
+**Is correct because:** the stake is a stake, not a history. What the one-block
+rental costs is the registration stake locked for the cooldown, per claim
+(0.05 ether for 28 days on the public networks; the devnet sets both to zero),
+which is the same price the seller-side gate puts on an identity (§20), and a
+withdrawal request withholds every later claim until the wallet registers again,
+since `registered` clears at the request. The alternative, reading membership at
+accrual time, would have `UsageCounter` resolve each counted key to its designer
+through the three registries and read that designer's membership — new reads
+and a new arrow between the registries for every usage counted, to enforce a
+continuity the stake does not promise. The claim is the one moment the designer
+acts, so the gate reads there, stateless, as every other gate in the minter does.
+
 ## 21. Batch-path resolve is a bare `ResolveProcess(processId)` signature — no nonce, no deadline
 
 **Pattern**: `FigaroCore` authorizes resolution by presence — `resolveProcess`

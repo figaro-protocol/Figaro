@@ -10,11 +10,12 @@ contract RpgfMinterAuthorHarness is RpgfMinter {
     constructor(
         address _florin,
         address _counter,
+        address _members,
         address _clauses,
         address _assemblies,
         address _agreements,
         uint256[] memory _amounts
-    ) RpgfMinter(_florin, _counter, _clauses, _assemblies, _agreements, _amounts) {}
+    ) RpgfMinter(_florin, _counter, _members, _clauses, _assemblies, _agreements, _amounts) {}
 
     function isAuthor(uint8 kind, bytes32 key, address account) external view returns (bool) {
         return _isAuthor(kind, key, account);

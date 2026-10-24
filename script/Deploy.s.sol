@@ -407,7 +407,13 @@ contract Deploy is Script {
         }
         require(rpgfSum == 600_000_000 ether, "RPGF period budgets must sum to the minter cap");
         RpgfMinter rpgfMinter = new RpgfMinter(
-            address(florin), _usageCounter, address(_clauses), address(_assemblies), address(_agreements), rpgfAmounts
+            address(florin),
+            _usageCounter,
+            address(_members),
+            address(_clauses),
+            address(_assemblies),
+            address(_agreements),
+            rpgfAmounts
         );
         console.log("RpgfMinter deployed at:", address(rpgfMinter));
         florin.registerMinter(address(rpgfMinter), 600_000_000 ether);

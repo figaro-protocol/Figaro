@@ -112,12 +112,17 @@ own currency, at the moment it counts:
   drop). A seller on both paths enters each path's breadth: the two paths'
   scores are summed, and the same sellers on both count up to 2^(2/3) times
   their pooled score — a bounded bias, at the same live stake per seller.
-- **Designer side** — a claim rewards only entries whose registry stake is
-  live and registered by the claimant. A claim names `(kind, key)` pairs, and
-  `RpgfMinter` verifies each against the one registry its kind names —
-  `ClauseRegistry` for the clause kind, `AssemblyRegistry` for the assembly
-  kind, `AgreementRegistry` for the agreement kind; a withdrawn stake earns
-  nothing further.
+- **Designer side** — two live stakes, both read at the claim. The claimant
+  holds a live members registry stake, the same arrow the counter draws for
+  the seller of record: `RpgfMinter.claim` refuses a non-member
+  (`NotLiveMember`) before it reads any key, and `claimable` quotes a
+  non-member zero; membership ends at the withdrawal request, and a wallet
+  that registers again is paid again. And a claim rewards only entries whose
+  registration stake is live and registered by the claimant. A claim names
+  `(kind, key)` pairs, and `RpgfMinter` verifies each against the one
+  registry its kind names — `ClauseRegistry` for the clause kind,
+  `AssemblyRegistry` for the assembly kind, `AgreementRegistry` for the
+  agreement kind; a withdrawn stake earns nothing further.
 
 This is a **value loop, not a cost.** The stake is reclaimable, and holding it
 is exposure to the growth of the network one's own work produces. A designer

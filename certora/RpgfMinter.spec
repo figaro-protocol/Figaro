@@ -5,11 +5,13 @@
 // fixed pre-squash, and the former clamp that let a repeated clause-or-assembly entry
 // mint an entire tranche — see the `_entitlement` doc comment in the .sol)
 // were both caught by audit, never by the Foundry suite. This spec proves the
-// six properties that class of bug would have violated.
+// six properties that class of bug would have violated, two more on the
+// `claimable` view, and two on the designer-side membership gate (ten rules).
 //
 // Scope: only `src/build/rewards/RpgfMinter.sol` is in the verified scene. Every
 // dependency it calls through an interface — `IUsageCounter` (counter),
-// `IFlorinMinter` (florin), `IClauseAuthor`/`IAssemblyAuthor`/`IAgreementAuthor`
+// `IMemberStake` (members), `IFlorinMinter` (florin),
+// `IClauseAuthor`/`IAssemblyAuthor`/`IAgreementAuthor`
 // (clauses, assemblies, agreements) — is NOT itself verified here (each has, or will have, its own
 // spec / Foundry suite); RpgfMinter's calls into them are summarized so the
 // prover explores RpgfMinter's OWN logic against every possible answer those
@@ -59,9 +61,13 @@
 // exactly the shape of bug an audit catches and a test suite calling only
 // `claim` would miss (`RpgfMinterTest.t.sol`'s own
 // `test_claimableRejectsDuplicatesToo` exists for the same reason — this
-// generalizes it to every input, not one example).
+// generalizes it to every input, not one example); two more (M1, M2) prove
+// the designer-side membership gate on `claim` and on `claimable`.
 
 ghost mapping(uint8 => mapping(bytes32 => mapping(address => bool))) g_isAuthor;
+// The designer-side membership gate: MembersRegistry.registered(account),
+// read on the claimant at the claim. Out of scene like the counter; a ghost.
+ghost mapping(address => bool) g_isMember;
 ghost mapping(uint8 => bool) g_periodClosed;
 ghost mapping(uint8 => uint256) g_totalScoreIn;
 ghost mapping(uint8 => mapping(bytes32 => mapping(uint8 => uint256))) g_scoreOf;
@@ -83,6 +89,8 @@ methods {
     // UsageCounter surface — real contract out of scene; every call wildcard-
     // dispatched to a ghost read.
     function _.periodClosed(uint8 period) external => summarizePeriodClosed(period) expect (bool);
+    // MembersRegistry surface — the claimant's live member stake, a ghost read.
+    function _.registered(address member) external => summarizeIsMember(member) expect (bool);
     function _.totalScoreIn(uint8 period) external => summarizeTotalScoreIn(period) expect (uint256);
     function _.scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external => summarizeScoreOf(kind, clauseOrAssembly, period) expect (uint256);
 
@@ -96,6 +104,10 @@ function summarizeIsAuthor(uint8 kind, bytes32 clauseOrAssembly, address account
 
 function summarizePeriodClosed(uint8 period) returns bool {
     return g_periodClosed[period];
+}
+
+function summarizeIsMember(address member) returns bool {
+    return g_isMember[member];
 }
 
 function summarizeTotalScoreIn(uint8 period) returns uint256 {
@@ -180,6 +192,8 @@ rule duplicateClauseOrAssemblyReverts(uint8 periodId, RpgfMinter.ClauseOrAssembl
         && clausesOrAssemblies[i].key == clausesOrAssemblies[j].key;
 
     env e;
+    // A member, so the revert this rule proves is the dedupe's, not the membership gate's.
+    require g_isMember[e.msg.sender];
     claim@withrevert(e, periodId, clausesOrAssemblies);
 
     assert lastReverted,
@@ -205,6 +219,8 @@ rule duplicateClauseOrAssemblyReverts(uint8 periodId, RpgfMinter.ClauseOrAssembl
 
 rule ineligibleClauseOrAssemblyCannotBePaid(uint8 periodId, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies, uint256 i) {
     env e;
+    // A member, so the revert this rule proves is `_isAuthor`'s, not the membership gate's.
+    require g_isMember[e.msg.sender];
     require i < clausesOrAssemblies.length;
     require !g_isAuthor[clausesOrAssemblies[i].kind][clausesOrAssemblies[i].key][e.msg.sender];
 
@@ -224,6 +240,25 @@ rule ineligibleClauseOrAssemblyCannotBePaid(uint8 periodId, RpgfMinter.ClauseOrA
 // decreases it (no admin, no sweep, no claim expiry — by design; see
 // DESIGN_DECISIONS.md § "No owner, no admin, no escape hatch").
 // ═══════════════════════════════════════════════════════════════════
+
+// The designer-side membership gate: a claimant that holds no live member
+// stake is refused whatever its keys' scores and registrations say, and
+// `claimable` quotes it zero — the page reads the answer the claim would give.
+rule nonMemberCannotBePaid(uint8 periodId, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies) {
+    env e;
+    require !g_isMember[e.msg.sender];
+    uint256 before = minted(periodId);
+    claim@withrevert(e, periodId, clausesOrAssemblies);
+    assert lastReverted, "a non-member's claim reverts";
+    assert minted(periodId) == before, "a non-member's claim mints nothing";
+}
+
+rule nonMemberIsQuotedZero(uint8 periodId, address account, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies) {
+    require !g_isMember[account];
+    uint256 quoted = claimable@withrevert(periodId, account, clausesOrAssemblies);
+    // An unknown period reverts as before; a known one quotes a non-member zero.
+    assert !lastReverted => quoted == 0, "a non-member is quoted zero";
+}
 
 rule mintedMonotonic(uint8 periodId, method f) {
     uint256 before = minted(periodId);
@@ -258,10 +293,14 @@ rule claimableRejectsDuplicatesToo(uint8 periodId, address account, RpgfMinter.C
     //       (`amount == 0` => `NothingToClaim`), which is why rule 4 holds
     //       unconditionally; `claimable` has no such second gate, so a
     //       genuinely empty period returns 0 for ANY list, dupes included.
-    // Excluding both isolates what this rule actually checks: for a wallet
+    //   (c) `claimable` returns 0 for a wallet that holds no live member stake,
+    //       BEFORE `_entitlement` (the designer-side membership gate; its own
+    //       rules are `nonMemberCannotBePaid` and `nonMemberIsQuotedZero`).
+    // Excluding all three isolates what this rule actually checks: for a member
     // that hasn't claimed, in a period with real score to divide, the view
     // path enforces the same dedupe guard `claim` does.
     require !claimed(periodId, account);
+    require g_isMember[account];
     require g_totalScoreIn[periodId] != 0;
     require i < clausesOrAssemblies.length && j < i && clausesOrAssemblies[i].kind == clausesOrAssemblies[j].kind
         && clausesOrAssemblies[i].key == clausesOrAssemblies[j].key;

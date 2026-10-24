@@ -30,7 +30,7 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
                             ▲   ▲     └──▶ ClauseRegistry, AgreementRegistry, AssemblyRegistry
              writes accrual │   │ reads accrual
                             │   │
-          FigaroBatchVerifier   RpgfMinter ──▶ ClauseRegistry, AgreementRegistry, AssemblyRegistry
+          FigaroBatchVerifier   RpgfMinter ──▶ ClauseRegistry, AgreementRegistry, AssemblyRegistry, MembersRegistry
               │        │            │              (designer of record)
               ▼        ▼            ▼
        (SP1 gateway)  ClauseRegistry   FlorinToken
@@ -412,9 +412,16 @@ over years 1–2, 30% over 3–5, 55% over 6–9, split equally within each grou
 `periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period;
 a wallet passes every clause, agreement and assembly it designed in that one
 call, each as a `ClauseOrAssemblyKey{uint8 kind, bytes32 key}`. The constructor
-takes the agreements registry after the assemblies registry.
+takes the members registry after the counter, and the agreements registry
+after the assemblies registry.
 - `claim` requires `counter.periodClosed(periodId)`: the numbers it reads are
   final, so there is no snapshot, checkpoint, or history walk.
+- `claim` requires the claimant to hold a live `MembersRegistry` stake
+  (`members.registered(msg.sender)`, else `NotLiveMember`), read before any key
+  — the designer-side membership gate, the arrow `UsageCounter` draws to the
+  same registry for the seller of record; `claimable` quotes a non-member zero.
+  Membership ends at the withdrawal request; a wallet that registers again is
+  paid again.
 - The list must be duplicate-free in (kind, key) (`DuplicateClauseOrAssembly`);
   with distinct entries `score ≤ total` holds structurally.
 - `_isAuthor(kind, key, account)` verifies each entry against the one
@@ -423,9 +430,9 @@ takes the agreements registry after the assemblies registry.
   assembly kind `AssemblyRegistry.bindings` and the agreement kind
   `AgreementRegistry.bindings` (each `registeredBy == caller` and not
   withdrawn), and a kind above 2 reverts `UnknownKind`; the score is read
-  from the counter's slot for the same kind. This is
-  the designer-side half of the two-sided live-stake gate; the seller-side
-  half is `UsageCounter`'s.
+  from the counter's slot for the same kind. This registration stake and
+  the claimant's member stake above are the designer side of the two-sided
+  live-stake gate; the seller side is `UsageCounter`'s.
 - Payout is uniform pro rata with no cap. The budget array is validated
   against `UsageCounter.periodCount()` at deploy (`AmountsPeriodsMismatch`), so
   the two schedules cannot drift; the budget is enforced twice — `minted` per
