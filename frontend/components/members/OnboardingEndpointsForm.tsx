@@ -50,7 +50,7 @@ const FIELDS: HintedFieldDef<
         key: "batchRelayUrl",
         label: "Verifier relay",
         placeholder: "https://relay.example.com",
-        hint: "The relay batched trade is read and submitted through. Untrusted by construction — the audit surface re-derives everything a relay publishes.",
+        hint: "The relay batched trade is read through. Untrusted by construction — the audit surface re-derives everything a relay publishes.",
     },
     {
         key: "analystUrl",

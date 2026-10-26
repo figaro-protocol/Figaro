@@ -122,7 +122,7 @@ reachable from the prior state root under `FigaroCore`'s rules.
 **Rust `FigaroCore` mirror** (`prover/lib/`): `FigaroCore`'s commit/resolve logic
 plus the attestation witness gates and the usage bridge, translated to Rust.
 Four `KernelOp` variants — `Commit`, `Resolve`, `AttestAsSeller`,
-`AttestAsBuyer` (registry mutations never enter a batch). Six-member merkle
+`AttestAsBuyer` (registry mutations never enter a batch). Six-member state, hashed flat into one root (no per-order inclusion proof exists; a reader checks anything against the root only with the whole preimage),
 state (processes, orderStatus, orderProcessId, plus the three usage members
 `usage_counted`, `usage_seller_seen`, `usage_accrual`). EIP-712 signature
 verification with byte-exact parity to the Solidity.
@@ -134,7 +134,7 @@ the TypeScript side. No per-clause code, by design ("Prover Clause
 Architecture" below).
 
 **SP1 guest program** (`prover/program/`): executes `apply_batch()` in the SP1
-zkVM and commits `PublicValues` — eight fields: prev/new state roots, chain
+zkVM and commits `PublicValues` — nine fields: prev/new state roots, chain
 binding (chainId + verifyingContract), and four commitment hashes (token
 positions, attestation events, spec bindings, usage accrual). The canonical
 batch (all four op kinds) proves in ~1.2M cycles with the k256 SP1 precompile.
@@ -179,7 +179,7 @@ the Succinct gateway ABI, and a devnet stand-in that accepts any proof.
 
 - `FigaroCore`'s external interface (`commit`, `resolveProcess`)
 - the nine invariants listed above
-- the event semantics consumed by the SDK and the interfaces
+- the interfaces; of the events, only attestations are re-emitted by the verifier — order, process and value events are not, so event-sourced readers see batched trade through its attestations alone
 - buyer dominance, atomic resolution, no escape hatches
 
 ### Gas economics — why batching is cheaper
@@ -280,9 +280,9 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
    paths.
 5. **Event reconstruction**: the verifier re-emits proven attestation events
    with protocol-compatible signatures, hash-verified against proof
-   commitments. Event-sourced readers consume verifier events identically to
-   `FigaroCore` events — filtered by contract address — so builder surfaces need no
-   changes.
+   commitments. Event-sourced readers consume the verifier's attestation events
+   identically to `FigaroCore`'s — filtered by contract address; the verifier emits no
+   order, process or value event, so those readers find nothing for batched trade.
 
 ### What is not `FigaroCore` scaling
 
@@ -496,7 +496,7 @@ state is the sequencer's mirror of the batch path's state, maintained
 by replaying its own landed batches.
 
 **4. Proving.** The prover executes the mirror program in the zkVM and
-produces the validity proof, the eight `PublicValues`, the `NetPosition[]`
+produces the validity proof, the nine `PublicValues`, the `NetPosition[]`
 (aggregated token movements), and the `BatchEvents` (attestations, spec
 bindings, usage accruals with their sellers and period). A devnet uses the
 mock prover; otherwise `SP1_PROVER` selects `cpu`, `cuda`, or `network`. No
@@ -516,8 +516,9 @@ re-emits protocol-compatible events; forwards the usage accrual to
 
 **What the sequencer CAN do:**
 
-- **Delay** — withhold operations from a batch. Mitigation: submit directly
-  to `FigaroCore`; the sequencer is an optimization, not a requirement.
+- **Delay** — withhold operations from a batch. Mitigation for a process not yet
+  opened on the batch path: open it directly on `FigaroCore`. A process already open
+  on the batch path has no such exit (§ "Operational requirements" 4).
 - **Order within a batch** — harmless: `FigaroCore`'s transitions are
   deterministic and order-independent within a batch; there is no MEV surface.
 - **Refuse service** — same mitigation as delay.
@@ -537,7 +538,9 @@ re-emits protocol-compatible events; forwards the usage accrual to
 
 Correctness of what resolves requires no trust in the sequencer. What does
 require trust is **liveness**: a slow or stopped sequencer delays
-net-position payout for participants waiting on a batch. It cannot affect
+net-position payout for participants waiting on a batch, and a lost state (every copy
+of the root's preimage gone, or a batch landed by a submitter that publishes nothing)
+blocks it until someone holds that state again. It cannot affect
 `FigaroCore` — `FigaroCore`'s path is independent of batches — so the sequencer
 is liveness-trusted infrastructure, never safety-trusted: an off-protocol
 convenience, not a trade party, and the direct path stays open to every new

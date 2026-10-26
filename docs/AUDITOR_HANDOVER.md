@@ -183,8 +183,9 @@ It holds one key, `SEQUENCER_PRIVATE_KEY`, which signs the `settleBatch`
 transaction and pays its gas; the key grants no protocol privilege. What the
 relay publishes is how a stranger checks that a batch happened; nothing it
 publishes is authority, and every field is checkable against the chain, with one
-stated limit: the wire carries no inclusion proof, so a browser can check that a
-batch with the named root landed, never that a given order is under that root.
+stated limit: the wire carries no inclusion proof, so a browser checks that a given
+order is under the root only by recomputing the root from the whole served state
+(`frontend/lib/audit/batchRelay.ts`, up to 64 MiB), never from an inclusion proof.
 Review goals: a stall for free, mempool poisoning, re-queue exhaustion, the
 handling of its one key, and a publication that misleads its reader.
 
@@ -631,7 +632,7 @@ never reads `msg.sender`, and `resolveProcess` is gated by presence
 | OpenZeppelin Contracts 5.5.0 (`lib/`, pinned submodule) | inheritance and SafeERC20 | library correctness |
 | Permit2 (canonical, `0x000000000022D473030F116dDEE9F6B43aC78BA3`) | `WitnessSwapAndCommitCoordinator` constructor, probed for code at deploy | witness-transfer semantics on the swap leg only |
 | Uniswap SwapRouter02 (per chain; `deployments/<chainId>.json`) | same constructor, probed for `factory()` and `WETH9()` at deploy | executing the swap the signer's witness commits to |
-| SP1 verifier gateway (`SP1_VERIFIER_GATEWAY`; the devnet script wires `MockSP1Verifier`) | `FigaroBatchVerifier` constructor, immutable, beside `programVKey` (`SP1_PROGRAM_VKEY`); the deploy wrappers refuse a gateway that does not route this release's proofs | proof soundness: that a proof under `programVKey` came from that program. The program is the project's own and in scope |
+| SP1 verifier gateway (`SP1_VERIFIER_GATEWAY`; the devnet script wires `MockSP1Verifier`) | `FigaroBatchVerifier` constructor, immutable, beside `programVKey` (`SP1_PROGRAM_VKEY`); the deploy wrappers refuse a gateway that does not route this release's proofs | proof soundness: that a proof under `programVKey` came from that program; and liveness: the gateway's owner can freeze a route (`scripts/check-sp1-gateway-route.sh` reads the flag), after which no batch verifies and every process open on the batch path waits on that owner. The program is the project's own and in scope |
 | SP1 zkVM and crates; the patched `k256` | `prover/Cargo.lock` | executing the guest as written; the accelerated curve arithmetic |
 | `regex`, `serde_json`, `alloy-primitives` | `prover/Cargo.lock`; they are compiled into the guest | pattern matching inside the portable core; exact JSON number parsing (`float_roundtrip`); hashing and ABI encoding |
 | IPFS | content behind every on-chain hash | availability, never integrity (`DATA_LAYER.md`) |
@@ -1321,8 +1322,10 @@ Stated so the review does not spend hours finding them.
    stores a root. The state it commits to is held by the relay that built the
    last batch (`STATE_PATH`) and published by it (`GET /state`), so a party
    can keep a copy and a second relay can start on it (`STATE_FROM`), the
-   relay itself refusing any copy whose root is not the verifier's; nothing in this
-   repository rebuilds it from the chain or from the publication archive. A
+   relay itself refusing any copy whose root is not the verifier's; the
+   commitments and signatures a resolve needs as witness are in a second store, the
+   relay's archive (`ARCHIVE_PATH`), capped at a number of batches and evicting the
+   oldest; nothing in this repository rebuilds either from the chain. A
    process opened on the batch path resolves only through a batch built on
    that state, so if every copy is lost — or another submitter lands a batch
    and publishes nothing — those processes have no one who can build their
