@@ -218,17 +218,17 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Philosophy, Law and Ethics",
         discipline: "Contract theory · evidence law · labor law · stateless subjecthood · political philosophy",
         intro: "The normative layer: any choice of coordination objective is a subjective choice, so whose values a system encodes, the accountability of its designers, and the ethics of decision algorithms in social systems come before the engineering.",
-        definition: "A Figaro commitment is a signed contract: payment = consideration, clauses = terms and conditions, checkoutHash = the contract document. Resolution happens on-chain by nature; adjudication happens off-chain by nature; and the mechanism asks for a signing key and a bond where commerce asked for civil-legal recognition. The papers here ask what lawyers, philosophers, and ethicists ask.",
+        definition: "A Figaro commitment is a signed contract: payment = consideration, clauses = terms and conditions, checkoutHash = the merkle root of the filled agreement. Resolution happens on-chain by nature; adjudication happens off-chain by nature; and the mechanism asks for a signing key and a bond where commerce asked for civil-legal recognition. The papers here ask what lawyers, philosophers, and ethicists ask.",
         papers: [
             {
                 title: "On-Chain Evidence, Off-Chain Adjudication",
                 href: "/papers/on-chain-evidence",
-                summary: "Resolution is on-chain by nature and adjudication off-chain by nature. The five-layer stack, the evidentiary properties of what the chain holds, and how eIDAS, the Federal Rules of Evidence, and UNCITRAL already receive it.",
+                summary: "Resolution is on-chain by nature and adjudication off-chain by nature. The five-layer stack, the evidentiary properties of what the chain holds, and how eIDAS, the Federal Rules of Evidence, and the UNCITRAL Model Law read it, with the limit the paper attaches to each.",
                 keywords: ["electronic evidence", "smart-contract law", "dispute resolution", "blockchain evidence", "eIDAS", "UNCITRAL", "jurisdictional flexibility"],
                 industries: ["Legal and dispute resolution"],
                 question: "Should a smart contract adjudicate disputes, or produce what adjudication needs?",
-                result: "Argued: adjudication on-chain is a category error that reintroduces the discretionary intermediary, while the data resolution leaves has evidentiary properties that eIDAS, UCC §1-201 and the UNCITRAL Model Law on Electronic Commerce already receive, so forums rule off-chain on the open process data.",
-                scope: "A five-layer stack: chain security, the bonding game with its data, the peer-coordination subgame, arbitration, and the legal system; the protocol says nothing of what counts as satisfactory performance; a forum rules but cannot call resolve.",
+                result: "Argued: adjudication on-chain is a category error that reintroduces the discretionary intermediary, while the data resolution leaves has evidentiary properties that eIDAS, UCC §1-201 and the UNCITRAL Model Law on Electronic Commerce can receive, each within a stated limit, so forums rule off-chain on the open process data.",
+                scope: "A five-layer stack: chain security, the bonding game with the evidence it produces, coordination among the sellers, arbitration, and the legal system; the protocol says nothing of what counts as satisfactory performance; a forum rules but cannot call resolve.",
             },
             {
                 title: "The Wallet as Legal Subject",
@@ -293,12 +293,12 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "The Subordination Variable",
                 href: "/papers/subordination-variable",
-                summary: "Socialist and capitalist traditions agree that the wage relation is the central fact. A bonded wallet is producer, means of production, and party at once, so the transfer of control never has to be specified, and coordination rent stops recurring.",
-                keywords: ["political economy", "subordination", "coordination rent", "free association", "classical liberalism", "frame collapse", "conditionality of the left/right partition"],
+                summary: "The cooperative-Marxian and classical-liberal traditions agree that the wage relation divides them. Under a bonded commitment no residual right over a seller's conduct passes to anyone and no intermediary takes a recurring rent, so one artifact admits both readings and the partition relocates to the graph composed above it.",
+                keywords: ["political economy", "subordination", "coordination rent", "free association", "classical liberalism", "relocation", "conditionality of the left/right partition"],
                 industries: ["Platform work"],
                 question: "If the cooperative-Marxian and classical-liberal traditions agree that the wage relation divides them, what is left of the partition under a mechanism with no wage relation?",
-                result: "Argued: under the bonded commitment no residual right over a seller's conduct passes to anyone and no party takes a rent for enforcement, so one artifact answers both to free association and to voluntary exchange, and the partition relocates to the graph composed above the mechanism.",
-                scope: "A party needs the wealth to post its bond, and the mechanism inherits its property baseline from the law around it; distribution, public goods, and the composition of participation are decided in the graph.",
+                result: "Argued: under the bonded commitment no residual right over a seller's conduct passes to anyone and no intermediary takes a rent for making the promises good, so one artifact answers both to free association and to voluntary exchange, and the partition relocates to the graph composed above the mechanism.",
+                scope: "A party needs the wealth to post its bond, and the mechanism inherits its property baseline from the law around it; distribution, public goods and externalities, and the composition of participation are decided in the graph.",
             },
             {
                 title: "The Visibility of Coordination",
