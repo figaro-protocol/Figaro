@@ -55,7 +55,8 @@ rule settleBatchChainsTheRoot(
     bytes publicValues,
     FigaroBatchVerifier.NetPosition[] positions,
     FigaroBatchVerifier.BatchEventData batchEvents,
-    FigaroBatchVerifier.BatchUsageData usage
+    FigaroBatchVerifier.BatchUsageData usage,
+    bytes operations
 ) {
     env e;
     bytes32 prevRoot;
@@ -63,7 +64,7 @@ rule settleBatchChainsTheRoot(
     prevRoot, newRoot = decodedRoots(publicValues);
 
     bytes32 before = stateRoot();
-    settleBatch(e, proof, publicValues, positions, batchEvents, usage);
+    settleBatch(e, proof, publicValues, positions, batchEvents, usage, operations);
 
     assert before == prevRoot, "a batch resolves only from the root the verifier holds";
     assert stateRoot() == newRoot, "a resolved batch leaves the root it names";
@@ -78,11 +79,12 @@ rule settleBatchCountsOneBatch(
     bytes publicValues,
     FigaroBatchVerifier.NetPosition[] positions,
     FigaroBatchVerifier.BatchEventData batchEvents,
-    FigaroBatchVerifier.BatchUsageData usage
+    FigaroBatchVerifier.BatchUsageData usage,
+    bytes operations
 ) {
     env e;
     mathint before = batchCount();
-    settleBatch(e, proof, publicValues, positions, batchEvents, usage);
+    settleBatch(e, proof, publicValues, positions, batchEvents, usage, operations);
     assert to_mathint(batchCount()) == before + 1, "each resolved batch advances the count by one";
 }
 
@@ -91,7 +93,7 @@ rule settleBatchCountsOneBatch(
 // ═══════════════════════════════════════════════════════════════════
 
 rule onlySettleBatchMovesTheRoot(method f)
-    filtered { f -> f.selector != sig:settleBatch(bytes, bytes, FigaroBatchVerifier.NetPosition[], FigaroBatchVerifier.BatchEventData, FigaroBatchVerifier.BatchUsageData).selector }
+    filtered { f -> f.selector != sig:settleBatch(bytes, bytes, FigaroBatchVerifier.NetPosition[], FigaroBatchVerifier.BatchEventData, FigaroBatchVerifier.BatchUsageData, bytes).selector }
 {
     env e;
     calldataarg args;

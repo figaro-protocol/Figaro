@@ -214,7 +214,7 @@ review SP1.
 | In scope: the project's use of SP1 | Where |
 |---|---|
 | The interface the verifier calls | `src/core/verifier/ISP1Verifier.sol` |
-| The one proof check, and everything `settleBatch` does with the public values after it | `FigaroBatchVerifier.sol:287` |
+| The one proof check, and everything `settleBatch` does with the public values after it | `FigaroBatchVerifier.sol:305` |
 | The guest's three SP1 calls: entry point, input read, public-values commit | `prover/program/src/main.rs` |
 | The verification key: derived from the guest, pinned at construction, immutable | `FigaroBatchVerifier` constructor; `sequencer --vkey` |
 | The choice of the patched `k256` for signature recovery inside the zkVM | `prover/Cargo.toml` `[patch.crates-io]` |
@@ -649,10 +649,10 @@ The constants and constructor arguments the mainnet deploy fixes
 | Parameter | Value | Where |
 |---|---|---|
 | Bond multiple | 2× payment (buyer), 2× cumulative value (seller) | `FigaroCore.sol:208-209` |
-| `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:101` |
-| `PUBLIC_VALUES_LENGTH` | 288 bytes, nine words; any other length is refused by name | `FigaroBatchVerifier.sol:106` |
+| `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:109` |
+| `PUBLIC_VALUES_LENGTH` | 320 bytes, ten words; any other length is refused by name | `FigaroBatchVerifier.sol:113` |
 | `MAX_BATCH_OPS` | the relay's bound on what the prover finishes in one sitting, 100 operations by default; an operator's environment variable | `prover/sequencer/src/main.rs:121` |
-| The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order `settleBatch` call's 590,096, or at or past 95 percent of the block limit read at startup, the relay refuses to start); the call's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
+| The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order `settleBatch` call's 597,594, or at or past 95 percent of the block limit read at startup, the relay refuses to start); the call's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
 | Re-queue bound | an operation re-queued after a transient submission failure is re-queued at most three times, then dead-lettered; a deferral at batch formation spends nothing of it | `prover/sequencer/README.md`; `mempool.rs`, `requeue` |
 | Deferral window | an operation deferred at batch formation (it applies against no order of its drain, or its funding could not be read) is dead-lettered once 600 seconds have passed since its own first deferral, retried or not, and what was filtered behind it goes with it — each operation that no longer applies without it, whether it names its order or counts its payment in a cumulative value (past `MAX_DEPENDENCY_RERUNS` re-runs a tick, each following operation of its process that it precedes); an operator's environment variable, `DEFER_WINDOW_SECS` | `prover/sequencer/src/mempool.rs`, `DEFAULT_DEFER_WINDOW` |
 | Clause, agreement and assembly registration stake | 0.05 ETH per registration, no cooldown, withdrawable once; the binding stays | `DeployMainnet.s.sol:160`, `:174`, `:167` |
@@ -809,7 +809,7 @@ breaks: at the seams.
 Two of `FigaroBatchVerifier`'s checks came the same way: the batch timestamp is
 the ninth public-values word, bounded on chain (`MAX_BATCH_STALENESS`), so the
 guest's deadline checks run against a timestamp the verifier sees; and public
-values of any length but nine words are refused by name
+values of any length but ten words are refused by name
 (`PublicValuesLengthMismatch`) before the proof is read.
 
 ## Behaviors to surface
@@ -833,7 +833,7 @@ read it first.
   effect. Accepted (the buyer chose the token and the seller), a token-choice
   concern, not a Core escape hatch. On the batch path the same class reverts one
   batch, not the protocol: a payout the token refuses reverts `settleBatch` in
-  `_executePositions` (`FigaroBatchVerifier.sol:579`), and the batch's
+  `_executePositions` (`FigaroBatchVerifier.sol:602`), and the batch's
   operations are dead-lettered and re-submittable; a process open on the batch
   path resolves on the batch path only. The relay reads each party's balance and
   allowance before it submits (`prover/sequencer/src/submitter.rs`), and a batch
@@ -876,7 +876,7 @@ read it first.
   and commits the binding with both words; `_checkSpecBindings` requires
   `specHash == clauseId` (`SpecBindingMismatch`) and
   `clauseRegistry.registered(clauseId)` (`ClauseNotRegistered`)
-  (`FigaroBatchVerifier.sol:546-554`). Tests:
+  (`FigaroBatchVerifier.sol:569-577`). Tests:
   `test_settleBatch_revertsOnSpecBindingMismatch`,
   `test_settleBatch_revertsOnUnregisteredClauseBinding`,
   `test_permissionless_newClause_settlesWithZeroVerifierChanges`
@@ -901,7 +901,7 @@ read it first.
   kind, and `_isAuthor(kind, key, account)` reads the one registry the kind
   names (`RpgfMinter.sol:329-343`). The verifier's `_hashUsage` packs
   `key(32) ‖ kind(1) ‖ c(8) ‖ d(8)` per accrual, span `49 + 49n + 20m`
-  (`FigaroBatchVerifier.sol:488-516`), and the guest's
+  (`FigaroBatchVerifier.sol:511-539`), and the guest's
   `compute_usage_accrual_hash` mirrors it. `DESIGN_DECISIONS.md` § 23 states
   the pattern. Tests:
   `test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt`,
@@ -1241,7 +1241,7 @@ read it first.
 |---|---|---|
 | `FigaroCore.commit` | 15 | the Core's one entry point does the whole commit: deadline, payment, hashing, two signature recoveries, the root-or-extension branch, bond math, two pulls |
 | `UsageCounter.applyBatchAccrual` | 15 | period, provenance leaf, per-accrual skip of the two reserved keys, the three kinds' registration gates and the unknown-kind skip, stake gates, monotone-update checks |
-| `FigaroBatchVerifier.settleBatch` | 12 | length, proof, five public-value checks, four calldata hashes, registry anchor, token legs, events, the accrual try/catch |
+| `FigaroBatchVerifier.settleBatch` | 13 (by inspection after the operation-stream check; Slither's figure before it was 12) | length, proof, five public-value checks, five calldata hashes (the operation stream among them), registry anchor, token legs, events, the accrual try/catch |
 | `FigaroCore.resolveProcess` | 8 | presence, count, per-order status and overflow guards |
 | `UsageCounter` constructor | 7 | six zero-address checks, the floor, the period list's length and order |
 | `RpgfMinter.claim` | 8 | period closed, not claimed, the claimant's member stake, per-key designer of record and stake |
@@ -1268,7 +1268,7 @@ Current design realities accepted by the protocol surface, not accidental defect
 1. buyer key loss is terminal for an active process because the Core has no timeout or admin recovery path
 2. very large processes are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
 3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the Core; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #9 states the consequence); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
-4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:101`, checked at `:307`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the Core refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
+4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:109`, checked at `:325`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the Core refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
 
 ## Known limitations
 
@@ -1327,9 +1327,12 @@ Stated so the review does not spend hours finding them.
    relay's archive (`ARCHIVE_PATH`), capped at a number of batches and evicting the
    oldest; nothing in this repository rebuilds either from the chain. A
    process opened on the batch path resolves only through a batch built on
-   that state, so if every copy is lost — or another submitter lands a batch
-   and publishes nothing — those processes have no one who can build their
-   resolve, and their bonds stay in the verifier. A relay that does not hold
+   that state, so if every copy is lost, those processes have no one who can
+   build their resolve, and their bonds stay in the verifier, until someone
+   rebuilds the state from the chain: every landed batch publishes its signed
+   operations in its own transaction (`settleBatch`'s `operations`, bound to
+   public value 9), so a submitter cannot land a batch and publish nothing,
+   and the rebuild is possible; nothing in this repository performs it yet. A relay that does not hold
    the state refuses to start and builds nothing.
 7. **A deferral at batch formation is bounded by a window, not by the
    dependency.** An operation that applies against no order of its drain, or

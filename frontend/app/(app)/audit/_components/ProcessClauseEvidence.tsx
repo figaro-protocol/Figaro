@@ -41,8 +41,9 @@ import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
  *  (`lib/audit/signatureVerdicts`); the Core verified the same signatures at
  *  commit time.
  *
- *  BATCH path — there are no signature bytes on chain to re-verify, so the
- *  verdict is "proved": the guest checked both signatures inside the SP1 proof.
+ *  BATCH path — the signature bytes sit in the batch transaction's operation
+ *  stream, which this surface does not yet read, so the verdict is "proved":
+ *  the guest checked both signatures inside the SP1 proof.
  *  It is deliberately styled apart from the green direct-path verdict and
  *  carries a provenance line, because the reader is trusting a proof they can
  *  independently check — not a signature they recomputed. Never merge the two

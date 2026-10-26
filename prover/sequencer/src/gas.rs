@@ -34,6 +34,18 @@ pub const SETTLE_GAS_PER_ACCRUAL: u64 = 190_000;
 pub const SETTLE_GAS_PER_USAGE_SELLER: u64 = 12_000;
 /// The call's execution with nothing to publish.
 pub const SETTLE_FIXED_EXEC_GAS: u64 = 105_000;
+/// The operation stream's execution — the calldata copy, the keccak over it
+/// and the memory it expands into — is linear in its 32-byte words plus a
+/// quadratic memory term: `words * SETTLE_GAS_PER_STREAM_WORD
+/// + words² / SETTLE_STREAM_QUADRATIC_DIVISOR` (`stream_exec_gas`), each part
+/// a ceiling over `BatchGasCeilingTest`'s measurement.
+pub const SETTLE_GAS_PER_STREAM_WORD: u64 = 24;
+pub const SETTLE_STREAM_QUADRATIC_DIVISOR: u64 = 48;
+
+/// The execution gas of an operation stream of `words` 32-byte words.
+pub fn stream_exec_gas(words: u64) -> u64 {
+    words * SETTLE_GAS_PER_STREAM_WORD + words * words / SETTLE_STREAM_QUADRATIC_DIVISOR
+}
 /// The proof's verification by the SP1 gateway, read from live receipts.
 pub const SETTLE_PROOF_VERIFY_GAS: u64 = 300_000;
 
@@ -47,24 +59,49 @@ pub const GAS_HEADROOM_PCT: u64 = 95;
 /// transactions) is told so by the operator (`SETTLE_GAS_CAP`).
 pub const DEFAULT_SETTLE_GAS_CAP: u64 = 16_777_216;
 
-/// The calldata a settle carries besides its positions, charged as nonzero
-/// bytes: the selector, the head words, the proof (a PLONK proof's 1,536
-/// bytes, the larger form), the public values' 288 bytes, and the lengths
-/// and offsets of the events and the usage — about 2,500 bytes.
-const SETTLE_FRAMING_CALLDATA_GAS: u64 = 2_500 * CALLDATA_NONZERO_BYTE_GAS;
+/// The calldata a batch's transaction carries besides its positions and its
+/// operation stream, charged as nonzero bytes: the selector, the head words, the proof
+/// (a PLONK proof's 1,536 bytes, the larger form), the public values' 320
+/// bytes, and the lengths and offsets of the events, the usage and the
+/// stream — about 2,600 bytes.
+const SETTLE_FRAMING_CALLDATA_GAS: u64 = 2_600 * CALLDATA_NONZERO_BYTE_GAS;
+
+/// The bytes a resolve's operation stream carries per order: the commitment
+/// the entry carries whole (`operation_stream::COMMITMENT_BYTES`).
+const RESOLVE_STREAM_ORDER_BYTES: u64 = 252;
+/// The bytes a resolve's operation stream carries besides its orders: the
+/// entry's tag, process id, signature and count.
+const RESOLVE_STREAM_FIXED_BYTES: u64 = 100;
+
+/// The gas a resolution of `orders` orders is planned at: the fixed
+/// cost and framing, a position per order and one for the buyer, and the
+/// stream — its calldata charged as nonzero bytes and its execution.
+fn resolve_settle_gas(orders: u64) -> u64 {
+    let stream_bytes = RESOLVE_STREAM_FIXED_BYTES + orders * RESOLVE_STREAM_ORDER_BYTES;
+    SETTLE_PROOF_VERIFY_GAS
+        + SETTLE_FIXED_EXEC_GAS
+        + TX_BASE_GAS
+        + SETTLE_FRAMING_CALLDATA_GAS
+        + (orders + 1) * (SETTLE_GAS_PER_POSITION + POSITION_CALLDATA_GAS)
+        + stream_bytes * CALLDATA_NONZERO_BYTE_GAS
+        + stream_exec_gas(stream_bytes.div_ceil(32))
+}
 
 /// The calldata one net position occupies, charged as nonzero bytes: the
 /// ceiling the resolve capacity plans with.
 const POSITION_CALLDATA_GAS: u64 = 128 * CALLDATA_NONZERO_BYTE_GAS;
 
 /// The least a settle cap can be: a settle resolving a process of one
-/// order (two positions) with its framing. A cap below it would admit no
-/// commit at all.
+/// order (two positions, and the one commitment its stream carries) with
+/// its framing. A cap below it would admit no commit at all.
 pub const MIN_SETTLE_GAS_CAP: u64 = SETTLE_PROOF_VERIFY_GAS
     + SETTLE_FIXED_EXEC_GAS
     + TX_BASE_GAS
     + SETTLE_FRAMING_CALLDATA_GAS
-    + 2 * (SETTLE_GAS_PER_POSITION + POSITION_CALLDATA_GAS);
+    + 2 * (SETTLE_GAS_PER_POSITION + POSITION_CALLDATA_GAS)
+    + (RESOLVE_STREAM_FIXED_BYTES + RESOLVE_STREAM_ORDER_BYTES) * CALLDATA_NONZERO_BYTE_GAS
+    + 11 * SETTLE_GAS_PER_STREAM_WORD
+    + 11 * 11 / SETTLE_STREAM_QUADRATIC_DIVISOR;
 
 /// Calldata gas: a transaction's base cost and the per-byte charge.
 const TX_BASE_GAS: u64 = 21_000;
@@ -79,6 +116,8 @@ pub struct SettleItems {
     pub spec_bindings: usize,
     pub accruals: usize,
     pub usage_sellers: usize,
+    /// The operation stream's 32-byte words, rounded up.
+    pub stream_words: usize,
 }
 
 impl SettleItems {
@@ -90,7 +129,14 @@ impl SettleItems {
             spec_bindings: events.spec_bindings.len(),
             accruals: events.usage_accruals.len(),
             usage_sellers: events.usage_sellers.len(),
+            stream_words: 0,
         }
+    }
+
+    /// The items with the operation stream of `bytes` bytes counted.
+    pub fn with_stream_bytes(mut self, bytes: usize) -> Self {
+        self.stream_words = bytes.div_ceil(32);
+        self
     }
 }
 
@@ -112,6 +158,7 @@ pub fn settle_gas_estimate(calldata: &[u8], items: SettleItems) -> u64 {
         + items.spec_bindings as u64 * SETTLE_GAS_PER_SPEC_BINDING
         + items.accruals as u64 * SETTLE_GAS_PER_ACCRUAL
         + items.usage_sellers as u64 * SETTLE_GAS_PER_USAGE_SELLER
+        + stream_exec_gas(items.stream_words as u64)
 }
 
 /// The gas a batch may plan on in a block with this limit, under the
@@ -122,8 +169,9 @@ pub fn settle_gas_budget(block_gas_limit: u64, settle_gas_cap: u64) -> u64 {
 
 /// The most orders a batch-path process may hold for its resolve to fit
 /// one settle under `cap`: a resolve nets at most one position per order
-/// and one for the buyer, each with its calldata, over the settle's fixed
-/// cost and framing. A commit that would grow a process past this is
+/// and one for the buyer, each with its calldata, and publishes each
+/// order's commitment in its operation stream, over the transaction's fixed
+/// cost, its framing and the stream's own entry. A commit that would grow a process past this is
 /// refused at batch formation
 /// (`assembler::filter_commits_within_resolve_capacity`): a process past it
 /// has no resolve any relay on the chain can settle, and its bonds would
@@ -131,12 +179,25 @@ pub fn settle_gas_budget(block_gas_limit: u64, settle_gas_cap: u64) -> u64 {
 /// ticks, never a tick's budget: a process outlives the tick it was
 /// admitted on.
 pub fn max_orders_in_one_settle(cap: u64) -> usize {
-    let fixed = SETTLE_PROOF_VERIFY_GAS + SETTLE_FIXED_EXEC_GAS + TX_BASE_GAS + SETTLE_FRAMING_CALLDATA_GAS;
-    if cap <= fixed {
+    // `resolve_settle_gas` grows with the orders, so the bound is found by
+    // bisection on it: the largest count whose resolve plans under the cap.
+    if resolve_settle_gas(1) > cap {
         return 0;
     }
-    let positions = (cap - fixed) / (SETTLE_GAS_PER_POSITION + POSITION_CALLDATA_GAS);
-    positions.saturating_sub(1) as usize
+    let (mut lo, mut hi) = (1u64, 1u64); // lo fits
+    while resolve_settle_gas(hi) <= cap {
+        lo = hi;
+        hi *= 2;
+    }
+    while hi - lo > 1 {
+        let mid = lo + (hi - lo) / 2;
+        if resolve_settle_gas(mid) <= cap {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    lo as usize
 }
 
 /// The largest prefix length in `0..=n` the batch fits at, found by
@@ -270,7 +331,7 @@ mod tests {
 
     #[test]
     fn the_estimate_is_the_sum_of_its_parts() {
-        let items = SettleItems { positions: 2, attestations: 1, spec_bindings: 1, accruals: 1, usage_sellers: 1 };
+        let items = SettleItems { positions: 2, attestations: 1, spec_bindings: 1, accruals: 1, usage_sellers: 1, stream_words: 0 };
         assert_eq!(
             settle_gas_estimate(&[1], items),
             21_016 + 300_000 + 105_000 + 120_000 + 6_000 + 4_500 + 190_000 + 12_000
@@ -286,12 +347,18 @@ mod tests {
 
     #[test]
     fn the_resolve_capacity_is_one_position_an_order_and_one_for_the_buyer_over_the_framing() {
-        let fixed = SETTLE_PROOF_VERIFY_GAS + SETTLE_FIXED_EXEC_GAS + 21_000 + 40_000;
-        assert_eq!(max_orders_in_one_settle(fixed), 0);
-        assert_eq!(max_orders_in_one_settle(fixed + 2 * (SETTLE_GAS_PER_POSITION + 2_048)), 1);
-        assert_eq!(max_orders_in_one_settle(DEFAULT_SETTLE_GAS_CAP), 261);
+        // A resolve of n orders nets n + 1 positions and publishes n
+        // commitments in its stream; the bound is the largest n whose
+        // resolve plans under the cap.
+        assert_eq!(max_orders_in_one_settle(resolve_settle_gas(1) - 1), 0);
+        assert_eq!(max_orders_in_one_settle(resolve_settle_gas(1)), 1);
+        assert_eq!(max_orders_in_one_settle(resolve_settle_gas(2)), 2);
+        assert_eq!(max_orders_in_one_settle(resolve_settle_gas(7) - 1), 6);
+        assert_eq!(max_orders_in_one_settle(DEFAULT_SETTLE_GAS_CAP), 243);
+        assert!(resolve_settle_gas(243) <= DEFAULT_SETTLE_GAS_CAP && resolve_settle_gas(244) > DEFAULT_SETTLE_GAS_CAP);
         // The least cap admits a process of one order, and no less.
-        assert_eq!(MIN_SETTLE_GAS_CAP, 590_096);
+        assert_eq!(MIN_SETTLE_GAS_CAP, resolve_settle_gas(1));
+        assert_eq!(MIN_SETTLE_GAS_CAP, 597_594);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP), 1);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP - 1), 0);
     }

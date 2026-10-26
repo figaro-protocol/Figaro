@@ -210,7 +210,8 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(atts),
             _hashBindings(bindings),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
     }
 
@@ -231,7 +232,7 @@ contract FigaroBatchVerifierTest is Test {
         emit FigaroBatchVerifier.Attestation(
             keccak256("order"), keccak256("process"), seller, clauseKey, 0, keccak256("content")
         );
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
 
         assertEq(verifier.stateRoot(), newRoot, "root advances");
         assertEq(verifier.batchCount(), 1);
@@ -260,14 +261,15 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
             _hashUsageEmpty(),
-            future
+            future,
+            keccak256(hex"")
         );
         vm.expectRevert(
             abi.encodeWithSelector(
                 FigaroBatchVerifier.BatchTimestampOutOfRange.selector, future, uint64(block.timestamp)
             )
         );
-        verifier.settleBatch(hex"", pvFuture, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pvFuture, positions, events, _emptyUsage(), hex"");
 
         // A stale clock older than MAX_BATCH_STALENESS: this is the attack — a
         // caller of the permissionless settleBatch picking an arbitrary past
@@ -282,14 +284,15 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
             _hashUsageEmpty(),
-            stale
+            stale,
+            keccak256(hex"")
         );
         vm.expectRevert(
             abi.encodeWithSelector(
                 FigaroBatchVerifier.BatchTimestampOutOfRange.selector, stale, uint64(block.timestamp)
             )
         );
-        verifier.settleBatch(hex"", pvStale, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pvStale, positions, events, _emptyUsage(), hex"");
     }
 
     // ── The open-world anchor gate ──────────────────────────────────
@@ -315,13 +318,14 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
 
         vm.expectRevert(
             abi.encodeWithSelector(FigaroBatchVerifier.SpecBindingMismatch.selector, clauseKey, wrongSpecHash)
         );
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
     }
 
     function test_settleBatch_revertsOnUnregisteredClauseBinding() public {
@@ -346,11 +350,12 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
 
         vm.expectRevert(abi.encodeWithSelector(FigaroBatchVerifier.ClauseNotRegistered.selector, strangerKey));
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
     }
 
     function test_permissionless_newClause_settlesWithZeroVerifierChanges() public {
@@ -377,10 +382,11 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
 
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
         assertEq(verifier.stateRoot(), newRoot);
     }
 
@@ -392,13 +398,13 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.NetPosition[] memory positions,
             FigaroBatchVerifier.BatchEventData memory events,
         ) = _canonicalBatch();
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
 
         // Replaying the same batch: prevRoot no longer matches.
         vm.expectRevert(
             abi.encodeWithSelector(FigaroBatchVerifier.StateRootMismatch.selector, verifier.stateRoot(), GENESIS)
         );
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
     }
 
     function test_settleBatch_revertsOnChainIdMismatch() public {
@@ -417,12 +423,13 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
         vm.expectRevert(
             abi.encodeWithSelector(FigaroBatchVerifier.ChainIdMismatch.selector, uint64(block.chainid), uint64(999))
         );
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
     }
 
     function test_settleBatch_revertsOnTamperedPositions() public {
@@ -433,7 +440,7 @@ contract FigaroBatchVerifierTest is Test {
         ) = _canonicalBatch();
         positions[1].payout = 999 ether; // calldata no longer matches the proven hash
         vm.expectRevert(FigaroBatchVerifier.PositionHashMismatch.selector);
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
     }
 
     function test_settleBatch_revertsOnTamperedAttestations() public {
@@ -444,7 +451,7 @@ contract FigaroBatchVerifierTest is Test {
         ) = _canonicalBatch();
         events.attestations[0].contentRef = keccak256("forged");
         vm.expectRevert(FigaroBatchVerifier.AttestationHashMismatch.selector);
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
     }
 
     function test_settleBatch_revertsOnTamperedBindings() public {
@@ -457,7 +464,7 @@ contract FigaroBatchVerifierTest is Test {
         // dies at the hash check BEFORE the registry anchor check.
         events.specBindings[0].specHash = keccak256("not what the proof said");
         vm.expectRevert(FigaroBatchVerifier.SpecBindingsHashMismatch.selector);
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
     }
 
     // ── Construction guards ─────────────────────────────────────────
@@ -502,12 +509,13 @@ contract FigaroBatchVerifierTest is Test {
             keccak256(""),
             keccak256(""),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
 
         vm.expectEmit(true, true, true, true, address(verifier));
         emit FigaroBatchVerifier.BatchSettled(1, GENESIS, newRoot, 0);
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
 
         assertEq(verifier.stateRoot(), newRoot, "root advances on empty batch");
         assertEq(verifier.batchCount(), 1);
@@ -530,13 +538,14 @@ contract FigaroBatchVerifierTest is Test {
             keccak256(""),
             keccak256(""),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
 
         uint256 buyerBefore = token.balanceOf(buyer);
         uint256 contractBefore = token.balanceOf(address(verifier));
         vm.recordLogs();
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
         assertEq(token.balanceOf(buyer), buyerBefore, "deposit == payout must move nothing");
         assertEq(token.balanceOf(address(verifier)), contractBefore, "contract balance untouched");
         // Nothing at all crosses the token — not even a zero-value transfer (a mutant that
@@ -559,7 +568,7 @@ contract FigaroBatchVerifierTest is Test {
 
         sp1.setRejectProofs(true);
         vm.expectRevert(MockSP1Verifier.InvalidProof.selector);
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
 
         assertEq(verifier.stateRoot(), GENESIS, "root must not advance on a rejected proof");
         assertEq(verifier.batchCount(), 0, "no batch counted");
@@ -574,26 +583,26 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.NetPosition[] memory positions,
             FigaroBatchVerifier.BatchEventData memory events,
         ) = _canonicalBatch();
-        assertEq(pv.length, verifier.PUBLIC_VALUES_LENGTH(), "the canonical batch carries nine words");
+        assertEq(pv.length, verifier.PUBLIC_VALUES_LENGTH(), "the canonical batch carries ten words");
         uint256 buyerBefore = token.balanceOf(buyer);
 
-        // Eight words — the stream as it was before the batch's clock joined it.
-        bytes memory eight = new bytes(256);
-        for (uint256 i = 0; i < 256; i++) {
-            eight[i] = pv[i];
+        // Nine words — the stream as it was before the operations joined it.
+        bytes memory nine = new bytes(288);
+        for (uint256 i = 0; i < 288; i++) {
+            nine[i] = pv[i];
         }
-        bytes memory ten = bytes.concat(pv, bytes32(uint256(1)));
-        bytes memory oneShort = new bytes(287);
+        bytes memory eleven = bytes.concat(pv, bytes32(uint256(1)));
+        bytes memory oneShort = new bytes(319);
         bytes memory oneOver = bytes.concat(pv, bytes1(0));
-        bytes[5] memory wrong = [eight, ten, oneShort, oneOver, bytes("")];
+        bytes[5] memory wrong = [nine, eleven, oneShort, oneOver, bytes("")];
 
         for (uint256 i = 0; i < wrong.length; i++) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    FigaroBatchVerifier.PublicValuesLengthMismatch.selector, uint256(288), wrong[i].length
+                    FigaroBatchVerifier.PublicValuesLengthMismatch.selector, uint256(320), wrong[i].length
                 )
             );
-            verifier.settleBatch(hex"", wrong[i], positions, events, _emptyUsage());
+            verifier.settleBatch(hex"", wrong[i], positions, events, _emptyUsage(), hex"");
         }
 
         assertEq(verifier.stateRoot(), GENESIS, "root must not advance");
@@ -608,9 +617,66 @@ contract FigaroBatchVerifierTest is Test {
             _canonicalBatch();
         sp1.setRejectProofs(true);
         vm.expectRevert(
-            abi.encodeWithSelector(FigaroBatchVerifier.PublicValuesLengthMismatch.selector, uint256(288), uint256(256))
+            abi.encodeWithSelector(FigaroBatchVerifier.PublicValuesLengthMismatch.selector, uint256(320), uint256(288))
         );
-        verifier.settleBatch(hex"", new bytes(256), positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", new bytes(288), positions, events, _emptyUsage(), hex"");
+    }
+
+    // ── The operation stream: a batch publishes what it applied ──────────
+
+    /// The public values a batch of `positions` and `events` commits when its
+    /// operation stream is `operations`: `_canonicalBatch`'s words with the
+    /// tenth the stream's hash.
+    function _pvWithOperations(
+        FigaroBatchVerifier.NetPosition[] memory positions,
+        FigaroBatchVerifier.BatchEventData memory events,
+        bytes32 newRoot,
+        bytes memory operations
+    ) internal view returns (bytes memory) {
+        return abi.encode(
+            GENESIS,
+            newRoot,
+            uint64(block.chainid),
+            address(verifier),
+            _hashPositions(positions),
+            _hashAttestations(events.attestations),
+            _hashBindings(events.specBindings),
+            _hashUsageEmpty(),
+            uint64(block.timestamp),
+            keccak256(operations)
+        );
+    }
+
+    function test_settleBatch_refusesOperationsWhoseHashIsNotCommitted() public {
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+        ) = _canonicalBatch();
+        // The proof committed the empty stream; the submitter sends another.
+        bytes memory other = hex"01deadbeef";
+        vm.expectRevert(FigaroBatchVerifier.OperationsHashMismatch.selector);
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), other);
+        // And a stream the proof committed cannot be withheld.
+        bytes memory committed = hex"0102030405";
+        bytes memory pvCommitted = _pvWithOperations(positions, events, keccak256("next-root"), committed);
+        vm.expectRevert(FigaroBatchVerifier.OperationsHashMismatch.selector);
+        verifier.settleBatch(hex"", pvCommitted, positions, events, _emptyUsage(), hex"");
+        assertEq(verifier.stateRoot(), GENESIS, "root must not advance");
+        assertEq(verifier.batchCount(), 0, "no batch counted");
+    }
+
+    function test_settleBatch_acceptsTheOperationsTheProofCommitted() public {
+        (, FigaroBatchVerifier.NetPosition[] memory positions, FigaroBatchVerifier.BatchEventData memory events,) =
+            _canonicalBatch();
+        // Any bytes: the contract reads none of the stream, it binds it. The
+        // stream's content is the guest's, fixed by the verification key.
+        bytes memory operations = hex"01000102030405060708090a0b0c0d0e0f";
+        bytes32 newRoot = keccak256("next-root");
+        bytes memory pv = _pvWithOperations(positions, events, newRoot, operations);
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), operations);
+        assertEq(verifier.stateRoot(), newRoot, "root advances with the stream published");
+        assertEq(verifier.batchCount(), 1);
     }
 
     // ── Sequential batches: root chains, counter increments, and the
@@ -623,7 +689,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.BatchEventData memory events,
             bytes32 root2
         ) = _canonicalBatch();
-        verifier.settleBatch(hex"", pv1, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv1, positions, events, _emptyUsage(), hex"");
 
         // Batch 2 chains root2 → root3 and carries a stage-255 attestation:
         // the contract's assembly packing (mstore8 for the uint8) must match
@@ -645,14 +711,15 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(atts),
             keccak256(""),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
 
         vm.expectEmit(true, true, true, true, address(verifier));
         emit FigaroBatchVerifier.Attestation(
             keccak256("order-2"), keccak256("process-2"), buyer, clauseKey, 255, keccak256("content-2")
         );
-        verifier.settleBatch(hex"", pv2, none, events2, _emptyUsage());
+        verifier.settleBatch(hex"", pv2, none, events2, _emptyUsage(), hex"");
 
         assertEq(verifier.stateRoot(), root3, "root chains across batches");
         assertEq(verifier.batchCount(), 2, "batch counter increments per batch");
@@ -677,12 +744,13 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
         vm.expectRevert(
             abi.encodeWithSelector(FigaroBatchVerifier.VerifyingContractMismatch.selector, address(verifier), impostor)
         );
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
     }
 
     // ── Fee-on-transfer deposit revert ──────────────────────────────
@@ -707,11 +775,12 @@ contract FigaroBatchVerifierTest is Test {
             keccak256(""),
             keccak256(""),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
 
         vm.expectRevert(FigaroBatchVerifier.FeeOnTransferDetected.selector);
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
     }
 
     // ── Atomicity: a failed pull reverts the WHOLE batch ────────────
@@ -733,7 +802,7 @@ contract FigaroBatchVerifierTest is Test {
         token.approve(address(verifier), 0);
 
         vm.expectRevert();
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
 
         assertEq(verifier.stateRoot(), GENESIS, "root must not advance on failed resolve");
         assertEq(verifier.batchCount(), 0, "counter must not bump on failed resolve");
@@ -760,11 +829,12 @@ contract FigaroBatchVerifierTest is Test {
             keccak256(""),
             keccak256(""),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
 
         vm.expectRevert();
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
         assertEq(verifier.stateRoot(), GENESIS, "root must not advance on failed resolve");
         assertEq(verifier.batchCount(), 0, "counter must not bump on failed resolve");
     }
@@ -789,11 +859,12 @@ contract FigaroBatchVerifierTest is Test {
             keccak256(""),
             keccak256(""),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
 
         uint256 gasBefore = gasleft();
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
         uint256 gasUsed = gasBefore - gasleft();
         emit log_named_uint("settleBatch_100_payouts_gas", gasUsed);
         assertLt(gasUsed, 30_000_000, "100-position batch must fit the 30M block budget");
@@ -823,7 +894,8 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
             _hashUsage(usage),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
     }
 
@@ -839,7 +911,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.BatchEventData memory events,
         ) = _batchWithUsage(usage);
 
-        verifier.settleBatch(hex"", pv, positions, events, usage);
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
 
         (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
         assertEq(c, 3, "distinct resolved processes");
@@ -862,7 +934,7 @@ contract FigaroBatchVerifierTest is Test {
         usage.accruals[0].c = 3000; // the proof committed 3
 
         vm.expectRevert(FigaroBatchVerifier.UsageAccrualHashMismatch.selector);
-        verifier.settleBatch(hex"", pv, positions, events, usage);
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
     }
 
     /// WHY BOTH ARRAY LENGTHS ARE IN THE PREIMAGE. An accrual record is 49
@@ -934,11 +1006,12 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
             expected,
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
         vm.expectEmit(true, false, false, false, address(verifier));
         emit FigaroBatchVerifier.BatchAccrualSkipped(1, hex"");
-        verifier.settleBatch(hex"", pv, positions, events, u);
+        verifier.settleBatch(hex"", pv, positions, events, u, hex"");
         assertEq(verifier.stateRoot(), newRoot, "resolves despite the rejected accrual");
     }
 
@@ -984,7 +1057,7 @@ contract FigaroBatchVerifierTest is Test {
         // The accrual is dropped (topic1 = batch id 1); reason bytes not asserted.
         vm.expectEmit(true, false, false, false, address(verifier));
         emit FigaroBatchVerifier.BatchAccrualSkipped(1, hex"");
-        verifier.settleBatch(hex"", pv, positions, events, usage);
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
 
         assertEq(verifier.stateRoot(), newRoot, "resolution advances despite the dropped accrual");
         assertEq(token.balanceOf(seller) - sellerBefore, 300 ether, "the seller is still paid");
@@ -1003,7 +1076,7 @@ contract FigaroBatchVerifierTest is Test {
             bytes32 newRoot
         ) = _canonicalBatch();
 
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
         assertEq(verifier.stateRoot(), newRoot, "resolution is not hostage to the reward schedule");
     }
 
@@ -1113,7 +1186,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.NetPosition[] memory positions,
             FigaroBatchVerifier.BatchEventData memory events,
         ) = _batchWithUsage(usage);
-        verifier.settleBatch(hex"", pv, positions, events, usage);
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
     }
 
     // ── Differential fuzz: the assembly packers against the mirrors ──
@@ -1244,7 +1317,8 @@ contract FigaroBatchVerifierTest is Test {
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
             _hashUsage(usage),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
     }
 
@@ -1264,7 +1338,7 @@ contract FigaroBatchVerifierTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(FigaroBatchVerifier.SpecBindingMismatch.selector, f.b0.clauseId, f.b0.specHash)
         );
-        verifier.settleBatch(hex"", _packerPv(positions, events, usage), positions, events, usage);
+        verifier.settleBatch(hex"", _packerPv(positions, events, usage), positions, events, usage, hex"");
     }
 
     /// THE CROSS-LANGUAGE LOCK for the three sibling packers. Positions,
@@ -1320,14 +1394,17 @@ contract FigaroBatchVerifierTest is Test {
             attestationsVector,
             bindingsVector,
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
         vm.expectRevert(
             abi.encodeWithSelector(
                 FigaroBatchVerifier.SpecBindingMismatch.selector, bindings[0].clauseId, bindings[0].specHash
             )
         );
-        verifier.settleBatch(hex"", pv, positions, FigaroBatchVerifier.BatchEventData(atts, bindings), _emptyUsage());
+        verifier.settleBatch(
+            hex"", pv, positions, FigaroBatchVerifier.BatchEventData(atts, bindings), _emptyUsage(), hex""
+        );
     }
 
     // ── The ERC-20 shapes beyond fee-on-transfer, on the batch path ──
@@ -1357,9 +1434,10 @@ contract FigaroBatchVerifierTest is Test {
             keccak256(""),
             keccak256(""),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
 
         assertEq(nrt.balanceOf(buyer), 900 ether, "deposit pulled");
         assertEq(nrt.balanceOf(seller), 50 ether, "payout paid");
@@ -1387,17 +1465,18 @@ contract FigaroBatchVerifierTest is Test {
             keccak256(""),
             keccak256(""),
             _hashUsageEmpty(),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(hex"")
         );
 
         blk.setBlocked(seller, true);
         vm.expectRevert(abi.encodeWithSelector(MockERC20Blocklist.Blocked.selector, seller));
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
         assertEq(verifier.stateRoot(), GENESIS, "root must not advance");
         assertEq(blk.balanceOf(seller), 0, "no payout leg");
 
         blk.setBlocked(seller, false);
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
         assertEq(verifier.stateRoot(), newRoot, "settles once the issuer relents");
     }
 
@@ -1425,7 +1504,7 @@ contract FigaroBatchVerifierTest is Test {
         ) = _batchWithUsage(usage);
 
         vm.startStateDiffRecording();
-        verifier.settleBatch(hex"", pv, positions, events, usage);
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
         VmSafe.AccountAccess[] memory accesses = vm.stopAndReturnStateDiff();
 
         bool verifierWrote;

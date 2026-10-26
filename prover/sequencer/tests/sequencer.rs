@@ -2534,6 +2534,29 @@ fn trim_claims_to_budget_cuts_the_claims_and_leaves_the_operations() {
 }
 
 #[test]
+fn the_published_stream_rebuilds_the_root_the_batch_committed() {
+    // The property the operation stream exists for: a stranger holding the
+    // previous state, the batch transaction's calldata (the stream, the usage period and
+    // the provenance leaf) and the public values replays the batch and lands
+    // on the root the proof committed.
+    use figaro_kernel::kernel::{apply_claims, apply_operations};
+    use figaro_kernel::operation_stream::{decode_operation_stream, encode_operation_stream};
+    let input = build_canonical_batch_input();
+    let (pv, _, _, _) = apply_batch_with_state(&input).unwrap();
+    let stream = encode_operation_stream(&input.operations, &input.usage_claims);
+    assert_eq!(pv.operations_hash, keccak256(&stream), "word nine is the stream's hash");
+    let (operations, claims) = decode_operation_stream(&stream).expect("the published stream decodes");
+    assert!(operations.len() < input.operations.len(), "the attestations are not in the stream");
+    let mut state = KernelState::from_snapshot(&input.prev_state);
+    assert_eq!(state.compute_root(), pv.prev_state_root);
+    apply_operations(&mut state, input.chain_id, input.verifying_contract, input.block_timestamp, &operations)
+        .expect("the stream's operations apply from the previous state");
+    apply_claims(&mut state, input.chain_id, input.verifying_contract, &claims, input.usage_period, &input.provenance_leaf)
+        .expect("the stream's claims apply against the post-state");
+    assert_eq!(state.compute_root(), pv.new_state_root, "the replay lands on the committed root");
+}
+
+#[test]
 fn the_canonical_batch_is_planned_from_its_own_execution_and_fits_a_block() {
     let input = build_canonical_batch_input();
     let (pv, positions, events, _) = apply_batch_with_state(&input).unwrap();
@@ -2542,7 +2565,8 @@ fn the_canonical_batch_is_planned_from_its_own_execution_and_fits_a_block() {
     assert_eq!(items.attestations, 2, "the two attestations are re-emitted");
     assert_eq!(items.accruals, input.usage_claims.len(), "a claim is an accrual");
     assert!(items.usage_sellers >= 1, "the accrual names its seller");
-    let calldata = settle_calldata(&positions, &events, input.provenance_leaf, &pv.abi_encode(), 356);
+    let operations = figaro_kernel::operation_stream::encode_operation_stream(&input.operations, &input.usage_claims);
+    let calldata = settle_calldata(&positions, &events, input.provenance_leaf, &pv.abi_encode(), 356, &operations);
     // The calldata is the settle call: its selector, the proof placeholder
     // and the public values, then the items.
     assert!(calldata.len() > 4 + 356 + pv.abi_encode().len());
@@ -2551,7 +2575,7 @@ fn the_canonical_batch_is_planned_from_its_own_execution_and_fits_a_block() {
     assert!(planned < gas::settle_gas_budget(30_000_000, gas::DEFAULT_SETTLE_GAS_CAP), "the canonical batch fits one transaction under the cap");
     // The same batch with the proof's bytes absent (the mock verifier) plans
     // for fewer calldata bytes and nothing else.
-    let without_proof = settle_calldata(&positions, &events, input.provenance_leaf, &pv.abi_encode(), 0);
+    let without_proof = settle_calldata(&positions, &events, input.provenance_leaf, &pv.abi_encode(), 0, &operations);
     assert_eq!(
         planned - gas::settle_gas_estimate(&without_proof, items),
         gas::calldata_gas(&calldata) - gas::calldata_gas(&without_proof)

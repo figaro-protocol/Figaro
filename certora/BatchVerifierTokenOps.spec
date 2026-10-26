@@ -161,7 +161,8 @@ rule singlePositionUserDelta(
     bytes publicValues,
     FigaroBatchVerifier.NetPosition[] positions,
     FigaroBatchVerifier.BatchEventData batchEvents,
-    FigaroBatchVerifier.BatchUsageData usage
+    FigaroBatchVerifier.BatchUsageData usage,
+    bytes operations
 ) {
     require validSinglePositionBatch(positions, batchEvents, usage);
     FigaroBatchVerifier.NetPosition p = positions[0];
@@ -169,7 +170,7 @@ rule singlePositionUserDelta(
     env e;
 
     mathint before = balance[p.user];
-    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage);
+    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage, operations);
     bool reverted = lastReverted;
     mathint after_ = balance[p.user];
 
@@ -187,7 +188,8 @@ rule singlePositionContractDelta(
     bytes publicValues,
     FigaroBatchVerifier.NetPosition[] positions,
     FigaroBatchVerifier.BatchEventData batchEvents,
-    FigaroBatchVerifier.BatchUsageData usage
+    FigaroBatchVerifier.BatchUsageData usage,
+    bytes operations
 ) {
     require validSinglePositionBatch(positions, batchEvents, usage);
     FigaroBatchVerifier.NetPosition p = positions[0];
@@ -195,7 +197,7 @@ rule singlePositionContractDelta(
     env e;
 
     mathint before = balance[currentContract];
-    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage);
+    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage, operations);
     bool reverted = lastReverted;
     mathint after_ = balance[currentContract];
 
@@ -223,7 +225,7 @@ rule singlePositionAllowanceDrainSafety(
     env e;
 
     mathint before = balance[a];
-    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage);
+    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage, operations);
     bool reverted = lastReverted;
     mathint after_ = balance[a];
 
@@ -240,7 +242,8 @@ rule singlePositionConservation(
     bytes publicValues,
     FigaroBatchVerifier.NetPosition[] positions,
     FigaroBatchVerifier.BatchEventData batchEvents,
-    FigaroBatchVerifier.BatchUsageData usage
+    FigaroBatchVerifier.BatchUsageData usage,
+    bytes operations
 ) {
     require validSinglePositionBatch(positions, batchEvents, usage);
     FigaroBatchVerifier.NetPosition p = positions[0];
@@ -249,7 +252,7 @@ rule singlePositionConservation(
     env e;
 
     mathint totalBefore = balance[p.user] + balance[currentContract];
-    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage);
+    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage, operations);
     bool reverted = lastReverted;
     mathint totalAfter = balance[p.user] + balance[currentContract];
 

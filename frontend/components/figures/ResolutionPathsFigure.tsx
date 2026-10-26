@@ -71,7 +71,7 @@ const SPEC_BATCH: ResolutionPathPanel = {
         "signed Commitment structs",
         "→ sequencer → SP1 validity proof",
         "→ settleBatch(proof, publicValues,",
-        "   positions, events, usage)",
+        "   positions, events, usage, operations)",
     ],
     events: ["BatchSettled"],
     state: ["stateRoot (verifier-local only)"],

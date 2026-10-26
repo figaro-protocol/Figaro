@@ -190,7 +190,8 @@ contract ReentrancyAdversarialTest is Test {
             keccak256(""), // empty attestations
             keccak256(""), // empty spec bindings
             keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0), uint64(0))), // empty usage accrual
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256("") // empty operation stream
         );
 
         FigaroBatchVerifier.BatchUsageData memory usage;
@@ -198,10 +199,10 @@ contract ReentrancyAdversarialTest is Test {
         usage.sellers = new address[](0);
 
         // Arm the token to re-enter settleBatch during the payout push.
-        token.arm(address(verifier), abi.encodeCall(verifier.settleBatch, (hex"", pv, positions, events, usage)));
+        token.arm(address(verifier), abi.encodeCall(verifier.settleBatch, (hex"", pv, positions, events, usage, hex"")));
 
         uint256 sellerBefore = token.balanceOf(seller);
-        verifier.settleBatch(hex"", pv, positions, events, usage);
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
 
         assertTrue(token.reentryAttempted(), "the token must have attempted re-entry");
         assertTrue(token.reentryBlocked(), "the nonReentrant guard must block the nested settleBatch");

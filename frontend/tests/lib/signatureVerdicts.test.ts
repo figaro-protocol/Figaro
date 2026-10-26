@@ -317,8 +317,8 @@ describe("verifyOrderCommitSignatures", () => {
 });
 
 /**
- * The batch universe. A batch-resolved order emits no `OrderCommitted` and
- * `settleBatch` carries no signature bytes, so the direct walk finds nothing —
+ * The batch universe. A batch-resolved order emits no `OrderCommitted`, and the
+ * signatures in `settleBatch`'s operation stream are not yet read, so the direct walk finds nothing —
  * but the guest verified both signatures inside the proof, and the verifier's
  * re-emitted `Attestation` is the one public per-order trace that says so.
  */

@@ -18,6 +18,9 @@ pub struct ProveResult {
     pub proof_bytes: Vec<u8>,
     /// Raw public values bytes (ABI-encoded for on-chain submission).
     pub public_values_bytes: Vec<u8>,
+    /// The batch's operation stream, the bytes `settleBatch` publishes and
+    /// hashes against public value 9 (`figaro_kernel::operation_stream`).
+    pub operations_bytes: Vec<u8>,
     /// Post-batch mirror state for advancing the state mirror.
     pub post_state: KernelState,
     /// The provenance leaf's key the batch proved assembly claims
@@ -73,6 +76,10 @@ pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
         events,
         proof_bytes,
         public_values_bytes,
+        operations_bytes: figaro_kernel::operation_stream::encode_operation_stream(
+            &batch.operations,
+            &batch.usage_claims,
+        ),
         post_state,
         provenance_leaf: batch.provenance_leaf,
     })

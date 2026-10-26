@@ -479,18 +479,22 @@ export const RPGF_MINTER_ABI = parseAbi([
 
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────
 // The batch-resolution verifier (proof-based scaling). settleBatch carries the
-// proof, the 8-word public values, net positions, the event data — the
+// proof, the ten-word public values, net positions, the event data — the
 // attestations to re-emit plus the (clause key, witness-spec hash) bindings —
 // the key IS the spec hash, so the contract requires the two equal and the key
 // registered on ClauseRegistry before resolving — and the RPGF usage accrual,
-// each entry naming its kind (clause 0, assembly 1), which it forwards to
+// each entry naming its kind (clause 0, assembly 1, agreement 2), which it forwards to
 // UsageCounter. A batch that
 // credits no usage passes empty arrays; that call is a no-op, which is what
-// lets trade keep resolving after the reward's last period closes.
+// lets trade keep resolving after the reward's last period closes. Last, the
+// batch's operation stream: every commit and resolve it applied, whole, and
+// every usage claim, in the guest's canonical bytes, hash-bound to public value
+// 9 — published with the settle so the state behind the root can be rebuilt
+// from the chain alone.
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch resolution ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrAssembly, uint8 kind, uint64 c, uint64 d)[] accruals, address[] sellers) usage) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrAssembly, uint8 kind, uint64 c, uint64 d)[] accruals, address[] sellers) usage, bytes operations) external",
 
     // ── Views ────────────────────────────────────────────────────────
     "function stateRoot() view returns (bytes32)",

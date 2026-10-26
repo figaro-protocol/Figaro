@@ -70,7 +70,7 @@ interface IUsageCounter {
 ///         cannot see (open period, the seller of record's live member stake, registration) are the
 ///         counter's own and are checked there, not here.
 ///
-///         Public values (ABI-encoded, 9 × 32-byte words):
+///         Public values (ABI-encoded, 10 × 32-byte words):
 ///           0: prevStateRoot     (bytes32)
 ///           1: newStateRoot      (bytes32)
 ///           2: chainId           (uint64, left-padded to 32 bytes)
@@ -80,6 +80,14 @@ interface IUsageCounter {
 ///           6: specBindingsHash  (bytes32)
 ///           7: usageAccrualHash  (bytes32)
 ///           8: blockTimestamp    (uint64, left-padded to 32 bytes)
+///           9: operationsHash    (bytes32) — keccak256 of the batch's operation
+///              stream: every commit and resolve the batch applied, whole, and
+///              every usage claim. `settleBatch` takes the stream as calldata
+///              and refuses a batch whose bytes do not hash to this word, so a
+///              batch cannot land without publishing, in its own transaction,
+///              the signed operations behind its root; with the `usage`
+///              argument's period and provenance leaf and the public values'
+///              chain binding and clock, they rebuild the state behind it.
 contract FigaroBatchVerifier is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -100,10 +108,10 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     ///         already-expired signed commitment.
     uint64 public constant MAX_BATCH_STALENESS = 1 hours;
 
-    /// @notice The length of the public values, in bytes: nine 32-byte words.
+    /// @notice The length of the public values, in bytes: ten 32-byte words.
     ///         A stream of any other length is another program's, or a
     ///         malformed one, and is refused by name before anything reads it.
-    uint256 public constant PUBLIC_VALUES_LENGTH = 288;
+    uint256 public constant PUBLIC_VALUES_LENGTH = 320;
 
     // ── State ─────────────────────────────────────────────────────
 
@@ -208,6 +216,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     error AttestationHashMismatch();
     error SpecBindingsHashMismatch();
     error UsageAccrualHashMismatch();
+    error OperationsHashMismatch();
     error BatchTimestampOutOfRange(uint64 committed, uint64 current);
     error PublicValuesLengthMismatch(uint256 expected, uint256 actual);
     /// @dev The proof validated content against a spec whose hash is not the
@@ -260,24 +269,33 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         bytes32 specBindingsHash;
         bytes32 usageAccrualHash;
         uint64 blockTimestamp;
+        bytes32 operationsHash;
     }
 
     // ── Batch resolution ──────────────────────────────────────────
 
     /// @notice Resolve a batch of Figaro protocol operations.
     /// @param proof        The SP1 validity proof for the batch.
-    /// @param publicValues ABI-encoded public values (9 × 32-byte words).
+    /// @param publicValues ABI-encoded public values (10 × 32-byte words).
     /// @param positions    Net token positions to reconcile (hash-verified against proof).
     /// @param events       Attestation events to re-emit + spec bindings to
     ///                     check against the ClauseRegistry (both hash-verified).
     /// @param usage        The batch's RPGF accrual (hash-verified). Pass empty
     ///                     arrays for a batch that credits no usage.
+    /// @param operations   The batch's operation stream (hash-verified against
+    ///                     public value 9): every commit and resolve it applied,
+    ///                     whole, and every usage claim, in the guest's canonical
+    ///                     bytes (`prover/lib/src/operation_stream.rs`). The
+    ///                     contract reads none of it; it is published so that
+    ///                     anyone can rebuild the state behind the new root from
+    ///                     this transaction and the ones before it.
     function settleBatch(
         bytes calldata proof,
         bytes calldata publicValues,
         NetPosition[] calldata positions,
         BatchEventData calldata events,
-        BatchUsageData calldata usage
+        BatchUsageData calldata usage,
+        bytes calldata operations
     ) external nonReentrant {
         if (publicValues.length != PUBLIC_VALUES_LENGTH) {
             revert PublicValuesLengthMismatch(PUBLIC_VALUES_LENGTH, publicValues.length);
@@ -320,6 +338,9 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         }
         if (_hashUsage(usage) != pv.usageAccrualHash) {
             revert UsageAccrualHashMismatch();
+        }
+        if (keccak256(operations) != pv.operationsHash) {
+            revert OperationsHashMismatch();
         }
 
         // ── 4. Anchor every witness spec to the live registry ─────
@@ -387,11 +408,13 @@ contract FigaroBatchVerifier is ReentrancyGuard {
             pv.specBindingsHash,
             pv.usageAccrualHash
         ) = abi.decode(publicValues, (bytes32, bytes32, uint64, address, bytes32, bytes32, bytes32, bytes32));
-        // Word 8 (the last 32 bytes) is blockTimestamp — read from the calldata
-        // slice rather than a 9-tuple abi.decode, which tips settleBatch over
-        // the legacy-codegen stack limit. The SP1 verifier already bound the
-        // whole 288-byte stream to the proof, so this reads a committed word.
+        // Words 8 and 9 are blockTimestamp and operationsHash — read from the
+        // calldata slice rather than a wider tuple abi.decode, which tips
+        // settleBatch over the legacy-codegen stack limit. The SP1 verifier
+        // already bound the whole 320-byte stream to the proof, so these read
+        // committed words.
         pv.blockTimestamp = uint64(uint256(bytes32(publicValues[256:288])));
+        pv.operationsHash = bytes32(publicValues[288:320]);
     }
 
     // ── Hash functions (byte-exact parity with the Rust mirror) ───────

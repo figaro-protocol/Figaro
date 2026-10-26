@@ -1048,6 +1048,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                         { name: 'sellers', type: 'address[]' },
                     ],
                 },
+                { name: 'operations', type: 'bytes' },
             ],
             outputs: [],
         },
@@ -1159,11 +1160,11 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             [
                 { type: 'bytes32' }, { type: 'bytes32' }, { type: 'uint64' }, { type: 'address' },
                 { type: 'bytes32' }, { type: 'bytes32' }, { type: 'bytes32' }, { type: 'bytes32' },
-                { type: 'uint64' },
+                { type: 'uint64' }, { type: 'bytes32' },
             ],
-            [prevRoot, newRoot, BigInt(LOCAL_ANVIL.id), batchVerifier, emptyPositionsHash, attestationsHash, specBindingsHash, emptyUsageHash, batchTimestamp],
+            [prevRoot, newRoot, BigInt(LOCAL_ANVIL.id), batchVerifier, emptyPositionsHash, attestationsHash, specBindingsHash, emptyUsageHash, batchTimestamp, keccak256('0x')],
         );
-        expect(publicValues.length, 'nine words, 288 bytes').toBe(2 + 288 * 2);
+        expect(publicValues.length, 'ten words, 320 bytes').toBe(2 + 320 * 2);
 
         const settleReceipt = await receipt(await surveyorWallet.writeContract({
             address: batchVerifier, abi: BATCH_VERIFIER_ABI, functionName: 'settleBatch',
@@ -1171,6 +1172,9 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 '0x', publicValues, [],
                 { attestations: [attestation], specBindings: [{ clauseId: geoKey, specHash }] },
                 { period: 0, provenanceLeaf: zeroHash, accruals: [], sellers: [] },
+                // The batch's operation stream: this leg lands an attestation
+                // alone, which moves no state, so the stream is empty.
+                '0x',
             ],
         }));
         expect(settleReceipt.status, 'the batch resolved — every packed hash matched byte-for-byte').toBe('success');

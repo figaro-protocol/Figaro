@@ -1097,7 +1097,10 @@ fn apply_batch_inner(
     let new_root = state.compute_root();
     let positions = effects.positions;
     let attestation_events = effects.attestations;
-    let ops_hash = compute_positions_hash(&positions);
+    let positions_hash = compute_positions_hash(&positions);
+    let operations_hash = crate::operation_stream::compute_operations_hash(
+        &crate::operation_stream::encode_operation_stream(&input.operations, &input.usage_claims),
+    );
     let att_hash = compute_attestation_events_hash(&attestation_events);
     let bindings: Vec<SpecBinding> = effects.spec_bindings.into_iter().collect();
     let bindings_hash = compute_spec_bindings_hash(&bindings);
@@ -1122,11 +1125,12 @@ fn apply_batch_inner(
             new_state_root: new_root,
             chain_id: input.chain_id,
             verifying_contract: input.verifying_contract,
-            token_ops_hash: ops_hash,
+            token_ops_hash: positions_hash,
             attestation_events_hash: att_hash,
             spec_bindings_hash: bindings_hash,
             usage_accrual_hash: usage_hash,
             block_timestamp: input.block_timestamp,
+            operations_hash,
         },
         positions,
         batch_events,

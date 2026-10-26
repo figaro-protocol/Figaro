@@ -117,14 +117,19 @@ The proof-based path that resolves batches of processes beside the direct
 `FigaroCore` path. `SCALING_STRATEGY.md` owns the design; this is the surface.
 
 **`src/core/verifier/FigaroBatchVerifier.sol`** — One external function,
-`settleBatch(proof, publicValues, positions, events, usage)`:
-- refuses public values of any length but `PUBLIC_VALUES_LENGTH` (288 bytes,
-  nine words) with `PublicValuesLengthMismatch`, before the proof is read;
+`settleBatch(proof, publicValues, positions, events, usage, operations)`:
+- refuses public values of any length but `PUBLIC_VALUES_LENGTH` (320 bytes,
+  ten words) with `PublicValuesLengthMismatch`, before the proof is read;
 - verifies an SP1 proof of a batch of `FigaroCore` operations (commits, resolutions,
   witness-gated attestations) against the immutable `programVKey`;
 - checks state-root continuity and chain binding, and hash-verifies the
-  calldata (positions, attestations, spec bindings) byte-for-byte against the
-  Rust mirror's `compute_*_hash`;
+  calldata (positions, attestations, spec bindings, usage, and the operation
+  stream) byte-for-byte against the Rust mirror's `compute_*_hash`; the
+  operation stream (`prover/lib/src/operation_stream.rs`) is every commit and
+  resolve the batch applied, whole, and every usage claim, bound to public
+  value 9 (`OperationsHashMismatch`), so a batch cannot land without
+  publishing, in its own transaction, what rebuilds the state behind its root;
+  the contract reads none of it;
 - checks every spec binding: the clause key is the hash of the witness spec,
   so the binding's two words must be equal (`SpecBindingMismatch`), and the
   key must be `ClauseRegistry.registered` (`ClauseNotRegistered`) — the vkey

@@ -46,6 +46,16 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     uint256 internal constant SETTLE_GAS_PER_ACCRUAL = 190_000;
     uint256 internal constant SETTLE_GAS_PER_USAGE_SELLER = 12_000;
     uint256 internal constant SETTLE_FIXED_EXEC_GAS = 105_000;
+    /// @dev The operation stream's execution: the calldata copy, the keccak
+    ///      over it and the memory it expands into. Linear in the stream's
+    ///      32-byte words plus a quadratic memory term — measured 22 a word
+    ///      at 256 words, 33 at 1,024, 54 at 2,048 — so the model is
+    ///      `words * SETTLE_GAS_PER_STREAM_WORD + words² / SETTLE_STREAM_QUADRATIC_DIVISOR`,
+    ///      each part a ceiling over its measurement (17.4 linear, 1/56
+    ///      quadratic, fitted). The calldata's own per-byte charge is
+    ///      intrinsic and planned apart.
+    uint256 internal constant SETTLE_GAS_PER_STREAM_WORD = 24;
+    uint256 internal constant SETTLE_STREAM_QUADRATIC_DIVISOR = 48;
     /// @dev The proof's verification, which the mock verifier does not
     ///      perform: read from the five Groth16 batches settled on Sepolia.
     ///      Receipt gas less the calldata's intrinsic cost and the items
@@ -69,7 +79,8 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     function _settleExecGas(
         FigaroBatchVerifier.NetPosition[] memory positions,
         FigaroBatchVerifier.BatchEventData memory events,
-        FigaroBatchVerifier.BatchUsageData memory usage
+        FigaroBatchVerifier.BatchUsageData memory usage,
+        bytes memory stream
     ) internal returns (uint256) {
         (bytes32 prev, bytes32 next) = _advanceRoot();
         bytes memory pv = abi.encode(
@@ -81,7 +92,8 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
             _hashAttestations(events.attestations),
             _hashBindings(events.specBindings),
             _hashUsage(usage),
-            uint64(block.timestamp)
+            uint64(block.timestamp),
+            keccak256(stream)
         );
         // On chain a settle is its own transaction: every entry it touches is
         // cold. The test's setup and item construction warmed them.
@@ -91,8 +103,16 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         vm.cool(address(registry));
         vm.cool(address(counter));
         vm.cool(address(members));
-        verifier.settleBatch(hex"", pv, positions, events, usage);
+        verifier.settleBatch(hex"", pv, positions, events, usage, stream);
         return vm.lastCallGas().gasTotalUsed;
+    }
+
+    function _settleExecGas(
+        FigaroBatchVerifier.NetPosition[] memory positions,
+        FigaroBatchVerifier.BatchEventData memory events,
+        FigaroBatchVerifier.BatchUsageData memory usage
+    ) internal returns (uint256) {
+        return _settleExecGas(positions, events, usage, hex"");
     }
 
     function _noEvents() internal pure returns (FigaroBatchVerifier.BatchEventData memory) {
@@ -182,6 +202,77 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     }
 
     // ── The measurements ──────────────────────────────────────────────
+
+    /// @dev The settle call's calldata for an empty batch publishing `stream`.
+    function _emptyBatchCalldata(bytes memory stream) internal returns (bytes memory) {
+        (bytes32 prev, bytes32 next) = _advanceRoot();
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
+        FigaroBatchVerifier.BatchEventData memory events = _noEvents();
+        bytes memory pv = abi.encode(
+            prev,
+            next,
+            uint64(block.chainid),
+            address(verifier),
+            _hashPositions(positions),
+            _hashAttestations(events.attestations),
+            _hashBindings(events.specBindings),
+            _hashUsage(_emptyUsage()),
+            uint64(block.timestamp),
+            keccak256(stream)
+        );
+        return abi.encodeCall(verifier.settleBatch, (hex"", pv, positions, events, _emptyUsage(), stream));
+    }
+
+    /// @dev The stream's execution, measured around a low-level call with the
+    ///      calldata built beforehand: the callee's copy, keccak and memory
+    ///      for the stream, and nothing of the caller's encoding.
+    function _settleCallGas(bytes memory stream) internal returns (uint256) {
+        bytes memory data = _emptyBatchCalldata(stream);
+        vm.cool(address(verifier));
+        vm.cool(address(sp1));
+        vm.cool(address(token));
+        vm.cool(address(registry));
+        vm.cool(address(counter));
+        vm.cool(address(members));
+        uint256 before = gasleft();
+        (bool ok,) = address(verifier).call(data);
+        uint256 used = before - gasleft();
+        require(ok, "settle reverted");
+        return used;
+    }
+
+    function _streamOf(uint256 words) internal pure returns (bytes memory stream) {
+        stream = new bytes(words * 32);
+        for (uint256 i = 0; i < stream.length; i++) {
+            stream[i] = 0x01;
+        }
+    }
+
+    function test_Gas_settleStreamWord() public {
+        // The verifier's first settle writes `batchCount` from zero (a dearer
+        // store); it is not the stream's cost, so one settle is spent first.
+        _settleCallGas(hex"");
+        uint256 g0 = _settleCallGas(hex"");
+        uint256 g256 = _settleCallGas(_streamOf(256));
+        uint256 g1024 = _settleCallGas(_streamOf(1024));
+        uint256 g2048 = _settleCallGas(_streamOf(2048));
+        emit log_named_uint("settle_call_gas_empty_stream", g0);
+        emit log_named_uint("stream_marginal_256_words", (g256 - g0) / 256);
+        emit log_named_uint("stream_marginal_1024_words", (g1024 - g0) / 1024);
+        emit log_named_uint("stream_marginal_2048_words", (g2048 - g0) / 2048);
+        // The linear part, read where the quadratic memory term is still small.
+        uint256 marginal = (g256 - g0) / 256;
+        emit log_named_uint("settle_gas_per_stream_word", marginal);
+        assertGe(marginal, 4, "a stream word dropped unexpectedly (verifier change?)");
+        assertLe(marginal, SETTLE_GAS_PER_STREAM_WORD, "a stream word rose past its anchor (re-measure)");
+        // The whole model holds where the quadratic term matters.
+        for (uint256 k = 0; k < 2; k++) {
+            uint256 words = k == 0 ? 1024 : 2048;
+            uint256 measured = (k == 0 ? g1024 : g2048) - g0;
+            uint256 modeled = words * SETTLE_GAS_PER_STREAM_WORD + words * words / SETTLE_STREAM_QUADRATIC_DIVISOR;
+            assertLe(measured, modeled, "the stream's execution rose past the model (re-measure)");
+        }
+    }
 
     function test_Gas_settleFixedExecution() public {
         uint256 g = _settleExecGas(new FigaroBatchVerifier.NetPosition[](0), _noEvents(), _emptyUsage());

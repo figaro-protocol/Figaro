@@ -245,6 +245,11 @@
             "internalType": "address[]"
           }
         ]
+      },
+      {
+        "name": "operations",
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [],
@@ -433,6 +438,11 @@
   {
     "type": "error",
     "name": "FeeOnTransferDetected",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OperationsHashMismatch",
     "inputs": []
   },
   {

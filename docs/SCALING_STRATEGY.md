@@ -134,9 +134,12 @@ the TypeScript side. No per-clause code, by design ("Prover Clause
 Architecture" below).
 
 **SP1 guest program** (`prover/program/`): executes `apply_batch()` in the SP1
-zkVM and commits `PublicValues` — nine fields: prev/new state roots, chain
-binding (chainId + verifyingContract), and four commitment hashes (token
-positions, attestation events, spec bindings, usage accrual). The canonical
+zkVM and commits `PublicValues` — ten fields: prev/new state roots, chain
+binding (chainId + verifyingContract), five commitment hashes (token
+positions, attestation events, spec bindings, usage accrual, and the
+operation stream: every commit and resolve the batch applied, whole, and
+every usage claim, `prover/lib/src/operation_stream.rs`), and the clock the
+guest checked deadlines against. The canonical
 batch (all four op kinds) proves in ~1.2M cycles with the k256 SP1 precompile.
 
 **On-chain verifier** (`src/core/verifier/FigaroBatchVerifier.sol`):
@@ -232,7 +235,7 @@ path but one net position on the batch path. Netting is the batch path's
 structural advantage.
 
 **Why it is not "half of FigaroCore."** A naive comparison of the batch
-verifier's ceiling (about 260 positions under the 2^24 transaction cap, about
+verifier's ceiling (about 240 orders in one resolve under the 2^24 transaction cap, about
 930 at a 60M block without it, as the relay plans a batch from its own
 execution — `prover/sequencer/src/gas.rs`) against `resolveProcess`'s
 ceiling (about 550 orders under the transaction cap, about 950 at a 30M block without it) is misleading: that figure measures only the resolve step — the
@@ -248,7 +251,7 @@ land on-chain.
 |---|---|---|---|
 | Direct `commit()` | ~74 orders | per block | ~382k/order (sub) |
 | Direct `resolveProcess()` | about 550 orders under the 2^24 transaction cap; ~950 at 30M without it | single call | ~30k/order (all-in) |
-| Batch `settleBatch()` | about 260 positions under the 2^24 transaction cap (EIP-7825, mainnet); without the cap about 460 at 30M, 930 at 60M and 3,000 at Sepolia's 200M, as the relay plans it from the batch's own execution (`prover/sequencer/src/gas.rs`); a batch-path process is kept within one settle's resolve | single call | 60k/position planned; ~26k measured cold on the pre-fork EVM |
+| Batch `settleBatch()` | about 240 orders in one resolution under the 2^24 transaction cap (EIP-7825, mainnet), each one position and its commitment published in the operation stream; without the cap about 460 at 30M, 930 at 60M and 3,000 at Sepolia's 200M, as the relay plans it from the batch's own execution (`prover/sequencer/src/gas.rs`); a batch-path process is kept within what one transaction resolves | single call | 60k/position planned; ~26k measured cold on the pre-fork EVM |
 
 The correct comparison is total lifecycle cost: ~413k gas per order (direct)
 against about 26k measured per net position (batch; 60k as planned) — roughly
@@ -496,7 +499,7 @@ state is the sequencer's mirror of the batch path's state, maintained
 by replaying its own landed batches.
 
 **4. Proving.** The prover executes the mirror program in the zkVM and
-produces the validity proof, the nine `PublicValues`, the `NetPosition[]`
+produces the validity proof, the ten `PublicValues`, the `NetPosition[]`
 (aggregated token movements), and the `BatchEvents` (attestations, spec
 bindings, usage accruals with their sellers and period). A devnet uses the
 mock prover; otherwise `SP1_PROVER` selects `cpu`, `cuda`, or `network`. No
@@ -505,7 +508,7 @@ regardless of who generated it — a sequencer self-proves the way a validator
 runs node software, or buys liveness, never safety, from the network.
 
 **5. The resolution transaction.** One call to `settleBatch(proof,
-publicValues, positions, events, usage)`. The verifier: verifies the proof;
+publicValues, positions, events, usage, operations)`. The verifier: verifies the proof;
 checks state-root continuity and chain binding; verifies the auxiliary
 calldata hashes against the proof's commitments; checks each spec binding
 (`specHash == clauseId`, `ClauseRegistry.registered(clauseId)`); executes the net token transfers;
@@ -539,8 +542,9 @@ re-emits protocol-compatible events; forwards the usage accrual to
 Correctness of what resolves requires no trust in the sequencer. What does
 require trust is **liveness**: a slow or stopped sequencer delays
 net-position payout for participants waiting on a batch, and a lost state (every copy
-of the root's preimage gone, or a batch landed by a submitter that publishes nothing)
-blocks it until someone holds that state again. It cannot affect
+of the root's preimage gone) blocks it until someone holds that state again — by
+rebuilding it from the operation streams every landed batch publishes in its
+transaction, which nothing in this repository does yet. It cannot affect
 `FigaroCore` — `FigaroCore`'s path is independent of batches — so the sequencer
 is liveness-trusted infrastructure, never safety-trusted: an off-protocol
 convenience, not a trade party, and the direct path stays open to every new

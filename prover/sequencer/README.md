@@ -25,10 +25,12 @@ it. `OrderCommitted` / `OrderSeller` / `OrderCurrency` carry the whole
 commitment struct; `OrderResolved` / `ProcessResolved` carry the resolution
 facts; and the two signatures that admitted the order sit in the commit
 transaction's calldata, readable by anyone. The batch path resolves the same
-trade but publishes none of it — `FigaroBatchVerifier`'s public values carry
-no order hashes, its storage is `stateRoot` + `batchCount`, and `BatchSettled`
-names no order — so a batched order's buyer, seller, payment and
-`checkoutHash` exist only under the proven state root. The read routes below
+trade and publishes its signed operations in the calldata of the transaction that
+lands the batch (the operation stream, bound to public value 9), but emits no order event —
+`FigaroBatchVerifier`'s public values carry no order hashes, its storage is
+`stateRoot` + `batchCount`, and `BatchSettled` names no order — so a batched
+order's buyer, seller, payment and `checkoutHash` are readable from that
+transaction and provable under the proven state root, never from an event. The read routes below
 close that gap: they mirror `FigaroCore`'s publication role for the batch
 universe.
 
@@ -531,7 +533,7 @@ gives the next tick's claims the first half of the budget, so a deep
 operation queue never starves them. A batch-path process is kept within
 what one `settleBatch` call can resolve: a commit that would grow a process past that
 (`gas::max_orders_in_one_settle`, one position an order and one for the
-buyer — about 260 orders under the default cap) is dropped at batch
+buyer — about 240 orders under the default cap) is dropped at batch
 formation and dead-lettered with the reason, since such a process would
 have no resolve any relay on the chain could land and its bonds would
 stay where they are. An operation that fits no `settleBatch` call under the cap on its own is
@@ -546,7 +548,7 @@ past that is a refusal to run, read against the block at startup or, when
 startup could not read it, on the first tick that does — and
 a limit that later falls below the cap holds such a batch until it
 returns. A tick whose block cannot be read plans under the cap alone. The budget is the
-chain's own: under the default cap a batch plans on about 260 positions; a
+chain's own: under the default cap a resolve plans on about 240 orders, each a position and a published commitment; a
 chain without the cap gives about 930 at a 60M block and about 3,000 at
 Sepolia's 200M, and a rise in the limit flows through at the next tick
 with nothing set, while a fork that reprices the items is met by

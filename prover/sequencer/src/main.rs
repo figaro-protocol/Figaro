@@ -750,14 +750,22 @@ async fn batch_loop(
         let mut estimate = |input: &BatchInput| {
             let (pv, positions, events, _) = apply_batch_with_state(input)
                 .map_err(|e| format!("kernel execution failed: {e}"))?;
+            let stream = figaro_kernel::operation_stream::encode_operation_stream(
+                &input.operations,
+                &input.usage_claims,
+            );
             let calldata = submitter::settle_calldata(
                 &positions,
                 &events,
                 input.provenance_leaf,
                 &pv.abi_encode(),
                 proof_len,
+                &stream,
             );
-            Ok(gas::settle_gas_estimate(&calldata, gas::SettleItems::of(&positions, &events)))
+            Ok(gas::settle_gas_estimate(
+                &calldata,
+                gas::SettleItems::of(&positions, &events).with_stream_bytes(stream.len()),
+            ))
         };
 
         // A commit that would grow a batch-path process past what one settle

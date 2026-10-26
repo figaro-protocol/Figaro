@@ -371,16 +371,22 @@ pub struct PublicValues {
     /// rejects with `DeadlineExpired`. Bounding it here makes the guest's
     /// deadline gate real.
     pub block_timestamp: u64,
+    /// `keccak256` of the batch's operation stream (`operation_stream`): every
+    /// commit and resolve the batch applied, whole, and every usage claim.
+    /// The on-chain verifier takes the stream as calldata and refuses a batch
+    /// whose bytes do not hash to this word, so a batch cannot land without
+    /// publishing what rebuilds the state behind its root.
+    pub operations_hash: B256,
 }
 
 impl PublicValues {
-    /// The ONE byte layout of the public values: 9 × 32-byte ABI words,
+    /// The ONE byte layout of the public values: 10 × 32-byte ABI words,
     /// exactly what `FigaroBatchVerifier._decodePV` abi.decodes. The guest
     /// commits these bytes, the host submits them, and the on-chain SP1
     /// verifier hashes the submission against the proof's committed digest —
     /// so a second encoding anywhere is a `ProofInvalid` by construction.
     pub fn abi_encode(&self) -> Vec<u8> {
-        let mut data = Vec::with_capacity(288);
+        let mut data = Vec::with_capacity(320);
         data.extend_from_slice(self.prev_state_root.as_slice());
         data.extend_from_slice(self.new_state_root.as_slice());
         let mut chain_word = [0u8; 32];
@@ -396,14 +402,15 @@ impl PublicValues {
         let mut ts_word = [0u8; 32];
         ts_word[24..].copy_from_slice(&self.block_timestamp.to_be_bytes());
         data.extend_from_slice(&ts_word);
+        data.extend_from_slice(self.operations_hash.as_slice());
         data
     }
 
     /// Inverse of `abi_encode` — the only sanctioned way to read a committed
     /// public-values stream. Strict: the length and every pad byte must hold.
     pub fn abi_decode(data: &[u8]) -> Result<Self, String> {
-        if data.len() != 288 {
-            return Err(format!("public values must be 288 bytes, got {}", data.len()));
+        if data.len() != 320 {
+            return Err(format!("public values must be 320 bytes, got {}", data.len()));
         }
         let word = |i: usize| -> [u8; 32] { data[i * 32..(i + 1) * 32].try_into().unwrap() };
         let chain_word = word(2);
@@ -428,6 +435,7 @@ impl PublicValues {
             spec_bindings_hash: B256::from(word(6)),
             usage_accrual_hash: B256::from(word(7)),
             block_timestamp: u64::from_be_bytes(ts_word[24..].try_into().unwrap()),
+            operations_hash: B256::from(word(9)),
         })
     }
 }

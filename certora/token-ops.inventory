@@ -35,5 +35,5 @@ src/app/WitnessSwapAndCommitCoordinator.sol:237 | _fund (input residual refund �
 # single-position rules with the documented inductive generalization;
 # registered summarized as a revert-only view (sound — the anchor gate
 # refuses settlement, never moves a token). Cloud run green 2026-07-16.
-src/core/verifier/FigaroBatchVerifier.sol:579 | _executePositions (net payout → user) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
-src/core/verifier/FigaroBatchVerifier.sol:589 | _pullExact (net deposit pull) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/core/verifier/FigaroBatchVerifier.sol:602 | _executePositions (net payout → user) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/core/verifier/FigaroBatchVerifier.sol:612 | _pullExact (net deposit pull) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation

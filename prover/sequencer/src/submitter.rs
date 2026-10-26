@@ -433,7 +433,8 @@ sol! {
             bytes calldata publicValues,
             NetPositionCall[] calldata positions,
             BatchEventDataCall calldata events,
-            BatchUsageDataCall calldata usage
+            BatchUsageDataCall calldata usage,
+            bytes calldata operations
         ) external;
 
         event BatchSettled(
@@ -704,6 +705,7 @@ pub async fn submit_batch(
         positions,
         events_call,
         usage_call,
+        Bytes::from(result.operations_bytes.clone()),
     );
 
     info!(verifier = ?config.verifier_address, "Submitting settleBatch transaction");
@@ -865,14 +867,16 @@ pub fn settle_call_args(
 }
 
 /// The calldata a settle of these positions and events would carry, with
-/// `proof_len` bytes standing for the proof and `public_values` as the
-/// guest commits them: what the gas estimate charges per byte.
+/// `proof_len` bytes standing for the proof, `public_values` as the guest
+/// commits them and `operations` the batch's operation stream: what the gas
+/// estimate charges per byte.
 pub fn settle_calldata(
     positions: &[NetPosition],
     events: &BatchEvents,
     provenance_leaf: B256,
     public_values: &[u8],
     proof_len: usize,
+    operations: &[u8],
 ) -> Vec<u8> {
     use alloy::sol_types::SolCall;
     let (positions, events, usage) = settle_call_args(positions, events, provenance_leaf);
@@ -882,6 +886,7 @@ pub fn settle_calldata(
         positions,
         events,
         usage,
+        operations: Bytes::copy_from_slice(operations),
     }
     .abi_encode()
 }
