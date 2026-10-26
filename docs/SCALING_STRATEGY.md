@@ -545,7 +545,7 @@ require trust is **liveness**: a slow or stopped sequencer delays
 net-position payout for participants waiting on a batch, and a lost state (every copy
 of the root's preimage gone) blocks it until someone holds that state again — by
 rebuilding it from the operation streams every landed batch publishes in its
-transaction, which nothing in this repository does yet. It cannot affect
+transaction (a relay started with `REBUILD_FROM_CHAIN=1`). It cannot affect
 `FigaroCore` — `FigaroCore`'s path is independent of batches — so the sequencer
 is liveness-trusted infrastructure, never safety-trusted: an off-protocol
 convenience, not a trade party, and the direct path stays open to every new
@@ -628,8 +628,11 @@ of ~21k gas, repeatable against specific counterparties.
    batch is sent, and publishes it (`GET /state`) so a party or a second
    relay can keep a copy and start on it — saved to a new file, its
    `x-figaro-state-root` checked against the verifier's `stateRoot` before
-   it replaces any state file. The publication archive does not
-   carry it and nothing rebuilds it from the chain: keep copies. A relay
+   it replaces any state file. Losing every copy loses nothing: a relay
+   started with `REBUILD_FROM_CHAIN=1` (`prover/sequencer/src/rebuild.rs`)
+   replays every landed batch's operation stream from the verifier's
+   transactions, holds each root to the one its `BatchSettled` names, and
+   starts on the result. A relay
    that does not hold the state behind the verifier's root refuses to start.
 5. **Retry on gas spikes** — a `settleBatch` that reverts on gas is retried
    with more; proofs are expensive and are not discarded.

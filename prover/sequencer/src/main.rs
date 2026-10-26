@@ -303,6 +303,37 @@ async fn main() {
     // Nothing is lost: the file it replaced was behind too (a kept file
     // holds a root the verifier has held, and roots never repeat), and a
     // second start with STATE_FROM adopts the current one.
+    // A relay holding nothing rebuilds the state behind the verifier's root
+    // from the chain alone (`REBUILD_FROM_CHAIN=1`): every landed batch
+    // carries its operation stream, so the replay needs no other relay, file
+    // or archive. `REBUILD_FROM_BLOCK` is where the verifier's logs begin
+    // (its deployment block; 0 reads from genesis). The rebuilt state is kept
+    // before the relay starts on it, and the check below holds it to the
+    // verifier's root like any other start.
+    if env_or("REBUILD_FROM_CHAIN", "") == "1" {
+        if verifier_addr == Address::ZERO {
+            error!("refusing to start: REBUILD_FROM_CHAIN needs BATCH_VERIFIER_ADDRESS");
+            std::process::exit(2);
+        }
+        let from_block: u64 = env_or("REBUILD_FROM_BLOCK", "0")
+            .parse()
+            .expect("invalid REBUILD_FROM_BLOCK");
+        match figaro_sequencer::rebuild::rebuild_from_chain(&rpc_url, verifier_addr, from_block).await {
+            Ok(rebuilt) => {
+                if let Err(e) = state_store.keep(rebuilt.root, &rebuilt.state).await {
+                    error!(%e, %state_path, "refusing to start: the rebuilt state could not be kept");
+                    std::process::exit(2);
+                }
+                state_mirror = StateMirror::from_snapshot(rebuilt.state);
+                info!(root = ?rebuilt.root, batches = rebuilt.batches, from_block, "Rebuilt the state behind the verifier's root from the chain");
+            }
+            Err(reason) => {
+                error!(%reason, "refusing to start: the state could not be rebuilt from the chain; nothing was written");
+                std::process::exit(2);
+            }
+        }
+    }
+
     let state_from = env_or("STATE_FROM", "");
     if !state_from.is_empty() && verifier_addr == Address::ZERO {
         error!(%state_from, "refusing to start: STATE_FROM needs BATCH_VERIFIER_ADDRESS — a served state is adopted only against the verifier's root");

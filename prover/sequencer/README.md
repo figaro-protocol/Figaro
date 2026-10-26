@@ -203,6 +203,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `ARCHIVE_MAX_BATCHES` | `10000` | Retained resolved batches (see Publication bounds) |
 | `RUST_LOG` | `figaro_sequencer=info,sequencer=info` | Log filter. Two targets: the library's modules log as `figaro_sequencer`, the binary's own lines (startup, every refusal to start, the batch loop) as `sequencer` — name both |
 | `STATE_PATH` | `sequencer-state-<chain id>-<verifier>.json` | The relay's state, the preimage of the verifier's root (see The state behind the root); empty = in-memory only |
+| `REBUILD_FROM_CHAIN` | unset | `1`: at startup this relay rebuilds the state behind the verifier's root from the chain alone, replaying every landed batch's operation stream from `REBUILD_FROM_BLOCK` (default `0`; the verifier's deployment block saves the scan), holding each root to its `BatchSettled`, and keeps the result as its state file before starting. Refuses, writing nothing, on a batch landed through another contract's call. |
 | `STATE_FROM` | unset | Another relay's base URL: at startup this relay fetches its `GET /state`, recomputes the root, and adopts it into `STATE_PATH` only when that root is the verifier's and this relay does not already hold the state behind it (kept file or journal); holding it, it starts on its own and writes nothing; any other served state is a refusal to start that writes nothing (see The state behind the root) |
 
 ## HTTP API

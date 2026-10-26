@@ -346,13 +346,11 @@ the relay that built the first batch, which must resume on its kept state and re
 second. The verifier is deployed with the fingerprint
 the binary itself reports (`sequencer --vkey`), so the sequencer's startup
 comparison against `programVKey()` runs for real. Its last case is the batch
-design's pass test (punch-list band 0), an expected failure (`it.fails`) until the
-design lands: a third order committed in a batch, every relay stopped and every
+design's pass test, the equivalence of batch and Core: a third order committed in a batch, every relay stopped and every
 state file and archive deleted, a relay started with nothing rebuilds the state
 behind the verifier's root from the chain alone (`REBUILD_FROM_CHAIN=1`), the
 buyer's signed resolve pays out through it, and the verifier's `OrderCommitted`
-and `OrderResolved` events name the order; today it fails at the commitment's
-event, which the verifier does not emit. Anvil-gated (skips clean without it) locally;
+and `OrderResolved` events name the order. Anvil-gated (skips clean without it) locally;
 `prover-ci`'s `sp1` job runs it on main with `REQUIRE_BATCH_E2E=1`, where a
 skip is a failure.
 

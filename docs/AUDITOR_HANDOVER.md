@@ -1325,14 +1325,16 @@ Stated so the review does not spend hours finding them.
    relay itself refusing any copy whose root is not the verifier's; the
    commitments and signatures a resolve needs as witness are in a second store, the
    relay's archive (`ARCHIVE_PATH`), capped at a number of batches and evicting the
-   oldest; nothing in this repository rebuilds either from the chain. A
-   process opened on the batch path resolves only through a batch built on
-   that state, so if every copy is lost, those processes have no one who can
-   build their resolve, and their bonds stay in the verifier, until someone
-   rebuilds the state from the chain: every landed batch publishes its signed
-   operations in its own transaction (`settleBatch`'s `operations`, bound to
-   public value 9), so a submitter cannot land a batch and publish nothing,
-   and the rebuild is possible; nothing in this repository performs it yet. A relay that does not hold
+   oldest. Neither is needed to resolve: every landed batch publishes its
+   signed operations in its own transaction (`settleBatch`'s `operations`,
+   bound to public value 9), so a submitter cannot land a batch and publish
+   nothing, and a relay started with `REBUILD_FROM_CHAIN=1`
+   (`prover/sequencer/src/rebuild.rs`) rebuilds the state behind the
+   verifier's root from the chain alone and builds the buyer's resolve on it
+   (`sdk/tests/batch-e2e.test.ts`, the pass test). The rebuild reads a batch
+   whose top-level call is `settleBatch` on the verifier; a batch landed
+   through another contract's internal call carries its stream only in a
+   call trace, and the rebuild refuses it, naming the transaction. A relay that does not hold
    the state refuses to start and builds nothing.
 7. **A deferral at batch formation is bounded by a window, not by the
    dependency.** An operation that applies against no order of its drain, or

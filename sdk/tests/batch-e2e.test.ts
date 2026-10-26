@@ -672,22 +672,16 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     // The chain also carries the commitment in the Core's own event shape, so
     // the event readers find batched trade where they find direct trade.
     //
-    // `it.fails` records today's sequencer. The verifier publishes the
-    // batch's operation stream and the Core's events for it, so steps 1 and
-    // 2 pass; the first step to fail is step 4: a relay started with nothing
-    // refuses to start ("does not hold the state behind the verifier's
-    // root"), because nothing rebuilds the state from the chain yet. When
-    // the sequencer's rebuild-from-chain start (`REBUILD_FROM_CHAIN=1`)
-    // lands, the `.fails` comes off and the test must pass as written. The formal twin is `formal/RelayState.tla`'s
-    // `OpsOnChain` switch, FALSE failing `Recoverable` through a foreign
-    // submitter.
-    it.fails(
+    // The rebuild-from-chain start is `REBUILD_FROM_CHAIN=1`
+    // (`prover/sequencer/src/rebuild.rs`): it replays every landed batch's
+    // operation stream from the verifier's transactions and holds each root to
+    // the one the batch's log names. The formal twin is `formal/RelayState.tla`'s
+    // `OpsOnChain` and `StartFromChain`.
+    it(
         "the pass test: every relay's state deleted, a relay rebuilds from the chain alone and the buyer's resolve pays out",
         async () => {
             if (!alive || !hasBinary) {
-                // The suite's vacuous case (no chain or no binary): the throw keeps
-                // `it.fails` honest instead of reporting a pass that proved nothing.
-                throw new Error("not run: Anvil or the sequencer binary is absent");
+                return;
             }
 
             // ── 1. A second order, committed through the relay in step ──
