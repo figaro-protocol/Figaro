@@ -134,7 +134,7 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 64 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 20 + RelayState 7 + its deferral 10)
+## TLA+ (`formal/`) — 65 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 20 + RelayState 8 + its deferral 10)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -180,17 +180,28 @@ regression.
 RelayState (`RelayState.tla` + `.cfg`): the relay's state lifecycle
 (`prover/sequencer/src/state.rs`, `main.rs`) — 2 relays, 3 batches, a crash at
 any step, a kept-file write that fails, a batch the chain refuses, anyone
-resending a public proof, and a takeover from another relay's `GET /state`.
-7 invariants — `Recoverable` (whenever the verifier's root is past genesis,
-some relay has the state behind it on disk), `BuiltOnVerifierRoot`,
+resending a public proof, a takeover from another relay's `GET /state`, and a
+foreign submitter, no relay of the model, that lands a batch on a copy of the
+state and publishes nothing. 8 invariants — `Recoverable` (whenever the
+verifier's root is past genesis, some relay has the state behind it on disk, or
+the chain carries every batch that landed so a stranger rebuilds it),
+`ChainCarriesEveryLandedBatch` (under the design no landing path, a relay's or
+a foreign submitter's, escapes the rule), `BuiltOnVerifierRoot`,
 `MirrorOnVerifierRoot`, `KeptOnVerifierRoot`, `JournalBuiltOnVerifierRoot`,
 `HistoryHasNoRepeat`, `TypeOK` — and two action properties:
 `MirrorNeverGoesBack`, and `SendsExcludeKnownRevoked` (a relay never sends a
 batch carrying a party whose revocation a refusal already showed it — the
 re-batch drops the revoker and rebuilds with everyone else):
-10,837,227 states / 1,959,944 distinct, depth 32, under two minutes.
-Mutation-checked through five `.cfg` switches, each restoring one defect:
-`HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`,
+22,467,078 states / 3,939,572 distinct, under four minutes. The `.cfg` carries
+the world and the design: `ForeignSubmitters` admits the foreign submitter, and
+`OpsOnChain` is the accepted batch design, every batch carrying its signed
+operations in its own transaction so the chain rebuilds the state behind any
+root (`StartFromChain`, the relay's rebuild-from-chain start). Mutation-checked:
+`OpsOnChain` FALSE (today's verifier) fails `Recoverable` in two states, the
+foreign batch's state nowhere a stranger can reach; and five relay switches,
+each restoring one defect, checked with `OpsOnChain` and `ForeignSubmitters`
+FALSE (the world where the relays' discipline is the only keeper of the
+state): `HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`,
 `TakeoverChecksRoot` — each FALSE fails `Recoverable` — and
 `RebatchDropsRevoker` — FALSE fails `SendsExcludeKnownRevoked`.
 
@@ -334,7 +345,14 @@ first relay's `GET /state`, which must hold the verifier's root; and restarts
 the relay that built the first batch, which must resume on its kept state and resolve the
 second. The verifier is deployed with the fingerprint
 the binary itself reports (`sequencer --vkey`), so the sequencer's startup
-comparison against `programVKey()` runs for real. Anvil-gated (skips clean without it) locally;
+comparison against `programVKey()` runs for real. Its last case is the batch
+design's pass test (punch-list band 0), an expected failure (`it.fails`) until the
+design lands: a third order committed in a batch, every relay stopped and every
+state file and archive deleted, a relay started with nothing rebuilds the state
+behind the verifier's root from the chain alone (`REBUILD_FROM_CHAIN=1`), the
+buyer's signed resolve pays out through it, and the verifier's `OrderCommitted`
+and `OrderResolved` events name the order; today it fails at the commitment's
+event, which the verifier does not emit. Anvil-gated (skips clean without it) locally;
 `prover-ci`'s `sp1` job runs it on main with `REQUIRE_BATCH_E2E=1`, where a
 skip is a failure.
 

@@ -55,13 +55,19 @@
 #      formal/RelayState.cfg (2 relays, 3 batches). The off-chain relay
 #      (prover/sequencer) under crashes at any step, kept-file write
 #      failures, refused batches, permissionless resends of a public proof,
-#      and takeover from another relay's GET /state. Verifies 7 invariants
-#      and 2 action properties; the load-bearing one is Recoverable: whenever
-#      the verifier's root is past genesis, some relay has the state behind
-#      it on disk. Five switches in the .cfg each restore one defect when
-#      FALSE: four (HoldBeforeSend, HoldThroughRevert, KeepRetainsBuiltOnRoot,
-#      TakeoverChecksRoot) MUST fail Recoverable, the fifth
-#      (RebatchDropsRevoker) SendsExcludeKnownRevoked.
+#      takeover from another relay's GET /state, and a foreign submitter
+#      (no relay of the model) that lands a batch and publishes nothing.
+#      Verifies 8 invariants and 2 action properties; the load-bearing one is
+#      Recoverable: whenever the verifier's root is past genesis, some relay
+#      has the state behind it on disk, or the chain carries every batch
+#      that landed so a stranger rebuilds it. OpsOnChain in the .cfg is the
+#      accepted batch design (every batch carries its signed operations in
+#      its own transaction); FALSE is today's verifier and MUST fail
+#      Recoverable through the foreign submitter. Five relay switches each
+#      restore one defect when FALSE: four (HoldBeforeSend, HoldThroughRevert,
+#      KeepRetainsBuiltOnRoot, TakeoverChecksRoot) MUST fail Recoverable with
+#      OpsOnChain and ForeignSubmitters FALSE, the fifth (RebatchDropsRevoker)
+#      SendsExcludeKnownRevoked.
 #      The same module's second spec, DeferSpec (formal/RelayStateDeferral.cfg),
 #      models the deferral of an operation dropped at batch formation: 10
 #      invariants, nine switches, each FALSE failing the invariant it names.
@@ -83,7 +89,7 @@
 #   TLA2TOOLS=/path/to/tla2tools.jar ./scripts/test-tla.sh
 #
 # Exit codes:
-#   0  — all 64 invariants (and RelayState's two action properties) hold across the
+#   0  — all 65 invariants (and RelayState's two action properties) hold across the
 #        explored state space (five models, six configurations)
 #   >0 — an invariant violation was found OR the environment is misconfigured
 
@@ -157,7 +163,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 5/6 — The relay's state lifecycle (7 invariants + 2 action properties)"
+echo "▶ Pass 5/6 — The relay's state lifecycle (8 invariants + 2 action properties)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config RelayState.cfg \

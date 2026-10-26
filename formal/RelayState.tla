@@ -43,9 +43,27 @@
 (* of scope, and `SendsExcludeKnownRevoked` checks the relay's discipline  *)
 (* GIVEN the knowledge, never the funding read itself.                     *)
 (*                                                                         *)
-(* FIVE SWITCHES. All TRUE is the relay as it must run; each FALSE         *)
+(* THE WORLD BEYOND THE RELAYS. `settleBatch` takes any caller, so a       *)
+(* submitter that is no relay of this model can hold a copy of the state  *)
+(* behind the verifier's root, build a batch on it, land it, and publish   *)
+(* nothing to anyone (`ForeignSettle`; `ForeignSubmitters` admits it).    *)
+(* Whether the chain then still carries what a stranger needs is the      *)
+(* design switch `OpsOnChain`: TRUE, every batch carries its whole stream  *)
+(* of signed operations in its own transaction, hash-bound into the proof  *)
+(* so a batch without them cannot land, and the state behind any root the  *)
+(* verifier holds is rebuilt from the chain alone (`StartFromChain`, the   *)
+(* relay's rebuild-from-chain start); FALSE, today's verifier, which lands *)
+(* a batch whose operations are nowhere but a relay's files. `Recoverable` *)
+(* is therefore: some relay holds the state on disk, OR the chain carries  *)
+(* every batch that ever landed. With `OpsOnChain` FALSE and a foreign    *)
+(* submitter the model violates `Recoverable`: that is the defect the      *)
+(* batch review found, reachable here before the code that closes it.     *)
+(*                                                                         *)
+(* FIVE RELAY SWITCHES. All TRUE is the relay as it must run; each FALSE   *)
 (* restores a defect, and the model must then violate `Recoverable`        *)
-(* (the first four) or `SendsExcludeKnownRevoked` (the fifth):             *)
+(* (the first four — checked with `OpsOnChain` and `ForeignSubmitters`     *)
+(* FALSE, the world where the relay's discipline is the only keeper of     *)
+(* the state) or `SendsExcludeKnownRevoked` (the fifth):                   *)
 (*   HoldBeforeSend         — FALSE: the state is written after the send,  *)
 (*                            so a crash between the two loses a state the *)
 (*                            chain can reach                              *)
@@ -146,6 +164,8 @@ CONSTANTS
     KeepRetainsBuiltOnRoot,
     TakeoverChecksRoot,
     RebatchDropsRevoker,
+    OpsOnChain,         \* the design: a batch carries its operations on chain
+    ForeignSubmitters,  \* the world: a submitter that is no relay lands batches
     DCap,           \* MAX_BATCH_OPS: operations one drain takes
     DWindow,        \* the deferral's bound, in ticks from first deferral
     DMaxTime,       \* the ticks the model runs
@@ -175,9 +195,10 @@ VARIABLES
     revoked,    \* parties whose allowance is revoked (world state)
     alive, mirror, ready, phase, inflight,
     kept, journal,
-    knownRevoked \* per relay: parties whose revocation a refusal showed it
+    knownRevoked, \* per relay: parties whose revocation a refusal showed it
+    chainOps    \* batches whose signed operations are in their own transaction
 
-vars == <<vRoot, hist, published, nextId, revoked, alive, mirror, ready, phase, inflight, kept, journal, knownRevoked>>
+vars == <<vRoot, hist, published, nextId, revoked, alive, mirror, ready, phase, inflight, kept, journal, knownRevoked, chainOps>>
 relayVars == <<alive, mirror, ready, phase, inflight, kept, journal, knownRevoked>>
 
 Range(s) == {s[i] : i \in DOMAIN s}
@@ -215,6 +236,7 @@ TypeOK ==
     /\ kept \in [Relays -> Roots]
     /\ journal \in [Relays -> SUBSET [root : Roots, prev : Roots]]
     /\ knownRevoked \in [Relays -> SUBSET Parties]
+    /\ chainOps \subseteq Batches
 
 Init ==
     /\ vRoot = Genesis
@@ -230,6 +252,12 @@ Init ==
     /\ kept = [r \in Relays |-> Genesis]
     /\ journal = [r \in Relays |-> {}]
     /\ knownRevoked = [r \in Relays |-> {}]
+    /\ chainOps = {}
+
+\* The chain carries every batch that ever landed: a stranger replays them
+\* from genesis and holds the state behind the verifier's root.
+RebuildableFromChain ==
+    \A i \in DOMAIN hist : hist[i] = Genesis \/ \E b \in chainOps : b.new = hist[i]
 
 (***************************************************************************)
 (* Start: the mirror is the kept file; the relay starts only when it holds *)
@@ -258,6 +286,20 @@ StartUnread(r) ==
     /\ alive' = [alive EXCEPT ![r] = TRUE]
     /\ mirror' = [mirror EXCEPT ![r] = kept[r]]
     /\ UNCHANGED <<vRoot, hist, published, nextId, revoked, ready, phase, inflight, kept, journal, knownRevoked>>
+
+\* The design's start: a relay holding nothing replays every landed batch
+\* from the chain, writes the state behind the verifier's root as its kept
+\* file, and starts on it.
+StartFromChain(r) ==
+    /\ ~alive[r]
+    /\ OpsOnChain
+    /\ kept[r] # vRoot
+    /\ RebuildableFromChain
+    /\ alive' = [alive EXCEPT ![r] = TRUE]
+    /\ kept' = [kept EXCEPT ![r] = vRoot]
+    /\ mirror' = [mirror EXCEPT ![r] = vRoot]
+    /\ journal' = [journal EXCEPT ![r] = Retain(journal[r], vRoot)]
+    /\ UNCHANGED <<vRoot, hist, published, nextId, revoked, ready, phase, inflight, knownRevoked>>
 
 (***************************************************************************)
 (* The batch loop's head: read the verifier's root and step to it.         *)
@@ -374,7 +416,26 @@ Settle(b) ==
     /\ b.parties \cap revoked = {}
     /\ vRoot' = b.new
     /\ hist' = Append(hist, b.new)
+    /\ chainOps' = IF OpsOnChain THEN chainOps \cup {b} ELSE chainOps
     /\ UNCHANGED <<published, nextId, revoked, alive, mirror, ready, phase, inflight, kept, journal, knownRevoked>>
+
+\* A submitter that is no relay here holds a copy of the state behind the
+\* verifier's root (the state is published; anyone may copy it), builds a
+\* batch on it, lands it, and publishes nothing: no relay's mirror, kept
+\* file or journal learns the new state. The verifier admits the batch
+\* under the same rule as any other, and records its operations on chain
+\* exactly when the design makes it refuse a batch without them.
+ForeignSettle ==
+    /\ ForeignSubmitters
+    /\ nextId <= MaxBatches
+    /\ \E ps \in SUBSET (Parties \ revoked) :
+        /\ ps # {}
+        /\ LET b == [prev |-> vRoot, new |-> nextId, parties |-> ps] IN
+            /\ vRoot' = b.new
+            /\ hist' = Append(hist, b.new)
+            /\ chainOps' = IF OpsOnChain THEN chainOps \cup {b} ELSE chainOps
+    /\ nextId' = nextId + 1
+    /\ UNCHANGED <<published, revoked, alive, mirror, ready, phase, inflight, kept, journal, knownRevoked>>
 
 \* A party revokes its allowance to the verifier — free, repeatable at will,
 \* visible to a relay only through a refused batch. Permanent here:
@@ -411,14 +472,18 @@ Takeover(r, s) ==
     /\ UNCHANGED <<vRoot, hist, published, nextId, revoked, alive, mirror, ready, phase, inflight, journal, knownRevoked>>
 
 Next ==
-    \/ \E r \in Relays :
-        \/ StartHolding(r) \/ StartAdopting(r) \/ StartUnread(r)
-        \/ TickCurrent(r) \/ TickAdopt(r) \/ TickOutOfStep(r)
-        \/ Build(r) \/ Send(r) \/ HoldAfterSend(r)
-        \/ Landed(r) \/ NotLanded(r) \/ RefusedRevoked(r) \/ Crash(r)
+    \/ /\ \E r \in Relays :
+            \/ StartHolding(r) \/ StartAdopting(r) \/ StartUnread(r) \/ StartFromChain(r)
+            \/ TickCurrent(r) \/ TickAdopt(r) \/ TickOutOfStep(r)
+            \/ Build(r) \/ Send(r) \/ HoldAfterSend(r)
+            \/ Landed(r) \/ NotLanded(r) \/ RefusedRevoked(r) \/ Crash(r)
+       /\ UNCHANGED chainOps
     \/ \E b \in published : Settle(b)
-    \/ \E p \in Parties : Revoke(p)
-    \/ \E r, s \in Relays : Takeover(r, s)
+    \/ ForeignSettle
+    \/ /\ \E p \in Parties : Revoke(p)
+       /\ UNCHANGED chainOps
+    \/ /\ \E r, s \in Relays : Takeover(r, s)
+       /\ UNCHANGED chainOps
 
 (***************************************************************************)
 (* THE DEFERRAL of an operation dropped at batch formation (main.rs's      *)
@@ -815,11 +880,20 @@ NoTwoCopies ==
 (* Invariants.                                                             *)
 (***************************************************************************)
 
-\* Some relay has the state behind the verifier's root on disk — whatever
-\* crashed, whatever was refused, whoever sent the batch that landed.
+\* The state behind the verifier's root can be had: some relay has it on
+\* disk — whatever crashed, whatever was refused, whoever sent the batch
+\* that landed — or the chain carries every batch that landed, so a
+\* stranger rebuilds it. With `OpsOnChain` FALSE a foreign submitter's
+\* batch leaves neither, and the model violates this.
 Recoverable ==
     \/ vRoot = Genesis
     \/ \E r \in Relays : vRoot = kept[r] \/ vRoot \in JournalRoots(r)
+    \/ RebuildableFromChain
+
+\* Under the design, no landing path escapes the rule: every batch that ever
+\* moved the root, a relay's or a foreign submitter's, has its operations in
+\* its own transaction.
+ChainCarriesEveryLandedBatch == OpsOnChain => RebuildableFromChain
 
 \* Every published batch was built on a root the verifier held.
 BuiltOnVerifierRoot == \A b \in published : b.prev \in Range(hist)

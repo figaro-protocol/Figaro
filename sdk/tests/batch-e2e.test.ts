@@ -51,6 +51,7 @@ import * as path from "node:path";
 
 import {
     BATCH_VERIFIER_ABI,
+    CORE_ABI,
     ERC20_ABI,
     buildCommitment,
     buildDomain,
@@ -120,6 +121,8 @@ const STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}.js
 const TAKEOVER_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-takeover.json`);
 /** The relay's sequencer archive for this run, deleted with the state in afterAll. */
 const ARCHIVE_PATH = `sequencer-archive-e2e-${process.pid}.jsonl`;
+/** The state file of the relay that rebuilds from the chain alone (the pass test). */
+const REBUILT_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-rebuilt.json`);
 
 // ── Batch-only typed data (EIP-712 signature replaces msg.sender) ───────────
 
@@ -167,6 +170,8 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     let sequencerProcess: ChildProcess | null = null;
     /** The relay that takes over from the first and settles batch 2. */
     let secondProcess: ChildProcess | null = null;
+    /** The relay the pass test starts with nothing, to rebuild from the chain. */
+    let rebuiltProcess: ChildProcess | null = null;
     let sequencerClient: SequencerClient;
     let relay: RelayConfig;
 
@@ -306,9 +311,14 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             await stopSequencer(secondProcess);
             secondProcess = null;
         }
+        if (rebuiltProcess) {
+            await stopSequencer(rebuiltProcess);
+            rebuiltProcess = null;
+        }
         for (const suffix of ["", ".tmp", ".next.jsonl", ".next.jsonl.tmp"]) {
             fs.rmSync(STATE_PATH + suffix, { force: true });
             fs.rmSync(TAKEOVER_STATE_PATH + suffix, { force: true });
+            fs.rmSync(REBUILT_STATE_PATH + suffix, { force: true });
         }
         fs.rmSync(ARCHIVE_PATH, { force: true });
     });
@@ -654,4 +664,172 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             resolutionAnchor.resolution_tx,
         ]);
     }, 5 * 60_000);
+    // ── The pass test of the batch design (punch-list band 0) ─────────────
+    // Batch and Core are equivalent: with every relay's state file and archive
+    // deleted and every relay stopped, a stranger rebuilds the state behind
+    // the verifier's root from the chain alone, and the buyer, or anyone
+    // carrying the buyer's signed resolve, proves and submits the resolution.
+    // The chain also carries the commitment in the Core's own event shape, so
+    // the event readers find batched trade where they find direct trade.
+    //
+    // `it.fails` records today's verifier: it lands a batch whose signed
+    // operations are nowhere on the chain. The first assertion to fail is
+    // step 2, the commitment's event: the verifier publishes no
+    // `OrderCommitted`, so a stranger finds nothing (run on 26 Oct 2026:
+    // "expected +0 to be 1"). Past that step, a relay started with nothing
+    // refuses to start ("does not hold the state behind the verifier's
+    // root") at `waitForSequencer`. When the verifier's operation stream and
+    // events and the sequencer's rebuild-from-chain start
+    // (`REBUILD_FROM_CHAIN=1`) land, the `.fails` comes off and the test must
+    // pass as written. The formal twin is `formal/RelayState.tla`'s
+    // `OpsOnChain` switch, FALSE failing `Recoverable` through a foreign
+    // submitter.
+    it.fails(
+        "the pass test: every relay's state deleted, a relay rebuilds from the chain alone and the buyer's resolve pays out",
+        async () => {
+            if (!alive || !hasBinary) {
+                // The suite's vacuous case (no chain or no binary): the throw keeps
+                // `it.fails` honest instead of reporting a pass that proved nothing.
+                throw new Error("not run: Anvil or the sequencer binary is absent");
+            }
+
+            // ── 1. A second order, committed through the relay in step ──
+            // The second relay settled batch 2, so it holds the verifier's
+            // root; the first relay is out of step and builds nothing.
+            const inStep = new SequencerClient({ url: `http://127.0.0.1:${SEQUENCER_PORT + 2}` });
+            for (const [wallet, who, amount] of [
+                [buyerWallet, buyerAccount.address, bonds.buyerBond],
+                [sellerWallet, sellerAccount.address, bonds.sellerBond],
+            ] as const) {
+                await deployerWallet
+                    .writeContract({
+                        address: tokenAddress, abi: MOCK_ERC20_ABI, functionName: "mint",
+                        args: [who, amount],
+                    })
+                    .then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
+                await wallet
+                    .writeContract({
+                        address: tokenAddress, abi: MOCK_ERC20_ABI, functionName: "approve",
+                        args: [batchVerifierAddress, amount],
+                    })
+                    .then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
+            }
+
+            const domain = buildDomain(31337, batchVerifierAddress);
+            const { commitment, typedData } = buildCommitment(
+                {
+                    processId:
+                        "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex,
+                    buyer: buyerAccount.address,
+                    seller: sellerAccount.address,
+                    currency: tokenAddress,
+                    payment: PAYMENT,
+                    expectedCumulativeValue: PAYMENT,
+                    checkoutHash: clauseLeaf,
+                    salt: 43n,
+                    deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+                },
+                domain,
+            );
+            const buyerSig = await buyerWallet.signTypedData(typedData);
+            const sellerSig = await sellerWallet.signTypedData(typedData);
+            await inStep.submitCommit(commitment, buyerSig, sellerSig);
+            const processId = hashTypedData(typedData) as Hex;
+            const orderHash = computeOrderHash(commitment, 31337, batchVerifierAddress);
+            await waitForBatchCount(inStep, 2, 5 * 60_000);
+
+            const rootAfterCommit = (await publicClient.readContract({
+                address: batchVerifierAddress, abi: BATCH_VERIFIER_ABI, functionName: "stateRoot",
+            })) as Hex;
+            expect((await publicClient.readContract({
+                address: tokenAddress, abi: ERC20_ABI, functionName: "balanceOf",
+                args: [batchVerifierAddress],
+            })) as bigint, "both bonds sit in the verifier").toBe(bonds.buyerBond + bonds.sellerBond);
+
+            // ── 2. The chain carries the commitment, in the Core's shape ──
+            // A stranger's first fact: the verifier emitted `OrderCommitted`
+            // for this order, as `FigaroCore` would have.
+            const committedLogs = await publicClient.getContractEvents({
+                address: batchVerifierAddress,
+                abi: CORE_ABI,
+                eventName: "OrderCommitted",
+                args: { orderHash },
+                fromBlock: 0n,
+            });
+            expect(committedLogs.length, "the batch published the commitment on the chain").toBe(1);
+
+            // ── 3. Every relay stopped, every copy of the state gone ──
+            if (sequencerProcess) {
+                await stopSequencer(sequencerProcess);
+                sequencerProcess = null;
+            }
+            if (secondProcess) {
+                await stopSequencer(secondProcess);
+                secondProcess = null;
+            }
+            for (const suffix of ["", ".tmp", ".next.jsonl", ".next.jsonl.tmp"]) {
+                fs.rmSync(STATE_PATH + suffix, { force: true });
+                fs.rmSync(TAKEOVER_STATE_PATH + suffix, { force: true });
+            }
+            fs.rmSync(ARCHIVE_PATH, { force: true });
+
+            // ── 4. A relay with nothing rebuilds the state from the chain ──
+            // It replays every settled batch's operations from the verifier's
+            // transactions, checks each root against the chain's, writes the
+            // state behind the current root as its kept file, and serves it.
+            const REBUILT_URL = `http://127.0.0.1:${SEQUENCER_PORT + 3}`;
+            rebuiltProcess = startSequencer(relay, {
+                STATE_PATH: REBUILT_STATE_PATH,
+                ARCHIVE_PATH: "",
+                LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT + 3}`,
+                REBUILD_FROM_CHAIN: "1",
+            });
+            attachLogs(rebuiltProcess);
+            await waitForSequencer(REBUILT_URL, 10 * 60_000);
+            const rebuilt = new SequencerClient({ url: REBUILT_URL });
+            expect((await rebuilt.status()).state_root.toLowerCase(), "the rebuilt state is the chain's root").toBe(
+                rootAfterCommit.toLowerCase(),
+            );
+            expect(fs.existsSync(REBUILT_STATE_PATH), "the rebuilt state is kept").toBe(true);
+
+            // ── 5. The buyer's resolve, carried by the rebuilt relay ──
+            const buyerResolveSig = await buyerWallet.signTypedData({
+                domain,
+                types: RESOLVE_TYPES,
+                primaryType: "ResolveProcess" as const,
+                message: { processId },
+            });
+            await rebuilt.submitResolve(processId, [commitment], buyerResolveSig);
+            await waitForBatchCount(rebuilt, 1, 5 * 60_000);
+
+            // ── 6. Paid out: the chain's facts ──
+            const [buyerFinal, sellerFinal, verifierFinal] = await Promise.all([
+                publicClient.readContract({
+                    address: tokenAddress, abi: ERC20_ABI, functionName: "balanceOf",
+                    args: [buyerAccount.address],
+                }) as Promise<bigint>,
+                publicClient.readContract({
+                    address: tokenAddress, abi: ERC20_ABI, functionName: "balanceOf",
+                    args: [sellerAccount.address],
+                }) as Promise<bigint>,
+                publicClient.readContract({
+                    address: tokenAddress, abi: ERC20_ABI, functionName: "balanceOf",
+                    args: [batchVerifierAddress],
+                }) as Promise<bigint>,
+            ]);
+            // The first order left the buyer P and the seller 3P; this one adds the same.
+            expect(buyerFinal).toBe(2n * PAYMENT);
+            expect(sellerFinal).toBe(6n * PAYMENT);
+            expect(verifierFinal).toBe(0n);
+            const resolvedLogs = await publicClient.getContractEvents({
+                address: batchVerifierAddress,
+                abi: CORE_ABI,
+                eventName: "OrderResolved",
+                args: { orderHash },
+                fromBlock: 0n,
+            });
+            expect(resolvedLogs.length, "the batch published the resolution on the chain").toBe(1);
+        },
+        15 * 60_000,
+    );
 });
