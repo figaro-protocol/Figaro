@@ -255,7 +255,7 @@ result to it (the code, the guest key, the gateway). The list below is the proce
   chain (their Guard 3); the devnet script (`scripts/deploy-local.sh`) deploys
   to whatever `RPC_URL` names, so pointed at a public chain it deploys its mock
   stack there.
-- `SP1_VERIFIER_GATEWAY` = Succinct's Groth16 gateway
+- `SP1_VERIFIER_GATEWAY` = Succinct's Groth16 gateway, on which the deploy wrapper looks up the routed verifier it binds as `SP1_VERIFIER` (the contract refuses a gateway):
   `0x397A5f7f3dBd538f23DE225B51f532c34448dA9B` with `SP1_PROOF_MODE=groth16` — the
   deploy wrappers' Guard 4 (`scripts/check-sp1-gateway-route.sh`) refuses to
   broadcast otherwise: the gateway must ROUTE the proof's form, not merely exist.

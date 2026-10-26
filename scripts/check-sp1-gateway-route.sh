@@ -79,3 +79,6 @@ if [ -n "$CANONICAL" ] && [ "$(lower "$CANONICAL")" != "$(lower "$SP1_VERIFIER_G
   printf '%s' "$RECORD" | grep -i "$(lower "${SP1_VERIFIER_GATEWAY:2}")" | sed 's/^/   the env address is named: /' || echo "   the env address is not in the record at all"
 fi
 echo "✅ gateway routes $FORM $CONTRACTS_TAG → $ROUTE_ADDR"
+# The routed verifier is what FigaroBatchVerifier binds (never the gateway, whose
+# owner can freeze a route): the wrappers read it from the last line.
+echo "SP1_VERIFIER=$ROUTE_ADDR"

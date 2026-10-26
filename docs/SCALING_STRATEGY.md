@@ -182,7 +182,7 @@ the Succinct gateway ABI, and a devnet stand-in that accepts any proof.
 
 - `FigaroCore`'s external interface (`commit`, `resolveProcess`)
 - the nine invariants listed above
-- the interfaces; of the events, only attestations are re-emitted by the verifier — order, process and value events are not, so event-sourced readers see batched trade through its attestations alone
+- the interfaces and the events: the verifier emits the Core's own order, process and attestation events for batched trade under its address, so an event-sourced reader folds both paths by filtering on two addresses
 - buyer dominance, atomic resolution, no escape hatches
 
 ### Gas economics — why batching is cheaper
@@ -235,7 +235,7 @@ path but one net position on the batch path. Netting is the batch path's
 structural advantage.
 
 **Why it is not "half of FigaroCore."** A naive comparison of the batch
-verifier's ceiling (about 240 orders in one resolve under the 2^24 transaction cap, about
+verifier's ceiling (about 220 orders in one resolution under the 2^24 transaction cap, about
 930 at a 60M block without it, as the relay plans a batch from its own
 execution — `prover/sequencer/src/gas.rs`) against `resolveProcess`'s
 ceiling (about 550 orders under the transaction cap, about 950 at a 30M block without it) is misleading: that figure measures only the resolve step — the
@@ -251,7 +251,7 @@ land on-chain.
 |---|---|---|---|
 | Direct `commit()` | ~74 orders | per block | ~382k/order (sub) |
 | Direct `resolveProcess()` | about 550 orders under the 2^24 transaction cap; ~950 at 30M without it | single call | ~30k/order (all-in) |
-| Batch `settleBatch()` | about 240 orders in one resolution under the 2^24 transaction cap (EIP-7825, mainnet), each one position and its commitment published in the operation stream; without the cap about 460 at 30M, 930 at 60M and 3,000 at Sepolia's 200M, as the relay plans it from the batch's own execution (`prover/sequencer/src/gas.rs`); a batch-path process is kept within what one transaction resolves | single call | 60k/position planned; ~26k measured cold on the pre-fork EVM |
+| Batch `settleBatch()` | about 220 orders in one resolution under the 2^24 transaction cap (EIP-7825, mainnet), each one position, its commitment published in the operation stream and its events; without the cap about 460 at 30M, 930 at 60M and 3,000 at Sepolia's 200M, as the relay plans it from the batch's own execution (`prover/sequencer/src/gas.rs`); a batch-path process is kept within what one transaction resolves | single call | 60k/position planned; ~26k measured cold on the pre-fork EVM |
 
 The correct comparison is total lifecycle cost: ~413k gas per order (direct)
 against about 26k measured per net position (batch; 60k as planned) — roughly
@@ -283,9 +283,10 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
    paths.
 5. **Event reconstruction**: the verifier re-emits proven attestation events
    with protocol-compatible signatures, hash-verified against proof
-   commitments. Event-sourced readers consume the verifier's attestation events
-   identically to `FigaroCore`'s — filtered by contract address; the verifier emits no
-   order, process or value event, so those readers find nothing for batched trade.
+   commitments. Event-sourced readers consume the verifier's events identically to
+   `FigaroCore`'s — filtered by contract address: it emits `OrderCommitted`,
+   `OrderSeller`, `OrderCurrency`, `OrderResolved` and `ProcessResolved` from the
+   operation stream, with ids derived under its own domain.
 
 ### What is not `FigaroCore` scaling
 

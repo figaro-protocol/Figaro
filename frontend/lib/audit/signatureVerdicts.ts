@@ -32,10 +32,10 @@
  * ── The batch universe ──────────────────────────────────────────────────────
  *
  * All of the above describes the DIRECT path only. There are two resolution
- * paths and two DISJOINT state universes (docs/SCALING_STRATEGY.md): a
- * batch-resolved order emits no `OrderCommitted`; `settleBatch` carries the
- * batch's operation stream, signatures included, as its last calldata argument,
- * which this module does not yet read. So for batched trade the walk above finds
+ * paths and two DISJOINT state universes (docs/SCALING_STRATEGY.md): the
+ * verifier emits `OrderCommitted` for a batched order under its own address,
+ * and `settleBatch` carries the batch's operation stream, signatures included,
+ * as its last calldata argument; this module reads neither yet. So for batched trade the walk above finds
  * nothing, and reporting "unavailable" would understate what is actually known.
  *
  * What IS known, and why it is a different KIND of evidence: the zkVM guest

@@ -70,7 +70,8 @@ export PERMIT2="${PERMIT2:-0x000000000022D473030F116dDEE9F6B43aC78BA3}"
 #   FOUNDER_WALLET          — _validateEnv(): nonzero, distinct
 #   SUPPORTERS_WALLET       — _validateEnv(): nonzero, distinct
 #   RPGF_GENESIS            — _validateEnv(): RPGF_GENESIS + 365 days > now
-#   SP1_VERIFIER_GATEWAY    — _deployProtocol(): must be nonzero
+#   SP1_VERIFIER_GATEWAY    — the gateway the routed verifier is looked up on (Guard 4);
+#                             the script binds that route as SP1_VERIFIER, exported here
 #   SP1_PROGRAM_VKEY        — _deployProtocol(): must be nonzero
 # Required by this script for the target/verification:
 #   RPC_URL                 — Sepolia RPC endpoint (or an Anvil fork of it)
@@ -115,12 +116,21 @@ if [ "$ACTUAL_CHAIN_ID" != "$SEPOLIA_CHAIN_ID" ]; then
 fi
 
 # ── Guard 4: the SP1 verifier gateway routes the proof form we will produce ──
-# FigaroBatchVerifier binds the gateway IMMUTABLY and UsageCounter binds the
-# verifier — a gateway that does not route our sdk version's Groth16 (or PLONK,
-# per SP1_PROOF_MODE) verifier means every real proof reverts RouteNotFound and
-# the whole stack redeploys. Binding a gateway that routes a different proof
-# system is the failure this guard exists to prevent.
-bash "$(dirname "$0")/check-sp1-gateway-route.sh" || exit 1
+# The gateway (SP1_VERIFIER_GATEWAY) is where the routed verifier for our sdk
+# version's Groth16 (or PLONK, per SP1_PROOF_MODE) proofs is looked up; a
+# gateway that routes none means every real proof would revert RouteNotFound.
+# UsageCounter binds the verifier immutably, so a wrong binding redeploys the
+# whole stack: this guard exists to prevent it.
+ROUTE_OUT=$(bash "$(dirname "$0")/check-sp1-gateway-route.sh") || { printf '%s\n' "$ROUTE_OUT"; exit 1; }
+printf '%s\n' "$ROUTE_OUT"
+# FigaroBatchVerifier binds the ROUTED verifier the gateway names for this
+# release's proof form, never the gateway itself: a gateway's owner can freeze
+# a route, and a frozen route would strand every process open on the batch
+# path. The contract refuses a gateway (no `VERIFIER_HASH()`), so the address
+# the script passes is the route the preflight resolved.
+export SP1_VERIFIER
+SP1_VERIFIER=$(printf '%s\n' "$ROUTE_OUT" | sed -n 's/^SP1_VERIFIER=//p' | tail -1)
+[ -n "$SP1_VERIFIER" ] || { echo "❌ the route preflight named no verifier"; exit 1; }
 
 # ── PAIR_ONLY: redeploy the counter↔verifier pair against the live stack ────
 if [ "${PAIR_ONLY:-}" = "1" ]; then

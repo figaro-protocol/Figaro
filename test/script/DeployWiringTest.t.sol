@@ -180,6 +180,10 @@ contract DeployWiringTest is Test {
 
     function test_devnetDeploy_wiresEveryImmutable() public {
         vm.setEnv("PRIVATE_KEY", vm.toString(DEPLOYER_KEY));
+        // The process environment is shared by every test in this file, and
+        // the mainnet test sets its own key: pin the devnet default here so
+        // the assertion below reads what this deploy was given.
+        vm.setEnv("SP1_PROGRAM_VKEY", vm.toString(keccak256(abi.encodePacked("figaro-kernel-dev"))));
         DevnetDeployHarness d = new DevnetDeployHarness();
         d.run();
 
@@ -242,7 +246,10 @@ contract DeployWiringTest is Test {
             permit2: address(new MockWitnessPermit2()),
             router: address(new SwapRouterShape()),
             gateway: address(new MockSP1Verifier()),
-            vkey: keccak256("mainnet-vkey")
+            // The process environment is shared by every test in this file and
+            // the tests run in parallel: the key is the devnet default too, so
+            // whichever test's `setEnv` lands last, every deploy reads one value.
+            vkey: keccak256(abi.encodePacked("figaro-kernel-dev"))
         });
 
         vm.setEnv("PRIVATE_KEY", vm.toString(DEPLOYER_KEY));
@@ -252,7 +259,10 @@ contract DeployWiringTest is Test {
         vm.setEnv("RPGF_GENESIS", vm.toString(block.timestamp));
         vm.setEnv("PERMIT2", vm.toString(in_.permit2));
         vm.setEnv("SWAP_ROUTER", vm.toString(in_.router));
-        vm.setEnv("SP1_VERIFIER_GATEWAY", vm.toString(in_.gateway));
+        // The wrapper resolves the routed verifier on the gateway and exports it
+        // as SP1_VERIFIER; the script binds that. The mock names a circuit, as a
+        // routed verifier does.
+        vm.setEnv("SP1_VERIFIER", vm.toString(in_.gateway));
         vm.setEnv("SP1_PROGRAM_VKEY", vm.toString(in_.vkey));
 
         MainnetDeployHarness d = new MainnetDeployHarness();
@@ -279,7 +289,7 @@ contract DeployWiringTest is Test {
         assertEq(address(bv.usageCounter()), address(uc), "verifier -> counter");
         assertEq(uc.batchVerifier(), address(bv), "counter -> verifier (the adjacent pair)");
         assertEq(address(bv.clauseRegistry()), d.clauses(), "verifier -> clause registry");
-        assertEq(address(bv.verifier()), in_.gateway, "verifier -> SP1_VERIFIER_GATEWAY");
+        assertEq(address(bv.verifier()), in_.gateway, "verifier -> SP1_VERIFIER");
         assertEq(bv.programVKey(), in_.vkey, "verifier -> SP1_PROGRAM_VKEY");
         assertEq(bv.stateRoot(), _genesisRoot(), "derived genesis root");
 
@@ -340,7 +350,7 @@ contract DeployWiringTest is Test {
         assertEq(address(bv.usageCounter()), address(uc), "verifier -> counter");
         assertEq(uc.batchVerifier(), address(bv), "counter -> verifier (the adjacent pair)");
         assertEq(address(bv.clauseRegistry()), address(clauses), "verifier -> the EXISTING clause registry");
-        assertEq(address(bv.verifier()), gateway, "verifier -> SP1_VERIFIER_GATEWAY");
+        assertEq(address(bv.verifier()), gateway, "verifier -> SP1_VERIFIER");
         assertEq(bv.programVKey(), vkey, "verifier -> SP1_PROGRAM_VKEY");
         assertEq(bv.stateRoot(), _genesisRoot(), "derived genesis root");
         assertEq(bv.batchCount(), 0, "a fresh verifier");

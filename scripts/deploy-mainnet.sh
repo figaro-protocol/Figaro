@@ -58,7 +58,8 @@ export PERMIT2="${PERMIT2:-0x000000000022D473030F116dDEE9F6B43aC78BA3}"
 #   SUPPORTERS_WALLET       — _validateEnv(): must be nonzero
 #   DAO_WALLET              — _validateEnv(): must be nonzero
 #   RPGF_GENESIS            — _validateEnv(): RPGF_GENESIS + 365 days > now
-#   SP1_VERIFIER_GATEWAY    — _deployProtocol(): must be nonzero
+#   SP1_VERIFIER_GATEWAY    — the gateway the routed verifier is looked up on (Guard 4);
+#                             the script binds that route as SP1_VERIFIER, exported here
 #   SP1_PROGRAM_VKEY        — _deployProtocol(): must be nonzero
 # Required by this script for the target/verification:
 #   RPC_URL                 — mainnet RPC endpoint; no default (unlike
@@ -95,12 +96,21 @@ if [ "$ACTUAL_CHAIN_ID" != "$MAINNET_CHAIN_ID" ]; then
 fi
 
 # ── Guard 4: the SP1 verifier gateway routes the proof form we will produce ──
-# FigaroBatchVerifier binds the gateway IMMUTABLY and UsageCounter binds the
-# verifier — a gateway that does not route our sdk version's Groth16 (or PLONK,
-# per SP1_PROOF_MODE) verifier means every real proof reverts RouteNotFound and
-# the whole stack redeploys. Binding a gateway that routes a different proof
-# system is the failure this guard exists to prevent.
-bash "$(dirname "$0")/check-sp1-gateway-route.sh" || exit 1
+# The gateway (SP1_VERIFIER_GATEWAY) is where the routed verifier for our sdk
+# version's Groth16 (or PLONK, per SP1_PROOF_MODE) proofs is looked up; a
+# gateway that routes none means every real proof would revert RouteNotFound.
+# UsageCounter binds the verifier immutably, so a wrong binding redeploys the
+# whole stack: this guard exists to prevent it.
+ROUTE_OUT=$(bash "$(dirname "$0")/check-sp1-gateway-route.sh") || { printf '%s\n' "$ROUTE_OUT"; exit 1; }
+printf '%s\n' "$ROUTE_OUT"
+# FigaroBatchVerifier binds the ROUTED verifier the gateway names for this
+# release's proof form, never the gateway itself: a gateway's owner can freeze
+# a route, and a frozen route would strand every process open on the batch
+# path. The contract refuses a gateway (no `VERIFIER_HASH()`), so the address
+# the script passes is the route the preflight resolved.
+export SP1_VERIFIER
+SP1_VERIFIER=$(printf '%s\n' "$ROUTE_OUT" | sed -n 's/^SP1_VERIFIER=//p' | tail -1)
+[ -n "$SP1_VERIFIER" ] || { echo "❌ the route preflight named no verifier"; exit 1; }
 
 echo ""
 echo "🚀 Deploying Figaro Protocol stack to MAINNET (chain id $ACTUAL_CHAIN_ID)..."
@@ -182,7 +192,7 @@ read_call() { cast call --rpc-url "$RPC_URL" "$1" "$2" "${@:3}"; }
 
 expect_eq "batchVerifier.usageCounter()"  "$(read_call "$BATCH_VERIFIER_ADDR" 'usageCounter()(address)')"   "$USAGE_COUNTER_ADDR"
 expect_eq "batchVerifier.clauseRegistry()" "$(read_call "$BATCH_VERIFIER_ADDR" 'clauseRegistry()(address)')" "$CLAUSE_ADDR"
-expect_eq "batchVerifier.verifier()"       "$(read_call "$BATCH_VERIFIER_ADDR" 'verifier()(address)')"       "$SP1_VERIFIER_GATEWAY"
+expect_eq "batchVerifier.verifier()"       "$(read_call "$BATCH_VERIFIER_ADDR" 'verifier()(address)')"       "$SP1_VERIFIER"
 PROGRAM_VKEY_ONCHAIN=$(read_call "$BATCH_VERIFIER_ADDR" 'programVKey()(bytes32)')
 expect_eq "batchVerifier.programVKey()"    "$PROGRAM_VKEY_ONCHAIN"    "$SP1_PROGRAM_VKEY"
 expect_eq "usageCounter.batchVerifier()"   "$(read_call "$USAGE_COUNTER_ADDR" 'batchVerifier()(address)')"   "$BATCH_VERIFIER_ADDR"

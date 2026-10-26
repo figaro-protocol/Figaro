@@ -15,10 +15,10 @@
  *
  * Three boundaries this reader states rather than papers over:
  *
- *   core events are DIRECT-PATH by construction. A batch resolves token
- *   positions and re-emits no order events, so a batch-resolved process is
- *   absent from the process and resolution graphs by design. Only
- *   ATTESTATIONS are emitted on both paths, which is why they are read from both
+ *   core events are read from FigaroCore alone here. The verifier emits the
+ *   same order and process events for batched trade, filtered by its address;
+ *   folding them into the process and resolution graphs is the readers'
+ *   sitting on the punch-list. Attestations are already read from both
  *   emitters and tagged.
  *
  *   substance is recovered AT THE EDGE, and often absent. An attestation's

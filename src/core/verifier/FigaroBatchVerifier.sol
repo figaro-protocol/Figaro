@@ -4,7 +4,9 @@ pragma solidity 0.8.26;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "src/core/verifier/ISP1Verifier.sol";
+import "src/core/kernel/CommitmentTypes.sol";
 
 /// @notice Minimal ClauseRegistry surface the verifier reads — the
 ///         anchor for witness specs. A clause key is keccak256 of the spec's
@@ -88,12 +90,17 @@ interface IUsageCounter {
 ///              the signed operations behind its root; with the `usage`
 ///              argument's period and provenance leaf and the public values'
 ///              chain binding and clock, they rebuild the state behind it.
-contract FigaroBatchVerifier is ReentrancyGuard {
+contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
+    using CommitmentTypes for CommitmentTypes.Commitment;
 
     // ── Immutables ────────────────────────────────────────────────
 
     ISP1Verifier public immutable verifier;
+    /// @notice The circuit the bound verifier names (`VERIFIER_HASH()`): one
+    ///         routed `SP1Verifier`, never a gateway, so no route owner can
+    ///         freeze the path between a proven batch and its resolution.
+    bytes32 public immutable verifierHash;
     bytes32 public immutable programVKey;
     IClauseRegistryAnchor public immutable clauseRegistry;
     /// @notice The RPGF counter this verifier is the proof-gated writer for.
@@ -176,6 +183,30 @@ contract FigaroBatchVerifier is ReentrancyGuard {
 
     // ── Events (protocol-compatible re-emissions) ─────────────────
 
+    // ── The Core's own order and process events, emitted from the stream ──
+    // A batched order is published as a direct one is: the same events, the
+    // same fields, the same ids (derived under this contract's EIP-712 domain,
+    // the one the batch's signatures were made under), so an event reader
+    // folds both paths by filtering on two addresses.
+    event OrderCommitted(
+        bytes32 indexed orderHash,
+        bytes32 indexed processId,
+        address indexed buyer,
+        address seller,
+        address currency,
+        uint256 payment,
+        uint256 cumulativeValue,
+        bytes32 checkoutHash,
+        uint256 salt,
+        uint256 deadline
+    );
+    event OrderSeller(bytes32 indexed orderHash, address indexed seller);
+    event OrderCurrency(bytes32 indexed orderHash, address indexed currency);
+    event OrderResolved(
+        bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout
+    );
+    event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount);
+
     /// @notice Summary event emitted per resolved batch.
     event BatchSettled(
         uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount
@@ -217,6 +248,8 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     error SpecBindingsHashMismatch();
     error UsageAccrualHashMismatch();
     error OperationsHashMismatch();
+    error MalformedOperationStream();
+    error VerifierNotPinned();
     error BatchTimestampOutOfRange(uint64 committed, uint64 current);
     error PublicValuesLengthMismatch(uint256 expected, uint256 actual);
     /// @dev The proof validated content against a spec whose hash is not the
@@ -238,23 +271,42 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     /// @param _programVKey    The verification key of the Figaro guest program.
     /// @param _clauseRegistry The live ClauseRegistry — the witness-spec anchor.
     /// @param _usageCounter   The RPGF counter this verifier writes batch accrual to.
-    /// @param _initialRoot    The initial state root (genesis or migrated from prior verifier).
-    constructor(
-        address _verifier,
-        bytes32 _programVKey,
-        address _clauseRegistry,
-        address _usageCounter,
-        bytes32 _initialRoot
-    ) {
+    ///         The state root starts at `genesisRoot()`, the empty state's,
+    ///         computed here and never supplied: a verifier always starts on a
+    ///         state anyone can rebuild from nothing.
+    constructor(address _verifier, bytes32 _programVKey, address _clauseRegistry, address _usageCounter)
+        EIP712("FigaroCore", "3")
+    {
         if (_verifier == address(0)) revert ZeroVerifier();
         if (_verifier.code.length == 0) revert VerifierNotContract();
         if (_clauseRegistry == address(0)) revert ZeroClauseRegistry();
         if (_usageCounter == address(0)) revert ZeroUsageCounter();
+        // The pin: the bound contract names its circuit. A gateway has no
+        // `VERIFIER_HASH()` and is refused here, so the path from a proven
+        // batch to its resolution has no owner who can freeze it.
+        bytes32 named;
+        try ISP1VerifierWithHash(_verifier).VERIFIER_HASH() returns (bytes32 h) {
+            named = h;
+        } catch {
+            revert VerifierNotPinned();
+        }
+        if (named == bytes32(0)) revert VerifierNotPinned();
         verifier = ISP1Verifier(_verifier);
+        verifierHash = named;
         programVKey = _programVKey;
         clauseRegistry = IClauseRegistryAnchor(_clauseRegistry);
         usageCounter = IUsageCounter(_usageCounter);
-        stateRoot = _initialRoot;
+        stateRoot = genesisRoot();
+    }
+
+    /// @notice The root of the empty mirror state: one `keccak256("")` per
+    ///         map (processes, order status, order → process) and the usage
+    ///         leg's keccak over three zero-length sections, hashed flat, as
+    ///         the guest's `KernelState::compute_root` does on nothing.
+    function genesisRoot() public pure returns (bytes32) {
+        bytes32 emptyMap = keccak256("");
+        bytes32 emptyUsage = keccak256(abi.encodePacked(uint64(0), uint64(0), uint64(0)));
+        return keccak256(abi.encodePacked(emptyMap, emptyMap, emptyMap, emptyUsage));
     }
 
     // ── Internal decode struct (avoids stack-too-deep) ─────────
@@ -349,8 +401,9 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         // ── 5. Execute token transfers ────────────────────────────
         _executePositions(positions);
 
-        // ── 6. Re-emit protocol events ────────────────────────────
+        // ── 6. Publish the batch's orders and resolutions as the Core does ─
         _emitAttestations(events.attestations);
+        _emitOperations(operations);
 
         // ── 7. Carry the RPGF accrual across the resolution crease ─
         //    The numbers are the proof's; the reward's own gates (open
@@ -615,6 +668,125 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         }
     }
 
+    // ── The operation stream, read for its events ───────────────────
+    // The stream's bytes are the guest's (`prover/lib/src/operation_stream.rs`):
+    // `0x01 commitment sig sig` for a commit, `0x02 processId sig count
+    // commitment*` for a resolution, `0x03 commitment key kind … proof` for a
+    // usage claim; a commitment is 252 packed bytes, a signature 65, a count
+    // a big-endian uint16. A proven batch's stream is well-formed by
+    // construction (the proof bound its hash); the refusal below is the
+    // decoder's, never a judgment.
+
+    uint256 private constant COMMITMENT_BYTES = 252;
+    uint256 private constant SIGNATURE_BYTES = 65;
+
+    function _emitOperations(bytes calldata s) internal {
+        uint256 p;
+        uint256 n = s.length;
+        while (p < n) {
+            uint256 tag = _byteAt(s, p);
+            p += 1;
+            if (tag == 0x01) {
+                CommitmentTypes.Commitment memory c = _readCommitment(s, p);
+                p += COMMITMENT_BYTES + 2 * SIGNATURE_BYTES;
+                _emitCommitted(c);
+            } else if (tag == 0x02) {
+                bytes32 processId = _wordAt(s, p);
+                p += 32 + SIGNATURE_BYTES;
+                uint256 count = _countAt(s, p);
+                p += 2;
+                address buyer;
+                for (uint256 i = 0; i < count; i++) {
+                    CommitmentTypes.Commitment memory c = _readCommitment(s, p);
+                    p += COMMITMENT_BYTES;
+                    buyer = c.buyer;
+                    _emitResolved(processId, c);
+                }
+                emit ProcessResolved(processId, buyer, count);
+            } else if (tag == 0x03) {
+                p += COMMITMENT_BYTES + 32; // the order and the key
+                uint256 kind = _byteAt(s, p);
+                p += 1;
+                if (kind == 0 || kind == 2) {
+                    p += 32;
+                } else if (kind == 1) {
+                    p += 64;
+                    p += 2 + _countAt(s, p) * 32;
+                } else {
+                    revert MalformedOperationStream();
+                }
+                p += 2 + _countAt(s, p) * 32;
+            } else {
+                revert MalformedOperationStream();
+            }
+            if (p > n) revert MalformedOperationStream();
+        }
+    }
+
+    // The stream is read with `calldataload` at an offset into `s`: a word,
+    // a byte or a big-endian uint16, each bounds-checked by the caller's
+    // final `p > n` refusal (a read past the end loads zero bytes, which the
+    // check then rejects as a short stream).
+
+    function _wordAt(bytes calldata s, uint256 p) private pure returns (bytes32 w) {
+        assembly ("memory-safe") {
+            w := calldataload(add(s.offset, p))
+        }
+    }
+
+    function _byteAt(bytes calldata s, uint256 p) private pure returns (uint256 b) {
+        assembly ("memory-safe") {
+            b := shr(248, calldataload(add(s.offset, p)))
+        }
+    }
+
+    function _countAt(bytes calldata s, uint256 p) private pure returns (uint256 c) {
+        assembly ("memory-safe") {
+            c := shr(240, calldataload(add(s.offset, p)))
+        }
+    }
+
+    function _readCommitment(bytes calldata s, uint256 p) private pure returns (CommitmentTypes.Commitment memory c) {
+        c.processId = _wordAt(s, p);
+        c.buyer = address(bytes20(_wordAt(s, p + 32)));
+        c.seller = address(bytes20(_wordAt(s, p + 52)));
+        c.currency = address(bytes20(_wordAt(s, p + 72)));
+        c.payment = uint256(_wordAt(s, p + 92));
+        c.expectedCumulativeValue = uint256(_wordAt(s, p + 124));
+        c.checkoutHash = _wordAt(s, p + 156);
+        c.salt = uint256(_wordAt(s, p + 188));
+        c.deadline = uint256(_wordAt(s, p + 220));
+    }
+
+    /// @dev The ids FigaroCore derives at commit, under this contract's domain:
+    ///      a root order's processId is its EIP-712 digest, an extension names
+    ///      its process; the orderHash is keccak256(processId ‖ structHash).
+    function _emitCommitted(CommitmentTypes.Commitment memory c) private {
+        bytes32 structHash = c.hashStruct();
+        bytes32 processId = c.processId == bytes32(0) ? _hashTypedDataV4(structHash) : c.processId;
+        bytes32 orderHash = keccak256(abi.encodePacked(processId, structHash));
+        emit OrderSeller(orderHash, c.seller);
+        emit OrderCurrency(orderHash, c.currency);
+        emit OrderCommitted(
+            orderHash,
+            processId,
+            c.buyer,
+            c.seller,
+            c.currency,
+            c.payment,
+            c.expectedCumulativeValue,
+            c.checkoutHash,
+            c.salt,
+            c.deadline
+        );
+    }
+
+    /// @dev The payouts FigaroCore.resolveProcess computes: the seller its bond
+    ///      and payment (2G + P), the buyer its bond less the payment (P).
+    function _emitResolved(bytes32 processId, CommitmentTypes.Commitment memory c) private {
+        bytes32 orderHash = keccak256(abi.encodePacked(processId, c.hashStruct()));
+        emit OrderResolved(orderHash, processId, c.expectedCumulativeValue * 2 + c.payment, c.payment);
+    }
     // ── Event re-emission ─────────────────────────────────────────
 
     function _emitAttestations(AttestationData[] calldata attestations) internal {

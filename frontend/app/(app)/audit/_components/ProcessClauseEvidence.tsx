@@ -119,9 +119,9 @@ function OrderSignatureRows({
 }
 
 export function ProcessClauseEvidence({ processId }: { processId: string }) {
-    // BOTH resolution universes: a batch-resolved order emits no OrderCommitted,
-    // so reading only the Core would render no evidence and make the "proved"
-    // signature verdict below unreachable.
+    // BOTH resolution universes: the Core's readers do not yet fold the
+    // verifier's OrderCommitted, so reading only the Core would render no
+    // evidence and make the "proved" signature verdict below unreachable.
     const { orders } = useAuditProcessOrders(processId);
     const publicClient = usePublicClient();
     const chainId = publicClient?.chain?.id ?? 0;

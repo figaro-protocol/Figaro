@@ -150,7 +150,7 @@ contract ReentrancyAdversarialTest is Test {
         // not the proof — the proof path is covered in FigaroBatchVerifierTest).
         MockSP1Verifier sp1 = new MockSP1Verifier();
         ClauseRegistry registry = new ClauseRegistry(0);
-        bytes32 genesis = keccak256("genesis");
+
         // A counter is required for construction; this batch credits no usage,
         // so the verifier's call to it is a no-op and only the guard is under
         // test here.
@@ -166,9 +166,8 @@ contract ReentrancyAdversarialTest is Test {
             1,
             periods
         );
-        FigaroBatchVerifier verifier = new FigaroBatchVerifier(
-            address(sp1), bytes32(uint256(1)), address(registry), address(usageCounter), genesis
-        );
+        FigaroBatchVerifier verifier =
+            new FigaroBatchVerifier(address(sp1), bytes32(uint256(1)), address(registry), address(usageCounter));
 
         // One payout position: the verifier pushes 10 tokens to `seller` from
         // its own balance. Fund the verifier and route the push through the
@@ -182,7 +181,7 @@ contract ReentrancyAdversarialTest is Test {
         );
 
         bytes memory pv = abi.encode(
-            genesis,
+            verifier.genesisRoot(),
             keccak256("next"),
             uint64(block.chainid),
             address(verifier),

@@ -39,7 +39,9 @@ import "../src/mocks/MockTreasuryMultisig.sol";
 ///   SUPPORTERS_WALLET          — address receiving the 30M supporters allocation
 ///   RPGF_GENESIS               — unix timestamp anchoring the reward schedule
 ///                                (nine ANNUAL periods derived from it, as mainnet)
-///   SP1_VERIFIER_GATEWAY       — Succinct's canonical gateway on Sepolia
+///   SP1_VERIFIER               — the SP1 verifier Succinct's gateway routes for this
+///                                release's proofs, resolved by the wrapper on
+///                                SP1_VERIFIER_GATEWAY and bound here, never the gateway
 ///   SP1_PROGRAM_VKEY           — the guest program's verification key
 contract DeploySepolia is Script {
     uint256 constant FOUNDER_ALLOC = 70_000_000 ether; // 7%
@@ -160,7 +162,7 @@ contract DeploySepolia is Script {
         _members = address(members);
         console.log("MembersRegistry:       ", _members);
 
-        require(vm.envAddress("SP1_VERIFIER_GATEWAY") != address(0), "SP1_VERIFIER_GATEWAY not set");
+        require(vm.envAddress("SP1_VERIFIER") != address(0), "SP1_VERIFIER not set");
         require(vm.envBytes32("SP1_PROGRAM_VKEY") != bytes32(0), "SP1_PROGRAM_VKEY not set");
 
         // Counter/verifier adjacent pair with address prediction, as mainnet.
@@ -168,14 +170,8 @@ contract DeploySepolia is Script {
         address predictedVerifier = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
         _deployUsageCounter(predictedVerifier);
 
-        bytes32 emptyMapHash = keccak256("");
-        bytes32 emptyUsageHash = keccak256(abi.encodePacked(uint64(0), uint64(0), uint64(0)));
         FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
-            vm.envAddress("SP1_VERIFIER_GATEWAY"),
-            vm.envBytes32("SP1_PROGRAM_VKEY"),
-            _clauses,
-            _usageCounter,
-            keccak256(abi.encodePacked(emptyMapHash, emptyMapHash, emptyMapHash, emptyUsageHash))
+            vm.envAddress("SP1_VERIFIER"), vm.envBytes32("SP1_PROGRAM_VKEY"), _clauses, _usageCounter
         );
         _batchVerifier = address(batchVerifier);
         require(_batchVerifier == predictedVerifier, "verifier address prediction failed");

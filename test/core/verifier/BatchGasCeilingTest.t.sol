@@ -54,8 +54,17 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     ///      each part a ceiling over its measurement (17.4 linear, 1/56
     ///      quadratic, fitted). The calldata's own per-byte charge is
     ///      intrinsic and planned apart.
-    uint256 internal constant SETTLE_GAS_PER_STREAM_WORD = 24;
-    uint256 internal constant SETTLE_STREAM_QUADRATIC_DIVISOR = 48;
+    uint256 internal constant SETTLE_GAS_PER_STREAM_WORD = 56;
+    uint256 internal constant SETTLE_STREAM_QUADRATIC_DIVISOR = 32;
+    /// @dev A commit entry read for its events: the decode, the struct and
+    ///      typed-data hashes that derive its ids, and the three Core events;
+    ///      a resolved order: the decode, one hash, one event; a resolution:
+    ///      the process event. Each a ceiling over the measurement below.
+    uint256 internal constant SETTLE_GAS_PER_STREAM_COMMIT = 12_000;
+    uint256 internal constant SETTLE_GAS_PER_STREAM_RESOLVED_ORDER = 6_000;
+    uint256 internal constant SETTLE_GAS_PER_STREAM_RESOLUTION = 3_000;
+    /// @dev A usage claim entry, parsed and skipped.
+    uint256 internal constant SETTLE_GAS_PER_STREAM_CLAIM = 1_500;
     /// @dev The proof's verification, which the mock verifier does not
     ///      perform: read from the five Groth16 batches settled on Sepolia.
     ///      Receipt gas less the calldata's intrinsic cost and the items
@@ -241,37 +250,133 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         return used;
     }
 
-    function _streamOf(uint256 words) internal pure returns (bytes memory stream) {
-        stream = new bytes(words * 32);
-        for (uint256 i = 0; i < stream.length; i++) {
-            stream[i] = 0x01;
+    // ── The operation stream's entries, packed as the guest packs them ──
+    // (`prover/lib/src/operation_stream.rs`): a commit is `0x01 commitment
+    // sig sig`, a resolution `0x02 processId sig count commitment*`, a usage
+    // claim `0x03 commitment key kind clauseDataHash proof`; a commitment is
+    // 252 packed bytes, a signature 65, a count a big-endian uint16.
+
+    function _packedCommitment(uint256 seed, bytes32 processId) internal view returns (bytes memory) {
+        return abi.encodePacked(
+            processId,
+            address(uint160(0xB0B)),
+            address(uint160(0x5E11 + seed)),
+            address(token),
+            uint256(1 ether),
+            uint256(seed + 1) * 1 ether,
+            keccak256(abi.encode("checkout", seed)),
+            uint256(seed),
+            uint256(4_000_000_000)
+        );
+    }
+
+    function _signature(uint256 seed) internal pure returns (bytes memory) {
+        return abi.encodePacked(keccak256(abi.encode("r", seed)), keccak256(abi.encode("s", seed)), uint8(27));
+    }
+
+    function _commitEntries(uint256 n) internal view returns (bytes memory stream) {
+        for (uint256 i = 0; i < n; i++) {
+            stream = bytes.concat(
+                stream, hex"01", _packedCommitment(i, bytes32(0)), _signature(2 * i), _signature(2 * i + 1)
+            );
         }
     }
 
+    function _resolveEntry(uint256 orders) internal view returns (bytes memory stream) {
+        bytes32 processId = keccak256("process");
+        stream = bytes.concat(hex"02", processId, _signature(999), bytes2(uint16(orders)));
+        for (uint256 i = 0; i < orders; i++) {
+            stream = bytes.concat(stream, _packedCommitment(i, processId));
+        }
+    }
+
+    /// @dev `n` clause claims, each with a `proofWords`-word inclusion proof,
+    ///      written into one buffer (no quadratic concatenation in the test).
+    function _claimEntries(uint256 n, uint256 proofWords) internal view returns (bytes memory stream) {
+        uint256 entry = 1 + 252 + 32 + 1 + 32 + 2 + proofWords * 32;
+        stream = new bytes(n * entry);
+        uint256 p;
+        for (uint256 i = 0; i < n; i++) {
+            bytes memory head = bytes.concat(
+                hex"03",
+                _packedCommitment(i, keccak256("process")),
+                keccak256("key"),
+                hex"00",
+                keccak256("clause-data"),
+                bytes2(uint16(proofWords))
+            );
+            for (uint256 j = 0; j < head.length; j++) {
+                stream[p + j] = head[j];
+            }
+            p += head.length;
+            for (uint256 w = 0; w < proofWords; w++) {
+                bytes32 word = keccak256(abi.encode("proof", i, w));
+                for (uint256 b = 0; b < 32; b++) {
+                    stream[p + b] = word[b];
+                }
+                p += 32;
+            }
+        }
+    }
+
+    /// @dev The stream's costs, separated: a claim entry (parsed and skipped)
+    ///      by the count at a fixed proof length; a word of the stream by the
+    ///      proof length at a fixed count; the quadratic memory term on a
+    ///      64 KiB stream.
     function test_Gas_settleStreamWord() public {
         // The verifier's first settle writes `batchCount` from zero (a dearer
         // store); it is not the stream's cost, so one settle is spent first.
         _settleCallGas(hex"");
         uint256 g0 = _settleCallGas(hex"");
-        uint256 g256 = _settleCallGas(_streamOf(256));
-        uint256 g1024 = _settleCallGas(_streamOf(1024));
-        uint256 g2048 = _settleCallGas(_streamOf(2048));
-        emit log_named_uint("settle_call_gas_empty_stream", g0);
-        emit log_named_uint("stream_marginal_256_words", (g256 - g0) / 256);
-        emit log_named_uint("stream_marginal_1024_words", (g1024 - g0) / 1024);
-        emit log_named_uint("stream_marginal_2048_words", (g2048 - g0) / 2048);
-        // The linear part, read where the quadratic memory term is still small.
-        uint256 marginal = (g256 - g0) / 256;
-        emit log_named_uint("settle_gas_per_stream_word", marginal);
-        assertGe(marginal, 4, "a stream word dropped unexpectedly (verifier change?)");
-        assertLe(marginal, SETTLE_GAS_PER_STREAM_WORD, "a stream word rose past its anchor (re-measure)");
-        // The whole model holds where the quadratic term matters.
-        for (uint256 k = 0; k < 2; k++) {
-            uint256 words = k == 0 ? 1024 : 2048;
-            uint256 measured = (k == 0 ? g1024 : g2048) - g0;
-            uint256 modeled = words * SETTLE_GAS_PER_STREAM_WORD + words * words / SETTLE_STREAM_QUADRATIC_DIVISOR;
-            assertLe(measured, modeled, "the stream's execution rose past the model (re-measure)");
-        }
+        uint256 g8 = _settleCallGas(_claimEntries(8, 1));
+        uint256 g16 = _settleCallGas(_claimEntries(16, 1));
+        uint256 perClaim = (g16 - g8) / 8;
+        emit log_named_uint("settle_gas_per_stream_claim", perClaim);
+        // The words: 8 claims with 1-word proofs against 8 with 65-word proofs.
+        uint256 g8wide = _settleCallGas(_claimEntries(8, 65));
+        uint256 perWord = (g8wide - g8) / (8 * 64);
+        emit log_named_uint("settle_gas_per_stream_word", perWord);
+        assertGe(perWord, 4, "a stream word dropped unexpectedly (verifier change?)");
+        assertLe(perWord, SETTLE_GAS_PER_STREAM_WORD, "a stream word rose past its anchor (re-measure)");
+        assertLe(perClaim, SETTLE_GAS_PER_STREAM_CLAIM, "a stream claim rose past its anchor (re-measure)");
+        // The whole model on a 64 KiB stream: 8 claims with 250-word proofs.
+        uint256 gBig = _settleCallGas(_claimEntries(8, 250));
+        uint256 words = (uint256(8) * (320 + 250 * 32) + 31) / 32;
+        uint256 modeled = 8 * SETTLE_GAS_PER_STREAM_CLAIM + words * SETTLE_GAS_PER_STREAM_WORD + words * words
+            / SETTLE_STREAM_QUADRATIC_DIVISOR;
+        emit log_named_uint("stream_64k_measured", gBig - g0);
+        emit log_named_uint("stream_64k_modeled", modeled);
+        assertLe(gBig - g0, modeled, "the stream's execution rose past the model (re-measure)");
+    }
+
+    /// @dev A commit entry beyond its bytes: the decode, the two hashes that
+    ///      derive its ids, and the three events FigaroCore emits for a commit.
+    function test_Gas_settleStreamCommit() public {
+        _settleCallGas(hex"");
+        uint256 g8 = _settleCallGas(_commitEntries(8));
+        uint256 g16 = _settleCallGas(_commitEntries(16));
+        uint256 wordsPer = uint256(383) * 8 / 32;
+        uint256 marginal = (g16 - g8 - wordsPer * SETTLE_GAS_PER_STREAM_WORD) / 8;
+        emit log_named_uint("settle_gas_per_stream_commit", marginal);
+        assertGe(marginal, 2_000, "a stream commit dropped unexpectedly (verifier change?)");
+        assertLe(marginal, SETTLE_GAS_PER_STREAM_COMMIT, "a stream commit rose past its anchor (re-measure)");
+    }
+
+    /// @dev A resolution entry: per resolved order the decode, one hash and
+    ///      one event; per process the process event.
+    function test_Gas_settleStreamResolution() public {
+        _settleCallGas(hex"");
+        uint256 g0 = _settleCallGas(hex"");
+        uint256 g1 = _settleCallGas(_resolveEntry(1));
+        uint256 g17 = _settleCallGas(_resolveEntry(17));
+        uint256 perOrder = (g17 - g1 - (252 * 16 / 32) * SETTLE_GAS_PER_STREAM_WORD) / 16;
+        uint256 words1 = (uint256(100) + 252 + 31) / 32;
+        uint256 perProcess = g1 - g0 - perOrder - words1 * SETTLE_GAS_PER_STREAM_WORD;
+        emit log_named_uint("settle_gas_per_stream_resolved_order", perOrder);
+        emit log_named_uint("settle_gas_per_stream_resolution", perProcess);
+        assertGe(perOrder, 1_000, "a resolved order dropped unexpectedly (verifier change?)");
+        assertLe(perOrder, SETTLE_GAS_PER_STREAM_RESOLVED_ORDER, "a resolved order rose past its anchor (re-measure)");
+        assertLe(perProcess, SETTLE_GAS_PER_STREAM_RESOLUTION, "a resolution rose past its anchor (re-measure)");
     }
 
     function test_Gas_settleFixedExecution() public {

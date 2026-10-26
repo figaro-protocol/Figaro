@@ -239,10 +239,11 @@ function getBigIntArg(log: IndexedLog, key: string): bigint {
  * / OrderResolved process graph and the disclosure graph — all keyed to one
  * address. Attestation tallies fold BOTH resolution paths (coordinator +
  * verifier re-emissions, each stream address-filtered — SCALING_STRATEGY.md
- * § "A reader must fold BOTH"). The process/value figures are direct-path by
- * construction: the batch universe emits no per-order events (no status, no
- * process passes from one path to the other), so batch-resolved trade surfaces here only
- * through its attestations.
+ * § "A reader must fold BOTH"). The process/value figures read FigaroCore's
+ * events alone today: the verifier now emits the same order and process
+ * events for batched trade (`OrderCommitted`, `OrderResolved`, …, filtered by
+ * its address), and folding them in here is the readers' sitting on the
+ * punch-list; no status or process passes from one path to the other.
  */
 export async function getSellerResolutionHistory(
     client: PublicClient,

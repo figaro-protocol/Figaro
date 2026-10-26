@@ -273,10 +273,9 @@ export async function deployBatchStack(
     // ── Deploy FigaroBatchVerifier ───────────────────────────
 
     const BATCH_VERIFIER_DEPLOY_ABI = parseAbi([
-        "constructor(address _verifier, bytes32 _programVKey, address _clauseRegistry, address _usageCounter, bytes32 _initialRoot)",
+        "constructor(address _verifier, bytes32 _programVKey, address _clauseRegistry, address _usageCounter)",
     ]);
 
-    const genesisRoot = computeGenesisRoot();
     const batchVerifierBytecode = loadBytecode(
         "FigaroBatchVerifier.sol/FigaroBatchVerifier.json",
     );
@@ -288,7 +287,6 @@ export async function deployBatchStack(
             embeddedVkey(),
             clauseRegistryAddress,
             usageCounterAddress,
-            genesisRoot,
         ],
     });
     const bvReceipt = await publicClient.waitForTransactionReceipt({
@@ -304,7 +302,7 @@ export async function deployBatchStack(
         abi: BATCH_VERIFIER_ABI,
         functionName: "stateRoot",
     });
-    expect(onChainRoot).toBe(genesisRoot);
+    expect(onChainRoot).toBe(computeGenesisRoot());
 
     return {
         tokenAddress,

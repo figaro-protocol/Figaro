@@ -209,17 +209,18 @@ contract DeployMainnet is Script {
         console.log("MembersRegistry:       ", _members);
 
         // ── FigaroBatchVerifier (proof-based batch resolution) ─────
-        // SP1_VERIFIER_GATEWAY: Succinct's canonical SP1 verifier gateway
-        // on the target chain (their contract-addresses docs list the
-        // deployments; a chain with none can host the verifier directly).
+        // SP1_VERIFIER: the SP1 verifier contract Succinct's gateway routes
+        // for this release's proofs, resolved by the deploy wrapper on
+        // SP1_VERIFIER_GATEWAY and bound here immutably — never the gateway,
+        // whose owner can freeze a route; the constructor probes
+        // VERIFIER_HASH() and refuses a gateway.
         // SP1_PROGRAM_VKEY: the guest program's verification key —
         // `SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`.
-        // The genesis root is DERIVED (one keccak256("") per mirror state
-        // map), matching the Rust KernelState::compute_root on the empty
-        // state. ClauseRegistry anchors the witness specs: the clause key IS
+        // The genesis root is the contract's own (`genesisRoot()`, the empty
+        // state's), matching the Rust KernelState::compute_root on nothing. ClauseRegistry anchors the witness specs: the clause key IS
         // the spec hash, so settleBatch requires each proof's binding to carry
         // one word twice and the key registered. Not a florin minter, never will be.
-        require(vm.envAddress("SP1_VERIFIER_GATEWAY") != address(0), "SP1_VERIFIER_GATEWAY not set");
+        require(vm.envAddress("SP1_VERIFIER") != address(0), "SP1_VERIFIER not set");
         require(vm.envBytes32("SP1_PROGRAM_VKEY") != bytes32(0), "SP1_PROGRAM_VKEY not set");
 
         // The counter and the verifier reference each other, so they deploy as
@@ -233,14 +234,8 @@ contract DeployMainnet is Script {
         // The genesis root is DERIVED: one keccak256("") per mirror state map
         // plus the usage leg (itself keccak over three zero-length sections),
         // matching the Rust KernelState::compute_root on the empty state.
-        bytes32 emptyMapHash = keccak256("");
-        bytes32 emptyUsageHash = keccak256(abi.encodePacked(uint64(0), uint64(0), uint64(0)));
         FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
-            vm.envAddress("SP1_VERIFIER_GATEWAY"),
-            vm.envBytes32("SP1_PROGRAM_VKEY"),
-            _clauses,
-            _usageCounter,
-            keccak256(abi.encodePacked(emptyMapHash, emptyMapHash, emptyMapHash, emptyUsageHash))
+            vm.envAddress("SP1_VERIFIER"), vm.envBytes32("SP1_PROGRAM_VKEY"), _clauses, _usageCounter
         );
         _batchVerifier = address(batchVerifier);
         require(_batchVerifier == predictedVerifier, "verifier address prediction failed");

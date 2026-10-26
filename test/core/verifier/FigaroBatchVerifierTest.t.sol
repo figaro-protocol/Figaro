@@ -41,7 +41,9 @@ contract FigaroBatchVerifierTest is Test {
     uint64 constant PERIOD_END = 1_000_000;
 
     bytes32 constant VKEY = bytes32(uint256(0xF16A20));
-    bytes32 constant GENESIS = bytes32(uint256(0x6E0));
+    /// @dev The verifier's own genesis root, read after construction: the
+    ///      empty state's, never a value handed in.
+    bytes32 GENESIS;
     uint256 constant DEPOSIT = 0.001 ether;
 
     address buyer = address(0xB0B);
@@ -80,8 +82,9 @@ contract FigaroBatchVerifierTest is Test {
             1,
             periods
         );
-        verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter), GENESIS);
+        verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter));
         assertEq(address(verifier), predicted, "verifier address prediction");
+        GENESIS = verifier.genesisRoot();
         vm.warp(PERIOD_END - 1000);
         token = new MockERC20("Mock", "MOCK");
 
@@ -471,23 +474,24 @@ contract FigaroBatchVerifierTest is Test {
 
     function test_constructor_guards() public {
         vm.expectRevert(FigaroBatchVerifier.ZeroVerifier.selector);
-        new FigaroBatchVerifier(address(0), VKEY, address(registry), address(counter), GENESIS);
+        new FigaroBatchVerifier(address(0), VKEY, address(registry), address(counter));
 
         vm.expectRevert(FigaroBatchVerifier.VerifierNotContract.selector);
-        new FigaroBatchVerifier(address(0xDEAD), VKEY, address(registry), address(counter), GENESIS);
+        new FigaroBatchVerifier(address(0xDEAD), VKEY, address(registry), address(counter));
 
         vm.expectRevert(FigaroBatchVerifier.ZeroClauseRegistry.selector);
-        new FigaroBatchVerifier(address(sp1), VKEY, address(0), address(counter), GENESIS);
+        new FigaroBatchVerifier(address(sp1), VKEY, address(0), address(counter));
 
         vm.expectRevert(FigaroBatchVerifier.ZeroUsageCounter.selector);
-        new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(0), GENESIS);
+        new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(0));
     }
 
     function test_constructor_setsImmutablesAndGenesis() public view {
         assertEq(address(verifier.verifier()), address(sp1));
         assertEq(verifier.programVKey(), VKEY);
         assertEq(address(verifier.clauseRegistry()), address(registry));
-        assertEq(verifier.stateRoot(), GENESIS);
+        assertEq(verifier.stateRoot(), verifier.genesisRoot(), "the root starts at the empty state's");
+        assertEq(verifier.verifierHash(), keccak256("MockSP1Verifier"), "the bound verifier's circuit is named");
         assertEq(verifier.batchCount(), 0);
     }
 
@@ -658,7 +662,8 @@ contract FigaroBatchVerifierTest is Test {
         vm.expectRevert(FigaroBatchVerifier.OperationsHashMismatch.selector);
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), other);
         // And a stream the proof committed cannot be withheld.
-        bytes memory committed = hex"0102030405";
+        bytes memory committed =
+            vm.parseJsonBytes(vm.readFile("test/fixtures/operation-stream-vectors.json"), ".streams[0].stream");
         bytes memory pvCommitted = _pvWithOperations(positions, events, keccak256("next-root"), committed);
         vm.expectRevert(FigaroBatchVerifier.OperationsHashMismatch.selector);
         verifier.settleBatch(hex"", pvCommitted, positions, events, _emptyUsage(), hex"");
@@ -669,9 +674,11 @@ contract FigaroBatchVerifierTest is Test {
     function test_settleBatch_acceptsTheOperationsTheProofCommitted() public {
         (, FigaroBatchVerifier.NetPosition[] memory positions, FigaroBatchVerifier.BatchEventData memory events,) =
             _canonicalBatch();
-        // Any bytes: the contract reads none of the stream, it binds it. The
-        // stream's content is the guest's, fixed by the verification key.
-        bytes memory operations = hex"01000102030405060708090a0b0c0d0e0f";
+        // A stream the guest encoded (the committed vector's first), bound
+        // and read for its events; the fixture-driven test checks the events,
+        // this one the binding.
+        bytes memory operations =
+            vm.parseJsonBytes(vm.readFile("test/fixtures/operation-stream-vectors.json"), ".streams[0].stream");
         bytes32 newRoot = keccak256("next-root");
         bytes memory pv = _pvWithOperations(positions, events, newRoot, operations);
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), operations);
@@ -1158,7 +1165,7 @@ contract FigaroBatchVerifierTest is Test {
             1,
             periods
         );
-        verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter), GENESIS);
+        verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter));
         assertEq(address(verifier), predicted, "verifier address prediction");
         token.mint(address(verifier), 1_000 ether);
         vm.prank(buyer);
@@ -1522,7 +1529,10 @@ contract FigaroBatchVerifierTest is Test {
                 if (!w.isWrite || w.reverted) continue;
                 if (w.account == address(verifier)) {
                     verifierWrote = true;
-                    bool bound = w.slot == bytes32(0) || w.slot == bytes32(uint256(1));
+                    // The two words the public values bind, found by what they
+                    // now hold rather than by slot number (the EIP-712 base
+                    // reserves slots before them).
+                    bool bound = w.newValue == verifier.stateRoot() || uint256(w.newValue) == verifier.batchCount();
                     assertTrue(
                         bound || _returnsToRest(accesses, w.account, w.slot),
                         "the verifier writes only the state root and the batch count"

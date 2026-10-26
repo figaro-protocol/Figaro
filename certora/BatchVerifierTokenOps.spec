@@ -216,6 +216,7 @@ rule singlePositionAllowanceDrainSafety(
     FigaroBatchVerifier.NetPosition[] positions,
     FigaroBatchVerifier.BatchEventData batchEvents,
     FigaroBatchVerifier.BatchUsageData usage,
+    bytes operations,
     address a
 ) {
     require validSinglePositionBatch(positions, batchEvents, usage);

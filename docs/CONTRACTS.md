@@ -137,11 +137,19 @@ The proof-based path that resolves batches of processes beside the direct
   so a new clause never touches the prover;
 - reconciles net token positions (pulls net deposits, pushes net payouts;
   `FeeOnTransferDetected` guard), re-emits proven `Attestation` events (same
-  topic as the coordinator's — indexers filter by address), forwards the usage
+  topic as the coordinator's — indexers filter by address), emits the Core's own
+  `OrderCommitted` / `OrderSeller` / `OrderCurrency` / `OrderResolved` /
+  `ProcessResolved` for every commit and resolution the operation stream
+  carries (ids derived under its own EIP-712 domain, `FigaroCore` v3 at its
+  address, the one the batch's signatures were made under), forwards the usage
   accrual to `UsageCounter.applyBatchAccrual`, and advances the state root.
-- Immutable `verifier` / `programVKey` / `clauseRegistry` / `usageCounter`; no
-  admin, no upgrade path — a program change is a fresh deploy. Not a florin
-  minter.
+- Immutable `verifier` / `verifierHash` / `programVKey` / `clauseRegistry` /
+  `usageCounter`; no admin, no upgrade path — a program change is a fresh
+  deploy. Not a florin minter. The constructor binds one routed SP1 verifier
+  contract, never a gateway: it probes `VERIFIER_HASH()` and refuses a contract
+  without one (`VerifierNotPinned`), so no route owner stands between a proven
+  batch and its resolution. The state root starts at `genesisRoot()`, the
+  empty state's, computed by the contract and never supplied.
 
 The two paths share no state: a batch-resolved process never acquires `FigaroCore`
 status (`core.orderStatus` stays 0 for it), so every reader folds both
@@ -157,8 +165,9 @@ counter. A batch that credits no
 usage passes empty arrays; that call is a no-op, which lets trade keep
 resolving after the reward's last period closes.
 
-**`src/core/verifier/ISP1Verifier.sol`** — the Succinct SP1
-verifier-gateway ABI, `verifyProof(programVKey, publicValues, proof)`.
+**`src/core/verifier/ISP1Verifier.sol`** — the Succinct SP1 verifier ABI,
+`verifyProof(programVKey, publicValues, proof)`, and `ISP1VerifierWithHash`, the
+routed verifier's `VERIFIER_HASH()` the batch verifier pins at construction.
 
 ## `src/build/` — the registries, usage accounting, the florin, designer rewards
 

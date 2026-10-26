@@ -672,16 +672,13 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     // The chain also carries the commitment in the Core's own event shape, so
     // the event readers find batched trade where they find direct trade.
     //
-    // `it.fails` records today's verifier: it lands a batch whose signed
-    // operations are nowhere on the chain. The first assertion to fail is
-    // step 2, the commitment's event: the verifier publishes no
-    // `OrderCommitted`, so a stranger finds nothing (run on 26 Oct 2026:
-    // "expected +0 to be 1"). Past that step, a relay started with nothing
+    // `it.fails` records today's sequencer. The verifier publishes the
+    // batch's operation stream and the Core's events for it, so steps 1 and
+    // 2 pass; the first step to fail is step 4: a relay started with nothing
     // refuses to start ("does not hold the state behind the verifier's
-    // root") at `waitForSequencer`. When the verifier's operation stream and
-    // events and the sequencer's rebuild-from-chain start
-    // (`REBUILD_FROM_CHAIN=1`) land, the `.fails` comes off and the test must
-    // pass as written. The formal twin is `formal/RelayState.tla`'s
+    // root"), because nothing rebuilds the state from the chain yet. When
+    // the sequencer's rebuild-from-chain start (`REBUILD_FROM_CHAIN=1`)
+    // lands, the `.fails` comes off and the test must pass as written. The formal twin is `formal/RelayState.tla`'s
     // `OpsOnChain` switch, FALSE failing `Recoverable` through a foreign
     // submitter.
     it.fails(
@@ -785,7 +782,17 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                 REBUILD_FROM_CHAIN: "1",
             });
             attachLogs(rebuiltProcess);
-            await waitForSequencer(REBUILT_URL, 10 * 60_000);
+            // A relay that refuses to start exits at once; waiting the full
+            // ready timeout for it would hide the refusal behind a timeout.
+            let rebuiltOutput = "";
+            rebuiltProcess.stdout?.on("data", (chunk: Buffer) => (rebuiltOutput += chunk.toString()));
+            rebuiltProcess.stderr?.on("data", (chunk: Buffer) => (rebuiltOutput += chunk.toString()));
+            const exited = new Promise<never>((_, reject) => {
+                rebuiltProcess!.once("close", (code) =>
+                    reject(new Error(`the rebuilt relay exited with ${code} before it was ready:\n${rebuiltOutput}`)),
+                );
+            });
+            await Promise.race([waitForSequencer(REBUILT_URL, 10 * 60_000), exited]);
             const rebuilt = new SequencerClient({ url: REBUILT_URL });
             expect((await rebuilt.status()).state_root.toLowerCase(), "the rebuilt state is the chain's root").toBe(
                 rootAfterCommit.toLowerCase(),

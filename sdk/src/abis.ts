@@ -496,8 +496,19 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch resolution ────────────────────────────────────────────
     "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrAssembly, uint8 kind, uint64 c, uint64 d)[] accruals, address[] sellers) usage, bytes operations) external",
 
+    // ── The Core's own order and process events, emitted from the stream ──
+    // Filter on the verifier's address beside FigaroCore's: the same events,
+    // the same fields, ids derived under the verifier's EIP-712 domain.
+    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
+    "event OrderSeller(bytes32 indexed orderHash, address indexed seller)",
+    "event OrderCurrency(bytes32 indexed orderHash, address indexed currency)",
+    "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
+    "event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)",
+
     // ── Views ────────────────────────────────────────────────────────
     "function stateRoot() view returns (bytes32)",
+    "function genesisRoot() pure returns (bytes32)",
+    "function verifierHash() view returns (bytes32)",
     "function batchCount() view returns (uint64)",
     "function verifier() view returns (address)",
     "function programVKey() view returns (bytes32)",

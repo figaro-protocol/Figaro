@@ -32,7 +32,8 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 /// Required environment variables (env-reading entry):
 ///   PRIVATE_KEY                 — deployer private key
 ///   RPGF_GENESIS                — the live deployment's reward-schedule anchor
-///   SP1_VERIFIER_GATEWAY        — Succinct's canonical gateway on Sepolia
+///   SP1_VERIFIER                — the routed SP1 verifier the wrapper resolves on
+///                                 SP1_VERIFIER_GATEWAY; bound, never the gateway
 ///   SP1_PROGRAM_VKEY            — the guest key the new verifier pins
 ///   EXISTING_FIGARO_CORE        — the record's figaroCore
 ///   EXISTING_MEMBERS_REGISTRY   — the record's membersRegistry
@@ -54,7 +55,7 @@ contract DeploySepoliaPair is Script {
             vm.envAddress("EXISTING_CLAUSE_REGISTRY"),
             vm.envAddress("EXISTING_ASSEMBLY_REGISTRY"),
             vm.envAddress("EXISTING_AGREEMENT_REGISTRY"),
-            vm.envAddress("SP1_VERIFIER_GATEWAY"),
+            vm.envAddress("SP1_VERIFIER"),
             vm.envBytes32("SP1_PROGRAM_VKEY"),
             uint64(vm.envUint("RPGF_GENESIS"))
         );
@@ -132,15 +133,7 @@ contract DeploySepoliaPair is Script {
         _usageCounter = address(usageCounter);
         console.log("UsageCounter:           ", _usageCounter);
 
-        bytes32 emptyMapHash = keccak256("");
-        bytes32 emptyUsageHash = keccak256(abi.encodePacked(uint64(0), uint64(0), uint64(0)));
-        FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
-            gateway_,
-            vkey_,
-            clauses_,
-            _usageCounter,
-            keccak256(abi.encodePacked(emptyMapHash, emptyMapHash, emptyMapHash, emptyUsageHash))
-        );
+        FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(gateway_, vkey_, clauses_, _usageCounter);
         _batchVerifier = address(batchVerifier);
         require(_batchVerifier == predictedVerifier, "verifier address prediction failed");
         console.log("FigaroBatchVerifier:    ", _batchVerifier);

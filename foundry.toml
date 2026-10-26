@@ -16,6 +16,7 @@ fs_permissions = [
     { access = "read", path = "test/fixtures/eip712-vectors.json" },
     { access = "read", path = "test/fixtures/merkle-vectors.json" },
     { access = "read", path = "test/fixtures/assembly-vectors.json" },
+    { access = "read", path = "test/fixtures/operation-stream-vectors.json" },
     { access = "read-write", path = "test/fixtures/kernel-transition-vectors.json" },
     { access = "read-write", path = "test/fixtures/streams/kernel.jsonl" },
     { access = "read", path = "test/fixtures/streams/agreements.json" },

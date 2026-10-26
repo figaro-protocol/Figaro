@@ -764,7 +764,7 @@ async fn batch_loop(
             );
             Ok(gas::settle_gas_estimate(
                 &calldata,
-                gas::SettleItems::of(&positions, &events).with_stream_bytes(stream.len()),
+                gas::SettleItems::of(&positions, &events).with_stream(stream.len(), &input.operations, input.usage_claims.len()),
             ))
         };
 

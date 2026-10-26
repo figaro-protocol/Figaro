@@ -39,8 +39,17 @@ pub const SETTLE_FIXED_EXEC_GAS: u64 = 105_000;
 /// quadratic memory term: `words * SETTLE_GAS_PER_STREAM_WORD
 /// + words² / SETTLE_STREAM_QUADRATIC_DIVISOR` (`stream_exec_gas`), each part
 /// a ceiling over `BatchGasCeilingTest`'s measurement.
-pub const SETTLE_GAS_PER_STREAM_WORD: u64 = 24;
-pub const SETTLE_STREAM_QUADRATIC_DIVISOR: u64 = 48;
+pub const SETTLE_GAS_PER_STREAM_WORD: u64 = 56;
+pub const SETTLE_STREAM_QUADRATIC_DIVISOR: u64 = 32;
+/// A commit entry read for its events: the decode, the two hashes that
+/// derive its ids, the three Core events; a resolved order: the decode, one
+/// hash, one event; a resolution: the process event. Ceilings over
+/// `BatchGasCeilingTest`'s measurements, mirrored by the lockstep guard.
+pub const SETTLE_GAS_PER_STREAM_COMMIT: u64 = 12_000;
+pub const SETTLE_GAS_PER_STREAM_RESOLVED_ORDER: u64 = 6_000;
+pub const SETTLE_GAS_PER_STREAM_RESOLUTION: u64 = 3_000;
+/// A usage claim entry, parsed and skipped.
+pub const SETTLE_GAS_PER_STREAM_CLAIM: u64 = 1_500;
 
 /// The execution gas of an operation stream of `words` 32-byte words.
 pub fn stream_exec_gas(words: u64) -> u64 {
@@ -85,6 +94,8 @@ fn resolve_settle_gas(orders: u64) -> u64 {
         + (orders + 1) * (SETTLE_GAS_PER_POSITION + POSITION_CALLDATA_GAS)
         + stream_bytes * CALLDATA_NONZERO_BYTE_GAS
         + stream_exec_gas(stream_bytes.div_ceil(32))
+        + SETTLE_GAS_PER_STREAM_RESOLUTION
+        + orders * SETTLE_GAS_PER_STREAM_RESOLVED_ORDER
 }
 
 /// The calldata one net position occupies, charged as nonzero bytes: the
@@ -101,7 +112,9 @@ pub const MIN_SETTLE_GAS_CAP: u64 = SETTLE_PROOF_VERIFY_GAS
     + 2 * (SETTLE_GAS_PER_POSITION + POSITION_CALLDATA_GAS)
     + (RESOLVE_STREAM_FIXED_BYTES + RESOLVE_STREAM_ORDER_BYTES) * CALLDATA_NONZERO_BYTE_GAS
     + 11 * SETTLE_GAS_PER_STREAM_WORD
-    + 11 * 11 / SETTLE_STREAM_QUADRATIC_DIVISOR;
+    + 11 * 11 / SETTLE_STREAM_QUADRATIC_DIVISOR
+    + SETTLE_GAS_PER_STREAM_RESOLUTION
+    + SETTLE_GAS_PER_STREAM_RESOLVED_ORDER;
 
 /// Calldata gas: a transaction's base cost and the per-byte charge.
 const TX_BASE_GAS: u64 = 21_000;
@@ -118,6 +131,14 @@ pub struct SettleItems {
     pub usage_sellers: usize,
     /// The operation stream's 32-byte words, rounded up.
     pub stream_words: usize,
+    /// The stream's commit entries, each read for its ids and events.
+    pub stream_commits: usize,
+    /// The orders the stream's resolutions name, each read for its event.
+    pub stream_resolved_orders: usize,
+    /// The stream's resolution entries, each a process event.
+    pub stream_resolutions: usize,
+    /// The stream's usage claim entries, each parsed and skipped.
+    pub stream_claims: usize,
 }
 
 impl SettleItems {
@@ -130,12 +151,28 @@ impl SettleItems {
             accruals: events.usage_accruals.len(),
             usage_sellers: events.usage_sellers.len(),
             stream_words: 0,
+            stream_commits: 0,
+            stream_resolved_orders: 0,
+            stream_resolutions: 0,
+            stream_claims: 0,
         }
     }
 
-    /// The items with the operation stream of `bytes` bytes counted.
-    pub fn with_stream_bytes(mut self, bytes: usize) -> Self {
+    /// The items with the operation stream counted: its bytes, and the
+    /// entries the verifier reads for events.
+    pub fn with_stream(mut self, bytes: usize, operations: &[KernelOp], claims: usize) -> Self {
         self.stream_words = bytes.div_ceil(32);
+        self.stream_claims = claims;
+        for op in operations {
+            match op {
+                KernelOp::Commit { .. } => self.stream_commits += 1,
+                KernelOp::Resolve { commitments, .. } => {
+                    self.stream_resolutions += 1;
+                    self.stream_resolved_orders += commitments.len();
+                }
+                _ => {}
+            }
+        }
         self
     }
 }
@@ -159,6 +196,10 @@ pub fn settle_gas_estimate(calldata: &[u8], items: SettleItems) -> u64 {
         + items.accruals as u64 * SETTLE_GAS_PER_ACCRUAL
         + items.usage_sellers as u64 * SETTLE_GAS_PER_USAGE_SELLER
         + stream_exec_gas(items.stream_words as u64)
+        + items.stream_commits as u64 * SETTLE_GAS_PER_STREAM_COMMIT
+        + items.stream_resolved_orders as u64 * SETTLE_GAS_PER_STREAM_RESOLVED_ORDER
+        + items.stream_resolutions as u64 * SETTLE_GAS_PER_STREAM_RESOLUTION
+        + items.stream_claims as u64 * SETTLE_GAS_PER_STREAM_CLAIM
 }
 
 /// The gas a batch may plan on in a block with this limit, under the
@@ -331,7 +372,7 @@ mod tests {
 
     #[test]
     fn the_estimate_is_the_sum_of_its_parts() {
-        let items = SettleItems { positions: 2, attestations: 1, spec_bindings: 1, accruals: 1, usage_sellers: 1, stream_words: 0 };
+        let items = SettleItems { positions: 2, attestations: 1, spec_bindings: 1, accruals: 1, usage_sellers: 1, stream_words: 0, stream_commits: 0, stream_resolved_orders: 0, stream_resolutions: 0, stream_claims: 0 };
         assert_eq!(
             settle_gas_estimate(&[1], items),
             21_016 + 300_000 + 105_000 + 120_000 + 6_000 + 4_500 + 190_000 + 12_000
@@ -354,11 +395,11 @@ mod tests {
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(1)), 1);
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(2)), 2);
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(7) - 1), 6);
-        assert_eq!(max_orders_in_one_settle(DEFAULT_SETTLE_GAS_CAP), 243);
-        assert!(resolve_settle_gas(243) <= DEFAULT_SETTLE_GAS_CAP && resolve_settle_gas(244) > DEFAULT_SETTLE_GAS_CAP);
+        assert_eq!(max_orders_in_one_settle(DEFAULT_SETTLE_GAS_CAP), 222);
+        assert!(resolve_settle_gas(222) <= DEFAULT_SETTLE_GAS_CAP && resolve_settle_gas(223) > DEFAULT_SETTLE_GAS_CAP);
         // The least cap admits a process of one order, and no less.
         assert_eq!(MIN_SETTLE_GAS_CAP, resolve_settle_gas(1));
-        assert_eq!(MIN_SETTLE_GAS_CAP, 597_594);
+        assert_eq!(MIN_SETTLE_GAS_CAP, 606_947);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP), 1);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP - 1), 0);
     }

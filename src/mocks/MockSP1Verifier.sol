@@ -6,7 +6,7 @@ import "src/core/verifier/ISP1Verifier.sol";
 /// @title MockSP1Verifier — Accepts any proof (devnet / Anvil testing only)
 /// @notice Drop-in replacement for the real SP1 verifier gateway.
 ///         NEVER deploy this on a real network — it provides zero security.
-contract MockSP1Verifier is ISP1Verifier {
+contract MockSP1Verifier is ISP1VerifierWithHash {
     error InvalidProof();
 
     /// @notice When set, every proof is rejected — so a test can show that the
@@ -15,6 +15,12 @@ contract MockSP1Verifier is ISP1Verifier {
 
     constructor() {
         require(block.chainid == 31337, "MockSP1Verifier: Anvil only");
+    }
+
+    /// @notice The mock names a circuit too, so the batch verifier's pin
+    ///         probe passes on the devnet as it does against a routed verifier.
+    function VERIFIER_HASH() external pure returns (bytes32) {
+        return keccak256("MockSP1Verifier");
     }
 
     function setRejectProofs(bool reject) external {

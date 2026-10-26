@@ -13,3 +13,11 @@ interface ISP1Verifier {
     /// @dev MUST revert if the proof is invalid.
     function verifyProof(bytes32 programVKey, bytes calldata publicValues, bytes calldata proofBytes) external view;
 }
+
+/// @notice A verifier contract that names its own circuit: Succinct's routed
+///         `SP1Verifier` exposes `VERIFIER_HASH()`, its gateway does not. The
+///         batch verifier binds one such contract and refuses a gateway, so no
+///         owner of a route stands between a proven batch and its resolution.
+interface ISP1VerifierWithHash is ISP1Verifier {
+    function VERIFIER_HASH() external pure returns (bytes32);
+}

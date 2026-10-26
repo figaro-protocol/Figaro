@@ -18,7 +18,7 @@ the review's is its own.
 | Solidity in scope | 14 contract files, 1,419 lines of code (3,530 physical); 3 deploy scripts, 401 lines of code (840 physical) |
 | Rust in scope | 4 crates, 21 files under `src/`, 6,966 lines of code (9,776 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
-| Trusted, not reviewed | SP1 (the zkVM, its crates, its on-chain verifier gateway), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
+| Trusted, not reviewed | SP1 (the zkVM, its crates, its routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
 | Deployed | Sepolia only: the baseline's contracts, the verifier pinning the baseline's own guest key (§ "What is deployed"); nothing on mainnet |
 | Upgrade path | none: no admin, no proxy, no pause, in any contract |
@@ -128,7 +128,7 @@ it:
 | The on-chain verifier | the batch verifier | `src/core/verifier/FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | Solidity | In scope |
 | The proof program | the guest, the SP1 program, the Rust verifier, the prover, the Core mirror | `prover/program/`, `prover/lib/`, `prover/clause/` | Rust | In scope |
 | The relay | the sequencer | `prover/sequencer/` | Rust | In scope |
-| SP1 | the zkVM, the verifier gateway | Succinct's crates and contracts; none of their source is in this repository | Rust, Solidity | Trusted dependency; the project's use of it is in scope |
+| SP1 | the zkVM, the routed verifier contract | Succinct's crates and contracts; none of their source is in this repository | Rust, Solidity | Trusted dependency; the project's use of it is in scope |
 
 No Rust code verifies a proof on chain. "The Rust verifier" names the proof
 program: the Rust that decides what a valid proof proves.
@@ -199,7 +199,7 @@ same, and short.
 |---|---|
 | `foundry.toml` | The Solidity compiler's version, EVM version and optimizer; the import remappings; which files a test may read and write |
 | `scripts/deploy-mainnet.sh` | The mainnet deploy's wrapper: its guards, and the `--via-ir` flag the deployed bytecode is compiled with |
-| `scripts/check-sp1-gateway-route.sh` | The deploy's refusal of an SP1 gateway that does not route this release's proofs |
+| `scripts/check-sp1-gateway-route.sh` | The deploy's lookup of the verifier Succinct's gateway routes for this release's proofs, which the batch verifier then binds (never the gateway); refused when none is routed or the route is frozen |
 | `prover/Cargo.toml` | The workspace's members and Rust floor; the `[patch.crates-io]` entry that routes the guest's signature recovery through SP1's patched `k256` |
 | `prover/Cargo.lock` | Every Rust dependency's exact version, the SP1 release among them. The verification key is a function of it |
 | `prover/rust-toolchain.toml` | The Rust release the guest and the relay are built with |
@@ -219,13 +219,13 @@ review SP1.
 | The verification key: derived from the guest, pinned at construction, immutable | `FigaroBatchVerifier` constructor; `sequencer --vkey` |
 | The choice of the patched `k256` for signature recovery inside the zkVM | `prover/Cargo.toml` `[patch.crates-io]` |
 | The relay's proving calls | `prover/sequencer/src/prover.rs` |
-| The deploy-time check that the gateway routes this release's proofs | `scripts/check-sp1-gateway-route.sh` |
+| The deploy-time lookup of the routed verifier the batch verifier binds | `scripts/check-sp1-gateway-route.sh` |
 
 | Trusted, not reviewed | Pinned where |
 |---|---|
 | The SP1 zkVM and the `sp1-*` crates | `prover/Cargo.lock` names the release |
 | `sp1-patches/elliptic-curves`, the patched `k256` | `prover/Cargo.lock` |
-| The SP1 verifier gateway and the verifier contracts behind it | `SP1_VERIFIER_GATEWAY`, an immutable constructor argument |
+| The routed SP1 verifier contract (looked up on the gateway at deploy) | `SP1_VERIFIER`, an immutable constructor argument, probed for `VERIFIER_HASH()` so a gateway is refused |
 
 SP1 is trusted for one property: that a proof accepted under `programVKey`
 came from the program with that key. The other external dependencies are in
@@ -632,7 +632,7 @@ never reads `msg.sender`, and `resolveProcess` is gated by presence
 | OpenZeppelin Contracts 5.5.0 (`lib/`, pinned submodule) | inheritance and SafeERC20 | library correctness |
 | Permit2 (canonical, `0x000000000022D473030F116dDEE9F6B43aC78BA3`) | `WitnessSwapAndCommitCoordinator` constructor, probed for code at deploy | witness-transfer semantics on the swap leg only |
 | Uniswap SwapRouter02 (per chain; `deployments/<chainId>.json`) | same constructor, probed for `factory()` and `WETH9()` at deploy | executing the swap the signer's witness commits to |
-| SP1 verifier gateway (`SP1_VERIFIER_GATEWAY`; the devnet script wires `MockSP1Verifier`) | `FigaroBatchVerifier` constructor, immutable, beside `programVKey` (`SP1_PROGRAM_VKEY`); the deploy wrappers refuse a gateway that does not route this release's proofs | proof soundness: that a proof under `programVKey` came from that program; and liveness: the gateway's owner can freeze a route (`scripts/check-sp1-gateway-route.sh` reads the flag), after which no batch verifies and every process open on the batch path waits on that owner. The program is the project's own and in scope |
+| The routed SP1 verifier (`SP1_VERIFIER`, resolved on the gateway `SP1_VERIFIER_GATEWAY` by `scripts/check-sp1-gateway-route.sh`; the devnet script wires `MockSP1Verifier`) | `FigaroBatchVerifier` constructor, immutable, beside `programVKey` (`SP1_PROGRAM_VKEY`); the constructor probes `VERIFIER_HASH()` and refuses a gateway (`VerifierNotPinned`), so no route owner can freeze the path between a proven batch and its resolution | proof soundness: that a proof under `programVKey` came from that program. The program is the project's own and in scope |
 | SP1 zkVM and crates; the patched `k256` | `prover/Cargo.lock` | executing the guest as written; the accelerated curve arithmetic |
 | `regex`, `serde_json`, `alloy-primitives` | `prover/Cargo.lock`; they are compiled into the guest | pattern matching inside the portable core; exact JSON number parsing (`float_roundtrip`); hashing and ABI encoding |
 | IPFS | content behind every on-chain hash | availability, never integrity (`DATA_LAYER.md`) |
@@ -652,7 +652,7 @@ The constants and constructor arguments the mainnet deploy fixes
 | `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:109` |
 | `PUBLIC_VALUES_LENGTH` | 320 bytes, ten words; any other length is refused by name | `FigaroBatchVerifier.sol:113` |
 | `MAX_BATCH_OPS` | the relay's bound on what the prover finishes in one sitting, 100 operations by default; an operator's environment variable | `prover/sequencer/src/main.rs:121` |
-| The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order `settleBatch` call's 597,594, or at or past 95 percent of the block limit read at startup, the relay refuses to start); the call's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
+| The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order `settleBatch` call's 606,947, or at or past 95 percent of the block limit read at startup, the relay refuses to start); the call's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
 | Re-queue bound | an operation re-queued after a transient submission failure is re-queued at most three times, then dead-lettered; a deferral at batch formation spends nothing of it | `prover/sequencer/README.md`; `mempool.rs`, `requeue` |
 | Deferral window | an operation deferred at batch formation (it applies against no order of its drain, or its funding could not be read) is dead-lettered once 600 seconds have passed since its own first deferral, retried or not, and what was filtered behind it goes with it — each operation that no longer applies without it, whether it names its order or counts its payment in a cumulative value (past `MAX_DEPENDENCY_RERUNS` re-runs a tick, each following operation of its process that it precedes); an operator's environment variable, `DEFER_WINDOW_SECS` | `prover/sequencer/src/mempool.rs`, `DEFAULT_DEFER_WINDOW` |
 | Clause, agreement and assembly registration stake | 0.05 ETH per registration, no cooldown, withdrawable once; the binding stays | `DeployMainnet.s.sol:160`, `:174`, `:167` |
@@ -1241,7 +1241,7 @@ read it first.
 |---|---|---|
 | `FigaroCore.commit` | 15 | the Core's one entry point does the whole commit: deadline, payment, hashing, two signature recoveries, the root-or-extension branch, bond math, two pulls |
 | `UsageCounter.applyBatchAccrual` | 15 | period, provenance leaf, per-accrual skip of the two reserved keys, the three kinds' registration gates and the unknown-kind skip, stake gates, monotone-update checks |
-| `FigaroBatchVerifier.settleBatch` | 13 (by inspection after the operation-stream check; Slither's figure before it was 12) | length, proof, five public-value checks, five calldata hashes (the operation stream among them), registry anchor, token legs, events, the accrual try/catch |
+| `FigaroBatchVerifier.settleBatch` | 13 (Slither 0.11.3 `function-summary`, after the operation-stream check) | length, proof, five public-value checks, five calldata hashes (the operation stream among them), registry anchor, token legs, events, the accrual try/catch |
 | `FigaroCore.resolveProcess` | 8 | presence, count, per-order status and overflow guards |
 | `UsageCounter` constructor | 7 | six zero-address checks, the floor, the period list's length and order |
 | `RpgfMinter.claim` | 8 | period closed, not claimed, the claimant's member stake, per-key designer of record and stake |

@@ -296,8 +296,6 @@ contract Deploy is Script {
         // (processes, orderStatus, orderProcessId) plus the usage leg, which
         // is itself keccak over three zero-length sections, matching the Rust
         // KernelState::compute_root on the empty state.
-        bytes32 emptyMapHash = keccak256("");
-        bytes32 emptyUsageHash = keccak256(abi.encodePacked(uint64(0), uint64(0), uint64(0)));
         // The guest fingerprint the verifier pins: the sequencer this tree
         // built reports its own (`sequencer --vkey`, exported by the deploy
         // wrapper when the binary is present), so a relay can start against
@@ -307,8 +305,7 @@ contract Deploy is Script {
             address(mockSp1),
             vm.envOr("SP1_PROGRAM_VKEY", keccak256(abi.encodePacked("figaro-kernel-dev"))),
             clauseRegistry,
-            _usageCounter,
-            keccak256(abi.encodePacked(emptyMapHash, emptyMapHash, emptyMapHash, emptyUsageHash))
+            _usageCounter
         );
         _batchVerifier = address(batchVerifier);
         require(_batchVerifier == predictedVerifier, "verifier address prediction failed");
