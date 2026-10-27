@@ -24,7 +24,8 @@ interface HeaderShellProps {
 
 /**
  * Shared chrome for both `MarketingHeader` and `Header`: sticky-with-blur
- * container, container padding, mobile-nav trigger + logo on the left, the
+ * container, container padding, mobile-nav trigger + logo on the left with
+ * the site's one line beneath the name (a line, never the tagline), the
  * three doors as dropdowns in the center (`NavTreeRow`, one row, on every
  * page), caller-supplied right cluster; then any caller-supplied row.
  */
@@ -34,7 +35,10 @@ export function HeaderShell({ right, mobileTopCta, mobileLinks, bottomRow }: Hea
             <div className="container mx-auto px-6 py-5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                     <MobileNav topCta={mobileTopCta} links={mobileLinks} />
-                    <BrandLogo />
+                    <div className="flex flex-col">
+                        <BrandLogo />
+                        <span className="text-xs md:text-sm text-ink-muted leading-tight">factotum of the blockchain</span>
+                    </div>
                 </div>
                 <NavTreeRow />
                 <div className="flex items-center gap-3">{right}</div>

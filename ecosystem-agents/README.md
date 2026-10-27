@@ -63,7 +63,7 @@ explicitly designed for it — these four are those exceptions.
 
 | World | Home | For | Touches the repo? |
 |---|---|---|---|
-| **Maintainer-private** — build Figaro itself (kernel-reviewer, clause-lockstep, marketing-copy, builders-docs, papers-editor, paper-reviewer, visual-design, site-ia, runtime-ui, the auditors, memory-hygiene, feedback-triage) | `.claude/agents/` | **the maintainer only** | yes (that's their job) |
+| **Maintainer-private** — build Figaro itself (figaro-kernel-reviewer, clause-lockstep, marketing-copy, builders-docs, papers-editor, paper-reviewer, visual-design, site-ia, runtime-ui, the auditors, memory-hygiene) | `.claude/agents/` | **the maintainer only** | yes (that's their job) |
 | **Public ecosystem** — operate / author / fork / analyze (`figaro-operator`, `figaro-clause-author`, `figaro-assembly-designer`, `figaro-analyst`) | **`ecosystem-agents/`** | **any user**, acting for their own wallet | **never** |
 
 A public ecosystem agent that writes a repo file has crossed the line: it re-imposes the

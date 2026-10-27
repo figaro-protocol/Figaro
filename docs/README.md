@@ -89,6 +89,7 @@ Each layer owns one thing; every other layer states it as a summary plus a point
 | Layer | Owns |
 |---|---|
 | `CLAUDE.md` | discipline — how agents work, the frame, agent permissions; not inventories |
+| `.claude/rules/*.md` | the discipline for one part of the tree, loaded when an agent reads or edits a file its `paths:` names; a rule with no `paths:` loads beside `CLAUDE.md` |
 | `docs/` | the internal build reference and one owner per concept (this map) |
 | docs-site | the public technical manual |
 | `.claude/agents/*.md` | one public surface each (marketing-copy, builders-docs, papers-editor, runtime-ui) |

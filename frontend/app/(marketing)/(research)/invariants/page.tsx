@@ -12,7 +12,7 @@ export const metadata: Metadata = withOg({
 });
 
 // THE INVARIANTS PAGE — it states the six invariants named in CLAUDE.md
-// § "What Figaro Is", in the general-public register, and nothing else is
+// § "The Core", in the general-public register, and nothing else is
 // re-derived here: /kernel owns the mechanism derivation, /data owns the
 // public/sealed boundary, /agents owns actor-neutrality, /working-groups routes to
 // the formal case.

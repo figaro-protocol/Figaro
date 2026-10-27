@@ -23,9 +23,11 @@ export const metadata: Metadata = withOg({
 // the invitation and the THREE DOORS the header carries —
 // Participate, Build, Research — each one sentence and one button to its
 // landing. Below the fold, "What it removes" pairs each part of the problem with
-// what the bond does about it (the two costs the online marketplaces failed on,
-// the reason a firm needs a boss) and states the cost, gas plus the time value
-// of the locked tokens. "What changes for you" is the ONE PICTURE: the whole of
+// what the bond does about it (the two costs the online marketplaces failed on:
+// disputes, and buyers, who come from the members' listing, the communities'
+// own members and a designer's token as the way in to a resource; the reason a
+// firm needs a boss), states what the chain computes beside what a party
+// decides, and the cost, gas plus the time value of the locked tokens. "What changes for you" is the ONE PICTURE: the whole of
 // Figaro as six frames in the trade strip's own language (`WholeStripFigure`),
 // in time order — wallets, terms, a process signed and bonded, every seller's
 // payment at once, the evidence, and the count of use the designers' reward
@@ -45,7 +47,7 @@ const DOORS: { label: string; line: string; href: string }[] = [
     },
     {
         label: "Build",
-        line: "Write and publish the terms trades are made on, and be rewarded in proportion to their use.",
+        line: "Write and publish the terms trades are made on, and be rewarded by a published formula of their use.",
         href: "/terms",
     },
     {
@@ -57,7 +59,7 @@ const DOORS: { label: string; line: string; href: string }[] = [
 
 const FRAMES: { line: string; fact: string }[] = [
     {
-        line: "You trade with anyone, anywhere, in any token.",
+        line: "You trade with anyone, anywhere, in any token, and choose the communities you belong to.",
         fact: "A person, a business, a machine or a software agent takes part through its own wallet. A community can have its own token: the tokens your wallet holds show which communities you belong to, and you choose them.",
     },
     {
@@ -66,19 +68,19 @@ const FRAMES: { line: string; fact: string }[] = [
     },
     {
         line: "You know what it pays before you start.",
-        fact: "Before any work begins, the buyer and each seller sign the terms of their order, the payment included.",
+        fact: "Before a seller's work begins, the buyer and that seller sign the terms of their order, the payment included.",
     },
     {
         line: "You keep what you earn.",
         fact: "Once the work is done, closing the trade refunds the rest of the buyer's own bond, so closing is the buyer's better move. In that one transaction each seller receives its whole payment, and every bond is refunded.",
     },
     {
-        line: "Your data is yours.",
-        fact: "Every trade leaves signed evidence of what was agreed, what each side attested and what was paid. Which wallets traded, and for how much, is public on-chain; the detail is yours, to keep private or to sell. The same evidence serves a regulator, a court, and your books and taxes.",
+        line: "Your data is yours, to keep or to sell.",
+        fact: "Every trade leaves signed evidence of what was agreed, what each side attested and what was paid. Which wallets traded, and for how much, is public on-chain; the detail is yours to sell, private unless the terms you trade on make it public. The same evidence is there for a regulator or a court to read, and for your books and taxes.",
     },
     {
         line: "Use is counted, and rewarded.",
-        fact: "Once a trade closes, it counts toward every term and process it used. Whoever designed them is rewarded in proportion to that use, by a published formula.",
+        fact: "Once a trade closes, every term, agreement and process it used is counted. Whoever designed them is rewarded by a published formula that weighs how many processes used them and how many distinct sellers carried them.",
     },
 ];
 
@@ -88,12 +90,12 @@ const FRAMES: { line: string; fact: string }[] = [
 // unaltered, linking to the project. One strip below the sections, above the
 // code line.
 const COMPOSES_WITH: { name: string; href: string; src: string; note: string }[] = [
-    { name: "IPFS", href: "https://ipfs.tech", src: "/built-with/ipfs.svg", note: "Holds clause specs and profiles; the chain keeps their fingerprint." },
+    { name: "IPFS", href: "https://ipfs.tech", src: "/built-with/ipfs.svg", note: "Holds the designs of clauses, agreements and assemblies, and members' profiles; the chain keeps their fingerprints." },
     { name: "Uniswap", href: "https://uniswap.org", src: "/built-with/uniswap.svg", note: "Swaps another token into the process's denomination for a bond, in the same transaction as the commit." },
     { name: "XMTP", href: "https://xmtp.org", src: "/built-with/xmtp.svg", note: "One channel a buyer and each seller coordinate on." },
     { name: "Disperse", href: "https://disperse.app", src: "/built-with/disperse.png", note: "Lets a wallet split what it was paid, after resolution." },
     { name: "Kleros", href: "https://kleros.io", src: "/built-with/kleros.svg", note: "One arbitration forum: it rules on a process's evidence, and the buyer resolves." },
-    { name: "Succinct", href: "https://succinct.xyz", src: "/built-with/succinct.svg", note: "Proves many trades at once, so one transaction closes them all." },
+    { name: "Succinct", href: "https://succinct.xyz", src: "/built-with/succinct.svg", note: "Proves many trades at once, so their buyers' resolutions go through in one transaction." },
 ];
 
 // Off-chain, a process composes with the legal and regulatory norms a trade
@@ -117,7 +119,7 @@ export default function Home() {
                     Figaro makes the promise good before the trade. It is an ex-ante institution for exchange: it acts before the trade, not after.
                 </p>
                 <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl">
-                    Everyone in the trade puts up a bond first. Breaking your word costs more than keeping it, so keeping it is always the better choice.
+                    Everyone in the trade puts up a bond first. Breaking your word costs more than keeping it: a seller that delivers is paid, and once the work is delivered, closing is the buyer&rsquo;s better choice.
                 </p>
                 <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl">
                     Only the buyer can close the trade. When the buyer does, everyone is paid at once. Nobody is paid until everyone is, so the sellers help each other finish, with no boss in charge.{" "}
@@ -147,13 +149,16 @@ export default function Home() {
                         Online marketplaces tried to connect buyers and sellers directly. Most failed on two costs: attracting buyers, and handling disputes between buyers and sellers. The data they captured did not pay for both. The marketplaces that survived became platforms, which take a share of each sale, set the rules, and keep the customers and the data.
                     </p>
                     <p className="mt-4 text-base text-ink-body leading-relaxed">
-                        The bond removes both costs. A promise carries its bond from the start, so less is left in dispute, and when a dispute does arise, the trade&apos;s data is there for an arbitration forum or a court to rule on before the buyer closes. The protocol is decentralized and permissionless: the communities that build on it bring their own members, and whoever designs what the network uses is rewarded in proportion to that use.
+                        The bond removes both costs. A promise carries its bond from the start, so less is left in dispute, and when a dispute does arise, the trade&apos;s data is there for an arbitration forum or a court to rule on before the buyer closes.
+                    </p>
+                    <p className="mt-4 text-base text-ink-body leading-relaxed">
+                        The protocol is decentralized and permissionless. Any token can carry a trade: a stablecoin, a community&apos;s own token, or a designer&apos;s token. A designer can make its token the way in to a resource: every trade under its assembly is paid and bonded in that token, so a buyer reaches the resource by holding it, and the token&apos;s value is that access, not a claim on anyone&apos;s revenue. A wallet that registers as a member is listed where buyers look, and the communities that build on Figaro bring their own members. Whoever designs what the network uses is rewarded by a published formula of that use.
                     </p>
                     <p className="mt-4 text-base text-ink-body leading-relaxed">
                         A firm exists because coordinating many people through the market costs too much, so someone has to be the boss. Flat companies and self-managed teams tried to work without one, and still needed a central operator. Figaro removes the reason for the boss. No seller is paid until every seller is, so each has reason to help the others finish, and the sellers coordinate as equals.
                     </p>
                     <p className="mt-4 text-base text-ink-body leading-relaxed">
-                        The smart contracts run on any EVM-compatible blockchain and take nothing from a trade. The cost is gas, plus the time value of the tokens locked while the trade is open.
+                        The smart contracts run on any EVM-compatible blockchain and take nothing from a trade. The chain computes the bonds, the payments and the refunds; what the terms are, whom to trade with and when to close are each a party&rsquo;s decision. The cost is gas, plus the time value of the tokens locked while the trade is open.
                     </p>
                 </div>
 
@@ -203,14 +208,14 @@ export default function Home() {
 
                 <div className="mt-12 border-t border-default pt-8">
                     <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
-                        The smart contracts are decentralized and permissionless, the code is open, and seven independent benches check it and the equilibrium it enforces. What each covers:{" "}
+                        The smart contracts are decentralized and permissionless, and the code is open. Seven benches, each a different method, check it and the equilibrium it enforces. What each covers:{" "}
                         <Link href="/security" className="text-ink-heading font-medium hover:underline">
                             Security
                         </Link>
                         .
                     </p>
                     <p className="mt-4 text-sm text-ink-muted leading-relaxed max-w-2xl">
-                        This website is one interface among any number; the registries are optional, and FigaroCore runs with neither:{" "}
+                        This website is one interface among any number, and FigaroCore runs without it or the registries:{" "}
                         <Link href="/about#what-to-check" className="text-ink-heading font-medium hover:underline">
                             About
                         </Link>
