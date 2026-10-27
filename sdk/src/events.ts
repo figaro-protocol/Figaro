@@ -4,6 +4,12 @@
  * Decodes raw EVM logs into typed Figaro event objects.
  * Stateless — takes logs in, returns structured data out.
  *
+ * The order and process events have two emitters, one per resolution path:
+ * `FigaroCore` (direct) and `FigaroBatchVerifier` (batched), with the same
+ * event shapes and topics, so a reader filters by address and folds both —
+ * `fetchCoreEvents` for orders and processes, `fetchAttestationRecords` for
+ * attestations (docs/SCALING_STRATEGY.md § "A reader must fold BOTH").
+ *
  * Usage:
  *   const logs = await client.getLogs({ address: coreAddr, ... });
  *   const events = parseOrderCommittedLogs(logs);
@@ -124,11 +130,9 @@ export function tagAttestationUniverses(directLogs: Log[], batchLogs: Log[]): Un
  * stream fetched ADDRESS-FILTERED and tagged, never merged blind
  * (docs/SCALING_STRATEGY.md § "A reader must fold BOTH": a reader that
  * watches only the coordinator under-reports everything that scaled).
- * Returned in (blockNumber) order across both streams. Note the boundary:
- * only ATTESTATIONS cross into log-space from the batch universe — core order
- * events have no batch counterpart (a batch resolves token positions; no
- * status, no process record re-emits), so `fetchCoreEvents` is direct-path by
- * construction, not by omission.
+ * Returned in (blockNumber) order across both streams. Its sibling
+ * `fetchCoreEvents` folds the same two paths for the order and process
+ * events, which the verifier emits under the Core's own shapes.
  */
 export async function fetchAttestationRecords(
     client: PublicClient,
@@ -235,11 +239,33 @@ export async function fetchLogsChunked(
 // ── Bulk fetch helpers ──────────────────────────────────────────────────────
 
 /**
- * Fetch all core events from the given block range and return parsed typed objects.
+ * Chain order across several contracts' logs: block number, then log index.
+ * Each `fetchLogsChunked` stream is already in this order; merging two of
+ * them needs the log index to keep two contracts' logs in one block apart.
+ */
+function compareChainOrder(a: Log, b: Log): number {
+    const ab = a.blockNumber ?? 0n;
+    const bb = b.blockNumber ?? 0n;
+    if (ab !== bb) return ab < bb ? -1 : 1;
+    return (a.logIndex ?? 0) - (b.logIndex ?? 0);
+}
+
+/**
+ * Fetch the order and process events of BOTH resolution paths from the given
+ * block range and return them parsed and typed: `FigaroCore`'s (the direct
+ * path) and, when `addresses.batchVerifier` is set, `FigaroBatchVerifier`'s
+ * (the batched path), which emits the Core's own `OrderCommitted`,
+ * `OrderResolved` and `ProcessResolved` — same fields, same topics — for
+ * every commit and resolution a batch carries. Each address is fetched
+ * address-filtered and chunked, and the two streams are merged in chain order
+ * (block number, then log index) before parsing, so every returned list is in
+ * chain order across both paths. A batched order's id is derived under the
+ * verifier's EIP-712 domain, so the two paths' ids never coincide.
  * This is the primary entry point for agents bootstrapping state.
  *
  * `chunkSize` overrides `DEFAULT_LOG_CHUNK_SIZE` for providers with a
- * different (or no) block-range cap — see `fetchLogsChunked`.
+ * different (or no) block-range cap — see `fetchLogsChunked`. `toBlock:
+ * "latest"` is resolved once, so both addresses are read over one range.
  */
 export async function fetchCoreEvents(
     client: PublicClient,
@@ -248,12 +274,12 @@ export async function fetchCoreEvents(
     toBlock: bigint | "latest" = "latest",
     chunkSize?: bigint,
 ) {
-    const logs = await fetchLogsChunked(client, {
-        address: addresses.core,
-        fromBlock,
-        toBlock,
-        chunkSize,
-    });
+    const resolvedToBlock = toBlock === "latest" ? await client.getBlockNumber() : toBlock;
+    const fetchFrom = async (address: Address | undefined): Promise<Log[]> =>
+        address ? fetchLogsChunked(client, { address, fromBlock, toBlock: resolvedToBlock, chunkSize }) : [];
+    const coreLogs = await fetchFrom(addresses.core);
+    const batchLogs = await fetchFrom(addresses.batchVerifier);
+    const logs = batchLogs.length === 0 ? coreLogs : [...coreLogs, ...batchLogs].sort(compareChainOrder);
 
     return {
         orderCommitted: parseOrderCommittedLogs(logs),

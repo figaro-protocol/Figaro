@@ -154,10 +154,11 @@ const graph = reconstructDiscovery(await fetchDiscoveryEvents(client, addresses,
 
 `fetchAttestationRecords` folds the direct path AND the batch path, address-filtered and
 tagged per row, because the two emitters share one topic hash — filter by topic and you
-merge two universes into one wrong picture. `fetchCoreEvents` is direct-path **by
-construction**, not by omission: a batch resolves token positions and re-emits no order
-events, so a process absent from it may be batch-resolved rather than absent (§ "Two
-resolution universes" below).
+merge two universes into one wrong picture. `fetchCoreEvents` folds both paths the same
+way: the batch verifier emits the Core's own order and process events, and the SDK reads
+`core` and, when the deployment record names one, `batchVerifier`, merged in chain order.
+The corpus spans both resolution paths; a process absent from it is outside the synced
+range (§ "Two resolution universes" below).
 
 **2. RECOVER — substance at the edge.** An `Attestation` event carries
 `contentRef = keccak256(content)` and nothing else; the preimage never touches calldata.

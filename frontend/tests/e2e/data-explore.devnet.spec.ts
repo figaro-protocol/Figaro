@@ -830,10 +830,16 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
 
             // ── OUT-OF-BAND folds: the same raw event scans a stranger runs.
             //    Nothing below is read back from the analyst it checks. ──
+            // Both resolution paths, as the analyst's corpus spans them: the order
+            // events are read from the Core and from the verifier, which emits the
+            // Core's own for every batched commit and resolution.
             const [allCommitted, allResolved, allProcessResolved, directAtt, batchAtt] = await Promise.all([
-                publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'OrderCommitted', fromBlock: 0n }),
-                publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'OrderResolved', fromBlock: 0n }),
-                publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'ProcessResolved', fromBlock: 0n }),
+                Promise.all([core, batchVerifier].map((address) =>
+                    publicClient.getContractEvents({ address, abi: CORE_ABI, eventName: 'OrderCommitted', fromBlock: 0n }))).then((e) => e.flat()),
+                Promise.all([core, batchVerifier].map((address) =>
+                    publicClient.getContractEvents({ address, abi: CORE_ABI, eventName: 'OrderResolved', fromBlock: 0n }))).then((e) => e.flat()),
+                Promise.all([core, batchVerifier].map((address) =>
+                    publicClient.getContractEvents({ address, abi: CORE_ABI, eventName: 'ProcessResolved', fromBlock: 0n }))).then((e) => e.flat()),
                 publicClient.getContractEvents({ address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, eventName: 'Attestation', fromBlock: 0n }),
                 publicClient.getContractEvents({ address: batchVerifier, abi: ATTESTATION_COORDINATOR_ABI, eventName: 'Attestation', fromBlock: 0n }),
             ]);

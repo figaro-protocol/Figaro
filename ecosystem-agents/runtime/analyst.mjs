@@ -6,8 +6,10 @@
  * projections — and shares nothing with the sequencer but a chain.
  *
  * The loop is four steps and this file is all four:
- *   1. FETCH   — `fetchCoreEvents` (direct path) + `fetchAttestationRecords`
- *                (BOTH resolution universes, address-filtered and tagged).
+ *   1. FETCH   — `fetchCoreEvents` + `fetchAttestationRecords`, each folding
+ *                BOTH resolution paths, address-filtered (attestations also
+ *                tagged per row), so the corpus spans the direct and the
+ *                batched path.
  *   2. RECOVER — substance at the edge: each attestation's fingerprint is its
  *                own content address (`witnessContent.mjs`); agreement bodies
  *                are party-private and arrive only from the operator's own
@@ -293,9 +295,9 @@ export async function syncCorpus({
     const start = fromBlock ?? BigInt(record.deploymentBlock ?? 0);
     const syncedToBlock = await client.getBlockNumber();
 
-    // 1. FETCH — both universes for attestations; core events are direct-path
-    //    by construction (a batch resolves token positions and re-emits no
-    //    order events), which is a boundary, not an omission.
+    // 1. FETCH — both resolution paths for the order and process events and
+    //    for the attestations: the batch verifier emits the Core's own order
+    //    events, and each fetch reads both addresses.
     const core = await fetchCoreEvents(client, addresses, start, syncedToBlock);
     const attestations = await fetchAttestationRecords(client, addresses, start, syncedToBlock);
     const discovery = reconstructDiscovery(
@@ -593,13 +595,13 @@ export function tradeStory(corpus, processId) {
     const chain = [...corpus.graphs.resolution.chains.values()]
         .find((c) => c.processId.toLowerCase() === id);
     if (!chain) {
-        // Absence, stated with its two live possibilities — never "it did not
-        // happen". A batch-resolved process acquires no FigaroCore status and emits
-        // no FigaroCore event, so it is absent from this projection by design.
+        // Absence, stated as absence — never "it did not happen". The corpus
+        // folds both resolution paths (the Core's events and the verifier's), so a
+        // process it lacks is outside the synced range or on another chain.
         return {
             processId,
             found: false,
-            note: "not in this chain's direct-path record — it may be batch-resolved (ask a relay) or outside the synced range",
+            note: "not in this corpus, which folds both resolution paths over its synced range — the process is outside the synced range or on another chain",
             syncedFromBlock: corpus.fromBlock.toString(),
             syncedToBlock: corpus.syncedToBlock.toString(),
         };

@@ -374,7 +374,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `extractServiceEndpoints` | `/agent` | Read a DID document's `service` entries — WHERE to reach the agent behind it. |
 | `fetchAttestationRecords` | root | Attestations from BOTH paths, address-filtered and tagged per row. |
 | `fetchBatchUsageRecords` | root | `BatchUsageRecorded` events — the batch half of the rewards mirror. |
-| `fetchCoreEvents` | root | Every `FigaroCore` event in a block range, grouped and typed; chunks `getLogs` internally. |
+| `fetchCoreEvents` | root | The order and process events of BOTH paths in a block range — `FigaroCore`'s and, when `batchVerifier` is set, the verifier's — grouped, typed and in chain order; chunks `getLogs` internally. |
 | `fetchDiscoveryEvents` | root | Registry events (clauses, assemblies, members); an unconfigured registry contributes nothing. |
 | `fetchEndpointLogAgreement` | root | The same agreement report, fetched from caller-supplied clients over one pinned `[fromBlock, toBlock]`. |
 | `fetchUsageRecords` | root | `UsageRecorded` events — the direct-path half of the rewards mirror. |
@@ -532,9 +532,13 @@ const addresses = addressesFromDeploymentRecord(deploymentRecord);
 // zero, so an order denominated in it reverts `ERC20InsufficientBalance` the moment
 // FigaroCore pulls a bond. Read balances off the record's tokens, never assume one.
 
-// Fetch all FigaroCore events from a block range. The return is a GROUPED
-// object — { orderCommitted, orderResolved, processResolved }, each a typed
-// array — NOT one flat log list. (Attestations are NOT in here: they live on
+// Fetch the order and process events of both resolution paths from a block
+// range: FigaroCore's (direct) and, when `addresses.batchVerifier` is set,
+// FigaroBatchVerifier's (batched), which emits the Core's own events for every
+// order a batch carries. Each address is read address-filtered and the streams
+// are merged in chain order (block number, then log index). The return is a
+// GROUPED object — { orderCommitted, orderResolved, processResolved }, each a
+// typed array — NOT one flat log list. (Attestations are NOT in here: they live on
 // the AttestationCoordinator, a separate contract — read those with
 // EV_ATTESTATION + parseAttestationLogs; see @figaro-protocol/sdk/derive.)
 // `fetchCoreEvents` (and `fetchDiscoveryEvents`, `fetchUsageRecords`,

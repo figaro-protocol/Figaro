@@ -21,11 +21,9 @@ path) and, when a batch verifier is configured, its re-emissions — each
 stream fetched ADDRESS-FILTERED and tagged, never merged blind
 (docs/SCALING_STRATEGY.md § &quot;A reader must fold BOTH&quot;: a reader that
 watches only the coordinator under-reports everything that scaled).
-Returned in (blockNumber) order across both streams. Note the boundary:
-only ATTESTATIONS cross into log-space from the batch universe — core order
-events have no batch counterpart (a batch resolves token positions; no
-status, no process record re-emits), so <code>fetchCoreEvents</code> is direct-path by
-construction, not by omission.</p>
+Returned in (blockNumber) order across both streams. Its sibling
+<code>fetchCoreEvents</code> folds the same two paths for the order and process
+events, which the verifier emits under the Core's own shapes.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -37,7 +35,7 @@ construction, not by omission.</p>
 <li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">chunkSize</span>: <span class="tsd-signature-type">bigint</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/index.UniverseAttestationEvent.html" class="tsd-signature-type tsd-kind-type-alias">UniverseAttestationEvent</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/events.ts#L133">events.ts:133</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/events.ts#L137">events.ts:137</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

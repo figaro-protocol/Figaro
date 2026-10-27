@@ -257,9 +257,10 @@ boundaries — what a row is worth").
 **Two limits worth stating before an agent claims more than it has.** Resolution
 history is derivable — `OrderResolved` / `ProcessResolved` per address, in
 `blockNumber` order — and it is data, not a rating: nothing scores it and nothing
-gates on it. And `fetchCoreEvents` is direct-path by construction, so an address
-absent from a reconstruction has not necessarily been idle; attestations are the one
-stream that folds both paths.
+gates on it. And a reconstruction holds only the block range it read: `fetchCoreEvents`
+folds both resolution paths (the Core, and the batch verifier when the addresses name
+one), as `fetchAttestationRecords` does for attestations, so an address absent from a
+reconstruction has no order in that range, which says nothing about blocks outside it.
 
 ---
 

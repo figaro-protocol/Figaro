@@ -346,10 +346,10 @@ test("market-shape attributes a process whose buyer attested the provenance leaf
     assert.equal(bySeller.unattributedProcessCount, 1);
 });
 
-test("an absent process is ABSENCE with its two live possibilities, never 'it did not happen'", () => {
+test("an absent process is ABSENCE over a corpus that folds both paths, never 'it did not happen'", () => {
     const story = tradeStory(fixtureCorpus(), `0x${"99".repeat(32)}`);
     assert.equal(story.found, false);
-    assert.match(story.note, /batch-resolved/);
+    assert.match(story.note, /both resolution paths/);
     assert.match(story.note, /outside the synced range/);
 });
 

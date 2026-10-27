@@ -56,12 +56,21 @@ export type WithdrawClauseOrAssembly =
  *  agreement (best-effort — an un-witnessed order has no URI and resolves to
  *  null, which the SDK gate counts as unverified: surfaced, never blocking). */
 async function resolveInFlightAgreements(coreAddress: `0x${string}`): Promise<InFlightAgreement[]> {
-    // Read FigaroCore event log directly (the SDK's `fetchCoreEvents` takes a
+    // Read the order event logs directly (the SDK's `fetchCoreEvents` takes a
     // strictly-typed PublicClient the frontend's standalone client doesn't
     // unify with — the registry readers sidestep the same way), then hand the
     // logs to the SDK parsers + the SDK in-flight derivation. The derivation is
-    // the SDK's; only the raw chain read is here.
-    const logs = await publicClient.getLogs({ address: coreAddress, fromBlock: 0n, toBlock: "latest" });
+    // the SDK's; only the raw chain read is here. Both resolution paths: the
+    // verifier emits the Core's own order and process events for every batched
+    // commit and resolution, so an in-flight batched order gates a withdrawal
+    // exactly as a direct one does.
+    const verifier = CONTRACTS.batchVerifier;
+    const emitters = isValidAddress(verifier) && verifier.toLowerCase() !== coreAddress.toLowerCase()
+        ? [coreAddress, verifier]
+        : [coreAddress];
+    const logs = (await Promise.all(
+        emitters.map((address) => publicClient.getLogs({ address, fromBlock: 0n, toBlock: "latest" })),
+    )).flat();
     const refs = deriveInFlightOrders({
         orderCommitted: parseOrderCommittedLogs(logs),
         orderResolved: parseOrderResolvedLogs(logs),

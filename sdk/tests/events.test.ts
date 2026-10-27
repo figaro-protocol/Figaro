@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import type { Log, PublicClient } from "viem";
+import { encodeAbiParameters, encodeEventTopics, parseAbiParameters, type Log, type PublicClient } from "viem";
+import { CORE_ABI } from "../src/abis.js";
 import { fetchLogsChunked, DEFAULT_LOG_CHUNK_SIZE, fetchCoreEvents } from "../src/events.js";
 import type { Address, FigaroAddresses } from "../src/types.js";
 
@@ -95,5 +96,86 @@ describe("fetchCoreEvents chunking", () => {
         await fetchCoreEvents(client, addresses, 0n, 100n);
         expect(client.getLogs).toHaveBeenCalledTimes(1);
         expect(client.getLogs).toHaveBeenCalledWith({ address: ADDRESS, fromBlock: 0n, toBlock: 100n });
+    });
+});
+
+describe("fetchCoreEvents folds both resolution paths", () => {
+    const CORE = "0x00000000000000000000000000000000000c0e00" as Address;
+    const VERIFIER = "0x0000000000000000000000000000000000ba7c00" as Address;
+    const BUYER = "0x00000000000000000000000000000000000b0b00" as Address;
+    const SELLER = "0x0000000000000000000000000000000000005e11" as Address;
+    const TOKEN = "0x0000000000000000000000000000000000007070" as Address;
+    const id = (n: number) => `0x${n.toString(16).padStart(64, "0")}` as `0x${string}`;
+
+    /** A real `OrderCommitted` log, encoded with the Core's ABI, under `address`. */
+    function committed(address: Address, orderN: number, blockNumber: bigint, logIndex: number): Log {
+        const { data, topics } = {
+            data: encodeAbiParameters(
+                parseAbiParameters("address, address, uint256, uint256, bytes32, uint256, uint256"),
+                [SELLER, TOKEN, 10n, 10n, id(0xc0), 1n, 2n],
+            ),
+            topics: encodeEventTopics({
+                abi: CORE_ABI,
+                eventName: "OrderCommitted",
+                args: { orderHash: id(orderN), processId: id(orderN), buyer: BUYER },
+            }),
+        };
+        return { address, blockNumber, logIndex, data, topics, transactionHash: id(0xf0 + orderN) } as unknown as Log;
+    }
+
+    function resolved(address: Address, orderN: number, blockNumber: bigint, logIndex: number): Log {
+        return {
+            address,
+            blockNumber,
+            logIndex,
+            data: encodeAbiParameters(parseAbiParameters("uint256, uint256"), [10n, 20n]),
+            topics: encodeEventTopics({
+                abi: CORE_ABI,
+                eventName: "OrderResolved",
+                args: { orderHash: id(orderN), processId: id(orderN) },
+            }),
+        } as unknown as Log;
+    }
+
+    /** Answers each `getLogs` with the logs under the queried address only. */
+    function twoContractClient(allLogs: Log[]): PublicClient {
+        const getLogs = vi.fn(async ({ address, fromBlock, toBlock }: { address: Address; fromBlock: bigint; toBlock: bigint }) =>
+            allLogs.filter((l) =>
+                l.address.toLowerCase() === address.toLowerCase()
+                && (l.blockNumber as bigint) >= fromBlock && (l.blockNumber as bigint) <= toBlock),
+        );
+        const getBlockNumber = vi.fn(async () => 50n);
+        return { getLogs, getBlockNumber } as unknown as PublicClient;
+    }
+
+    const LOGS = [
+        committed(CORE, 1, 3n, 0),
+        committed(VERIFIER, 2, 3n, 4),
+        committed(VERIFIER, 3, 5n, 1),
+        committed(CORE, 4, 5n, 7),
+        resolved(VERIFIER, 2, 9n, 0),
+        resolved(CORE, 1, 8n, 2),
+    ];
+
+    it("parses the verifier's order events beside the Core's and returns them in chain order", async () => {
+        const client = twoContractClient(LOGS);
+        const events = await fetchCoreEvents(client, { core: CORE, batchVerifier: VERIFIER }, 0n);
+        expect(events.orderCommitted.map((e) => e.orderHash)).toEqual([id(1), id(2), id(3), id(4)]);
+        expect(events.orderCommitted.map((e) => e.blockNumber)).toEqual([3, 3, 5, 5]);
+        expect(events.orderCommitted.every((e) => e.seller === SELLER && e.payment === 10n)).toBe(true);
+        expect(events.orderResolved.map((e) => e.orderHash)).toEqual([id(1), id(2)]);
+        // "latest" is resolved once, so both addresses are read over one range.
+        expect(client.getBlockNumber).toHaveBeenCalledTimes(1);
+        expect(client.getLogs).toHaveBeenCalledWith({ address: CORE, fromBlock: 0n, toBlock: 50n });
+        expect(client.getLogs).toHaveBeenCalledWith({ address: VERIFIER, fromBlock: 0n, toBlock: 50n });
+    });
+
+    it("reads the Core alone when no batch verifier is configured", async () => {
+        const client = twoContractClient(LOGS);
+        const events = await fetchCoreEvents(client, { core: CORE }, 0n, 50n);
+        expect(client.getLogs).toHaveBeenCalledTimes(1);
+        expect(client.getLogs).toHaveBeenCalledWith({ address: CORE, fromBlock: 0n, toBlock: 50n });
+        expect(events.orderCommitted.map((e) => e.orderHash)).toEqual([id(1), id(4)]);
+        expect(events.orderResolved.map((e) => e.orderHash)).toEqual([id(1)]);
     });
 });
