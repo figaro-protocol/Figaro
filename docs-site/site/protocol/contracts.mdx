@@ -242,7 +242,7 @@ Running your own relay, as opposed to using one, is the one advanced path that i
 | Question | Direct — `FigaroCore` | Batch — `FigaroBatchVerifier` |
 |---|---|---|
 | Get onto the path | broadcast `commit`, then `resolveProcess` | submit signed structs to a sequencer; it proves and calls `settleBatch` |
-| Is this order resolved? | `orderStatus(bytes32) == 2` | no per-order flag; the transfers under `stateRoot()` are the proof — ask a relay for the per-order answer, verify against the chain |
+| Is this order resolved? | `orderStatus(bytes32) == 2` | no per-order storage flag; the verifier's own `OrderResolved` for the order hash (filter by the verifier's address), and the state behind `stateRoot()` is rebuilt from the chain's `BatchOperations` logs alone, so no relay is asked |
 | Resolution event | `OrderResolved` · `ProcessResolved` | the same `OrderResolved` · `ProcessResolved`, emitted by the verifier from the batch's operation stream (filter by address), and `BatchSettled` for the batch |
 | Per-order evidence | `Attestation` from the coordinator | `Attestation` re-emitted by the verifier (same topic — filter by address); `OrderCommitted` · `OrderSeller` · `OrderCurrency` emitted by the verifier for every commit in the stream, ids derived under its own domain |
 | Designer-reward credit | `UsageRecorded` / `accrualOf(kind, key, period)` | `BatchUsageRecorded` / `batchAccrualOf(kind, key, period)` |
