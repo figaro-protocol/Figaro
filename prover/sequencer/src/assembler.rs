@@ -197,7 +197,6 @@ pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bo
         KernelError::UnknownProcess | KernelError::UnknownOrder => false,
         // A usage claim's refusals; an operation never meets them.
         KernelError::UsageOrderNotResolved(_)
-        | KernelError::UsageAlreadyCounted { .. }
         | KernelError::UsageInvalidInclusionProof
         | KernelError::ReservedKeyIsNotARegistration(_) => false,
     }
@@ -381,53 +380,50 @@ pub fn filter_commits_within_resolve_capacity(
     (kept, dropped)
 }
 
-/// Trial-apply usage claims against the batch's POST-OP state, partitioning
+/// Trial-prove usage claims against the batch's POST-OP state, partitioning
 /// them into claims that can be batched and poison claims that would abort the
 /// whole proof.
 ///
-/// The guest runs every claim through `apply_usage_claims` AFTER the ops,
+/// The guest proves every claim in `apply_usage_claims` AFTER the ops,
 /// against the post-state, and the batch is all-or-nothing: one claim that
 /// fails a check the SEQUENCER's registry pre-filter cannot see — the order not
-/// RESOLVED in this post-state, a bad merkle inclusion proof, or an
-/// already-counted process — aborts the ENTIRE proof. That dead-letters the
-/// whole batch (`main`'s prove-failure arm) and discards every co-batched
-/// legitimate trade with it. A usage claim is publicly submittable, so without
-/// this filter one crafted claim (real resolved order + garbage inclusion proof,
-/// or a replay of an already-counted claim) is a gas-free batch-resolution DoS.
+/// RESOLVED in this post-state, a bad merkle inclusion proof — aborts the
+/// ENTIRE proof. That dead-letters the whole batch (`main`'s prove-failure arm)
+/// and discards every co-batched legitimate trade with it. A usage claim is
+/// publicly submittable, so without this filter one crafted claim (real
+/// resolved order + garbage inclusion proof) is a gas-free batch-resolution DoS.
 ///
-/// So each claim is trial-applied one at a time against the running post-op
-/// state — threaded, so a duplicate claim WITHIN the batch is caught as
-/// already-counted exactly as the guest would — and poison is returned
-/// separately for the caller to drop. This is the usage-claim twin of
-/// `filter_applicable_ops`; unlike ops, claims have no inter-claim ordering to
-/// resolve (each proves against the resolved post-op state), so a single pass
-/// suffices. The registry/stake gates the guest CANNOT see are pre-filtered
-/// upstream (`submitter::filter_usage_claims`); this covers the disjoint set of
-/// classes only the guest decides.
+/// So each claim is trial-proved one at a time against the post-op state and
+/// poison is returned separately for the caller to drop. A second claim of a
+/// (kind, key, process) the batch already carries is dropped too: the guest
+/// would give it no use of its own, so it would cost the batch its stream
+/// bytes for nothing. This is the usage-claim twin of `filter_applicable_ops`;
+/// claims move no state and have no inter-claim ordering, so a single pass
+/// suffices. The registry, stake and already-counted gates the guest CANNOT
+/// see are pre-filtered upstream (`submitter::filter_usage_claims`); this
+/// covers the disjoint set of classes only the guest decides.
 ///
 /// `valid_ops` must be the ops the batch will actually carry, in the order
 /// `filter_applicable_ops` returned them (they apply cleanly as a group); the
-/// running state is seeded by applying them, reproducing the exact post-state
-/// the guest credits claims against.
+/// state is built by applying them, reproducing the exact post-state the
+/// guest proves claims against.
 pub fn filter_applicable_claims(
     chain_id: u64,
     verifying_contract: Address,
     block_timestamp: u64,
     prev_state: &KernelStateSnapshot,
     valid_ops: &[KernelOp],
-    usage_period: u8,
     provenance_leaf: B256,
     claims: Vec<UsageClaim>,
 ) -> (Vec<UsageClaim>, Vec<(UsageClaim, String)>) {
     if claims.is_empty() {
         return (Vec::new(), Vec::new());
     }
-    // Seed the running state with the batch's ops applied — the same post-op
-    // state the guest credits claims against, reached through the same
-    // function (`apply_operations`), no root computed. `valid_ops` already
-    // trial-applied cleanly in this order, so the group apply succeeds; if it
-    // somehow does not, every claim is undecidable and dropped conservatively
-    // (re-submittable).
+    // The post-op state the guest proves claims against, reached through the
+    // same function (`apply_operations`), no root computed. `valid_ops`
+    // already trial-applied cleanly in this order, so the group apply
+    // succeeds; if it somehow does not, every claim is undecidable and
+    // dropped conservatively (re-submittable).
     let mut state = KernelState::from_snapshot(prev_state);
     if let Err(e) = apply_operations(&mut state, chain_id, verifying_contract, block_timestamp, valid_ops) {
         let why = format!("post-op state did not assemble: {e}");
@@ -437,24 +433,21 @@ pub fn filter_applicable_claims(
         );
     }
 
+    let mut carried: std::collections::HashSet<(u8, B256, B256)> = std::collections::HashSet::new();
     let mut valid = Vec::with_capacity(claims.len());
     let mut poison = Vec::new();
     for claim in claims {
-        // One claim on a clone of the running state: a claim the counter's
-        // rules refuse leaves the clone to be dropped.
-        let mut trial = state.clone();
         match apply_claims(
-            &mut trial,
+            &state,
             chain_id,
             verifying_contract,
             std::slice::from_ref(&claim),
-            usage_period,
             &provenance_leaf,
         ) {
-            Ok(_) => {
-                state = trial;
-                valid.push(claim);
-            }
+            Ok(uses) => match uses.first() {
+                Some(u) if carried.insert((u.kind, u.clause_or_assembly, u.process_id)) => valid.push(claim),
+                _ => poison.push((claim, "the batch already carries this (kind, key, process)".to_string())),
+            },
             Err(e) => poison.push((claim, e.to_string())),
         }
     }

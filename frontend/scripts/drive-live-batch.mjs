@@ -430,7 +430,7 @@ const claims = buildUsageClaims(commitment, agreement, claimContext);
 if (claims.length !== 1 || claims[0].clause_or_assembly !== clauseKey) {
     throw new Error(`expected one usage claim for ${clauseKey}, got ${JSON.stringify(claims)}`);
 }
-const accrualBefore = await read(record.usageCounter, USAGE_COUNTER_ABI, 'batchAccrualOf', [USAGE_KIND_CLAUSE, clauseKey, currentPeriod]);
+const accrualBefore = await read(record.usageCounter, USAGE_COUNTER_ABI, 'accrualOf', [USAGE_KIND_CLAUSE, clauseKey, currentPeriod]);
 await sequencer.submitUsageClaim(claims[0]);
 console.log(`submitted usage claim for ${spec.clauseId} (period ${currentPeriod})`);
 
@@ -446,7 +446,7 @@ const [buyerFinal, sellerFinal, verifierFinal, finalRoot, finalCount, accrualAft
         read(TOKEN, ERC20_ABI, 'balanceOf', [verifier]),
         read(verifier, BATCH_VERIFIER_ABI, 'stateRoot'),
         read(verifier, BATCH_VERIFIER_ABI, 'batchCount'),
-        read(record.usageCounter, USAGE_COUNTER_ABI, 'batchAccrualOf', [USAGE_KIND_CLAUSE, clauseKey, currentPeriod]),
+        read(record.usageCounter, USAGE_COUNTER_ABI, 'accrualOf', [USAGE_KIND_CLAUSE, clauseKey, currentPeriod]),
     ]);
 
 const checks = [

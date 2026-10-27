@@ -20,19 +20,14 @@ interface IClauseRegistryAnchor {
 ///         never a vendored dependency; the struct is re-declared here
 ///         for the same reason the interface is.
 interface IUsageCounter {
-    struct BatchAccrual {
+    struct BatchUse {
         bytes32 clauseOrAssembly;
         uint8 kind;
-        uint64 c;
-        uint64 d;
+        bytes32 processId;
+        address seller;
     }
 
-    function applyBatchAccrual(
-        uint8 period,
-        bytes32 claimedProvenanceLeaf,
-        BatchAccrual[] calldata accruals,
-        address[] calldata sellers
-    ) external;
+    function applyBatchAccrual(uint8 period, bytes32 claimedProvenanceLeaf, BatchUse[] calldata uses) external;
 }
 
 /// @title FigaroBatchVerifier — Resolves batched Figaro operations via SP1 proof
@@ -66,11 +61,13 @@ interface IUsageCounter {
 ///         `FigaroCore.orderStatus == RESOLVED` — can never see batched
 ///         trade. Without a bridge the 600M would measure a shrinking
 ///         fraction of real adoption exactly as the protocol scales, so
-///         this contract carries the accrual across: the guest proves
-///         each clause's, agreement's or assembly's cumulative `(c, d)`, and one write
-///         per clause, agreement or assembly per batch lands it. The gates the proof
-///         cannot see (open period, the seller of record's live member stake, registration) are the
-///         counter's own and are checked there, not here.
+///         this contract carries the uses across: the guest proves each
+///         use — a resolved process that used a clause, agreement or
+///         assembly, and the seller of the order it was proved through —
+///         and the counter counts every use into the same tally a direct
+///         call feeds. The gates the proof cannot see (open period, the
+///         seller's live member stake, registration, a process already
+///         counted) are the counter's own and are checked there, not here.
 ///
 ///         Public values (ABI-encoded, 10 × 32-byte words):
 ///           0: prevStateRoot     (bytes32)
@@ -161,24 +158,22 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         SpecBinding[] specBindings;
     }
 
-    /// @dev The batch's RPGF accrual, hash-verified against
+    /// @dev The batch's uses, hash-verified against
     ///      `usageAccrualHash`. Kept as its own parameter rather than
     ///      folded into `BatchEventData`: this is not event data, it is
     ///      a state write to another contract, and the two stay
-    ///      separate. All four fields enter the hash preimage.
+    ///      separate. All three fields enter the hash preimage.
     struct BatchUsageData {
-        /// @dev The period the accrual lands in. The COUNTER decides
+        /// @dev The period the uses land in. The COUNTER decides
         ///      whether this is the open one — the sequencer's clock has
         ///      no authority here.
         uint8 period;
         /// @dev The provenance leaf key the guest proved agreement and assembly
         ///      claims against; the counter matches it to its own.
         bytes32 provenanceLeaf;
-        /// @dev Per-(kind, key) CUMULATIVE (c, d) after this batch,
-        ///      sorted by (key, kind) in the prover.
-        IUsageCounter.BatchAccrual[] accruals;
-        /// @dev Distinct sellers of record behind the accruals, sorted.
-        address[] sellers;
+        /// @dev One entry per (kind, key, process) the batch's claims
+        ///      proved, in the order of the claims.
+        IUsageCounter.BatchUse[] uses;
     }
 
     // ── Events (protocol-compatible re-emissions) ─────────────────
@@ -223,17 +218,15 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount
     );
 
-    /// @notice The batch resolved its TOKEN positions, but its RPGF accrual was
-    ///         dropped because `UsageCounter.applyBatchAccrual` reverted — a
-    ///         seller unstaked between prove and submit (`SellerNotStaked`), the
-    ///         open period advanced across a boundary (`PeriodMismatch`), or the
-    ///         proven provenance leaf did not match. Resolution is decoupled
-    ///         from the reward on purpose: a reward-tier gate must never unwind
-    ///         another party's trade. The dropped accrual is recovered by the
-    ///         next batch that touches the same clauses, agreements and assemblies (the
-    ///         counter's write
-    ///         is a cumulative overwrite), or forgone — conservative under-pay,
-    ///         never over-pay.
+    /// @notice The batch resolved its TOKEN positions, but its uses were not
+    ///         counted because `UsageCounter.applyBatchAccrual` reverted — the
+    ///         open period advanced across a boundary (`PeriodMismatch`), the
+    ///         reward's last period ended (`AccrualClosed`), or the proven
+    ///         provenance leaf did not match. Resolution is decoupled from the
+    ///         reward on purpose: a reward-tier gate must never unwind
+    ///         another party's trade. The uses stay uncounted, so a later batch
+    ///         may prove them again; until one does, the reward under-pays,
+    ///         never over-pays.
     /// @param batchId The batch whose accrual was skipped.
     /// @param reason  The low-level revert data from the counter (for indexers).
     event BatchAccrualSkipped(uint64 indexed batchId, bytes reason);
@@ -281,7 +274,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     /// @param _verifier       Address of the SP1 verifier gateway (or mock).
     /// @param _programVKey    The verification key of the Figaro guest program.
     /// @param _clauseRegistry The live ClauseRegistry — the witness-spec anchor.
-    /// @param _usageCounter   The RPGF counter this verifier writes batch accrual to.
+    /// @param _usageCounter   The counter this verifier hands each batch's uses to.
     ///         The state root starts at `genesisRoot()`, the empty state's,
     ///         computed here and never supplied: a verifier always starts on a
     ///         state anyone can rebuild from nothing.
@@ -311,13 +304,11 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     }
 
     /// @notice The root of the empty mirror state: one `keccak256("")` per
-    ///         map (processes, order status, order → process) and the usage
-    ///         leg's keccak over three zero-length sections, hashed flat, as
+    ///         map (processes, order status, order → process), hashed flat, as
     ///         the guest's `KernelState::compute_root` does on nothing.
     function genesisRoot() public pure returns (bytes32) {
         bytes32 emptyMap = keccak256("");
-        bytes32 emptyUsage = keccak256(abi.encodePacked(uint64(0), uint64(0), uint64(0)));
-        return keccak256(abi.encodePacked(emptyMap, emptyMap, emptyMap, emptyUsage));
+        return keccak256(abi.encodePacked(emptyMap, emptyMap, emptyMap));
     }
 
     // ── Internal decode struct (avoids stack-too-deep) ─────────
@@ -343,8 +334,8 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     /// @param positions    Net token positions to reconcile (hash-verified against proof).
     /// @param events       Attestation events to re-emit + spec bindings to
     ///                     check against the ClauseRegistry (both hash-verified).
-    /// @param usage        The batch's RPGF accrual (hash-verified). Pass empty
-    ///                     arrays for a batch that credits no usage.
+    /// @param usage        The batch's uses (hash-verified). Pass an empty
+    ///                     array for a batch that credits no usage.
     /// @param operations   The batch's operation stream (hash-verified against
     ///                     public value 9): every commit and resolve it applied,
     ///                     whole, and every usage claim, in the guest's canonical
@@ -416,25 +407,24 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         _emitAttestations(events.attestations);
         _emitOperations(operations);
 
-        // ── 7. Carry the RPGF accrual across the resolution crease ─
-        //    The numbers are the proof's; the reward's own gates (open
-        //    period, the seller of record's live member stake, registration)
-        //    are the counter's and are enforced there. A batch with no usage
-        //    claims passes empty arrays and the call is a no-op — which is
-        //    what keeps trade resolving after accrual closes.
+        // ── 7. Hand the batch's uses to the counter ─────────────────
+        //    The uses are the proof's; the reward's own gates (open
+        //    period, each seller's live member stake, registration, a
+        //    process already counted) are the counter's and are enforced
+        //    there. A batch with no usage claims passes an empty array and
+        //    the call is a no-op — which is what keeps trade resolving after
+        //    accrual closes.
         //
         //    DECOUPLED FROM RESOLUTION: the call is wrapped so
-        //    an accrual-gate revert — a seller who unstaked between prove and
-        //    submit (`SellerNotStaked`), a period boundary crossed in flight
+        //    a whole-batch revert — a period boundary crossed in flight
         //    (`PeriodMismatch`), a provenance mismatch — can NEVER unwind the
         //    token resolution executed in step 5. A reward-tier gate must not
-        //    block another party's trade. The counter already skips
-        //    unregistered keys internally (it does not revert on
-        //    those); this catch covers the whole-batch reverts that remain.
-        //    On failure the accrual is dropped wholesale — recovered by the
-        //    next batch's cumulative overwrite, or forgone (conservative
-        //    under-pay, never over-pay). `batchCount + 1` is the id this batch
-        //    receives at step 8.
+        //    block another party's trade. The counter skips a use that fails
+        //    a per-use gate (it does not revert on those); this catch covers
+        //    the whole-batch reverts that remain. On failure no use of the
+        //    batch is counted, and a later batch may prove them again
+        //    (conservative under-pay, never over-pay). `batchCount + 1` is the
+        //    id this batch receives at step 8.
         //
         //    The catch is a catch-ALL, but it does NOT silently swallow a
         //    misconfiguration: the counter's only non-gate revert is
@@ -445,8 +435,8 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         //    the counter can only ever accept THIS verifier. `NotBatchVerifier`
         //    is therefore unreachable at runtime; every revert that reaches this
         //    catch is a genuine accrual-gate skip, surfaced via the event.
-        try usageCounter.applyBatchAccrual(usage.period, usage.provenanceLeaf, usage.accruals, usage.sellers) {
-        // accrual applied
+        try usageCounter.applyBatchAccrual(usage.period, usage.provenanceLeaf, usage.uses) {
+        // uses counted
         }
         catch (bytes memory reason) {
             emit BatchAccrualSkipped(batchCount + 1, reason);
@@ -554,29 +544,19 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     }
 
     /// @dev Pack: period(1) ++ provenanceLeaf(32)
-    ///            ++ len(accruals)(8) ++ [clauseOrAssembly(32) ++ kind(1) ++ c(8) ++ d(8)]*
-    ///            ++ len(sellers)(8)  ++ [seller(20)]*
-    ///      — span 49 + 49n + 20m bytes for n accruals and m sellers —
+    ///            ++ len(uses)(8) ++ [clauseOrAssembly(32) ++ kind(1) ++ processId(32) ++ seller(20)]*
+    ///      — span 41 + 85n bytes for n uses —
     ///      matching the Rust `compute_usage_accrual_hash`.
     ///
-    ///      BOTH LENGTHS ARE PREFIXED, and they must be. An accrual
-    ///      entry is 49 bytes and a seller 20, so twenty accruals and
-    ///      forty-nine sellers span the same 980 bytes: without the
-    ///      prefixes, one preimage could be re-split into a different
-    ///      (accruals, sellers) pair — letting a submitter present
-    ///      accruals whose sellers were never stake-checked while the
-    ///      hash still matched.
     ///      Unlike the sibling hashers above, this layout's trailing
-    ///      fields are NARROWER than a word (`d` is 8 bytes, a seller
-    ///      20), so the final `mstore` of each would write past the
-    ///      buffer. The buffer therefore carries 32 bytes of slack and
-    ///      its length is truncated to the exact span before hashing —
-    ///      the overrun lands in the slack, and keccak sees only the
-    ///      packed bytes.
+    ///      field is NARROWER than a word (a seller is 20 bytes), so its
+    ///      `mstore` writes past the buffer. The buffer therefore carries
+    ///      32 bytes of slack and its length is truncated to the exact span
+    ///      before hashing — the overrun lands in the slack, and keccak sees
+    ///      only the packed bytes.
     function _hashUsage(BatchUsageData calldata usage) internal pure returns (bytes32) {
-        uint256 accrualCount = usage.accruals.length;
-        uint256 sellerCount = usage.sellers.length;
-        uint256 span = 49 + accrualCount * 49 + sellerCount * 20;
+        uint256 useCount = usage.uses.length;
+        uint256 span = 41 + useCount * 85;
         bytes memory packed = new bytes(span + 32);
 
         uint8 period = usage.period;
@@ -585,36 +565,23 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             let dst := add(packed, 32)
             mstore8(dst, period)
             mstore(add(dst, 1), provenance)
-            mstore(add(dst, 33), shl(192, accrualCount))
+            mstore(add(dst, 33), shl(192, useCount))
         }
 
         uint256 offset = 41;
-        for (uint256 i = 0; i < accrualCount; i++) {
-            bytes32 clauseOrAssembly = usage.accruals[i].clauseOrAssembly;
-            uint8 kind = usage.accruals[i].kind;
-            uint64 c = usage.accruals[i].c;
-            uint64 d = usage.accruals[i].d;
+        for (uint256 i = 0; i < useCount; i++) {
+            bytes32 clauseOrAssembly = usage.uses[i].clauseOrAssembly;
+            uint8 kind = usage.uses[i].kind;
+            bytes32 processId = usage.uses[i].processId;
+            address seller = usage.uses[i].seller;
             assembly {
                 let dst := add(add(packed, 32), offset)
                 mstore(dst, clauseOrAssembly)
                 mstore8(add(dst, 32), kind)
-                mstore(add(dst, 33), shl(192, c))
-                mstore(add(dst, 41), shl(192, d))
+                mstore(add(dst, 33), processId)
+                mstore(add(dst, 65), shl(96, seller))
             }
-            offset += 49;
-        }
-
-        assembly {
-            mstore(add(add(packed, 32), offset), shl(192, sellerCount))
-        }
-        offset += 8;
-
-        for (uint256 i = 0; i < sellerCount; i++) {
-            address seller = usage.sellers[i];
-            assembly {
-                mstore(add(add(packed, 32), offset), shl(96, seller))
-            }
-            offset += 20;
+            offset += 85;
         }
 
         // Drop the slack so keccak covers exactly the packed span.

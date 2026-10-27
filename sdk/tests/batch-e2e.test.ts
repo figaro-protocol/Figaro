@@ -570,26 +570,25 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         // report, and not from the verifier that claims to have written it.
         // A batch can resolve perfectly while crediting nothing, and that is
         // exactly the failure this bridge exists to prevent.
-        const batchAccrual = (await publicClient.readContract({
+        const tally = (await publicClient.readContract({
             address: usageCounterAddress,
             abi: USAGE_COUNTER_ABI,
-            functionName: "batchAccrualOf",
+            functionName: "accrualOf",
             args: [USAGE_KIND_CLAUSE, clauseKey, 0],
         })) as readonly [bigint, bigint, bigint];
 
-        expect(batchAccrual[0], "one distinct resolved process").toBe(1n);
-        expect(batchAccrual[1], "one distinct (buyer, seller) pair").toBe(1n);
-        expect(batchAccrual[2], "and it is scored").toBeGreaterThan(0n);
+        expect(tally[0], "one distinct resolved process").toBe(1n);
+        expect(tally[1], "one distinct staked seller").toBe(1n);
+        expect(tally[2], "and it is scored").toBeGreaterThan(0n);
 
-        // The reward reads the MERGED score; nothing resolved on the direct
-        // path, so here it equals the batch score alone.
-        const merged = (await publicClient.readContract({
+        // The reward reads the one tally's score, whichever route each use took.
+        const score = (await publicClient.readContract({
             address: usageCounterAddress,
             abi: USAGE_COUNTER_ABI,
             functionName: "scoreOf",
             args: [USAGE_KIND_CLAUSE, clauseKey, 0],
         })) as bigint;
-        expect(merged).toBe(batchAccrual[2]);
+        expect(score).toBe(tally[2]);
 
         // ── 6. Verify final token balances ──────────────────────
 

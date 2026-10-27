@@ -232,8 +232,7 @@ contract DeployMainnet is Script {
         address predictedVerifier = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
         _deployUsageCounter(predictedVerifier);
 
-        // The genesis root is DERIVED: one keccak256("") per mirror state map
-        // plus the usage leg (itself keccak over three zero-length sections),
+        // The genesis root is DERIVED: one keccak256("") per mirror state map,
         // matching the Rust KernelState::compute_root on the empty state.
         FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
             vm.envAddress("SP1_VERIFIER"), vm.envBytes32("SP1_PROGRAM_VKEY"), _clauses, _usageCounter

@@ -386,9 +386,6 @@ fn empty_snapshot() -> KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
         order_process_id: vec![],
-        usage_counted: vec![],
-        usage_seller_seen: vec![],
-        usage_accrual: vec![],
     }
 }
 
@@ -1271,7 +1268,7 @@ fn every_vector_agreement_credits_its_agreement_and_its_assembly() {
             let (_, _, events) = apply_batch(&claims_batch(ops, claims))
                 .unwrap_or_else(|e| panic!("{} {}: {e}", assembly["label"], entry["id"]));
             let mut got: Vec<(B256, u8)> =
-                events.usage_accruals.iter().map(|a| (a.clause_or_assembly, a.kind)).collect();
+                events.uses.iter().map(|u| (u.clause_or_assembly, u.kind)).collect();
             got.sort();
             let mut want = vec![
                 (hex32(&entry["agreementHash"]), USAGE_KIND_AGREEMENT),

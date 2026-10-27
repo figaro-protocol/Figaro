@@ -34,7 +34,7 @@ methods {
 
     function _.verifyProof(bytes32, bytes, bytes) external => NONDET;
     function _.registered(bytes32) external => NONDET;
-    function _.applyBatchAccrual(uint8, bytes32, IUsageCounter.BatchAccrual[], address[]) external => NONDET;
+    function _.applyBatchAccrual(uint8, bytes32, IUsageCounter.BatchUse[]) external => NONDET;
 
     function SafeERC20.safeTransfer(address, address, uint256) internal => NONDET;
     function SafeERC20.safeTransferFrom(address, address, address, uint256) internal => NONDET;

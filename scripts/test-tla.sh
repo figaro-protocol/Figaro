@@ -159,7 +159,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 4/7 — Composed resolution universes (20 invariants)"
+echo "▶ Pass 4/7 — Composed resolution universes (21 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config ResolutionUniverses.cfg \

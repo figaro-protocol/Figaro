@@ -56,7 +56,10 @@ A clause's, a registered agreement's or an assembly's score in a period is its
     score = icbrt(c · d² · 1e18)
 
 where `c` is the count of processes that used it and `d` the number of distinct
-live-staked sellers who carried it. Distinct sellers are weighted above raw
+live-staked sellers who carried it. The tally is one and route-blind: a use is
+a use whichever way its process reached the chain, through `FigaroCore` or in a
+proved batch, so `c` counts each process once and `d` each seller once across
+both routes, and the score never depends on the route. Distinct sellers are weighted above raw
 volume, and below a minimum-support floor of distinct staked sellers the score
 is zero — counting continues, and the full score springs when the floor is met.
 
@@ -81,19 +84,22 @@ order is resolved, and the clause — or the provenance leaf naming the
 registered agreement and the assembly, with the agreement's membership proof
 under the assembly's root — was merkle-committed in the signed
 `checkoutHash`.
-Anyone may call it; the proof is what is trusted, never the caller. Trade
-resolved in a proved batch is counted by the batch's own proof and written by
-the verifier alone, with the counter checking the open period, each seller's
-live stake, and each entry's live registration in its own registry
-(`CONTRACTS.md` § "Usage accounting" owns the two routes). Nothing is posted, bonded, challenged, or adjudicated,
+Anyone may call it; the proof is what is trusted, never the caller. A use in a
+proved batch reaches the counter through the verifier alone, its resolution and
+its inclusion proved by the batch's own proof, and the counter counts it into
+the same tally a direct call feeds, checking the open period, the seller's live
+stake, the entry's live registration in its own registry and whether the
+process is already counted, as it does for a direct call (`CONTRACTS.md` §
+"Usage accounting" owns the two routes). Nothing is posted, bonded, challenged, or adjudicated,
 and there is no recurring cost to anyone.
 
 The timing is forced, not chosen. **The chain cannot look backwards** — the
 Core never calls the registries, and no contract can read an
 event. Reconstructing usage after the fact is what would require the posting,
 bonding, challenge, and forum apparatus this mechanism does without. So the
-fact is recorded at the moment it occurs, or it is permanently deniable: a
-seller can unstake, a period can close, and a late claim is refusable.
+fact is counted at the moment it occurs; a use left uncounted waits on its
+seller's stake — a seller can unstake before it is counted — and can never
+count once the last period has closed.
 
 Only the clause's data hash reaches calldata, so a private clause's plaintext
 never becomes public in the counting.
@@ -106,12 +112,10 @@ Both sides of a counted usage must have something at stake, in the base chain's
 own currency, at the moment it counts:
 
 - **Seller side** — usage counts only for a seller of record whose members
-  registry stake is live. `UsageCounter` gates every count on it, on both
-  paths; on the batched path one unstaked seller drops that batch's whole
-  accrual until the next batch overwrites it (`DESIGN_DECISIONS.md` owns the
-  drop). A seller on both paths enters each path's breadth: the two paths'
-  scores are summed, and the same sellers on both count up to 2^(2/3) times
-  their pooled score — a bounded bias, at the same live stake per seller.
+  registry stake is live. `UsageCounter` gates every use on it, on either
+  route: a direct call reverts and a batch skips that one use, which may be
+  presented again. A seller enters a period's breadth once, whichever route
+  carried their trade.
 - **Designer side** — two live stakes, both read at the claim. The claimant
   holds a live members registry stake, the same arrow the counter draws for
   the seller of record: `RpgfMinter.claim` refuses a non-member

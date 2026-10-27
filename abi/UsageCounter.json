@@ -151,9 +151,9 @@
         "internalType": "bytes32"
       },
       {
-        "name": "accruals",
+        "name": "uses",
         "type": "tuple[]",
-        "internalType": "struct UsageCounter.BatchAccrual[]",
+        "internalType": "struct UsageCounter.BatchUse[]",
         "components": [
           {
             "name": "clauseOrAssembly",
@@ -166,21 +166,16 @@
             "internalType": "uint8"
           },
           {
-            "name": "c",
-            "type": "uint64",
-            "internalType": "uint64"
+            "name": "processId",
+            "type": "bytes32",
+            "internalType": "bytes32"
           },
           {
-            "name": "d",
-            "type": "uint64",
-            "internalType": "uint64"
+            "name": "seller",
+            "type": "address",
+            "internalType": "address"
           }
         ]
-      },
-      {
-        "name": "sellers",
-        "type": "address[]",
-        "internalType": "address[]"
       }
     ],
     "outputs": [],
@@ -221,45 +216,6 @@
         "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "batchAccrualOf",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "c",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "d",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "score",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -773,49 +729,6 @@
   },
   {
     "type": "event",
-    "name": "BatchUsageRecorded",
-    "inputs": [
-      {
-        "name": "kind",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
-      },
-      {
-        "name": "clauseOrAssembly",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "period",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
-      },
-      {
-        "name": "c",
-        "type": "uint64",
-        "indexed": false,
-        "internalType": "uint64"
-      },
-      {
-        "name": "d",
-        "type": "uint64",
-        "indexed": false,
-        "internalType": "uint64"
-      },
-      {
-        "name": "score",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "UsageRecorded",
     "inputs": [
       {
@@ -873,17 +786,6 @@
     "type": "error",
     "name": "AccrualClosed",
     "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "AccrualWentBackwards",
-    "inputs": [
-      {
-        "name": "clauseOrAssembly",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ]
   },
   {
     "type": "error",

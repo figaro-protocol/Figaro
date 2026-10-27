@@ -303,8 +303,8 @@ What is emitted, and what each thing is evidence of:
   at once on the buyer's single call, atomically and terminally.
 - **What the network is actually composed OF.**
   `UsageCounter.UsageRecorded(kind, clauseOrAssembly, period, processId, seller, c, d, score)`,
-  plus `BatchUsageRecorded` on the batch path (cumulative — it REPLACES rather than adds);
-  `scoreOf(kind, clauseOrAssembly, period)` sums both, kind `0` for a clause key,
+  emitted for every use the counter counts, on either route — a direct call or a proved
+  batch; `scoreOf(kind, clauseOrAssembly, period)` reads the one tally, kind `0` for a clause key,
   `1` for an assembly's `assemblyHash` and `2` for a registered agreement's
   `agreementHash`. The `d` term counts DISTINCT LIVE-STAKED
   sellers, so it reads as adoption breadth priced at one deposit per seller — the nearest

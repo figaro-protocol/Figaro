@@ -57,9 +57,6 @@ fn empty_snapshot() -> KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
         order_process_id: vec![],
-        usage_counted: vec![],
-        usage_seller_seen: vec![],
-        usage_accrual: vec![],
     }
 }
 
@@ -237,13 +234,12 @@ fn bincode_roundtrip_public_values_and_events() {
             clause_id: B256::repeat_byte(0x0a),
             spec_hash: B256::repeat_byte(0x0b),
         }],
-        usage_accruals: vec![UsageAccrual {
+        uses: vec![BatchUse {
             clause_or_assembly: B256::repeat_byte(0x0c),
             kind: USAGE_KIND_CLAUSE,
-            c: 3,
-            d: 2,
+            process_id: B256::repeat_byte(0x0f),
+            seller: SELLER1,
         }],
-        usage_sellers: vec![SELLER1],
         usage_period: 1,
     };
     let bytes = bincode::serialize(&events).expect("serialize");

@@ -9,7 +9,6 @@ import {
     RPGF_MIN_SELLERS,
     type UsagePeriodAccrual,
     type ClauseOrAssemblyAccrual,
-    type BatchUsageRecord,
     type UsageRecord,
     type UsageKind,
     USAGE_KIND_CLAUSE,
@@ -19,7 +18,6 @@ import {
     usageClaimKindCode,
     buildUsageClaims,
     fetchUsageRecords,
-    fetchBatchUsageRecords,
 } from "../src/rpgf/index.js";
 import {
     PROVENANCE_LEAF_KEY,
@@ -154,10 +152,10 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "p1", s1),
             record(CLAUSE_A, "p2", s2),
             record(CLAUSE_B, "p1", s1),
-        ], [], 1n);
+        ], 1n);
         const period = accruals.get(0)!;
-        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 2n, d: 2n });
-        expect(period.byClauseOrAssembly.get(id(CLAUSE_B))!.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 2n, d: 2n });
+        expect(period.byClauseOrAssembly.get(id(CLAUSE_B))!).toMatchObject({ c: 1n, d: 1n });
         expect(period.totalScore).toBe(usageScore(2n, 2n, 1n) + usageScore(1n, 1n, 1n));
     });
 
@@ -170,14 +168,14 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "q1", s1),
             record(CLAUSE_A, "q2", s1),
             record(CLAUSE_A, "q3", s1),
-        ], [], 1n);
-        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 3n, d: 1n });
+        ], 1n);
+        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 3n, d: 1n });
     });
 
     it("is idempotent per (clause or assembly, process) — a replay adds nothing", () => {
         const s1 = sellerOf("seller1");
-        const once = computeUsageAccruals([record(CLAUSE_A, "p1", s1)], [], 1n);
-        const twice = computeUsageAccruals([record(CLAUSE_A, "p1", s1), record(CLAUSE_A, "p1", s1)], [], 1n);
+        const once = computeUsageAccruals([record(CLAUSE_A, "p1", s1)], 1n);
+        const twice = computeUsageAccruals([record(CLAUSE_A, "p1", s1), record(CLAUSE_A, "p1", s1)], 1n);
         expect(twice.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))).toEqual(once.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A)));
     });
 
@@ -189,8 +187,8 @@ describe("computeUsageAccruals", () => {
         const accruals = computeUsageAccruals([
             record(CLAUSE_A, "px-0", s1, { period: 0 }),
             record(CLAUSE_A, "px-0", s1, { period: 1 }),
-        ], [], 1n);
-        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 1n, d: 1n });
+        ], 1n);
+        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 1n, d: 1n });
         expect(accruals.get(1)?.byClauseOrAssembly.get(id(CLAUSE_A))).toBeUndefined();
     });
 
@@ -199,8 +197,8 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "py-old", sellerOf("seller1"), { period: 0 }),
             record(CLAUSE_A, "py-old", sellerOf("seller1"), { period: 1 }),
             record(CLAUSE_A, "py-new", sellerOf("seller2"), { period: 1 }),
-        ], [], 1n);
-        expect(accruals.get(1)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 1n, d: 1n });
+        ], 1n);
+        expect(accruals.get(1)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 1n, d: 1n });
     });
 
     it("counts every repeat process into c, but a seller is one unit of d", () => {
@@ -209,10 +207,9 @@ describe("computeUsageAccruals", () => {
         const repeat = sellerOf("seller1");
         const accruals = computeUsageAccruals(
             Array.from({ length: 8 }, (_, i) => record(CLAUSE_A, `pc-${i}`, repeat)),
-            [],
             1n,
         );
-        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toEqual({
+        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({
             c: 8n,
             d: 1n,
             score: usageScore(8n, 1n, 1n),
@@ -227,8 +224,8 @@ describe("computeUsageAccruals", () => {
         const accruals = computeUsageAccruals([
             ...Array.from({ length: 7 }, (_, i) => record(CLAUSE_A, `pe-${i}`, repeat)),
             record(CLAUSE_A, "pe-fresh", fresh),
-        ], [], 1n);
-        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({
+        ], 1n);
+        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({
             c: 8n,
             d: 2n,
         });
@@ -239,15 +236,14 @@ describe("computeUsageAccruals", () => {
         const accruals = computeUsageAccruals([
             record(CLAUSE_A, "pf-0", s1, { period: 0 }),
             record(CLAUSE_A, "pf-1", s1, { period: 1 }),
-        ], [], 1n);
-        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 1n, d: 1n });
-        expect(accruals.get(1)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 1n, d: 1n });
+        ], 1n);
+        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 1n, d: 1n });
     });
 
     it("scores uniformly — equal usage gives equal score, clause or assembly", () => {
         const accruals = computeUsageAccruals(
             [record(CLAUSE_A, "pg-0", sellerOf("s")), record(CLAUSE_B, "pg-0", sellerOf("s"))],
-            [],
             1n,
         );
         const period = accruals.get(0)!;
@@ -263,71 +259,27 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "ph-0", s1, { c: 1n, d: 1n, score: usageScore(1n, 1n, 1n) }),
             record(CLAUSE_A, "ph-1", s2, { c: 2n, d: 2n, score: usageScore(2n, 2n, 1n) }),
         ];
-        const accrual = computeUsageAccruals(emitted, [], 1n).get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct;
+        const accrual = computeUsageAccruals(emitted, 1n).get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!;
         const last = emitted[emitted.length - 1];
-        expect(accrual).toEqual({ c: last.c, d: last.d, score: last.score });
+        expect(accrual).toMatchObject({ c: last.c, d: last.d, score: last.score });
     });
 
-    // ── The batch leg ───────────────────────────────────────────────
+    // ── One tally, route-blind ──────────────────────────────────────
+    // A direct call and a proved batch both emit `UsageRecorded`; the mirror
+    // folds one stream into one tally, as `accrualOf` holds it.
 
-    function batchRecord(
-        clauseOrAssembly: Hex,
-        c: bigint,
-        d: bigint,
-        over: Partial<BatchUsageRecord> = {},
-    ): BatchUsageRecord {
-        return {
-            blockNumber: 200n,
-            logIndex: 0,
-            kind: kindOf(clauseOrAssembly),
-            clauseOrAssembly,
-            period: 0,
-            c,
-            d,
-            score: usageScore(c, d, 1n),
-            ...over,
-        };
-    }
-
-    it("folds batch-resolved usage into the same period", () => {
-        const period = computeUsageAccruals([], [batchRecord(CLAUSE_A, 4n, 2n)], 1n).get(0)!;
-        const entry = period.byClauseOrAssembly.get(id(CLAUSE_A))!;
-        expect(entry.batch).toEqual({ c: 4n, d: 2n, score: usageScore(4n, 2n, 1n) });
-        expect(entry.direct).toEqual({ c: 0n, d: 0n, score: 0n });
-        expect(entry.score).toBe(usageScore(4n, 2n, 1n));
-        expect(period.totalScore).toBe(usageScore(4n, 2n, 1n));
-    });
-
-    // A reader folding only the direct stream misses every batch-resolved
-    // trade, which is precisely the gap the bridge closes. The mirror must
-    // report the SAME total the chain's `totalScoreIn` holds.
-    it("sums the two paths as scores, never as components", () => {
+    it("folds a use from either route into one tally — one seller on both is one unit of d", () => {
+        const s1 = sellerOf("seller1");
         const period = computeUsageAccruals(
-            [record(CLAUSE_A, "pj-0", sellerOf("s"))], // direct: c=1, d=1
-            [batchRecord(CLAUSE_A, 1n, 1n)], // batch:  c=1, d=1
-            1n,
-        ).get(0)!;
-        const entry = period.byClauseOrAssembly.get(id(CLAUSE_A))!;
-
-        expect(entry.score).toBe(usageScore(1n, 1n, 1n) * 2n);
-        expect(entry.score).toBeLessThanOrEqual(usageScore(2n, 2n, 1n));
-        expect(period.totalScore).toBe(entry.score);
-    });
-
-    // Batch records carry CUMULATIVE values, so a later one replaces an
-    // earlier one. Folding them as increments would double-count every batch
-    // after the first.
-    it("replaces rather than accumulates successive batch records", () => {
-        const period = computeUsageAccruals(
-            [],
             [
-                batchRecord(CLAUSE_A, 2n, 1n, { blockNumber: 200n }),
-                batchRecord(CLAUSE_A, 5n, 3n, { blockNumber: 201n }),
+                record(CLAUSE_A, "pj-direct", s1, { blockNumber: 100n }),
+                record(CLAUSE_A, "pj-batch", s1, { blockNumber: 200n }),
             ],
             1n,
         ).get(0)!;
-        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!.batch).toEqual({ c: 5n, d: 3n, score: usageScore(5n, 3n, 1n) });
-        expect(period.totalScore).toBe(usageScore(5n, 3n, 1n));
+        const entry = period.byClauseOrAssembly.get(id(CLAUSE_A))!;
+        expect(entry).toMatchObject({ c: 2n, d: 1n, score: usageScore(2n, 1n, 1n) });
+        expect(period.totalScore).toBe(entry.score);
     });
 
     it("replays in (blockNumber, logIndex) order regardless of input order", () => {
@@ -335,8 +287,8 @@ describe("computeUsageAccruals", () => {
         const records = Array.from({ length: 7 }, (_, i) =>
             record(CLAUSE_A, `pi-${i}`, repeat, { blockNumber: BigInt(100 + i) }),
         );
-        const forward = computeUsageAccruals(records, [], 1n).get(0)!;
-        const reversed = computeUsageAccruals([...records].reverse(), [], 1n).get(0)!;
+        const forward = computeUsageAccruals(records, 1n).get(0)!;
+        const reversed = computeUsageAccruals([...records].reverse(), 1n).get(0)!;
         expect(reversed.byClauseOrAssembly.get(id(CLAUSE_A))).toEqual(forward.byClauseOrAssembly.get(id(CLAUSE_A)));
         expect(reversed.totalScore).toBe(forward.totalScore);
     });
@@ -348,7 +300,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-a", sellerOf("s1")),
             record(CLAUSE_A, "pf-b", sellerOf("s2")),
         ]); // default minSellers = 3 (the formula reference)
-        expect(below.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 2n, d: 2n, score: 0n });
+        expect(below.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 2n, d: 2n, score: 0n });
         expect(below.get(0)!.totalScore).toBe(0n);
 
         const crossed = computeUsageAccruals([
@@ -356,20 +308,18 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-b", sellerOf("s2")),
             record(CLAUSE_A, "pf-c", sellerOf("s3")),
         ]);
-        expect(crossed.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct.score).toBe(usageScore(3n, 3n));
+        expect(crossed.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.score).toBe(usageScore(3n, 3n));
         expect(crossed.get(0)!.totalScore).toBe(usageScore(3n, 3n));
     });
 
-    it("floors per resolution path — the universes never sum toward the floor", () => {
-        // Two direct sellers + two batch sellers is four in total, but the
-        // chain cannot union the sets, so neither path scores below 3 on its
-        // own. Conservative by design, like the score merge itself.
-        const period = computeUsageAccruals(
-            [record(CLAUSE_A, "pp-a", sellerOf("s1")), record(CLAUSE_A, "pp-b", sellerOf("s2"))],
-            [{ blockNumber: 200n, logIndex: 0, kind: USAGE_KIND_CLAUSE, clauseOrAssembly: CLAUSE_A, period: 0, c: 2n, d: 2n, score: 0n }],
-        ).get(0)!;
-        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!.score).toBe(0n);
-        expect(period.totalScore).toBe(0n);
+    it("meets the floor with sellers from either route — one tally, one seller set", () => {
+        const period = computeUsageAccruals([
+            record(CLAUSE_A, "pp-a", sellerOf("s1")),
+            record(CLAUSE_A, "pp-b", sellerOf("s2")),
+            record(CLAUSE_A, "pp-c", sellerOf("s3"), { blockNumber: 200n }),
+        ]).get(0)!;
+        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!.score).toBe(usageScore(3n, 3n));
+        expect(period.totalScore).toBe(usageScore(3n, 3n));
     });
 });
 
@@ -382,8 +332,8 @@ function periodOf(entries: Array<[Hex, bigint]>): UsagePeriodAccrual {
         byClauseOrAssembly.set(id(clauseOrAssembly), {
             kind: kindOf(clauseOrAssembly),
             clauseOrAssembly,
-            direct: { c: 1n, d: 1n, score },
-            batch: { c: 0n, d: 0n, score: 0n },
+            c: 1n,
+            d: 1n,
             score,
         });
         totalScore += score;
@@ -474,11 +424,11 @@ describe("computeRpgfAllocations", () => {
             record(ASSEMBLY, "asm-1", sellerOf("s1")),
             record(ASSEMBLY, "asm-2", sellerOf("s2")),
             { ...record(ASSEMBLY, "clause-1", sellerOf("s1")), kind: USAGE_KIND_CLAUSE },
-        ], [], 1n).get(0)!;
+        ], 1n).get(0)!;
         const asAssembly = accruals.byClauseOrAssembly.get(usageKeyId(USAGE_KIND_ASSEMBLY, ASSEMBLY))!;
         const asClause = accruals.byClauseOrAssembly.get(usageKeyId(USAGE_KIND_CLAUSE, ASSEMBLY))!;
-        expect(asAssembly.direct).toMatchObject({ c: 2n, d: 2n });
-        expect(asClause.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(asAssembly).toMatchObject({ c: 2n, d: 2n });
+        expect(asClause).toMatchObject({ c: 1n, d: 1n });
         const out = computeRpgfAllocations(accruals, new Map([
             [usageKeyId(USAGE_KIND_ASSEMBLY, ASSEMBLY), DESIGNER],
             [usageKeyId(USAGE_KIND_CLAUSE, ASSEMBLY), SQUATTER],
@@ -496,12 +446,12 @@ describe("computeRpgfAllocations", () => {
             record(ASSEMBLY, "asm-1", sellerOf("s1")),
             { ...record(ASSEMBLY, "asm-1", sellerOf("s1")), kind: USAGE_KIND_AGREEMENT },
             { ...record(ASSEMBLY, "agr-2", sellerOf("s2")), kind: USAGE_KIND_AGREEMENT },
-        ], [], 1n).get(0)!;
+        ], 1n).get(0)!;
         const asAgreement = accruals.byClauseOrAssembly.get(usageKeyId(USAGE_KIND_AGREEMENT, ASSEMBLY))!;
         const asAssembly = accruals.byClauseOrAssembly.get(usageKeyId(USAGE_KIND_ASSEMBLY, ASSEMBLY))!;
         // The same process counts once per (kind, key), so kind 2 counts it beside kind 1.
-        expect(asAssembly.direct).toMatchObject({ c: 1n, d: 1n });
-        expect(asAgreement.direct).toMatchObject({ c: 2n, d: 2n });
+        expect(asAssembly).toMatchObject({ c: 1n, d: 1n });
+        expect(asAgreement).toMatchObject({ c: 2n, d: 2n });
         const out = computeRpgfAllocations(accruals, new Map([
             [usageKeyId(USAGE_KIND_AGREEMENT, ASSEMBLY), AGREEMENT_DESIGNER],
         ]), 1_000_000n);
@@ -671,7 +621,7 @@ describe("buildUsageClaims", () => {
     });
 });
 
-describe("fetchUsageRecords / fetchBatchUsageRecords — chunked getLogs", () => {
+describe("fetchUsageRecords — chunked getLogs", () => {
     const USAGE_COUNTER = "0x000000000000000000000000000000000000f00d" as Address;
 
     /** A stub client whose `getLogs` always answers empty — only the chunking
@@ -697,15 +647,4 @@ describe("fetchUsageRecords / fetchBatchUsageRecords — chunked getLogs", () =>
         expect(client.getLogs).toHaveBeenCalledWith({ address: USAGE_COUNTER, fromBlock: 0n, toBlock: 100n });
     });
 
-    it("fetchBatchUsageRecords threads a custom chunkSize through to getLogs", async () => {
-        const client = mockClient();
-        await fetchBatchUsageRecords(client, USAGE_COUNTER, 25n, 10n);
-        expect(client.getLogs).toHaveBeenCalledTimes(3);
-    });
-
-    it("fetchBatchUsageRecords defaults to DEFAULT_LOG_CHUNK_SIZE, issuing one call on a devnet-sized range", async () => {
-        const client = mockClient();
-        await fetchBatchUsageRecords(client, USAGE_COUNTER, 100n);
-        expect(client.getLogs).toHaveBeenCalledTimes(1);
-    });
 });

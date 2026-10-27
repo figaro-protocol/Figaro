@@ -84,11 +84,8 @@ async fn guest_output_matches_host_apply_batch_exactly() {
 
     // And it credited the clause for the process it resolved — asserted here
     // because "field for field" above is only as strong as the batch it runs
-    // on: an empty accrual would make `usage_accrual_hash` agree trivially.
-    assert_eq!(host_events.usage_accruals.len(), 1, "the canonical batch credits one clause");
-    assert_eq!(host_events.usage_accruals[0].c, 1);
-    assert_eq!(host_events.usage_accruals[0].d, 1);
-    assert_eq!(host_events.usage_sellers.len(), 1, "one seller to stake-check");
+    // on: no uses would make `usage_accrual_hash` agree trivially.
+    assert_eq!(host_events.uses.len(), 1, "the canonical batch credits one clause");
 }
 
 #[tokio::test]
@@ -228,9 +225,6 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
             processes: vec![],
             order_status: vec![],
             order_process_id: vec![],
-            usage_counted: vec![],
-            usage_seller_seen: vec![],
-            usage_accrual: vec![],
         },
         usage_claims: vec![
             UsageClaim {
@@ -259,7 +253,7 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
 async fn guest_credits_an_agreement_and_an_assembly_as_the_host_does() {
     let input = provenance_batch(true);
     let (host_pv, _positions, host_events) = apply_batch(&input).expect("host apply_batch");
-    let mut kinds: Vec<u8> = host_events.usage_accruals.iter().map(|a| a.kind).collect();
+    let mut kinds: Vec<u8> = host_events.uses.iter().map(|u| u.kind).collect();
     kinds.sort();
     assert_eq!(kinds, vec![USAGE_KIND_ASSEMBLY, USAGE_KIND_AGREEMENT]);
 

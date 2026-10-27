@@ -2,8 +2,8 @@
 //!
 //! What a batch costs the chain is what it PUBLISHES — the net positions
 //! `settleBatch` transfers, the attestation events it re-emits, the spec
-//! bindings it anchors against the registry and the usage accruals it
-//! writes to the counter — plus the proof's verification, the call's fixed
+//! bindings it anchors against the registry and the uses it hands the
+//! counter — plus the proof's verification, the call's fixed
 //! execution and the calldata it carries; not the number of operations it
 //! proves. The relay bounds a batch by this estimate against the live block
 //! gas limit, read at every tick, so the cap follows the chain it runs on
@@ -27,11 +27,11 @@ pub const SETTLE_GAS_PER_POSITION: u64 = 60_000;
 pub const SETTLE_GAS_PER_ATTESTATION: u64 = 6_000;
 /// Execution gas of one spec binding checked against the registry.
 pub const SETTLE_GAS_PER_SPEC_BINDING: u64 = 4_500;
-/// Execution gas of one usage accrual the counter writes.
-pub const SETTLE_GAS_PER_ACCRUAL: u64 = 190_000;
-/// Execution gas of one usage seller the counter checks against the
-/// members registry.
-pub const SETTLE_GAS_PER_USAGE_SELLER: u64 = 12_000;
+/// Execution gas of one use the counter counts — the dearest, a key, a
+/// seller and a process each new to the counter: its registry and member
+/// stake reads, the counted-process, seller, tally and score writes, the
+/// score's cube root and the `UsageRecorded` event.
+pub const SETTLE_GAS_PER_USE: u64 = 270_000;
 /// The call's execution with nothing to publish.
 pub const SETTLE_FIXED_EXEC_GAS: u64 = 105_000;
 /// The operation stream's execution — the calldata copy, the keccak over it,
@@ -128,8 +128,8 @@ pub struct SettleItems {
     pub positions: usize,
     pub attestations: usize,
     pub spec_bindings: usize,
-    pub accruals: usize,
-    pub usage_sellers: usize,
+    /// The uses the counter is handed, one per (kind, key, process).
+    pub uses: usize,
     /// The operation stream's 32-byte words, rounded up.
     pub stream_words: usize,
     /// The stream's commit entries, each read for its ids and events.
@@ -149,8 +149,7 @@ impl SettleItems {
             positions: positions.len(),
             attestations: events.attestations.len(),
             spec_bindings: events.spec_bindings.len(),
-            accruals: events.usage_accruals.len(),
-            usage_sellers: events.usage_sellers.len(),
+            uses: events.uses.len(),
             stream_words: 0,
             stream_commits: 0,
             stream_resolved_orders: 0,
@@ -194,8 +193,7 @@ pub fn settle_gas_estimate(calldata: &[u8], items: SettleItems) -> u64 {
         + items.positions as u64 * SETTLE_GAS_PER_POSITION
         + items.attestations as u64 * SETTLE_GAS_PER_ATTESTATION
         + items.spec_bindings as u64 * SETTLE_GAS_PER_SPEC_BINDING
-        + items.accruals as u64 * SETTLE_GAS_PER_ACCRUAL
-        + items.usage_sellers as u64 * SETTLE_GAS_PER_USAGE_SELLER
+        + items.uses as u64 * SETTLE_GAS_PER_USE
         + stream_exec_gas(items.stream_words as u64)
         + items.stream_commits as u64 * SETTLE_GAS_PER_STREAM_COMMIT
         + items.stream_resolved_orders as u64 * SETTLE_GAS_PER_STREAM_RESOLVED_ORDER
@@ -373,10 +371,10 @@ mod tests {
 
     #[test]
     fn the_estimate_is_the_sum_of_its_parts() {
-        let items = SettleItems { positions: 2, attestations: 1, spec_bindings: 1, accruals: 1, usage_sellers: 1, stream_words: 0, stream_commits: 0, stream_resolved_orders: 0, stream_resolutions: 0, stream_claims: 0 };
+        let items = SettleItems { positions: 2, attestations: 1, spec_bindings: 1, uses: 1, stream_words: 0, stream_commits: 0, stream_resolved_orders: 0, stream_resolutions: 0, stream_claims: 0 };
         assert_eq!(
             settle_gas_estimate(&[1], items),
-            21_016 + 300_000 + 105_000 + 120_000 + 6_000 + 4_500 + 190_000 + 12_000
+            21_016 + 300_000 + 105_000 + 120_000 + 6_000 + 4_500 + SETTLE_GAS_PER_USE
         );
     }
 

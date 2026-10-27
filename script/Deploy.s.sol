@@ -293,8 +293,7 @@ contract Deploy is Script {
         _deployUsageCounter(core, members, predictedVerifier);
 
         // Genesis root is DERIVED — one keccak256("") per mirror state map
-        // (processes, orderStatus, orderProcessId) plus the usage leg, which
-        // is itself keccak over three zero-length sections, matching the Rust
+        // (processes, orderStatus, orderProcessId), matching the Rust
         // KernelState::compute_root on the empty state.
         // The guest fingerprint the verifier pins: the sequencer this tree
         // built reports its own (`sequencer --vkey`, exported by the deploy

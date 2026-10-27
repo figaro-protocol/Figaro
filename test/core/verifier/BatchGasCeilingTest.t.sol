@@ -8,7 +8,7 @@ import {IUsageCounter} from "src/core/verifier/FigaroBatchVerifier.sol";
 /// @title Batch gas ceiling anchors — the empirical per-item cost of `settleBatch`
 /// @notice What a batch costs the chain is what it PUBLISHES — the net positions
 ///         it transfers, the attestation events it re-emits, the spec bindings it
-///         anchors and the usage accruals it writes — not the number of
+///         anchors and the uses it hands the counter — not the number of
 ///         operations it proves. The relay bounds a batch by this cost against the
 ///         live block gas limit (`prover/sequencer/src/gas.rs`); the constants
 ///         below are the execution marginals it carries, measured here with the
@@ -25,14 +25,14 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     // this pre-fork EVM (`foundry.toml`, cancun; the default profile, whose
     // figures stand a little above the via-IR profile's): a payout position
     // 26,335, a deposit position 10,901, an attestation event 3,925, a spec
-    // binding 2,841, an accrual 91,982, a usage seller 3,055, the fixed
-    // execution 52,089. The live chain is past Glamsterdam, which reprices
+    // binding 2,841, a use 132,219 (a key, a seller and a process each new
+    // to the counter), the fixed execution 54,458. The live chain is past Glamsterdam, which reprices
     // state creation (EIP-8037) and refunds (EIP-7778): FigaroCore's
     // resolve measured 29,800 an order on post-fork receipts against 11,960
     // here. So each constant carries an allowance over its measurement —
     // at least twice for the items that write state (the position, the
-    // accrual, the fixed execution), at least half again for the event and
-    // the two registry reads — and the relay's estimate is a ceiling until
+    // use, the fixed execution), at least half again for the event and
+    // the registry read — and the relay's estimate is a ceiling until
     // a wide batch lands on the live chain and the items are re-measured
     // from its receipt, as the direct path's constants were. The allowance
     // is a judgment, not a measurement: the five Sepolia receipts carry too
@@ -43,8 +43,7 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     uint256 internal constant SETTLE_GAS_PER_POSITION = 60_000;
     uint256 internal constant SETTLE_GAS_PER_ATTESTATION = 6_000;
     uint256 internal constant SETTLE_GAS_PER_SPEC_BINDING = 4_500;
-    uint256 internal constant SETTLE_GAS_PER_ACCRUAL = 190_000;
-    uint256 internal constant SETTLE_GAS_PER_USAGE_SELLER = 12_000;
+    uint256 internal constant SETTLE_GAS_PER_USE = 270_000;
     uint256 internal constant SETTLE_FIXED_EXEC_GAS = 105_000;
     /// @dev The operation stream's execution: the calldata copy, the keccak
     ///      over it, the memory it expands into, and the `BatchOperations`
@@ -181,33 +180,20 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         }
     }
 
-    /// @dev `n` accruals of `n` DISTINCT keys the counter accepts and writes.
-    function _accruals(uint256 n, uint256 seed) internal view returns (FigaroBatchVerifier.BatchUsageData memory u) {
+    /// @dev `n` uses the counter counts, each the dearest kind: a key, a
+    ///      registered seller and a process each new to the counter, so every
+    ///      read is cold and every write a fresh slot.
+    function _uses(uint256 n, uint256 seed) internal returns (FigaroBatchVerifier.BatchUsageData memory u) {
         u.period = counter.currentPeriod();
         u.provenanceLeaf = PROVENANCE_LEAF;
-        u.accruals = new IUsageCounter.BatchAccrual[](n);
-        for (uint256 i = 0; i < n; i++) {
-            u.accruals[i] = IUsageCounter.BatchAccrual(
-                keccak256(abi.encode("accrual-key", seed, i)), 0, uint64(i + 1), uint64(i + 1)
-            );
-        }
-        u.sellers = new address[](1);
-        u.sellers[0] = seller;
-    }
-
-    /// @dev One accrual naming `n` DISTINCT registered sellers — each a call
-    ///      into the members registry.
-    function _sellers(uint256 n, uint256 seed) internal returns (FigaroBatchVerifier.BatchUsageData memory u) {
-        u.period = counter.currentPeriod();
-        u.provenanceLeaf = PROVENANCE_LEAF;
-        u.accruals = new IUsageCounter.BatchAccrual[](1);
-        u.accruals[0] = IUsageCounter.BatchAccrual(keccak256(abi.encode("sellers-key", seed)), 0, 1, 1);
-        u.sellers = new address[](n);
+        u.uses = new IUsageCounter.BatchUse[](n);
         for (uint256 i = 0; i < n; i++) {
             address who = address(uint160(seed + i));
             vm.prank(who);
             members.register("ipfs://gas-seller");
-            u.sellers[i] = who;
+            u.uses[i] = IUsageCounter.BatchUse(
+                keccak256(abi.encode("use-key", seed, i)), 0, keccak256(abi.encode("use-process", seed, i)), who
+            );
         }
     }
 
@@ -423,21 +409,12 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         assertLe(marginal, SETTLE_GAS_PER_SPEC_BINDING, "a spec binding rose past its anchor (re-measure)");
     }
 
-    function test_Gas_settleUsageSellerMarginal() public {
-        uint256 g20 = _settleExecGas(new FigaroBatchVerifier.NetPosition[](0), _noEvents(), _sellers(20, 0x50000));
-        uint256 g70 = _settleExecGas(new FigaroBatchVerifier.NetPosition[](0), _noEvents(), _sellers(70, 0x60000));
+    function test_Gas_settleUseMarginal() public {
+        uint256 g20 = _settleExecGas(new FigaroBatchVerifier.NetPosition[](0), _noEvents(), _uses(20, 0x50000));
+        uint256 g70 = _settleExecGas(new FigaroBatchVerifier.NetPosition[](0), _noEvents(), _uses(70, 0x60000));
         uint256 marginal = (g70 - g20) / 50;
-        emit log_named_uint("settle_usage_seller_marginal", marginal);
-        assertGe(marginal, 1_000, "a usage seller check dropped unexpectedly (counter change?)");
-        assertLe(marginal, SETTLE_GAS_PER_USAGE_SELLER, "a usage seller check rose past its anchor (re-measure)");
-    }
-
-    function test_Gas_settleAccrualMarginal() public {
-        uint256 g20 = _settleExecGas(new FigaroBatchVerifier.NetPosition[](0), _noEvents(), _accruals(20, 1));
-        uint256 g70 = _settleExecGas(new FigaroBatchVerifier.NetPosition[](0), _noEvents(), _accruals(70, 2));
-        uint256 marginal = (g70 - g20) / 50;
-        emit log_named_uint("settle_accrual_marginal", marginal);
-        assertGe(marginal, 10_000, "an accrual dropped unexpectedly (counter change?)");
-        assertLe(marginal, SETTLE_GAS_PER_ACCRUAL, "an accrual rose past its anchor (re-measure)");
+        emit log_named_uint("settle_use_marginal", marginal);
+        assertGe(marginal, 10_000, "a use dropped unexpectedly (counter change?)");
+        assertLe(marginal, SETTLE_GAS_PER_USE, "a use rose past its anchor (re-measure)");
     }
 }

@@ -260,7 +260,9 @@ its visitors' browsers submit for it, each from an address of its own past
   by `<url>`: an HTTP client's error names the URL it requested, and a keyed
   RPC URL carries its key. `last_dropped_claim_error` is recorded the same way.
   `dropped_usage_claims` counts the usage claims dropped without landing —
-  at the pre-filter, at formation (one that would abort the proof), with no
+  at the pre-filter (one the counter would skip: an un-live key, an unstaked
+  seller, a process already counted), at formation (one that would abort the
+  proof, or a second claim of a use the batch carries), with no
   counter or accrual closed, or with a batch that did not land — apart from
   the operations, and `last_dropped_claim_error` carries the latest reason. Neither says whose
   operation died: anyone may submit an operation that fails at formation, so
@@ -446,7 +448,7 @@ A batch has to fit one block and be proved in one sitting. The second bound
 is the operator's, `MAX_BATCH_OPS`. The first is the chain's and is derived:
 what a batch costs the chain is what it publishes — the net positions
 `settleBatch` transfers, the attestation events it re-emits, the spec
-bindings it anchors, the usage accruals it writes — plus the proof's
+bindings it anchors, the uses it hands the counter — plus the proof's
 verification, the call's fixed execution and the calldata it carries, never
 the number of operations proved. Before proving, the relay executes the
 assembled batch on its mirror, counts those items, encodes the calldata they

@@ -552,12 +552,13 @@ contract UsageCounterTest is Test {
             AgreementTestHelper.proofFor(_assemblyLeaves(), 0)
         );
 
-        // The batch path's twin: an accrual naming the reserved key is skipped,
-        // never written, and the period total stays put — with the squatted
+        // The batch path's twin: a use naming the reserved key is skipped,
+        // never counted, and the period total stays put — with the squatted
         // registrations live.
+        UsageCounter.BatchUse[] memory uses1 = _cd(PROVENANCE_LEAF, KIND_CLAUSE, 9, 3, 1);
         vm.prank(batchVerifier);
-        real.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(PROVENANCE_LEAF, 9, 9), _sellers(seller1));
-        (uint64 bc,, uint256 score) = real.batchAccrualOf(KIND_CLAUSE, PROVENANCE_LEAF, 0);
+        real.applyBatchAccrual(0, PROVENANCE_LEAF, uses1);
+        (uint64 bc,, uint256 score) = real.accrualOf(KIND_CLAUSE, PROVENANCE_LEAF, 0);
         assertEq(bc, 0, "the reserved key is never written");
         assertEq(score, 0, "the reserved key never scores");
         assertEq(real.totalScoreIn(0), 0, "total unchanged");
@@ -582,13 +583,12 @@ contract UsageCounterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ReservedKeyIsNotARegistration.selector, terms));
         counter.recordAgreementUsage(d, terms, _asmRoot(), dProof);
 
-        UsageCounter.BatchAccrual[] memory a = new UsageCounter.BatchAccrual[](2);
-        a[0] = UsageCounter.BatchAccrual(PROVENANCE_LEAF, KIND_AGREEMENT, 9, 9);
-        a[1] = UsageCounter.BatchAccrual(terms, KIND_AGREEMENT, 9, 9);
+        UsageCounter.BatchUse[] memory uses2 =
+            _join(_cd(PROVENANCE_LEAF, KIND_AGREEMENT, 9, 3, 1), _cd(terms, KIND_AGREEMENT, 9, 3, 2));
         vm.prank(batchVerifier);
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, a, _sellers(seller1));
-        (uint64 bp,,) = counter.batchAccrualOf(KIND_AGREEMENT, PROVENANCE_LEAF, 0);
-        (uint64 bt,,) = counter.batchAccrualOf(KIND_AGREEMENT, terms, 0);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, uses2);
+        (uint64 bp,,) = counter.accrualOf(KIND_AGREEMENT, PROVENANCE_LEAF, 0);
+        (uint64 bt,,) = counter.accrualOf(KIND_AGREEMENT, terms, 0);
         assertEq(bp, 0, "the provenance key is never written under the agreement kind");
         assertEq(bt, 0, "the terms key is never written under the agreement kind");
         assertEq(counter.totalScoreIn(0), 0, "total unchanged");
@@ -749,18 +749,16 @@ contract UsageCounterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseAgreementOrAssemblyNotRegistered.selector, k));
         real.recordAgreementUsage(late, k, k, lateProof);
 
-        UsageCounter.BatchAccrual[] memory a = new UsageCounter.BatchAccrual[](3);
-        a[0] = UsageCounter.BatchAccrual(k, KIND_CLAUSE, 2, 2);
-        a[1] = UsageCounter.BatchAccrual(k, KIND_ASSEMBLY, 3, 2);
-        a[2] = UsageCounter.BatchAccrual(k, KIND_AGREEMENT, 4, 2);
+        UsageCounter.BatchUse[] memory uses3 =
+            _join(_join(_cd(k, KIND_CLAUSE, 2, 2, 1), _cd(k, KIND_ASSEMBLY, 3, 2, 2)), _cd(k, KIND_AGREEMENT, 4, 2, 3));
         vm.prank(batchVerifier);
-        real.applyBatchAccrual(0, PROVENANCE_LEAF, a, _sellers(seller1));
-        (uint64 bClause,,) = real.batchAccrualOf(KIND_CLAUSE, k, 0);
-        (uint64 bAssembly,,) = real.batchAccrualOf(KIND_ASSEMBLY, k, 0);
-        (uint64 bAgreement,,) = real.batchAccrualOf(KIND_AGREEMENT, k, 0);
-        assertEq(bClause, 2, "the clause kind is gated by the clause registry alone");
-        assertEq(bAssembly, 3, "the assembly kind is gated by the assembly registry alone");
-        assertEq(bAgreement, 0, "the agreement kind closed with its own stake");
+        real.applyBatchAccrual(0, PROVENANCE_LEAF, uses3);
+        (uint64 bClause,,) = real.accrualOf(KIND_CLAUSE, k, 0);
+        (uint64 bAssembly,,) = real.accrualOf(KIND_ASSEMBLY, k, 0);
+        (uint64 bAgreement,,) = real.accrualOf(KIND_AGREEMENT, k, 0);
+        assertEq(bClause, 1 + 2, "the clause kind is gated by the clause registry alone");
+        assertEq(bAssembly, 1 + 3, "the assembly kind is gated by the assembly registry alone");
+        assertEq(bAgreement, 1, "the agreement kind closed with its own stake");
     }
 
     /// @dev The processId FigaroCore assigns a first order.
@@ -802,9 +800,9 @@ contract UsageCounterTest is Test {
         assertEq(real.scoreOf(KIND_ASSEMBLY, root, 0), asmScore);
     }
 
-    /// The batch path gates each accrual by its OWN kind's registry, never
+    /// The batch path gates each use by its OWN kind's registry, never
     /// "any live registration": a clause stake at an assembly's bytes neither
-    /// joins the assembly's accrual nor keeps it alive once the assembly's own
+    /// joins the assembly's tally nor keeps it alive once the assembly's own
     /// stake is withdrawn. A kind beyond the three names no registry and is
     /// skipped.
     function test_batchAccrualGatesEachKindByItsOwnRegistry() public {
@@ -812,21 +810,20 @@ contract UsageCounterTest is Test {
         (UsageCounter real, AssemblyRegistry assemblies_) = _counterWithASquattedAssemblyKey(designer, address(0x5745));
         bytes32 root = _asmRoot();
 
-        UsageCounter.BatchAccrual[] memory a = new UsageCounter.BatchAccrual[](4);
-        a[0] = UsageCounter.BatchAccrual(root, KIND_CLAUSE, 1, 1);
-        a[1] = UsageCounter.BatchAccrual(root, KIND_ASSEMBLY, 5, 3);
-        a[2] = UsageCounter.BatchAccrual(root, KIND_AGREEMENT, 8, 8);
-        a[3] = UsageCounter.BatchAccrual(root, 3, 9, 9);
+        UsageCounter.BatchUse[] memory uses4 = _join(
+            _join(_cd(root, KIND_CLAUSE, 1, 1, 1), _cd(root, KIND_ASSEMBLY, 5, 3, 2)),
+            _join(_cd(root, KIND_AGREEMENT, 8, 3, 3), _cd(root, 3, 9, 3, 4))
+        );
         vm.prank(batchVerifier);
-        real.applyBatchAccrual(0, PROVENANCE_LEAF, a, _sellers(seller1));
+        real.applyBatchAccrual(0, PROVENANCE_LEAF, uses4);
 
-        (uint64 asmC, uint64 asmD,) = real.batchAccrualOf(KIND_ASSEMBLY, root, 0);
-        (uint64 clauseC, uint64 clauseD,) = real.batchAccrualOf(KIND_CLAUSE, root, 0);
-        (uint64 agreementC,,) = real.batchAccrualOf(KIND_AGREEMENT, root, 0);
-        (uint64 unknownC,,) = real.batchAccrualOf(3, root, 0);
+        (uint64 asmC, uint64 asmD,) = real.accrualOf(KIND_ASSEMBLY, root, 0);
+        (uint64 clauseC, uint64 clauseD,) = real.accrualOf(KIND_CLAUSE, root, 0);
+        (uint64 agreementC,,) = real.accrualOf(KIND_AGREEMENT, root, 0);
+        (uint64 unknownC,,) = real.accrualOf(3, root, 0);
         assertEq(asmC, 5);
         assertEq(asmD, 3);
-        assertEq(clauseC, 1, "the stranger's clause-kind accrual is its own");
+        assertEq(clauseC, 1, "the stranger's clause-kind tally is its own");
         assertEq(clauseD, 1);
         assertEq(agreementC, 0, "no agreement is registered at these bytes: skipped");
         assertEq(unknownC, 0, "a kind beyond the three is skipped");
@@ -836,30 +833,28 @@ contract UsageCounterTest is Test {
         // live clause stake at the same bytes does not reopen it.
         vm.prank(designer);
         assemblies_.withdrawDeposit(root);
-        UsageCounter.BatchAccrual[] memory b = new UsageCounter.BatchAccrual[](1);
-        b[0] = UsageCounter.BatchAccrual(root, KIND_ASSEMBLY, 6, 4);
+        UsageCounter.BatchUse[] memory uses5 = _cd(root, KIND_ASSEMBLY, 1, 1, 5);
         vm.prank(batchVerifier);
-        real.applyBatchAccrual(0, PROVENANCE_LEAF, b, _sellers(seller1));
-        (asmC, asmD,) = real.batchAccrualOf(KIND_ASSEMBLY, root, 0);
+        real.applyBatchAccrual(0, PROVENANCE_LEAF, uses5);
+        (asmC, asmD,) = real.accrualOf(KIND_ASSEMBLY, root, 0);
         assertEq(asmC, 5, "skipped: the clause registry is never read for an assembly");
         assertEq(asmD, 3);
     }
 
-    /// The agreement kind on the batch path: written while the agreement's
+    /// The agreement kind on the batch path: counted while the agreement's
     /// stake is live, skipped once it is not.
     function test_batchAccrualGatesTheAgreementKindByTheAgreementRegistry() public {
-        UsageCounter.BatchAccrual[] memory a = new UsageCounter.BatchAccrual[](2);
-        a[0] = UsageCounter.BatchAccrual(AGR_KEY, KIND_AGREEMENT, 4, 2);
-        a[1] = UsageCounter.BatchAccrual(AGR2_KEY, KIND_AGREEMENT, 4, 2);
         stake.kill(AGR2_KEY);
+        UsageCounter.BatchUse[] memory uses6 =
+            _join(_cd(AGR_KEY, KIND_AGREEMENT, 4, 2, 1), _cd(AGR2_KEY, KIND_AGREEMENT, 4, 2, 2));
         vm.prank(batchVerifier);
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, a, _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, uses6);
 
-        (uint64 live,, uint256 liveScore) = counter.batchAccrualOf(KIND_AGREEMENT, AGR_KEY, 0);
-        (uint64 dead,,) = counter.batchAccrualOf(KIND_AGREEMENT, AGR2_KEY, 0);
-        assertEq(live, 4, "a live agreement's batch accrual is written");
+        (uint64 live,, uint256 liveScore) = counter.accrualOf(KIND_AGREEMENT, AGR_KEY, 0);
+        (uint64 dead,,) = counter.accrualOf(KIND_AGREEMENT, AGR2_KEY, 0);
+        assertEq(live, 4, "a live agreement's uses are counted");
         assertEq(liveScore, _score(4, 2));
-        assertEq(dead, 0, "an un-live agreement's is skipped");
+        assertEq(dead, 0, "an un-live agreement's are skipped");
         assertEq(counter.totalScoreIn(0), liveScore);
     }
 
@@ -1123,36 +1118,45 @@ contract UsageCounterTest is Test {
 
     function test_floor_batchPathHonorsIt() public {
         UsageCounter floored = _flooredCounter();
+        UsageCounter.BatchUse[] memory first = _cd(CARGO_KEY, KIND_CLAUSE, 4, 2, 1);
+        // Two more uses, one by a third staked seller: (6, 3).
+        UsageCounter.BatchUse[] memory more = new UsageCounter.BatchUse[](2);
+        more[0] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, keccak256("batch-process-a"), _staked(2));
+        more[1] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, keccak256("batch-process-b"), _staked(0));
         vm.startPrank(batchVerifier);
-        floored.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 4, 2), _sellers(seller1));
-        (,, uint256 below) = floored.batchAccrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        floored.applyBatchAccrual(0, PROVENANCE_LEAF, first);
+        (,, uint256 below) = floored.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(below, 0, "the floor is _score's, so the batch path inherits it");
         assertEq(floored.totalScoreIn(0), 0);
 
-        floored.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 6, 3), _sellers(seller1));
+        floored.applyBatchAccrual(0, PROVENANCE_LEAF, more);
         vm.stopPrank();
-        (,, uint256 above) = floored.batchAccrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        (,, uint256 above) = floored.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(above, _score(6, 3));
         assertEq(floored.totalScoreIn(0), above);
     }
 
-    /// The floor is applied PER RESOLUTION PATH, deliberately: the chain holds
-    /// counts, not the seller sets, so it cannot know whether the paths' d
-    /// values share sellers. Summing toward the floor would let ONE seller
-    /// straddle the universes and count twice; flooring each side separately
-    /// can only ever UNDER-pay a boundary case — conservative, like the score
-    /// merge itself.
-    function test_floor_isPerPathNeverSummedAcrossUniverses() public {
+    /// The floor counts distinct staked sellers in the one tally, whichever
+    /// route carried each: two sellers on the direct path and a third in a
+    /// batch meet a floor of 3, and a seller already counted on one route
+    /// adds nothing toward it on the other.
+    function test_floor_isMetBySellersOnEitherRoute() public {
         UsageCounter floored = _flooredCounter();
         _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1), CARGO_KEY);
         _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller2, SELLER2_KEY, 2), CARGO_KEY);
-        vm.prank(batchVerifier);
-        floored.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 2, 2), _sellers(seller1));
 
-        // 2 direct + 2 batch is four units of d in total, but neither path
-        // reached 3 on its own — so nothing scores.
-        assertEq(floored.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), 0);
-        assertEq(floored.totalScoreIn(0), 0);
+        UsageCounter.BatchUse[] memory again = new UsageCounter.BatchUse[](1);
+        again[0] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, keccak256("batch-process-a"), seller1);
+        vm.prank(batchVerifier);
+        floored.applyBatchAccrual(0, PROVENANCE_LEAF, again);
+        assertEq(floored.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), 0, "seller1 again: still two sellers");
+
+        UsageCounter.BatchUse[] memory third = new UsageCounter.BatchUse[](1);
+        third[0] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, keccak256("batch-process-b"), seller3);
+        vm.prank(batchVerifier);
+        floored.applyBatchAccrual(0, PROVENANCE_LEAF, third);
+        assertEq(floored.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), _score(4, 3), "the third seller meets the floor");
+        assertEq(floored.totalScoreIn(0), _score(4, 3));
     }
 
     function test_floor_isADeployConstant() public {
@@ -1242,13 +1246,45 @@ contract UsageCounterTest is Test {
     // here, is the reward's own gates: who may write, which period is open,
     // which sellers are staked, which clauses and assemblies are live.
 
-    function _accrual(bytes32 clauseOrAssembly, uint64 c, uint64 d)
+    /// @dev A staked seller beyond the fixture's three: the `i`th, registered on
+    ///      first use (the suite's members registry takes no deposit).
+    function _staked(uint256 i) internal returns (address who) {
+        who = address(uint160(0x5E11E000 + i));
+        if (!members.registered(who)) {
+            vm.prank(who);
+            members.register("ipfs://a-staked-seller");
+        }
+    }
+
+    /// @dev `c` uses of `key` under `kind`, one per fresh batch-path process
+    ///      (`seed` keeps two batches' processes apart), carried by `d`
+    ///      distinct staked sellers.
+    function _cd(bytes32 key, uint8 kind, uint64 c, uint64 d, uint256 seed)
+        internal
+        returns (UsageCounter.BatchUse[] memory u)
+    {
+        require(c >= d && d > 0, "c >= d > 0");
+        u = new UsageCounter.BatchUse[](c);
+        for (uint256 i = 0; i < c; ++i) {
+            u[i] = UsageCounter.BatchUse(
+                key, kind, keccak256(abi.encode("batch-process", seed, i)), _staked(i < d ? i : 0)
+            );
+        }
+    }
+
+    /// @dev Two batches' uses as one array.
+    function _join(UsageCounter.BatchUse[] memory a, UsageCounter.BatchUse[] memory b)
         internal
         pure
-        returns (UsageCounter.BatchAccrual[] memory a)
+        returns (UsageCounter.BatchUse[] memory u)
     {
-        a = new UsageCounter.BatchAccrual[](1);
-        a[0] = UsageCounter.BatchAccrual(clauseOrAssembly, KIND_CLAUSE, c, d);
+        u = new UsageCounter.BatchUse[](a.length + b.length);
+        for (uint256 i = 0; i < a.length; ++i) {
+            u[i] = a[i];
+        }
+        for (uint256 i = 0; i < b.length; ++i) {
+            u[a.length + i] = b[i];
+        }
     }
 
     function _sellers(address s) internal pure returns (address[] memory list) {
@@ -1256,73 +1292,127 @@ contract UsageCounterTest is Test {
         list[0] = s;
     }
 
-    function test_batchAccrualIsWrittenAndScored() public {
-        vm.prank(batchVerifier);
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 4, 2), _sellers(seller1));
+    // ── One tally, route-blind ──────────────────────────────────────
+    // A use is a use whichever way its process reached the chain: one tally
+    // per (kind, key, period), one distinct-seller set, one score.
 
-        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+    /// @dev Hand the counter one batch's uses of `key`, as the verifier does.
+    function _batchUses(bytes32 key, bytes32[] memory processIds, address[] memory sellers) internal {
+        UsageCounter.BatchUse[] memory u = new UsageCounter.BatchUse[](processIds.length);
+        for (uint256 i = 0; i < processIds.length; ++i) {
+            u[i] = UsageCounter.BatchUse(key, KIND_CLAUSE, processIds[i], sellers[i]);
+        }
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
+    }
+
+    function _one(bytes32 x) internal pure returns (bytes32[] memory list) {
+        list = new bytes32[](1);
+        list[0] = x;
+    }
+
+    /// The same seller carries a key once on the direct path and once in a
+    /// batch: one tally of two uses and one seller, scored once.
+    function test_oneTally_sameSellerOnBothRoutesIsTwoUsesOneSeller() public {
+        CommitmentTypes.Commitment memory o = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        _record(o, CARGO_KEY);
+        _batchUses(CARGO_KEY, _one(keccak256("batch-process-1")), _sellers(seller1));
+
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c, 2, "both uses in the one tally");
+        assertEq(d, 1, "one seller, counted once across the routes");
+        assertEq(score, _score(2, 1));
+        assertEq(counter.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), _score(2, 1), "scored as one tally");
+        assertEq(counter.totalScoreIn(0), _score(2, 1), "the period total holds the one score");
+    }
+
+    /// Two sellers, one per route: two uses and two sellers in one tally.
+    function test_oneTally_twoSellersOnePerRouteIsTwoUsesTwoSellers() public {
+        CommitmentTypes.Commitment memory o = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        _record(o, CARGO_KEY);
+        _batchUses(CARGO_KEY, _one(keccak256("batch-process-1")), _sellers(seller2));
+
+        (uint64 c, uint64 d,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c, 2);
+        assertEq(d, 2);
+        assertEq(counter.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), _score(2, 2));
+        assertEq(counter.totalScoreIn(0), _score(2, 2));
+    }
+
+    /// A seller counted on the direct path and then carried in a batch's two
+    /// processes enters breadth once: three uses, one seller.
+    function test_oneTally_aSellerCountedDirectThenInABatchIsCountedOnce() public {
+        CommitmentTypes.Commitment memory o = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        _record(o, CARGO_KEY);
+        bytes32[] memory pids = new bytes32[](2);
+        pids[0] = keccak256("batch-process-1");
+        pids[1] = keccak256("batch-process-2");
+        address[] memory sellers = new address[](2);
+        sellers[0] = seller1;
+        sellers[1] = seller1;
+        _batchUses(CARGO_KEY, pids, sellers);
+
+        (uint64 c, uint64 d,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c, 3);
+        assertEq(d, 1, "the seller already in the period's set is not counted again");
+        assertTrue(counter.sellerSeen(KIND_CLAUSE, CARGO_KEY, 0, seller1));
+        assertEq(counter.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), _score(3, 1));
+    }
+
+    function test_batchAccrualIsCountedAndScored() public {
+        UsageCounter.BatchUse[] memory u = _cd(CARGO_KEY, KIND_CLAUSE, 4, 2, 1);
+        vm.expectEmit(true, true, true, true, address(counter));
+        emit UsageCounter.UsageRecorded(KIND_CLAUSE, CARGO_KEY, 0, u[0].processId, u[0].seller, 1, 1, _score(1, 1));
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
+
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(c, 4);
         assertEq(d, 2);
         assertEq(score, _score(4, 2));
-        assertEq(counter.totalScoreIn(0), score, "the batch score joins the period total");
-        // The direct entry is untouched — the two paths never share storage.
-        (uint64 dc,, uint256 dScore) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
-        assertEq(dc, 0);
-        assertEq(dScore, 0);
+        assertEq(counter.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), score);
+        assertEq(counter.totalScoreIn(0), score, "the score joins the period total");
+        for (uint256 i = 0; i < u.length; ++i) {
+            assertTrue(counter.processCounted(KIND_CLAUSE, CARGO_KEY, u[i].processId), "each process is counted");
+        }
     }
 
     function test_onlyTheBatchVerifierCanWriteBatchAccrual() public {
+        UsageCounter.BatchUse[] memory u = _cd(CARGO_KEY, KIND_CLAUSE, 1, 1, 1);
         vm.expectRevert(UsageCounter.NotBatchVerifier.selector);
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
 
         // Not even a live-staked seller writing for their own trade.
         vm.prank(seller1);
         vm.expectRevert(UsageCounter.NotBatchVerifier.selector);
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
-    }
-
-    /// THE MERGE RULE — `scoreOf` sums the two paths' SCORES, never their
-    /// components. The chain holds counts, not the seller SETS, so it cannot
-    /// union them; adding `d` to `d` would pay for breadth an attacker never
-    /// had, simply for splitting one seller's trade across the two universes.
-    function test_theTwoPathsSumAsScoresNeverAsComponents() public {
-        CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
-        _record(c, CARGO_KEY); // direct: c=1, d=1
-
-        vm.prank(batchVerifier);
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1)); // batch: c=1, d=1
-
-        assertEq(counter.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), _score(1, 1) * 2, "scores add");
-        assertEq(counter.totalScoreIn(0), counter.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), "the total tracks the sum");
-    }
-
-    /// The score is homogeneous of degree 1 and concave, so the component
-    /// merge is SUPERADDITIVE: summing scores can never exceed it, and the two
-    /// coincide EXACTLY when the split is proportional. Both halves are
-    /// asserted because both are load-bearing — the inequality is what closes
-    /// the split-across-universes farm, and the equality is why closing it
-    /// costs an honest clause or assembly nothing when its trade divides evenly.
-    function test_summingScoresNeverExceedsTheComponentMerge() public view {
-        // Lopsided: depth on one path, breadth on the other.
-        assertLt(_score(4, 1) + _score(1, 4), _score(5, 5), "non-proportional split loses a little");
-        // Proportional: exactly equal, no shortfall at all.
-        assertEq(_score(1, 1) + _score(1, 1), _score(2, 2), "proportional split loses nothing");
-        assertEq(_score(2, 4) + _score(1, 2), _score(3, 6), "and again at another ratio");
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
     }
 
     function test_batchAccrualRequiresTheOpenPeriod() public {
+        UsageCounter.BatchUse[] memory u = _cd(CARGO_KEY, KIND_CLAUSE, 1, 1, 1);
         vm.prank(batchVerifier);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.PeriodMismatch.selector, 0, 1));
-        counter.applyBatchAccrual(1, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+        counter.applyBatchAccrual(1, PROVENANCE_LEAF, u);
     }
 
-    function test_batchAccrualRequiresALiveSellerStake() public {
+    /// The seller gate is the direct path's, per use: a use whose seller has
+    /// left the registry is not counted, the batch's other uses are, and the
+    /// skipped process stays uncounted so it may be presented again.
+    function test_batchAccrualSkipsAnUnstakedSellersUse() public {
         vm.prank(seller1);
         members.requestWithdrawal(); // de-surfaces immediately
 
+        UsageCounter.BatchUse[] memory u = new UsageCounter.BatchUse[](2);
+        u[0] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, keccak256("batch-process-a"), seller1);
+        u[1] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, keccak256("batch-process-b"), seller2);
         vm.prank(batchVerifier);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.SellerNotStaked.selector, seller1));
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
+
+        (uint64 c, uint64 d,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c, 1, "only the staked seller's use counts");
+        assertEq(d, 1);
+        assertFalse(counter.sellerSeen(KIND_CLAUSE, CARGO_KEY, 0, seller1));
+        assertFalse(counter.processCounted(KIND_CLAUSE, CARGO_KEY, keccak256("batch-process-a")));
     }
 
     function test_batchAccrualSkipsAnUnregisteredClauseOrAssembly() public {
@@ -1330,10 +1420,11 @@ contract UsageCounterTest is Test {
         // the batch-path twin of the direct path's ClauseAgreementOrAssemblyNotRegistered revert.
         stake.kill(CARGO_KEY);
         uint256 totalBefore = counter.totalScoreIn(0);
+        UsageCounter.BatchUse[] memory uses7 = _cd(CARGO_KEY, KIND_CLAUSE, 9, 3, 1);
         vm.prank(batchVerifier);
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 9, 9), _sellers(seller1));
-        (uint64 c,, uint256 score) = counter.batchAccrualOf(KIND_CLAUSE, CARGO_KEY, 0);
-        assertEq(c, 0, "unregistered clause or assembly not written");
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, uses7);
+        (uint64 c,, uint256 score) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c, 0, "unregistered clause or assembly not counted");
         assertEq(score, 0, "unregistered clause or assembly not scored");
         assertEq(counter.totalScoreIn(0), totalBefore, "total unchanged");
     }
@@ -1341,41 +1432,57 @@ contract UsageCounterTest is Test {
     function test_batchAccrualRejectsAForeignProvenanceLeaf() public {
         // A clause key cannot stand in for the format's reserved leaf.
         bytes32 impostor = keccak256('{"clauseId":"figaro-commerce","version":1}');
+        UsageCounter.BatchUse[] memory u = _cd(CARGO_KEY, KIND_CLAUSE, 1, 1, 1);
         vm.prank(batchVerifier);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ProvenanceLeafMismatch.selector, PROVENANCE_LEAF, impostor));
-        counter.applyBatchAccrual(0, impostor, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+        counter.applyBatchAccrual(0, impostor, u);
     }
 
-    /// Cumulative counts are monotone. The state-root check upstream already
-    /// guarantees it; the assertion here means a guest regression surfaces as
-    /// a revert instead of silently destroying accrual (and, via the running
-    /// total, everyone else's share).
-    function test_batchAccrualCannotGoBackwards() public {
+    /// A process counts once ever, across batches and across routes: the
+    /// counter's own `processCounted` holds for both, so a use presented
+    /// again — in a later batch, or for a process the direct path already
+    /// counted — is skipped.
+    function test_batchAccrualSkipsAProcessAlreadyCounted() public {
+        UsageCounter.BatchUse[] memory u = _cd(CARGO_KEY, KIND_CLAUSE, 2, 2, 1);
         vm.startPrank(batchVerifier);
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 5, 3), _sellers(seller1));
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.AccrualWentBackwards.selector, CARGO_KEY));
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 4, 3), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, u);
         vm.stopPrank();
+        (uint64 c, uint64 d,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c, 2, "a second presentation counts nothing");
+        assertEq(d, 2);
+
+        CommitmentTypes.Commitment memory o = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 7);
+        _record(o, CARGO_KEY);
+        UsageCounter.BatchUse[] memory same = new UsageCounter.BatchUse[](1);
+        same[0] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, _pid(o), seller1);
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, same);
+        (c,,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        assertEq(c, 3, "a process the direct path counted is not counted again");
     }
 
-    /// Writes are OVERWRITES of a cumulative total, not additions — so a
-    /// second batch reporting (6,4) leaves the clause or assembly at (6,4), and the
-    /// period total moves by the DELTA of the scores, never by the new score.
-    function test_batchAccrualOverwritesRatherThanAccumulates() public {
+    /// A batch ADDS its uses to the tally: a second batch with one more use by
+    /// a new seller moves (5, 3) to (6, 4), and the period total moves by the
+    /// DELTA of the scores.
+    function test_batchAccrualAddsToTheTally() public {
+        UsageCounter.BatchUse[] memory five = _cd(CARGO_KEY, KIND_CLAUSE, 5, 3, 1);
+        UsageCounter.BatchUse[] memory one = new UsageCounter.BatchUse[](1);
+        one[0] = UsageCounter.BatchUse(CARGO_KEY, KIND_CLAUSE, keccak256("batch-process-a"), _staked(3));
         vm.startPrank(batchVerifier);
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 5, 3), _sellers(seller1));
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 6, 4), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, five);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, one);
         vm.stopPrank();
 
-        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(c, 6);
         assertEq(d, 4);
         assertEq(score, _score(6, 4));
-        assertEq(counter.totalScoreIn(0), _score(6, 4), "total holds the latest score, not the sum of writes");
+        assertEq(counter.totalScoreIn(0), _score(6, 4), "total holds the tally's score");
     }
 
     /// LIVENESS: trade must keep resolving after the reward stops. An empty
-    /// accrual returns before `currentPeriod()` is consulted — otherwise every
+    /// batch returns before `currentPeriod()` is consulted — otherwise every
     /// batch would revert `AccrualClosed` forever once the last period ended,
     /// and the scaling path would be bricked by the reward path.
     function test_emptyBatchAccrualStillSettlesAfterAccrualCloses() public {
@@ -1384,16 +1491,17 @@ contract UsageCounterTest is Test {
         counter.currentPeriod();
 
         vm.prank(batchVerifier);
-        counter.applyBatchAccrual(0, bytes32(0), new UsageCounter.BatchAccrual[](0), new address[](0));
+        counter.applyBatchAccrual(0, bytes32(0), new UsageCounter.BatchUse[](0));
         // No revert, nothing written.
-        (uint64 c,,) = counter.batchAccrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        (uint64 c,,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(c, 0);
     }
 
     function test_batchAccrualRevertsOnceAccrualClosesIfItCarriesClaims() public {
+        UsageCounter.BatchUse[] memory u = _cd(CARGO_KEY, KIND_CLAUSE, 1, 1, 1);
         vm.warp(P1_END + 1);
         vm.prank(batchVerifier);
         vm.expectRevert(UsageCounter.AccrualClosed.selector);
-        counter.applyBatchAccrual(1, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+        counter.applyBatchAccrual(1, PROVENANCE_LEAF, u);
     }
 }

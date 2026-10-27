@@ -28,7 +28,7 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
                                │
                           UsageCounter ──▶ MembersRegistry
                             ▲   ▲     └──▶ ClauseRegistry, AgreementRegistry, AssemblyRegistry
-             writes accrual │   │ reads accrual
+                 hands uses │   │ reads accrual
                             │   │
           FigaroBatchVerifier   RpgfMinter ──▶ ClauseRegistry, AgreementRegistry, AssemblyRegistry, MembersRegistry
               │        │            │              (designer of record)
@@ -148,8 +148,10 @@ The proof-based path that resolves batches of processes beside the direct
   address, the one the batch's signatures were made under), logs the stream
   itself with the clock, usage period and provenance leaf its replay needs
   (`BatchOperations`, so the state behind any root is rebuilt from this
-  contract's logs, however the call reached it), forwards the usage accrual
-  to `UsageCounter.applyBatchAccrual`, and advances the state root.
+  contract's logs, however the call reached it), hands the batch's uses to
+  `UsageCounter.applyBatchAccrual` (a whole-call revert there is caught and
+  logged as `BatchAccrualSkipped`, so the reward never unwinds the trade), and
+  advances the state root.
 - Immutable `verifier` / `verifierHash` / `programVKey` / `clauseRegistry` /
   `usageCounter`; no admin, no upgrade path — a program change is a fresh
   deploy. Not a florin minter. The constructor binds one routed SP1 verifier
@@ -160,17 +162,18 @@ The proof-based path that resolves batches of processes beside the direct
 
 The two paths share no state: a batch-resolved process never acquires `FigaroCore`
 status (`core.orderStatus` stays 0 for it), so every reader folds both
-streams. The usage accrual is the one thing that crosses: the guest proves each
-clause's, agreement's or assembly's cumulative `(c, d)` under its kind, an eighth public
-value (`usageAccrualHash`) commits the period, the provenance leaf key, the
-accruals and the distinct sellers behind them (both array lengths in the
-preimage; each accrual packed `key(32) ‖ kind(1) ‖ c(8) ‖ d(8)`, a span of
-`49 + 49n + 20m` bytes for n accruals and m sellers), and `settleBatch`
-re-derives that hash from calldata before forwarding. What the proof cannot see — the open period, each seller's live
-stake, each clause's, agreement's or assembly's live registration — is checked in the
-counter. A batch that credits no
-usage passes empty arrays; that call is a no-op, which lets trade keep
-resolving after the reward's last period closes.
+streams. The uses are the one thing that crosses: the guest proves each
+claim — the order RESOLVED in the batch path's state, the key committed in its
+agreement — and gives one use per (kind, key, process) with the order's
+seller; an eighth public value (`usageAccrualHash`) commits the period, the
+provenance leaf key and the uses (the count prefixed; each use packed
+`key(32) ‖ kind(1) ‖ processId(32) ‖ seller(20)`, a span of `41 + 85n` bytes
+for n uses), and `settleBatch` re-derives that hash from calldata before
+handing the uses over. The counter counts them into the same tally a direct
+call feeds; what the proof cannot see — the open period, each seller's live
+stake, each key's live registration, a process already counted — is checked
+there. A batch that credits no usage passes an empty array; that call is a
+no-op, which lets trade keep resolving after the reward's last period closes.
 
 **`src/core/verifier/ISP1Verifier.sol`** — the Succinct SP1 verifier ABI,
 `verifyProof(programVKey, publicValues, proof)`, and `ISP1VerifierWithHash`, the
@@ -336,35 +339,41 @@ Three permissionless functions and one proof-gated writer:
   checks `AssemblyRegistry` only. An agreement that names no assembly carries
   no provenance leaf, and no process under it credits an agreement or an
   assembly designer.
-- `applyBatchAccrual(period, claimedProvenanceLeaf, accruals, sellers)` — callable
+- `applyBatchAccrual(period, claimedProvenanceLeaf, uses)` — callable
   only by `batchVerifier` (immutable). A proof-gated writer, not an admin: the
-  caller has no discretion, only numbers an immutable vkey committed
-  (`DESIGN_DECISIONS.md` §15). Each accrual is `BatchAccrual{bytes32
-  clauseOrAssembly, uint8 kind, uint64 c, uint64 d}` and is gated by its own
-  kind's registry — kind 2 by `AgreementRegistry` — and an unknown kind is skipped. The write overwrites the
-  clause's, agreement's or assembly's cumulative `(c, d)` for the period, so the batch path keeps no
-  per-process storage; counts are asserted non-decreasing
-  (`AccrualWentBackwards`). The open period (`PeriodMismatch`), the proved
-  leaf key against `provenanceLeaf` (`ProvenanceLeafMismatch`), and each
-  seller's live stake (`SellerNotStaked`) are checked here; a clause,
-  agreement or assembly without a live registration is skipped, never reverted, so the
-  batch's resolution stands. An empty accrual returns
-  before `currentPeriod()` is consulted, so the reward's end never blocks the
-  batch path.
+  caller has no discretion, only uses an immutable vkey committed
+  (`DESIGN_DECISIONS.md` §15). Each use is `BatchUse{bytes32
+  clauseOrAssembly, uint8 kind, bytes32 processId, address seller}` — a
+  resolved batch-path process that used the key, and the seller of the order
+  the guest proved it through, one per (kind, key, process) in the batch. The
+  open period (`PeriodMismatch`) and the proved leaf key against
+  `provenanceLeaf` (`ProvenanceLeafMismatch`) are checked for the call; then
+  each use meets the gates a direct call meets — a reserved key, a key without
+  a live registration in its own kind's registry (kind 2 in
+  `AgreementRegistry`), an unknown kind, a seller without a live stake, a
+  process already counted under the key — and is skipped, never reverted, when
+  it fails one, so the batch's resolution stands and the skipped use may be
+  presented again. A use that passes is counted through `_count`, the one
+  counting path the direct calls take. An empty call returns before
+  `currentPeriod()` is consulted, so the reward's end never blocks the batch
+  path.
 
-Per clause, agreement or assembly per period it keeps `c` (distinct resolved processes),
+Per clause, agreement or assembly per period it keeps ONE tally,
+route-blind (`accrualOf`): `c` (distinct resolved processes),
 `d` (distinct live-staked sellers of record), and `score = icbrt(c·d²·1e18)`
 when `d ≥ minSellers`, else zero. Uniform: no tag, category, or weight. The
 formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
-- **Seller-side stake gate:** a recording counts only if the order's
+- **Seller-side stake gate:** a use counts only if the order's
   seller of record holds a live `MembersRegistry` stake
-  (`members.registered(order.seller)`, else `SellerNotStaked`). The gate closes at `requestWithdrawal()`, not at
+  (`members.registered(order.seller)`; a direct call reverts `SellerNotStaked`,
+  a batch skips the use). The gate closes at `requestWithdrawal()`, not at
   `withdraw()`.
 - **Minimum-support floor:** `minSellers` (constructor-immutable) — a clause,
   agreement or assembly scores nothing in a period until that many distinct staked
   sellers have carried it; counting is never refused below the floor, and the
-  score appears whole when it is crossed. The floor lives in `_score`, so both
-  paths inherit it identically and per path.
+  score appears whole when it is crossed. The floor lives in `_score` and reads
+  the one tally, so a seller counts toward it once whichever route carried
+  their trade.
 - **The two reserved keys earn nothing:** the provenance key
   (`provenanceLeaf`) and the assembly terms key (`assemblyTermsLeaf =
   keccak256("figaro-assembly-terms")`) are refused at accrual on every kind by
@@ -380,22 +389,16 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
 - **Periods, not checkpoints:** a period's counts are final once it ends;
   `totalScoreIn(period)` is maintained as an O(1) delta on every recording. The
   contract knows nothing about budgets or who pays.
-- **Merging the two paths — sum the scores, never the components:**
-  `scoreOf(kind, clauseOrAssembly, period) = accrualOf.score + batchAccrualOf.score`,
-  and `totalScoreIn` counts both. Summing components would over-count breadth
-  for a seller active on both paths; summing scores over-counts it too, by a
-  bounded factor — a seller on both paths enters each path's `d`, and a key
-  whose sellers are the same on both scores up to 2^(2/3) ≈ 1.59× the pooled
-  figure at an equal split (the score is concave and homogeneous of degree 1;
-  for disjoint seller sets the sum is at most the pooled figure). Pooling `d`
-  would need per-key seller sets from the batch, which the accrual call does
-  not carry. `RpgfMinter` reads
-  `scoreOf`; a reader that reaches for `accrualOf` alone under-reports. The
-  batch leg emits `BatchUsageRecorded` (cumulative, replaces), the direct leg
-  `UsageRecorded` (adds); indexers fold them differently.
+- **One tally, route-blind:** a use is a use whichever way its process
+  reached the chain. Both routes count through `_count` into `accrualOf`, the
+  same `processCounted` set and the same per-period `sellerSeen` set, so `c`
+  counts each process once and `d` each seller once across both routes;
+  `scoreOf(kind, clauseOrAssembly, period)` is `accrualOf.score`, and
+  `RpgfMinter` reads it. Both routes emit `UsageRecorded` (one use, with its
+  process and seller), so an indexer folds one stream.
 - **Idempotence is global:** a process counts once ever per (kind, key), in
-  whichever period it is first recorded; each period counts only
-  usage new to it.
+  whichever period it is first counted and whichever route brought it; each
+  period counts only usage new to it.
 - `icbrt` binary-searches the floor cube root with its ceiling at
   `floor(cbrt(2^256−1))`, so the cube cannot overflow.
 - Decentralized and permissionless: no admin, no pause. The measured gas anchor for

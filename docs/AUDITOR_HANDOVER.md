@@ -15,8 +15,8 @@ the review's is its own.
 | Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | set when an audit is engaged; the line counts are the tree's at the latest commit, the results the commits their rows name (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 14 contract files, 1,576 lines of code (3,813 physical); 3 deploy scripts, 398 lines of code (844 physical) |
-| Rust in scope | 4 crates, 22 files under `src/`, 6,805 lines of code (9,670 physical) net of their inline test modules |
+| Solidity in scope | 14 contract files, 1,541 lines of code (3,731 physical); 3 deploy scripts, 398 lines of code (842 physical) |
+| Rust in scope | 4 crates, 22 files under `src/`, 6,715 lines of code (9,520 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
@@ -93,7 +93,7 @@ ones this document uses; `docs/LEXICON.md` defines every other.
   rewards only when its seller of record is a live-staked member.
 - **Designer rewards.** `UsageCounter` scores each clause, registered
   agreement and assembly by use alone — c distinct processes, d distinct staked sellers, score
-  `icbrt(c·d²)` — per annual period; `RpgfMinter` mints the period's budget
+  `icbrt(c·d²)` — per annual period, in one tally both resolution paths feed; `RpgfMinter` mints the period's budget
   of **florins** (the protocol's ERC-20, `FlorinToken`, one billion cap) pro
   rata to the designers of record.
 - **Two resolution paths.** The **direct path** is `FigaroCore`: `commit` and
@@ -104,7 +104,7 @@ ones this document uses; `docs/LEXICON.md` defines every other.
   collects operations, proves, and calls `settleBatch` on the **verifier**
   (`FigaroBatchVerifier`), which checks the proof, the bindings and the
   **state root** (the root of the off-chain state the next batch builds on),
-  then moves the tokens and writes accrual into `UsageCounter`. `settleBatch`
+  then moves the tokens and hands the batch's uses to `UsageCounter`. `settleBatch`
   is permissionless. A process opened on one path resolves on that path.
 - `WitnessSwapAndCommitCoordinator` pays a commit's bonds through a Permit2 witness
   transfer and a Uniswap swap in the same transaction, then calls
@@ -142,13 +142,13 @@ program: the Rust that decides what a valid proof proves.
 |---|---|---|
 | `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` | 306, 53 |
 | `src/core/attestation/` | `AttestationCoordinator.sol` | 195 |
-| `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 609, 15 |
+| `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 576, 15 |
 | `src/build/registries/` | `ClauseRegistry.sol`, `AssemblyRegistry.sol`, `AgreementRegistry.sol` | 196, 188, 201 |
-| `src/build/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol` | 914, 344 |
+| `src/build/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol` | 865, 344 |
 | `src/build/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` | 83, 9 |
 | `src/app/` | `MembersRegistry.sol`, `WitnessSwapAndCommitCoordinator.sol` | 210, 239 |
-| `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) | 428 |
-| `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface; deploys the swap coordinator) | 354 |
+| `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) | 427 |
+| `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface; deploys the swap coordinator) | 353 |
 | `script/DeploySwapCoordinator.s.sol` | The swap coordinator alone onto a LIVE stack | 58 |
 
 The Lines column counts physical lines, every line of the file.
@@ -161,9 +161,9 @@ in scope.
 | Crate | Package | Lines | What it is | What a defect costs |
 |---|---|---|---|---|
 | `prover/program/` | `figaro-prover` | 13 | The guest's entry point: reads the batch input, runs the Core mirror, commits the public values | A batch the chain resolves wrongly |
-| `prover/lib/` | `figaro-kernel` | 2,033 | The mirror of `FigaroCore`'s commit and resolve logic, the witness gates, the public-values encoding, the state root, the usage accrual | A batch the chain resolves wrongly |
+| `prover/lib/` | `figaro-kernel` | 1,873 | The mirror of `FigaroCore`'s commit and resolve logic, the witness gates, the public-values encoding, the state root, the usage claims and the uses they prove | A batch the chain resolves wrongly |
 | `prover/clause/` | `figaro-clause` | 1,939 | The generic clause engine: parses any clause spec supplied as witness input, validates content against it, encodes it | An attestation the batch path reads differently from the party who signed it |
-| `prover/sequencer/` | `figaro-sequencer` | 5,791 | The relay: collects signed operations, forms batches, proves them, calls `settleBatch`, publishes what it resolved | Liveness and griefing; a reader misled by what the relay publishes |
+| `prover/sequencer/` | `figaro-sequencer` | 5,801 | The relay: collects signed operations, forms batches, proves them, calls `settleBatch`, publishes what it resolved | Liveness and griefing; a reader misled by what the relay publishes |
 
 The Lines column counts physical lines under each crate's `src/`, net of the
 inline test modules.
@@ -215,7 +215,7 @@ review SP1.
 | In scope: the project's use of SP1 | Where |
 |---|---|
 | The interface the verifier calls | `src/core/verifier/ISP1Verifier.sol` |
-| The one proof check, and everything `settleBatch` does with the public values after it | `FigaroBatchVerifier.sol:305` |
+| The one proof check, and everything `settleBatch` does with the public values after it | `FigaroBatchVerifier.sol:359` |
 | The guest's three SP1 calls: entry point, input read, public-values commit | `prover/program/src/main.rs` |
 | The verification key: derived from the guest, pinned at construction, immutable | `FigaroBatchVerifier` constructor; `sequencer --vkey` |
 | The choice of the patched `k256` for signature recovery inside the zkVM | `prover/Cargo.toml` `[patch.crates-io]` |
@@ -277,7 +277,16 @@ counter and rewards a designer only while it holds a live member stake
 (`NotLiveMember`, read on the claimant before any key; `claimable` quotes a
 non-member zero), the designer-side membership gate the powers table below
 already stated; the Sepolia minter predates it, a stated divergence in its
-expectations until the pair redeploy. When an audit is
+expectations until the pair redeploy. `UsageCounter` keeps one tally per
+(kind, key, period), route-blind: `applyBatchAccrual` takes the batch's uses,
+each a `(kind, key, processId, seller)`, and counts each through `_count`, the
+path the direct calls take, into the same `accrualOf`, `processCounted` and
+`sellerSeen`, skipping a use that fails a per-use gate; `batchAccrualOf`,
+`BatchUsageRecorded` and `AccrualWentBackwards` leave the counter. The guest
+gives one use per (kind, key, process) and keeps no usage state, so the state
+root hashes the three Core maps and `genesisRoot()` changes with it; the
+usage hash packs the uses (`41 + 85n` bytes); the public values keep their ten
+words. The guest's bytes changed, so the key moves. When an audit is
 engaged, this section names the commit it reviews, the line counts and the
 results are measured there once, and a tag is placed at it. The descriptive
 sections of this document stay true of the code throughout.
@@ -626,8 +635,8 @@ never reads `msg.sender`, and `resolveProcess` is gated by presence
 | Seller of record | sign an order; attest on its own orders | move any bond; resolve |
 | Designer / registrant | register a clause, registered agreement or assembly under a stake; withdraw that stake (the binding stays); claim designer rewards on the keys it registered while its member stake is live | edit or remove a registration; earn on an unstaked key |
 | Member | register, update, request withdrawal, withdraw after the cooldown | act for another wallet |
-| Batch submitter (the relay or anyone) | call `settleBatch` with a valid proof over the current root | fabricate an operation, move a token the proof does not commit to, replay a proof (`SCALING_STRATEGY.md` § Trust analysis) |
-| `FigaroBatchVerifier` | write accrual into `UsageCounter` (sole caller, immutable) | mint, edit a score, block a resolution (`DESIGN_DECISIONS.md` #15, #19) |
+| Batch submitter (the relay or anyone) | call `settleBatch` with a valid proof over the current root; land again a proof whose batch moved no state (prev root == new root), within `MAX_BATCH_STALENESS`, which counts nothing and moves no token (`DESIGN_DECISIONS.md` § 27) | fabricate an operation, move a token the proof does not commit to, replay a proof whose batch moved the root (`SCALING_STRATEGY.md` § Trust analysis) |
+| `FigaroBatchVerifier` | hand the batch's proved uses to `UsageCounter` (sole caller, immutable) | mint, edit a score, block a resolution (`DESIGN_DECISIONS.md` #15, #19) |
 | `RpgfMinter` | mint florins up to its 600M cap, pro rata to score | exceed the cap; mint outside a closed period |
 | Florin deployer | register minters until `renounceDeployerMint`; the mainnet script renounces in the same broadcast | anything after the renounce |
 | DAO treasury multisig | spend the 300M it holds | any protocol write; it is upstream of every contract |
@@ -654,8 +663,8 @@ The constants and constructor arguments the mainnet deploy fixes
 | Parameter | Value | Where |
 |---|---|---|
 | Bond multiple | 2× payment (buyer), 2× cumulative value (seller) | `FigaroCore.sol:208-209` |
-| `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:109` |
-| `PUBLIC_VALUES_LENGTH` | 320 bytes, ten words; any other length is refused by name | `FigaroBatchVerifier.sol:113` |
+| `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:113` |
+| `PUBLIC_VALUES_LENGTH` | 320 bytes, ten words; any other length is refused by name | `FigaroBatchVerifier.sol:118` |
 | `MAX_BATCH_OPS` | the relay's bound on what the prover finishes in one sitting, 100 operations by default; an operator's environment variable | `prover/sequencer/src/main.rs:121` |
 | The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order `settleBatch` call's 609,851, or at or past 95 percent of the block limit read at startup, the relay refuses to start); the call's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
 | Re-queue bound | an operation re-queued after a transient submission failure is re-queued at most three times, then dead-lettered; a deferral at batch formation spends nothing of it | `prover/sequencer/README.md`; `mempool.rs`, `requeue` |
@@ -774,7 +783,7 @@ direct path would have refused.
    verifier, given the `prevRoot`, `chainId`, `verifyingContract` and
    `blockTimestamp` checks?
 3. Can the try/catch around `applyBatchAccrual` be made to swallow anything other
-   than an accrual-gate revert?
+   than a whole-call gate revert (period, provenance leaf)?
 4. Is the `icbrt(c·d²)` score manipulable at a cost below the registration stake
    plus the member stake it requires?
 5. Does the Permit2 witness in `swapAndCommit` bind every field a signer would
@@ -840,7 +849,7 @@ read it first.
   effect. Accepted (the buyer chose the token and the seller), a token-choice
   concern, not a Core escape hatch. On the batch path the same class reverts one
   batch, not the protocol: a payout the token refuses reverts `settleBatch` in
-  `_executePositions` (`FigaroBatchVerifier.sol:602`), and the batch's
+  `_executePositions` (`FigaroBatchVerifier.sol:624`), and the batch's
   operations are dead-lettered and re-submittable; a process open on the batch
   path resolves on the batch path only. The relay reads each party's balance and
   allowance before it submits (`prover/sequencer/src/submitter.rs`), and a batch
@@ -863,7 +872,8 @@ read it first.
   exactly the orders that bring it there. A process resolves once, so the
   authorization has one use.
 - The two paths share no state. A batch-resolved process never acquires Core
-  status; `UsageCounter` is the one place the two meet, and only accrual crosses.
+  status; `UsageCounter` is the one place the two meet, and only the uses
+  cross, counted into the one tally the direct path feeds.
 - The direct path merkle-binds and content-hashes an attestation and validates
   no shape, and so does the batch path's default form: a hash-only attestation
   (`AttestationWitness::HashOnly`, `prover/lib/src/types.rs`) carries exactly
@@ -902,7 +912,7 @@ read it first.
   and commits the binding with both words; `_checkSpecBindings` requires
   `specHash == clauseId` (`SpecBindingMismatch`) and
   `clauseRegistry.registered(clauseId)` (`ClauseNotRegistered`)
-  (`FigaroBatchVerifier.sol:634-642`). Tests:
+  (`FigaroBatchVerifier.sol:601-609`). Tests:
   `test_settleBatch_revertsOnSpecBindingMismatch`,
   `test_settleBatch_revertsOnUnregisteredClauseBinding`,
   `test_permissionless_newClause_settlesWithZeroVerifierChanges`
@@ -912,22 +922,22 @@ read it first.
   (`prover/lib/tests/parity.rs`).
 - The reward keeps the clause, agreement and assembly families apart by kind
   (`KIND_CLAUSE = 0`, `KIND_ASSEMBLY = 1`, `KIND_AGREEMENT = 2`,
-  `UsageCounter.sol:161-167`). Each registry takes any `bytes32` but the
+  `UsageCounter.sol:165-171`). Each registry takes any `bytes32` but the
   reserved keys, so a stranger can register an existing assembly's
   `assemblyHash` as a clause key or an agreementHash; nothing on chain
   tells the families apart by bytes. `UsageCounter` keys every accrual,
   count, counted process and score by (kind, key); `recordClauseUsage` checks
   `ClauseRegistry` only, `recordAgreementUsage` `AgreementRegistry` only,
   `recordAssemblyUsage` `AssemblyRegistry` only, and `applyBatchAccrual`
-  gates each `BatchAccrual{clauseOrAssembly, kind, c, d}` by its own kind's
-  registry and skips an unknown kind (`UsageCounter.sol:734-746`). No kind
+  gates each `BatchUse{clauseOrAssembly, kind, processId, seller}` by its own
+  kind's registry and skips an unknown kind (`UsageCounter.sol:695-703`). No kind
   gates another: an assembly accrues without its agreements' agreements
   being live, and an agreement without its assembly being live.
   `RpgfMinter.claim(period, (kind, key)[])` reads the counter's slot for each
   kind, and `_isAuthor(kind, key, account)` reads the one registry the kind
   names (`RpgfMinter.sol:329-343`). The verifier's `_hashUsage` packs
-  `key(32) ‖ kind(1) ‖ c(8) ‖ d(8)` per accrual, span `49 + 49n + 20m`
-  (`FigaroBatchVerifier.sol:511-539`), and the guest's
+  `key(32) ‖ kind(1) ‖ processId(32) ‖ seller(20)` per use, span `41 + 85n`
+  (`FigaroBatchVerifier.sol:557-592`), and the guest's
   `compute_usage_accrual_hash` mirrors it. `DESIGN_DECISIONS.md` § 23 states
   the pattern. Tests:
   `test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt`,
@@ -981,14 +991,14 @@ read it first.
   (`test_provenanceLeafIsAConstantOfTheFormat`,
   `test/build/rewards/UsageCounterTest.t.sol`). `_requireProvenance`
   reproduces the bytes from the two claimed keys and proves that one leaf
-  under `checkoutHash` (`UsageCounter.sol:617-632`); a claim naming another
+  under `checkoutHash` (`UsageCounter.sol:587-602`); a claim naming another
   agreement or another assembly derives a leaf that is not in the tree
   (`test_aProvenanceLeafNamingAnotherAgreementIsNotInTheTree`).
   `recordAgreementUsage` proves that leaf alone and credits the agreementHash
-  (`:534-550`). `recordAssemblyUsage` proves it, then proves the
+  (`:504-520`). `recordAssemblyUsage` proves it, then proves the
   agreement's leaf `keccak256(keccak256(assemblyLeafDomain ‖ agreementHash ‖ slotContentHash))` under
   `assemblyHash` and reverts `InvalidMembershipProof` when it does not
-  open (`:590-596`); one order credits its agreement and its assembly apart
+  open (`:560-566`); one order credits its agreement and its assembly apart
   (`test_oneOrderCreditsItsAgreementAndItsAssembly`). `ClauseRegistry` and
   `AssemblyRegistry` accept any non-zero key, so a wallet can register a
   clause or an assembly at a reserved key; each reserved key is distinct
@@ -1025,14 +1035,14 @@ read it first.
 - The two reserved keys never accrue, whatever a registry holds at them. The
   direct path reverts: `_accrue` reverts
   `ReservedKeyIsNotARegistration(bytes32)` on either under every kind
-  (`UsageCounter.sol:788-790`; the error at `:384`), and
+  (`UsageCounter.sol:733-735`; the error at `:357`), and
   `recordAssemblyUsage` refuses either as an agreement's agreementHash
-  (`:586-588`). `AgreementRegistry.registerAgreement` refuses both as
+  (`:556-558`). `AgreementRegistry.registerAgreement` refuses both as
   registrations (`AgreementRegistry.sol:162-164`). The guest refuses a claim
   keyed on either, of any kind, and an assembly claim naming either as its
-  agreementHash (`prover/lib/src/kernel.rs:860-864`, `apply_usage_claims`).
+  agreementHash (`prover/lib/src/kernel.rs:845-852`, `apply_usage_claims`).
   The counter's batch path skips either: `applyBatchAccrual` continues past
-  them before the registration gate (`UsageCounter.sol:733`). The relay drops
+  them before the registration gate (`UsageCounter.sol:690`). The relay drops
   such a claim before proving (`submitter.rs`, `names_a_reserved_key`;
   `drops_claims_naming_either_reserved_key_without_touching_the_chain`,
   `drops_a_claim_keyed_on_the_provenance_leaf_without_touching_the_chain`).
@@ -1050,11 +1060,26 @@ read it first.
   mandatory clauses (`figaro-commerce`, `figaro-topology`) among them
   (`test_mandatoryClausesEarnForTheirAuthor`); the two reserved keys above
   are the keys refused, and they are refused as constants of the formats.
-- `applyBatchAccrual(period, claimedProvenanceLeaf, accruals, sellers)`
+- `applyBatchAccrual(period, claimedProvenanceLeaf, uses)`
   reverts `ProvenanceLeafMismatch` when the leaf key the guest proved
   agreement and assembly claims against is not `provenanceLeaf`
   (`test_batchAccrualRejectsAForeignProvenanceLeaf`); the verifier's
-  try/catch around the call lets the batch resolve with its accrual dropped.
+  try/catch around the call lets the batch resolve with its uses uncounted,
+  and a later batch may prove them again.
+- One tally, route-blind. A use in a batch is counted through `_count`, the
+  path a direct call takes after its gates (`UsageCounter.sol:766`), into the
+  same `accrualOf`, the same `processCounted` and the same per-period
+  `sellerSeen`; per use, `applyBatchAccrual` skips a reserved key, a key
+  without a live registration in its kind's registry, an unknown kind, a
+  seller without a live stake and a process already counted
+  (`UsageCounter.sol:690-708`). So `c` counts a process once and `d` a seller
+  once across both routes, and `scoreOf` reads the one tally
+  (`test_oneTally_sameSellerOnBothRoutesIsTwoUsesOneSeller`,
+  `test_oneTally_twoSellersOnePerRouteIsTwoUsesTwoSellers`,
+  `test_oneTally_aSellerCountedDirectThenInABatchIsCountedOnce`,
+  `test/build/rewards/UsageCounterTest.t.sol`; Halmos
+  `check_aUseCountsTheSameOnEitherRoute`). A process id names one process
+  because a batch-path id is derived under the verifier's EIP-712 domain.
 - The guest verifies a hash-only attestation on the provenance key as the
   coordinator does, on inclusion alone: it binds the leaf's hash and cannot
   read its bytes, and the check that the bytes name the registered agreement
@@ -1090,7 +1115,7 @@ read it first.
   (`mempool.rs`, `drain_up_to`;
   `mempool_drains_at_most_the_batch_cap_and_keeps_the_rest_queued`), and its
   `settleBatch` call is planned to fit the latest block: what a batch costs the chain is
-  what it publishes — positions, attestation events, spec bindings, accruals,
+  what it publishes — positions, attestation events, spec bindings, uses,
   the proof's verification, the call's fixed execution and its calldata —
   estimated from the batch's own execution with per-item ceilings measured in
   `test/core/verifier/BatchGasCeilingTest.t.sol` and held equal in `gas.rs`,
@@ -1287,7 +1312,7 @@ read it first.
 
 Every other function in the Solidity in scope is at 6 or below.
 
-**The one `unchecked` block** (`UsageCounter.sol:823-826`) increments two
+**The one `unchecked` block** (`UsageCounter.sol:775-778`) increments two
 `uint64` counters by one: `c`, the distinct processes counted for a key, and
 `d`, the distinct sellers. Each process is counted once ever
 (`processCounted`), so `c` cannot exceed the number of resolved processes on
@@ -1307,7 +1332,7 @@ Current design realities accepted by the protocol surface, not accidental defect
 1. buyer key loss is terminal for an active process because the Core has no timeout or admin recovery path
 2. very large processes are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
 3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the Core; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #9 states the consequence); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
-4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:109`, checked at `:325`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the Core refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
+4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:113`, checked at `:379`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the Core refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
 5. a batched attestation's witness form is not signed (the typed data covers `orderHash`, `clauseId`, `stage`, `contentRef`), so a relay holding a plaintext operation can submit it hash-only and the `Attestation` event is identical for both forms: the in-proof content check assures the attesting party's own submission and is not evidence to a reader, whose evidence (signer, open order, inclusion, `contentRef`) is identical on every path (`DESIGN_DECISIONS.md` #26)
 
 ## Known limitations

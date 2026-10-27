@@ -290,63 +290,40 @@ pub struct UsageClaim {
     pub inclusion_proof: Vec<B256>,
 }
 
-/// One clause, agreement or assembly's accrual AFTER this batch — the CUMULATIVE
-/// `(c, d)` for the batch path in `period`, not a delta, under its
-/// (kind, key). The verifier overwrites the counter's batch-side slot of
-/// that kind with it, so the on-chain write is O(distinct (kind, key)
-/// pairs in the batch) and carries no per-process storage at all.
+/// One use a batch carries to `UsageCounter`: a RESOLVED batch-path process
+/// that used a clause, agreement or assembly under its (kind, key), and the
+/// seller of the order the claim proved it through. The counter counts it
+/// exactly as a direct call counts a use — the same tally, the same
+/// counted-process set, the same per-period seller set — so a use is a use
+/// whichever way its process reached the chain. The guest gives each
+/// (kind, key, process) once per batch.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct UsageAccrual {
+pub struct BatchUse {
     pub clause_or_assembly: B256,
     /// `USAGE_KIND_CLAUSE`, `USAGE_KIND_ASSEMBLY` or
-    /// `USAGE_KIND_AGREEMENT`, from the claims' own `UsageClaimKind`.
+    /// `USAGE_KIND_AGREEMENT`, from the claim's own `UsageClaimKind`.
     pub kind: u8,
-    /// Distinct resolved processes that used this clause, agreement or
-    /// assembly (batch path).
-    pub c: u64,
-    /// Distinct staked sellers in this period (batch path).
-    pub d: u64,
+    /// The process, its id derived under the verifier's EIP-712 domain.
+    pub process_id: B256,
+    /// The seller of the order the claim was proved through.
+    pub seller: Address,
 }
 
 // ── State snapshot (deterministic, sorted) ────────────────────────
 
-/// Serializable state snapshot — the FigaroCore mappings, plus the usage
-/// accrual state the RPGF bridge proves against. Entries must be sorted
-/// by key for deterministic root computation.
+/// Serializable state snapshot — the FigaroCore mappings. Entries must be
+/// sorted by key for deterministic root computation.
 ///
-/// USAGE STATE LIVES IN THE PROVEN STATE, and it has to: the guest owns
-/// idempotence, but a process resolved in batch N is still RESOLVED in
-/// batch N+1's snapshot, so a batch-local dedup set would let the same
-/// trade be claimed again in every later batch. Carrying the sets under
-/// the state root makes "already counted" part of the proven transition
-/// — the same guarantee `UsageCounter.processCounted` gives the direct
-/// path, at zero on-chain storage.
-///
-/// Guest-owned idempotence is SAFE because the two resolution universes
-/// are DISJOINT: a batch-resolved process never acquires FigaroCore status,
-/// and a FigaroCore-resolved one is never in a batch, so no process can be
-/// counted on both paths. Pairs MAY overlap across the two, which is
-/// exactly why the counter sums the two SCORES and never their
-/// components.
+/// No usage state lives here: `UsageCounter` holds the one counted-process
+/// set and the one seller set for both routes, and skips a use whose process
+/// it has already counted, so the guest proves each claim against the
+/// orders' state and leaves the counting to the chain.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct KernelStateSnapshot {
     pub processes: Vec<(B256, ProcessState)>,
     pub order_status: Vec<(B256, u8)>,
     pub order_process_id: Vec<(B256, B256)>,
-    /// (kind, clauseOrAssembly, processId) already counted — global, not per
-    /// period, mirroring `UsageCounter.processCounted`.
-    pub usage_counted: Vec<(u8, B256, B256)>,
-    /// (kind, clauseOrAssembly, period, seller) — breadth counts distinct
-    /// staked sellers PER PERIOD, mirroring `UsageCounter.sellerSeen`.
-    pub usage_seller_seen: Vec<(u8, B256, u8, Address)>,
-    /// (kind, clauseOrAssembly, period) → (c, d) — the running batch-path
-    /// accrual the verifier writes out.
-    pub usage_accrual: Vec<(UsageAccrualKey, (u64, u64))>,
 }
-
-/// (kind, clauseOrAssembly, period) — the key of a running batch-path
-/// accrual.
-pub type UsageAccrualKey = (u8, B256, u8);
 
 // ── SP1 I/O types ─────────────────────────────────────────────────
 
@@ -403,13 +380,14 @@ pub struct PublicValues {
     /// The on-chain verifier checks each binding's fields are equal and
     /// its key `ClauseRegistry.registered` before accepting the batch.
     pub spec_bindings_hash: B256,
-    /// Hash of the batch's designer-reward usage accrual — the period, the
-    /// provenance leaf's key, the per-(kind, key) cumulative `(c, d)`,
-    /// and the distinct sellers the accrual rests on. The on-chain verifier
-    /// re-derives it from calldata, anchors every seller against
-    /// `MembersRegistry.registered` and every clause, agreement or assembly
-    /// against its live registration in `ClauseRegistry`,
-    /// `AgreementRegistry` or `AssemblyRegistry`, then writes the accrual.
+    /// Hash of the batch's designer-reward uses — the period, the
+    /// provenance leaf's key and every (kind, key, process, seller) use.
+    /// The on-chain verifier re-derives it from calldata and hands the uses
+    /// to `UsageCounter`, which counts each one that passes the gates a
+    /// direct call meets: a live `MembersRegistry` stake for its seller, a
+    /// live registration for its key in `ClauseRegistry`,
+    /// `AgreementRegistry` or `AssemblyRegistry`, and a process not yet
+    /// counted under that key.
     pub usage_accrual_hash: B256,
     /// The clock the guest checked every commitment deadline against
     /// (`input.block_timestamp`). It is COMMITTED here so the on-chain verifier
@@ -518,14 +496,10 @@ pub struct BatchEvents {
     /// Deduplicated, sorted — the verifier checks each against the
     /// live ClauseRegistry.
     pub spec_bindings: Vec<SpecBinding>,
-    /// Per-(kind, key) cumulative accrual after this batch, sorted
-    /// by key. Empty when the batch carries no usage claims.
-    pub usage_accruals: Vec<UsageAccrual>,
-    /// The distinct sellers of record behind those accruals, sorted.
-    /// The verifier requires a LIVE MembersRegistry stake for each —
-    /// the batch-path form of the direct path's per-record seller gate.
-    pub usage_sellers: Vec<Address>,
-    /// The period the accrual lands in, echoed from the batch input and
+    /// The batch's uses, one per (kind, key, process), in the order of the
+    /// claims. Empty when the batch carries no usage claims.
+    pub uses: Vec<BatchUse>,
+    /// The period the uses land in, echoed from the batch input and
     /// committed in `usage_accrual_hash`.
     pub usage_period: u8,
 }
@@ -598,10 +572,6 @@ pub enum KernelError {
     /// Usage is what a FINISHED process leaves behind — the inverse of
     /// the attestation gate, exactly as on the direct path.
     UsageOrderNotResolved(B256),
-    /// This (kind, key, process) triple was already counted in an earlier
-    /// batch (or earlier in this one). Once ever, whatever the period —
-    /// the guest's mirror of `UsageCounter.AlreadyCounted`.
-    UsageAlreadyCounted { clause_or_assembly: B256, process_id: B256 },
     /// The claimed clause is not a leaf of the order's signed
     /// agreement — for an agreement or assembly claim, the usual cause is
     /// an agreementHash or assemblyHash that does not match the committed
@@ -635,13 +605,6 @@ impl core::fmt::Display for KernelError {
             Self::OrderNotCommitted(h) => write!(f, "OrderNotCommitted({h})"),
             Self::SpecIdentityMismatch(h) => write!(f, "SpecIdentityMismatch({h})"),
             Self::UsageOrderNotResolved(h) => write!(f, "UsageOrderNotResolved({h})"),
-            Self::UsageAlreadyCounted {
-                clause_or_assembly,
-                process_id,
-            } => write!(
-                f,
-                "UsageAlreadyCounted(clause_or_assembly={clause_or_assembly}, process={process_id})"
-            ),
             other => write!(f, "{other:?}"),
         }
     }

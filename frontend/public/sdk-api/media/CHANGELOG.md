@@ -14,6 +14,17 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **Designer rewards: one tally, route-blind.** `UsageCounter` keeps one tally per (kind, key,
+  period): a use counts the same whether its process resolved through `FigaroCore` or in a proved
+  batch, so `c` counts a process once and `d` a seller once across both routes, and `scoreOf` reads
+  that tally. `applyBatchAccrual` takes the batch's uses — `(kind, key, processId, seller)`, one per
+  (kind, key, process) — and counts each through the direct path's counting, skipping a use that
+  fails a per-use gate. `batchAccrualOf`, `BatchUsageRecorded` and `AccrualWentBackwards` are gone;
+  both routes emit `UsageRecorded`. The guest keeps no usage state (the state root covers the three
+  Core maps), the usage hash packs the uses, and the relay plans gas per use and pre-filters claims
+  the counter has already counted. SDK: `fetchBatchUsageRecords` and `BatchUsageRecord` are removed,
+  `computeUsageAccruals(records, minSellers?)` folds one stream, and a `ClauseOrAssemblyAccrual`
+  carries `c`, `d` and `score` itself.
 - **SDK: the sign gate refuses what it cannot read.** `validateCommitmentAgreement` (through
   `assertAgreementSignable`) refuses a clause whose spec is not loaded and a clause whose content is
   withheld (a `dataHash` alone), where both counted as carried; the frontend resolves every unloaded
@@ -21,7 +32,7 @@ release lives under **Unreleased**.
   is never signed and a key the cache had not warmed is.
 - **Rewards page: reads scale with use, not with the catalog.** `/rewards` learns which of the
   wallet's clauses, agreements and assemblies carried usage in which period from the counter's
-  `UsageRecorded` and `BatchUsageRecorded` streams and reads scores for those alone, where it read
+  `UsageRecorded` stream and reads scores for those alone, where it read
   three views for every designed key in every period (thousands of calls for a prolific designer, and
   a page that never rendered).
 - **The whole has one public owner.** The cryptoeconomic-system paper carries what `docs/VISION.md`

@@ -1051,12 +1051,11 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                     name: 'usage', type: 'tuple', components: [
                         { name: 'period', type: 'uint8' }, { name: 'provenanceLeaf', type: 'bytes32' },
                         {
-                            name: 'accruals', type: 'tuple[]', components: [
+                            name: 'uses', type: 'tuple[]', components: [
                                 { name: 'clauseOrAssembly', type: 'bytes32' }, { name: 'kind', type: 'uint8' },
-                                { name: 'c', type: 'uint64' }, { name: 'd', type: 'uint64' },
+                                { name: 'processId', type: 'bytes32' }, { name: 'seller', type: 'address' },
                             ],
                         },
-                        { name: 'sellers', type: 'address[]' },
                     ],
                 },
                 { name: 'operations', type: 'bytes' },
@@ -1144,7 +1143,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         await pinWitnessBytes(content);
         expect(await fetchWitnessBytes(contentRef), 'the batch substance resolves from its own fingerprint').toBe(content);
 
-        // Public values: 9 static ABI words, 288 bytes; the verifier refuses
+        // Public values: 10 static ABI words, 320 bytes; the verifier refuses
         // any other length by name. prevRoot
         // must be the LIVE root (it advances every resolve — never hardcode
         // genesis); newRoot is whatever the values say, because the mock
@@ -1165,7 +1164,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         ));
         const specBindingsHash = keccak256(encodePacked(['bytes32', 'bytes32'], [geoKey, specHash]));
         const emptyPositionsHash = keccak256('0x');
-        const emptyUsageHash = keccak256(encodePacked(['uint8', 'bytes32', 'uint64', 'uint64'], [0, zeroHash, 0n, 0n]));
+        const emptyUsageHash = keccak256(encodePacked(['uint8', 'bytes32', 'uint64'], [0, zeroHash, 0n]));
         const batchTimestamp = (await publicClient.getBlock()).timestamp;
         const publicValues = encodeAbiParameters(
             [
@@ -1182,7 +1181,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             args: [
                 '0x', publicValues, [],
                 { attestations: [attestation], specBindings: [{ clauseId: geoKey, specHash }] },
-                { period: 0, provenanceLeaf: zeroHash, accruals: [], sellers: [] },
+                { period: 0, provenanceLeaf: zeroHash, uses: [] },
                 // The batch's operation stream: this leg lands an attestation
                 // alone, which moves no state, so the stream is empty.
                 '0x',

@@ -19,9 +19,9 @@
 //!   payments (a resolve lists every order of its process, and the guest
 //!   applies one only while the process holds the value it signs), so the
 //!   decoder derives it and the entry carries no word for it;
-//! - every usage claim, whole, because the usage sets ride the state root
-//!   (`KernelState::usage_counted`, `usage_seller_seen`) and cannot be rebuilt
-//!   from the accrual the verifier writes;
+//! - every usage claim, whole: a claim moves no state, but the uses the
+//!   verifier hands the counter are proved from the claims, so a replay of
+//!   the stream re-derives the batch's usage hash (public value 7);
 //! - no attestation: an attestation moves no state (`apply_operations` writes
 //!   nothing to the state for it), and its evidence is already bound by
 //!   `attestation_events_hash` and re-emitted by the verifier.

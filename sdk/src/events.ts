@@ -192,7 +192,7 @@ export const DEFAULT_LOG_CHUNK_SIZE = 9_500n;
  * concatenated in block order.
  *
  * Every bulk fetcher in this SDK (`fetchCoreEvents`, `fetchDiscoveryEvents`,
- * the RPGF mirror's `fetchUsageRecords`/`fetchBatchUsageRecords`) used to
+ * the RPGF mirror's `fetchUsageRecords`) used to
  * issue ONE unchunked `getLogs` over the full range — fine on a local devnet,
  * but public RPC providers commonly cap a single call's block range (10k
  * blocks, or a result-count limit), so an integrator's first wide-range read

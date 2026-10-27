@@ -251,24 +251,17 @@ contract HalmosMembersRegistry is Test {
             members.requestWithdrawal();
         }
 
-        UsageCounter.BatchAccrual[] memory accruals = new UsageCounter.BatchAccrual[](1);
-        accruals[0] = UsageCounter.BatchAccrual(keccak256("clauseOrAssembly"), 0, 1, 1); // kind 0: a clause
-        address[] memory sellers = new address[](1);
-        sellers[0] = ALICE;
+        UsageCounter.BatchUse[] memory uses = new UsageCounter.BatchUse[](1);
+        uses[0] = UsageCounter.BatchUse(keccak256("clauseOrAssembly"), 0, keccak256("a-process"), ALICE); // kind 0: a clause
 
-        (bool admitted,) = address(counter)
-            .call(
-                abi.encodeCall(
-                    UsageCounter.applyBatchAccrual, (0, keccak256("figaro-agreement-provenance"), accruals, sellers)
-                )
-            );
+        counter.applyBatchAccrual(0, keccak256("figaro-agreement-provenance"), uses);
 
-        // THE LINKAGE, in both directions: the counter admits usage if and
+        // THE LINKAGE, in both directions: the counter counts the use if and
         // only if the registry still reports a live stake.
-        assertEq(admitted, members.registered(ALICE), "admission tracks `registered` exactly");
-        assertEq(admitted, !leaves, "and leaving is what turns it off");
-
-        (,, uint256 score) = counter.batchAccrualOf(0, keccak256("clauseOrAssembly"), 0);
-        assertEq(score > 0, admitted, "nothing accrues on a refused batch");
+        (uint64 c,, uint256 score) = counter.accrualOf(0, keccak256("clauseOrAssembly"), 0);
+        bool counted = c == 1;
+        assertEq(counted, members.registered(ALICE), "counting tracks `registered` exactly");
+        assertEq(counted, !leaves, "and leaving is what turns it off");
+        assertEq(score > 0, counted, "nothing accrues for a use that was not counted");
     }
 }

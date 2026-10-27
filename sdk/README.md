@@ -190,8 +190,8 @@ const [resolve] = proposeActions(ctx.getProcess(processId)!, buyer)
 await executeAction(walletClient, publicClient, addresses, resolve);
 
 // AND RECORD THE USAGE — at resolution, not later. The designer-rewards path pays the designers of record from recordings the BUYER's side writes when the
-// process resolves; a deferred record is permanently deniable (a seller can
-// unstake, a period can close — docs/DESIGN_DECISIONS.md §20). One call, the
+// process resolves; a deferred count waits on the seller's stake and can
+// never land once the last period closes (docs/DESIGN_DECISIONS.md §20). One call, the
 // headless twin of what the frontend does at the same moment. Every committed
 // clause EARNS — commerce and topology are scored for their author of record
 // like any other — and the designers of the registered agreement and of the
@@ -243,7 +243,7 @@ does NOT, and neither does hand-rolled `cast`.
 
 *`AccrualClosed()`.* `recordClauseUsage`, `recordAgreementUsage` and `recordAssemblyUsage` all open by
 calling `UsageCounter.currentPeriod()`, which reverts `AccrualClosed()` once the
-last accrual period has ended (`src/build/rewards/UsageCounter.sol:398-404`) —
+last accrual period has ended (`src/build/rewards/UsageCounter.sol:421-427`) —
 the nine annual periods are the reward's whole life, and after the ninth
 boundary usage is permanently unrecordable. Two consequences before that day: a recording is attributed to the period **open when you call**, not the one the
 process resolved in, so crossing a boundary between resolving and recording moves the
@@ -373,7 +373,6 @@ definition) and `RPGF_*` constant is a **root** export.
 | `extractOverlays` | `/derive` | Group attestations into one overlay graph per clause family PRESENT — the open graph class. |
 | `extractServiceEndpoints` | `/agent` | Read a DID document's `service` entries — WHERE to reach the agent behind it. |
 | `fetchAttestationRecords` | root | Attestations from BOTH paths, address-filtered and tagged per row. |
-| `fetchBatchUsageRecords` | root | `BatchUsageRecorded` events — the batch half of the rewards mirror. |
 | `fetchCoreEvents` | root | The order and process events of BOTH paths in a block range — `FigaroCore`'s and, when `batchVerifier` is set, the verifier's — grouped, typed and in chain order; chunks `getLogs` internally. |
 | `fetchDiscoveryEvents` | root | Registry events (clauses, assemblies, members); an unconfigured registry contributes nothing. |
 | `fetchEndpointLogAgreement` | root | The same agreement report, fetched from caller-supplied clients over one pinned `[fromBlock, toBlock]`. |
@@ -486,10 +485,11 @@ happen — recorded against a resolved order — so **there is nothing to post,
 nothing to bond and nothing to dispute**. Trade resolved through
 `FigaroBatchVerifier` never acquires `FigaroCore` status, so it reaches the counter by
 a second route: `buildUsageClaims` turns a batch-resolved order plus its
-agreement into the claims a sequencer proves, and the mirror folds BOTH event
-streams (`fetchUsageRecords` + `fetchBatchUsageRecords`). Reading only the first
-under-reports every clause or assembly whose trade moved to batches, and the two merge as
-SCORES, never as components. The two families stay apart: every count,
+agreement into the claims a sequencer proves, and the counter counts each use
+the batch carries into the same tally a direct call feeds. A use is a use
+whichever way its process reached the chain: both routes emit `UsageRecorded`,
+so `fetchUsageRecords` reads one stream and `computeUsageAccruals` folds it into
+one tally per `(kind, key, period)`, as `accrualOf` holds it. The two families stay apart: every count,
 accrual and claim is keyed by `(kind, key)` — `kind` is `USAGE_KIND_CLAUSE`
 (0), `USAGE_KIND_ASSEMBLY` (1) or `USAGE_KIND_AGREEMENT` (2), because a registry accepts any bytes32 and
 nothing in a key's bytes says which family it names; the mirror files each
@@ -542,8 +542,8 @@ const addresses = addressesFromDeploymentRecord(deploymentRecord);
 // typed array — NOT one flat log list. (Attestations are NOT in here: they live on
 // the AttestationCoordinator, a separate contract — read those with
 // EV_ATTESTATION + parseAttestationLogs; see @figaro-protocol/sdk/derive.)
-// `fetchCoreEvents` (and `fetchDiscoveryEvents`, `fetchUsageRecords`,
-// `fetchBatchUsageRecords`) chunk `getLogs` internally in sub-ranges of
+// `fetchCoreEvents` (and `fetchDiscoveryEvents`, `fetchUsageRecords`) chunk
+// `getLogs` internally in sub-ranges of
 // `DEFAULT_LOG_CHUNK_SIZE` (9,500 blocks) so a wide range doesn't exceed a
 // public RPC provider's block-range cap; pass a trailing `chunkSize` to tune
 // it for a stricter (or more permissive) provider.

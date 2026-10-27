@@ -183,10 +183,10 @@ export function RewardsView() {
                                                     className="font-mono break-all"
                                                     data-testid={`period-accrual-${t.periodId}-${a.family}-${a.clauseOrAssembly.toLowerCase()}`}
                                                 >
-                                                    <span className="font-sans">{a.family} </span>{accrualLabel(a)} — {(a.c + a.batchC).toString()} resolved process
-                                                    {a.c + a.batchC === 1n ? "" : "es"},{" "}
-                                                    {(a.d + a.batchD).toString()} distinct staked seller
-                                                    {a.d + a.batchD === 1n ? "" : "s"}, score{" "}
+                                                    <span className="font-sans">{a.family} </span>{accrualLabel(a)} — {a.c.toString()} resolved process
+                                                    {a.c === 1n ? "" : "es"},{" "}
+                                                    {a.d.toString()} distinct staked seller
+                                                    {a.d === 1n ? "" : "s"}, score{" "}
                                                     {a.score.toString()}
                                                 </li>
                                             ))}

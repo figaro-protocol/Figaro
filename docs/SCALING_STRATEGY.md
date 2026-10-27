@@ -69,10 +69,12 @@ returns 0 — UNKNOWN — for it, permanently. And the converse holds: a
   order; `UsageCounter.recordClauseUsage` requires a RESOLVED one. A
   batch-resolved process satisfies neither, forever. That is why the usage
   bridge below exists.
-- **It is also why guest-owned idempotence is SAFE.** The batch guest keeps
-  its own counted set (under the state root) rather than consulting the
-  counter's `processCounted`. That would be unsound if a process could resolve
-  on both paths — and it cannot.
+- **It is also why one counted set serves both routes.** The counter's
+  `processCounted` counts a process id once, whichever route presents it; the
+  guest keeps no usage state of its own. A batch-path process id is derived
+  under the verifier's EIP-712 domain, a direct one under `FigaroCore`'s, so no
+  id names a process on both paths, and counting an id once is counting a
+  process once.
 - **A reader must fold BOTH.** The verifier emits `FigaroCore`'s own
   `OrderCommitted`, `OrderSeller`, `OrderCurrency`, `OrderResolved` and
   `ProcessResolved` for every batched order, and re-emits its attestations, so
@@ -83,8 +85,10 @@ returns 0 — UNKNOWN — for it, permanently. And the converse holds: a
   topic hash; the order events share `FigaroCore`'s).
 
 **What crosses the boundary, and what does not.** Exactly one thing crosses:
-the usage accrual for designer rewards, carried by `settleBatch` into
-`UsageCounter.applyBatchAccrual` as proved numbers, never as `FigaroCore` state.
+the uses for designer rewards — each a (kind, key, process, seller) the guest
+proved — carried by `settleBatch` into `UsageCounter.applyBatchAccrual`, which
+counts them into the same tally a direct call feeds, never as `FigaroCore`
+state. A use is a use whichever way its process reached the chain.
 Value crosses as net token positions, which is payment, not state. Nothing
 else does — no status, no process, no attestation entry. Registry mutations
 never enter a batch at all (they are once-per-registry-entry staked intents on
@@ -126,9 +130,10 @@ reachable from the prior state root under `FigaroCore`'s rules.
 plus the attestation gates (inclusion for every attestation; spec identity and
 content for one sent in the plaintext form) and the usage bridge, translated to Rust.
 Four `KernelOp` variants — `Commit`, `Resolve`, `AttestAsSeller`,
-`AttestAsBuyer` (registry mutations never enter a batch). Six-member state, hashed flat into one root (no per-order inclusion proof exists; a reader checks anything against the root only with the whole preimage),
-state (processes, orderStatus, orderProcessId, plus the three usage members
-`usage_counted`, `usage_seller_seen`, `usage_accrual`). EIP-712 signature
+`AttestAsBuyer` (registry mutations never enter a batch). Three-member state
+(processes, orderStatus, orderProcessId), hashed flat into one root (no
+per-order inclusion proof exists; a reader checks anything against the root
+only with the whole preimage); a usage claim moves no state. EIP-712 signature
 verification with byte-exact parity to the Solidity.
 
 **Generic clause engine** (`prover/clause/`): parse + validate + encode over
@@ -140,7 +145,7 @@ Architecture" below).
 **SP1 guest program** (`prover/program/`): executes `apply_batch()` in the SP1
 zkVM and commits `PublicValues` — ten fields: prev/new state roots, chain
 binding (chainId + verifyingContract), five commitment hashes (token
-positions, attestation events, spec bindings, usage accrual, and the
+positions, attestation events, spec bindings, the uses, and the
 operation stream: every commit and resolve the batch applied, whole, and
 every usage claim, `prover/lib/src/operation_stream.rs`), and the clock the
 guest checked deadlines against. The canonical
@@ -149,12 +154,12 @@ batch (all four op kinds) proves in ~1.2M cycles with the k256 SP1 precompile.
 **On-chain verifier** (`src/core/verifier/FigaroBatchVerifier.sol`):
 accepts SP1 proofs, verifies state-root continuity and chain binding,
 hash-verifies auxiliary calldata (positions, attestation events, spec
-bindings, the usage accrual), checks each (clause key, spec hash) binding —
+bindings, the uses), checks each (clause key, spec hash) binding —
 the two words equal and the key `ClauseRegistry.registered` — executes net
 token transfers, re-emits
 proven `Attestation` events, emits the Core's order and process events from
 the operation stream and logs the stream itself (`BatchOperations`), and
-carries the batch's usage accrual to `UsageCounter.applyBatchAccrual`. It is not a florin minter. Uses a
+hands the batch's uses to `UsageCounter.applyBatchAccrual`. It is not a florin minter. Uses a
 `BatchEventData` struct to avoid stack-too-deep.
 
 **Verifier interface and mock** (`ISP1Verifier.sol`, `MockSP1Verifier.sol`):
@@ -551,16 +556,17 @@ batch-resolved orders (kind 0 a clause, 1 an assembly with its agreement's
 agreement with its assembly's `assemblyHash`), the period, and the
 provenance leaf key the relay reads from `UsageCounter.provenanceLeaf()`. The
 relay's pre-filter checks each claim against its own kind's registry —
-`AgreementRegistry.bindings` for kind 2 — and drops a claim keyed on either
-reserved key or whose registry read fails; a zero registry address does not
-disable the pre-filter. The local
+`AgreementRegistry.bindings` for kind 2 — its seller's member stake and the
+counter's `processCounted` for its process, and drops a claim keyed on either
+reserved key, one the counter would skip, or one whose read fails; a zero
+registry address does not disable the pre-filter. The local
 state is the sequencer's mirror of the batch path's state, maintained
 by replaying its own landed batches.
 
 **4. Proving.** The prover executes the mirror program in the zkVM and
 produces the validity proof, the ten `PublicValues`, the `NetPosition[]`
 (aggregated token movements), and the `BatchEvents` (attestations, spec
-bindings, usage accruals with their sellers and period). A devnet uses the
+bindings, the uses and their period). A devnet uses the
 mock prover; otherwise `SP1_PROVER` selects `cpu`, `cuda`, or `network`. No
 backend is a trust assumption: the proof verifies against the program vkey
 regardless of who generated it — a sequencer self-proves the way a validator
@@ -572,9 +578,8 @@ checks state-root continuity and chain binding; verifies the auxiliary
 calldata hashes against the proof's commitments; checks each spec binding
 (`specHash == clauseId`, `ClauseRegistry.registered(clauseId)`); executes the net token transfers;
 re-emits the attestations and emits the Core's order and process events from
-the operation stream, and logs the stream (`BatchOperations`); forwards the
-usage accrual to
-`UsageCounter.applyBatchAccrual`; advances the state root.
+the operation stream, and logs the stream (`BatchOperations`); hands the
+uses to `UsageCounter.applyBatchAccrual`; advances the state root.
 
 ### Trust analysis
 
@@ -596,7 +601,13 @@ usage accrual to
 - **Violate invariants** — a batch that violates any of the nine produces no
   valid proof.
 - **Forge state** — the on-chain state-root chain rejects a proof against a
-  fabricated prior state, and rejects the same batch twice.
+  fabricated prior state, and rejects a second landing of a batch that moved
+  the root. A batch that moves no state — usage claims or attestations only —
+  names the current root as both prev and new, so anyone may land its proof
+  again within `MAX_BATCH_STALENESS`: the counter's once-ever
+  `processCounted` skips every use the second time, no token moves, and the
+  verifier re-emits the stream, the attestations and `BatchSettled` under a new
+  batch id (`DESIGN_DECISIONS.md` § 27).
 - **Replay across chains or contracts** — `chainId` and `verifyingContract`
   are in the proof's public inputs.
 

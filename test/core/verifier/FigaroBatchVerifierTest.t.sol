@@ -139,41 +139,39 @@ contract FigaroBatchVerifierTest is Test {
     ///      slip in the hand-rolled version (a wrong offset, a missing length
     ///      prefix) shows up as a mismatch instead of being mirrored.
     function _hashUsage(FigaroBatchVerifier.BatchUsageData memory u) internal pure returns (bytes32) {
-        bytes memory packed = abi.encodePacked(u.period, u.provenanceLeaf, uint64(u.accruals.length));
-        for (uint256 i = 0; i < u.accruals.length; i++) {
+        bytes memory packed = abi.encodePacked(u.period, u.provenanceLeaf, uint64(u.uses.length));
+        for (uint256 i = 0; i < u.uses.length; i++) {
             packed = bytes.concat(
                 packed,
-                abi.encodePacked(u.accruals[i].clauseOrAssembly, u.accruals[i].kind, u.accruals[i].c, u.accruals[i].d)
+                abi.encodePacked(u.uses[i].clauseOrAssembly, u.uses[i].kind, u.uses[i].processId, u.uses[i].seller)
             );
-        }
-        packed = bytes.concat(packed, abi.encodePacked(uint64(u.sellers.length)));
-        for (uint256 i = 0; i < u.sellers.length; i++) {
-            packed = bytes.concat(packed, abi.encodePacked(u.sellers[i]));
         }
         return keccak256(packed);
     }
 
     function _emptyUsage() internal pure returns (FigaroBatchVerifier.BatchUsageData memory u) {
-        u.accruals = new IUsageCounter.BatchAccrual[](0);
-        u.sellers = new address[](0);
+        u.uses = new IUsageCounter.BatchUse[](0);
     }
 
     function _hashUsageEmpty() internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0), uint64(0)));
+        return keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0)));
     }
 
-    /// @dev A one-clause, one-seller accrual for the open period.
-    function _usageFor(bytes32 clauseOrAssembly, uint64 c, uint64 d)
+    /// @dev `n` uses of one clause in the open period, each by `seller`, from
+    ///      `n` distinct batch-path processes.
+    function _usageFor(bytes32 clauseOrAssembly, uint256 n)
         internal
         view
         returns (FigaroBatchVerifier.BatchUsageData memory u)
     {
         u.period = counter.currentPeriod();
         u.provenanceLeaf = PROVENANCE_LEAF;
-        u.accruals = new IUsageCounter.BatchAccrual[](1);
-        u.accruals[0] = IUsageCounter.BatchAccrual(clauseOrAssembly, counter.KIND_CLAUSE(), c, d);
-        u.sellers = new address[](1);
-        u.sellers[0] = seller;
+        u.uses = new IUsageCounter.BatchUse[](n);
+        for (uint256 i = 0; i < n; i++) {
+            u.uses[i] = IUsageCounter.BatchUse(
+                clauseOrAssembly, counter.KIND_CLAUSE(), keccak256(abi.encode("batch-process", i)), seller
+            );
+        }
     }
 
     // ── Batch construction ──────────────────────────────────────────
@@ -944,12 +942,13 @@ contract FigaroBatchVerifierTest is Test {
         );
     }
 
-    /// THE BRIDGE, end to end: resolving a batch must leave the accrual on the
-    /// COUNTER. Read back from the counter's own storage, never from the
-    /// verifier's return or its events — the whole failure class this exists
-    /// for is a call that is never made, or made and reverted.
+    /// THE BRIDGE, end to end: resolving a batch must leave its uses counted
+    /// on the COUNTER, in the one tally the direct path feeds. Read back from
+    /// the counter's own storage, never from the verifier's return or its
+    /// events — the whole failure class this exists for is a call that is
+    /// never made, or made and reverted.
     function test_settleBatch_writesTheAccrualToTheCounter() public {
-        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 3, 2);
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 3);
         (
             bytes memory pv,
             FigaroBatchVerifier.NetPosition[] memory positions,
@@ -958,46 +957,34 @@ contract FigaroBatchVerifierTest is Test {
 
         verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
 
-        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
         assertEq(c, 3, "distinct resolved processes");
-        assertEq(d, 2, "distinct pairs");
+        assertEq(d, 1, "one staked seller");
         assertGt(score, 0, "and it is scored");
+        assertTrue(counter.processCounted(counter.KIND_CLAUSE(), clauseKey, usage.uses[0].processId));
         assertEq(counter.scoreOf(counter.KIND_CLAUSE(), clauseKey, 0), score, "which is what the reward reads");
         assertEq(counter.totalScoreIn(0), score, "and what the period total counts");
     }
 
-    /// The accrual is calldata; the hash is the proof's. Tampering with the
-    /// numbers after proving must not resolve.
+    /// The uses are calldata; the hash is the proof's. Tampering with a use
+    /// after proving — its seller, its process — must not resolve.
     function test_settleBatch_rejectsATamperedAccrual() public {
-        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 3, 2);
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 3);
         (
             bytes memory pv,
             FigaroBatchVerifier.NetPosition[] memory positions,
             FigaroBatchVerifier.BatchEventData memory events,
         ) = _batchWithUsage(usage);
 
-        usage.accruals[0].c = 3000; // the proof committed 3
+        usage.uses[0].seller = address(0x5E11E); // the proof committed `seller`
 
         vm.expectRevert(FigaroBatchVerifier.UsageAccrualHashMismatch.selector);
         verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
-    }
 
-    /// WHY BOTH ARRAY LENGTHS ARE IN THE PREIMAGE. An accrual record is 49
-    /// bytes and a seller 20, so twenty accruals span exactly forty-nine
-    /// sellers' worth of bytes. Without the length prefixes the same byte string could
-    /// be re-split — presenting accruals whose sellers were never stake-checked
-    /// while the hash still matched. Moving the boundary must change the hash.
-    function test_usageHash_isNotReSplittableBetweenTheTwoArrays() public view {
-        FigaroBatchVerifier.BatchUsageData memory twenty;
-        twenty.accruals = new IUsageCounter.BatchAccrual[](20);
-        twenty.sellers = new address[](0);
-
-        FigaroBatchVerifier.BatchUsageData memory fortyNine;
-        fortyNine.accruals = new IUsageCounter.BatchAccrual[](0);
-        fortyNine.sellers = new address[](49);
-
-        // Same total span (20 × 49 == 49 × 20 == 980 bytes), all-zero contents.
-        assertTrue(_hashUsage(twenty) != _hashUsage(fortyNine), "the split must be pinned by the hash");
+        usage.uses[0].seller = seller;
+        usage.uses[1].processId = keccak256("another-process"); // and this process
+        vm.expectRevert(FigaroBatchVerifier.UsageAccrualHashMismatch.selector);
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
     }
 
     /// THE CROSS-LANGUAGE LOCK. Both sides pack this hash by hand — assembly
@@ -1015,25 +1002,22 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.BatchUsageData memory u;
         u.period = 3;
         u.provenanceLeaf = keccak256("prov");
-        u.accruals = new IUsageCounter.BatchAccrual[](2);
-        // The two seed strings are OPAQUE FIXTURE BYTES, not a name for the
+        u.uses = new IUsageCounter.BatchUse[](2);
+        // The seed strings are OPAQUE FIXTURE BYTES, not a name for the
         // concept: they are keccak preimages the Rust vector was generated from
         // (`prover/lib/tests/usage.rs`). Changing either side alone breaks the
         // lock — rename both together and regenerate the vector from Rust.
-        // One accrual of each kind, so the kind byte is under the lock.
-        u.accruals[0] = IUsageCounter.BatchAccrual(keccak256("artifact-a"), 0, 4, 2);
-        u.accruals[1] = IUsageCounter.BatchAccrual(keccak256("artifact-b"), 1, 1, 1);
-        u.sellers = new address[](2);
-        u.sellers[0] = address(1);
-        u.sellers[1] = address(2);
+        // One use of each kind, so the kind byte is under the lock.
+        u.uses[0] = IUsageCounter.BatchUse(keccak256("artifact-a"), 0, keccak256("process-a"), address(1));
+        u.uses[1] = IUsageCounter.BatchUse(keccak256("artifact-b"), 1, keccak256("process-b"), address(2));
 
-        bytes32 expected = 0x9d3344f07a7c4ab3dc7eb5a6719feae8ae1462cb029ea2c781c6b0619261acd4;
+        bytes32 expected = 0x85ad8b98ae9586be5384d71b28062ff571fc425be6cc93e5c749853c27c09a7a;
         assertEq(_hashUsage(u), expected, "the test mirror matches the Rust vector");
 
         // And so does the contract's assembly: a batch committing `expected`
         // gets past the usage-hash check into the counter, which rejects period
         // 3 as not open. Resolution is decoupled from that rejection (Fix 1a),
-        // so the batch RESOLVES and the accrual is dropped — which is itself
+        // so the batch RESOLVES and its uses go uncounted — which is itself
         // proof the hash matched (a mismatch would revert UsageAccrualHashMismatch
         // before the counter is ever reached).
         (
@@ -1060,33 +1044,35 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(verifier.stateRoot(), newRoot, "resolves despite the rejected accrual");
     }
 
-    /// The one-accrual twin of the vector above, harvested from the same Rust
-    /// implementation: the preimage is 118 bytes (49 + 49 + 20), the kind byte
-    /// 0x01 sits right after the 32-byte key. Pinned against the test mirror and
-    /// the raw preimage both, so the layout is stated byte for byte here.
-    function test_usageHash_matchesTheOneAccrualRustVector() public pure {
+    /// The one-use twin of the vector above, harvested from the same Rust
+    /// implementation: the preimage is 126 bytes (41 + 85), the kind byte
+    /// 0x01 sits right after the 32-byte key, the process id and the seller
+    /// after it. Pinned against the test mirror and the raw preimage both, so
+    /// the layout is stated byte for byte here.
+    function test_usageHash_matchesTheOneUseRustVector() public pure {
         FigaroBatchVerifier.BatchUsageData memory u;
         u.period = 3;
         u.provenanceLeaf = keccak256("prov");
-        u.accruals = new IUsageCounter.BatchAccrual[](1);
-        u.accruals[0] = IUsageCounter.BatchAccrual(keccak256("artifact-a"), 1, 4, 2);
-        u.sellers = new address[](1);
-        u.sellers[0] = address(1);
+        u.uses = new IUsageCounter.BatchUse[](1);
+        u.uses[0] = IUsageCounter.BatchUse(keccak256("artifact-a"), 1, keccak256("process-a"), address(1));
 
         bytes memory preimage =
-            hex"03802d6204bf932870ff4b907951cbb0070a81deba751c5267793b986e642924da0000000000000001f90fbed58b3c3cd29401a81f6bc369392ef4bb88a8410888f3c879567f9ce00e010000000000000004000000000000000200000000000000010000000000000000000000000000000000000001";
-        bytes32 expected = 0xa8f200441f17c90bdb286e38e33656d6cac7f0b7b6d4b0f1f011d76a4ba4cf3e;
-        assertEq(preimage.length, 118, "span 49 + 49n + 20m at n = m = 1");
+            hex"03802d6204bf932870ff4b907951cbb0070a81deba751c5267793b986e642924da0000000000000001f90fbed58b3c3cd29401a81f6bc369392ef4bb88a8410888f3c879567f9ce00e016cb867e17f0eb805c8b1c06ee50e56457f54ed926b617b1a376c5963f934d43b0000000000000000000000000000000000000001";
+        bytes32 expected = 0x7651d6b67629ae1203d1ba6085775549de93d0f620dd882fcb62368ebc889130;
+        assertEq(preimage.length, 126, "span 41 + 85n at n = 1");
         assertEq(keccak256(preimage), expected, "the preimage hashes to the Rust vector");
         assertEq(_hashUsage(u), expected, "the test mirror matches the Rust vector");
     }
 
     /// The counter's gates are the COUNTER's, and resolution is DECOUPLED from
     /// them (audit Fix 1a): a batch that trips a reward-tier gate still resolves
-    /// its token positions and advances state — the accrual is dropped, never
+    /// its token positions and advances state — the uses go uncounted, never
     /// the trade. A reward gate must not unwind another party's resolution.
+    /// Two gates, both ways: a seller who left the registry between prove and
+    /// submit has their use skipped inside the call, and a period boundary
+    /// crossed in flight reverts the call, which the verifier catches.
     function test_settleBatch_settlesEvenWhenTheCounterRejectsTheAccrual() public {
-        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 1, 1);
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 1);
         (
             bytes memory pv,
             FigaroBatchVerifier.NetPosition[] memory positions,
@@ -1098,16 +1084,128 @@ contract FigaroBatchVerifierTest is Test {
         members.requestWithdrawal(); // the seller de-surfaces between prove and submit
 
         uint256 sellerBefore = token.balanceOf(seller);
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
 
-        // The accrual is dropped (topic1 = batch id 1); reason bytes not asserted.
+        assertEq(verifier.stateRoot(), newRoot, "resolution advances");
+        assertEq(token.balanceOf(seller) - sellerBefore, 300 ether, "the seller is still paid");
+        (uint64 c,, uint256 score) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, usage.period);
+        assertEq(c, 0, "the unstaked seller's use is skipped");
+        assertEq(score, 0);
+    }
+
+    /// The whole-call gate: a batch proven for a period that has since ended
+    /// is caught by the verifier, resolves, and emits `BatchAccrualSkipped`.
+    function test_settleBatch_settlesWhenItsPeriodHasPassed() public {
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 1);
+        usage.period = counter.currentPeriod() + 1;
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _batchWithUsage(usage);
+
+        // The uses go uncounted (topic1 = batch id 1); reason bytes not asserted.
         vm.expectEmit(true, false, false, false, address(verifier));
         emit FigaroBatchVerifier.BatchAccrualSkipped(1, hex"");
         verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
 
-        assertEq(verifier.stateRoot(), newRoot, "resolution advances despite the dropped accrual");
-        assertEq(token.balanceOf(seller) - sellerBefore, 300 ether, "the seller is still paid");
-        (,, uint256 score) = counter.batchAccrualOf(counter.KIND_CLAUSE(), clauseKey, usage.period);
-        assertEq(score, 0, "the accrual was dropped, not applied");
+        assertEq(verifier.stateRoot(), newRoot, "resolution advances despite the skipped uses");
+        (uint64 c,,) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+        assertEq(c, 0, "nothing counted");
+    }
+
+    /// A batch that moves no state — claims only — keeps the root where it
+    /// is, so its proof names the current root as both prev and new.
+    function _stateNeutralBatch(FigaroBatchVerifier.BatchUsageData memory usage)
+        internal
+        view
+        returns (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events
+        )
+    {
+        positions = new FigaroBatchVerifier.NetPosition[](0);
+        events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes32 root = verifier.stateRoot();
+        pv = abi.encode(
+            root,
+            root,
+            uint64(block.chainid),
+            address(verifier),
+            _hashPositions(positions),
+            _hashAttestations(events.attestations),
+            _hashBindings(events.specBindings),
+            _hashUsage(usage),
+            uint64(block.timestamp),
+            keccak256(hex"")
+        );
+    }
+
+    /// A state-neutral batch's proof lands again: the root check is the only
+    /// guard against a second landing, and a batch whose prev and new roots
+    /// are equal passes it as often as anyone submits it within
+    /// MAX_BATCH_STALENESS. The landing is inert for the reward: the counter's
+    /// once-ever `processCounted` skips every use it carries the second time,
+    /// so the tally and the period total stay where the first landing left
+    /// them. The verifier re-emits its stream and `BatchSettled` under a new
+    /// batch id, and moves no token.
+    function test_settleBatch_aStateNeutralBatchLandsTwiceAndCountsOnce() public {
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 2);
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events
+        ) = _stateNeutralBatch(usage);
+
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+        uint256 total = counter.totalScoreIn(0);
+        assertEq(c, 2);
+        assertEq(d, 1);
+
+        vm.expectEmit(true, true, true, true, address(verifier));
+        emit FigaroBatchVerifier.BatchSettled(2, GENESIS, GENESIS, 0);
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
+
+        (uint64 c2, uint64 d2, uint256 score2) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+        assertEq(c2, c, "the second landing counts nothing");
+        assertEq(d2, d);
+        assertEq(score2, score);
+        assertEq(counter.totalScoreIn(0), total, "the period total does not move");
+        assertEq(verifier.stateRoot(), GENESIS, "the root stays where it was");
+        assertEq(verifier.batchCount(), 2, "the batch is logged again under a new id");
+    }
+
+    /// A use the counter skipped inside `settleBatch` — its seller had left the
+    /// registry — is counted when a later batch presents it again with the
+    /// seller staked once more: the guest keeps no counted set, and the
+    /// counter's `processCounted` never recorded the skipped use.
+    function test_settleBatch_aSkippedUseIsCountedWhenPresentedAgain() public {
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 1);
+        (
+            bytes memory pv,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events
+        ) = _stateNeutralBatch(usage);
+
+        vm.prank(seller);
+        members.requestWithdrawal();
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
+        (uint64 c,,) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+        assertEq(c, 0, "skipped: the seller holds no live stake");
+        assertFalse(counter.processCounted(counter.KIND_CLAUSE(), clauseKey, usage.uses[0].processId));
+
+        vm.prank(seller);
+        members.register("ipfs://seller-again");
+        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
+        (uint64 c2, uint64 d2,) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+        assertEq(c2, 1, "presented again, the use is counted");
+        assertEq(d2, 1);
+        assertTrue(counter.processCounted(counter.KIND_CLAUSE(), clauseKey, usage.uses[0].processId));
     }
 
     /// Trade outlives the reward: once accrual closes, batches carrying no
@@ -1153,11 +1251,13 @@ contract FigaroBatchVerifierTest is Test {
         uint8 kindClause = counter.KIND_CLAUSE();
         uint8 kindAssembly = counter.KIND_ASSEMBLY();
 
-        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(asmKey, 3, 2);
-        usage.accruals[0].kind = kindAssembly;
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(asmKey, 3);
+        for (uint256 i = 0; i < usage.uses.length; i++) {
+            usage.uses[i].kind = kindAssembly;
+        }
         _settleWithUsage(usage);
 
-        (,, uint256 assemblyScore) = counter.batchAccrualOf(kindAssembly, asmKey, 0);
+        (,, uint256 assemblyScore) = counter.accrualOf(kindAssembly, asmKey, 0);
         assertGt(assemblyScore, 0, "the batch credits the assembly kind");
         assertEq(counter.scoreOf(kindClause, asmKey, 0), 0, "and nothing under the clause kind");
 
@@ -1293,30 +1393,23 @@ contract FigaroBatchVerifierTest is Test {
         }
     }
 
-    function _fuzzUsage(
-        bytes32 seed,
-        IUsageCounter.BatchAccrual memory acc0,
-        address s0,
-        uint8 period,
-        uint256 nAcc,
-        uint256 nSell
-    ) internal pure returns (FigaroBatchVerifier.BatchUsageData memory u) {
+    function _fuzzUsage(bytes32 seed, IUsageCounter.BatchUse memory use0, uint8 period, uint256 nUses)
+        internal
+        pure
+        returns (FigaroBatchVerifier.BatchUsageData memory u)
+    {
         u.period = period;
         u.provenanceLeaf = _word(seed, "provenance", 0);
-        u.accruals = new IUsageCounter.BatchAccrual[](nAcc);
-        for (uint256 i = 0; i < nAcc; i++) {
-            u.accruals[i] = i == 0
-                ? acc0
-                : IUsageCounter.BatchAccrual(
-                    _word(seed, "accrual", i),
+        u.uses = new IUsageCounter.BatchUse[](nUses);
+        for (uint256 i = 0; i < nUses; i++) {
+            u.uses[i] = i == 0
+                ? use0
+                : IUsageCounter.BatchUse(
+                    _word(seed, "use", i),
                     uint8(uint256(_word(seed, "kind", i))),
-                    uint64(uint256(_word(seed, "c", i))),
-                    uint64(uint256(_word(seed, "d", i)))
+                    _word(seed, "processId", i),
+                    address(uint160(uint256(_word(seed, "seller", i))))
                 );
-        }
-        u.sellers = new address[](nSell);
-        for (uint256 i = 0; i < nSell; i++) {
-            u.sellers[i] = i == 0 ? s0 : address(uint160(uint256(_word(seed, "seller", i))));
         }
     }
 
@@ -1342,8 +1435,7 @@ contract FigaroBatchVerifierTest is Test {
         FigaroBatchVerifier.NetPosition p0;
         FigaroBatchVerifier.AttestationData a0;
         FigaroBatchVerifier.SpecBinding b0;
-        IUsageCounter.BatchAccrual acc0;
-        address s0;
+        IUsageCounter.BatchUse use0;
         uint8 period;
         uint8 lengths;
     }
@@ -1377,8 +1469,7 @@ contract FigaroBatchVerifierTest is Test {
             _fuzzAttestations(f.seed, f.a0, (f.lengths >> 2) & 3),
             _fuzzBindings(f.seed, f.b0, 1 + ((f.lengths >> 4) & 3))
         );
-        FigaroBatchVerifier.BatchUsageData memory usage =
-            _fuzzUsage(f.seed, f.acc0, f.s0, f.period, (f.lengths >> 6) & 3, uint256(f.seed) & 3);
+        FigaroBatchVerifier.BatchUsageData memory usage = _fuzzUsage(f.seed, f.use0, f.period, (f.lengths >> 6) & 3);
 
         vm.expectRevert(
             abi.encodeWithSelector(FigaroBatchVerifier.SpecBindingMismatch.selector, f.b0.clauseId, f.b0.specHash)
@@ -1541,7 +1632,7 @@ contract FigaroBatchVerifierTest is Test {
     /// settleBatch without a public value to bind it surfaces here as an
     /// unaccounted write.
     function test_settleBatch_writesNothingThePublicValuesDoNotBind() public {
-        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 3, 2);
+        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 3);
         (
             bytes memory pv,
             FigaroBatchVerifier.NetPosition[] memory positions,

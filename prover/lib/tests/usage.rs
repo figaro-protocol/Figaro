@@ -1,15 +1,15 @@
 /// The designer-reward usage bridge, guest side.
 ///
 /// The counter's direct path requires `FigaroCore.orderStatus == RESOLVED`,
-/// which a batch-resolved process never acquires — the two resolution
-/// universes are disjoint. These tests cover what the guest must prove so
-/// batched trade can be credited anyway: that the order really resolved, that
-/// the clause, agreement or assembly really was in the signed agreement, and that no
-/// trade is counted twice ACROSS batches, not merely within one.
+/// which a batch-resolved process never acquires. These tests cover what the
+/// guest must prove so batched trade is counted anyway: that the order really
+/// resolved, that the clause, agreement or assembly really was in the signed
+/// agreement, and that the batch gives each (kind, key, process) once, with
+/// the process id and the seller of the order it was proved through.
 ///
-/// The last point is why the counted set rides the state root: a process
-/// resolved in batch N is still RESOLVED in batch N+1's snapshot, so a
-/// batch-local dedup set would let the same trade be claimed again forever.
+/// Counting once ever, across batches and across the direct path, is the
+/// counter's own `processCounted`: the guest keeps no usage state, and a
+/// claim moves no state root.
 use alloy_primitives::{address, b256, keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
@@ -66,10 +66,13 @@ fn empty_snapshot() -> KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
         order_process_id: vec![],
-        usage_counted: vec![],
-        usage_seller_seen: vec![],
-        usage_accrual: vec![],
     }
+}
+
+/// The process id the guest derives for a root order, under the batch
+/// domain.
+fn pid(order: &Commitment) -> B256 {
+    derive_commitment_ids(&domain_separator(CHAIN_ID, CORE), order).1
 }
 
 /// The reserved provenance leaf's key — a constant of the agreement
@@ -251,20 +254,20 @@ fn credits_a_process_the_same_batch_resolved() {
 
     let (pv, _, events, _) = apply_batch_with_state(&input).expect("batch applies");
 
-    assert_eq!(events.usage_accruals.len(), 1);
-    assert_eq!(events.usage_accruals[0].clause_or_assembly, clause_or_assembly);
-    assert_eq!(events.usage_accruals[0].c, 1, "one distinct resolved process");
-    assert_eq!(events.usage_accruals[0].d, 1, "one distinct staked seller");
-    assert_eq!(events.usage_sellers, vec![SELLER1], "the seller to stake-check");
+    assert_eq!(
+        events.uses,
+        vec![BatchUse {
+            clause_or_assembly,
+            kind: USAGE_KIND_CLAUSE,
+            process_id: pid(&order),
+            seller: SELLER1,
+        }],
+        "one use: the key, its kind, the process and the seller to stake-check"
+    );
     assert_eq!(events.usage_period, PERIOD);
     assert_eq!(
         pv.usage_accrual_hash,
-        compute_usage_accrual_hash(
-            PERIOD,
-            &provenance_key(),
-            &events.usage_accruals,
-            &events.usage_sellers
-        ),
+        compute_usage_accrual_hash(PERIOD, &provenance_key(), &events.uses),
         "the committed hash covers exactly what the verifier will re-derive"
     );
 }
@@ -316,12 +319,14 @@ fn rejects_a_clause_or_assembly_that_is_not_in_the_agreement() {
 
 // ── Idempotence across batches (the state-root leg) ───────────────
 
-/// THE REPLAY TEST, and the reason the counted set is in the proven state.
-/// The order stays RESOLVED in the next batch's snapshot, so nothing about
-/// the mirror state stops the claim being re-presented. What stops it is that
-/// "already counted" is itself part of the state the root commits to.
+// ── Once per batch; once ever is the counter's ────────────────────
+
+/// A claim presented again in a later batch proves again: the order stays
+/// RESOLVED, and the guest keeps no counted set. The use it yields is the
+/// same one, and the counter, whose `processCounted` holds for both routes,
+/// skips it.
 #[test]
-fn a_claim_cannot_be_replayed_in_a_later_batch() {
+fn a_claim_presented_in_a_later_batch_yields_the_same_use() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
     let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
@@ -333,71 +338,42 @@ fn a_claim_cannot_be_replayed_in_a_later_batch() {
         vec![clause_claim(&order, clause_or_assembly, clause_data_hash)],
         empty_snapshot(),
     );
-    let (_, _, _, post) = apply_batch_with_state(&first).expect("first batch applies");
+    let (_, _, first_events, post) = apply_batch_with_state(&first).expect("first batch applies");
 
-    // Same claim, next batch, against the state the first one produced.
-    let replay = batch(
+    let again = batch(
         vec![],
         vec![clause_claim(&order, clause_or_assembly, clause_data_hash)],
         post.to_snapshot(),
     );
-
-    match apply_batch_with_state(&replay).map(|_| ()) {
-        Err(KernelError::UsageAlreadyCounted {
-            clause_or_assembly: a,
-            ..
-        }) => assert_eq!(a, clause_or_assembly),
-        other => panic!("expected UsageAlreadyCounted, got {other:?}"),
-    }
+    let (_, _, again_events, _) = apply_batch_with_state(&again).expect("the claim proves again");
+    assert_eq!(again_events.uses, first_events.uses, "the same (kind, key, process, seller)");
 }
 
-/// The counted set is keyed by (clause-or-assembly, process) — so a SECOND
-/// clause or assembly from the same resolved process is still creditable.
-/// Counting once ever is per clause or assembly, not per process.
+/// The same claim twice in one batch is one use: the guest gives each
+/// (kind, key, process) once, the first claim naming the seller.
 #[test]
-fn a_second_clause_or_assembly_from_the_same_process_still_counts() {
+fn a_claim_given_twice_in_one_batch_is_one_use() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let first_clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
+    let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let clause_data_hash = keccak256(b"clause-bytes");
 
-    let (order, ops) = settled_order(&buyer, &seller, &first_clause_or_assembly, &clause_data_hash, 1);
-    let input = batch(
-        ops,
-        vec![clause_claim(&order, first_clause_or_assembly, clause_data_hash)],
-        empty_snapshot(),
-    );
-    let (_, _, _, post) = apply_batch_with_state(&input).expect("first batch applies");
-
-    // What is asserted: the first clause is counted once, and the counted
-    // set holds the (kind, clause-or-assembly, process) triple — the key
-    // that leaves a different clause or assembly from the same process
-    // countable.
-    let accrued = post
-        .usage_accrual
-        .get(&(USAGE_KIND_CLAUSE, first_clause_or_assembly, PERIOD))
-        .copied();
-    assert_eq!(
-        accrued,
-        Some((1, 1)),
-        "the first clause or assembly is counted once"
-    );
-    assert!(
-        post.usage_counted
-            .contains(&(USAGE_KIND_CLAUSE, first_clause_or_assembly, {
-                let domain = domain_separator(CHAIN_ID, CORE);
-                typed_data_hash(&domain, &commitment_struct_hash(&order))
-            })),
-        "and the (kind, clause-or-assembly, process) triple is what was recorded"
-    );
+    let (order, ops) = settled_order(&buyer, &seller, &clause_or_assembly, &clause_data_hash, 1);
+    let claims = vec![
+        clause_claim(&order, clause_or_assembly, clause_data_hash),
+        clause_claim(&order, clause_or_assembly, clause_data_hash),
+    ];
+    let (_, _, events, _) =
+        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+    assert_eq!(events.uses.len(), 1, "one use per (kind, key, process)");
+    assert_eq!(events.uses[0].process_id, pid(&order));
 }
 
-// ── Breadth ───────────────────────────────────────────────────────
+// ── The seller each use names ─────────────────────────────────────
 
-/// `d` counts DISTINCT STAKED SELLERS. Many buyers
-/// through ONE seller add depth, not breadth — buyer wallets are free, so
-/// breadth follows the priced identity; the `c^(1/3)` term discounts the
-/// repetition.
+/// Each use names its process and the seller of record, and the counter
+/// counts breadth from them: `d` counts DISTINCT STAKED SELLERS in its one
+/// per-period set, so many buyers through ONE seller are depth, not breadth.
 #[test]
 fn many_buyers_through_one_seller_add_depth_not_breadth() {
     let buyer = make_signing_key(BUYER_KEY);
@@ -420,14 +396,16 @@ fn many_buyers_through_one_seller_add_depth_not_breadth() {
     let (_, _, events, _) =
         apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
 
-    assert_eq!(events.usage_accruals.len(), 1);
-    assert_eq!(events.usage_accruals[0].c, 3, "three distinct resolved processes");
-    assert_eq!(events.usage_accruals[0].d, 1, "one seller is one unit of breadth");
-    assert_eq!(events.usage_sellers.len(), 1, "one seller to stake-check");
+    assert_eq!(events.uses.len(), 3, "three distinct resolved processes");
+    assert_eq!(
+        events.uses.iter().map(|u| u.process_id).collect::<Vec<_>>(),
+        vec![pid(&order_a), pid(&order_b), pid(&order_c)]
+    );
+    assert!(events.uses.iter().all(|u| u.seller == SELLER1), "one seller behind all three");
 }
 
-/// The counterpart: the SAME buyer through two sellers is two units of
-/// breadth — each unit backed by a stake the counter checks on-chain.
+/// The counterpart: the SAME buyer through two sellers — each use names its
+/// own seller, whose stake the counter checks on-chain.
 #[test]
 fn distinct_sellers_raise_breadth() {
     let buyer = make_signing_key(BUYER_KEY);
@@ -448,10 +426,9 @@ fn distinct_sellers_raise_breadth() {
     let (_, _, events, _) =
         apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
 
-    assert_eq!(events.usage_accruals.len(), 1);
-    assert_eq!(events.usage_accruals[0].c, 2, "two distinct resolved processes");
-    assert_eq!(events.usage_accruals[0].d, 2, "two staked sellers are two units of breadth");
-    assert_eq!(events.usage_sellers.len(), 2, "both sellers to stake-check");
+    assert_eq!(events.uses.len(), 2, "two distinct resolved processes");
+    assert_eq!(events.uses[0].seller, address_of(&seller1));
+    assert_eq!(events.uses[1].seller, address_of(&seller2));
 }
 
 // ── The agreement leg ─────────────────────────────────────────────
@@ -477,16 +454,17 @@ fn credits_an_agreement_through_the_provenance_leaf() {
         inclusion_proof: vec![],
     };
 
+    let process_id = pid(&claim.order);
     let (_, _, events, _) =
         apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).expect("batch applies");
 
     assert_eq!(
-        events.usage_accruals,
-        vec![UsageAccrual {
+        events.uses,
+        vec![BatchUse {
             clause_or_assembly: agreement,
             kind: USAGE_KIND_AGREEMENT,
-            c: 1,
-            d: 1
+            process_id,
+            seller: SELLER1,
         }],
         "the agreementHash is credited under kind 2 — never the provenance leaf's key"
     );
@@ -584,13 +562,12 @@ fn credits_an_assembly_through_the_provenance_leaf_and_its_agreement() {
     let (_, _, events, _) =
         apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).expect("batch applies");
 
-    assert_eq!(events.usage_accruals.len(), 1);
+    assert_eq!(events.uses.len(), 1);
     assert_eq!(
-        events.usage_accruals[0].clause_or_assembly, composition,
+        events.uses[0].clause_or_assembly, composition,
         "the DESIGNER is credited — the assemblyHash, never the provenance leaf's key"
     );
-    assert_eq!(events.usage_accruals[0].kind, USAGE_KIND_ASSEMBLY);
-    assert_eq!(events.usage_accruals[0].c, 1);
+    assert_eq!(events.uses[0].kind, USAGE_KIND_ASSEMBLY);
 }
 
 /// The provenance leaf is reproduced, not parsed, so a assemblyHash
@@ -689,7 +666,7 @@ fn rejects_an_assembly_claim_with_the_wrong_slot_content() {
 }
 
 /// One order, one provenance leaf, two credits: the agreement under kind 2
-/// and the assembly under kind 1, each its own accrual.
+/// and the assembly under kind 1, each its own use.
 #[test]
 fn one_provenance_leaf_credits_the_agreement_and_the_assembly_apart() {
     let buyer = make_signing_key(BUYER_KEY);
@@ -711,89 +688,60 @@ fn one_provenance_leaf_credits_the_agreement_and_the_assembly_apart() {
         assembly_claim(&order, composition, agreement, entry, membership),
     ];
 
-    let (_, _, events, post) =
+    let (_, _, events, _) =
         apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
     let mut kinds: Vec<(B256, u8)> = events
-        .usage_accruals
+        .uses
         .iter()
         .map(|a| (a.clause_or_assembly, a.kind))
         .collect();
     kinds.sort();
     let mut expected = vec![(agreement, USAGE_KIND_AGREEMENT), (composition, USAGE_KIND_ASSEMBLY)];
     expected.sort();
-    assert_eq!(kinds, expected);
-    assert_eq!(post.usage_counted.len(), 2, "counted once per (kind, key)");
+    assert_eq!(kinds, expected, "one use per (kind, key)");
 }
 
 // ── The hash the verifier re-derives ──────────────────────────────
 
-/// Both array lengths are in the preimage. An accrual entry is 49 bytes and
-/// a seller 20, so twenty accruals and forty-nine sellers occupy the same span:
-/// without the prefixes one preimage could be re-split into a different
-/// (accruals, sellers) pair, presenting accruals whose sellers were never
-/// stake-checked. Mirrored by
-/// `FigaroBatchVerifierTest.test_usageHash_isNotReSplittableBetweenTheTwoArrays`.
-#[test]
-fn the_usage_hash_pins_the_split_between_the_two_arrays() {
-    let twenty: Vec<UsageAccrual> = (0..20)
-        .map(|_| UsageAccrual {
-            clause_or_assembly: B256::ZERO,
-            kind: USAGE_KIND_CLAUSE,
-            c: 0,
-            d: 0,
-        })
-        .collect();
-    let forty_nine: Vec<Address> = (0..49).map(|_| Address::ZERO).collect();
 
-    let a = compute_usage_accrual_hash(0, &B256::ZERO, &twenty, &[]);
-    let b = compute_usage_accrual_hash(0, &B256::ZERO, &[], &forty_nine);
-    assert_ne!(a, b, "20 × 49 bytes and 49 × 20 bytes must not collide");
-}
 
 /// The period and the provenance key are COMMITTED, not incidental: the
 /// counter re-checks both, and a batch proven for one period must not resolve
-/// into another.
+/// into another. Every field of a use is covered too.
 #[test]
 fn the_usage_hash_covers_the_period_and_the_provenance_key() {
-    let accruals = vec![UsageAccrual {
+    let uses = vec![BatchUse {
         clause_or_assembly: keccak256(b"usage-key"),
         kind: USAGE_KIND_CLAUSE,
-        c: 2,
-        d: 1,
+        process_id: keccak256(b"a-process"),
+        seller: SELLER1,
     }];
-    let sellers = vec![SELLER1];
-    let base = compute_usage_accrual_hash(0, &provenance_key(), &accruals, &sellers);
+    let base = compute_usage_accrual_hash(0, &provenance_key(), &uses);
 
-    let mut other_kind = accruals.clone();
+    let mut other_kind = uses.clone();
     other_kind[0].kind = USAGE_KIND_ASSEMBLY;
-    assert_ne!(
-        base,
-        compute_usage_accrual_hash(0, &provenance_key(), &other_kind, &sellers),
-        "the kind is covered"
-    );
-    let mut agreement_kind = accruals.clone();
+    assert_ne!(base, compute_usage_accrual_hash(0, &provenance_key(), &other_kind), "the kind is covered");
+    let mut agreement_kind = uses.clone();
     agreement_kind[0].kind = USAGE_KIND_AGREEMENT;
     assert_ne!(
-        compute_usage_accrual_hash(0, &provenance_key(), &other_kind, &sellers),
-        compute_usage_accrual_hash(0, &provenance_key(), &agreement_kind, &sellers),
+        compute_usage_accrual_hash(0, &provenance_key(), &other_kind),
+        compute_usage_accrual_hash(0, &provenance_key(), &agreement_kind),
         "the agreement kind is its own byte"
     );
+    let mut other_process = uses.clone();
+    other_process[0].process_id = keccak256(b"another-process");
+    assert_ne!(base, compute_usage_accrual_hash(0, &provenance_key(), &other_process), "the process is covered");
+    let mut other_seller = uses.clone();
+    other_seller[0].seller = Address::ZERO;
+    assert_ne!(base, compute_usage_accrual_hash(0, &provenance_key(), &other_seller), "the seller is covered");
 
+    assert_ne!(base, compute_usage_accrual_hash(1, &provenance_key(), &uses), "period is covered");
     assert_ne!(
         base,
-        compute_usage_accrual_hash(1, &provenance_key(), &accruals, &sellers),
-        "period is covered"
-    );
-    assert_ne!(
-        base,
-        compute_usage_accrual_hash(0, &keccak256(b"other-clause"), &accruals, &sellers),
+        compute_usage_accrual_hash(0, &keccak256(b"other-clause"), &uses),
         "provenance key is covered"
     );
-    assert_ne!(
-        base,
-        compute_usage_accrual_hash(0, &provenance_key(), &accruals, &[]),
-        "the seller list is covered"
-    );
+    assert_ne!(base, compute_usage_accrual_hash(0, &provenance_key(), &[]), "the uses are covered");
 }
 
 /// THE CROSS-LANGUAGE LOCK. Both sides pack this hash by hand — Rust here,
@@ -804,50 +752,48 @@ fn the_usage_hash_covers_the_period_and_the_provenance_key() {
 /// `FigaroBatchVerifierTest.test_usageHash_matchesTheRustVector`; if either
 /// layout drifts by a byte, exactly one of the two tests fails and says so.
 ///
-/// The `b"artifact-a"` / `b"artifact-b"` literals below are OPAQUE PREIMAGE
-/// BYTES, not a name for anything — they are pinned byte-for-byte to the
-/// Solidity side of the vector. Renaming them here without renaming them
-/// there (and re-deriving the expected hash) breaks the lock.
+/// The `b"artifact-a"` / `b"artifact-b"` / `b"process-a"` / `b"process-b"`
+/// literals below are OPAQUE PREIMAGE BYTES, not a name for anything — they
+/// are pinned byte-for-byte to the Solidity side of the vector. Renaming them
+/// here without renaming them there (and re-deriving the expected hash)
+/// breaks the lock.
 #[test]
 fn the_usage_hash_matches_the_solidity_vector() {
-    let accruals = vec![
-        UsageAccrual {
+    let uses = vec![
+        BatchUse {
             clause_or_assembly: keccak256(b"artifact-a"),
             kind: USAGE_KIND_CLAUSE,
-            c: 4,
-            d: 2,
+            process_id: keccak256(b"process-a"),
+            seller: address!("0000000000000000000000000000000000000001"),
         },
-        UsageAccrual {
+        BatchUse {
             clause_or_assembly: keccak256(b"artifact-b"),
             kind: USAGE_KIND_ASSEMBLY,
-            c: 1,
-            d: 1,
+            process_id: keccak256(b"process-b"),
+            seller: address!("0000000000000000000000000000000000000002"),
         },
-    ];
-    let sellers = vec![
-        address!("0000000000000000000000000000000000000001"),
-        address!("0000000000000000000000000000000000000002"),
     ];
 
     assert_eq!(
-        compute_usage_accrual_hash(3, &keccak256(b"prov"), &accruals, &sellers),
-        b256!("9d3344f07a7c4ab3dc7eb5a6719feae8ae1462cb029ea2c781c6b0619261acd4")
+        compute_usage_accrual_hash(3, &keccak256(b"prov"), &uses),
+        b256!("85ad8b98ae9586be5384d71b28062ff571fc425be6cc93e5c749853c27c09a7a")
     );
 }
 
-/// One accrual, its preimage written out byte by byte: the layout
-/// `period(1) ‖ provenanceLeaf(32) ‖ n(8) ‖ [key(32) ‖ kind(1) ‖ c(8) ‖ d(8)]
-/// ‖ m(8) ‖ [seller(20)]`, span `49 + 49n + 20m` — here 118 bytes.
+/// One use, its preimage written out byte by byte: the layout
+/// `period(1) ‖ provenanceLeaf(32) ‖ n(8) ‖ [key(32) ‖ kind(1) ‖ processId(32)
+/// ‖ seller(20)]`, span `41 + 85n` — here 126 bytes.
 #[test]
-fn the_one_accrual_usage_hash_is_its_written_preimage() {
+fn the_one_use_usage_hash_is_its_written_preimage() {
     let key = keccak256(b"artifact-a");
     let prov = keccak256(b"prov");
+    let process = keccak256(b"process-a");
     let seller = address!("0000000000000000000000000000000000000001");
-    let accruals = vec![UsageAccrual {
+    let uses = vec![BatchUse {
         clause_or_assembly: key,
         kind: USAGE_KIND_ASSEMBLY,
-        c: 4,
-        d: 2,
+        process_id: process,
+        seller,
     }];
 
     let mut preimage = Vec::new();
@@ -856,23 +802,18 @@ fn the_one_accrual_usage_hash_is_its_written_preimage() {
     preimage.extend_from_slice(&1u64.to_be_bytes());
     preimage.extend_from_slice(key.as_slice());
     preimage.push(1u8);
-    preimage.extend_from_slice(&4u64.to_be_bytes());
-    preimage.extend_from_slice(&2u64.to_be_bytes());
-    preimage.extend_from_slice(&1u64.to_be_bytes());
+    preimage.extend_from_slice(process.as_slice());
     preimage.extend_from_slice(seller.as_slice());
-    assert_eq!(preimage.len(), 49 + 49 + 20);
+    assert_eq!(preimage.len(), 41 + 85);
 
-    let hash = compute_usage_accrual_hash(3, &prov, &accruals, &[seller]);
+    let hash = compute_usage_accrual_hash(3, &prov, &uses);
     assert_eq!(hash, keccak256(&preimage));
-    assert_eq!(
-        hash,
-        b256!("a8f200441f17c90bdb286e38e33656d6cac7f0b7b6d4b0f1f011d76a4ba4cf3e")
-    );
+    assert_eq!(hash, b256!("7651d6b67629ae1203d1ba6085775549de93d0f620dd882fcb62368ebc889130"));
 }
 
 /// A registry accepts any bytes32, so a clause key and an assembly key can be
 /// the same word. A clause claim and an assembly claim on that word, from one
-/// process, are two accruals under their own kinds — never one merged count.
+/// process, are two uses under their own kinds — never one merged count.
 #[test]
 fn a_clause_and_an_assembly_on_the_same_key_accrue_apart() {
     let buyer = make_signing_key(BUYER_KEY);
@@ -912,54 +853,51 @@ fn a_clause_and_an_assembly_on_the_same_key_accrue_apart() {
         },
     ];
 
-    let (_, _, events, post) =
+    let process_id = pid(&order);
+    let (_, _, events, _) =
         apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
 
     assert_eq!(
-        events.usage_accruals,
+        events.uses,
         vec![
-            UsageAccrual {
+            BatchUse {
                 clause_or_assembly: shared,
                 kind: USAGE_KIND_CLAUSE,
-                c: 1,
-                d: 1
+                process_id,
+                seller: SELLER1,
             },
-            UsageAccrual {
+            BatchUse {
                 clause_or_assembly: shared,
                 kind: USAGE_KIND_ASSEMBLY,
-                c: 1,
-                d: 1
+                process_id,
+                seller: SELLER1,
             },
         ],
-        "one accrual per (key, kind)"
+        "one use per (key, kind)"
     );
-    assert_eq!(post.usage_counted.len(), 2, "counted once per kind");
 }
 
 /// A batch that credits nothing must still produce a well-defined hash — the
-/// empty-accrual case is the normal one for trade after the reward closes,
+/// empty case is the normal one for trade after the reward closes,
 /// and it must match what the verifier computes for empty calldata.
 #[test]
 fn the_empty_usage_hash_is_the_one_the_verifier_derives() {
     let mut expected = Vec::new();
     expected.push(0u8); // period
     expected.extend_from_slice(B256::ZERO.as_slice()); // provenance
-    expected.extend_from_slice(&0u64.to_be_bytes()); // no accruals
-    expected.extend_from_slice(&0u64.to_be_bytes()); // no sellers
+    expected.extend_from_slice(&0u64.to_be_bytes()); // no uses
 
-    assert_eq!(
-        compute_usage_accrual_hash(0, &B256::ZERO, &[], &[]),
-        keccak256(&expected)
-    );
+    assert_eq!(compute_usage_accrual_hash(0, &B256::ZERO, &[]), keccak256(&expected));
 }
 
 // ── The state root carries the usage leg ──────────────────────────
 
-/// Crediting usage must MOVE the root: the counted set, the pair set and the
-/// running accrual are all under it. If they were not, a replayed claim would
-/// produce a valid transition from the same root.
+// ── Claims move no state ──────────────────────────────────────────
+
+/// A claim moves no state: the root a batch reaches is the one its
+/// operations reach, with or without claims. Counting is the counter's.
 #[test]
-fn crediting_usage_advances_the_state_root() {
+fn crediting_usage_leaves_the_state_root_where_the_operations_left_it() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
     let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
@@ -978,10 +916,8 @@ fn crediting_usage_advances_the_state_root() {
     let (pv_with, _, _, _) = apply_batch_with_state(&with).expect("applies");
 
     assert_eq!(pv_without.prev_state_root, pv_with.prev_state_root);
-    assert_ne!(
-        pv_without.new_state_root, pv_with.new_state_root,
-        "the usage leg is part of the proven state, not a side channel"
-    );
+    assert_eq!(pv_without.new_state_root, pv_with.new_state_root, "claims move no state");
+    assert_ne!(pv_without.usage_accrual_hash, pv_with.usage_accrual_hash, "they move the usage hash");
 }
 
 // ── The provenance leaf on the attestation path ───────────────────

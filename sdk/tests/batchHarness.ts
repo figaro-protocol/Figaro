@@ -84,14 +84,7 @@ export function loadSpecJson(name: string): string {
 
 export function computeGenesisRoot(): Hex {
     const emptyHash = keccak256("0x"); // keccak256("") = 0xc5d2460186...
-    // The fourth leg is the RPGF usage state — the counted set, the per-period
-    // pair set, and the running accrual. Each is length-prefixed, so on the
-    // empty state the leg is keccak over three zero-length clauses.
-    const emptyUsage = keccak256(encodePacked(["uint64", "uint64", "uint64"], [0n, 0n, 0n]));
-    const packed = encodePacked(
-        ["bytes32", "bytes32", "bytes32", "bytes32"],
-        [emptyHash, emptyHash, emptyHash, emptyUsage],
-    );
+    const packed = encodePacked(["bytes32", "bytes32", "bytes32"], [emptyHash, emptyHash, emptyHash]);
     return keccak256(packed);
 }
 

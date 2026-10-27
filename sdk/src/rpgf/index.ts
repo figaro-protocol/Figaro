@@ -128,9 +128,11 @@ function asUsageKind(value: unknown): UsageKind {
 
 // ── Usage records (the counter's event stream) ───────────────────────
 
-/** One `UsageCounter.UsageRecorded` log. `c`, `d` and `score` are the clause-or-assembly's
- *  running values AFTER the record — the mirror recomputes them independently,
- *  so a divergence is visible without a second data source. */
+/** One `UsageCounter.UsageRecorded` log, from either route — a direct call
+ *  or a proved batch emits the same event. `c`, `d` and `score` are the
+ *  clause-or-assembly's running values AFTER the use is counted — the mirror
+ *  recomputes them independently, so a divergence is visible without a second
+ *  data source. */
 export interface UsageRecord {
     blockNumber: bigint;
     logIndex: number;
@@ -139,69 +141,41 @@ export interface UsageRecord {
     clauseOrAssembly: Hex;
     period: number;
     processId: Hex;
-    /** The recorded order's seller of record (live-staked at record time). */
+    /** The seller of the order the use was proved through (live-staked when counted). */
     seller: Address;
     c: bigint;
     d: bigint;
     score: bigint;
 }
 
-/** One RESOLUTION PATH's accrual for a clause or assembly in one period —
- *  `UsageCounter.accrualOf` or `batchAccrualOf`. */
+/** A clause's, agreement's or assembly's tally in one period —
+ *  `UsageCounter.accrualOf`. */
 export interface UsageAccrual {
     c: bigint;
     d: bigint;
     score: bigint;
 }
 
-/** One batch's `BatchUsageRecorded` log. Unlike `UsageRecord` these are
- *  CUMULATIVE for the clause-or-assembly-period, not per-process increments: the guest
- *  proves the running totals off-chain and the verifier writes them whole, so
- *  a later record REPLACES an earlier one rather than adding to it. */
-export interface BatchUsageRecord {
-    blockNumber: bigint;
-    logIndex: number;
+/** A clause's, agreement's or assembly's ONE tally, route-blind: a use
+ *  counts the same whether its process resolved through `FigaroCore` or in a
+ *  proved batch, and both routes emit `UsageRecorded`, so one replay of one
+ *  stream gives the tally `UsageCounter.accrualOf` holds. `score` is what
+ *  `UsageCounter.scoreOf` returns — the only figure a reward calculation may
+ *  divide by. */
+export interface ClauseOrAssemblyAccrual extends UsageAccrual {
     kind: UsageKind;
     clauseOrAssembly: Hex;
-    period: number;
-    c: bigint;
-    d: bigint;
-    score: bigint;
 }
 
-/** A clause or assembly's accrual across BOTH resolution paths.
- *
- *  The two are kept apart on purpose. A batch-resolved process never acquires
- *  FigaroCore status and a FigaroCore-resolved one is never in a batch, so no PROCESS
- *  is ever counted twice — but the same SELLER may trade on both sides, and
- *  neither the chain nor this mirror holds the seller SETS needed to union
- *  them. Adding `d` to `d` would therefore pay for breadth nobody had.
- *  Scores are summed; components never are — and the minimum-support floor
- *  applies per path, for the same reason. */
-export interface ClauseOrAssemblyAccrual {
-    kind: UsageKind;
-    clauseOrAssembly: Hex;
-    direct: UsageAccrual;
-    batch: UsageAccrual;
-    /** `direct.score + batch.score` — mirrors `UsageCounter.scoreOf`, and the
-     *  only figure a reward calculation may divide by. */
-    score: bigint;
-}
-
-/** One period's accrual state — every `(kind, key)`'s merged accrual (filed
- *  under `usageKeyId`) plus the period total, mirroring `totalScoreIn` (which
- *  counts both paths). */
+/** One period's accrual state — every `(kind, key)`'s tally (filed under
+ *  `usageKeyId`) plus the period total, mirroring `totalScoreIn`. */
 export interface UsagePeriodAccrual {
     byClauseOrAssembly: Map<string, ClauseOrAssemblyAccrual>;
     totalScore: bigint;
 }
 
-function emptyAccrual(): UsageAccrual {
-    return { c: 0n, d: 0n, score: 0n };
-}
-
 function emptyEntry(kind: UsageKind, clauseOrAssembly: Hex): ClauseOrAssemblyAccrual {
-    return { kind, clauseOrAssembly, direct: emptyAccrual(), batch: emptyAccrual(), score: 0n };
+    return { kind, clauseOrAssembly, c: 0n, d: 0n, score: 0n };
 }
 
 /** Replay the counter's counting rules over a record stream: idempotence per
@@ -215,7 +189,6 @@ function emptyEntry(kind: UsageKind, clauseOrAssembly: Hex): ClauseOrAssemblyAcc
  *  specific deployment. */
 export function computeUsageAccruals(
     records: readonly UsageRecord[],
-    batchRecords: readonly BatchUsageRecord[] = [],
     minSellers: bigint = RPGF_MIN_SELLERS,
 ): Map<number, UsagePeriodAccrual> {
     const sorted = [...records].sort((a, b) =>
@@ -244,32 +217,11 @@ export function computeUsageAccruals(
 
         const period = periods.get(record.period) ?? { byClauseOrAssembly: new Map<string, ClauseOrAssemblyAccrual>(), totalScore: 0n };
         const entry = period.byClauseOrAssembly.get(id) ?? emptyEntry(record.kind, clauseOrAssembly);
-        const accrual = entry.direct;
-        accrual.c += 1n;
-        if (firstSeller) accrual.d += 1n;
-        const updated = usageScore(accrual.c, accrual.d, minSellers);
-        period.totalScore = period.totalScore + updated - accrual.score;
-        accrual.score = updated;
-        entry.score = accrual.score + entry.batch.score;
-        period.byClauseOrAssembly.set(id, entry);
-        periods.set(record.period, period);
-    }
-
-    // The batch leg. Each record carries the clause-or-assembly-period's CUMULATIVE
-    // (c, d), so the last one in log order wins outright — replay order only
-    // decides which record is last, never how much accumulates.
-    const batchSorted = [...batchRecords].sort((a, b) =>
-        a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1,
-    );
-    for (const record of batchSorted) {
-        const clauseOrAssembly = record.clauseOrAssembly.toLowerCase() as Hex;
-        const id = usageKeyId(record.kind, clauseOrAssembly);
-        const period = periods.get(record.period) ?? { byClauseOrAssembly: new Map<string, ClauseOrAssemblyAccrual>(), totalScore: 0n };
-        const entry = period.byClauseOrAssembly.get(id) ?? emptyEntry(record.kind, clauseOrAssembly);
-        const updated = usageScore(record.c, record.d, minSellers);
-        period.totalScore = period.totalScore + updated - entry.batch.score;
-        entry.batch = { c: record.c, d: record.d, score: updated };
-        entry.score = entry.direct.score + entry.batch.score;
+        entry.c += 1n;
+        if (firstSeller) entry.d += 1n;
+        const updated = usageScore(entry.c, entry.d, minSellers);
+        period.totalScore = period.totalScore + updated - entry.score;
+        entry.score = updated;
         period.byClauseOrAssembly.set(id, entry);
         periods.set(record.period, period);
     }
@@ -360,45 +312,6 @@ export async function fetchUsageRecords(
                 period: Number(a.period),
                 processId: a.processId as Hex,
                 seller: a.seller as Address,
-                c: a.c as bigint,
-                d: a.d as bigint,
-                score: a.score as bigint,
-            });
-        } catch {
-            /* the counter emits nothing else */
-        }
-    }
-    return records.sort((a, b) =>
-        a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1,
-    );
-}
-
-/** Fetch the BATCH-path record stream over `[0, toBlock]`.
- *
- *  A reader that folds only `fetchUsageRecords` sees the direct path alone and
- *  silently under-reports every clause or assembly whose trade moved to batches — which
- *  is the whole failure the bridge exists to close. Pass both streams to
- *  `computeUsageAccruals`. `chunkSize` overrides `DEFAULT_LOG_CHUNK_SIZE` —
- *  see `fetchLogsChunked` (../events.ts). */
-export async function fetchBatchUsageRecords(
-    client: PublicClient,
-    usageCounter: Address,
-    toBlock: bigint,
-    chunkSize?: bigint,
-): Promise<BatchUsageRecord[]> {
-    const logs = await fetchLogsChunked(client, { address: usageCounter, fromBlock: 0n, toBlock, chunkSize });
-    const records: BatchUsageRecord[] = [];
-    for (const log of logs) {
-        try {
-            const decoded = decodeEventLog({ abi: USAGE_COUNTER_ABI, data: log.data, topics: log.topics });
-            if (decoded.eventName !== "BatchUsageRecorded") continue;
-            const a = decoded.args as Record<string, unknown>;
-            records.push({
-                blockNumber: log.blockNumber ?? 0n,
-                logIndex: log.logIndex ?? 0,
-                kind: asUsageKind(a.kind),
-                clauseOrAssembly: a.clauseOrAssembly as Hex,
-                period: Number(a.period),
                 c: a.c as bigint,
                 d: a.d as bigint,
                 score: a.score as bigint,

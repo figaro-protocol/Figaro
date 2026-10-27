@@ -364,12 +364,11 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // buckets into fixed periods; a period's counts are final once `periodClosed`.
 //
 // BATCH-RESOLVED trade never touches FigaroCore, so it can never travel that
-// path. It arrives instead through `applyBatchAccrual`, which only
-// FigaroBatchVerifier may call and only with numbers an SP1 proof committed.
-// Its accrual is kept in a SEPARATE entry (`batchAccrualOf`) and merged by
-// SCORE, never by component — read `scoreOf` for a clause or assembly's real total;
-// `accrualOf` alone sees the direct path and under-reports anything that
-// scaled.
+// path. Its uses arrive instead through `applyBatchAccrual`, which only
+// FigaroBatchVerifier may call and only with uses an SP1 proof committed, and
+// are counted into the SAME tally (`accrualOf`), the same counted-process set
+// and the same seller set: a use is a use whichever way its process reached
+// the chain, and both routes emit `UsageRecorded`.
 
 export const USAGE_COUNTER_ABI = parseAbi([
     // ── Recording (permissionless) ──────────────────────────────────
@@ -398,7 +397,6 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "function KIND_ASSEMBLY() view returns (uint8)",
     "function KIND_AGREEMENT() view returns (uint8)",
     "function accrualOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
-    "function batchAccrualOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
     "function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) view returns (uint256)",
     "function totalScoreIn(uint8 period) view returns (uint256)",
     "function processCounted(uint8 kind, bytes32 clauseOrAssembly, bytes32 processId) view returns (bool)",
@@ -408,7 +406,6 @@ export const USAGE_COUNTER_ABI = parseAbi([
 
     // ── Events ──────────────────────────────────────────────────────
     "event UsageRecorded(uint8 kind, bytes32 indexed clauseOrAssembly, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
-    "event BatchUsageRecorded(uint8 kind, bytes32 indexed clauseOrAssembly, uint8 indexed period, uint64 c, uint64 d, uint256 score)",
 
     // ── Errors ──────────────────────────────────────────────────────
     "error ZeroAddress()",
@@ -428,7 +425,6 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "error ProvenanceLeafMismatch(bytes32 expected, bytes32 claimed)",
     "error ReservedKeyIsNotARegistration(bytes32 key)",
     "error InvalidMembershipProof()",
-    "error AccrualWentBackwards(bytes32 clauseOrAssembly)",
 ]);
 
 export const EV_USAGE_RECORDED = parseAbiItem(
@@ -494,7 +490,7 @@ export const RPGF_MINTER_ABI = parseAbi([
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch resolution ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrAssembly, uint8 kind, uint64 c, uint64 d)[] accruals, address[] sellers) usage, bytes operations) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrAssembly, uint8 kind, bytes32 processId, address seller)[] uses) usage, bytes operations) external",
 
     // ── The Core's own order and process events, emitted from the stream ──
     // Filter on the verifier's address beside FigaroCore's: the same events,

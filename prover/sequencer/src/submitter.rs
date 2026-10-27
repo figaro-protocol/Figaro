@@ -415,18 +415,17 @@ sol! {
             SpecBindingCall[] specBindings;
         }
 
-        struct BatchAccrualCall {
+        struct BatchUseCall {
             bytes32 clauseOrAssembly;
             uint8 kind;
-            uint64 c;
-            uint64 d;
+            bytes32 processId;
+            address seller;
         }
 
         struct BatchUsageDataCall {
             uint8 period;
             bytes32 provenanceLeaf;
-            BatchAccrualCall[] accruals;
-            address[] sellers;
+            BatchUseCall[] uses;
         }
 
         function settleBatch(
@@ -453,24 +452,25 @@ sol! {
     }
 }
 
-// The two UsageCounter facts a batch's accrual must agree with. Both are
-// re-checked by the counter at resolution, so reading them here is an
-// optimization (don't prove a batch that cannot resolve), never a source of
-// authority.
+// The UsageCounter facts a batch's uses must agree with: the open period and
+// the provenance leaf, and whether a process is already counted under a key.
+// All are re-checked by the counter at resolution, so reading them here is an
+// optimization (don't prove what the counter would not count), never a
+// source of authority.
 sol! {
     #[sol(rpc)]
     interface IUsageCounter {
         function currentPeriod() external view returns (uint8);
         function provenanceLeaf() external view returns (bytes32);
+        function processCounted(uint8 kind, bytes32 clauseOrAssembly, bytes32 processId) external view returns (bool);
     }
 }
 
 // The clause-or-assembly-side and seller-side stake gates the counter applies
-// at resolution (skip for clauses and assemblies, whole-batch revert for an
-// unstaked seller).
-// Reading them HERE is a pre-filter: drop a claim the counter would reject
-// before it enters a proof, so one poison claim cannot cost the whole batch's
-// accrual. Never a source of authority — the counter re-checks all of it.
+// to each use at resolution, skipping a use that fails either.
+// Reading them HERE is a pre-filter: drop a claim the counter would not count
+// before it enters a proof, so it costs the batch no gas. Never a source of
+// authority — the counter re-checks all of it.
 sol! {
     #[sol(rpc)]
     interface IClauseRegistry {
@@ -547,18 +547,16 @@ pub async fn read_usage_context(
     Some((period, provenance))
 }
 
-/// Drop usage claims the `UsageCounter` would reject at resolution, BEFORE they
-/// enter a proof.
+/// Drop usage claims the `UsageCounter` would not count at resolution, BEFORE
+/// they enter a proof.
 ///
-/// The counter SKIPS a clause or assembly with no live registration (it never
-/// reverts), and the verifier CATCHES a `SellerNotStaked` revert — but a
-/// caught revert drops the WHOLE batch's accrual, not just the offending claim.
-/// Filtering here keeps one poison claim (a key with no live registration in
-/// its registry) or one unstaked seller from costing every other claim in the
-/// batch its accrual. The residual
-/// — a seller who unstakes AFTER this read but before submission — is exactly
-/// what the verifier's try/catch absorbs; this only shrinks how often that
-/// fires.
+/// The counter SKIPS a use whose key has no live registration, whose seller
+/// holds no live member stake, or whose process it has already counted under
+/// that key, on either route (it never reverts on those). A skipped use still
+/// costs the batch its proof cycles and its calldata, so filtering here keeps
+/// such claims out. The residual — a seller who unstakes AFTER this read but
+/// before submission — is a use the counter skips; this only shrinks how
+/// often that happens.
 ///
 /// The pre-filter is an OPTIMIZATION, never authority: the counter re-checks all
 /// of it on-chain. So when a registry read fails (RPC hiccup) the claim is
@@ -568,9 +566,9 @@ pub async fn read_usage_context(
 /// when `read_usage_context` returns `None`), so passing them through here is
 /// harmless. When a counter IS configured the filter always runs — a misconfig
 /// that left the registries at `Address::ZERO` while accrual is live must NOT
-/// silently disable the protection (it would re-open the poison-seller
-/// whole-batch drop); the per-claim reads against a zero registry simply fail and
-/// drop the claim loudly, rather than the filter switching itself off.
+/// silently disable the filter; the per-claim reads against a zero registry
+/// simply fail and drop the claim loudly, rather than the filter switching
+/// itself off.
 pub async fn filter_usage_claims(
     config: &SubmitterConfig,
     claims: Vec<UsageClaim>,
@@ -611,6 +609,17 @@ pub async fn filter_usage_claims(
     let assemblies = IAssemblyRegistry::new(config.assembly_registry_address, &provider);
     let agreements = IAgreementRegistry::new(config.agreement_registry_address, &provider);
     let members = IMembersRegistry::new(config.members_registry_address, &provider);
+    let counter = IUsageCounter::new(config.usage_counter_address, &provider);
+    // The process id a claim's use carries, derived under the verifier's
+    // domain as the guest derives it.
+    let domain = match provider.get_chain_id().await {
+        Ok(chain_id) => figaro_kernel::eip712::domain_separator(chain_id, config.verifier_address),
+        Err(e) => {
+            let why = format!("chain id read failed: {e}");
+            dropped.extend(claims.into_iter().map(|c| (c, why.clone())));
+            return (Vec::new(), dropped);
+        }
+    };
 
     let mut valid = Vec::with_capacity(claims.len());
 
@@ -651,9 +660,21 @@ pub async fn filter_usage_claims(
 
             // Seller-side stake gate: the order's seller of record must be live-staked.
             match members.registered(claim.order.seller).call().await {
-                Ok(true) => Ok(()),
-                Ok(false) => Err("seller is not live-staked".to_string()),
-                Err(e) => Err(format!("member registered read failed: {e}")),
+                Ok(true) => {}
+                Ok(false) => return Err("seller is not live-staked".to_string()),
+                Err(e) => return Err(format!("member registered read failed: {e}")),
+            }
+
+            // Once ever: the counter's one counted-process set, both routes.
+            let (_, process_id) = figaro_kernel::kernel::derive_commitment_ids(&domain, &claim.order);
+            match counter
+                .processCounted(claim.kind.code(), claim.clause_or_assembly, process_id)
+                .call()
+                .await
+            {
+                Ok(false) => Ok(()),
+                Ok(true) => Err("the counter has already counted this process under the key".to_string()),
+                Err(e) => Err(format!("counter processCounted read failed: {e}")),
             }
         }
         .await;
@@ -800,23 +821,22 @@ pub fn settle_call_args(
         attestations,
         specBindings: spec_bindings,
     };
-    // The RPGF accrual the proof committed. Empty arrays are normal and
-    // resolve fine — the counter treats an empty accrual as a no-op, which
-    // is what lets trade keep resolving after the reward's last period ends.
+    // The uses the proof committed. An empty array is normal and resolves
+    // fine — the counter treats it as a no-op, which is what lets trade keep
+    // resolving after the reward's last period ends.
     let usage_call = IFigaroBatchVerifier::BatchUsageDataCall {
         period: events.usage_period,
         provenanceLeaf: provenance_leaf,
-        accruals: events
-            .usage_accruals
+        uses: events
+            .uses
             .iter()
-            .map(|a| IFigaroBatchVerifier::BatchAccrualCall {
-                clauseOrAssembly: a.clause_or_assembly,
-                kind: a.kind,
-                c: a.c,
-                d: a.d,
+            .map(|u| IFigaroBatchVerifier::BatchUseCall {
+                clauseOrAssembly: u.clause_or_assembly,
+                kind: u.kind,
+                processId: u.process_id,
+                seller: u.seller,
             })
             .collect(),
-        sellers: events.usage_sellers.clone(),
     };
     (positions, events_call, usage_call)
 }
@@ -1144,19 +1164,22 @@ mod tests {
     const AGREEMENTS: Address = Address::repeat_byte(0xC3);
     const MEMBERS: Address = Address::repeat_byte(0xC4);
 
-    /// A JSON-RPC double answering `eth_call` for the registries the
-    /// pre-filter reads: `bindings(key)` is live for the (registry, key)
-    /// pairs in `live`, every member is staked, and anything else is an
-    /// unregistered binding. Returns the URL it serves on.
-    async fn registries_double(live: Vec<(Address, B256)>) -> String {
+    /// A JSON-RPC double answering `eth_call` for the registries and the
+    /// counter the pre-filter reads: `bindings(key)` is live for the
+    /// (registry, key) pairs in `live`, every member is staked, the counter
+    /// has counted a process under exactly the keys in `counted`, and
+    /// anything else is an unregistered binding. Returns the URL it serves on.
+    async fn registries_double(live: Vec<(Address, B256)>, counted: Vec<B256>) -> String {
         use alloy::sol_types::{SolCall, SolValue};
         use axum::{routing::post, Json, Router};
 
         let live = std::sync::Arc::new(live);
+        let counted = std::sync::Arc::new(counted);
         let app = Router::new().route(
             "/",
             post(move |Json(req): Json<serde_json::Value>| {
                 let live = live.clone();
+                let counted = counted.clone();
                 async move {
                     let answer = |req: &serde_json::Value| -> serde_json::Value {
                         let id = req["id"].clone();
@@ -1170,6 +1193,9 @@ mod tests {
                                 let input = alloy::primitives::hex::decode(input).unwrap();
                                 let out: Vec<u8> = if input[..4] == IMembersRegistry::registeredCall::SELECTOR {
                                     true.abi_encode()
+                                } else if input[..4] == IUsageCounter::processCountedCall::SELECTOR {
+                                    assert_eq!(to, COUNTER, "the counted set is the counter's");
+                                    counted.contains(&B256::from_slice(&input[36..68])).abi_encode()
                                 } else if input[..4] == IAgreementRegistry::bindingsCall::SELECTOR {
                                     let key = B256::from_slice(&input[4..36]);
                                     let registered = live.contains(&(to, key));
@@ -1236,7 +1262,7 @@ mod tests {
         let url = registries_double(vec![
             (AGREEMENTS, registered),
             (ASSEMBLIES, assembly_only),
-        ])
+        ], vec![])
         .await;
         let config = live_config(url);
 
@@ -1258,6 +1284,26 @@ mod tests {
         for (_, why) in &dropped {
             assert!(why.contains("no live registration"), "{why}");
         }
+    }
+
+    // A claim whose process the counter has already counted under its key —
+    // on either route — is dropped: the counter would skip its use, and the
+    // read goes to the counter's one counted-process set.
+    #[tokio::test]
+    async fn a_claim_the_counter_has_counted_is_dropped() {
+        let fresh = B256::repeat_byte(0x31);
+        let counted = B256::repeat_byte(0x32);
+        let url = registries_double(vec![(AGREEMENTS, fresh), (AGREEMENTS, counted)], vec![counted]).await;
+        let config = live_config(url);
+
+        let (valid, dropped) =
+            filter_usage_claims(&config, vec![agreement_claim(fresh), agreement_claim(counted)]).await;
+
+        assert_eq!(valid.len(), 1);
+        assert_eq!(valid[0].clause_or_assembly, fresh);
+        assert_eq!(dropped.len(), 1);
+        assert_eq!(dropped[0].0.clause_or_assembly, counted);
+        assert!(dropped[0].1.contains("already counted"), "{}", dropped[0].1);
     }
 
     // The format's two reserved keys are dropped before any chain read,

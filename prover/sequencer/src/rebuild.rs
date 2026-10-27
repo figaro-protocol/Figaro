@@ -102,8 +102,8 @@ pub async fn rebuild_from_chain(
                 .map_err(|e| format!("batch {} in {tx}: operation stream: {e}", settled.batchId))?;
             apply_operations(&mut state, chain_id, verifier, ops.blockTimestamp, &operations)
                 .map_err(|e| format!("batch {} in {tx}: the operations do not apply: {e:?}", settled.batchId))?;
-            apply_claims(&mut state, chain_id, verifier, &claims, ops.usagePeriod, &ops.provenanceLeaf)
-                .map_err(|e| format!("batch {} in {tx}: the claims do not apply: {e:?}", settled.batchId))?;
+            apply_claims(&state, chain_id, verifier, &claims, &ops.provenanceLeaf)
+                .map_err(|e| format!("batch {} in {tx}: the claims do not prove: {e:?}", settled.batchId))?;
             let reached = state.compute_root();
             if reached != settled.newStateRoot {
                 return Err(format!(

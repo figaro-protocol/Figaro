@@ -12,18 +12,22 @@
 <li><a href="" aria-current="page">ClauseOrAssemblyAccrual</a></li></ul>
 <h1>Interface ClauseOrAssemblyAccrual</h1></div>
 <section class="tsd-panel tsd-comment">
-<div class="tsd-comment tsd-typography"><p>A clause or assembly's accrual across BOTH resolution paths.</p>
-<p>The two are kept apart on purpose. A batch-resolved process never acquires
-FigaroCore status and a FigaroCore-resolved one is never in a batch, so no PROCESS
-is ever counted twice — but the same SELLER may trade on both sides, and
-neither the chain nor this mirror holds the seller SETS needed to union
-them. Adding <code>d</code> to <code>d</code> would therefore pay for breadth nobody had.
-Scores are summed; components never are — and the minimum-support floor
-applies per path, for the same reason.</p>
+<div class="tsd-comment tsd-typography"><p>A clause's, agreement's or assembly's ONE tally, route-blind: a use
+counts the same whether its process resolved through <code>FigaroCore</code> or in a
+proved batch, and both routes emit <code>UsageRecorded</code>, so one replay of one
+stream gives the tally <code>UsageCounter.accrualOf</code> holds. <code>score</code> is what
+<code>UsageCounter.scoreOf</code> returns — the only figure a reward calculation may
+divide by.</p>
 </div></section>
-<div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">ClauseOrAssemblyAccrual</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#batch">batch</a><span class="tsd-signature-symbol">:</span> <a href="index.UsageAccrual.html" class="tsd-signature-type tsd-kind-interface">UsageAccrual</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#clauseorassembly">clauseOrAssembly</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#direct">direct</a><span class="tsd-signature-symbol">:</span> <a href="index.UsageAccrual.html" class="tsd-signature-type tsd-kind-interface">UsageAccrual</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#kind">kind</a><span class="tsd-signature-symbol">:</span> <a href="../types/index.UsageKind.html" class="tsd-signature-type tsd-kind-type-alias">UsageKind</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#score">score</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">ClauseOrAssemblyAccrual</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#c">c</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#clauseorassembly">clauseOrAssembly</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#d">d</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#kind">kind</a><span class="tsd-signature-symbol">:</span> <a href="../types/index.UsageKind.html" class="tsd-signature-type tsd-kind-type-alias">UsageKind</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#score">score</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
+<section class="tsd-panel tsd-hierarchy" data-refl="2094">
+<h4>Hierarchy (<a href="../hierarchy.html#index.ClauseOrAssemblyAccrual">View Summary</a>)</h4>
+<ul class="tsd-hierarchy">
+<li class="tsd-hierarchy-item"><a href="index.UsageAccrual.html" class="tsd-signature-type tsd-kind-interface">UsageAccrual</a>
+<ul class="tsd-hierarchy">
+<li class="tsd-hierarchy-item"><span class="tsd-hierarchy-target">ClauseOrAssemblyAccrual</span></li></ul></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L181">rpgf/index.ts:181</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L165">rpgf/index.ts:165</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -31,43 +35,43 @@ applies per path, for the same reason.</p>
 <div class="tsd-accordion-details">
 <section class="tsd-index-section">
 <h3 class="tsd-index-heading tsd-anchor-link" id="properties">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-index-list"><a href="#batch" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>batch</span></a>
+<div class="tsd-index-list"><a href="#c" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>c</span></a>
 <a href="#clauseorassembly" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>clause<wbr/>Or<wbr/>Assembly</span></a>
-<a href="#direct" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>direct</span></a>
+<a href="#d" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>d</span></a>
 <a href="#kind" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>kind</span></a>
-<a href="#score" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>score</span></a>
+<a href="#score" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>score</span></a>
 </div></section></div></details></section></section>
 <details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
 <h2 class="tsd-anchor-link" id="properties-1">Properties<a href="#properties-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
 <section>
-<section class="tsd-panel tsd-member">
-<h3 class="tsd-anchor-link" id="batch"><span>batch</span><a href="#batch" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">batch</span><span class="tsd-signature-symbol">:</span> <a href="index.UsageAccrual.html" class="tsd-signature-type tsd-kind-interface">UsageAccrual</a></div><aside class="tsd-sources">
+<section class="tsd-panel tsd-member tsd-is-inherited">
+<h3 class="tsd-anchor-link" id="c"><span>c</span><a href="#c" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">c</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div><aside class="tsd-sources">
+<p>Inherited from <a href="index.UsageAccrual.html">UsageAccrual</a>.<a href="index.UsageAccrual.html#c">c</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L185">rpgf/index.ts:185</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L154">rpgf/index.ts:154</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="clauseorassembly"><span>clause<wbr/>Or<wbr/>Assembly</span><a href="#clauseorassembly" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">clauseOrAssembly</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L183">rpgf/index.ts:183</a></li></ul></aside></section>
-<section class="tsd-panel tsd-member">
-<h3 class="tsd-anchor-link" id="direct"><span>direct</span><a href="#direct" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">direct</span><span class="tsd-signature-symbol">:</span> <a href="index.UsageAccrual.html" class="tsd-signature-type tsd-kind-interface">UsageAccrual</a></div><aside class="tsd-sources">
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L167">rpgf/index.ts:167</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-inherited">
+<h3 class="tsd-anchor-link" id="d"><span>d</span><a href="#d" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">d</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div><aside class="tsd-sources">
+<p>Inherited from <a href="index.UsageAccrual.html">UsageAccrual</a>.<a href="index.UsageAccrual.html#d">d</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L184">rpgf/index.ts:184</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L155">rpgf/index.ts:155</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="kind"><span>kind</span><a href="#kind" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">kind</span><span class="tsd-signature-symbol">:</span> <a href="../types/index.UsageKind.html" class="tsd-signature-type tsd-kind-type-alias">UsageKind</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L182">rpgf/index.ts:182</a></li></ul></aside></section>
-<section class="tsd-panel tsd-member">
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L166">rpgf/index.ts:166</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-inherited">
 <h3 class="tsd-anchor-link" id="score"><span>score</span><a href="#score" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">score</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
-<div class="tsd-comment tsd-typography"><p><code>direct.score + batch.score</code> — mirrors <code>UsageCounter.scoreOf</code>, and the
-only figure a reward calculation may divide by.</p>
-</div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-kind-property">score</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div><aside class="tsd-sources">
+<p>Inherited from <a href="index.UsageAccrual.html">UsageAccrual</a>.<a href="index.UsageAccrual.html#score">score</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L188">rpgf/index.ts:188</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L156">rpgf/index.ts:156</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -83,7 +87,7 @@ only figure a reward calculation may divide by.</p>
 <h3>On This Page</h3></summary>
 <div class="tsd-accordion-details">
 <details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Properties</summary>
-<div><a href="#batch"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>batch</span></a><a href="#clauseorassembly"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>clause<wbr/>Or<wbr/>Assembly</span></a><a href="#direct"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>direct</span></a><a href="#kind"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>kind</span></a><a href="#score"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>score</span></a></div></details></div></details></div>
+<div><a href="#c" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>c</span></a><a href="#clauseorassembly"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>clause<wbr/>Or<wbr/>Assembly</span></a><a href="#d" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>d</span></a><a href="#kind"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>kind</span></a><a href="#score" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>score</span></a></div></details></div></details></div>
 <div class="site-menu">
 <nav id="tsd-sidebar-links" class="tsd-navigation"><a href="/" class="tsd-nav-link">Site</a><a href="/spec" class="tsd-nav-link">Build</a></nav>
 <nav class="tsd-navigation"><a href="../modules.html">@figaro-protocol/sdk</a>

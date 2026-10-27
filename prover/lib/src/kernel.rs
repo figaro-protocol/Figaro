@@ -721,39 +721,25 @@ pub fn compute_spec_bindings_hash(bindings: &[SpecBinding]) -> B256 {
 
 // ── Usage accrual (the RPGF bridge) ───────────────────────────────
 
-/// Deterministic hash of the batch's usage accrual, mirrored byte for
+/// Deterministic hash of the batch's uses, mirrored byte for
 /// byte by `FigaroBatchVerifier._hashUsage`:
 ///
 /// ```text
 /// period(1) ++ provenanceLeaf(32)
-///   ++ len(accruals)(8) ++ [clauseOrAssembly(32) ++ kind(1) ++ c(8) ++ d(8)]*
-///   ++ len(sellers)(8)  ++ [seller(20)]*
+///   ++ len(uses)(8) ++ [clauseOrAssembly(32) ++ kind(1) ++ processId(32) ++ seller(20)]*
 /// ```
 ///
-/// Span `49 + 49n + 20m` for n accruals and m sellers. BOTH LENGTHS ARE
-/// PREFIXED, and they must be: an accrual entry is 49 bytes and a seller
-/// 20, so 20 accruals and 49 sellers occupy the same span. Without the prefixes a submitter could re-split the same
-/// preimage into a different (accruals, sellers) pair — writing accruals
-/// whose sellers were never stake-checked.
-pub fn compute_usage_accrual_hash(
-    period: u8,
-    provenance_leaf: &B256,
-    accruals: &[UsageAccrual],
-    sellers: &[Address],
-) -> B256 {
-    let mut data = Vec::with_capacity(49 + accruals.len() * 49 + sellers.len() * 20);
+/// Span `41 + 85n` for n uses.
+pub fn compute_usage_accrual_hash(period: u8, provenance_leaf: &B256, uses: &[BatchUse]) -> B256 {
+    let mut data = Vec::with_capacity(41 + uses.len() * 85);
     data.push(period);
     data.extend_from_slice(provenance_leaf.as_slice());
-    data.extend_from_slice(&(accruals.len() as u64).to_be_bytes());
-    for a in accruals {
-        data.extend_from_slice(a.clause_or_assembly.as_slice());
-        data.push(a.kind);
-        data.extend_from_slice(&a.c.to_be_bytes());
-        data.extend_from_slice(&a.d.to_be_bytes());
-    }
-    data.extend_from_slice(&(sellers.len() as u64).to_be_bytes());
-    for s in sellers {
-        data.extend_from_slice(s.as_slice());
+    data.extend_from_slice(&(uses.len() as u64).to_be_bytes());
+    for u in uses {
+        data.extend_from_slice(u.clause_or_assembly.as_slice());
+        data.push(u.kind);
+        data.extend_from_slice(u.process_id.as_slice());
+        data.extend_from_slice(u.seller.as_slice());
     }
     keccak256(&data)
 }
@@ -828,25 +814,25 @@ pub fn assembly_leaf(key: &B256, content_hash: &B256) -> B256 {
 ///   3. for an assembly, the order-slot leaf of the named agreement is a leaf of
 ///      the assemblyHash (merkle membership against the assembly root).
 ///
-/// Two facts the guest CANNOT prove are declared and anchored on-chain
-/// instead: whether each seller holds a live MembersRegistry stake, and
-/// whether a clause, agreement or assembly holds a live registration. Both
-/// are live chain state; the verifier checks them before writing, in the
-/// shape `_checkSpecBindings` already established.
+/// What the guest CANNOT prove is live chain state, and the counter
+/// checks it as it checks a direct call: whether the seller holds a live
+/// MembersRegistry stake, whether a clause, agreement or assembly holds a
+/// live registration, and whether the process is already counted under the
+/// key — across batches and across the direct path, in the counter's one
+/// `processCounted` set. The guest keeps no usage state of its own.
 ///
-/// Returns the CUMULATIVE `(c, d)` of every (kind, key) touched, and the
-/// distinct sellers behind them.
+/// Returns one use per (kind, key, process), in the order of the claims: a
+/// second claim of a (kind, key, process) already in this batch — another
+/// order of the same process, or the same claim again — adds nothing, as a
+/// direct call for a process already counted counts nothing.
 fn apply_usage_claims(
-    state: &mut KernelState,
+    state: &KernelState,
     domain: &B256,
     claims: &[UsageClaim],
-    period: u8,
     provenance_leaf: &B256,
-) -> Result<(Vec<UsageAccrual>, Vec<Address>), KernelError> {
-    // (key, kind): claims of two kinds on the same bytes32 are two
-    // accruals, never one.
-    let mut touched: BTreeSet<(B256, u8)> = BTreeSet::new();
-    let mut sellers: BTreeSet<Address> = BTreeSet::new();
+) -> Result<Vec<BatchUse>, KernelError> {
+    let mut seen: BTreeSet<(u8, B256, B256)> = BTreeSet::new();
+    let mut uses: Vec<BatchUse> = Vec::new();
 
     for claim in claims {
         // 0. The reserved keys (the provenance leaf's and the assembly
@@ -916,56 +902,19 @@ fn apply_usage_claims(
             }
         }
 
-        // 3. Once ever, whatever the period — the counted set rides the
-        //    state root, so this holds ACROSS batches, not just within
-        //    one. A duplicate is a sequencer fault and fails loudly
-        //    rather than being silently dropped.
-        if !state
-            .usage_counted
-            .insert((kind, claim.clause_or_assembly, process_id))
-        {
-            return Err(KernelError::UsageAlreadyCounted {
+        // 3. One use per (kind, key, process) in the batch: the first claim
+        //    names the seller, as the first direct call does.
+        if seen.insert((kind, claim.clause_or_assembly, process_id)) {
+            uses.push(BatchUse {
                 clause_or_assembly: claim.clause_or_assembly,
+                kind,
                 process_id,
+                seller: claim.order.seller,
             });
         }
-
-        // 4. Accrue. Every admitted claim feeds `c`; the first claim from
-        //    each seller in this period also feeds `d` — breadth counts
-        //    distinct STAKED sellers. The stake check
-        //    itself is on-chain: the counter gates the declared seller
-        //    list, so the guest counts and the chain prices.
-        let first_seller = state
-            .usage_seller_seen
-            .insert((kind, claim.clause_or_assembly, period, claim.order.seller));
-
-        let entry = state
-            .usage_accrual
-            .entry((kind, claim.clause_or_assembly, period))
-            .or_insert((0, 0));
-        entry.0 = entry.0.checked_add(1).ok_or(KernelError::Overflow)?;
-        if first_seller {
-            entry.1 = entry.1.checked_add(1).ok_or(KernelError::Overflow)?;
-        }
-
-        touched.insert((claim.clause_or_assembly, kind));
-        sellers.insert(claim.order.seller);
     }
 
-    let accruals = touched
-        .into_iter()
-        .map(|(clause_or_assembly, kind)| {
-            let (c, d) = state.usage_accrual[&(kind, clause_or_assembly, period)];
-            UsageAccrual {
-                clause_or_assembly,
-                kind,
-                c,
-                d,
-            }
-        })
-        .collect();
-
-    Ok((accruals, sellers.into_iter().collect()))
+    Ok(uses)
 }
 
 // ── Batch execution ───────────────────────────────────────────────
@@ -1102,20 +1051,18 @@ pub fn apply_operations(
     })
 }
 
-/// Apply `claims` to `state` under the counter's rules, with no root
-/// computed: the relay's claim trials run through it on a clone of the
-/// batch's post-operation state, as the proof path's accrual runs after its
-/// operations. Returns the accruals touched and the sellers of record.
+/// Prove `claims` against `state`, the batch's post-operation state, and
+/// return the uses they carry: the relay's claim trials run through it, as
+/// the proof path's claims run after its operations. Claims move no state.
 pub fn apply_claims(
-    state: &mut KernelState,
+    state: &KernelState,
     chain_id: u64,
     verifying_contract: Address,
     claims: &[UsageClaim],
-    period: u8,
     provenance_leaf: &B256,
-) -> Result<(Vec<UsageAccrual>, Vec<Address>), KernelError> {
+) -> Result<Vec<BatchUse>, KernelError> {
     let domain = domain_separator(chain_id, verifying_contract);
-    apply_usage_claims(state, &domain, claims, period, provenance_leaf)
+    apply_usage_claims(state, &domain, claims, provenance_leaf)
 }
 
 /// Internal batch execution returning (PublicValues, positions, events, state).
@@ -1134,15 +1081,14 @@ fn apply_batch_inner(
         &input.operations,
     )?;
 
-    // ── Designer-reward usage accrual ────────────────────────────
-    // Runs AFTER every operation, against the post-state, so a process
+    // ── Designer-reward uses ─────────────────────────────────────
+    // Proved AFTER every operation, against the post-state, so a process
     // resolved by this very batch can be credited in the same batch.
-    let (usage_accruals, usage_sellers) = apply_claims(
-        &mut state,
+    let uses = apply_claims(
+        &state,
         input.chain_id,
         input.verifying_contract,
         &input.usage_claims,
-        input.usage_period,
         &input.provenance_leaf,
     )?;
 
@@ -1156,18 +1102,12 @@ fn apply_batch_inner(
     let att_hash = compute_attestation_events_hash(&attestation_events);
     let bindings: Vec<SpecBinding> = effects.spec_bindings.into_iter().collect();
     let bindings_hash = compute_spec_bindings_hash(&bindings);
-    let usage_hash = compute_usage_accrual_hash(
-        input.usage_period,
-        &input.provenance_leaf,
-        &usage_accruals,
-        &usage_sellers,
-    );
+    let usage_hash = compute_usage_accrual_hash(input.usage_period, &input.provenance_leaf, &uses);
 
     let batch_events = BatchEvents {
         attestations: attestation_events,
         spec_bindings: bindings,
-        usage_accruals,
-        usage_sellers,
+        uses,
         usage_period: input.usage_period,
     };
 

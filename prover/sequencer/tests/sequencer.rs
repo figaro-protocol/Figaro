@@ -43,9 +43,6 @@ fn empty_snapshot() -> KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
         order_process_id: vec![],
-        usage_counted: vec![],
-        usage_seller_seen: vec![],
-        usage_accrual: vec![],
     }
 }
 
@@ -638,7 +635,6 @@ fn claim_filter_quarantines_a_poison_claim_without_dropping_the_valid_one() {
         1000,
         &empty_snapshot(),
         &input.operations,
-        input.usage_period,
         input.provenance_leaf,
         vec![valid, poison],
     );
@@ -653,11 +649,9 @@ fn claim_filter_quarantines_a_poison_claim_without_dropping_the_valid_one() {
 
 #[test]
 fn claim_filter_drops_an_intra_batch_duplicate() {
-    // The guest counts a process ONCE ever (the counted set rides the state
-    // root). Two valid claims for the same resolved process in one batch would
-    // hit `UsageAlreadyCounted` on the second and abort the proof. The threaded
-    // trial-apply reproduces the guest's counted set across claims and drops the
-    // duplicate individually.
+    // The guest gives each (kind, key, process) one use per batch, so a second
+    // claim of one the batch already carries would add stream bytes and no
+    // use. The filter drops it individually.
     let input = build_canonical_batch_input();
     let claim = input.usage_claims[0].clone();
     let (kept, dropped) = assembler::filter_applicable_claims(
@@ -666,14 +660,13 @@ fn claim_filter_drops_an_intra_batch_duplicate() {
         1000,
         &empty_snapshot(),
         &input.operations,
-        input.usage_period,
         input.provenance_leaf,
         vec![claim.clone(), claim],
     );
-    assert_eq!(kept.len(), 1, "the process is counted once: {dropped:?}");
+    assert_eq!(kept.len(), 1, "the process is carried once: {dropped:?}");
     assert_eq!(dropped.len(), 1);
     assert!(
-        dropped[0].1.contains("UsageAlreadyCounted"),
+        dropped[0].1.contains("already carries"),
         "duplicate reason: {}",
         dropped[0].1
     );
@@ -962,11 +955,11 @@ async fn mempool_rejects_a_claim_with_no_clause_or_assembly() {
     assert!(err.contains("clause-or-assembly"), "{err}");
 }
 
-/// A batch carrying ONLY usage claims is a real state transition — the usage
-/// state rides the state root, so crediting an already-resolved process moves
-/// the root without any FigaroCore operation. The sequencer must be able to form
-/// such a batch, or a claim submitted after the last trade of a period would
-/// sit in the mempool forever waiting for an op that never comes.
+/// A batch carrying ONLY usage claims is a valid batch — its uses ride the
+/// public values to the counter, though it moves no state. The sequencer must
+/// be able to form such a batch, or a claim submitted after the last trade of
+/// a period would sit in the mempool forever waiting for an op that never
+/// comes.
 #[tokio::test]
 async fn a_claims_only_batch_is_a_valid_state_transition() {
     let input = build_canonical_batch_input();
@@ -982,10 +975,7 @@ async fn a_claims_only_batch_is_a_valid_state_transition() {
     );
     let (_, _, events_before, post) =
         apply_batch_with_state(&ops_only).expect("ops-only batch applies");
-    assert!(
-        events_before.usage_accruals.is_empty(),
-        "nothing credited yet"
-    );
+    assert!(events_before.uses.is_empty(), "nothing credited yet");
 
     // Now a batch with NO operations, carrying only the claim.
     let claims_only = assembler::assemble_batch(
@@ -1004,10 +994,10 @@ async fn a_claims_only_batch_is_a_valid_state_transition() {
         apply_batch_with_state(&claims_only).expect("claims-only batch applies");
 
     assert!(positions.is_empty(), "no value moves — nothing was traded");
-    assert_eq!(events.usage_accruals.len(), 1, "the clause or assembly is credited");
-    assert_ne!(
+    assert_eq!(events.uses.len(), 1, "the clause or assembly is credited");
+    assert_eq!(
         pv.prev_state_root, pv.new_state_root,
-        "and the root advances, because usage state is under it"
+        "and the root stays: a claim moves no state, its use rides the public values"
     );
 }
 
@@ -2085,8 +2075,8 @@ fn the_published_stream_rebuilds_the_root_the_batch_committed() {
     assert_eq!(state.compute_root(), pv.prev_state_root);
     apply_operations(&mut state, input.chain_id, input.verifying_contract, input.block_timestamp, &operations)
         .expect("the stream's operations apply from the previous state");
-    apply_claims(&mut state, input.chain_id, input.verifying_contract, &claims, input.usage_period, &input.provenance_leaf)
-        .expect("the stream's claims apply against the post-state");
+    apply_claims(&state, input.chain_id, input.verifying_contract, &claims, &input.provenance_leaf)
+        .expect("the stream's claims prove against the post-state");
     assert_eq!(state.compute_root(), pv.new_state_root, "the replay lands on the committed root");
 }
 
@@ -2142,8 +2132,7 @@ fn the_canonical_batch_is_planned_from_its_own_execution_and_fits_a_block() {
     let items = SettleItems::of(&positions, &events);
     assert!(items.positions >= 2, "a commit and a resolve net at least two positions");
     assert_eq!(items.attestations, 2, "the two attestations are re-emitted");
-    assert_eq!(items.accruals, input.usage_claims.len(), "a claim is an accrual");
-    assert!(items.usage_sellers >= 1, "the accrual names its seller");
+    assert_eq!(items.uses, input.usage_claims.len(), "a claim is a use");
     let operations = figaro_kernel::operation_stream::encode_operation_stream(&input.operations, &input.usage_claims);
     let calldata = settle_calldata(&positions, &events, input.provenance_leaf, &pv.abi_encode(), 356, &operations);
     // The calldata is the settle call: its selector, the proof placeholder

@@ -39,7 +39,13 @@ another `assemblyHash` or with another agreement's bytes, the agreement kind gat
 `test_batchAccrualGatesTheAgreementKindByTheAgreementRegistry`), the three kinds never
 sharing a count, both reserved keys refused under the agreement kind and the terms leaf
 never passing as an agreement, period boundaries and `periodClosed`, `totalScoreIn` delta
-maintenance, and a fuzzed floor-cube-root property on `icbrt` **over the whole `uint256`
+maintenance, **one route-blind tally** — a use on the direct path and one in a batch land in
+the same `accrualOf`, the same seller counted once across both routes
+(`test_oneTally_sameSellerOnBothRoutesIsTwoUsesOneSeller`,
+`test_oneTally_twoSellersOnePerRouteIsTwoUsesTwoSellers`,
+`test_oneTally_aSellerCountedDirectThenInABatchIsCountedOnce`), the batch path's per-use
+gates (an unstaked seller's use, an un-live key, a process already counted on either route
+skipped) and a fuzzed floor-cube-root property on `icbrt` **over the whole `uint256`
 domain** plus a no-saturation regression. Never bound a fuzz domain to less than the
 function's own: on `icbrt` a `uint64`-only domain is the one place a wrong cube bound is
 coincidentally exact, so saturation passes unseen.
@@ -93,7 +99,7 @@ allowance-pull composition end to end.
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
 | `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the designer-reward Sybil bound assumes: solvency, no stake recycling, de-surfacing at request, the counter reads that gate |
-| `HalmosUsageCounter.t.sol` | 9 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two paths), period bucketing ×2, isolation across keys, `check_theKindsNeverShareAKey` — a use counted under any one of the three kinds, on either path, leaves every other kind's accrual at the same key empty — `check_aKindNeverDisturbsAnotherKindsAccrual` — it leaves another kind's existing accrual at the key exactly as it was — and `check_anUnknownKindIsSkipped` — a batch accrual whose kind names no registry writes nothing under any kind and leaves the period total where it was. Mutation-checked: replace-not-add, score composition, and `check_aKindNeverDisturbsAnotherKindsAccrual` (a counter writing every kind's accrual, direct and batch, to the clause kind fails it on every path combination). |
+| `HalmosUsageCounter.t.sol` | 9 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, `check_aUseCountsTheSameOnEitherRoute` — two uses, each brought by either route, leave the tally, the counted processes, the seller set and the period total exactly as two direct calls do, a repeated process or seller included — `check_scoreOfIsTheOneTally` (`scoreOf == accrualOf.score`), period bucketing ×2, isolation across keys, `check_theKindsNeverShareAKey` — a use counted under any one of the three kinds, on either route, leaves every other kind's accrual at the same key empty — `check_aKindNeverDisturbsAnotherKindsAccrual` — it leaves another kind's existing accrual at the key exactly as it was — and `check_anUnknownKindIsSkipped` — a batch use whose kind names no registry writes nothing under any kind and leaves the period total where it was. Mutation-checked against three counters: one whose batch path counts a process already counted fails `check_aUseCountsTheSameOnEitherRoute`; one whose batch path counts every use under the clause kind fails `check_aKindNeverDisturbsAnotherKindsAccrual`; one whose `scoreOf` reads more than the tally fails `check_scoreOfIsTheOneTally`. |
 | `HalmosClauseAgreementAndAssemblyRegistries.t.sol` | 18 (6 per contract) | `HalmosClauseRegistry` + `HalmosAssemblyRegistry` + `HalmosAgreementRegistry` — the stake machines `RpgfMinter._isAuthor` reads, one per kind: solvency under arbitrary interleavings by two registering wallets, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked: solvency + first-write-wins on the clause and assembly contracts, 4/4 counterexamples. |
 
 Run with `scripts/test-halmos.sh` (seven passes). **Halmos does not model
@@ -134,7 +140,7 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 67 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 20 + RelayState 8 + its deferral 10 + its resolve authorization 2)
+## TLA+ (`formal/`) — 68 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 8 + its deferral 10 + its resolve authorization 2)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -162,10 +168,11 @@ ResolutionUniverses (`ResolutionUniverses.tla` + `.cfg`): the
 CROSS-CONTRACT model — FigaroCore + FigaroBatchVerifier + UsageCounter + the
 off-chain guest mirror under arbitrary interleavings; the only harness that can
 see where the two paths meet (every other layer is per-contract).
-20 invariants: no double payout across the universes, token conservation +
-exact per-pool deposits, usage-score composition (`scoreOf == direct + batch`,
-the bridge write REPLACES never adds), `FigaroCore` blindness (`settleBatch` writes
-no `FigaroCore` `orderStatus`) — 10,030,087 states, ~9.5 min. Mutation-checked: 5 mutations + 7 non-vacuity witnesses, each caught.
+21 invariants: no double payout across the universes, token conservation +
+exact per-pool deposits, one route-blind tally (`scoreOf == accrualOf.score`, `c`
+the size of the one counted-process set, `d` the size of the period's one seller
+set, counted only for resolved trade), `FigaroCore` blindness (`settleBatch` writes
+no `FigaroCore` `orderStatus`) — 45,000,639 states generated, 12,828,199 distinct, depth 18, ~29 min. Mutation-checked: four mutated actions, each failing the invariant it targets — the batch counting a process already counted (`CountIsDistinctProcesses`), the batch adding a seller already in the period's set to `d` (`SellersCountedOnce`), a score that ignores the floor at `MinSellers = 2` (`FloorApplied`), a claim proved on a committed but unresolved order (`AccrualNeverOverPays`); and four reachability witnesses, each violated as expected — a key counted from both routes, one seller carrying uses on both routes as one unit of `d`, a sub-floor tally with uses, a batch-path process in the counted set. The `MinSellers = 2` pass of the shipped model: no error, 45,000,639 states generated, 12,828,199 distinct, depth 18.
 The model's `Artifacts` are one abstract keyspace; it does not model the
 reward's kind, so the separation of clause and assembly accruals by (kind,
 key) is held by Foundry, Halmos (`check_theKindsNeverShareAKey`, `check_aKindNeverDisturbsAnotherKindsAccrual`, `check_anUnknownKindIsSkipped`), Certora (`RpgfMinterAuthor.spec`) and the
@@ -173,7 +180,8 @@ guest's `usage.rs`, never by TLC.
 Two NAMED assumptions ride as `.cfg` constants: `AssumeDomainSeparation`
 (contract-enforced — EIP-712 `verifyingContract` disjointness carries
 no-double-payout) and `AssumeAccrualGatesAligned` (NOT contract-enforced — a
-dropped batch's accrual is forgone at process granularity, under-pay only).
+batch whose period passed in flight has its uses uncounted until a later batch
+proves them again, under-pay only).
 Flipping either to FALSE is the experiment, is EXPECTED to fail, and is not a
 regression.
 
@@ -311,9 +319,10 @@ alone (`usage.rs`); the attestation lock —
 regenerates it), as hash-only batched attestations and asserts each event
 encodes to the coordinator's topics and data; the
 usage bridge in
-`prover/lib/tests/usage.rs` — same-batch credit against the post-state, cross-batch
-replay rejection (the reason the counted set rides the state root), breadth
-vs depth, the agreement leg via the two-key provenance reproduction
+`prover/lib/tests/usage.rs` — same-batch credit against the post-state, one use per
+(kind, key, process) in a batch, a claim presented again in a later batch yielding the
+same use (the counter's `processCounted` skips it), claims moving no state root, each
+use naming its process and seller, the agreement leg via the two-key provenance reproduction
 (`credits_an_agreement_through_the_provenance_leaf`, refused on a wrong
 `agreementHash` or `assemblyHash`), the assembly leg via the same leaf plus
 the agreement's membership proof (refused on another agreement's hash, a proof
@@ -323,7 +332,7 @@ the agreement and the assembly apart, both reserved keys refused on every kind
 passing as an agreement, the reserved provenance leaf attestable without a
 spec (and refused on an uncommitted key, a foreign contentRef or non-canonical
 bytes), a clause and an assembly on the same key accruing apart, and the usage-hash vector (each
-accrual `key ‖ kind ‖ c ‖ d`) asserted verbatim on the Solidity side; bincode roundtrips
+use `key ‖ kind ‖ processId ‖ seller`) asserted verbatim on the Solidity side; bincode roundtrips
 fence the SP1 stdin landmines), `figaro-prover` (the SP1 guest program itself,
 exercised through the next crate), `figaro-prove-test` (SP1 mock-executor guest tests — the guest's committed
 bytes must equal the host's `PublicValues.abi_encode` byte-for-byte — the exact
@@ -921,14 +930,14 @@ Per workflow, what it runs and when:
 - **`monitor`** — daily (01:17 UTC, which GitHub's late start lands before the incident-review routine; the event window reaches back to the last successful scheduled run) + dispatch: the public deployment's
   watcher (`scripts/monitor-sepolia.mjs`, SECURITY.md § "Monitoring") reads
   the contracts' events through a public node — a florin minted outside the
-  reward path, a dropped batch accrual,
+  reward path, a batch whose uses the counter refused,
   a withdrawal burst, and `FigaroCore`'s held bonds against invariant A-8 —
   and raises each condition as an issue labeled `monitor`, assigned to the
   maintainer; a run that cannot read the node, or finds a record address
   with no code, fails, which is the heartbeat. `scripts/test-monitor.mjs`
   (the last step of `devnet-e2e-ci`) produces each alert with real contracts
-  on the devnet and asserts the watcher raises it — all but the dropped batch
-  accrual, which needs a batch the counter refuses between prove and submit.
+  on the devnet and asserts the watcher raises it — all but the refused batch,
+  which needs a period boundary crossed between prove and submit.
   `SEPOLIA_RPC_URL` as a repository secret switches it to a keyed node; the
   dispatch input `rehearsal` raises one synthetic alert without reading the
   chain, to prove the issue and e-mail path. Every read waits its turn at one

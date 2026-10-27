@@ -15,15 +15,17 @@
  *   FigaroBatchVerifier   (src/core/verifier/FigaroBatchVerifier.sol)
  *       settleBatch()     → verifies an SP1 proof, reconciles NET token
  *                           positions per (token, user), re-emits attestations,
- *                           advances stateRoot, and bridges the RPGF accrual.
+ *                           advances stateRoot, and hands the batch's uses to
+ *                           the counter.
  *                           It writes NO FigaroCore state — a batch-resolved order
  *                           never acquires FigaroCore orderStatus, ever.
  *
  *   UsageCounter          (src/build/rewards/UsageCounter.sol)
  *       recordClauseUsage()  → direct path; requires core.orderStatus == 2
- *       applyBatchAccrual()  → batch path; proof-gated writer, CUMULATIVE
- *                              overwrite (REPLACE, never add)
- *       scoreOf()            → accrualOf.score + batchAccrualOf.score
+ *       applyBatchAccrual()  → batch path; proof-gated writer of USES, each
+ *                              counted through the same _count, into the
+ *                              same tally, counted set and seller set
+ *       scoreOf()            → accrualOf.score — ONE tally, route-blind
  *
  *   the guest mirror       (prover/lib/src/kernel.rs) — a byte-faithful mirror
  *                          of FigaroCore's state machine that lives entirely
@@ -31,8 +33,8 @@
  *
  * THE CREASE. FigaroCore and FigaroBatchVerifier share no state and never call
  * each other (docs/SCALING_STRATEGY.md § "Two resolution paths, two DISJOINT
- * state universes"). Exactly ONE thing crosses: the RPGF usage accrual, as
- * proved numbers. Money crosses as net token positions, which is resolution,
+ * state universes"). Exactly ONE thing crosses: the batch's uses, as
+ * proved (kind, key, process, seller) entries. Money crosses as net token positions, which is resolution,
  * not state. This model is the first instrument that can see both universes at
  * once and interleave them arbitrarily.
  *
@@ -59,20 +61,19 @@
  *       reverts UnknownProcess otherwise).
  *       WHAT IT CARRIES: NoDoublePayout, UniverseDisjointOrders,
  *       KernelBlindToBatch's usefulness, and ProcessCountedInOneUniverse
- *       (the RPGF face of the crease — UsageCounter.sol:210-213 explicitly
- *       rests the "sum scores, never components" argument on it).
+ *       (the RPGF face of the crease — the counter's one processCounted set
+ *       counts a process id once, which is counting a process once only
+ *       because no id names a process in both universes).
  *
  *   AssumeAccrualGatesAligned
  *       "No accrual-period boundary is crossed between the guest proving a
  *        batch's usage claims and that batch resolving on chain."
  *       STATUS: NOT contract-enforced. UsageCounter.applyBatchAccrual reverts
- *       PeriodMismatch when the sequencer's period is not the open one
- *       (UsageCounter.sol:548-549), and FigaroBatchVerifier catches that
- *       revert and resolves the tokens anyway (FigaroBatchVerifier.sol:322-327,
- *       DESIGN_DECISIONS.md §19). The GUEST state has already advanced — its
- *       usage_process_counted set rides the state root and is GLOBAL, once
- *       ever, whatever the period (kernel.rs:847) — so the dropped processes
- *       can never be re-counted, in that period or any later one.
+ *       PeriodMismatch when the sequencer's period is not the open one, and
+ *       FigaroBatchVerifier catches that revert and resolves the tokens
+ *       anyway (DESIGN_DECISIONS.md §19). The guest keeps no usage state, so
+ *       the uncounted uses may be proved again in a later batch; until one
+ *       is, they are uncounted.
  *       WHAT IT CARRIES: AccrualNotLost. Note what it does NOT carry:
  *       AccrualNeverOverPays holds unconditionally. The failure mode is
  *       strictly conservative under-pay, exactly as documented.
@@ -90,8 +91,9 @@
  *                             floor, ZERO under it. Every invariant here is
  *                             shape-independent: what is checked is that the
  *                             cached score is a pure function of the stored
- *                             (c, d), that the floor is applied per path, and
- *                             that the running total is maintained as a delta
+ *                             (c, d), that the floor is applied to the one
+ *                             tally, and that the running total is maintained
+ *                             as a delta
  *   registry liveness       — MembersRegistry / ClauseRegistry /
  *                             AssemblyRegistry / AgreementRegistry stakes are
  *                             assumed LIVE; the
@@ -161,7 +163,6 @@ SumFn(S, f) ==
 NullProc == [ rootBuyer |-> "none", cumVal |-> 0, active |-> 0 ]
 NullOrd  == [ pid |-> 0, buyer |-> "none", seller |-> "none", pay |-> 0, cum |-> 0 ]
 ZeroAcc  == [ c |-> 0, d |-> 0, score |-> 0 ]
-ZeroCnt  == [ c |-> 0, d |-> 0 ]
 
 \* UsageCounter._score — ZERO below the minimum-support floor, a pure
 \* function of the stored counts above it. See § "WHAT IS ABSTRACTED".
@@ -191,21 +192,17 @@ VARIABLES
   \* ── shared token ledger ──
   wallets,      \* [Participants -> Nat]
 
-  \* ── UsageCounter state ──
+  \* ── UsageCounter state — ONE tally, both routes ──
   accrual,      \* [Artifacts -> [Periods -> Accrual]]  — accrualOf
-  batchAcc,     \* [Artifacts -> [Periods -> Accrual]]  — batchAccrualOf
   counted,      \* [Artifacts -> SUBSET Procs]          — processCounted
   seen,         \* [Artifacts -> [Periods -> SUBSET Sellers]] — sellerSeen
   totalScore,   \* [Periods -> Int]                     — totalScoreIn
   period,       \* the OPEN period (ClosedPeriod == accrual closed forever)
 
-  \* ── the guest's own usage bookkeeping (rides the state root) ──
-  gUsage,       \* [Artifacts -> [Periods -> {c,d}]]  — usage_accrual
-  gCounted,     \* [Artifacts -> SUBSET Procs]        — usage_process_counted
-  gSeen,        \* [Artifacts -> [Periods -> SUBSET Sellers]] — usage_seller_seen
-
   \* ── ghosts (never read by any action; invariant witnesses only) ──
   kResolvedGhost,  \* orders FigaroCore resolved, recorded at ResolveProcess
+  gSettled,        \* [Artifacts -> SUBSET Procs] — processes whose use a
+                   \* landed batch carried
   dropped          \* a BatchAccrualSkipped was emitted
 
 vars ==
@@ -213,9 +210,8 @@ vars ==
      gStatus, gProc, gRec, verifBal,
      batchOpen, penNet, penUse, penPeriod,
      wallets,
-     accrual, batchAcc, counted, seen, totalScore, period,
-     gUsage, gCounted, gSeen,
-     kResolvedGhost, dropped >>
+     accrual, counted, seen, totalScore, period,
+     kResolvedGhost, gSettled, dropped >>
 
 
 \* ── Derived state ────────────────────────────────────────────
@@ -271,15 +267,12 @@ Init ==
   /\ penPeriod = 0
   /\ wallets = [p \in Participants |-> InitialBalance]
   /\ accrual = [a \in Artifacts |-> [q \in Periods |-> ZeroAcc]]
-  /\ batchAcc = [a \in Artifacts |-> [q \in Periods |-> ZeroAcc]]
   /\ counted = [a \in Artifacts |-> {}]
   /\ seen = [a \in Artifacts |-> [q \in Periods |-> {}]]
   /\ totalScore = [q \in Periods |-> 0]
   /\ period = 0
-  /\ gUsage = [a \in Artifacts |-> [q \in Periods |-> ZeroCnt]]
-  /\ gCounted = [a \in Artifacts |-> {}]
-  /\ gSeen = [a \in Artifacts |-> [q \in Periods |-> {}]]
   /\ kResolvedGhost = {}
+  /\ gSettled = [a \in Artifacts |-> {}]
   /\ dropped = FALSE
 
 
@@ -309,8 +302,8 @@ KCommitRoot(pid, b, s, pay) ==
                                  - ( IF p = s THEN sBond ELSE 0 )]
      /\ UNCHANGED << gStatus, gProc, gRec, verifBal,
                      batchOpen, penNet, penUse, penPeriod,
-                     accrual, batchAcc, counted, seen, totalScore, period,
-                     gUsage, gCounted, gSeen, kResolvedGhost, dropped >>
+                     accrual, counted, seen, totalScore, period,
+                     kResolvedGhost, gSettled, dropped >>
 
 \* FigaroCore.commit() with c.processId != bytes32(0).
 \* Seller bonds 2× the NEW cumulative value (cumulative bonding).
@@ -337,8 +330,8 @@ KCommitSub(pid, s, pay) ==
                                        - ( IF p = s THEN sBond ELSE 0 )]
      /\ UNCHANGED << gStatus, gProc, gRec, verifBal,
                      batchOpen, penNet, penUse, penPeriod,
-                     accrual, batchAcc, counted, seen, totalScore, period,
-                     gUsage, gCounted, gSeen, kResolvedGhost, dropped >>
+                     accrual, counted, seen, totalScore, period,
+                     kResolvedGhost, gSettled, dropped >>
 
 \* FigaroCore.resolveProcess() — buyer dominance, ATOMIC over every active
 \* order of the process. Flips FigaroCore orderStatus 1 → 2. Touches NOTHING in
@@ -358,8 +351,8 @@ KResolve(pid) ==
      /\ kResolvedGhost' = kResolvedGhost \union ro
      /\ UNCHANGED << kRec, gStatus, gProc, gRec, verifBal,
                      batchOpen, penNet, penUse, penPeriod,
-                     accrual, batchAcc, counted, seen, totalScore, period,
-                     gUsage, gCounted, gSeen, dropped >>
+                     accrual, counted, seen, totalScore, period,
+                     gSettled, dropped >>
 
 
 \* ══════════════════════════════════════════════════════════════
@@ -386,8 +379,8 @@ GCommitRoot(pid, b, s, pay) ==
      /\ batchOpen' = TRUE
      /\ UNCHANGED << kStatus, kProc, kRec, coreBal, verifBal,
                      penUse, penPeriod, wallets,
-                     accrual, batchAcc, counted, seen, totalScore, period,
-                     gUsage, gCounted, gSeen, kResolvedGhost, dropped >>
+                     accrual, counted, seen, totalScore, period,
+                     kResolvedGhost, gSettled, dropped >>
 
 GCommitSub(pid, s, pay) ==
   LET free == { x \in BlockOf(pid): gStatus[x] = "Unknown" }
@@ -410,8 +403,8 @@ GCommitSub(pid, s, pay) ==
      /\ batchOpen' = TRUE
      /\ UNCHANGED << kStatus, kProc, kRec, coreBal, verifBal,
                      penUse, penPeriod, wallets,
-                     accrual, batchAcc, counted, seen, totalScore, period,
-                     gUsage, gCounted, gSeen, kResolvedGhost, dropped >>
+                     accrual, counted, seen, totalScore, period,
+                     kResolvedGhost, gSettled, dropped >>
 
 GResolve(pid) ==
   LET ro == GOpenOrds(pid)
@@ -426,17 +419,18 @@ GResolve(pid) ==
      /\ batchOpen' = TRUE
      /\ UNCHANGED << kStatus, kProc, kRec, coreBal, gRec, verifBal,
                      penUse, penPeriod, wallets,
-                     accrual, batchAcc, counted, seen, totalScore, period,
-                     gUsage, gCounted, gSeen, kResolvedGhost, dropped >>
+                     accrual, counted, seen, totalScore, period,
+                     kResolvedGhost, gSettled, dropped >>
 
-\* One in-proof usage claim (prover/lib/src/kernel.rs apply_usage_claim): the
-\* guest proves a RESOLVED (in ITS universe) process used an artifact. The
-\* whole batch carries ONE usage_period; a claim can only join a batch whose
-\* period is still the one now open.
+\* One in-proof usage claim (prover/lib/src/kernel.rs apply_usage_claims):
+\* the guest proves a RESOLVED (in ITS universe) process used an artifact and
+\* gives one use per (artifact, process) in the batch. The guest keeps no
+\* counted set: a process the counter has already counted may be claimed
+\* again, and the counter skips it. The whole batch carries ONE usage_period;
+\* a claim can only join a batch whose period is still the one now open.
 GClaimUsage(a, o) ==
   /\ period < ClosedPeriod
   /\ gStatus[o] = "Resolved"
-  /\ gRec[o].pid \notin gCounted[a]
   /\ \A e \in penUse: ~( e.art = a /\ gRec[e.ord].pid = gRec[o].pid )
   /\ ( penUse # {} => penPeriod = period )
   /\ penUse' = penUse \union { [art |-> a, ord |-> o] }
@@ -444,57 +438,58 @@ GClaimUsage(a, o) ==
   /\ batchOpen' = TRUE
   /\ UNCHANGED << kStatus, kProc, kRec, coreBal, gStatus, gProc, gRec, verifBal,
                   penNet, wallets,
-                  accrual, batchAcc, counted, seen, totalScore, period,
-                  gUsage, gCounted, gSeen, kResolvedGhost, dropped >>
+                  accrual, counted, seen, totalScore, period,
+                  kResolvedGhost, gSettled, dropped >>
 
 \* FigaroBatchVerifier.settleBatch(). Steps modeled, in the contract's order:
 \*   5. _executePositions  — net pull/push per (token, user)
 \*   7. usageCounter.applyBatchAccrual, wrapped in try/catch
 \*   8. advance state
 \* Step 7's failure NEVER unwinds step 5 (DESIGN_DECISIONS.md §19).
+\* Step 7 counts each use exactly as RecordUsage counts a direct one: a
+\* process already counted under the artifact is skipped, and a use that is
+\* counted adds one to c and, when its seller is new to the period's set, one
+\* to d. The batch's uses name distinct (artifact, process) pairs, so the
+\* order the counter walks them in changes nothing.
 SettleBatch ==
   LET netSum  == SumFn(Participants, penNet)
       pp      == penPeriod
-      \* the guest's own counting — happens regardless of the chain's gates
-      adm     == [a \in Artifacts |->
-                    { e \in penUse: e.art = a /\ gRec[e.ord].pid \notin gCounted[a] }]
-      newP    == [a \in Artifacts |-> { gRec[e.ord].pid    : e \in adm[a] }]
-      newS    == [a \in Artifacts |-> { gRec[e.ord].seller : e \in adm[a] }]
-      nc      == [a \in Artifacts |-> gUsage[a][pp].c + Cardinality(newP[a])]
-      nd      == [a \in Artifacts |-> gUsage[a][pp].d
-                                      + Cardinality(newS[a] \ gSeen[a][pp])]
-      inBatch == { e.art : e \in penUse }
-      \* the chain's own gates: open period + accrual still open
+      \* the chain's own gates for the call: open period + accrual still open
       gateOK  == ( pp = period /\ period < ClosedPeriod )
-      writeSet == IF gateOK THEN inBatch ELSE {}
-      delta   == SumFn(writeSet,
-                   [a \in Artifacts |-> Score(nc[a], nd[a]) - batchAcc[a][pp].score])
+      \* the uses the counter counts — none when the call reverts
+      cnt     == [a \in Artifacts |->
+                    IF gateOK
+                    THEN { e \in penUse: e.art = a /\ gRec[e.ord].pid \notin counted[a] }
+                    ELSE {}]
+      newP    == [a \in Artifacts |-> { gRec[e.ord].pid    : e \in cnt[a] }]
+      newS    == [a \in Artifacts |-> { gRec[e.ord].seller : e \in cnt[a] }]
+      nc      == [a \in Artifacts |-> accrual[a][pp].c + Cardinality(newP[a])]
+      nd      == [a \in Artifacts |-> accrual[a][pp].d
+                                      + Cardinality(newS[a] \ seen[a][pp])]
+      delta   == SumFn(Artifacts,
+                   [a \in Artifacts |-> Score(nc[a], nd[a]) - accrual[a][pp].score])
   IN /\ batchOpen
      \* _pullExact: every net debtor must be able to pay (audit L-6 — a
      \* shortfall reverts the WHOLE batch; nothing is lost, the batch is
      \* re-assembled off chain).
      /\ \A p \in Participants: wallets[p] - penNet[p] >= 0
      /\ verifBal + netSum >= 0
-     \* AccrualWentBackwards (UsageCounter.sol:582) — cumulative, never a delta
-     /\ \A a \in writeSet: nc[a] >= batchAcc[a][pp].c /\ nd[a] >= batchAcc[a][pp].d
      /\ wallets' = [p \in Participants |-> wallets[p] - penNet[p]]
      /\ verifBal' = verifBal + netSum
-     \* guest bookkeeping advances under the state root — chain gates or not
-     /\ gCounted' = [a \in Artifacts |-> gCounted[a] \union newP[a]]
-     /\ gSeen' = [a \in Artifacts |->
-                    [q \in Periods |-> IF q = pp THEN gSeen[a][q] \union newS[a]
-                                                 ELSE gSeen[a][q]]]
-     /\ gUsage' = [a \in Artifacts |->
-                     [q \in Periods |-> IF q = pp THEN [c |-> nc[a], d |-> nd[a]]
-                                                  ELSE gUsage[a][q]]]
-     \* the bridge write: REPLACE with the proven cumulative, never add
-     /\ batchAcc' = [a \in Artifacts |->
-                       [q \in Periods |->
-                          IF q = pp /\ a \in writeSet
-                          THEN [c |-> nc[a], d |-> nd[a], score |-> Score(nc[a], nd[a])]
-                          ELSE batchAcc[a][q]]]
+     \* the counter's one tally, one counted set, one seller set
+     /\ counted' = [a \in Artifacts |-> counted[a] \union newP[a]]
+     /\ seen' = [a \in Artifacts |->
+                   [q \in Periods |-> IF q = pp THEN seen[a][q] \union newS[a]
+                                                ELSE seen[a][q]]]
+     /\ accrual' = [a \in Artifacts |->
+                      [q \in Periods |->
+                         IF q = pp
+                         THEN [c |-> nc[a], d |-> nd[a], score |-> Score(nc[a], nd[a])]
+                         ELSE accrual[a][q]]]
      /\ totalScore' = [q \in Periods |->
                          IF q = pp THEN totalScore[q] + delta ELSE totalScore[q]]
+     /\ gSettled' = [a \in Artifacts |->
+                       gSettled[a] \union { gRec[e.ord].pid : e \in { x \in penUse: x.art = a } }]
      \* Parenthesised deliberately: `=` binds tighter than `\/` in TLA+, so
      \* dropping the parens silently turns this into a DISJUNCTION that leaves
      \* dropped' unassigned whenever the batch is skipped.
@@ -504,7 +499,7 @@ SettleBatch ==
      /\ penUse' = {}
      /\ UNCHANGED << kStatus, kProc, kRec, coreBal,
                      gStatus, gProc, gRec, penPeriod,
-                     accrual, counted, seen, period, kResolvedGhost >>
+                     period, kResolvedGhost >>
 
 
 \* ══════════════════════════════════════════════════════════════
@@ -532,8 +527,7 @@ RecordUsage(a, o) ==
   /\ UNCHANGED << kStatus, kProc, kRec, coreBal,
                   gStatus, gProc, gRec, verifBal,
                   batchOpen, penNet, penUse, penPeriod, wallets,
-                  batchAcc, period, gUsage, gCounted, gSeen,
-                  kResolvedGhost, dropped >>
+                  period, kResolvedGhost, gSettled, dropped >>
 
 
 \* ══════════════════════════════════════════════════════════════
@@ -550,8 +544,8 @@ AdvancePeriod ==
   /\ UNCHANGED << kStatus, kProc, kRec, coreBal,
                   gStatus, gProc, gRec, verifBal,
                   batchOpen, penNet, penUse, penPeriod, wallets,
-                  accrual, batchAcc, counted, seen, totalScore,
-                  gUsage, gCounted, gSeen, kResolvedGhost, dropped >>
+                  accrual, counted, seen, totalScore,
+                  kResolvedGhost, gSettled, dropped >>
 
 
 \* ── Next-state relation ──────────────────────────────────────
@@ -587,8 +581,6 @@ TypeOK ==
   /\ \A q \in Periods: totalScore[q] \in Nat
   /\ \A a \in Artifacts, q \in Periods:
        /\ accrual[a][q].c \in Nat /\ accrual[a][q].d \in Nat
-       /\ batchAcc[a][q].c \in Nat /\ batchAcc[a][q].d \in Nat
-       /\ gUsage[a][q].c \in Nat /\ gUsage[a][q].d \in Nat
 
 
 \* ── 1. No value is paid out twice across the two universes ───
@@ -628,22 +620,14 @@ ResolutionAlwaysPossible ==
                        GActive(pid) => verifBal >= SumFn(GOpenOrds(pid), GRelease) )
 
 
-\* ── 3. Usage-score composition ───────────────────────────────
-\* scoreOf(artifact, period) == accrualOf.score + batchAccrualOf.score
-\* (UsageCounter.sol:399-401), with each side's cached score a pure function
-\* of ITS OWN stored counts — the two are summed as SCORES, never as
-\* components (UsageCounter.sol:202-213).
-ScoreOf(a, q) == accrual[a][q].score + batchAcc[a][q].score
+\* ── 3. One tally, route-blind ──────────────────────────────────
+\* scoreOf(artifact, period) == accrualOf.score: the one tally both routes
+\* feed, its cached score a pure function of its stored counts.
+ScoreOf(a, q) == accrual[a][q].score
 
 ScoreCacheCorrect ==
   \A a \in Artifacts, q \in Periods:
-    /\ accrual[a][q].score = Score(accrual[a][q].c, accrual[a][q].d)
-    /\ batchAcc[a][q].score = Score(batchAcc[a][q].c, batchAcc[a][q].d)
-
-ScoreComposition ==
-  \A a \in Artifacts, q \in Periods:
-    ScoreOf(a, q) = Score(accrual[a][q].c, accrual[a][q].d)
-                  + Score(batchAcc[a][q].c, batchAcc[a][q].d)
+    accrual[a][q].score = Score(accrual[a][q].c, accrual[a][q].d)
 
 \* totalScoreIn is maintained as an O(1) DELTA on every write; this is the
 \* only thing that proves the delta bookkeeping never drifts from the sum.
@@ -651,20 +635,21 @@ TotalScoreIntegrity ==
   \A q \in Periods:
     totalScore[q] = SumFn(Artifacts, [a \in Artifacts |-> ScoreOf(a, q)])
 
-\* The bridge write REPLACES the cumulative pair, never adds to it: the
-\* on-chain batch counts can never exceed what the guest actually proved.
-\* (An ADD would make them race past the guest's cumulative.)
-BatchWriteReplacesNeverAdds ==
-  \A a \in Artifacts, q \in Periods:
-    /\ batchAcc[a][q].c <= gUsage[a][q].c
-    /\ batchAcc[a][q].d <= gUsage[a][q].d
+\* c counts each process ONCE, whichever route brought it: the periods' c
+\* add up to exactly the counter's one counted-process set.
+CountIsDistinctProcesses ==
+  \A a \in Artifacts:
+    SumFn(Periods, [q \in Periods |-> accrual[a][q].c]) = Cardinality(counted[a])
 
-\* The minimum-support floor is applied PER PATH, never to a union of the two
-\* seller sets (UsageCounter.sol:165-174).
-FloorAppliedPerPath ==
+\* d counts each seller ONCE per period, whichever route carried them: it is
+\* exactly the size of the period's one seller set.
+SellersCountedOnce ==
+  \A a \in Artifacts, q \in Periods: accrual[a][q].d = Cardinality(seen[a][q])
+
+\* The minimum-support floor is applied to the one tally.
+FloorApplied ==
   \A a \in Artifacts, q \in Periods:
-    /\ accrual[a][q].d < MinSellers => accrual[a][q].score = 0
-    /\ batchAcc[a][q].d < MinSellers => batchAcc[a][q].score = 0
+    accrual[a][q].d < MinSellers => accrual[a][q].score = 0
 
 \* ── 4. FigaroCore blindness is faithful ──────────────────────────
 \* Batch resolution changes NO FigaroCore orderStatus. kResolvedGhost is written
@@ -681,34 +666,36 @@ BatchInvisibleToKernelGates ==
 
 
 \* ── 5. RPGF: a process is counted in exactly one universe ────
-\* CARRIED BY: AssumeDomainSeparation. This is the assumption UsageCounter
-\* names in prose (sol:210-213) to justify summing scores from two counters
-\* that cannot union their seller sets, and the one that makes guest-owned
-\* idempotence sound (the guest never consults processCounted).
+\* CARRIED BY: AssumeDomainSeparation. The counter keeps one counted set for
+\* both routes and counts a process id once; that counts a PROCESS once only
+\* because no counted id names a process in both universes.
 ProcessCountedInOneUniverse ==
-  \A a \in Artifacts: counted[a] \intersect gCounted[a] = {}
+  \A a \in Artifacts: \A p \in counted[a]:
+    ~( ( \E o \in BlockOf(p): kStatus[o] # "Unknown" )
+       /\ ( \E o \in BlockOf(p): gStatus[o] # "Unknown" ) )
 
 
-\* ── 6. The accrual bridge under a period race ────────────────
-\* The same predicate as BatchWriteReplacesNeverAdds, under its economic name:
-\* the bridge can never credit more than the guest actually proved. Holds
-\* UNCONDITIONALLY — neither assumption carries it. (Listed once in the .cfg.)
-AccrualNeverOverPays == BatchWriteReplacesNeverAdds
+\* ── 6. The uses under a period race ──────────────────────────
+\* The counter counts only resolved trade: every counted process was resolved
+\* in one of the universes. Holds UNCONDITIONALLY — neither assumption
+\* carries it.
+ResolvedPids ==
+  { kRec[o].pid : o \in { x \in Orders: kStatus[x] = "Resolved" } }
+  \union { gRec[o].pid : o \in { x \in Orders: gStatus[x] = "Resolved" } }
+
+AccrualNeverOverPays ==
+  \A a \in Artifacts: counted[a] \subseteq ResolvedPids
 
 \* CARRIED BY: AssumeAccrualGatesAligned. Stated UNCONDITIONALLY on purpose —
 \* a `Assume... => ...` phrasing would go vacuously true the moment the
 \* assumption is switched off, which is exactly the run that has to fail.
 \*
 \* With the assumption removed the period can advance while a batch is in
-\* flight; applyBatchAccrual reverts PeriodMismatch, settleBatch catches it and
-\* resolves the tokens anyway, and the guest's GLOBAL counted set has already
-\* absorbed those processes (kernel.rs:847, once ever, whatever the period).
-\* So the accrual is not "recovered by the next batch" for those processes —
-\* it is permanently forgone.
+\* flight; applyBatchAccrual reverts PeriodMismatch, settleBatch catches it
+\* and resolves the tokens anyway, and the batch's uses go uncounted until a
+\* later batch proves them again.
 AccrualNotLost ==
-  \A a \in Artifacts, q \in Periods:
-    /\ batchAcc[a][q].c = gUsage[a][q].c
-    /\ batchAcc[a][q].d = gUsage[a][q].d
+  \A a \in Artifacts: gSettled[a] \subseteq counted[a]
 
 \* No BatchAccrualSkipped was ever emitted. CARRIED BY:
 \* AssumeAccrualGatesAligned.

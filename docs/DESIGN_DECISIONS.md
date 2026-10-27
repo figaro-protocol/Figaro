@@ -529,11 +529,11 @@ an admin backdoor takes. The natural next question — can that address mint,
 re-weight, or seize? — is the right question to ask.
 
 **Why it is correct**: the verifier has **no discretion**. It may call this
-function only with numbers an SP1 proof committed under an IMMUTABLE
+function only with uses an SP1 proof committed under an IMMUTABLE
 verification key, against a state root that advances by that same proof. It
-cannot choose the accrual, cannot invent a process, cannot write twice for the
-same trade (the guest's counted set rides the batch state root, so idempotence
-holds across batches), and cannot be repointed — `batchVerifier` is
+cannot choose the uses, cannot invent a process, cannot count a process twice
+(the counter's one `processCounted` set holds for both routes, and a use whose
+process it holds is skipped), and cannot be repointed — `batchVerifier` is
 `immutable` and no setter exists. What it can do is exactly what the direct
 path lets *anyone* do permissionlessly: present proof that resolved trade used
 a clause, a registered agreement or an assembly.
@@ -541,29 +541,37 @@ a clause, a registered agreement or an assembly.
 The distinction that matters is **discretion, not permission**. An admin
 function is one whose outcome depends on who calls it. This one's outcome
 depends only on what the proof says; the caller is a courier. The reason it
-needs a named caller at all is that the accrual is proved OFF-chain — which is
-the entire point, since ~85% of a direct recording's gas is storage plus `icbrt`
-— so the fact cannot be re-derived from calldata here. The contract trusts the
-vkey, and a named caller is how a vkey's authority reaches storage.
+needs a named caller at all is that a batch-resolved order never acquires
+`FigaroCore` status, so the two facts a direct call proves here — the order is
+resolved, the key is committed in its agreement — are proved OFF-chain by the
+guest and cannot be re-derived from calldata. The contract trusts the vkey, and
+a named caller is how a vkey's authority reaches storage.
 
 **What the counter still enforces itself**, because the proof cannot see live
-chain state: the open period, each seller's live `MembersRegistry` stake, and
-each clause's, agreement's or assembly's live registration in its own kind's registry. The verifier deliberately checks none of these — it
+chain state: the open period, each use's seller's live `MembersRegistry` stake,
+each clause's, agreement's or assembly's live registration in its own kind's
+registry, and whether the process is already counted. The verifier deliberately checks none of these — it
 owns the proof, the counter owns the reward's gates.
 
-**Blast radius if the vkey were wrong**: a bad program could inflate
-batch-path accrual for clauses, agreements or assemblies of its choosing, diluting every honest
-designer's pro-rata share of a period's budget. It could not mint, could not touch
-direct-path accrual, could not reach bonds or resolution, and could not
+**Blast radius if the vkey were wrong**: a bad program could hand the counter
+uses no resolved trade made, for clauses, agreements or assemblies of its
+choosing — each still gated by a live registration and a live-staked seller, each
+process counted once — diluting every honest designer's pro-rata share of a
+period's budget. Because the counted-process set is shared by both routes, it
+could also hand over a use naming a direct-route process id under some key,
+pre-marking it in `processCounted`, so a later direct call for that process
+and key reverts `AlreadyCounted` and its use is never counted. It could not
+mint, could not reach bonds or resolution, and could not
 withdraw anything — `RpgfMinter` still rewards only designers of record with a live stake. The mitigation is the same one the whole batch path already rests on:
 the vkey is immutable, and a program change means a NEW verifier deployment,
 reviewed as such.
 
 **Related**: the two paths are DISJOINT — a batch-resolved
 process never acquires `FigaroCore` status, and a `FigaroCore`-resolved one is never in a
-batch. That is what makes guest-owned idempotence safe, and why the two
-accruals are merged as SCORES and never as components (`scoreOf`): the chain
-holds counts, not the pair sets needed to union them.
+batch, and a batch-path process id is derived under the verifier's EIP-712
+domain. That is why one counted-process set serves both routes: counting an id
+once is counting a process once. Both routes count into one tally (`accrualOf`),
+so a use scores the same whichever way its process reached the chain.
 
 
 ---
@@ -583,11 +591,8 @@ and the FULL score springs the moment the third distinct staked seller lands. St
 edge honestly (the public page does): a period that CLOSES below the floor scores zero
 permanently — processes count once ever and cannot re-enter a later period, so
 sub-floor accrual defers within a period and expires at its boundary. The floor lives in
-`_score`, so both paths inherit it identically and PER PATH — the chain holds
-counts, not seller sets, so summing the paths toward the floor would let one seller
-straddle the two paths
-and count twice; flooring each side separately can only ever
-under-pay a boundary case. Conservative by construction, like the score merge itself.
+`_score` and reads the one tally both routes feed, so a seller counts toward it once,
+whichever route carried their trade.
 
 ## 17. Recording costs gas and nothing else — no protocol charge, no burn
 
@@ -635,9 +640,10 @@ skips (see §19).
 
 ## 19. The rewards accrual never blocks batch resolution — a reverting reward gate does not unwind trade
 
-**Looks wrong because:** `applyBatchAccrual` `continue`s past the two reserved keys and past clauses, agreements or assemblies without a live
-registration instead of reverting, and `settleBatch` wraps the whole accrual call in try/catch, emitting
-`BatchAccrualSkipped` and resolving the batch anyway. A reward write that can be silently dropped looks
+**Looks wrong because:** `applyBatchAccrual` `continue`s past a use naming either reserved key,
+a clause, agreement or assembly without a live registration, a seller without a live stake, or a
+process already counted, instead of reverting, and `settleBatch` wraps the whole call in try/catch,
+emitting `BatchAccrualSkipped` and resolving the batch anyway. A reward write that can be silently dropped looks
 like lost or manipulable accrual.
 
 **Is correct because:** the accrual
@@ -646,18 +652,17 @@ reverts resolution lets one party block every co-batched trader's already-reconc
 unauthenticated griefing vector (a poison claim naming a key with no live registration, or naming
 the agreement format's reserved provenance leaf, which rides every agreement that names its
 assembly; or a seller who unstakes between prove and submit). Tier separation is
-the doctrine: resolution must never be hostage to the reward. A dropped batch's accrual is
-recovered by the next batch that touches the same clauses or assemblies (the counter's write is a
-cumulative overwrite) or forgone — conservative under-pay, never over-pay, the same posture as
-the per-path floor (§16). The sequencer additionally pre-filters poison claims so the catch
-only ever fires on the genuine stake-race.
+the doctrine: resolution must never be hostage to the reward. A use the counter skips, and
+every use of a batch whose call reverts (a period boundary crossed in flight), stays uncounted,
+and a later batch may prove it again — conservative under-pay, never over-pay. The sequencer
+additionally pre-filters the claims the counter would skip, so a batch carries few.
 
 ## 20. The member-stake gate on the seller of record is retroactive — usage must be recorded while the stake is live
 
 **Looks wrong because:** a seller who requests withdrawal doesn't merely stop FUTURE trades
-counting — every one of their resolved-but-not-yet-recorded processes becomes permanently
-unrecordable once the period ends. A seller can even do it deliberately to deny a specific
-designer (withdraw, then re-register). That reads like a griefing hole.
+counting — none of their resolved-but-not-yet-counted processes counts while their stake is
+down. A seller can even do it deliberately to deny a specific designer the usage for a while.
+That reads like a griefing hole.
 
 **Is correct because:** the chain cannot
 see WHEN a process resolved (`FigaroCore` stores no per-order timestamp), which is
@@ -665,9 +670,12 @@ the same reason `processCounted` is global — so the stake can only be gated at
 never at resolution time. No stateless on-chain fix exists. The mitigation is a habit, not
 state: usage is recorded AT RESOLUTION (`createCapabilityExecutors.ts`, right after
 `resolveProcess` confirms), when the seller is definitionally still staked, closing the normal
-window. The residual grief is self-limiting — to deny a designer the griefer must stay unstaked
-through the period end, forfeiting their own eligibility and locking their deposit. Accepted as
-the cost of the stateless Core.
+window. The denial is not lost usage: `processCounted` is once-ever and tied to no period, and a
+seller can stake again at once, so an uncounted use is counted in whichever period is open when
+it is next presented with its seller staked, on either route. It is lost only once the last
+period has closed. The residual grief is self-limiting — to deny a designer the griefer must
+stay unstaked, forfeiting their own eligibility and locking their stake for the cooldown, and
+it defers the use rather than erasing it. Accepted as the cost of the stateless Core.
 
 ## 20a. The member-stake gate on the designer is read at the claim, not across the period
 
@@ -771,19 +779,19 @@ keys are revoked.
 
 **Pattern**: `UsageCounter` keys every accrual, count, counted process and
 score by `(kind, key)`, kind `KIND_CLAUSE = 0`, `KIND_ASSEMBLY = 1` or
-`KIND_AGREEMENT = 2` (`accrualOf[kind][key][period]`, `batchAccrualOf`,
+`KIND_AGREEMENT = 2` (`accrualOf[kind][key][period]`,
 `processCounted`, `scoreOf(kind, key, period)`). `recordClauseUsage` counts
 under the clause kind and checks `ClauseRegistry` only;
 `recordAgreementUsage` counts under the agreement kind and checks
 `AgreementRegistry` only; `recordAssemblyUsage` counts under the assembly kind
 and checks `AssemblyRegistry` only — it proves the agreement's membership
 under `assemblyHash` but never asks whether that agreement is
-registered; `applyBatchAccrual` gates each `BatchAccrual{clauseOrAssembly,
-kind, c, d}` by its own kind's registry and skips an unknown kind. `RpgfMinter.claim(period, (kind, key)[])` reads
+registered; `applyBatchAccrual` gates each `BatchUse{clauseOrAssembly,
+kind, processId, seller}` by its own kind's registry and skips an unknown kind. `RpgfMinter.claim(period, (kind, key)[])` reads
 the counter's slot for each kind, and `_isAuthor(kind, key, account)` reads
 the one registry the kind names, reverting `UnknownKind` on a kind above 2.
-`FigaroBatchVerifier._hashUsage` packs `key(32) ‖ kind(1) ‖ c(8) ‖ d(8)` per
-accrual, so the proof commits the kind.
+`FigaroBatchVerifier._hashUsage` packs `key(32) ‖ kind(1) ‖ processId(32) ‖
+seller(20)` per use, so the proof commits the kind.
 
 **Why it looks wrong**: The registry families are parallel and carry no
 edge between them (CLAUDE.md § "Separation of Concerns"), so a discriminator
@@ -825,7 +833,7 @@ batch path, through `settleBatch`, the counter and `claim`;
 `check_theKindsNeverShareAKey`, `check_aKindNeverDisturbsAnotherKindsAccrual`
 and `check_anUnknownKindIsSkipped`
 (`test/build/rewards/HalmosUsageCounter.t.sol`) — an accrual under one kind on
-either path leaves every other kind's accrual at the same key empty, leaves an
+either route leaves every other kind's accrual at the same key empty, leaves an
 existing one exactly as it was, and an unknown kind writes nothing — the
 three kinds, symbolically; `certora/RpgfMinterAuthor.spec` — `_isAuthor`
 answers for each kind from its own registry alone and refuses an unknown
@@ -933,6 +941,33 @@ that changes nothing a reader can rely on.
 the coordinator's, byte for byte); `prover/lib/tests/parity.rs` (both forms
 emit the same event fields).
 
+## 27. A state-neutral batch's proof can land twice — the root check is the replay guard, and it is inert there
+
+**Pattern**: `settleBatch` guards against a second landing by one check,
+`pv.prevStateRoot == stateRoot`. A batch that moves no state — usage claims
+only, or attestations only — has `prevStateRoot == newStateRoot`, so after it
+lands its proof still names the current root, and anyone may land it again
+while its committed clock is within `MAX_BATCH_STALENESS` of the block's.
+
+**Why it looks wrong**: A proof that can be submitted twice is the canonical
+replay shape, and the verifier logs `BatchOperations` and `BatchSettled` again
+under a new batch id.
+
+**Why it is correct**: The second landing has no effect a reader or a party
+relies on. Such a batch carries no net position, so no token moves. Every use
+it carries meets the counter's once-ever `processCounted` set, which holds for
+both routes, and is skipped: the tally and the period total do not move.
+Re-emitted attestations are copies of the first landing's — the same order
+hash, attester, clause, stage and `contentRef` — so a reader that keys evidence
+by those fields reads nothing new; one that counts raw events sees a repeat. A nonce in the public values would add
+state to the verifier to refuse a call that changes nothing. A batch that moves
+the root cannot land twice: its prev root is no longer current.
+
+**Tests**: `test_settleBatch_aStateNeutralBatchLandsTwiceAndCountsOnce` and
+`test_settleBatch_aSkippedUseIsCountedWhenPresentedAgain`
+(`test/core/verifier/FigaroBatchVerifierTest.t.sol`);
+`test_settleBatch_revertsOnStaleRoot` (a batch that moved the root).
+
 ---
 
 ## Summary Table
@@ -953,15 +988,16 @@ emit the same event fields).
 | 12 | `deadline` alongside `salt` | Core-critical | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel `FigaroCore` needs signatures to age out |
 | 13 | Committed `lineItems.name` / `cargo.marks` are public | privacy/evidence | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalog naming, coded marks) + wallet pseudonymity |
 | 14 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | registry/stake | Looks like stuck funds + a Core-forbidden time lock | PROTOCOL tier, not the Core — no bond or commitment involved; without it one stake is recycled across identities and prices nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
-| 15 | `applyBatchAccrual` has one privileged caller | reward-path | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and live registration itself |
-| 16 | Recorded usage can score zero (`minSellers` floor) | reward-path | Real resolved trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; per-path because the paths' seller sets cannot be unioned |
+| 15 | `applyBatchAccrual` has one privileged caller | reward-path | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only hand over uses an immutable vkey committed; the counter enforces period, seller stake, live registration and once-ever counting itself |
+| 16 | Recorded usage can score zero (`minSellers` floor) | reward-path | Real resolved trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; the floor reads the one tally both routes feed, and a seller counts toward it once |
 | 17 | No per-recording charge or burn | reward-path | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed charge inserts an institution + usage-coupled revenue into an identity-free mechanism |
 | 18 | Usage needs a live clause, agreement or assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
-| 19 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
-| 20 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal makes resolved-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is record-time only; record-at-resolution closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
+| 19 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a skipped use stays uncounted and may be proved again in a later batch (conservative under-pay); the sequencer pre-filters what the counter would skip |
+| 20 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal stops resolved-but-uncounted trades counting — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is read when a use is counted; counting at resolution closes the normal window; an uncounted use counts in whichever period is open once its seller stakes again, lost only after the last period closes; residual grief is self-limiting (griefer forfeits own eligibility while unstaked) |
 | 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess(processId, cumulativeValue)` signature | batch-path | The canonical EIP-712 replay shape | The signature binds a cumulative value, so it pays exactly the prefix of the process that value names and a later commit invalidates it; resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere |
 | 22 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
 | 23 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
 | 24 | The assembly root is a merkle tree over registered agreement hashes | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |
 | 25 | Ordered agreements; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per process per (kind, key) |
 | 26 | The attestation signature does not cover the witness form | batch-path/evidence | A relay can submit a plaintext operation hash-only, and the event is the same for both forms, so the in-proof check is not legible | The evidence a reader relies on (signer, open order, inclusion, `contentRef`) is identical on every path; the in-proof check assures the attesting party's own submission, not a reader |
+| 27 | A state-neutral batch's proof can land twice | batch-path/reward-path | A proof submitted twice is the replay shape, and `BatchSettled` repeats | A batch that moves no state has prev root == new root; its second landing moves no token, and the counter's once-ever `processCounted` skips every use, so nothing a reader relies on changes; a batch that moved the root cannot land twice |

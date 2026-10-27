@@ -8,9 +8,9 @@ interface IUsageCounter {
     function periodCount() external view returns (uint256);
     function periodClosed(uint8 period) external view returns (bool);
     function totalScoreIn(uint8 period) external view returns (uint256);
-    /// @dev BOTH resolution paths, summed as SCORES — never `accrualOf`,
-    ///      which sees the direct path only and would under-pay every clause
-    ///      or assembly whose trade moved to batches.
+    /// @dev The score of the one tally both routes feed — a use counts the
+    ///      same whether its process resolved through `FigaroCore` or in a
+    ///      proved batch.
     function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);
 }
 

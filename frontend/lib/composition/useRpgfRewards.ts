@@ -60,17 +60,12 @@ export interface RpgfClauseOrAssemblyAccrual {
      *  else the truncated key. */
     label: string;
     family: "clause" | "agreement" | "assembly";
-    /** Distinct resolved processes, DIRECT path (`accrualOf`). */
+    /** Distinct resolved processes (`accrualOf`), whichever way each
+     *  process reached the chain. */
     c: bigint;
-    /** Distinct staked sellers in this period, DIRECT path. */
+    /** Distinct staked sellers in this period. */
     d: bigint;
-    /** Distinct resolved processes, BATCH path (`batchAccrualOf`). */
-    batchC: bigint;
-    /** Distinct staked sellers in this period, BATCH path. */
-    batchD: bigint;
-    /** `scoreOf` — the two paths' scores SUMMED, and the figure the payout
-     *  divides by. Reading `accrualOf.score` alone would show the wallet a
-     *  smaller number than the minter actually pays it. */
+    /** `scoreOf` — the one tally's score, and the figure the payout divides by. */
     score: bigint;
 }
 
@@ -196,23 +191,20 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             const minterBase = { address: minter, abi: RPGF_MINTER_ABI } as const;
             const counterBase = { address: counter, abi: USAGE_COUNTER_ABI } as const;
             // Which of the wallet's clauses, agreements and assemblies carried
-            // usage in which period, from the counter's two event streams (the
-            // direct path's UsageRecorded, the batch path's BatchUsageRecorded):
-            // every write to the counter emits one of them, so a key with no
+            // usage in which period, from the counter's UsageRecorded stream
+            // (a direct call and a proved batch emit the same event): every
+            // use the counter counts emits one, so a key with no
             // event in a period has no accrual there — resolved-empty is
             // absence. The per-period reads below cover those keys alone, so
             // the page's cost scales with the wallet's USE, never with the size
             // of its catalog (a wallet that designed hundreds of clauses, read
             // in every period, was thousands of calls and a page that never
             // rendered).
-            const [periodCount, mine, directEvents, batchEvents, live] = await Promise.all([
+            const [periodCount, mine, usageEvents, live] = await Promise.all([
                 publicClient.readContract({ ...minterBase, functionName: "periodCount" }),
                 discoverClausesAndAssemblies(),
                 cachedGetContractEvents(publicClient, chainId, {
                     address: counter, abi: USAGE_COUNTER_ABI, eventName: "UsageRecorded",
-                }),
-                cachedGetContractEvents(publicClient, chainId, {
-                    address: counter, abi: USAGE_COUNTER_ABI, eventName: "BatchUsageRecorded",
                 }),
                 // The designer-side membership gate, read where the minter reads it:
                 // the wallet's live member stake. A page says what a claim needs.
@@ -224,7 +216,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             ]);
             type UsageArgs = { kind?: number; clauseOrAssembly?: `0x${string}`; period?: number };
             const usedIn = new Map<number, Set<string>>();
-            for (const ev of [...directEvents, ...batchEvents]) {
+            for (const ev of usageEvents) {
                 const a = ev.args as UsageArgs | undefined;
                 if (a?.kind === undefined || !a.clauseOrAssembly || a.period === undefined) continue;
                 let set = usedIn.get(Number(a.period));
@@ -274,20 +266,12 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                                 : Promise.resolve(0n),
                             Promise.all(
                                 mine.filter((m) => usedIn.get(period)?.has(usageKeyId(m.kind, m.clauseOrAssembly))).map(async (m) => {
-                                    // BOTH resolution paths. `scoreOf` is the
-                                    // merged figure the minter rewards on; the
-                                    // components stay separate because they
-                                    // measure different universes and must
-                                    // never be added together.
-                                    const [[c, d], [batchC, batchD], score] = await Promise.all([
+                                    // The one tally, route-blind; `scoreOf` is
+                                    // the figure the minter rewards on.
+                                    const [[c, d], score] = await Promise.all([
                                         publicClient.readContract({
                                             ...counterBase,
                                             functionName: "accrualOf",
-                                            args: [m.kind, m.clauseOrAssembly, period],
-                                        }),
-                                        publicClient.readContract({
-                                            ...counterBase,
-                                            functionName: "batchAccrualOf",
                                             args: [m.kind, m.clauseOrAssembly, period],
                                         }),
                                         publicClient.readContract({
@@ -296,7 +280,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                                             args: [m.kind, m.clauseOrAssembly, period],
                                         }),
                                     ]);
-                                    return { ...m, c, d, batchC, batchD, score };
+                                    return { ...m, c, d, score };
                                 }),
                             ),
                         ]);

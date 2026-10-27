@@ -62,7 +62,7 @@ interface IAgreementStake {
 ///         the past*. Record the fact as it happens and there is no claim to
 ///         believe, nothing to bond, and nothing to adjudicate.
 ///
-/// @dev    HOW A USE IS VERIFIED — nobody is trusted. Each entry point proves,
+/// @dev    HOW A USE IS VERIFIED — nobody is trusted. Each direct entry point proves,
 ///         from data the chain already holds:
 ///           1. the order is real and RESOLVED (`core.orderStatus == 2`), and
 ///           2. what it credits is committed in that order's signed agreement
@@ -73,7 +73,10 @@ interface IAgreementStake {
 ///              the agreement's membership proof under the assemblyHash.
 ///         Same check `AttestationCoordinator` performs, with the status gate
 ///         inverted: attestation is evidence DURING an open process, usage is
-///         counted only once the process has resolved.
+///         counted only once the process has resolved. A process resolved
+///         in a proved batch never acquires FigaroCore status; the guest
+///         proves the same two facts and `applyBatchAccrual` counts its
+///         uses into the same tally, through the same `_count`.
 ///
 /// @dev    PERIODS, NOT CHECKPOINTS. Accrual buckets into fixed periods set at
 ///         deploy. A period's counts are final once it ends, so a consumer
@@ -127,24 +130,25 @@ contract UsageCounter {
     IAssemblyStake public immutable assemblies;
     IAgreementStake public immutable agreements;
 
-    /// @notice `FigaroBatchVerifier` — the ONLY address that may write the
-    ///         batch-path accrual, and a PROOF-GATED WRITER, not an owner.
+    /// @notice `FigaroBatchVerifier` — the ONLY address that may hand this
+    ///         contract a batch's uses, and a PROOF-GATED WRITER, not an owner.
     /// @dev    Read this as an admin backdoor and you have it backwards. The
     ///         verifier has no discretion: it may call `applyBatchAccrual` only
-    ///         with numbers an SP1 proof committed under an IMMUTABLE
+    ///         with uses an SP1 proof committed under an IMMUTABLE
     ///         verification key, against a state root that advances by that
-    ///         same proof. It cannot choose the accrual, cannot write twice for
-    ///         the same trade (the guest's counted set rides the state root),
-    ///         and cannot be repointed — no setter exists. What it CAN do is
+    ///         same proof. It cannot choose the uses, cannot count a process
+    ///         twice (`processCounted` holds for both routes), and cannot be
+    ///         repointed — no setter exists. What it CAN do is
     ///         exactly what the direct path lets anyone do permissionlessly:
     ///         present proof that resolved trade used a clause, agreement or assembly. See
     ///         `DESIGN_DECISIONS.md` #15 "`UsageCounter.applyBatchAccrual` has
     ///         one privileged caller — a proof-gated writer, not an admin".
     ///
-    ///         Why a privileged caller at all: the batched path's accrual is
-    ///         proved OFF-chain (that is the point — ~85% of a direct record is
-    ///         storage plus `icbrt`), so the fact this contract needs cannot be
-    ///         re-derived from calldata here. It trusts the vkey instead, which
+    ///         Why a privileged caller at all: a batch-resolved order never
+    ///         acquires FigaroCore status, so the two facts the direct path
+    ///         proves here — the order is resolved, the key is committed in
+    ///         its agreement — are proved OFF-chain by the guest and cannot be
+    ///         re-derived from calldata. It trusts the vkey instead, which
     ///         is why the address is immutable and the verifier is redeployed
     ///         whenever the program changes.
     address public immutable batchVerifier;
@@ -217,10 +221,9 @@ contract UsageCounter {
     ///         actor can fabricate alone — self-farms, fragmentation shards,
     ///         squatted names, trivial riders. A floor of k makes the minimum
     ///         viable farm k live stakes plus k cooldowns, with no curation and
-    ///         no judgment. Applied per resolution path inside `_score` — the
-    ///         paths cannot union their seller sets, and flooring each side
-    ///         separately can only ever UNDER-pay a boundary case, never let
-    ///         one seller straddle the universes to double toward the floor.
+    ///         no judgment. Applied inside `_score` to the one tally both
+    ///         routes feed, so a seller counts toward the floor once whichever
+    ///         route carried their trade.
     ///         Mainnet value 3, the smallest k at which solo or pair collusion
     ///         cannot reach the scoreboard; a deploy-time constant like every
     ///         other reward parameter.
@@ -243,45 +246,31 @@ contract UsageCounter {
         uint256 score;
     }
 
-    /// @notice kind → key → period → accrual. The key is the `ClauseRegistry`
+    /// @notice kind → key → period → accrual: the ONE tally of a clause,
+    ///         agreement or assembly, ROUTE-BLIND. A use counts here whichever
+    ///         way its process reached the chain — a direct call after
+    ///         `FigaroCore` resolved it, or a proved batch through
+    ///         `FigaroBatchVerifier` — through the same `_count`, the same
+    ///         `processCounted` and the same per-period `sellerSeen`, so `c`
+    ///         counts each process once and `d` counts each staked seller once
+    ///         across both routes. The key is the `ClauseRegistry`
     ///         clause key under `KIND_CLAUSE`, the `AssemblyRegistry`
     ///         assemblyHash under `KIND_ASSEMBLY`, or the `AgreementRegistry`
     ///         agreementHash under `KIND_AGREEMENT` — the same identity each
     ///         family's own anchor uses, never a new identifier.
     mapping(uint8 => mapping(bytes32 => mapping(uint8 => Accrual))) public accrualOf;
 
-    /// @notice The same accrual for trade resolved through `FigaroBatchVerifier`
-    ///         — kept in a SEPARATE mapping, never merged into `accrualOf`.
-    /// @dev    THE TWO ARE SUMMED AS SCORES, never as components (`scoreOf`).
-    ///         Summing `c` and `d` would over-count breadth for any SELLER
-    ///         active on BOTH paths: the chain holds counts, not the seller
-    ///         sets, so it cannot union them — and an attacker who split one
-    ///         seller's trade across the two universes would be paid
-    ///         twice for the same breadth. For DISJOINT seller sets summing
-    ///         scores never over-counts: the score is homogeneous of degree 1
-    ///         and concave, so the sum is at most the pooled figure, with
-    ///         equality when the split is proportional. For a seller active on
-    ///         BOTH paths it does over-count — that seller enters each path's
-    ///         `d`, and a key whose sellers are the same on both paths scores
-    ///         up to 2^(2/3) ≈ 1.59× the pooled figure at an equal split: a
-    ///         bounded bias toward keys carried on both paths, at the same
-    ///         live stake per seller (the RPGF paper §4 and §7.3 state it).
-    ///         Pooling `d` would need per-key seller sets from the batch,
-    ///         which this call does not carry. The PROCESSES are disjoint by
-    ///         construction (a
-    ///         batch-resolved process never acquires FigaroCore status, and a
-    ///         FigaroCore-resolved one is never in a batch), so no PROCESS is ever
-    ///         counted on both sides.
-    mapping(uint8 => mapping(bytes32 => mapping(uint8 => Accrual))) public batchAccrualOf;
-
-    /// @notice period → summed score of every clause, agreement or assembly in it, across BOTH
-    ///         resolution paths. A consumer paying pro rata divides by this; it
+    /// @notice period → summed score of every clause, agreement or assembly in it.
+    ///         A consumer paying pro rata divides by this; it
     ///         is final once the period ends.
     mapping(uint8 => uint256) public totalScoreIn;
 
     /// @notice kind → clause, agreement or assembly → processId → already counted. Idempotence is GLOBAL, not
     ///         per period: a resolved process counts ONCE EVER toward a clause, agreement or assembly,
-    ///         in whichever period it is first recorded.
+    ///         in whichever period it is first recorded, whichever route
+    ///         brought it. A batch-resolved process's id is derived under the
+    ///         verifier's EIP-712 domain and a direct one's under
+    ///         `FigaroCore`'s, so the two routes never present the same id.
     /// @dev    Why not per period. A resolved order stays
     ///         resolved and its struct is public in the commit event, so anyone
     ///         can re-present it forever; the chain cannot see WHEN a process
@@ -319,6 +308,8 @@ contract UsageCounter {
 
     // ── Events ──────────────────────────────────────────────────────
 
+    /// @notice One use counted, on either route — the direct calls and a
+    ///         proved batch emit the same event, so an indexer folds one stream.
     /// @param kind      `KIND_CLAUSE`, `KIND_ASSEMBLY` or `KIND_AGREEMENT`.
     /// @param clauseOrAssembly  Clause key, an assemblyHash or an agreementHash.
     /// @param period    The accrual period the usage landed in.
@@ -337,24 +328,6 @@ contract UsageCounter {
         uint64 c,
         uint64 d,
         uint256 score
-    );
-
-    /// @notice One clause's, agreement's or assembly's batch-path accrual after a resolved batch.
-    /// @dev    Deliberately NOT `UsageRecorded`: there is no processId and no
-    ///         per-record seller to report, because the batch path proves
-    ///         per-process facts off-chain and writes only the totals. An
-    ///         indexer summing `UsageRecorded` alone sees the direct path only
-    ///         — it must fold both events, and this one REPLACES rather than
-    ///         adds (the values are cumulative, not deltas).
-    /// @param kind     `KIND_CLAUSE`, `KIND_ASSEMBLY` or `KIND_AGREEMENT`.
-    /// @param clauseOrAssembly Clause key, an assemblyHash or an agreementHash.
-    /// @param period   The accrual period.
-    /// @param c        Cumulative distinct resolved processes, batch path.
-    /// @param d        Cumulative distinct staked sellers in this period, batch
-    ///                 path.
-    /// @param score    The batch-path score after this write.
-    event BatchUsageRecorded(
-        uint8 kind, bytes32 indexed clauseOrAssembly, uint8 indexed period, uint64 c, uint64 d, uint256 score
     );
 
     // ── Errors ──────────────────────────────────────────────────────
@@ -382,7 +355,6 @@ contract UsageCounter {
     ///         constant of its format and never a registration, whatever a
     ///         registry holds at that key.
     error ReservedKeyIsNotARegistration(bytes32 key);
-    error AccrualWentBackwards(bytes32 clauseOrAssembly);
 
     // ── Constructor ─────────────────────────────────────────────────
 
@@ -391,8 +363,8 @@ contract UsageCounter {
     /// @param _clauses     ClauseRegistry — the clause-side stake gate.
     /// @param _assemblies  AssemblyRegistry — the assembly-side stake gate.
     /// @param _agreements  AgreementRegistry — the agreement-side stake gate.
-    /// @param _batchVerifier  FigaroBatchVerifier — the proof-gated writer of
-    ///                    the batch-path accrual. The verifier needs this
+    /// @param _batchVerifier  FigaroBatchVerifier — the proof-gated courier of
+    ///                    a batch's uses. The verifier needs this
     ///                    contract's address too, so one of the two must be
     ///                    predicted at deploy time; the deploy scripts compute
     ///                    the verifier's address from the deployer nonce and
@@ -460,13 +432,11 @@ contract UsageCounter {
         return period < periodEnd.length && block.timestamp >= periodEnd[period];
     }
 
-    /// @notice A clause's, agreement's or assembly's TOTAL score for a period — direct-resolved trade
-    ///         plus batch-resolved trade, summed as SCORES. This is the number a
-    ///         reward consumer divides by `totalScoreIn`; reading `accrualOf`
-    ///         alone sees only the direct path and under-pays every clause, agreement or assembly
-    ///         that scaled.
+    /// @notice A clause's, agreement's or assembly's score for a period: the
+    ///         one tally's, whichever route each use took. This is the number a
+    ///         reward consumer divides by `totalScoreIn`.
     function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external view returns (uint256) {
-        return accrualOf[kind][clauseOrAssembly][period].score + batchAccrualOf[kind][clauseOrAssembly][period].score;
+        return accrualOf[kind][clauseOrAssembly][period].score;
     }
 
     // ── Recording (permissionless) ──────────────────────────────────
@@ -642,63 +612,60 @@ contract UsageCounter {
 
     // ── Recording (batch path, proof-gated) ─────────────────────────
 
-    /// @notice One clause's, agreement's or assembly's CUMULATIVE batch-path accrual for a period — not
-    ///         a delta. The guest proves the running totals, so the write here
-    ///         is an overwrite and this contract keeps NO per-process storage
-    ///         for the batch path at all. That is the whole economy of the
-    ///         bridge: cost is O(distinct keys in the batch), not
-    ///         O(records).
-    struct BatchAccrual {
+    /// @notice One use a proved batch carries: a resolved batch-path process
+    ///         that used a clause, agreement or assembly, and the seller of
+    ///         the order the guest proved it through. The guest gives each
+    ///         (kind, key, process) once per batch; this contract counts it
+    ///         exactly as a direct call counts a use, through `_count`.
+    struct BatchUse {
         bytes32 clauseOrAssembly;
         /// @dev `KIND_CLAUSE`, `KIND_ASSEMBLY` or `KIND_AGREEMENT` — the family
-        ///      whose registry gates this accrual and whose storage it lands in.
+        ///      whose registry gates this use and whose tally it lands in.
         uint8 kind;
-        uint64 c;
-        uint64 d;
+        /// @dev The process, its id derived under the verifier's EIP-712
+        ///      domain as the guest derives it.
+        bytes32 processId;
+        /// @dev The seller of the order the use was proved through.
+        address seller;
     }
 
-    /// @notice Write the accrual an SP1 proof committed for one batch.
+    /// @notice Count the uses an SP1 proof committed for one batch.
     ///
     /// @dev    WHAT THE PROOF ALREADY ESTABLISHED, so this function does not
-    ///         re-check it: every credited order is real and RESOLVED in the
+    ///         re-check it: every use's order is real and RESOLVED in the
     ///         batch path's state, every clause, agreement or assembly was committed in the signed
-    ///         agreement (merkle inclusion against `checkoutHash`), and no
-    ///         (kind, key, process) triple is counted twice — the guest's counted
-    ///         set rides the batch state root, so idempotence holds ACROSS
-    ///         batches, not merely within one. `FigaroBatchVerifier` has
-    ///         already matched these numbers against `usageAccrualHash`.
+    ///         agreement (merkle inclusion against `checkoutHash`), the process
+    ///         id and the seller are the order's, and no (kind, key, process)
+    ///         appears twice in the batch. `FigaroBatchVerifier` has already
+    ///         matched these uses against `usageAccrualHash`.
     ///
-    /// @dev    WHAT THE PROOF CANNOT SEE, and is therefore checked HERE — all
-    ///         three are live chain state this contract owns:
+    /// @dev    WHAT THE PROOF CANNOT SEE, and is therefore checked HERE — the
+    ///         same gates a direct call meets, all live chain state this
+    ///         contract owns or reads:
     ///           1. which period is open,
-    ///           2. which sellers hold a live MembersRegistry stake,
-    ///           3. which clauses, assemblies and agreements hold a live
-    ///              registration — each accrual in its own kind's registry only.
+    ///           2. whether the use's seller holds a live MembersRegistry stake,
+    ///           3. whether the clause, assembly or agreement holds a live
+    ///              registration — each use in its own kind's registry only,
+    ///           4. whether the process is already counted under that key.
     ///         The verifier deliberately checks none of them: it owns the
     ///         proof, this contract owns the reward's gates.
     ///
-    /// @param period            The period the accrual lands in. Must be the
+    /// @param period            The period the uses land in. Must be the
     ///                          OPEN one — the chain decides, never the
     ///                          sequencer's clock. A batch proven before a
     ///                          boundary and submitted after it is rejected and
-    ///                          must be re-proven for the new period.
+    ///                          its uses may be proved again in a later batch.
     /// @param claimedProvenanceLeaf The provenance leaf key the guest proved
     ///                          agreement and assembly claims against; must be `provenanceLeaf`.
-    /// @param accruals          Per-(kind, key) cumulative `(c, d)`.
-    /// @param sellers           Distinct sellers of record behind them.
-    function applyBatchAccrual(
-        uint8 period,
-        bytes32 claimedProvenanceLeaf,
-        BatchAccrual[] calldata accruals,
-        address[] calldata sellers
-    ) external {
+    /// @param uses              The batch's uses, one per (kind, key, process).
+    function applyBatchAccrual(uint8 period, bytes32 claimedProvenanceLeaf, BatchUse[] calldata uses) external {
         if (msg.sender != batchVerifier) revert NotBatchVerifier();
 
-        // An empty accrual is a no-op, and MUST be: batches carrying no usage
+        // An empty batch is a no-op, and MUST be: batches carrying no usage
         // claims have to keep resolving after the last period ends, when
         // `currentPeriod()` reverts `AccrualClosed`. Trade does not stop when
         // the reward does.
-        if (accruals.length == 0) return;
+        if (uses.length == 0) return;
 
         uint8 open = currentPeriod();
         if (period != open) revert PeriodMismatch(open, period);
@@ -706,61 +673,41 @@ contract UsageCounter {
             revert ProvenanceLeafMismatch(provenanceLeaf, claimedProvenanceLeaf);
         }
 
-        // SELLER-SIDE GATE, batch form. The direct path checks one seller per
-        // record; here the guest declares the distinct sellers its admitted
-        // claims rest on and every one must hold a LIVE stake. Same gate, same
-        // moment (request-time, not claim-time), O(distinct sellers).
-        for (uint256 i = 0; i < sellers.length; ++i) {
-            if (!members.registered(sellers[i])) revert SellerNotStaked(sellers[i]);
-        }
-
-        for (uint256 i = 0; i < accruals.length; ++i) {
-            BatchAccrual calldata a = accruals[i];
+        for (uint256 i = 0; i < uses.length; ++i) {
+            BatchUse calldata u = uses[i];
             // SKIP, never revert — this call runs inside `settleBatch`, so a
             // revert here would take down the whole batch's TOKEN resolution (a
-            // reward-tier gate blocking the resolution tier). An un-live clause,
-            // agreement or assembly simply earns nothing: don't write it, don't touch
-            // the total, move on. The guest counts without knowing registration
-            // (live chain state it cannot see), so the reward's own gate is
-            // applied HERE, and applying it as a skip is what keeps trade
-            // resolving. (Direct path reverts instead — it is a standalone tx
+            // reward-tier gate blocking the resolution tier). A use that fails
+            // a gate simply is not counted, exactly as a direct call that
+            // fails it counts nothing, and it may be presented again on either
+            // route. (The direct path reverts instead — it is a standalone tx
             // with nothing else to unwind.)
             // The two reserved keys are constants of their formats, never a
             // registration: the provenance leaf opens under every agreement that
             // names an agreement and an assembly, the terms leaf under every
-            // assembly root, so a claim keyed on either is skipped whatever a
+            // assembly root, so a use keyed on either is skipped whatever a
             // registry holds at that key (a registry takes any bytes32).
-            if (a.clauseOrAssembly == provenanceLeaf || a.clauseOrAssembly == assemblyTermsLeaf) continue;
-            // Each accrual is gated by its OWN kind's registry and never
+            if (u.clauseOrAssembly == provenanceLeaf || u.clauseOrAssembly == assemblyTermsLeaf) continue;
+            // Each use is gated by its OWN kind's registry and never
             // another's: a stake in one family at these bytes earns nothing of
-            // another family's accrual. An unknown kind names no registry and is
+            // another family's tally. An unknown kind names no registry and is
             // skipped.
-            if (a.kind == KIND_CLAUSE) {
-                if (!_clauseLive(a.clauseOrAssembly)) continue;
-            } else if (a.kind == KIND_ASSEMBLY) {
-                if (!_assemblyLive(a.clauseOrAssembly)) continue;
-            } else if (a.kind == KIND_AGREEMENT) {
-                if (!_agreementLive(a.clauseOrAssembly)) continue;
+            if (u.kind == KIND_CLAUSE) {
+                if (!_clauseLive(u.clauseOrAssembly)) continue;
+            } else if (u.kind == KIND_ASSEMBLY) {
+                if (!_assemblyLive(u.clauseOrAssembly)) continue;
+            } else if (u.kind == KIND_AGREEMENT) {
+                if (!_agreementLive(u.clauseOrAssembly)) continue;
             } else {
                 continue;
             }
+            // SELLER-SIDE GATE, the direct path's own: the use's seller holds a
+            // LIVE stake now.
+            if (!members.registered(u.seller)) continue;
+            // Once ever, the direct path's own set.
+            if (processCounted[u.kind][u.clauseOrAssembly][u.processId]) continue;
 
-            Accrual storage stored = batchAccrualOf[a.kind][a.clauseOrAssembly][period];
-            // Cumulative counts can only grow. The state-root check in the
-            // verifier already guarantees it; asserting it costs nothing (both
-            // fields share a storage slot already being read) and it can never reject
-            // an honest batch, so a guest regression surfaces as a revert
-            // rather than as silently destroyed accrual.
-            if (a.c < stored.c || a.d < stored.d) revert AccrualWentBackwards(a.clauseOrAssembly);
-
-            uint256 previous = stored.score;
-            uint256 updated = _score(a.c, a.d);
-            stored.c = a.c;
-            stored.d = a.d;
-            stored.score = updated;
-            totalScoreIn[period] = totalScoreIn[period] + updated - previous;
-
-            emit BatchUsageRecorded(a.kind, a.clauseOrAssembly, period, a.c, a.d, updated);
+            _count(u.kind, u.clauseOrAssembly, period, u.processId, u.seller);
         }
     }
 
@@ -777,10 +724,8 @@ contract UsageCounter {
         }
     }
 
-    /// @dev The counting itself, shared by both routes. Idempotent per (kind,
-    ///      key, process) — once ever, whatever the period. Every admitted process
-    ///      feeds `c`; the first from each staked seller in the period also
-    ///      feeds `d`.
+    /// @dev The direct path's gates, each a revert, then the count. Idempotent
+    ///      per (kind, key, process) — once ever, whatever the period.
     function _accrue(uint8 kind, bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) internal {
         // The two reserved keys never accrue, on any kind: each is its format's
         // own, never a registration, and no registry entry at that key makes it
@@ -791,10 +736,10 @@ contract UsageCounter {
         // SELLER-SIDE GATE: usage counts only if the process's seller-of-record
         // holds a LIVE MembersRegistry stake, read at RECORD time. This gate is
         // RETROACTIVE, not merely prospective: requesting withdrawal de-surfaces
-        // the seller AND makes every one of their resolved-but-NOT-YET-RECORDED
-        // processes permanently unrecordable once the period ends — recording
-        // reads live state, and a resolved order carries no timestamp the chain
-        // can gate on. The mitigation is a HABIT, not on-chain state: usage is
+        // the seller AND leaves every one of their resolved-but-NOT-YET-COUNTED
+        // processes uncountable while the stake is down; a count lands only in a
+        // period open when it is made, and the last period's close ends it for
+        // good. The mitigation is a HABIT, not on-chain state: usage is
         // recorded AT RESOLUTION (the buyer's app records every committed
         // clause, agreement or assembly right after resolveProcess confirms — createCapabilityExecutors.ts),
         // when the seller is definitionally still staked. A seller who wants to
@@ -812,6 +757,13 @@ contract UsageCounter {
         // Once ever, not once per period — see `processCounted`.
         if (processCounted[kind][clauseOrAssembly][processId]) revert AlreadyCounted();
 
+        _count(kind, clauseOrAssembly, period, processId, seller);
+    }
+
+    /// @dev The counting itself, the one path both routes take once their
+    ///      gates have passed. Every admitted process feeds `c`; the first
+    ///      from each staked seller in the period also feeds `d`.
+    function _count(uint8 kind, bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) internal {
         // Breadth is counted PER PERIOD: a seller who carries the clause, agreement or assembly
         // again in a later period is new breadth for that period's tally.
         bool firstSeller = !sellerSeen[kind][clauseOrAssembly][period][seller];
@@ -846,10 +798,9 @@ contract UsageCounter {
     ///         unit equals its cost to move a trillion, and the adoption signal
     ///         is the same per staked seller regardless of quanta. Weighting
     ///         by value would import a "TVL matters" metric that belongs to a
-    ///         different kind of system. The floor sits HERE, not in `_accrue`,
-    ///         so both resolution paths inherit it identically and counting
-    ///         below the floor is never refused — only unscored until support
-    ///         arrives.
+    ///         different kind of system. The floor sits HERE, not in `_count`,
+    ///         so counting below the floor is never refused — only unscored
+    ///         until support arrives.
     function _score(uint64 c, uint64 d) internal view returns (uint256) {
         if (c == 0 || d < minSellers) return 0;
         return icbrt(uint256(c) * uint256(d) * uint256(d) * 1e18);

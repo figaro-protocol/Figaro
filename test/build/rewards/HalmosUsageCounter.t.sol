@@ -59,12 +59,12 @@ contract UsageCounterHarness is UsageCounter {
 /// @notice `HalmosMembersRegistry` proves the LINKAGE: the counter admits usage
 ///         iff a live stake backs it. That says nothing about whether the
 ///         numbers the counter then computes are RIGHT — whether two calls
-///         only ever add, whether a batch overwrite can accidentally become an
-///         accumulate, whether the two resolution universes (direct,
-///         proof-gated batch) combine the way `scoreOf` claims, whether a
-///         period boundary is respected exactly, and whether one clause or assembly's
-///         bookkeeping can leak into another's, or one kind's into the
-///         another's at the same key. Nine properties, symbolically,
+///         only ever add, whether a use counts the same whichever route
+///         (direct, proof-gated batch) brought it, whether `scoreOf` reads the
+///         one tally, whether a period boundary is respected exactly, and
+///         whether one clause or assembly's bookkeeping can leak into
+///         another's, or one kind's into another's at the same key. Nine
+///         properties, symbolically,
 ///         for ALL inputs in their domain — not the paths a concrete Foundry
 ///         test happened to walk:
 ///
@@ -73,21 +73,17 @@ contract UsageCounterHarness is UsageCounter {
 ///                                             backwards under any sequence of
 ///                                             `_accrue` calls, successful or
 ///                                             reverted.
-///           2  batch accrual REPLACES,      — THE crease: `applyBatchAccrual`
-///              never adds                     writes the guest's CUMULATIVE
-///              (check_batchAccrualReplacesNeverAdds)
-///                                             `(c, d)` as an overwrite. An
-///                                             add-instead-of-replace regression
-///                                             would double-count every batch
-///                                             and is invisible to every other
-///                                             harness (docs/CONTRACTS.md
-///                                             "Merging the two paths").
-///           3  score composition           — `scoreOf == accrualOf.score +
-///              (check_scoreOfIsExactlyDirectPlusBatch)
-///                                             batchAccrualOf.score`, in every
-///                                             combination of which path(s)
-///                                             have been used — the two
-///                                             universes meet ONLY by addition.
+///           2  route-blind counting        — two uses, each brought by
+///              (check_aUseCountsTheSameOnEitherRoute)
+///                                             either route, leave the tally,
+///                                             the counted processes, the
+///                                             seller set and the period total
+///                                             exactly as two direct calls
+///                                             leave them — the same process
+///                                             or the same seller included.
+///           3  one tally                   — `scoreOf == accrualOf.score` in
+///              (check_scoreOfIsTheOneTally)   every combination of which
+///                                             route(s) have been used.
 ///           4  period bucketing            — split into two checks: (4a) the
 ///              (check_currentPeriod_bucketsExactlyTheContainingWindow,
 ///               check_wrongPeriodIsRejected_andOtherPeriodUntouched)
@@ -106,18 +102,18 @@ contract UsageCounterHarness is UsageCounter {
 ///                                             `totalScoreIn` moves by EXACTLY
 ///                                             A's own score delta.
 ///           6  kind isolation              — a use counted under any one of
-///              (check_theKindsNeverShareAKey) the three kinds, direct or
-///                                             batch, leaves every other kind's
+///              (check_theKindsNeverShareAKey) the three kinds, on either
+///                                             route, leaves every other kind's
 ///                                             accrual at the same key empty,
 ///                                             and the same process still
 ///                                             counts once under the other
 ///                                             kind.
 ///           7  kind isolation, reversed    — another kind's EXISTING accrual
 ///              (check_aKindNeverDisturbsAnotherKindsAccrual)
-///                                             at the key, either path, is
+///                                             at the key, either route, is
 ///                                             left exactly as it was by a use
 ///                                             counted under one kind.
-///           8  unknown kind skipped        — a batch accrual whose kind names
+///           8  unknown kind skipped        — a batch use whose kind names
 ///              (check_anUnknownKindIsSkipped) no registry writes nothing under
 ///                                             any kind and leaves the period
 ///                                             total where it was.
@@ -128,17 +124,15 @@ contract UsageCounterHarness is UsageCounter {
 ///         a ~87-iteration binary search whose trip count depends on the
 ///         MAGNITUDE of the symbolic product, not its BOUND — so narrowing a
 ///         symbolic `uint64` to a small range does not shorten the loop the
-///         way it does for, say, a payment amount. Properties 2, 3 and 5 use a
-///         `bool` selector to pick between small CONCRETE `(c, d)` pairs
-///         instead of leaving them symbolic, exactly the "bounded control flow
-///         (a few `bool` branch selectors rather than an unbounded call
-///         sequence)" scoping `reference_halmos_operations` prescribes — the
-///         crease these properties hunt is in which VALUE gets stored, not in
-///         `icbrt`'s own correctness (which is fuzzed exhaustively over the
-///         full `uint256` domain elsewhere, per docs/CONTRACTS.md). Property 1
-///         needs no such bound: `_accrue`'s own `c`/`d` are internal
-///         counters incremented by 0 or 1 per call, never externally supplied,
-///         so two calls bound them to {0, 1, 2} without any `vm.assume`.
+///         way it does for, say, a payment amount. No property here needs a
+///         bound on it: on both routes `c` and `d` are the counter's own,
+///         incremented by 0 or 1 per use, never externally supplied, so a
+///         property's two or three uses bound them to small values without any
+///         `vm.assume` — the "bounded control flow (a few `bool` branch
+///         selectors rather than an unbounded call sequence)" scoping
+///         `reference_halmos_operations` prescribes. `icbrt`'s own correctness
+///         is fuzzed exhaustively over the full `uint256` domain elsewhere,
+///         per docs/CONTRACTS.md.
 ///
 /// @dev    WHAT THIS DOES NOT PROVE: the stake-gating linkage (E-5, proved in
 ///         `HalmosMembersRegistry`) and `icbrt`'s own numerical correctness
@@ -245,66 +239,54 @@ contract HalmosUsageCounter is Test {
         return _snapshot(counter, clauseOrAssembly, period);
     }
 
-    // ── 2. Batch accrual REPLACES, never adds ────────────────────────
+    // ── 2. A use counts the same on either route ─────────────────────
 
-    /// THE crease: two `applyBatchAccrual` writes for the same clause or assembly, the
-    /// second carrying a NEW cumulative `(c, d)`. The stored accrual after the
-    /// second write is EXACTLY that new value — never `first + second`. An
-    /// add-instead-of-replace regression would double every batch's count and
-    /// is invisible to `scoreOf`, to any indexer, and to `UsageCounterTest`'s
-    /// own concrete fixtures unless they happen to probe this exact sequence.
-    function check_batchAccrualReplacesNeverAdds(bytes32 clauseOrAssembly, address seller, bool grow) public {
-        // The two reserved keys are skipped on the batch path by design
-        // (UsageCounterTest covers it).
-        vm.assume(clauseOrAssembly != PROVENANCE_LEAF && clauseOrAssembly != ASSEMBLY_TERMS_LEAF);
-        UsageCounterHarness counter = _deploy();
-        vm.warp(P0_END - 1000); // deterministic: period 0 is open
+    /// Two uses of one key — each brought by the direct path or a batch, as
+    /// `firstViaBatch` and `secondViaBatch` choose — leave EXACTLY the state
+    /// two direct calls leave: the tally, both processes' counted flags, both
+    /// sellers' places in the period's set and the period total. The
+    /// processes and sellers are symbolic, so a repeated process (counted
+    /// once, the second presentation refused on the direct path and skipped
+    /// in a batch) and a repeated seller (one unit of breadth) are covered.
+    function check_aUseCountsTheSameOnEitherRoute(
+        bytes32 key,
+        bytes32 processId1,
+        bytes32 processId2,
+        address seller1,
+        address seller2,
+        bool firstViaBatch,
+        bool secondViaBatch
+    ) public {
+        vm.warp(P0_END - 1000);
+        UsageCounterHarness direct = _deploy();
+        UsageCounterHarness mixed = _deploy();
 
-        address[] memory sellers = new address[](1);
-        sellers[0] = seller;
+        _tryCount(direct, KIND_CLAUSE, key, processId1, seller1, false);
+        _tryCount(direct, KIND_CLAUSE, key, processId2, seller2, false);
+        _tryCount(mixed, KIND_CLAUSE, key, processId1, seller1, firstViaBatch);
+        _tryCount(mixed, KIND_CLAUSE, key, processId2, seller2, secondViaBatch);
 
-        UsageCounter.BatchAccrual[] memory first = new UsageCounter.BatchAccrual[](1);
-        first[0] = UsageCounter.BatchAccrual(clauseOrAssembly, KIND_CLAUSE, 2, 2);
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, first, sellers);
-
-        {
-            (uint64 c1, uint64 d1,) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssembly, 0);
-            assertEq(c1, 2);
-            assertEq(d1, 2);
-        }
-
-        // A non-decreasing cumulative update — required by `AccrualWentBackwards`
-        // — that is either equal to (grow=false) or strictly ahead of
-        // (grow=true) the first write, in each case.
-        uint64 c2Target = grow ? 5 : 2;
-        uint64 d2Target = grow ? 3 : 2;
-
-        UsageCounter.BatchAccrual[] memory second = new UsageCounter.BatchAccrual[](1);
-        second[0] = UsageCounter.BatchAccrual(clauseOrAssembly, KIND_CLAUSE, c2Target, d2Target);
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, second, sellers);
-
-        (uint64 c2, uint64 d2, uint256 score2) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssembly, 0);
-
-        assertEq(c2, c2Target, "c is the cumulative value just proved, not c1 + c2Target");
-        assertEq(d2, d2Target, "d is the cumulative value just proved, not d1 + d2Target");
+        Snapshot memory d = _kindSnapshot(direct, KIND_CLAUSE, key);
+        Snapshot memory m = _kindSnapshot(mixed, KIND_CLAUSE, key);
+        assertEq(m.c, d.c, "c is route-blind");
+        assertEq(m.d, d.d, "d is route-blind");
+        assertEq(m.score, d.score, "the score is route-blind");
+        assertEq(m.total, d.total, "the period total is route-blind");
         assertEq(
-            score2,
-            counter.icbrt(uint256(c2Target) * uint256(d2Target) * uint256(d2Target) * 1e18),
-            "score recomputed from the new (c, d) only"
+            mixed.processCounted(KIND_CLAUSE, key, processId1), direct.processCounted(KIND_CLAUSE, key, processId1)
         );
-        // The O(1) running-total maintenance is delta-based (`total += updated
-        // - previous`); if it silently degenerated into an accumulate this
-        // would read `score1 + score2` instead.
-        assertEq(counter.totalScoreIn(0), score2, "the period total is exactly the current score, never a running sum");
+        assertEq(
+            mixed.processCounted(KIND_CLAUSE, key, processId2), direct.processCounted(KIND_CLAUSE, key, processId2)
+        );
+        assertEq(mixed.sellerSeen(KIND_CLAUSE, key, 0, seller1), direct.sellerSeen(KIND_CLAUSE, key, 0, seller1));
+        assertEq(mixed.sellerSeen(KIND_CLAUSE, key, 0, seller2), direct.sellerSeen(KIND_CLAUSE, key, 0, seller2));
     }
 
-    // ── 3. Score composition ──────────────────────────────────────────
+    // ── 3. One tally ─────────────────────────────────────────────────
 
-    /// `scoreOf(clause-or-assembly, period) == accrualOf.score + batchAccrualOf.score`
-    /// for every combination of "has the direct path recorded here" and "has
-    /// the batch path recorded here" — the only place the two resolution
-    /// universes ever meet is this addition.
-    function check_scoreOfIsExactlyDirectPlusBatch(
+    /// `scoreOf(kind, key, period) == accrualOf.score` for every combination
+    /// of "has the direct path counted here" and "has a batch counted here".
+    function check_scoreOfIsTheOneTally(
         bytes32 clauseOrAssembly,
         address seller,
         bytes32 processId,
@@ -314,28 +296,14 @@ contract HalmosUsageCounter is Test {
         UsageCounterHarness counter = _deploy();
         vm.warp(P0_END - 1000);
 
-        if (doDirect) {
-            counter.accrue(clauseOrAssembly, 0, processId, seller);
-        }
+        if (doDirect) _tryCount(counter, KIND_CLAUSE, clauseOrAssembly, processId, seller, false);
         if (doBatch) {
-            address[] memory sellers = new address[](1);
-            sellers[0] = seller;
-            UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-            accr[0] = UsageCounter.BatchAccrual(clauseOrAssembly, KIND_CLAUSE, 3, 2);
-            counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
+            _tryCount(counter, KIND_CLAUSE, clauseOrAssembly, keccak256(abi.encode(processId)), seller, true);
         }
 
-        (,, uint256 directScore) = counter.accrualOf(KIND_CLAUSE, clauseOrAssembly, 0);
-        (,, uint256 batchScore) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssembly, 0);
-
-        assertEq(
-            counter.scoreOf(KIND_CLAUSE, clauseOrAssembly, 0),
-            directScore + batchScore,
-            "the two universes only ever meet by ADDITION"
-        );
-
-        if (!doDirect) assertEq(directScore, 0, "an untouched direct entry contributes exactly zero");
-        if (!doBatch) assertEq(batchScore, 0, "an untouched batch entry contributes exactly zero");
+        (,, uint256 score) = counter.accrualOf(KIND_CLAUSE, clauseOrAssembly, 0);
+        assertEq(counter.scoreOf(KIND_CLAUSE, clauseOrAssembly, 0), score, "scoreOf reads the one tally");
+        assertEq(counter.totalScoreIn(0), score, "the period total is that score");
     }
 
     // ── 4. Period bucketing ───────────────────────────────────────────
@@ -370,24 +338,21 @@ contract HalmosUsageCounter is Test {
         UsageCounterHarness counter = _deploy();
         vm.warp(P0_END - 1000); // period 0 is open
 
-        address[] memory sellers = new address[](1);
-        sellers[0] = seller;
-        UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-        accr[0] = UsageCounter.BatchAccrual(clauseOrAssembly, KIND_CLAUSE, 4, 2);
+        UsageCounter.BatchUse[] memory uses = _oneUse(KIND_CLAUSE, clauseOrAssembly, keccak256("a-process"), seller);
 
         // Claiming period 1 while period 0 is open must revert.
         (bool wrongOk,) =
-            address(counter).call(abi.encodeCall(UsageCounter.applyBatchAccrual, (1, PROVENANCE_LEAF, accr, sellers)));
+            address(counter).call(abi.encodeCall(UsageCounter.applyBatchAccrual, (1, PROVENANCE_LEAF, uses)));
         assertFalse(wrongOk, "a batch cannot land in a period the chain has not opened");
 
-        (,, uint256 otherBefore) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssembly, 1);
+        (,, uint256 otherBefore) = counter.accrualOf(KIND_CLAUSE, clauseOrAssembly, 1);
         assertEq(otherBefore, 0, "the rejected write touched nothing");
 
         // The correct period succeeds...
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, uses);
 
         // ...and period 1's entry for the SAME clause or assembly is untouched.
-        (,, uint256 otherAfter) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssembly, 1);
+        (,, uint256 otherAfter) = counter.accrualOf(KIND_CLAUSE, clauseOrAssembly, 1);
         assertEq(otherAfter, otherBefore, "recording in period 0 never touches period 1's slot");
     }
 
@@ -415,24 +380,18 @@ contract HalmosUsageCounter is Test {
 
         Isolation memory afterRecord = _isolationSnapshot(counter, clauseOrAssemblyB);
 
-        assertEq(afterRecord.bc, before.bc, "B's direct c is untouched by A's record");
-        assertEq(afterRecord.bd, before.bd, "B's direct d is untouched by A's record");
-        assertEq(afterRecord.bs, before.bs, "B's direct score is untouched by A's record");
-        assertEq(afterRecord.bbc, before.bbc, "B's batch c is untouched by A's record");
-        assertEq(afterRecord.bbd, before.bbd, "B's batch d is untouched by A's record");
-        assertEq(afterRecord.bbs, before.bbs, "B's batch score is untouched by A's record");
+        assertEq(afterRecord.bc, before.bc, "B's c is untouched by A's use");
+        assertEq(afterRecord.bd, before.bd, "B's d is untouched by A's use");
+        assertEq(afterRecord.bs, before.bs, "B's score is untouched by A's use");
         assertEq(afterRecord.total - before.total, aScoreDelta, "the shared total moves by exactly A's own delta");
     }
 
-    /// @dev B's direct + batch accrual plus the shared period-0 total,
+    /// @dev B's tally plus the shared period-0 total,
     ///      bundled behind one stack entry — see `Snapshot` above for why.
     struct Isolation {
         uint64 bc;
         uint64 bd;
         uint256 bs;
-        uint64 bbc;
-        uint64 bbd;
-        uint256 bbs;
         uint256 total;
     }
 
@@ -442,7 +401,6 @@ contract HalmosUsageCounter is Test {
         returns (Isolation memory s)
     {
         (s.bc, s.bd, s.bs) = counter.accrualOf(KIND_CLAUSE, clauseOrAssemblyB, 0);
-        (s.bbc, s.bbd, s.bbs) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssemblyB, 0);
         s.total = counter.totalScoreIn(0);
     }
 
@@ -457,22 +415,13 @@ contract HalmosUsageCounter is Test {
         address seller,
         bool viaBatch
     ) internal returns (uint256 scoreDelta) {
-        if (viaBatch) {
-            address[] memory sellers = new address[](1);
-            sellers[0] = seller;
-            UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-            accr[0] = UsageCounter.BatchAccrual(clauseOrAssemblyA, KIND_CLAUSE, 3, 2);
-            counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
-            (,, scoreDelta) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssemblyA, 0); // from zero, so delta == score
-        } else {
-            counter.accrue(clauseOrAssemblyA, 0, processId, seller);
-            (,, scoreDelta) = counter.accrualOf(KIND_CLAUSE, clauseOrAssemblyA, 0);
-        }
+        _tryCount(counter, KIND_CLAUSE, clauseOrAssemblyA, processId, seller, viaBatch);
+        (,, scoreDelta) = counter.accrualOf(KIND_CLAUSE, clauseOrAssemblyA, 0); // from zero, so delta == score
     }
 
     // ── 6. The kinds never share a entry ──────────────────────────────
 
-    /// A use counted under one kind — direct or batch — leaves every other
+    /// A use counted under one kind — on either route — leaves every other
     /// kind's accrual at the same key untouched: no count, no score, no
     /// counted process. The same process then still counts once under the
     /// other kind. Both kinds are symbolic over the three, so every ordered
@@ -491,16 +440,12 @@ contract HalmosUsageCounter is Test {
         vm.warp(P0_END - 1000);
         UsageCounterHarness counter = _deploy();
 
-        _countAs(counter, countedKind, key, processId, seller, viaBatch, 3, 2);
+        _countAs(counter, countedKind, key, processId, seller, viaBatch);
 
         (uint64 c, uint64 d, uint256 score) = counter.accrualOf(otherKind, key, 0);
-        (uint64 bc, uint64 bd, uint256 bscore) = counter.batchAccrualOf(otherKind, key, 0);
         assertEq(c, 0, "no count under the other kind");
         assertEq(d, 0, "no breadth under the other kind");
         assertEq(score, 0, "no score under the other kind");
-        assertEq(bc, 0, "no batch count under the other kind");
-        assertEq(bd, 0, "no batch breadth under the other kind");
-        assertEq(bscore, 0, "no batch score under the other kind");
         assertEq(counter.scoreOf(otherKind, key, 0), 0, "the other kind scores nothing of it");
         assertFalse(counter.processCounted(otherKind, key, processId), "the process is not counted for the other kind");
 
@@ -511,11 +456,11 @@ contract HalmosUsageCounter is Test {
 
     /// The reverse direction of `check_theKindsNeverShareAKey`: another kind
     /// already holds an accrual at the key, and a use counted under one kind —
-    /// direct or batch, over either path for the earlier one — leaves that
+    /// on either route, over either route for the earlier one — leaves that
     /// accrual exactly as it was, its counted process included. A stake in one
     /// family neither earns another family's accrual nor disturbs it.
-    /// The second use is a different process with different cumulative
-    /// counts, so a write that ignored the kind would show in the other kind's
+    /// The second use is a different process, so a write that ignored the
+    /// kind would show in the other kind's
     /// numbers. `pair` selects one of the six ordered pairs of distinct kinds; each
     /// branch fixes both kinds to constants, so the score arithmetic of every
     /// path runs on concrete counts and every path is explored whole.
@@ -533,35 +478,22 @@ contract HalmosUsageCounter is Test {
         vm.warp(P0_END - 1000);
         UsageCounterHarness counter = _deploy();
 
-        _countAs(counter, otherKind, key, processId, seller, otherViaBatch, 3, 2);
-        Snapshot memory direct = _kindSnapshot(counter, otherKind, key, false);
-        Snapshot memory batch = _kindSnapshot(counter, otherKind, key, true);
+        _countAs(counter, otherKind, key, processId, seller, otherViaBatch);
+        Snapshot memory held = _kindSnapshot(counter, otherKind, key);
 
-        // A second process and other cumulative counts: a counter blind to the
-        // kind would land this write on the other kind's accrual and move it.
-        _countAs(counter, countedKind, key, keccak256(abi.encode(processId)), seller, countedViaBatch, 5, 4);
+        // A second process: a counter blind to the kind would land this use
+        // on the other kind's tally and move it.
+        _countAs(counter, countedKind, key, keccak256(abi.encode(processId)), seller, countedViaBatch);
 
-        Snapshot memory directAfter = _kindSnapshot(counter, otherKind, key, false);
-        Snapshot memory batchAfter = _kindSnapshot(counter, otherKind, key, true);
-        assertEq(directAfter.c, direct.c, "the other kind's count is untouched");
-        assertEq(directAfter.d, direct.d, "the other kind's breadth is untouched");
-        assertEq(directAfter.score, direct.score, "the other kind's score is untouched");
-        assertEq(batchAfter.c, batch.c, "the other kind's batch count is untouched");
-        assertEq(batchAfter.d, batch.d, "the other kind's batch breadth is untouched");
-        assertEq(batchAfter.score, batch.score, "the other kind's batch score is untouched");
-        assertEq(
-            counter.processCounted(otherKind, key, processId),
-            !otherViaBatch,
-            "the other kind's counted process is untouched"
-        );
-        assertEq(
-            counter.scoreOf(otherKind, key, 0),
-            direct.score + batch.score,
-            "the other kind scores what it held, no more"
-        );
+        Snapshot memory heldAfter = _kindSnapshot(counter, otherKind, key);
+        assertEq(heldAfter.c, held.c, "the other kind's count is untouched");
+        assertEq(heldAfter.d, held.d, "the other kind's breadth is untouched");
+        assertEq(heldAfter.score, held.score, "the other kind's score is untouched");
+        assertTrue(counter.processCounted(otherKind, key, processId), "the other kind's counted process is untouched");
+        assertEq(counter.scoreOf(otherKind, key, 0), held.score, "the other kind scores what it held, no more");
     }
 
-    /// The batch path skips an accrual whose kind names no registry: no kind's
+    /// The batch path skips a use whose kind names no registry: no kind's
     /// accrual at the key moves, the counted kind's included, and the period
     /// total stays where it was. The call itself does not revert, so the
     /// batch's token resolution still lands.
@@ -571,17 +503,13 @@ contract HalmosUsageCounter is Test {
         vm.warp(P0_END - 1000);
         UsageCounterHarness counter = _deploy();
 
-        address[] memory sellers = new address[](1);
-        sellers[0] = seller;
-        UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-        accr[0] = UsageCounter.BatchAccrual(key, unknownKind, 3, 2);
-        counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _oneUse(unknownKind, key, keccak256("a-process"), seller));
 
-        (uint64 bc, uint64 bd, uint256 bscore) = counter.batchAccrualOf(probeKind, key, 0);
-        assertEq(bc, 0, "no batch count under any kind");
-        assertEq(bd, 0, "no batch breadth under any kind");
-        assertEq(bscore, 0, "no batch score under any kind");
-        assertEq(counter.scoreOf(probeKind, key, 0), 0, "no kind scores the skipped accrual");
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(probeKind, key, 0);
+        assertEq(c, 0, "no count under any kind");
+        assertEq(d, 0, "no breadth under any kind");
+        assertEq(score, 0, "no score under any kind");
+        assertEq(counter.scoreOf(probeKind, key, 0), 0, "no kind scores the skipped use");
         assertEq(counter.totalScoreIn(0), 0, "the period total does not move");
     }
 
@@ -596,9 +524,42 @@ contract HalmosUsageCounter is Test {
         return (2, 1);
     }
 
-    /// @dev Counts one use of `key` under `kind`, by the direct path's
-    ///      `_accrue` or by a one-accrual batch write carrying the cumulative
-    ///      `(c, d)`, and requires the write to land: a reverted write would
+    /// @dev One batch use.
+    function _oneUse(uint8 kind, bytes32 key, bytes32 processId, address seller)
+        internal
+        pure
+        returns (UsageCounter.BatchUse[] memory uses)
+    {
+        uses = new UsageCounter.BatchUse[](1);
+        uses[0] = UsageCounter.BatchUse(key, kind, processId, seller);
+    }
+
+    /// @dev Presents one use of `key` under `kind`, by the direct path's
+    ///      `_accrue` or by a one-use batch, and lets a refusal stand: the
+    ///      direct path reverts where a batch skips, and both leave the state
+    ///      as it was.
+    function _tryCount(
+        UsageCounterHarness counter,
+        uint8 kind,
+        bytes32 key,
+        bytes32 processId,
+        address seller,
+        bool viaBatch
+    ) internal returns (bool ok) {
+        if (viaBatch) {
+            (ok,) = address(counter)
+                .call(
+                    abi.encodeCall(
+                        UsageCounter.applyBatchAccrual, (0, PROVENANCE_LEAF, _oneUse(kind, key, processId, seller))
+                    )
+                );
+        } else {
+            (ok,) = address(counter).call(abi.encodeCall(counter.accrueAs, (kind, key, 0, processId, seller)));
+        }
+    }
+
+    /// @dev Counts one use of `key` under `kind`, by either route, and
+    ///      requires the use to be counted: a refused or skipped use would
     ///      drop the path from the proof instead of failing it.
     function _countAs(
         UsageCounterHarness counter,
@@ -606,36 +567,19 @@ contract HalmosUsageCounter is Test {
         bytes32 key,
         bytes32 processId,
         address seller,
-        bool viaBatch,
-        uint64 c,
-        uint64 d
+        bool viaBatch
     ) internal {
-        bool ok;
-        if (viaBatch) {
-            address[] memory sellers = new address[](1);
-            sellers[0] = seller;
-            UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-            accr[0] = UsageCounter.BatchAccrual(key, kind, c, d);
-            (ok,) = address(counter)
-                .call(abi.encodeCall(UsageCounter.applyBatchAccrual, (0, PROVENANCE_LEAF, accr, sellers)));
-        } else {
-            (ok,) = address(counter).call(abi.encodeCall(counter.accrueAs, (kind, key, 0, processId, seller)));
-        }
-        assertTrue(ok, "the write lands");
+        assertTrue(_tryCount(counter, kind, key, processId, seller, viaBatch), "the call lands");
+        assertTrue(counter.processCounted(kind, key, processId), "the use is counted");
     }
 
-    /// @dev One kind's direct (`batch == false`) or batch accrual at `key` in
-    ///      period 0, with the period total.
-    function _kindSnapshot(UsageCounterHarness counter, uint8 kind, bytes32 key, bool batch)
+    /// @dev One kind's tally at `key` in period 0, with the period total.
+    function _kindSnapshot(UsageCounterHarness counter, uint8 kind, bytes32 key)
         internal
         view
         returns (Snapshot memory s)
     {
-        if (batch) {
-            (s.c, s.d, s.score) = counter.batchAccrualOf(kind, key, 0);
-        } else {
-            (s.c, s.d, s.score) = counter.accrualOf(kind, key, 0);
-        }
+        (s.c, s.d, s.score) = counter.accrualOf(kind, key, 0);
         s.total = counter.totalScoreIn(0);
     }
 }

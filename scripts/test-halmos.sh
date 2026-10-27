@@ -151,11 +151,11 @@ echo ""
 echo "▶ Pass 4/7 — UsageCounter: the accrual ARITHMETIC on top of the (already proved) stake gate"
 echo ""
 
-# ── Pass 4: the two-resolution-universes accounting ────────────────────────
+# ── Pass 4: the route-blind accounting ────────────────────────
 #
-# Direct-path accrual never regresses; the batch write REPLACES cumulative
-# (c,d), never adds; scoreOf == accrualOf.score + batchAccrualOf.score (the
-# ONLY place the two resolution universes meet); every timestamp buckets into
+# Direct-path accrual never regresses; two uses leave the same state whichever
+# route brought each (one tally, one counted-process set, one seller set);
+# scoreOf == accrualOf.score; every timestamp buckets into
 # exactly its period window; clause A's record never touches clause B; one
 # kind's accrual never touches another kind's at the same key, and an unknown
 # kind is skipped.

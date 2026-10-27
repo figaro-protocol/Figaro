@@ -104,7 +104,7 @@ methods {
     // balance rules. The counter's accrual call is a reward-tier write behind
     // try/catch, no token movement either way.
     function FigaroBatchVerifier._hashUsage(FigaroBatchVerifier.BatchUsageData calldata) internal returns (bytes32) => NONDET;
-    function _.applyBatchAccrual(uint8, bytes32, IUsageCounter.BatchAccrual[], address[]) external => NONDET;
+    function _.applyBatchAccrual(uint8, bytes32, IUsageCounter.BatchUse[]) external => NONDET;
 }
 
 function summarizeSafeTransfer(address to, uint256 value) {

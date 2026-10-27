@@ -266,8 +266,8 @@ const report = await recordProcessUsage(walletClient, publicClient, addresses.us
 ]);
 ```
 
-Usage is counted **at resolution or it is permanently deniable** (`docs/DESIGN_DECISIONS.md`
-§20 — a seller can unstake, a period can close, and a late claim is refusable). A buyer
+Usage is counted **at resolution**; a use left uncounted waits on its seller's stake and can
+never count once the last period closes (`docs/DESIGN_DECISIONS.md` §20). A buyer
 agent that resolves without this credits no clause, agreement or assembly designer, and
 the 600M reward's uniformity across actors is exactly this call. Only the clause FINGERPRINT
 reaches calldata, so a private clause's plaintext never becomes public. Read the report,
@@ -476,13 +476,12 @@ Confirm the rest on chain the same way, with `BATCH_VERIFIER_ABI` from
   (uint64) are the batch path's whole on-chain state, the order's own living under
   that root. Reach for these when you have no relay at all, not as the first move.
 
-Exactly one thing crosses the seam: the usage accrual behind designer rewards, carried by
-the proof into `UsageCounter.applyBatchAccrual` as proved numbers. So if the owner asks what
-their clauses, agreements and assemblies earned, read `scoreOf(kind, clauseOrAssembly, period)` — kind `0`
-a clause key, `1` an assembly `assemblyHash`, `2` an `agreementHash` — (it sums both
-paths) — never `accrualOf` alone, and if you mirror the events off-chain, fold
-`UsageRecorded` **and** `BatchUsageRecorded` (the batch one is CUMULATIVE — it REPLACES, it
-does not add).
+Exactly one thing crosses the seam: the uses behind designer rewards, carried by the proof
+into `UsageCounter.applyBatchAccrual` and counted into the same tally a direct call feeds — a
+use is a use whichever way its process reached the chain. So if the owner asks what their
+clauses, agreements and assemblies earned, read `scoreOf(kind, clauseOrAssembly, period)` — kind `0`
+a clause key, `1` an assembly `assemblyHash`, `2` an `agreementHash` — the one tally's score;
+if you mirror the events off-chain, fold `UsageRecorded`, which both routes emit.
 
 Public statement of all of this, for the owner: `/spec#resolution-paths` § "The two paths
 share no state" — which also answers "Is it resolved?".

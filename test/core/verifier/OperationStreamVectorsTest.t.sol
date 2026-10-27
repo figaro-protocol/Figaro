@@ -113,8 +113,7 @@ contract OperationStreamVectorsTest is Test {
             new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
         );
         FigaroBatchVerifier.BatchUsageData memory usage;
-        usage.accruals = new IUsageCounter.BatchAccrual[](0);
-        usage.sellers = new address[](0);
+        usage.uses = new IUsageCounter.BatchUse[](0);
         bytes memory pv = abi.encode(
             prev,
             nextRoot,
@@ -123,7 +122,7 @@ contract OperationStreamVectorsTest is Test {
             keccak256(""),
             keccak256(""),
             keccak256(""),
-            keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0), uint64(0))),
+            keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0))),
             uint64(block.timestamp),
             keccak256(stream)
         );
@@ -233,8 +232,7 @@ contract OperationStreamVectorsTest is Test {
             new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
         );
         FigaroBatchVerifier.BatchUsageData memory usage;
-        usage.accruals = new IUsageCounter.BatchAccrual[](0);
-        usage.sellers = new address[](0);
+        usage.uses = new IUsageCounter.BatchUse[](0);
         bytes memory pv = abi.encode(
             prev,
             next,
@@ -243,7 +241,7 @@ contract OperationStreamVectorsTest is Test {
             keccak256(""),
             keccak256(""),
             keccak256(""),
-            keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0), uint64(0))),
+            keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0))),
             uint64(block.timestamp),
             keccak256(stream)
         );
@@ -260,8 +258,7 @@ contract OperationStreamVectorsTest is Test {
             new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
         );
         FigaroBatchVerifier.BatchUsageData memory usage;
-        usage.accruals = new IUsageCounter.BatchAccrual[](0);
-        usage.sellers = new address[](0);
+        usage.uses = new IUsageCounter.BatchUse[](0);
         bytes memory pv = abi.encode(
             prev,
             keccak256("next"),
@@ -270,7 +267,7 @@ contract OperationStreamVectorsTest is Test {
             keccak256(""),
             keccak256(""),
             keccak256(""),
-            keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0), uint64(0))),
+            keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0))),
             uint64(block.timestamp),
             keccak256(stream)
         );
@@ -280,8 +277,7 @@ contract OperationStreamVectorsTest is Test {
 
     function test_theGenesisRootIsTheEmptyStatesAndNeverSupplied() public view {
         bytes32 emptyMap = keccak256("");
-        bytes32 emptyUsage = keccak256(abi.encodePacked(uint64(0), uint64(0), uint64(0)));
-        assertEq(verifier.genesisRoot(), keccak256(abi.encodePacked(emptyMap, emptyMap, emptyMap, emptyUsage)));
+        assertEq(verifier.genesisRoot(), keccak256(abi.encodePacked(emptyMap, emptyMap, emptyMap)));
         assertEq(verifier.stateRoot(), verifier.genesisRoot());
     }
 

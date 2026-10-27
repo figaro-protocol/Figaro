@@ -557,10 +557,10 @@ async fn batch_loop(
 
         // Drain pending operations AND the RPGF usage claims together.
         //
-        // Claims are applied against the batch's POST-state, so a claim for an
+        // Claims are proved against the batch's POST-state, so a claim for an
         // order this same batch resolves is credited by this same batch. But a
-        // claim ALONE is also a valid batch: it changes the usage state, which
-        // is under the state root, so the transition is real and provable.
+        // claim ALONE is also a valid batch: its uses ride the public values,
+        // so a batch that moves no state still carries them to the counter.
         // Draining before the empty-check (and admitting a claims-only batch
         // below) is what stops a claim submitted after the last trade from
         // sitting in the mempool forever.
@@ -571,11 +571,10 @@ async fn batch_loop(
         let pending = mempool.drain_up_to(config.max_ops).await;
         let usage_claims = mempool.drain_usage().await;
 
-        // Pre-filter usage claims against live chain state so a poison claim
-        // (a clause or assembly with no live registration, or an unstaked seller) never
-        // enters a proof and cannot cost the rest of the batch its accrual. The
-        // counter's
-        // own gates and the verifier's try/catch remain the on-chain backstop
+        // Pre-filter usage claims against live chain state so a claim the
+        // counter would not count (a clause or assembly with no live
+        // registration, an unstaked seller, a process already counted) never
+        // enters a proof. The counter's own gates remain the on-chain backstop
         // for the residual race (a seller unstaking after this read).
         let (usage_claims, dropped_claims) =
             submitter::filter_usage_claims(&submitter_config, usage_claims).await;
@@ -734,7 +733,7 @@ async fn batch_loop(
         // The batch's settle has to fit one block, under the chain's cap on
         // one transaction: what it costs the chain is what it publishes
         // (`gas.rs`), planned from the batch's own execution — the
-        // positions, events, accruals and sellers it would settle, the
+        // positions, events and uses it would publish, the
         // calldata it would carry — against the budget. The limit is the
         // latest block's, read every tick; a tick on which it cannot be read
         // plans under the cap alone. MAX_BATCH_OPS stays the operator's bound
@@ -814,8 +813,11 @@ async fn batch_loop(
 
         // The claims against every operation drained: a claim that credits
         // no order the batch resolves, in any order, is poison and is dropped
-        // (the guest would abort the whole proof on it). A claim stranded by
-        // the cut below is another matter, and waits.
+        // (the guest would abort the whole proof on it). A second claim of a
+        // (kind, key, process) the batch already carries would not abort it —
+        // the guest gives it no use of its own — and is dropped too, so the
+        // batch carries no stream bytes for nothing. A claim stranded by the
+        // cut below is another matter, and waits.
         let all_ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
         if !usage.claims.is_empty() {
             let (kept, dropped) = assembler::filter_applicable_claims(
@@ -824,11 +826,10 @@ async fn batch_loop(
                 timestamp,
                 &prev_state,
                 &all_ops,
-                usage.period,
                 usage.provenance_leaf,
                 std::mem::take(&mut usage.claims),
             );
-            api::record_dropped_claims(&failures, &dropped, "batch formation — it would abort the batch proof").await;
+            api::record_dropped_claims(&failures, &dropped, "batch formation — it would abort the batch proof, or repeats a use the batch already carries").await;
             usage.claims = kept;
         }
         if valid.is_empty() && usage.claims.is_empty() {
@@ -921,7 +922,6 @@ async fn batch_loop(
                 timestamp,
                 &batch.prev_state,
                 &batch.operations,
-                batch.usage_period,
                 batch.provenance_leaf,
                 std::mem::take(&mut batch.usage_claims),
             );

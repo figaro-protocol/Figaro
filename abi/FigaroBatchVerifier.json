@@ -264,9 +264,9 @@
             "internalType": "bytes32"
           },
           {
-            "name": "accruals",
+            "name": "uses",
             "type": "tuple[]",
-            "internalType": "struct IUsageCounter.BatchAccrual[]",
+            "internalType": "struct IUsageCounter.BatchUse[]",
             "components": [
               {
                 "name": "clauseOrAssembly",
@@ -279,21 +279,16 @@
                 "internalType": "uint8"
               },
               {
-                "name": "c",
-                "type": "uint64",
-                "internalType": "uint64"
+                "name": "processId",
+                "type": "bytes32",
+                "internalType": "bytes32"
               },
               {
-                "name": "d",
-                "type": "uint64",
-                "internalType": "uint64"
+                "name": "seller",
+                "type": "address",
+                "internalType": "address"
               }
             ]
-          },
-          {
-            "name": "sellers",
-            "type": "address[]",
-            "internalType": "address[]"
           }
         ]
       },

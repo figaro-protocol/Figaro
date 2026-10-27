@@ -925,9 +925,8 @@ fn commit_precedes(domain: &B256, c: &KernelOp, f: &KernelOp, touched: &HashSet<
 /// processes, and the orders filed under them. The Core's rules read
 /// nothing else for an operation — a commit reads its process and its own
 /// order (an order's hash binds its process), an attestation its target
-/// order, a resolve its process and listed orders — and no
-/// operation reads the usage state, so an operation applies against the
-/// slice exactly as against the whole. One assumption: every key in
+/// order, a resolve its process and listed orders — so an operation applies
+/// against the slice exactly as against the whole. One assumption: every key in
 /// `order_status` is also in `order_process_id`, filed under the process its
 /// hash binds. The Core mirror writes the two together (`apply_commit`) and
 /// nothing removes either; the snapshot carries no serde defaults; and the
@@ -949,9 +948,6 @@ fn group_state(state: &KernelStateSnapshot, processes: &HashSet<B256>) -> Kernel
             .filter(|(o, _)| orders.contains(o))
             .cloned()
             .collect(),
-        usage_counted: Vec::new(),
-        usage_seller_seen: Vec::new(),
-        usage_accrual: Vec::new(),
     }
 }
 
