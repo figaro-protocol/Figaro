@@ -1,20 +1,27 @@
 # Token-ops inventory — authoritative list of every ERC20 token-moving call
 # site in production `src/`. Every new `transfer` / `transferFrom` /
 # `safeTransfer` / `safeTransferFrom` call merged into `src/` must be added
-# here (file:line) with the spec rule that upholds its invariant, or the
-# lint-token-ops.sh gate will refuse the merge.
+# here, keyed to the function that makes it, with the spec rule that upholds
+# its invariant, or the lint-token-ops.sh gate will refuse the merge.
 #
-# Format: `<path>:<line> | <caller> | <spec coverage>`
+# Format: `<path> :: <Contract>.<function> :: <call> | <role> | <spec coverage>`
 # Blank lines and `#` comments are ignored.
+#
+# `<call>` is the call's text with whitespace collapsed, as the source writes
+# it (`token.safeTransferFrom(from, address(this), amount)`). When one function
+# makes the same call twice, the second and later carry ` #2`, ` #3` after the
+# call, in source order. No line number: an edit that moves lines leaves this
+# file current; a call added, deleted, rewritten or moved to another function
+# does not.
 #
 # Spec coverage column lists the CVL rule(s) in certora/TokenOpsVerification.spec
 # (or a sister spec) that prove the call's invariant. Pending entries are
 # marked `[PENDING: <spec target>]` — new entries MAY ship pending, but must
 # be followed by a spec PR within the same sprint.
 
-src/core/kernel/FigaroCore.sol:132 | _pullExact (commit bond pull) | commitBuyerExactDelta, commitSellerExactDelta, commitContractExactDelta, commitAllowanceDrainSafety, commitTokenConservation
-src/core/kernel/FigaroCore.sol:294 | resolveProcess (seller payout) | resolveSingleOrderPayout, resolveSingleOrderConservation
-src/core/kernel/FigaroCore.sol:295 | resolveProcess (buyer payout)  | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/core/kernel/FigaroCore.sol :: FigaroCore._pullExact :: token.safeTransferFrom(from, address(this), amount) | commit bond pull | commitBuyerExactDelta, commitSellerExactDelta, commitContractExactDelta, commitAllowanceDrainSafety, commitTokenConservation
+src/core/kernel/FigaroCore.sol :: FigaroCore.resolveProcess :: currency.safeTransfer(c.seller, sellerPayout) | seller payout | resolveSingleOrderPayout, resolveSingleOrderConservation
+src/core/kernel/FigaroCore.sol :: FigaroCore.resolveProcess :: currency.safeTransfer(buyer, buyerPayout) | buyer payout | resolveSingleOrderPayout, resolveSingleOrderConservation
 
 # WitnessSwapAndCommitCoordinator — the swap-and-commit coordinator (its unhardened
 # predecessor, which left the swap route outside every signature, was deleted before
@@ -27,13 +34,13 @@ src/core/kernel/FigaroCore.sol:295 | resolveProcess (buyer payout)  | resolveSin
 # itself). Spec target: a CoordinatorTokenConservation rule proving the coordinator
 # retains no bond currency or input token after `swapAndCommit` (asserted by the
 # `SlippageResidualStaysWithParty` / `InputResidualRefunded` Foundry tests today).
-src/app/WitnessSwapAndCommitCoordinator.sol:233 | _fund (bond currency → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no bond currency post-swap]
-src/app/WitnessSwapAndCommitCoordinator.sol:237 | _fund (input residual refund → party) | [PENDING: CoordinatorTokenConservation — coordinator retains no input residual]
+src/app/WitnessSwapAndCommitCoordinator.sol :: WitnessSwapAndCommitCoordinator._fund :: IERC20(bondCurrency).safeTransfer(party, received) | bond currency → party | [PENDING: CoordinatorTokenConservation — coordinator retains no bond currency post-swap]
+src/app/WitnessSwapAndCommitCoordinator.sol :: WitnessSwapAndCommitCoordinator._fund :: IERC20(f.inputToken).safeTransfer(party, inputResidual) | input residual refund → party | [PENDING: CoordinatorTokenConservation — coordinator retains no input residual]
 
 # FigaroBatchVerifier — the batch-settlement verifier (proof-apparatus
 # rebuild, witness model). BatchVerifierTokenOps.spec covers both sites:
 # single-position rules with the documented inductive generalization;
 # registered summarized as a revert-only view (sound — the anchor gate
 # refuses settlement, never moves a token). Cloud run green 2026-07-16.
-src/core/verifier/FigaroBatchVerifier.sol:667 | _executePositions (net payout → user) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
-src/core/verifier/FigaroBatchVerifier.sol:677 | _pullExact (net deposit pull) | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/core/verifier/FigaroBatchVerifier.sol :: FigaroBatchVerifier._executePositions :: IERC20(p.token).safeTransfer(p.user, net) | net payout → user | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+src/core/verifier/FigaroBatchVerifier.sol :: FigaroBatchVerifier._pullExact :: token.safeTransferFrom(from, address(this), amount) | net deposit pull | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
