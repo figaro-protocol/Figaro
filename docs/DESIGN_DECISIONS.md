@@ -113,11 +113,15 @@ mitigation is **pre-installed EIP-7702 delegation**: while it still holds its ke
 buyer sets a delegation (carrying its own guardian/recovery authorization) on
 the buyer EOA. `resolveProcess` authorizes by `msg.sender`
 (`FigaroCore.sol:268`), so after key loss the delegated code can still
-originate the resolve call from the buyer's address — every active process
-remains resolvable and no bond is stranded. New commitments are not rescuable:
-each requires a fresh EIP-712 ECDSA signature from the lost key. The
-delegation must be installed while the key is still held; it cannot be added
-after loss.
+originate the resolve call from the buyer's address — every active process the
+buyer opened through `FigaroCore` remains resolvable and none of its bonds is
+stranded. The reach stops there: a process committed through the proof-batched
+path resolves only on the buyer's own ECDSA signature over `ResolveProcess`
+(`prover/lib/src/kernel.rs`, `apply_resolve`), which delegated code cannot
+produce, so its bonds are stranded with the key. New commitments on either path
+are not rescuable: each requires a fresh EIP-712 ECDSA signature from the lost
+key. The delegation must be installed while the key is still held; it cannot be
+added after loss.
 
 **The seller, likewise.** A seller's key loss stalls nothing on chain: only the
 buyer resolves, and resolution pays the seller's address and refunds its bond
