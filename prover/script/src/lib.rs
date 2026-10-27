@@ -1,8 +1,8 @@
 //! Reusable test-fixture builders for the figaro-prover guest program.
 //!
 //! `build_canonical_batch_input` produces a comprehensive end-to-end batch
-//! (commit → seller attest with the full witness gates → buyer attest →
-//! resolve) that the SP1 mock or real prover can execute against the
+//! (commit → seller attest in the plaintext form, every witness gate →
+//! buyer attest in the hash-only form → resolve) that the SP1 mock or real prover can execute against the
 //! guest program in `../program`.
 //!
 //! Used by:
@@ -14,9 +14,10 @@
 //!   normal Rust test suite. Catches guest-program drift without
 //!   requiring the full real-proof CPU budget.
 //!
-//! The clause spec is a WITNESS INPUT: the builder loads the canonical
-//! JSON from `clauses/` (the ClauseRegistry seed source) on the host and
-//! ships its exact bytes inside the `AttestationContentProof`. Nothing is
+//! The clause spec is a WITNESS INPUT of the plaintext form: the builder
+//! loads the canonical JSON from `clauses/` (the ClauseRegistry seed
+//! source) on the host and ships its exact bytes inside the seller's
+//! `AttestationContentProof`. Nothing is
 //! embedded in the guest — the clause key IS `keccak256` of those bytes,
 //! the batch commits the (clause key, spec hash) binding with both fields
 //! equal, and on-chain the verifier checks the key is
@@ -166,9 +167,10 @@ fn parse_spec(spec_json: &str) -> figaro_clause::ClauseSpec {
 // ── Canonical batch builder ──────────────────────────────────────────
 
 /// Construct the canonical end-to-end batch the guest program exercises:
-/// commit → seller attest (RuntimeWitness: validate + generic-encode +
-/// keccak binding + agreement inclusion, all in-VM) → buyer attest
-/// (ReAssert: the committed clauseData re-anchored) → resolve.
+/// commit → seller attest (the plaintext form, RuntimeWitness: validate +
+/// generic-encode + keccak binding + agreement inclusion, all in-VM) →
+/// buyer attest (the hash-only form: the committed clauseData's hash and
+/// its inclusion proof, gate I alone) → resolve.
 ///
 /// Attestations precede the resolve because the evidence window closes at
 /// resolution (the mirror's OrderResolved gate). The single-clause
@@ -195,7 +197,8 @@ pub fn build_canonical_batch_input() -> BatchInput {
     .expect("script-time encoding must succeed");
     let witness_content_ref = keccak256(canonical_bytes.as_slice());
 
-    // ReAssert content_ref = keccak256 of the committed clauseData bytes.
+    // The buyer's content_ref: keccak256 of the committed clauseData bytes,
+    // the clause leaf's fingerprint as well.
     let re_assert_content_ref = keccak256(CLAUSE_DATA.as_bytes());
 
     // Single-clause agreement: checkout_hash IS the lone clause leaf
@@ -225,7 +228,7 @@ pub fn build_canonical_batch_input() -> BatchInput {
     let process_id = typed_data_hash(&domain, &root_struct_hash);
     let order_hash = compute_order_hash(&process_id, &root_struct_hash);
 
-    let resolve_hash = resolve_struct_hash(&process_id);
+    let resolve_hash = resolve_struct_hash(&process_id, &root.payment);
     let resolve_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_hash));
 
     let attest_struct = attest_seller_struct_hash(&order_hash, &clause_key, 0, &witness_content_ref);
@@ -251,13 +254,13 @@ pub fn build_canonical_batch_input() -> BatchInput {
                 stage: 0,
                 content_ref: witness_content_ref,
                 seller_sig: attest_sig,
-                proof: AttestationContentProof {
-                    spec_json: spec_json.clone(),
+                proof: AttestationWitness::Plaintext(AttestationContentProof {
+                    spec_json,
                     content_json: CLAUSE_DATA.to_string(),
                     clause_data: CLAUSE_DATA.to_string(),
                     inclusion_proof: vec![],
                     content_kind: ContentKind::RuntimeWitness,
-                },
+                }),
             },
             KernelOp::AttestAsBuyer {
                 target: root.clone(),
@@ -265,16 +268,16 @@ pub fn build_canonical_batch_input() -> BatchInput {
                 stage: 0,
                 content_ref: re_assert_content_ref,
                 buyer_sig: buyer_attest_sig,
-                proof: AttestationContentProof {
-                    spec_json,
-                    content_json: CLAUSE_DATA.to_string(),
-                    clause_data: CLAUSE_DATA.to_string(),
+                // The default form: the buyer's attestation carries the
+                // coordinator's arguments alone, so the batch holds both forms.
+                proof: AttestationWitness::HashOnly {
+                    clause_data_hash: keccak256(CLAUSE_DATA.as_bytes()),
                     inclusion_proof: vec![],
-                    content_kind: ContentKind::ReAssert,
                 },
             },
             KernelOp::Resolve {
                 process_id,
+                cumulative_value: root.payment,
                 commitments: vec![root.clone()],
                 buyer_sig: resolve_sig,
             },

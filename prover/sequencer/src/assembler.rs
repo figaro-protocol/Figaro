@@ -156,7 +156,8 @@ pub fn filter_applicable_ops(
 /// order not yet committed, an order list or a cumulative value a sibling
 /// order may yet complete. A refusal that carries its figures is judged on
 /// them: an order list SHORTER than the active orders, or a cumulative value
-/// the process has already PASSED, never returns (the active count and the
+/// the process has already PASSED — a commit's expected value or a resolve
+/// authorization's signed one — never returns (the active count and the
 /// accumulator only grow until resolution), and a resolve listing an order
 /// whose own process is not the resolve's names an order that can never be
 /// under it. Exhaustive, so a new refusal is classified where it is added.
@@ -164,6 +165,7 @@ pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bo
     match e {
         KernelError::IncompleteOrderList { required, provided } => provided < required,
         KernelError::CumulativeValueMismatch { expected, actual } => expected < actual,
+        KernelError::StaleResolveAuthorization { signed, current } => signed < current,
         KernelError::OrderNotCommitted(_) => match op {
             KernelOp::Resolve { process_id, commitments, .. } => commitments
                 .iter()

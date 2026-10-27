@@ -461,6 +461,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `validateContent` | `/clauses` | Validate clause content against its spec; on a closed clause, unknown fields are rejected. |
 | `validateDraft` | `/agent` | The check a candidate runs before countersigning a race draft: structure, the bound assembly (`readProfile`), and with `specs` the merkle-leaf gate (`counterSignDraft` and `quoteDraft` run it themselves and refuse without `specs`). |
 | `verifyCommitmentSignature` | root | Does this signature over this commitment recover to this signer? Refuse early, off chain. |
+| `verifyResolveProcessSignature` | root | Does this buyer's resolve signature over this process id and cumulative value recover to the buyer? From the chain, the value is the sum of the listed commitments' payments. |
 | `verifyInclusionProof` | root | Does this leaf sit under this root? The off-chain mirror of the on-chain `MerkleProof.verify`. |
 | `verifyRaceReply` | `/agent` | Buyer side: the reply's struct must EXACTLY equal the draft, and recover to the drafted candidate. |
 | `walletRecord` | `/derive` | One wallet's public trading history; resolved-empty is the answer for a wallet with no history. |
@@ -1222,8 +1223,24 @@ const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 // "not on this path", never "not resolved". Gating any read on orderStatus is
 // blind to everything that resolves here; see docs/SCALING_STRATEGY.md §
 // "The two paths share no state".
-await seq.submitResolve(processId, commitments, buyerSig);
-await seq.submitAttestAsSeller({ target, clauseId, stage, contentRef, sellerSig, proof });
+// The buyer's resolve signs ResolveProcess(bytes32 processId, uint256
+// cumulativeValue) under the verifier's domain (RESOLVE_PROCESS_TYPES): the
+// process's cumulative value as the buyer accepts it. The proof applies it
+// only while the process holds that value (StaleResolveAuthorization), so it
+// pays exactly the prefix of the process that value names: a later commit
+// moves the value past it, and you sign again over the new value; a value not
+// yet reached pre-authorizes exactly the orders that bring the process there.
+// verifyResolveProcessSignature(processId, cumulativeValue, …) checks one; read
+// from the chain, the value is the sum of the payments the resolve entry lists.
+await seq.submitResolve(processId, cumulativeValue, commitments, buyerSig);
+// An attestation sends, by default, exactly what AttestationCoordinator takes on
+// the direct path — clauseDataHash, the inclusion proof, contentRef — so the
+// relay sees fingerprints only. `checkContentInProof: { spec_json, content_json,
+// clause_data, content_kind }` sends the plaintext to have the content validated
+// inside the proof: the relay receives it, and so does the Succinct Prover
+// Network when the relay proves there (SP1_PROVER=network). Its clause_data must
+// hash to clauseDataHash.
+await seq.submitAttestAsSeller({ target, clauseId, stage, contentRef, sellerSig, clauseDataHash, inclusionProof });
 await seq.submitUsageClaim(claim);  // the usage-claim leg — build with buildUsageClaims
 await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches_settled, … }
 
@@ -1326,7 +1343,7 @@ client raises it as a `SequencerError` carrying `.statusCode`:
 | Code | When | Note |
 |---|---|---|
 | `400` | admission rejection (EIP-712 recovery failed, or the recovered address is not the party named in the struct; a usage claim with a zero clause-or-assembly or no checkout hash), malformed JSON | the relay's reason string is carried verbatim into the error message |
-| `413` | body over the 1 MiB cap | a full attestation witness is tens of KB — this is abuse headroom, not a normal limit |
+| `413` | body over the 1 MiB cap | a plaintext attestation witness is tens of KB, a hash-only one a few hundred bytes — this is abuse headroom, not a normal limit |
 | `415` | wrong content type | send `application/json` |
 | `422` | valid JSON that is not the operation or claim shape | wrong shape, unknown variant, missing field |
 | `503` | mempool at capacity | capacity, never rejection — retry after the next batch resolves |
@@ -1493,13 +1510,15 @@ to its signed agreement and content-hashes the evidence — it does NOT validate
 clause content. So a never-seen clause is attestable with zero per-clause on-chain
 code.
 
-> On the BATCHED path the proof apparatus DOES validate
-> content in-proof: a Rust mirror of this same module validates and re-encodes
-> the content against the clause's spec supplied as a witness input, and
-> `FigaroBatchVerifier` resolves the batch only if the clause key the proof
-> committed (the hash of the witness's spec bytes) is registered on
-> `ClauseRegistry` — so never-seen clauses stay attestable AND
-> batch-resolvable with zero per-clause code. There are no per-clause validator
+> On the BATCHED path a batched attestation carries, by default, the same
+> hashes the coordinator takes, and the proof checks inclusion alone. Content
+> is validated in-proof only when the attesting party sends the plaintext form
+> (`checkContentInProof` on `submitAttestAsSeller` / `submitAttestAsBuyer`): a
+> Rust mirror of this same module validates and re-encodes the content against
+> the clause's spec supplied as a witness input, and `FigaroBatchVerifier`
+> resolves the batch only if the clause key the proof committed (the hash of
+> the witness's spec bytes) is registered on `ClauseRegistry` — so never-seen
+> clauses stay attestable AND batch-resolvable with zero per-clause code. There are no per-clause validator
 > contracts, permanently. The contract catalog that states this is published
 > at `/spec`; the clause-authoring path is at `/clauses`.
 
@@ -1695,7 +1714,11 @@ What the ceilings count:
 
 - **Token risk** — the wallet's bonds on a Commitment (the buyer's, the
   seller's, or both when the wallet is both) plus every `approve` at its
-  amount; `approve` is the only selector a policy may allow on the
+  amount. A batch-path `ResolveProcess` carries none, as the direct path's
+  `resolveProcess` does not: it pays the sellers from bonds counted at
+  commit, so a wallet that bonded up to its window is never refused its own
+  resolve, and the decision names the process and the cumulative value it
+  accepts. `approve` is the only selector a policy may allow on the
   denomination token, and a policy naming another is refused at load.
 - **Native risk** — a transaction's `value` PLUS the most gas it can cost:
   the gas limit at the highest price per gas it allows (`gas × maxFeePerGas`

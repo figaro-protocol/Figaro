@@ -51,11 +51,12 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 /// @dev Clause-content validation is path-split. The DIRECT path binds an
 ///      attestation to its signed agreement (merkle inclusion) and to its
 ///      content (keccak256) but validates no shape — well-formedness is an
-///      off-chain SDK / read-time concern. The BATCHED path proves content
-///      against the registered spec in-proof (the prover's generic engine
-///      takes the spec as witness input) and `FigaroBatchVerifier` resolves
-///      only if the spec hash is the clause key and `ClauseRegistry.registered`
-///      holds it. Any
+///      off-chain SDK / read-time concern. The BATCHED path binds the same
+///      hashes by default; for an attestation its party sends in the
+///      plaintext form it proves content against the registered spec in-proof
+///      (the prover's generic engine takes the spec as witness input) and
+///      `FigaroBatchVerifier` resolves only if the spec hash is the clause key
+///      and `ClauseRegistry.registered` holds it. Any
 ///      registered clause is attestable — and batch-resolvable — with no
 ///      per-clause on-chain code.
 ///

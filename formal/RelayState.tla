@@ -152,6 +152,35 @@
 (*   AdmitRefusesDoubleListing — FALSE: a resolve listing one order twice  *)
 (*                              is admitted (fails                         *)
 (*                              `DoubleListingNeverAdmitted`)              *)
+(*                                                                         *)
+(* THE RESOLVE AUTHORIZATION (the third spec, `ResolveSpec`, checked by    *)
+(* RelayStateResolve.cfg; the other two hold its variables still). On the  *)
+(* batch path the buyer resolves by signing an authorization, which a      *)
+(* relay holds until a batch applies it, and anyone holding it may apply   *)
+(* it. Between the signature and its application the process can grow: a  *)
+(* further order the buyer co-signs commits. The guest resolves every     *)
+(* order the process holds when the authorization applies. The buyer may  *)
+(* sign over the value the process holds or over one it has not reached;  *)
+(* the relay holds the latter until the buyer's own later commits bring    *)
+(* the process to it. `ResolvePaysSignedPrefix`: every applied             *)
+(* authorization pays exactly the prefix of the process's commits whose    *)
+(* cumulative value the buyer signed, every order of which the buyer       *)
+(* co-signed; a value the process has not yet reached pre-authorizes       *)
+(* exactly the orders that bring it there. The design switch:              *)
+(*   ResolveBoundToState      — TRUE: the authorization signs the process  *)
+(*                              id and a cumulative value, and the guest   *)
+(*                              refuses it unless the process's cumulative *)
+(*                              value at application is the signed one;    *)
+(*                              every payment is at least 1, so the value  *)
+(*                              rises at every commit and names at most    *)
+(*                              one prefix. FALSE: the authorization signs *)
+(*                              the process id alone (fails                *)
+(*                              `ResolvePaysSignedPrefix`: signed over one *)
+(*                              order, applied after a second commits,     *)
+(*                              both are paid)                             *)
+(* Signatures are unforgeable here as everywhere in this module: an       *)
+(* authorization is one the buyer gave, and one whose signed value a      *)
+(* relay rewrote recovers another signer, which the guest refuses.        *)
 (***************************************************************************)
 EXTENDS Naturals, Sequences, FiniteSets
 
@@ -179,7 +208,8 @@ CONSTANTS
     DeferGroupsByProcess,
     DeferOwnWindow,
     DeferDependentEdge,
-    AdmitRefusesDoubleListing
+    AdmitRefusesDoubleListing,
+    ResolveBoundToState  \* the resolve authorization signs the cumulative value
 
 Genesis == 0
 Roots == 0..MaxBatches
@@ -815,9 +845,103 @@ DNext ==
     \/ DDrain
     \/ DForm
 
-Spec == Init /\ DInit /\ [][Next /\ UNCHANGED dvars]_allvars
+(***************************************************************************)
+(* THE RESOLVE AUTHORIZATION (kernel.rs's `apply_resolve`, eip712.rs's     *)
+(* `resolve_struct_hash`).                                                 *)
+(***************************************************************************)
+ROrders == {"oA", "oB", "oC"}
+\* Every payment is at least 1: the Core refuses a zero payment.
+RPayments == 1..2
+RMaxCv == Cardinality(ROrders) * 2
 
-DeferSpec == Init /\ DInit /\ [][DNext /\ UNCHANGED vars]_allvars
+VARIABLES
+    rSeq,       \* the orders the process holds, in commit order, all active
+                \* until resolution; every one co-signed by the buyer
+    rPay,       \* each committed order's payment (0 for one not committed)
+    rCv,        \* the process's cumulative value: the sum of their payments
+    rResolved,  \* the process is resolved
+    rAuths,     \* the cumulative values the buyer signed authorizations
+                \* over; anyone holding one may apply it
+    rPaid,      \* ghost: the orders the resolution paid
+    rSigned     \* ghost: the cumulative value the applied authorization signed
+
+rvars == <<rSeq, rPay, rCv, rResolved, rAuths, rPaid, rSigned>>
+everyvars == <<allvars, rvars>>
+
+\* The cumulative value of the first k orders the process committed.
+RECURSIVE PrefixSum(_)
+PrefixSum(k) == IF k = 0 THEN 0 ELSE PrefixSum(k - 1) + rPay[rSeq[k]]
+
+RTypeOK ==
+    /\ rSeq \in Seq(ROrders)
+    /\ Len(rSeq) <= Cardinality(ROrders)
+    /\ rPay \in [ROrders -> 0..2]
+    /\ rCv \in 0..RMaxCv
+    /\ rResolved \in BOOLEAN
+    /\ rAuths \subseteq 0..RMaxCv
+    /\ rPaid \subseteq ROrders
+    /\ rSigned \in 0..RMaxCv
+
+RInit ==
+    /\ rSeq = <<>>
+    /\ rPay = [o \in ROrders |-> 0]
+    /\ rCv = 0
+    /\ rResolved = FALSE
+    /\ rAuths = {}
+    /\ rPaid = {}
+    /\ rSigned = 0
+
+\* A commit, the buyer's and its seller's signatures both on it: the root
+\* order creates the process, each later one extends it while it is open.
+RCommit(o, p) ==
+    /\ ~rResolved
+    /\ o \notin Range(rSeq)
+    /\ rSeq' = Append(rSeq, o)
+    /\ rPay' = [rPay EXCEPT ![o] = p]
+    /\ rCv' = rCv + p
+    /\ UNCHANGED <<rResolved, rAuths, rPaid, rSigned>>
+
+\* The buyer signs a resolve over the value the process holds or over one it
+\* has not reached.
+RSign(v) ==
+    /\ ~rResolved
+    /\ rSeq # <<>>
+    /\ v >= rCv
+    /\ rAuths' = rAuths \cup {v}
+    /\ UNCHANGED <<rSeq, rPay, rCv, rResolved, rPaid, rSigned>>
+
+\* A batch applies an authorization, whoever holds it. The guest resolves
+\* every order the process holds (the listing must be complete), and under
+\* the design refuses one whose signed value is not the process's now.
+RApply(v) ==
+    /\ ~rResolved
+    /\ ResolveBoundToState => v = rCv
+    /\ rResolved' = TRUE
+    /\ rPaid' = Range(rSeq)
+    /\ rSigned' = v
+    /\ UNCHANGED <<rSeq, rPay, rCv, rAuths>>
+
+RNext ==
+    \/ \E o \in ROrders, p \in RPayments : RCommit(o, p)
+    \/ \E v \in 0..RMaxCv : RSign(v)
+    \/ \E v \in rAuths : RApply(v)
+
+Spec == Init /\ DInit /\ RInit /\ [][Next /\ UNCHANGED <<dvars, rvars>>]_everyvars
+
+DeferSpec == Init /\ DInit /\ RInit /\ [][DNext /\ UNCHANGED <<vars, rvars>>]_everyvars
+
+ResolveSpec == Init /\ DInit /\ RInit /\ [][RNext /\ UNCHANGED <<vars, dvars>>]_everyvars
+
+\* Every applied resolve pays exactly the prefix of the process's commits
+\* whose cumulative value the buyer signed: some prefix sums to the signed
+\* value, and the orders paid are that prefix's. Every order of it the buyer
+\* co-signed (a commit carries both signatures), so a value signed ahead of
+\* the state pays exactly the orders that brought the process to it.
+ResolvePaysSignedPrefix ==
+    rResolved =>
+        \E k \in 0..Len(rSeq) :
+            /\ PrefixSum(k) = rSigned
+            /\ rPaid = {rSeq[i] : i \in 1..k}
 
 (***************************************************************************)
 (* The deferral's invariants.                                              *)

@@ -166,9 +166,10 @@ pub async fn record_dropped(
 /// HTTP-boundary limits.
 #[derive(Clone, Copy, Debug)]
 pub struct ApiConfig {
-    /// Per-request body cap in bytes. A full attestation witness (spec
-    /// JSON + content + agreement clauses + inclusion proof) is tens of
-    /// KB; 1 MiB is generous headroom without inviting memory abuse.
+    /// Per-request body cap in bytes. A plaintext attestation witness
+    /// (spec JSON + content + agreement clauses + inclusion proof) is tens
+    /// of KB, a hash-only one a few hundred bytes; 1 MiB is generous
+    /// headroom without inviting memory abuse.
     pub max_body_bytes: usize,
     /// A request that has not completed by then is answered `408`.
     pub request_timeout: Duration,
@@ -363,7 +364,10 @@ pub fn router(state: AppState, config: ApiConfig) -> Router {
 fn payload_error(route: &'static str, rej: JsonRejection) -> Response {
     let status = rej.status();
     let error = rej.body_text();
-    warn!(route, %status, %error, "payload rejected");
+    // serde's reason quotes the value it could not read, and a body may be a
+    // plaintext attestation: the log carries the status alone, the reason
+    // goes to the sender.
+    warn!(route, %status, "payload rejected");
     (status, Json(ErrorResponse { error })).into_response()
 }
 
@@ -373,7 +377,14 @@ fn submit_error(route: &'static str, kind: &'static str, e: SubmitError) -> Resp
         SubmitError::Invalid(_) => StatusCode::BAD_REQUEST,
     };
     let error = e.to_string();
-    warn!(route, kind, %status, %error, "submission rejected");
+    // An attestation's refusal can quote its content (a value outside a
+    // spec's bounds), so the relay logs the refusal without its reason; the
+    // reason goes to the sender alone, whose content it is.
+    if matches!(kind, "AttestAsSeller" | "AttestAsBuyer") {
+        warn!(route, kind, %status, "submission rejected");
+    } else {
+        warn!(route, kind, %status, %error, "submission rejected");
+    }
     (status, Json(ErrorResponse { error })).into_response()
 }
 

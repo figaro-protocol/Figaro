@@ -15,8 +15,8 @@ the review's is its own.
 | Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | set when an audit is engaged; the line counts are the tree's at the latest commit, the results the commits their rows name (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 14 contract files, 1,419 lines of code (3,530 physical); 3 deploy scripts, 401 lines of code (840 physical) |
-| Rust in scope | 4 crates, 21 files under `src/`, 6,966 lines of code (9,776 physical) net of their inline test modules |
+| Solidity in scope | 14 contract files, 1,576 lines of code (3,813 physical); 3 deploy scripts, 398 lines of code (844 physical) |
+| Rust in scope | 4 crates, 22 files under `src/`, 6,805 lines of code (9,670 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
@@ -82,8 +82,11 @@ ones this document uses; `docs/LEXICON.md` defines every other.
   registered agreement or an assembly, under a registration stake.
 - An **attestation** is a signed statement a party makes about an open order,
   bound by merkle proof to a clause of the agreement: on the direct path
-  through `AttestationCoordinator`, on the batch path inside the proof. A
-  **witness spec** is the clause spec supplied to the proof as input; the
+  through `AttestationCoordinator`, on the batch path inside the proof, where
+  it carries by default the coordinator's own arguments (the hash-only form)
+  or, at the attesting party's choice, the spec, the content and the
+  clauseData in plaintext (the plaintext form). A **witness spec** is the
+  clause spec a plaintext attestation supplies to the proof as input; the
   verifier checks its hash against the registry's.
 - A **member** is a wallet registered in `MembersRegistry` under a member
   stake with a withdrawal cooldown. A resolved order counts toward designer
@@ -264,7 +267,11 @@ through `apply_claims`, neither computing a root; the relay's trials call the
 same two on a clone of their running state, so a trial costs one operation
 where it cost the whole state's keccak and a snapshot rebuild — the public
 values are unchanged (the transition vectors and the executor tests), the
-verification key moves with the guest's bytes. The Sepolia verifier's pinned
+verification key moves with the guest's bytes. A batched attestation carries
+its witness in one of two forms, hash-only by default (the coordinator's
+arguments, the inclusion gate alone, no spec binding) or plaintext at the
+attesting party's choice (the spec, content and inclusion gates), which also
+moves the key. The Sepolia verifier's pinned
 key is the earlier guest's. `RpgfMinter` takes the members registry after the
 counter and rewards a designer only while it holds a live member stake
 (`NotLiveMember`, read on the claimant before any key; `claimable` quotes a
@@ -406,7 +413,7 @@ the guest's test files under `prover/lib/tests/`.
   reproduces the two-key bytes, an assembly claim verifies its membership
   proof under the compositionHash with the same sorted-pair verifier, and a
   claim keyed on either reserved key, or an assembly claim naming either as
-  its agreementKey, is refused (`kernel.rs:787-794`).
+  its agreementKey, is refused (`kernel.rs:860-864`).
 - The relay reads `AgreementRegistry.bindings` for a kind-2 claim
   (`AGREEMENT_REGISTRY_ADDRESS`, `main.rs`) and drops a claim naming either
   reserved key before proving (`submitter.rs`, `names_a_reserved_key`).
@@ -750,9 +757,9 @@ direct path would have refused.
    fee-on-transfer rejection.
 5. The clause engine: a spec or a content the guest reads differently from
    the SDK's engine (`@figaro-protocol/sdk/clauses`), and the witness gates the
-   mirror enforces — spec-identity substitution, content-hash mismatch,
-   inclusion failure, attest-after-resolve — agreeing with
-   `AttestationCoordinator` and the Core.
+   mirror enforces — inclusion failure and attest-after-resolve in both forms,
+   spec-identity substitution and content-hash mismatch in the plaintext
+   form — agreeing with `AttestationCoordinator` and the Core.
 6. The relay: liveness under a hostile client — admission (the balance and
    allowance read before an operation is queued), the batch cap and the
    re-queue bound (§ "Parameters") — the handling of its one key, and what it
@@ -776,9 +783,11 @@ direct path would have refused.
    accepts that `FigaroCore` would have refused for the same signatures?
 7. Does the state root bind everything the next batch depends on, so that no
    prover can carry state across batches that the root does not cover?
-8. Is the batch path's resolve authorization — a bare
-   `ResolveProcess(processId)` signature, no nonce and no deadline
-   (`DESIGN_DECISIONS.md` #21) — replayable to any effect?
+8. Is the batch path's resolve authorization — a
+   `ResolveProcess(processId, cumulativeValue)` signature, no nonce and no
+   deadline, refused unless the process holds the signed cumulative value
+   (`DESIGN_DECISIONS.md` #21) — replayable, or applicable to orders the
+   buyer did not accept, to any effect?
 9. Can one client stall the relay, or exhaust its re-queue, at a cost below its
    own rate-limit budget?
 
@@ -845,15 +854,34 @@ read it first.
   `v` written 27 or 28. The Core takes this from OpenZeppelin's `ECDSA`; the
   mirror enforces the same two rules itself.
 - The batch path's resolve authorization is a signature over
-  `ResolveProcess(processId)` under the VERIFIER's EIP-712 domain, with no nonce
-  and no deadline (`DESIGN_DECISIONS.md` #21): a process resolves once, so the
+  `ResolveProcess(processId, cumulativeValue)` under the VERIFIER's EIP-712
+  domain, with no nonce and no deadline (`DESIGN_DECISIONS.md` #21): the guest
+  refuses it unless the process holds the signed cumulative value when it
+  applies (`StaleResolveAuthorization`), so a resolve pays exactly the prefix
+  of the process whose cumulative value the buyer signed, every order of which
+  the buyer co-signed; a value the process has not yet reached pre-authorizes
+  exactly the orders that bring it there. A process resolves once, so the
   authorization has one use.
 - The two paths share no state. A batch-resolved process never acquires Core
   status; `UsageCounter` is the one place the two meet, and only accrual crosses.
 - The direct path merkle-binds and content-hashes an attestation and validates
-  no shape; the batch path validates content against the clause spec inside the
-  proof. Per-clause validator contracts do not exist (`CONTRACTS.md`
-  § "What the protocol has no contract for").
+  no shape, and so does the batch path's default form: a hash-only attestation
+  (`AttestationWitness::HashOnly`, `prover/lib/src/types.rs`) carries exactly
+  the coordinator's `clauseDataHash`, inclusion proof and `contentRef`, runs
+  the inclusion gate alone and commits no spec binding
+  (`validate_attestation_witness`, `prover/lib/src/kernel.rs:568`); the event
+  the verifier re-emits for it is the coordinator's byte for byte
+  (`a_hash_only_batched_attestation_emits_the_coordinator_s_event_bytes`,
+  `prover/lib/tests/attestation_vectors.rs`, against the log
+  `test/core/attestation/AttestationVectorsTest.t.sol` writes down; the differential fuzz, `KernelDifferentialFuzzTest` with
+  `fuzz_stream.rs`, replays every coordinator attestation in this form), and
+  the verifier resolves a batch whose attestation carries no binding
+  (`test_settleBatch_settlesAnAttestationWithNoSpecBinding`). Content is
+  validated against the clause spec inside the proof only when the party
+  sends the plaintext form; the relay then holds that plaintext, and so does
+  the Succinct network when the relay proves there. Per-clause validator
+  contracts do not exist (`CONTRACTS.md` § "What the protocol has no contract
+  for").
 - A clause is its spec. The clause key is `keccak256` of the spec's pinned
   canonical bytes (`computeClauseKey(spec) = canonicalContentHash(spec)`,
   `sdk/src/discovery.ts:66-68`); `ClauseRegistry.registerClause(clauseKey,
@@ -870,11 +898,11 @@ read it first.
   `prover/lib/tests/parity.rs`.
 - The verifier accepts an in-proof clause validation only for a registered
   key whose spec the proof validated. The guest's Gate S requires
-  `keccak256(spec_json bytes) == clause_id` (`prover/lib/src/kernel.rs:456-458`)
+  `keccak256(spec_json bytes) == clause_id` (`prover/lib/src/kernel.rs:479-481`)
   and commits the binding with both words; `_checkSpecBindings` requires
   `specHash == clauseId` (`SpecBindingMismatch`) and
   `clauseRegistry.registered(clauseId)` (`ClauseNotRegistered`)
-  (`FigaroBatchVerifier.sol:569-577`). Tests:
+  (`FigaroBatchVerifier.sol:634-642`). Tests:
   `test_settleBatch_revertsOnSpecBindingMismatch`,
   `test_settleBatch_revertsOnUnregisteredClauseBinding`,
   `test_permissionless_newClause_settlesWithZeroVerifierChanges`
@@ -1002,7 +1030,7 @@ read it first.
   (`:586-588`). `AgreementRegistry.registerAgreement` refuses both as
   registrations (`AgreementRegistry.sol:162-164`). The guest refuses a claim
   keyed on either, of any kind, and an assembly claim naming either as its
-  agreementHash (`prover/lib/src/kernel.rs:787-794`, `apply_usage_claims`).
+  agreementHash (`prover/lib/src/kernel.rs:860-864`, `apply_usage_claims`).
   The counter's batch path skips either: `applyBatchAccrual` continues past
   them before the registration gate (`UsageCounter.sol:733`). The relay drops
   such a claim before proving (`submitter.rs`, `names_a_reserved_key`;
@@ -1027,12 +1055,18 @@ read it first.
   agreement and assembly claims against is not `provenanceLeaf`
   (`test_batchAccrualRejectsAForeignProvenanceLeaf`); the verifier's
   try/catch around the call lets the batch resolve with its accrual dropped.
-- The guest verifies an attestation on the provenance key by the format's
+- The guest verifies a hash-only attestation on the provenance key as the
+  coordinator does, on inclusion alone: it binds the leaf's hash and cannot
+  read its bytes, and the check that the bytes name the registered agreement
+  and assembly stays at the usage claim
+  (`a_hash_only_provenance_attestation_is_accepted_on_inclusion_alone`,
+  `a_hash_only_provenance_attestation_of_an_uncommitted_hash_is_refused`,
+  `prover/lib/tests/usage.rs`). It verifies a plaintext one by the format's
   own rule: the committed bytes are reproduced from the agreementHash and the
   assemblyHash they carry, the attestation's `contentRef` is their
   keccak, and the leaf opens against the signed `checkoutHash`; it consults
-  no clause spec and emits no spec binding (`prover/lib/src/kernel.rs:361`,
-  `validate_provenance_attestation`, reached at `:438`;
+  no clause spec and emits no spec binding (`prover/lib/src/kernel.rs:385`,
+  `validate_provenance_attestation`, reached at `:462`;
   `the_provenance_leaf_is_attestable_without_a_spec`). It refuses bytes that
   name a key the agreement never committed
   (`a_provenance_attestation_of_an_uncommitted_key_is_refused`), a
@@ -1045,9 +1079,11 @@ read it first.
 (`prover/sequencer/tests/sequencer.rs` unless named otherwise):
 
 - A submission's identity in the mempool covers every input the proof or the
-  verifier judges and admission does not: the signer, the order list and the
-  witness spec bytes. A stranger's resolve for an open process, a buyer's
-  signature replayed over another order list, or an attestation copied with
+  verifier judges and admission does not: the signer, the signed cumulative
+  value, the order list, and an attestation's witness form with its
+  clauseData hash or its spec bytes. A stranger's resolve for
+  an open process, a buyer's signature replayed over another order list, or an
+  attestation copied with
   other spec bytes cannot take the party's own position (`mempool.rs`,
   `op_key`; the `mempool_*` slot tests).
 - A batch takes at most `MAX_BATCH_OPS` operations, oldest first
@@ -1177,13 +1213,19 @@ read it first.
   singly and revert `settleBatch` as a sum (`submitter.rs`,
   `allocate_funding`, `filter_funded_commits`;
   `funding_is_allocated_across_a_wallets_commits_in_order`).
-- An attestation's witness spec is checked before proving: the relay
+- A plaintext attestation's witness spec is checked before proving: the relay
   requires the keccak of the spec bytes it carries to equal its clause key,
   and reads `ClauseRegistry.registered(clauseKey)` from the verifier's own
   registry; one that fails is dropped alone, since the verifier would
-  revert the whole batch on it (`submitter.rs:289-359`, `attestation_spec`,
+  revert the whole batch on it (`submitter.rs:285-369`, `attestation_spec`,
   `filter_anchored_attestations`;
-  `the_spec_an_attestation_carries_is_what_the_registry_check_reads`).
+  `the_spec_an_attestation_carries_is_what_the_registry_check_reads`). A
+  hash-only attestation carries no spec and is not read against the registry.
+- The relay writes no attestation content to its logs, its kept state file,
+  its next-state journal, `/state` or `/status`: a refused attestation is
+  logged without its reason, which can quote the content and goes to the
+  sender alone (`api.rs`, `submit_error`;
+  `the_relay_writes_no_attestation_content_to_its_logs_state_or_routes`).
 - The state behind the verifier's root is written to disk before the batch is
   sent and held for as long as the batch can land; the relay reads
   `stateRoot()` at startup and before every batch, adopts a held state whose
@@ -1266,6 +1308,7 @@ Current design realities accepted by the protocol surface, not accidental defect
 2. very large processes are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
 3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the Core; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #9 states the consequence); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
 4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:109`, checked at `:325`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the Core refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
+5. a batched attestation's witness form is not signed (the typed data covers `orderHash`, `clauseId`, `stage`, `contentRef`), so a relay holding a plaintext operation can submit it hash-only and the `Attestation` event is identical for both forms: the in-proof content check assures the attesting party's own submission and is not evidence to a reader, whose evidence (signer, open order, inclusion, `contentRef`) is identical on every path (`DESIGN_DECISIONS.md` #26)
 
 ## Known limitations
 
@@ -1280,7 +1323,7 @@ Stated so the review does not spend hours finding them.
    proof of equivalence.
 2. **The relay is not mutation-tested.** Mutation testing covers the guest
    (`figaro-kernel`, `figaro-clause`), where a defect costs a wrong resolution.
-   The relay has its 120 integration tests, 21 unit tests and the batch
+   The relay has its 110 integration tests, 21 unit tests and the batch
    end-to-end test.
 3. **A mid-flight revocation sinks a shared batch once.** A party who revokes
    its allowance after the funding check and before `settleBatch` reverts that

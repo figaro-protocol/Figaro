@@ -199,12 +199,41 @@ describe("ceilings", () => {
         expect(d.reason).toMatch(/perPeriod/);
     });
 
-    it("attestations and resolve carry zero risk", () => {
-        for (const primaryType of ["AttestSeller", "AttestBuyer", "ResolveProcess"]) {
+    it("attestations carry zero risk", () => {
+        for (const primaryType of ["AttestSeller", "AttestBuyer"]) {
             const d = evaluateTypedData(policy(), WALLET, typedReq(VERIFIER, { any: "thing" }, primaryType), { token: 5_000_000n, native: 0n });
             expect(d.allow, primaryType).toBe(true);
             expect(d.risk.token).toBe(0n);
         }
+    });
+
+    it("a resolve carries zero risk and names its process and value", () => {
+        // A ResolveProcess pays the sellers from bonds counted at commit: a
+        // wallet whose window is full is never refused its own resolve.
+        const processId = `0x${"ab".repeat(32)}`;
+        const d = evaluateTypedData(
+            policy(), WALLET,
+            typedReq(VERIFIER, { processId, cumulativeValue: "9000000" }, "ResolveProcess"),
+            { token: 5_000_000n, native: 0n },
+        );
+        expect(d.allow, d.reason).toBe(true);
+        expect(d.risk.token).toBe(0n);
+        expect(d.reason).toContain(processId);
+        expect(d.reason).toContain("9000000");
+    });
+
+    it("refuses a resolve that names no process or no value", () => {
+        const processId = `0x${"ab".repeat(32)}`;
+        const noValue = evaluateTypedData(policy(), WALLET, typedReq(VERIFIER, { processId }, "ResolveProcess"), NO_SPEND);
+        expect(noValue.allow).toBe(false);
+        expect(noValue.reason).toMatch(/cumulativeValue/);
+        const noProcess = evaluateTypedData(
+            policy(), WALLET,
+            typedReq(VERIFIER, { processId: "0x01", cumulativeValue: "1000" }, "ResolveProcess"),
+            NO_SPEND,
+        );
+        expect(noProcess.allow).toBe(false);
+        expect(noProcess.reason).toMatch(/processId/);
     });
 
     it("refuses native value without an explicit native ceiling", () => {

@@ -108,6 +108,7 @@ fn vectors() -> Value {
                 },
                 KernelOp::Resolve {
                     process_id: process,
+                    cumulative_value: second.expected_cumulative_value,
                     commitments: vec![first.clone(), second.clone()],
                     buyer_sig: signature(7),
                 },

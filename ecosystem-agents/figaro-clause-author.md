@@ -133,9 +133,10 @@ Public statement of all of this, for the user: `/clauses` § "What the hash cove
 Run the off-chain validator (`parseClauseSpec`) and the content encoder round-trip from
 `@figaro-protocol/sdk/clauses`. Off-chain well-formedness is the gate that runs at author time and
 before every signature; get it green here. It is not the only content check that exists —
-the batched, proof-based resolution path re-validates the clause IN-PROOF against the
-spec whose bytes hash to the clause key, and resolves only for a key
-`ClauseRegistry.registered` holds, so a spec that is wrong is wrong on both paths. (The direct attestation path merkle-binds and validates no content shape.) Either
+a batched attestation sent in the plaintext form, at the attesting party's choice, has its
+content validated IN-PROOF against the spec whose bytes hash to the clause key, accepted
+only for a key `ClauseRegistry.registered` holds, so a spec that is wrong is wrong there too.
+(The default on both paths binds hashes and validates no content shape.) Either
 way, a malformed spec is caught here, at author time, and never on chain by a per-clause
 validator — there is none, by design.
 

@@ -12,12 +12,14 @@
 <li><a href="" aria-current="page">SequencerContentProof</a></li></ul>
 <h1>Interface SequencerContentProof</h1></div>
 <section class="tsd-panel tsd-comment">
-<div class="tsd-comment tsd-typography"><p>The witness payload every batched attestation carries — mirrors the
-Rust <code>AttestationContentProof</code>.</p>
+<div class="tsd-comment tsd-typography"><p>The plaintext form of a batched attestation's witness — mirrors the
+Rust <code>AttestationContentProof</code>. Sent only at the attesting party's
+choice (<code>checkContentInProof</code>): it hands the relay the clause's
+content.</p>
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">SequencerContentProof</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#clause_data">clause_data</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#content_json">content_json</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#content_kind">content_kind</a><span class="tsd-signature-symbol">:</span> <a href="../types/agent.SequencerContentKind.html" class="tsd-signature-type tsd-kind-type-alias">SequencerContentKind</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#inclusion_proof">inclusion_proof</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#spec_json">spec_json</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/sequencer.ts#L38">agent/sequencer.ts:38</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/sequencer.ts#L45">agent/sequencer.ts:45</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -41,7 +43,7 @@ Rust <code>AttestationContentProof</code>.</p>
 clause this attestation declares against.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/sequencer.ts#L47">agent/sequencer.ts:47</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/sequencer.ts#L54">agent/sequencer.ts:54</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="content_json"><span>content_<wbr/>json</span><a href="#content_json" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">content_json</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
@@ -49,12 +51,12 @@ clause this attestation declares against.</p>
 generically ABI-encoded) in-proof.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/sequencer.ts#L44">agent/sequencer.ts:44</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/sequencer.ts#L51">agent/sequencer.ts:51</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="content_kind"><span>content_<wbr/>kind</span><a href="#content_kind" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">content_kind</span><span class="tsd-signature-symbol">:</span> <a href="../types/agent.SequencerContentKind.html" class="tsd-signature-type tsd-kind-type-alias">SequencerContentKind</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/sequencer.ts#L51">agent/sequencer.ts:51</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/sequencer.ts#L58">agent/sequencer.ts:58</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="inclusion_proof"><span>inclusion_<wbr/>proof</span><a href="#inclusion_proof" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">inclusion_proof</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">[]</span></div>
@@ -62,7 +64,7 @@ generically ABI-encoded) in-proof.</p>
 order's signed checkoutHash. Empty for a single-clause agreement.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/sequencer.ts#L50">agent/sequencer.ts:50</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/sequencer.ts#L57">agent/sequencer.ts:57</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="spec_json"><span>spec_<wbr/>json</span><a href="#spec_json" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">spec_json</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
@@ -70,7 +72,7 @@ order's signed checkoutHash. Empty for a single-clause agreement.</p>
 is the clause key the attestation names).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/sequencer.ts#L41">agent/sequencer.ts:41</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/sequencer.ts#L48">agent/sequencer.ts:48</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

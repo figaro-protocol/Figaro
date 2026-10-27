@@ -3,9 +3,10 @@
 ///
 /// Pre-checks are advisory only. The proof enforces all invariants.
 /// Pre-checks exist to reject clearly invalid operations early and
-/// avoid wasting prover compute. The attestation content gate is the
-/// mirror's own `validate_attestation_content` — the exact function the
-/// guest runs — so mempool acceptance and in-proof acceptance cannot
+/// avoid wasting prover compute. The attestation gate is the mirror's own
+/// `validate_attestation_witness` — the exact function the guest runs, in
+/// either form (hash-only: inclusion alone; plaintext: spec, content and
+/// inclusion) — so mempool acceptance and in-proof acceptance cannot
 /// drift.
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
@@ -15,7 +16,7 @@ use tokio::sync::Mutex;
 use alloy_primitives::{keccak256, B256};
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::{derive_commitment_ids, validate_attestation_content};
+use figaro_kernel::kernel::{derive_commitment_ids, validate_attestation_witness};
 use figaro_kernel::types::*;
 
 /// Default cap on pending operations. The mempool is a PUBLIC,
@@ -276,19 +277,22 @@ impl Mempool {
             }
             KernelOp::Resolve {
                 process_id,
+                cumulative_value,
                 commitments,
                 buyer_sig,
             } => {
                 buf.extend_from_slice(b"resolve");
                 buf.extend_from_slice(process_id.as_slice());
+                buf.extend_from_slice(&cumulative_value.to_be_bytes::<32>());
                 // Admission checks that the signature recovers, never to
                 // whom: the root buyer is state. The signer is in the key.
-                let digest = typed_data_hash(&domain, &resolve_struct_hash(process_id));
+                let digest = typed_data_hash(&domain, &resolve_struct_hash(process_id, cumulative_value));
                 if let Ok(signer) = recover_signer(&digest, buyer_sig) {
                     buf.extend_from_slice(signer.as_slice());
                 }
-                // The signature covers the process id alone; the order list
-                // rides unsigned and the proof refuses an incomplete one.
+                // The signature covers the process id and the cumulative
+                // value; the order list rides unsigned and the proof refuses
+                // an incomplete one.
                 for commitment in commitments {
                     let (order_hash, _) = derive_commitment_ids(&domain, commitment);
                     buf.extend_from_slice(order_hash.as_slice());
@@ -308,7 +312,7 @@ impl Mempool {
                 buf.extend_from_slice(clause_id.as_slice());
                 buf.push(*stage);
                 buf.extend_from_slice(content_ref.as_slice());
-                buf.extend_from_slice(keccak256(proof.spec_json.as_bytes()).as_slice());
+                witness_key(&mut buf, proof);
             }
             KernelOp::AttestAsBuyer {
                 target,
@@ -324,7 +328,7 @@ impl Mempool {
                 buf.extend_from_slice(clause_id.as_slice());
                 buf.push(*stage);
                 buf.extend_from_slice(content_ref.as_slice());
-                buf.extend_from_slice(keccak256(proof.spec_json.as_bytes()).as_slice());
+                witness_key(&mut buf, proof);
             }
         }
         keccak256(&buf)
@@ -792,10 +796,11 @@ impl Mempool {
             }
             KernelOp::Resolve {
                 process_id,
+                cumulative_value,
                 commitments,
                 buyer_sig,
             } => {
-                let struct_hash = resolve_struct_hash(process_id);
+                let struct_hash = resolve_struct_hash(process_id, cumulative_value);
                 let digest = typed_data_hash(&domain, &struct_hash);
                 recover_signer(&digest, buyer_sig)
                     .map_err(|e| format!("invalid resolve signature: {e}"))?;
@@ -834,9 +839,10 @@ impl Mempool {
                 if recovered != target.seller {
                     return Err("attest-seller sig does not match target.seller".into());
                 }
-                // The mirror's witness gates (spec identity, content,
-                // agreement inclusion) — the same code the guest runs.
-                validate_attestation_content(
+                // The mirror's witness gates (agreement inclusion; spec
+                // identity and content for the plaintext form) — the same
+                // code the guest runs.
+                validate_attestation_witness(
                     proof,
                     content_ref,
                     clause_id,
@@ -868,7 +874,7 @@ impl Mempool {
                 if recovered != target.buyer {
                     return Err("attest-buyer sig does not match target.buyer".into());
                 }
-                validate_attestation_content(
+                validate_attestation_witness(
                     proof,
                     content_ref,
                     clause_id,
@@ -878,6 +884,22 @@ impl Mempool {
                 .map_err(|e| format!("attestation witness gates rejected: {e}"))?;
                 Ok(())
             }
+        }
+    }
+}
+
+/// The part of an attestation's dedup key its witness contributes: the
+/// form, and the clauseData hash (hash-only) or the spec's hash
+/// (plaintext).
+fn witness_key(buf: &mut Vec<u8>, witness: &AttestationWitness) {
+    match witness {
+        AttestationWitness::HashOnly { clause_data_hash, .. } => {
+            buf.extend_from_slice(b"hash-only");
+            buf.extend_from_slice(clause_data_hash.as_slice());
+        }
+        AttestationWitness::Plaintext(proof) => {
+            buf.extend_from_slice(b"plaintext");
+            buf.extend_from_slice(keccak256(proof.spec_json.as_bytes()).as_slice());
         }
     }
 }

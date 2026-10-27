@@ -11,7 +11,7 @@ use figaro_kernel::operation_stream::{
 };
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
-    AttestationContentProof, BatchInput, Commitment, ContentKind, KernelOp, Signature, UsageClaim,
+    AttestationContentProof, AttestationWitness, BatchInput, Commitment, ContentKind, KernelOp, Signature, UsageClaim,
     UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE,
 };
 
@@ -44,13 +44,13 @@ fn attestation(seed: u8) -> KernelOp {
         stage: 0,
         content_ref: B256::repeat_byte(0x71),
         seller_sig: signature(seed),
-        proof: AttestationContentProof {
+        proof: AttestationWitness::Plaintext(AttestationContentProof {
             spec_json: "{}".into(),
             content_json: "{}".into(),
             clause_data: "{}".into(),
             inclusion_proof: vec![],
             content_kind: ContentKind::ReAssert,
-        },
+        }),
     }
 }
 
@@ -69,6 +69,8 @@ fn sample() -> (Vec<KernelOp>, Vec<UsageClaim>) {
         },
         KernelOp::Resolve {
             process_id: B256::repeat_byte(0x01),
+            // The sum of the listed payments, 100 + 200.
+            cumulative_value: U256::from(300u64),
             commitments: vec![commitment(1), commitment(2)],
             buyer_sig: signature(5),
         },
@@ -126,10 +128,12 @@ fn the_stream_round_trips_and_skips_attestations() {
     match &ops2[2] {
         KernelOp::Resolve {
             process_id,
+            cumulative_value,
             commitments,
             buyer_sig,
         } => {
             assert_eq!(*process_id, B256::repeat_byte(0x01));
+            assert_eq!(*cumulative_value, U256::from(300u64), "the decoder derives the signed value from the listed payments");
             assert_eq!(commitments.len(), 2);
             assert_eq!(commitments[1].seller, commitment(2).seller);
             assert_eq!(buyer_sig.v, signature(5).v);

@@ -52,8 +52,8 @@ interface IUsageCounter {
 ///         changes, deploy a new verifier.
 ///
 ///         The spec-binding check is what makes the in-proof clause validation
-///         OPEN-WORLD: the guest validates content against a witness spec and
-///         commits (clause key, keccak256(spec bytes)); the clause key IS the
+///         OPEN-WORLD: for an attestation sent in the plaintext form the guest validates content against a witness spec and
+///         commits (clause key, keccak256(spec bytes)); a hash-only attestation commits no binding; the clause key IS the
 ///         spec hash, so this contract accepts the batch only if the two words
 ///         of each binding are equal and `ClauseRegistry.registered(clauseKey)`.
 ///         The program verification key covers the ENGINE, the registry

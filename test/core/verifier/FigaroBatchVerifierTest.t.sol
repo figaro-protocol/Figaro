@@ -393,6 +393,44 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(verifier.stateRoot(), newRoot);
     }
 
+    /// A hash-only batched attestation commits no spec binding: the batch
+    /// carries the attestation and an empty binding list, and the verifier
+    /// settles it and re-emits the event, as the coordinator accepts an
+    /// attestation without consulting ClauseRegistry. The clause key here is
+    /// one nobody registered.
+    function test_settleBatch_settlesAnAttestationWithNoSpecBinding() public {
+        bytes32 unregisteredKey = keccak256(bytes('{"clauseId":"nobody-registered-this","version":1}'));
+        assertFalse(registry.registered(unregisteredKey));
+
+        (
+            ,
+            FigaroBatchVerifier.NetPosition[] memory positions,
+            FigaroBatchVerifier.BatchEventData memory events,
+            bytes32 newRoot
+        ) = _canonicalBatch();
+        events.attestations[0].clauseId = unregisteredKey;
+        events.specBindings = new FigaroBatchVerifier.SpecBinding[](0);
+        bytes memory pv = abi.encode(
+            GENESIS,
+            newRoot,
+            uint64(block.chainid),
+            address(verifier),
+            _hashPositions(positions),
+            _hashAttestations(events.attestations),
+            _hashBindings(events.specBindings),
+            _hashUsageEmpty(),
+            uint64(block.timestamp),
+            keccak256(hex"")
+        );
+
+        vm.expectEmit(true, true, true, true, address(verifier));
+        emit FigaroBatchVerifier.Attestation(
+            keccak256("order"), keccak256("process"), seller, unregisteredKey, 0, keccak256("content")
+        );
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
+        assertEq(verifier.stateRoot(), newRoot);
+    }
+
     // ── Continuity + binding-integrity reverts ──────────────────────
 
     function test_settleBatch_revertsOnStaleRoot() public {

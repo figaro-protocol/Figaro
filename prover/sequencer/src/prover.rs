@@ -39,7 +39,10 @@ pub struct ProveResult {
 /// receives the proof — a LIVENESS dependency only: the proof still verifies
 /// against the program vkey, so no prover can forge a resolving proof. Whoever
 /// requests a proof pays for it (the relay operator) — never the protocol,
-/// never its users. The proof FORM is `SP1_PROOF_MODE`:
+/// never its users. The inputs it submits are the whole batch input, so the
+/// spec, content and clauseData of an attestation sent in the plaintext form
+/// reach the network's provers; a hash-only attestation carries its
+/// fingerprints alone. The proof FORM is `SP1_PROOF_MODE`:
 /// `groth16` (default) or `plonk` — it must match the SP1 verifier gateway
 /// `FigaroBatchVerifier` was deployed against (Succinct runs one gateway per
 /// form; a proof of the other form is `RouteNotFound` on-chain).

@@ -15,7 +15,7 @@ use figaro_kernel::eip712::{commitment_struct_hash, domain_separator, resolve_st
 use figaro_kernel::kernel::{apply_batch, provenance_leaf_bytes};
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
-    BatchInput, Commitment, KernelOp, KernelStateSnapshot, PublicValues, UsageClaim, UsageClaimKind,
+    AttestationWitness, BatchInput, Commitment, KernelOp, KernelStateSnapshot, PublicValues, UsageClaim, UsageClaimKind,
     USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY,
 };
 use figaro_prove_test::{
@@ -130,7 +130,7 @@ async fn guest_program_rejects_substituted_witness_spec() {
     let mut input = build_canonical_batch_input();
     let wrong_spec = load_spec_json("figaro-handoff");
     match &mut input.operations[1] {
-        KernelOp::AttestAsSeller { proof, .. } => proof.spec_json = wrong_spec,
+        KernelOp::AttestAsSeller { proof: AttestationWitness::Plaintext(proof), .. } => proof.spec_json = wrong_spec,
         other => panic!("expected op[1] to be AttestAsSeller, got {other:?}"),
     }
 
@@ -204,7 +204,8 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
         deadline: U256::from(2000u64),
     };
     let process_id = typed_data_hash(&domain, &commitment_struct_hash(&order));
-    let resolve_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_struct_hash(&process_id)));
+    let resolve_sig =
+        sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_struct_hash(&process_id, &order.payment)));
 
     BatchInput {
         chain_id: CHAIN_ID,
@@ -218,6 +219,7 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
             },
             KernelOp::Resolve {
                 process_id,
+                cumulative_value: order.payment,
                 commitments: vec![order.clone()],
                 buyer_sig: resolve_sig,
             },

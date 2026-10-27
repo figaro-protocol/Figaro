@@ -18,6 +18,7 @@ use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::{apply_batch_with_state, apply_operations, derive_commitment_ids};
+use figaro_kernel::operation_stream::resolved_cumulative_value;
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
 
@@ -164,9 +165,11 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
             for process_id in &process_order {
                 let commitments = by_process[process_id].clone();
                 let buyer = commitments[0].buyer;
-                let digest = typed_data_hash(&domain, &resolve_struct_hash(process_id));
+                let cumulative_value = resolved_cumulative_value(&commitments).expect("payments fit");
+                let digest = typed_data_hash(&domain, &resolve_struct_hash(process_id, &cumulative_value));
                 ops.push(KernelOp::Resolve {
                     process_id: *process_id,
+                    cumulative_value,
                     commitments,
                     buyer_sig: sign_digest(&keys[&buyer], &digest),
                 });

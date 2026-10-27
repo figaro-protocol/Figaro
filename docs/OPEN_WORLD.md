@@ -123,8 +123,9 @@ every composition.
   spec; never a free-form string for a choice. `type:"string"` is ONLY for genuinely
   free content (description, URI, nonce). Bounded beats free-form for three load-bearing
   reasons: (1) **validatable** — the off-chain validator checks membership
-  before any signature, and on the batched path the generic in-proof clause engine
-  checks it again against the registered spec (per-clause validator contracts do not
+  before any signature, and on the batched path, for an attestation its party
+  sends in the plaintext form, the generic in-proof clause engine checks it again
+  against the registered spec (per-clause validator contracts do not
   exist, permanently — `CONTRACTS.md` § "What the protocol has no contract for" owns it); (2)
   **deterministically encodable** — the generic encoder maps value → 0-based ordinal,
   which a free string cannot; (3) **renderable** as a real choice control.

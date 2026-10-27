@@ -12,7 +12,7 @@ use alloy::sol;
 use tracing::info;
 
 use alloy::primitives::U256;
-use figaro_kernel::types::{BatchEvents, Commitment, KernelOp, NetPosition, UsageClaim, UsageClaimKind};
+use figaro_kernel::types::{AttestationWitness, BatchEvents, Commitment, KernelOp, NetPosition, UsageClaim, UsageClaimKind};
 
 use crate::mempool::PendingOp;
 use crate::prover::ProveResult;
@@ -282,13 +282,16 @@ pub async fn filter_funded_commits(
     allocate_funding(pending, &funds)
 }
 
-/// An attestation's clause key and the hash of the witness spec bytes it
-/// carries — the guest requires them equal (Gate S) and the verifier
-/// requires the key `registered(clauseKey)`; either failing reverts the
-/// WHOLE batch. `None` for every other op.
+/// A plaintext attestation's clause key and the hash of the witness spec
+/// bytes it carries — the guest requires them equal (Gate S) and the
+/// verifier requires the key `registered(clauseKey)`; either failing
+/// reverts the WHOLE batch. `None` for a hash-only attestation, which
+/// commits no spec binding (the verifier checks no registry for it, as the
+/// coordinator checks none), and for every other op.
 pub fn attestation_spec(op: &KernelOp) -> Option<(alloy::primitives::B256, alloy::primitives::B256)> {
     match op {
-        KernelOp::AttestAsSeller { clause_id, proof, .. } | KernelOp::AttestAsBuyer { clause_id, proof, .. } => {
+        KernelOp::AttestAsSeller { clause_id, proof: AttestationWitness::Plaintext(proof), .. }
+        | KernelOp::AttestAsBuyer { clause_id, proof: AttestationWitness::Plaintext(proof), .. } => {
             Some((*clause_id, alloy::primitives::keccak256(proof.spec_json.as_bytes())))
         }
         _ => None,
@@ -957,6 +960,7 @@ mod tests {
             key: B256::repeat_byte(0x01),
             op: KernelOp::Resolve {
                 process_id: B256::ZERO,
+                cumulative_value: alloy::primitives::U256::ZERO,
                 commitments: vec![],
                 buyer_sig: figaro_kernel::types::Signature {
                     v: 27,
@@ -1003,6 +1007,7 @@ mod tests {
                 key: B256::repeat_byte(0x02),
                 op: KernelOp::Resolve {
                     process_id: B256::ZERO,
+                    cumulative_value: alloy::primitives::U256::ZERO,
                     commitments: vec![],
                     buyer_sig: sig,
                 },

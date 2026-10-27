@@ -2,7 +2,7 @@
  * E2E integration test: SDK → Sequencer → FigaroBatchVerifier → on-chain.
  *
  * The cross-language lock for the proof apparatus: TypeScript signs the
- * ops and builds the witness payload, the Rust sequencer runs the mirror
+ * ops and builds a plaintext attestation witness, the Rust sequencer runs the mirror
  * + guest and submits, and the Solidity verifier checks the hashes and
  * the ClauseRegistry spec-binding anchor. If any layer's bytes drift,
  * this test fails.
@@ -19,7 +19,7 @@
  *   2. Register figaro-modalities on ClauseRegistry under its key (the hash of its pinned bytes)
  *   3. Mint tokens, approve bonds to FigaroBatchVerifier
  *   4. Start sequencer as child process
- *   5. Submit Commit + AttestAsSeller (RuntimeWitness) via SequencerClient
+ *   5. Submit Commit + AttestAsSeller (the plaintext form, RuntimeWitness) via SequencerClient
  *   6. Wait for batch 1: bonds pulled, Attestation re-emitted
  *   6b. A relay holding no state refuses to start; a second relay starts
  *       on the state the first serves (STATE_FROM=<its URL>, fetched and
@@ -125,7 +125,10 @@ const REBUILT_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process
 // ── Batch-only typed data (EIP-712 signature replaces msg.sender) ───────────
 
 const RESOLVE_TYPES = {
-    ResolveProcess: [{ name: "processId", type: "bytes32" }],
+    ResolveProcess: [
+        { name: "processId", type: "bytes32" },
+        { name: "cumulativeValue", type: "uint256" },
+    ],
 } as const;
 
 const ATTEST_SELLER_TYPES = {
@@ -199,11 +202,12 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             encodePacked(["bytes32", "bytes32"], [clauseKey, keccak256(stringToHex(CLAUSE_DATA))]),
         ),
     );
-    const witnessProof: SequencerContentProof = {
+    // The plaintext form: the content is validated inside the proof, so the
+    // spec binding reaches the verifier's ClauseRegistry check.
+    const witnessContent: Omit<SequencerContentProof, "inclusion_proof"> = {
         spec_json: specJson,
         content_json: CLAUSE_DATA,
         clause_data: CLAUSE_DATA,
-        inclusion_proof: [],
         content_kind: "RuntimeWitness",
     };
 
@@ -398,7 +402,9 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             stage: 0,
             contentRef,
             sellerSig: attestSig,
-            proof: witnessProof,
+            clauseDataHash: keccak256(stringToHex(CLAUSE_DATA)),
+            inclusionProof: [],
+            checkContentInProof: witnessContent,
         });
         expect(typeof attestResult.id).toBe("number");
 
@@ -509,15 +515,19 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
         // ── 5. Sign + submit Resolve; wait for batch 2 ──────────
 
+        // The process holds the one order: its cumulative value is that
+        // order's expected cumulative value.
+        const cumulativeValue = commitment.expectedCumulativeValue;
         const buyerResolveSig = await buyerWallet.signTypedData({
             domain,
             types: RESOLVE_TYPES,
             primaryType: "ResolveProcess" as const,
-            message: { processId },
+            message: { processId, cumulativeValue },
         });
 
         const resolveResult = await secondClient.submitResolve(
             processId,
+            cumulativeValue,
             [commitment],
             buyerResolveSig,
         );
@@ -778,13 +788,14 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             expect(fs.existsSync(REBUILT_STATE_PATH), "the rebuilt state is kept").toBe(true);
 
             // ── 5. The buyer's resolve, carried by the rebuilt relay ──
+            const cumulativeValue = commitment.expectedCumulativeValue;
             const buyerResolveSig = await buyerWallet.signTypedData({
                 domain,
                 types: RESOLVE_TYPES,
                 primaryType: "ResolveProcess" as const,
-                message: { processId },
+                message: { processId, cumulativeValue },
             });
-            await rebuilt.submitResolve(processId, [commitment], buyerResolveSig);
+            await rebuilt.submitResolve(processId, cumulativeValue, [commitment], buyerResolveSig);
             await waitForBatchCount(rebuilt, 1, 5 * 60_000);
 
             // ── 6. Paid out: the chain's facts ──

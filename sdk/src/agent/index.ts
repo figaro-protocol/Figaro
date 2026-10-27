@@ -193,6 +193,7 @@ export type {
     SequencerSignature,
     SequencerContentProof,
     SequencerContentKind,
+    SequencerAttestationWitness,
     SequencerStatus,
     SubmitResult,
 } from "./sequencer.js";

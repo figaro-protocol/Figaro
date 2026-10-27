@@ -1,9 +1,9 @@
 ---
 title: Sharp edges
-description: Nine documented traps, ordered by when each one bites — writing a clause spec, building a commit, resolving and recording, then reading resolved state back — each with the mechanic and where its canonical explanation lives.
+description: Twelve documented traps, ordered by when each one bites — writing a clause spec, building a commit, resolving and recording, then reading resolved state back — each with the mechanic and where its canonical explanation lives.
 ---
 
-Nine traps, in the order you can hit them: writing a clause spec, building a commit or a checkout, resolving a process and recording what it earned, then reading resolved state back. Each is a real mechanic verified against the shipped contracts and SDK. Where the canonical explanation lives in SDK source, this page links to it rather than restating it.
+Twelve traps, in the order you can hit them: writing a clause spec, building a commit or a checkout, resolving a process and recording what it earned, then reading resolved state back. Each is a real mechanic verified against the shipped contracts and SDK. Where the canonical explanation lives in SDK source, this page links to it rather than restating it.
 
 Read the [whole model](/) first, and [The contracts](/protocol/contracts/) for the surfaces these traps sit on.
 
@@ -28,6 +28,8 @@ Read the [whole model](/) first, and [The contracts](/protocol/contracts/) for t
 **A process cannot mix ERC-20s.** The 2:1 bond ratio is a same-unit comparison, so `FigaroCore` refuses any oracle or DEX dependency that would compare across tokens and reverts `CurrencyMismatch` on an extending order whose `currency` differs from the process's. Mix currencies by composing parallel processes, or swap before commit — never within one process. The cost model is on [Composition](/protocol/composition/).
 
 ## Resolution-time — resolving, and recording what it earned
+
+**A batched attestation in the plaintext form hands your content to the relay.** By default `SequencerClient.submitAttestAsSeller` / `submitAttestAsBuyer` send exactly what `AttestationCoordinator` takes on the direct path — the `clauseDataHash`, the inclusion proof and the `contentRef` — and the guest checks only that the clause leaf opens against the order's signed `checkoutHash`, so the relay sees fingerprints, as the chain does. Set `checkContentInProof` and the submission carries the spec, the content and the committed clauseData in plaintext, to have the content validated inside the proof: the relay receives them, and a relay proving on the Succinct Prover Network (`SP1_PROVER=network`) forwards them to its provers. That data is the parties' own; send it only when the in-proof check is worth the disclosure. The forms are stated on [Scaling](/protocol/scaling/).
 
 **The id `resolveProcess` takes is not the id its structs carry.** The first argument is `FigaroCore`'s *derived* process id; every struct inside `commitments` must be the one the parties *signed* — and a root order signed `processId = 0`. Feed back the derived id that `OrderCommitted` carries — the natural move, since event reconstruction hands you exactly that — and `FigaroCore` recomputes an order hash matching no committed order, reverting `OrderNotCommitted`. `restoreSignedProcessId(c, chainId, core)` is the bridge: if treating a commitment as a root reproduces its own processId it WAS a root, so it is returned with `processId = 0`; otherwise it is a sub-order, returned unchanged. `orderToCommitment` gives you the derived-id form from an event; you must pass every element through `restoreSignedProcessId` before hashing or submitting. The SDK's `executeAction` applies it for you; a hand-rolled `cast` call does not. Canonical: [`sdk/src/commitments.ts`](https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts) and the [SDK manual](/building/sdk/).
 

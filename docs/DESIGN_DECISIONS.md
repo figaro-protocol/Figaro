@@ -686,33 +686,53 @@ and a new arrow between the registries for every usage counted, to enforce a
 continuity the stake does not promise. The claim is the one moment the designer
 acts, so the gate reads there, stateless, as every other gate in the minter does.
 
-## 21. Batch-path resolve is a bare `ResolveProcess(processId)` signature — no nonce, no deadline
+## 21. Batch-path resolve is a `ResolveProcess(processId, cumulativeValue)` signature — no nonce, no deadline
 
 **Pattern**: `FigaroCore` authorizes resolution by presence — `resolveProcess`
-requires `msg.sender == ps.rootBuyer`. The batch path replaces presence with an
-EIP-712 signature: the guest (`prover/lib/src/kernel.rs` `apply_resolve`)
-recovers a signature over `ResolveProcess(bytes32 processId)` — one field,
-no nonce, no deadline — and requires the signer to equal the root buyer.
+requires `msg.sender == ps.rootBuyer`, over the orders the process holds at
+that call. The batch path replaces presence with an EIP-712 signature: the
+guest (`prover/lib/src/kernel.rs` `apply_resolve`) recovers a signature over
+`ResolveProcess(bytes32 processId,uint256 cumulativeValue)`, requires the
+signer to equal the root buyer, and refuses the resolve
+(`StaleResolveAuthorization`) unless the process's cumulative value when the
+operation applies is the signed one. No nonce, no deadline.
 
 **Why it looks wrong**: a nonce-less, deadline-less authorization signature is
 the canonical replay-attack shape; every EIP-712 checklist flags it.
 
-**Why it is correct**: a replay needs a second state in which the same message
-authorizes something again, and that state cannot exist. Resolution is
-terminal and single-shot: after a process resolves, its orders leave status 1
-and its active count is zero, so a replayed resolve fails the guest's own
-state gates (`OrderNotCommitted` / `NoActiveOrders`) — and that state rides
-the on-chain state-root chain, so no relay can rewind it. The domain pins
-`chainId` and the VERIFIER as `verifyingContract`, so the signature cannot
-travel to another chain, another verifier, or to `FigaroCore` (whose domain —
-and authorization model — differ; the two paths never share a signature,
-see `SCALING_STRATEGY.md`). A deadline is absent because the message's meaning
-is time-invariant: it authorizes exactly one state transition whose payouts
-are fixed by the signed commitments, so late submission delivers precisely
-what the buyer already accepted — nothing a nonce or expiry would protect.
-The asymmetry against `FigaroCore` is the deliberate cost of the batch
-universe: `msg.sender` does not exist inside a proof, so authorization must
-be carried as a signature, in its minimal sufficient form.
+**Why it is correct**: the authorization binds the state it was given for.
+A signature is held, by the buyer or by a relay, between its making and its
+application, and anyone holding it may apply it; the guest resolves every
+order the process holds at application. The cumulative value is the Core's
+accumulator: it rises strictly at every commit (every payment is at least 1),
+so a signed value names at most one prefix of the process's commits, and the
+resolve pays exactly that prefix, every order of which the buyer co-signed.
+Signed over the value the process holds, a later commit moves the value past
+it and the authorization is refused for good; the buyer signs again over the
+new value if it still accepts. Signed over a value the process has not yet
+reached, it pre-authorizes exactly the orders that bring the process there:
+the relay holds it, and it applies once the buyer's own commits reach the
+value. Only the buyer signs it, so this is buyer dominance. The binding is to
+the state, so no nonce, counter or clock is needed and none
+enters the Core. A replay needs a second state in which the same message
+authorizes something again, and that state cannot exist: after a process
+resolves, its orders leave status 1 and its active count is zero, so a
+replayed resolve fails the guest's own state gates (`OrderNotCommitted` /
+`NoActiveOrders`), and that state rides the on-chain state-root chain, so no
+relay can rewind it. The domain pins `chainId` and the VERIFIER as
+`verifyingContract`, so the signature cannot travel to another chain, another
+verifier, or to `FigaroCore` (whose domain — and authorization model — differ;
+the two paths never share a signature, see `SCALING_STRATEGY.md`). A deadline
+is absent because the message's meaning is time-invariant: it authorizes the
+resolution of the process at the value the buyer signed, which pays exactly
+the prefix that value names, so late submission delivers precisely that.
+`formal/RelayState.tla` `ResolveSpec` models it, the buyer signing over the
+value the process holds or any it has not reached: `ResolveBoundToState` TRUE
+holds `ResolvePaysSignedPrefix` (every applied resolve pays exactly the prefix
+of the process's commits whose cumulative value the buyer signed), FALSE (a
+signature over the process id alone) fails it. The asymmetry against `FigaroCore` is the deliberate cost of the
+batch universe: `msg.sender` does not exist inside a proof, so authorization
+must be carried as a signature, in its minimal sufficient form.
 
 ---
 
@@ -882,6 +902,35 @@ rebuilds its distinct leaves and its root.
 
 ---
 
+## 26. The attestation signature does not cover the witness form — the in-proof content check is not evidence to a reader
+
+**Pattern**: The attestation typed data a party signs covers `orderHash`,
+`clauseId`, `stage` and `contentRef` only. The witness form the party chose
+for a batched attestation — hash-only, or plaintext to have its content
+checked inside the proof — is neither signed nor legible on chain: a relay
+holding a plaintext operation can submit it hash-only, and the `Attestation`
+event the verifier re-emits is identical for both forms.
+
+**Why it looks wrong**: A party that paid for an in-proof content check would
+expect the chain to show that the check ran, and a reader would expect to
+tell a content-checked attestation from one that was not.
+
+**Why it is correct**: The evidence a reader relies on — the signer, an open
+order, the leaf's inclusion under the signed `checkoutHash`, and the
+`contentRef` — is bound identically on every path: the coordinator's, the
+batch path's hash-only form, and its plaintext form. The in-proof content
+check assures the attesting party's own submission (its bytes satisfy the
+spec it names) and is not attributable evidence to a reader; a reader checks
+content by fetching the bytes and hashing them to the `contentRef`, as on the
+direct path. Signing the form would add a field to the attestation struct
+that changes nothing a reader can rely on.
+
+**Tests**: `prover/lib/tests/attestation_vectors.rs` (the hash-only event is
+the coordinator's, byte for byte); `prover/lib/tests/parity.rs` (both forms
+emit the same event fields).
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -906,8 +955,9 @@ rebuilds its distinct leaves and its root.
 | 18 | Usage needs a live clause, agreement or assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
 | 19 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
 | 20 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal makes resolved-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is record-time only; record-at-resolution closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
-| 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess` signature | batch-path | The canonical EIP-712 replay shape | Resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; the message authorizes one time-invariant transition, leaving nothing for a nonce to price |
+| 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess(processId, cumulativeValue)` signature | batch-path | The canonical EIP-712 replay shape | The signature binds a cumulative value, so it pays exactly the prefix of the process that value names and a later commit invalidates it; resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere |
 | 22 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
 | 23 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
 | 24 | The assembly root is a merkle tree over registered agreement hashes | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |
 | 25 | Ordered agreements; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per process per (kind, key) |
+| 26 | The attestation signature does not cover the witness form | batch-path/evidence | A relay can submit a plaintext operation hash-only, and the event is the same for both forms, so the in-proof check is not legible | The evidence a reader relies on (signer, open order, inclusion, `contentRef`) is identical on every path; the in-proof check assures the attesting party's own submission, not a reader |

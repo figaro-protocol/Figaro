@@ -64,7 +64,7 @@ import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
     createPublicClient, createWalletClient, defineChain, http,
-    keccak256, hashTypedData, toHex,
+    keccak256, hashTypedData, toHex, stringToHex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
@@ -158,11 +158,13 @@ const agreement = {
 };
 const checkoutHash = computeCheckoutHash(agreement);
 
-const witnessProof = {
+// The plaintext form, the seller's choice here: the content is validated
+// inside the proof, and the relay receives it (and the proving network, when
+// the relay proves there). Omitting `checkContentInProof` sends the hashes alone.
+const witnessContent = {
     spec_json: specJson,
     content_json: clauseData,
     clause_data: clauseData,
-    inclusion_proof: [],
     content_kind: 'RuntimeWitness',
 };
 
@@ -347,7 +349,9 @@ saveRecord({
 const attestResult = await sequencer.submitAttestAsSeller({
     target: commitment,
     clauseId: clauseKey, stage: 0, contentRef,
-    sellerSig: attestSig, proof: witnessProof,
+    sellerSig: attestSig,
+    clauseDataHash: keccak256(stringToHex(clauseData)), inclusionProof: [],
+    checkContentInProof: witnessContent,
 });
 console.log(`submitted AttestAsSeller (op ${attestResult.id})  contentRef ${contentRef}`);
 
@@ -403,14 +407,22 @@ console.log(`✓ Attestation re-emitted on-chain (block ${ours[0].blockNumber}, 
 
 // ── Resolve + RPGF usage claim ──────────────────────────────────────────────
 
+// The process holds the one order: its cumulative value is that order's
+// expected cumulative value, and the buyer signs over it.
+const cumulativeValue = commitment.expectedCumulativeValue;
 const buyerResolveSig = await buyerWallet.signTypedData({
     domain,
-    types: { ResolveProcess: [{ name: 'processId', type: 'bytes32' }] },
+    types: {
+        ResolveProcess: [
+            { name: 'processId', type: 'bytes32' },
+            { name: 'cumulativeValue', type: 'uint256' },
+        ],
+    },
     primaryType: 'ResolveProcess',
-    message: { processId },
+    message: { processId, cumulativeValue },
 });
-saveRecord({ resolution: { processId, buyerSig: buyerResolveSig } });
-const resolveResult = await sequencer.submitResolve(processId, [commitment], buyerResolveSig);
+saveRecord({ resolution: { processId, cumulativeValue: cumulativeValue.toString(), buyerSig: buyerResolveSig } });
+const resolveResult = await sequencer.submitResolve(processId, cumulativeValue, [commitment], buyerResolveSig);
 console.log(`\nsubmitted Resolve (op ${resolveResult.id})`);
 
 const claimContext = await fetchUsageClaimContext(publicClient, record.usageCounter, agreement);

@@ -121,7 +121,9 @@ The proof-based path that resolves batches of processes beside the direct
 - refuses public values of any length but `PUBLIC_VALUES_LENGTH` (320 bytes,
   ten words) with `PublicValuesLengthMismatch`, before the proof is read;
 - verifies an SP1 proof of a batch of `FigaroCore` operations (commits, resolutions,
-  witness-gated attestations) against the immutable `programVKey`;
+  attestations, each proved by inclusion as the coordinator proves it and, in
+  the plaintext form the attesting party may choose, by its content too)
+  against the immutable `programVKey`;
 - checks state-root continuity and chain binding, and hash-verifies the
   calldata (positions, attestations, spec bindings, usage, and the operation
   stream) byte-for-byte against the Rust mirror's `compute_*_hash`; the
@@ -130,7 +132,9 @@ The proof-based path that resolves batches of processes beside the direct
   value 9 (`OperationsHashMismatch`), so a batch cannot land without
   publishing, in its own transaction, what rebuilds the state behind its root;
   the contract reads none of it;
-- checks every spec binding: the clause key is the hash of the witness spec,
+- checks every spec binding, one per clause a plaintext attestation names (a
+  hash-only attestation commits none, as the coordinator consults no
+  registry): the clause key is the hash of the witness spec,
   so the binding's two words must be equal (`SpecBindingMismatch`), and the
   key must be `ClauseRegistry.registered` (`ClauseNotRegistered`) — the vkey
   covers the generic clause engine, the registry anchors the constraint set,
@@ -609,9 +613,13 @@ addresses are deployment configuration, never code written here.
 
 ## What the protocol has no contract for
 
-Clause content is validated off-chain by the SDK against the spec, and in
-proof on the batch path against specs whose key `ClauseRegistry.registered`
-holds; there are
+Clause content is validated off-chain by the SDK against the spec. On chain,
+content validation exists only inside a proof and only at the attesting
+party's choice: a batched attestation in the plaintext form has its content
+validated in proof against a spec whose key `ClauseRegistry.registered` holds.
+The default on both paths binds hashes: the coordinator takes the
+`clauseDataHash`, the inclusion proof and the `contentRef`, and a batched
+attestation in its default hash-only form carries exactly those. There are
 no per-clause validator contracts, and a never-seen clause is attestable and
 batch-resolvable with zero per-clause code (`CLAUSES.md`). Usage for designer
 rewards is counted as it happens; there is no posted root, no reward bond, no

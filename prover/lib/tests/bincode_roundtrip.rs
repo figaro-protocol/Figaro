@@ -81,7 +81,7 @@ fn bincode_roundtrip_full_batchinput() {
                 stage: 1,
                 content_ref: B256::ZERO,
                 seller_sig: dummy_sig(),
-                proof: dummy_proof(ContentKind::RuntimeWitness),
+                proof: AttestationWitness::Plaintext(dummy_proof(ContentKind::RuntimeWitness)),
             },
             KernelOp::AttestAsBuyer {
                 target: dummy_commitment(),
@@ -89,10 +89,14 @@ fn bincode_roundtrip_full_batchinput() {
                 stage: 0,
                 content_ref: B256::ZERO,
                 buyer_sig: dummy_sig(),
-                proof: dummy_proof(ContentKind::ReAssert),
+                proof: AttestationWitness::HashOnly {
+                    clause_data_hash: B256::repeat_byte(0xab),
+                    inclusion_proof: vec![B256::repeat_byte(0xcc)],
+                },
             },
             KernelOp::Resolve {
                 process_id: B256::ZERO,
+                cumulative_value: U256::ZERO,
                 commitments: vec![dummy_commitment()],
                 buyer_sig: dummy_sig(),
             },
@@ -119,6 +123,28 @@ fn bincode_roundtrip_just_attestation_content_proof() {
 }
 
 #[test]
+fn bincode_roundtrip_both_witness_forms() {
+    let hash_only = AttestationWitness::HashOnly {
+        clause_data_hash: B256::repeat_byte(0xab),
+        inclusion_proof: vec![B256::repeat_byte(0xcc), B256::repeat_byte(0xdd)],
+    };
+    let bytes = bincode::serialize(&hash_only).expect("serialize");
+    match bincode::deserialize(&bytes).expect("deserialize") {
+        AttestationWitness::HashOnly { clause_data_hash, inclusion_proof } => {
+            assert_eq!(clause_data_hash, B256::repeat_byte(0xab));
+            assert_eq!(inclusion_proof.len(), 2);
+        }
+        other => panic!("expected HashOnly, got {other:?}"),
+    }
+    let plaintext = AttestationWitness::Plaintext(dummy_proof(ContentKind::ReAssert));
+    let bytes = bincode::serialize(&plaintext).expect("serialize");
+    match bincode::deserialize(&bytes).expect("deserialize") {
+        AttestationWitness::Plaintext(p) => assert_eq!(p.content_kind, ContentKind::ReAssert),
+        other => panic!("expected Plaintext, got {other:?}"),
+    }
+}
+
+#[test]
 fn bincode_roundtrip_content_kind_variants() {
     for kind in [ContentKind::RuntimeWitness, ContentKind::ReAssert] {
         let bytes = bincode::serialize(&kind).expect("serialize");
@@ -139,7 +165,7 @@ fn bincode_roundtrip_single_attest_seller() {
             stage: 0,
             content_ref: B256::ZERO,
             seller_sig: dummy_sig(),
-            proof: dummy_proof(ContentKind::RuntimeWitness),
+            proof: AttestationWitness::Plaintext(dummy_proof(ContentKind::RuntimeWitness)),
         }],
         prev_state: empty_snapshot(),
         usage_claims: vec![],

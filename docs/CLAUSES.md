@@ -5,11 +5,15 @@ agreement. Its content is validated in one place — off-chain, by the SDK
 (`@figaro-protocol/sdk/clauses`) — against the spec. The chain registers the
 clause's key — `keccak256` of the spec's pinned canonical bytes, its identity
 and its content hash at once — and binds each attestation to the signed
-agreement; it validates no content shape. On the batch path, content is
-validated in proof by a generic clause engine (the Rust mirror of the SDK's
-validator, in `prover/clause`) that takes each spec as a witness input whose
-hash is the clause key, accepted for a key `ClauseRegistry.registered` holds —
-`SCALING_STRATEGY.md` owns that argument.
+agreement; it validates no content shape. Content validation exists on chain
+only inside a proof and only at the attesting party's choice: a batched
+attestation sent in the plaintext form has its content validated in proof by
+a generic clause engine (the Rust mirror of the SDK's validator, in
+`prover/clause`) that takes the spec as a witness input whose hash is the
+clause key, accepted for a key `ClauseRegistry.registered` holds —
+`SCALING_STRATEGY.md` owns that argument. The default on both paths binds
+hashes: a batched attestation in its hash-only form carries exactly the
+coordinator's `clauseDataHash`, inclusion proof and `contentRef`.
 Both paths keep the property that matters: a never-seen clause is attestable,
 and batch-resolvable, with zero per-clause on-chain code.
 
@@ -267,7 +271,10 @@ mutable-name software and keep semver.
 `checkoutHash` and emits `Attestation` with the caller's `contentRef`. It takes
 fingerprints, never preimages — `clauseDataHash = keccak256(clauseData)`,
 `contentRef = keccak256(content)` — so a private clause's plaintext never
-touches the chain. A clause not committed at signing cannot be attested (the
+touches the chain. The batch path's default form takes the same three, and the
+relay and the proving network see only those fingerprints; the plaintext form
+reaches them only when the attesting party sends it to have its content
+checked in the proof. A clause not committed at signing cannot be attested (the
 proof will not open); any committed clause attests with zero per-clause code.
 Public content is fingerprint-addressed: the attesting party pins the exact
 content bytes so that the IPFS address is derived from `contentRef` alone, and

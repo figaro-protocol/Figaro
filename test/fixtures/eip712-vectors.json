@@ -45,10 +45,11 @@
             {
                 "type": "ResolveProcess",
                 "message": {
-                    "processId": "0x2e7e31f99b635fa2bc1d7ecdba7d05d7b3c4e6175ac61694bc07d463a8974661"
+                    "processId": "0x2e7e31f99b635fa2bc1d7ecdba7d05d7b3c4e6175ac61694bc07d463a8974661",
+                    "cumulativeValue": "1361129467683753853853498429727072847324"
                 },
-                "structHash": "0x77aa5cbdacd7296d81317bf2e234e3d02188490f0ac48192c8d2511acf1b1f0a",
-                "digest": "0x82fec0b695f641d5c511a3ce3f46f8f385e68677e9f86a5f0c48d1c41701ebeb"
+                "structHash": "0x377e8b2b3db45c34f66b7eff0bdaf8fe4a7eada2c5436eb9aa379e24074069ef",
+                "digest": "0x224143e9265254ccf9b157c53109202182e32e9cde9e6deb77d9fb733de0990c"
             },
             {
                 "type": "AttestSeller",

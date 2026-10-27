@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
+import "src/core/attestation/AttestationCoordinator.sol";
 import "src/mocks/MockPermitToken.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
@@ -11,19 +12,25 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 ///        and its Rust mirror must agree on
 /// @notice `KernelTransitionVectorsTest` locks six hand-written scenarios.
 ///         This test GENERATES a stream: `KERNEL_FUZZ_STEPS` operations drawn
-///         from `KERNEL_FUZZ_SEED`, each a commit or a resolve, valid or
-///         deliberately malformed (an expired deadline, a wrong signer, a
-///         cumulative value off by one, a replay, a foreign order in a
-///         resolution list, a payment in the overflow window, ...). Every
-///         operation runs on the live FigaroCore; what FigaroCore did — the ids it
-///         returned, or the error it reverted with — is written to
+///         from `KERNEL_FUZZ_SEED`, each a commit, a resolve or an
+///         attestation, valid or deliberately malformed (an expired
+///         deadline, a wrong signer, a cumulative value off by one, a
+///         replay, a foreign order in a resolution list, a payment in the
+///         overflow window, a clauseDataHash or an inclusion proof the
+///         agreement does not open, an attestation on a resolved or an
+///         unknown order, ...). Every commit and resolve runs on the live
+///         FigaroCore and every attestation on the live
+///         AttestationCoordinator; what each did — the ids it returned or the
+///         log it emitted, or the error it reverted with — is written to
 ///         `test/fixtures/streams/kernel.jsonl`, one JSON object per line: a
 ///         header, the steps, then every wallet's deposits and payouts and
 ///         every process's final state.
 ///         `prover/lib/tests/fuzz_stream.rs` replays the same stream through
-///         the mirror, one operation per batch, and must accept what the
-///         FigaroCore accepted, reject what it rejected with the same error, and
-///         arrive at the same figures. `scripts/test-cross-impl-fuzz.sh` runs
+///         the mirror, one operation per batch — each attestation in the
+///         hash-only form, the coordinator's own arguments — and must accept
+///         what the contracts accepted, reject what they rejected with the
+///         same error, emit the coordinator's log bytes, and arrive at the
+///         same figures. `scripts/test-cross-impl-fuzz.sh` runs
 ///         the two halves under one seed.
 ///
 ///         The generator asserts nothing about WHICH error a malformed
@@ -36,6 +43,7 @@ contract KernelDifferentialFuzzTest is Test {
     uint256 internal constant KEY_COUNT = 5;
 
     FigaroCore internal core;
+    AttestationCoordinator internal coordinator;
     MockPermitToken internal tokenA;
     MockPermitToken internal tokenB;
 
@@ -67,6 +75,7 @@ contract KernelDifferentialFuzzTest is Test {
         tokenA = new MockPermitToken();
         tokenB = new MockPermitToken();
         core = new FigaroCore();
+        coordinator = new AttestationCoordinator(address(core));
         for (uint256 i = 0; i < KEY_COUNT; i++) {
             wallets[i] = vm.addr(keys[i]);
             tokenA.mint(wallets[i], 1 << 200);
@@ -112,7 +121,8 @@ contract KernelDifferentialFuzzTest is Test {
     }
 
     function _step(uint256 i, uint256 timestamp) internal returns (string memory, bool) {
-        uint256 roll = _next() % 100;
+        uint256 roll = _next() % 120;
+        if (roll >= 100) return _attestStep(i, timestamp);
         bool haveOpen = _openCount() > 0;
         if (roll < 22 || (!haveOpen && roll < 70)) return _commitStep(i, timestamp, _validRoot(timestamp));
         if (roll < 52) return _commitStep(i, timestamp, _validExtension(timestamp));
@@ -147,6 +157,7 @@ contract KernelDifferentialFuzzTest is Test {
             salt: ++saltCounter,
             deadline: timestamp + _next() % 1000
         });
+        d.c.checkoutHash = _agreementRoot(d.c.salt);
         d.buyerSignerKey = keys[b];
         d.sellerSignerKey = keys[s];
     }
@@ -168,6 +179,7 @@ contract KernelDifferentialFuzzTest is Test {
             salt: ++saltCounter,
             deadline: timestamp + _next() % 1000
         });
+        d.c.checkoutHash = _agreementRoot(d.c.salt);
         d.buyerSignerKey = p.buyerKey;
         d.sellerSignerKey = keys[s];
     }
@@ -341,6 +353,127 @@ contract KernelDifferentialFuzzTest is Test {
         }
     }
 
+    // ── Attestations ─────────────────────────────────────────────
+
+    /// Every order the stream commits signs a two-clause agreement, derived
+    /// from its salt so an attestation can name either leaf and prove it.
+    function _clauseKey(uint256 salt, uint256 leaf) internal pure returns (bytes32) {
+        return keccak256(abi.encode("figaro-fuzz-clause", salt, leaf));
+    }
+
+    function _clauseDataHash(uint256 salt, uint256 leaf) internal pure returns (bytes32) {
+        return keccak256(abi.encode("figaro-fuzz-clause-data", salt, leaf));
+    }
+
+    function _leaf(uint256 salt, uint256 leaf) internal pure returns (bytes32) {
+        return CommitmentTypes.clauseLeaf(_clauseKey(salt, leaf), _clauseDataHash(salt, leaf));
+    }
+
+    function _agreementRoot(uint256 salt) internal pure returns (bytes32) {
+        bytes32 a = _leaf(salt, 0);
+        bytes32 b = _leaf(salt, 1);
+        return a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
+    }
+
+    /// An attestation as the stream carries it: the coordinator's arguments
+    /// and the wallet that calls.
+    struct Attest {
+        CommitmentTypes.Commitment target;
+        bool asSeller;
+        address caller;
+        bytes32 clauseId;
+        uint8 stage;
+        bytes32 clauseDataHash;
+        bytes32[] proof;
+        bytes32 contentRef;
+    }
+
+    /// variants 0..3 are valid (on an order the stream committed, mostly one
+    /// of an open process); 4 a clauseDataHash the agreement did not commit,
+    /// 5 an inclusion proof that does not open, 6 a caller who is not the
+    /// party, 7 an order nobody committed, 8 one leaf's key with the other's
+    /// clauseDataHash.
+    function _attestStep(uint256 i, uint256 timestamp) internal returns (string memory, bool) {
+        if (committedSteps.length == 0) return _commitStep(i, timestamp, _validRoot(timestamp));
+        Attest memory a;
+        // Mostly an order of an open process; now and then any order the
+        // stream committed, which may since have resolved.
+        (bool open, uint256 pi) = _next() % 4 == 0 ? (false, 0) : _pickProc(false);
+        a.target = open
+            ? committedAt[procs[pi].steps[_next() % procs[pi].steps.length]]
+            : committedAt[committedSteps[_next() % committedSteps.length]];
+        a.asSeller = _next() % 2 == 0;
+        a.caller = a.asSeller ? a.target.seller : a.target.buyer;
+        uint256 leaf = _next() % 2;
+        a.clauseId = _clauseKey(a.target.salt, leaf);
+        a.stage = uint8(_next() % 3);
+        a.clauseDataHash = _clauseDataHash(a.target.salt, leaf);
+        a.proof = new bytes32[](1);
+        a.proof[0] = _leaf(a.target.salt, 1 - leaf);
+        a.contentRef = bytes32(_next());
+
+        uint256 variant = _next() % 9;
+        if (variant == 4) {
+            a.clauseDataHash = bytes32(_next());
+        } else if (variant == 5) {
+            a.proof[0] = bytes32(_next());
+        } else if (variant == 6) {
+            a.caller = wallets[_next() % KEY_COUNT];
+        } else if (variant == 7) {
+            a.target.salt = ++saltCounter; // the same fields under a salt nobody signed
+        } else if (variant == 8) {
+            a.clauseDataHash = _clauseDataHash(a.target.salt, 1 - leaf);
+        }
+
+        string memory key = string.concat("step", vm.toString(i));
+        vm.serializeString(key, "type", "step");
+        vm.serializeString(key, "index", vm.toString(i));
+        vm.serializeString(key, "kind", a.asSeller ? "attestAsSeller" : "attestAsBuyer");
+        vm.serializeString(key, "timestamp", vm.toString(timestamp));
+        vm.serializeBytes32(key, "commitmentProcessId", a.target.processId);
+        vm.serializeAddress(key, "buyer", a.target.buyer);
+        vm.serializeAddress(key, "seller", a.target.seller);
+        vm.serializeAddress(key, "currency", a.target.currency);
+        vm.serializeString(key, "payment", vm.toString(a.target.payment));
+        vm.serializeString(key, "expectedCumulativeValue", vm.toString(a.target.expectedCumulativeValue));
+        vm.serializeBytes32(key, "checkoutHash", a.target.checkoutHash);
+        vm.serializeString(key, "salt", vm.toString(a.target.salt));
+        vm.serializeString(key, "deadline", vm.toString(a.target.deadline));
+        vm.serializeAddress(key, "caller", a.caller);
+        vm.serializeBytes32(key, "clauseId", a.clauseId);
+        vm.serializeString(key, "stage", vm.toString(a.stage));
+        vm.serializeBytes32(key, "clauseDataHash", a.clauseDataHash);
+        vm.serializeBytes32(key, "inclusionProof", a.proof);
+        vm.serializeBytes32(key, "contentRef", a.contentRef);
+        return _runAttest(key, a);
+    }
+
+    function _runAttest(string memory key, Attest memory a) internal returns (string memory, bool) {
+        vm.recordLogs();
+        vm.prank(a.caller);
+        bool ok;
+        bytes memory reason;
+        if (a.asSeller) {
+            try coordinator.attestAsSeller(a.target, a.clauseId, a.stage, a.clauseDataHash, a.proof, a.contentRef) {
+                ok = true;
+            } catch (bytes memory r) {
+                reason = r;
+            }
+        } else {
+            try coordinator.attestAsBuyer(a.target, a.clauseId, a.stage, a.clauseDataHash, a.proof, a.contentRef) {
+                ok = true;
+            } catch (bytes memory r) {
+                reason = r;
+            }
+        }
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        if (!ok) return (vm.serializeString(key, "outcome", _errorName(reason)), false);
+        assertEq(logs.length, 1, "an accepted attestation emits one log");
+        vm.serializeBytes32(key, "topics", logs[0].topics);
+        vm.serializeBytes(key, "data", logs[0].data);
+        return (vm.serializeString(key, "outcome", "ok"), true);
+    }
+
     // ── What the stream ends on ──────────────────────────────────
 
     function _writeParties() internal {
@@ -453,6 +586,10 @@ contract KernelDifferentialFuzzTest is Test {
         if (sel == FigaroCore.DuplicateCommitment.selector) return "DuplicateCommitment";
         if (sel == FigaroCore.InvalidRootCumulativeValue.selector) return "InvalidRootCumulativeValue";
         if (sel == FigaroCore.ProcessAlreadyResolved.selector) return "ProcessAlreadyResolved";
+        if (sel == AttestationCoordinator.UnknownOrder.selector) return "UnknownOrder";
+        if (sel == AttestationCoordinator.OrderResolved.selector) return "OrderResolved";
+        if (sel == AttestationCoordinator.NotAuthorized.selector) return "NotAuthorized";
+        if (sel == AttestationCoordinator.InvalidInclusionProof.selector) return "InvalidInclusionProof";
         if (sel == bytes4(keccak256("Panic(uint256)"))) return "Panic";
         if (sel == ECDSA.ECDSAInvalidSignature.selector) return "ECDSAInvalidSignature";
         if (sel == ECDSA.ECDSAInvalidSignatureS.selector) return "ECDSAInvalidSignatureS";

@@ -136,26 +136,41 @@ export async function verifyCommitmentSignature(
 // Not a FigaroCore type. On the direct path FigaroCore enforces buyer dominance
 // with `msg.sender == rootBuyer`; there is no signature to check. The BATCH
 // path has no sender, so the buyer signs this instead, and the proof checks it
-// (`prover/lib/src/eip712.rs::resolve_struct_hash`). Its domain is the
-// VERIFIER's — pass the verifier address as `core`.
+// (`prover/lib/src/eip712.rs::resolve_struct_hash`). It signs the process id
+// and the process's cumulative value as the buyer accepts it; the proof
+// refuses it unless the process holds that value when it applies, so it
+// resolves exactly the prefix of the process whose cumulative value the buyer
+// signed. A value the process has passed is refused, and the buyer signs again
+// over the new one; a value not yet reached pre-authorizes exactly the orders
+// that bring the process there. Its domain is the VERIFIER's — pass the verifier
+// address as `core`.
 
 /** EIP-712 types for the batch path's `ResolveProcess` authorization —
- *  the signed form of FigaroCore's `msg.sender == rootBuyer`. */
+ *  the signed form of FigaroCore's `msg.sender == rootBuyer`, bound to the
+ *  process's cumulative value at the signature. */
 export const RESOLVE_PROCESS_TYPES = {
-    ResolveProcess: [{ name: "processId", type: "bytes32" }],
+    ResolveProcess: [
+        { name: "processId", type: "bytes32" },
+        { name: "cumulativeValue", type: "uint256" },
+    ],
 } as const;
 
 /**
- * Does `signature` authorize resolving `processId`, from `signer`? The
- * batch-path counterpart of {@link verifyCommitmentSignature}: a reader of a
- * relay's published resolution uses it to check that the buyer really did
- * authorize the resolution before believing the payouts.
+ * Does `signature` authorize resolving `processId` at `cumulativeValue`, from
+ * `signer`? The batch-path counterpart of {@link verifyCommitmentSignature}:
+ * a reader of a batched resolution uses it to check that the buyer really did
+ * authorize the resolution of the process at that value before believing the
+ * payouts. Read from the chain, a resolve entry of the verifier's
+ * `BatchOperations` stream carries no word for the value: pass the sum of the
+ * `payment`s of the commitments the entry lists, which is the value the proof
+ * applied it at.
  *
  * `ctx.core` is the EIP-712 `verifyingContract` — for batched trade that is
  * the FigaroBatchVerifier, NOT FigaroCore.
  */
 export async function verifyResolveProcessSignature(
     processId: Hex,
+    cumulativeValue: bigint,
     signature: Hex,
     signer: Address,
     ctx: { chainId: number; core: Address },
@@ -166,7 +181,7 @@ export async function verifyResolveProcessSignature(
             domain: buildDomain(ctx.chainId, ctx.core),
             types: RESOLVE_PROCESS_TYPES,
             primaryType: "ResolveProcess",
-            message: { processId },
+            message: { processId, cumulativeValue },
             signature,
         });
     } catch {

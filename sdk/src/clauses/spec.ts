@@ -3,7 +3,8 @@
  * validation. This off-chain TypeScript module (frontend form gates, SDK
  * agent-action preflight) is the reference implementation; the Rust prover mirror
  * (`prover/clause`) re-runs the same semantics in-proof on the batched path,
- * against the spec as a witness input whose bytes hash to the clause key.
+ * for an attestation its party sends in the plaintext form, against the spec
+ * as a witness input whose bytes hash to the clause key.
  * The DIRECT path's chain validates no content — it merkle-binds attestations
  * and content-hash-binds the evidence; well-formedness there is this layer's
  * job + a read-time concern.

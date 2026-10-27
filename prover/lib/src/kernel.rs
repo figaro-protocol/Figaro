@@ -203,11 +203,13 @@ fn apply_commit(
 
 /// Apply a single resolve operation. Matches `FigaroCore.resolveProcess()`
 /// except buyer authorization is via EIP-712 signature (batched equivalent
-/// of `msg.sender == rootBuyer`).
+/// of `msg.sender == rootBuyer`) over the process id and the cumulative
+/// value the buyer accepts, refused unless the process holds that value now.
 fn apply_resolve(
     state: &mut KernelState,
     domain: &B256,
     process_id: &B256,
+    cumulative_value: &U256,
     commitments: &[Commitment],
     buyer_sig: &Signature,
     tracker: &mut TokenTracker,
@@ -218,7 +220,7 @@ fn apply_resolve(
         .ok_or(KernelError::UnknownProcess)?;
 
     // ── Buyer authorization via EIP-712 signature ──
-    let resolve_hash = resolve_struct_hash(process_id);
+    let resolve_hash = resolve_struct_hash(process_id, cumulative_value);
     let digest = typed_data_hash(domain, &resolve_hash);
     let recovered = recover_signer(&digest, buyer_sig)?;
     if recovered != ps.root_buyer {
@@ -226,8 +228,20 @@ fn apply_resolve(
     }
 
     // ── Pre-checks ──
+    // A resolved process first: its value is frozen, so a stale check
+    // against it would read a value it never reaches as one still to come.
     if ps.active_order_count == 0 {
         return Err(KernelError::NoActiveOrders);
+    }
+    // ── The authorization binds the state it was given for ──
+    // The cumulative value rises at every commit, so the signed value names
+    // one prefix of the process: the one the buyer signed for, or, signed
+    // ahead, the one its own later commits bring the process to.
+    if *cumulative_value != ps.cumulative_value {
+        return Err(KernelError::StaleResolveAuthorization {
+            signed: *cumulative_value,
+            current: ps.cumulative_value,
+        });
     }
     if commitments.len() as u64 != ps.active_order_count {
         return Err(KernelError::IncompleteOrderList {
@@ -359,7 +373,7 @@ pub fn is_reserved_key(key: &B256) -> bool {
     *key == PROVENANCE_LEAF_KEY || *key == ASSEMBLY_TERMS_LEAF_KEY
 }
 
-/// The agreement format's rule for an attestation of the reserved
+/// The agreement format's rule for a plaintext attestation of the reserved
 /// provenance leaf. The leaf's content is fixed by the format, so the
 /// guest REPRODUCES it rather than validating it against a spec: the
 /// committed bytes must be exactly `provenance_leaf_bytes` of the
@@ -405,7 +419,7 @@ fn validate_provenance_attestation(
     Ok(())
 }
 
-/// Run the witness gates for one attestation and return the spec binding
+/// Run the plaintext form's gates for one attestation and return the spec binding
 /// the batch commits for on-chain verification — or `None` for the
 /// reserved provenance leaf, which the agreement format's own rule
 /// (`validate_provenance_attestation`) verifies with no spec.
@@ -433,9 +447,8 @@ fn validate_provenance_attestation(
 ///     the target's signed `checkout_hash` via the sorted-pair Merkle
 ///     `inclusion_proof` — mandatory for every mode, mirroring the
 ///     coordinator.
-/// Public so the sequencer's mempool pre-checks run the EXACT gate the
-/// guest will run — advisory there, enforced here; one implementation,
-/// no drift.
+/// The plaintext form's gates, reached through
+/// `validate_attestation_witness`.
 pub fn validate_attestation_content(
     proof: &AttestationContentProof,
     content_ref: &B256,
@@ -537,6 +550,42 @@ pub fn validate_attestation_content(
     Ok(Some(binding))
 }
 
+/// Run the gates for one batched attestation's witness, in the form the
+/// attesting party picked (`AttestationWitness`), and return the spec
+/// binding the batch commits — `None` for the hash-only form.
+///
+///   `HashOnly` — gate I alone, exactly `AttestationCoordinator._verifyInclusion`:
+///     leaf `keccak256(keccak256(clause_id ++ clause_data_hash))` opens
+///     against the target's signed `checkout_hash`; `content_ref` is
+///     re-emitted as signed and no spec binding is committed. The reserved
+///     provenance leaf is accepted on inclusion alone, as the coordinator
+///     accepts it: the bytes behind its hash are checked at the usage claim.
+///   `Plaintext` — gates S, C and I (`validate_attestation_content`).
+///
+/// Public so the sequencer's mempool pre-checks run the EXACT gate the
+/// guest will run — advisory there, enforced here; one implementation,
+/// no drift.
+pub fn validate_attestation_witness(
+    witness: &AttestationWitness,
+    content_ref: &B256,
+    clause_id: &B256,
+    stage: u8,
+    checkout_hash: &B256,
+) -> Result<Option<SpecBinding>, KernelError> {
+    match witness {
+        AttestationWitness::HashOnly { clause_data_hash, inclusion_proof } => {
+            let leaf = format_leaf(clause_id, clause_data_hash);
+            if !crate::merkle::verify_inclusion(inclusion_proof, *checkout_hash, leaf) {
+                return Err(KernelError::InvalidInclusionProof);
+            }
+            Ok(None)
+        }
+        AttestationWitness::Plaintext(proof) => {
+            validate_attestation_content(proof, content_ref, clause_id, stage, checkout_hash)
+        }
+    }
+}
+
 // ── attestAsSeller ────────────────────────────────────────────────
 
 /// Apply a seller attestation. Matches the authorization logic in
@@ -553,7 +602,7 @@ fn apply_attest_as_seller(
     stage: u8,
     content_ref: &B256,
     seller_sig: &Signature,
-    proof: &AttestationContentProof,
+    proof: &AttestationWitness,
     events: &mut Vec<AttestationEventData>,
     bindings: &mut BTreeSet<SpecBinding>,
 ) -> Result<(), KernelError> {
@@ -570,9 +619,10 @@ fn apply_attest_as_seller(
         return Err(KernelError::NotAuthorized);
     }
 
-    // ── Witness gates: spec identity, content, agreement inclusion ──
+    // ── Witness gates: agreement inclusion; spec identity and content
+    //    for the plaintext form ──
     let binding =
-        validate_attestation_content(proof, content_ref, clause_id, stage, &target.checkout_hash)?;
+        validate_attestation_witness(proof, content_ref, clause_id, stage, &target.checkout_hash)?;
     bindings.extend(binding);
 
     events.push(AttestationEventData {
@@ -603,7 +653,7 @@ fn apply_attest_as_buyer(
     stage: u8,
     content_ref: &B256,
     buyer_sig: &Signature,
-    proof: &AttestationContentProof,
+    proof: &AttestationWitness,
     events: &mut Vec<AttestationEventData>,
     bindings: &mut BTreeSet<SpecBinding>,
 ) -> Result<(), KernelError> {
@@ -627,7 +677,7 @@ fn apply_attest_as_buyer(
 
     // ── Witness gates ──
     let binding =
-        validate_attestation_content(proof, content_ref, clause_id, stage, &target.checkout_hash)?;
+        validate_attestation_witness(proof, content_ref, clause_id, stage, &target.checkout_hash)?;
     bindings.extend(binding);
 
     events.push(AttestationEventData {
@@ -986,6 +1036,7 @@ pub fn apply_operations(
             }
             KernelOp::Resolve {
                 process_id,
+                cumulative_value,
                 commitments,
                 buyer_sig,
             } => {
@@ -993,6 +1044,7 @@ pub fn apply_operations(
                     state,
                     &domain,
                     process_id,
+                    cumulative_value,
                     commitments,
                     buyer_sig,
                     &mut tracker,

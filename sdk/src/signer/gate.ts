@@ -14,8 +14,13 @@
  * fee is ETH). A transaction
  * is read field by field, and one carrying a field the gate does not
  * evaluate is refused. A typed-data signature's risk is the wallet's bonds
- * under the 2× bond math on a Commitment — both when it is buyer and seller;
- * the other protocol structs put nothing new at risk.
+ * under the 2× bond math on a Commitment — both when it is buyer and seller.
+ * A batch-path ResolveProcess puts nothing new at risk, as the direct path's
+ * `resolveProcess` transaction does not: it pays the sellers from bonds
+ * already counted at each commit and refunds the rest, so a wallet that
+ * bonded up to its window is never refused its own resolve. The gate still
+ * reads it — a bytes32 process id and a quantity value — and names both in
+ * its decision. The attestation structs put nothing at risk.
  */
 
 import type { Address, Hex } from "viem";
@@ -93,14 +98,17 @@ export interface TypedDataRequest {
 const ZERO_RISK_PRIMARY_TYPES = new Set([
     "AttestSeller",
     "AttestBuyer",
-    "ResolveProcess",
 ]);
+
+const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 
 /**
  * Decide a `signTypedData` request. Domain binding first (chainId + a
  * verifyingContract on the policy's allowlist — FigaroCore or the batch
- * verifier), then risk: a Commitment binds the wallet's own bond side; an
- * unknown primaryType is refused, never signed blind.
+ * verifier), then risk: a Commitment binds the wallet's own bond side; a
+ * ResolveProcess carries no new risk (its payments come from bonds counted
+ * at commit) and its decision names the process and the cumulative value it
+ * accepts; an unknown primaryType is refused, never signed blind.
  */
 export function evaluateTypedData(
     policy: SignerPolicy,
@@ -141,6 +149,20 @@ export function evaluateTypedData(
             return refuse("wallet is neither buyer nor seller of the Commitment");
         }
         risk = { token: mine, native: 0n };
+    } else if (req.primaryType === "ResolveProcess") {
+        const processId = typeof req.message.processId === "string" ? req.message.processId.toLowerCase() : "";
+        const cumulative = toBigInt(req.message.cumulativeValue);
+        if (!BYTES32.test(processId)) {
+            return refuse("ResolveProcess processId is not a bytes32");
+        }
+        if (cumulative === null) {
+            return refuse("ResolveProcess cumulativeValue is not a quantity");
+        }
+        return {
+            allow: true,
+            risk,
+            reason: `ok: ResolveProcess of ${processId} accepting cumulative value ${cumulative} under ${vc}`,
+        };
     } else if (!ZERO_RISK_PRIMARY_TYPES.has(req.primaryType)) {
         return refuse(`unknown primaryType ${req.primaryType} — never signed blind`);
     }

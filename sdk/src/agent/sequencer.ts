@@ -13,13 +13,18 @@
  * mutations (clause/seller/assembly registration) are once-per-registration
  * ETH-staked intents that stay on the direct path.
  *
- * Every batched attestation carries the full witness payload: the
- * clause's pinned spec bytes (whose keccak256 IS the clause key the
- * verifier checks is registered at resolution), the content, the
- * committed clauseData, and the agreement inclusion proof. The batched
- * path validates everything in-proof or the batch cannot resolve.
+ * A batched attestation carries, by default, exactly what
+ * `AttestationCoordinator` takes on the direct path: the `clauseDataHash`,
+ * the agreement inclusion proof and the `contentRef` — fingerprints only,
+ * so the relay sees what the chain sees and never the parties' data. The
+ * plaintext form — the clause's pinned spec bytes, the content and the
+ * committed clauseData — is sent only when the caller sets
+ * `checkContentInProof`, to have the content validated inside the proof;
+ * the relay then receives that plaintext and, when it proves on the
+ * Succinct network (`SP1_PROVER=network`), forwards it there.
  */
 
+import { keccak256, stringToHex } from "viem";
 import type { Hex, Address, Commitment } from "../types.js";
 
 // ── Sequencer operation types (match Rust KernelOp variants) ────────────────
@@ -33,8 +38,10 @@ export interface SequencerSignature {
 /** How the attestation's content bytes relate to the clause spec. */
 export type SequencerContentKind = "RuntimeWitness" | "ReAssert";
 
-/** The witness payload every batched attestation carries — mirrors the
- *  Rust `AttestationContentProof`. */
+/** The plaintext form of a batched attestation's witness — mirrors the
+ *  Rust `AttestationContentProof`. Sent only at the attesting party's
+ *  choice (`checkContentInProof`): it hands the relay the clause's
+ *  content. */
 export interface SequencerContentProof {
     /** The clause's spec JSON — the EXACT pinned bytes (`keccak256` of them
      *  is the clause key the attestation names). */
@@ -51,6 +58,14 @@ export interface SequencerContentProof {
     content_kind: SequencerContentKind;
 }
 
+/** What a batched attestation carries — serde's externally tagged encoding
+ *  of the Rust `AttestationWitness`. `HashOnly` is the coordinator's
+ *  arguments (the default); `Plaintext` has the content checked in the
+ *  proof. */
+export type SequencerAttestationWitness =
+    | { HashOnly: { clause_data_hash: Hex; inclusion_proof: Hex[] } }
+    | { Plaintext: SequencerContentProof };
+
 export type SequencerOp =
     | {
         type: "Commit";
@@ -61,6 +76,10 @@ export type SequencerOp =
     | {
         type: "Resolve";
         process_id: Hex;
+        /** The cumulative value the buyer's signature accepts (decimal
+         *  string): the proof applies the resolve only while the process
+         *  holds it. */
+        cumulative_value: string;
         commitments: SequencerCommitment[];
         buyer_sig: SequencerSignature;
     }
@@ -71,7 +90,7 @@ export type SequencerOp =
         stage: number;
         content_ref: Hex;
         seller_sig: SequencerSignature;
-        proof: SequencerContentProof;
+        proof: SequencerAttestationWitness;
     }
     | {
         type: "AttestAsBuyer";
@@ -80,7 +99,7 @@ export type SequencerOp =
         stage: number;
         content_ref: Hex;
         buyer_sig: SequencerSignature;
-        proof: SequencerContentProof;
+        proof: SequencerAttestationWitness;
     };
 
 /** Commitment in the sequencer's wire format (snake_case, string-encoded bigints). */
@@ -252,6 +271,26 @@ export function fromSequencerSig(sig: SequencerSignature): Hex {
     return `0x${r}${s}${sig.v.toString(16).padStart(2, "0")}` as Hex;
 }
 
+/**
+ * The witness a convenience submission carries: the hash-only form unless
+ * the caller set `checkContentInProof`. The plaintext form's clauseData
+ * must hash to `clauseDataHash`, so the two forms name the same leaf.
+ */
+function attestationWitness(args: {
+    clauseDataHash: Hex;
+    inclusionProof: Hex[];
+    checkContentInProof?: Omit<SequencerContentProof, "inclusion_proof">;
+}): SequencerAttestationWitness {
+    const content = args.checkContentInProof;
+    if (content === undefined) {
+        return { HashOnly: { clause_data_hash: args.clauseDataHash, inclusion_proof: args.inclusionProof } };
+    }
+    if (keccak256(stringToHex(content.clause_data)).toLowerCase() !== args.clauseDataHash.toLowerCase()) {
+        throw new SequencerError("checkContentInProof.clause_data does not hash to clauseDataHash", 0);
+    }
+    return { Plaintext: { ...content, inclusion_proof: args.inclusionProof } };
+}
+
 // ── Sequencer client ────────────────────────────────────────────────────────
 
 export interface SequencerClientConfig {
@@ -314,15 +353,21 @@ export class SequencerClient {
     /**
      * Submit a Resolve operation using SDK types.
      * Convenience wrapper that converts commitments + buyer signature.
+     * `buyerSig` is the buyer's `ResolveProcess` signature over `processId`
+     * and `cumulativeValue`, the process's cumulative value when the buyer
+     * signed; the proof refuses the resolve unless the process still holds
+     * it, so a later commit calls for a new signature.
      */
     async submitResolve(
         processId: Hex,
+        cumulativeValue: bigint,
         commitments: Commitment[],
         buyerSig: Hex,
     ): Promise<SubmitResult> {
         return this.submit({
             type: "Resolve",
             process_id: processId,
+            cumulative_value: cumulativeValue.toString(),
             commitments: commitments.map(toSequencerCommitment),
             buyer_sig: toSequencerSig(buyerSig),
         });
@@ -331,7 +376,14 @@ export class SequencerClient {
     /**
      * Submit a seller attestation using SDK types. `target` is the seller's
      * own order — the signer must be `target.seller` — and carries the
-     * checkoutHash the witness proof opens against.
+     * checkoutHash the inclusion proof opens against.
+     *
+     * By default the submission carries the coordinator's arguments alone:
+     * `clauseDataHash` and `inclusionProof` (with `contentRef` under the
+     * signature). Set `checkContentInProof` to have the content validated
+     * inside the proof: it sends the spec, the content and the clauseData
+     * in plaintext to the relay, and on to the proving network when the
+     * relay proves there.
      */
     async submitAttestAsSeller(args: {
         target: Commitment;
@@ -339,7 +391,9 @@ export class SequencerClient {
         stage: number;
         contentRef: Hex;
         sellerSig: Hex;
-        proof: SequencerContentProof;
+        clauseDataHash: Hex;
+        inclusionProof: Hex[];
+        checkContentInProof?: Omit<SequencerContentProof, "inclusion_proof">;
     }): Promise<SubmitResult> {
         return this.submit({
             type: "AttestAsSeller",
@@ -348,18 +402,21 @@ export class SequencerClient {
             stage: args.stage,
             content_ref: args.contentRef,
             seller_sig: toSequencerSig(args.sellerSig),
-            proof: args.proof,
+            proof: attestationWitness(args),
         });
     }
 
-    /** Submit a buyer attestation using SDK types. */
+    /** Submit a buyer attestation using SDK types; the two forms as for
+     *  {@link SequencerClient.submitAttestAsSeller}. */
     async submitAttestAsBuyer(args: {
         target: Commitment;
         clauseId: Hex;
         stage: number;
         contentRef: Hex;
         buyerSig: Hex;
-        proof: SequencerContentProof;
+        clauseDataHash: Hex;
+        inclusionProof: Hex[];
+        checkContentInProof?: Omit<SequencerContentProof, "inclusion_proof">;
     }): Promise<SubmitResult> {
         return this.submit({
             type: "AttestAsBuyer",
@@ -368,7 +425,7 @@ export class SequencerClient {
             stage: args.stage,
             content_ref: args.contentRef,
             buyer_sig: toSequencerSig(args.buyerSig),
-            proof: args.proof,
+            proof: attestationWitness(args),
         });
     }
 

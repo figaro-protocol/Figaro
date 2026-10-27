@@ -12,6 +12,7 @@ import {
     toSequencerCommitment,
     toSequencerSig,
 } from "../src/agent/sequencer.js";
+import { keccak256, stringToHex } from "viem";
 import type { Commitment } from "../src/types.js";
 import type { SequencerOp, SequencerContentProof } from "../src/agent/sequencer.js";
 
@@ -106,18 +107,20 @@ describe("SequencerClient.toRustEnum", () => {
         const op: SequencerOp = {
             type: "Resolve",
             process_id: ZERO_HASH,
+            cumulative_value: testCommitment.expectedCumulativeValue.toString(),
             commitments: [toSequencerCommitment(testCommitment)],
             buyer_sig: toSequencerSig(DUMMY_SIG),
         };
         const result = SequencerClient.toRustEnum(op);
         expect(result).toHaveProperty("Resolve");
         expect(result.Resolve).toHaveProperty("process_id");
+        expect(result.Resolve).toHaveProperty("cumulative_value", testCommitment.expectedCumulativeValue.toString());
         expect(result.Resolve).toHaveProperty("commitments");
     });
 
-    it("converts an AttestAsSeller op with its witness proof", () => {
-        // The batched attestation carries the full witness payload —
-        // spec bytes, content, clauseData, inclusion proof, content kind.
+    it("converts an AttestAsSeller op with its plaintext witness", () => {
+        // The plaintext form carries the spec bytes, content, clauseData,
+        // inclusion proof and content kind, under serde's external tag.
         const op: SequencerOp = {
             type: "AttestAsSeller",
             target: toSequencerCommitment(testCommitment),
@@ -125,12 +128,12 @@ describe("SequencerClient.toRustEnum", () => {
             stage: 0,
             content_ref: ZERO_HASH,
             seller_sig: toSequencerSig(DUMMY_SIG),
-            proof: testProof,
+            proof: { Plaintext: testProof },
         };
         const result = SequencerClient.toRustEnum(op);
         expect(result).toHaveProperty("AttestAsSeller");
         expect(result.AttestAsSeller).toMatchObject({
-            proof: { content_kind: "RuntimeWitness" },
+            proof: { Plaintext: { content_kind: "RuntimeWitness" } },
         });
         expect(result.AttestAsSeller).toHaveProperty("target");
     });
@@ -149,7 +152,7 @@ describe("SequencerClient", () => {
         expect(result.id).toBe(7);
     });
 
-    it("submitAttestAsBuyer posts the ReAssert witness payload", async () => {
+    it("submitAttestAsBuyer posts the plaintext form only when checkContentInProof is set", async () => {
         let captured: unknown;
         const client = new SequencerClient({
             url: "http://localhost:3001",
@@ -164,10 +167,78 @@ describe("SequencerClient", () => {
             stage: 0,
             contentRef: ZERO_HASH,
             buyerSig: DUMMY_SIG,
-            proof: { ...testProof, content_kind: "ReAssert" },
+            clauseDataHash: keccak256(stringToHex(testProof.clause_data)),
+            inclusionProof: [],
+            checkContentInProof: {
+                spec_json: testProof.spec_json,
+                content_json: testProof.content_json,
+                clause_data: testProof.clause_data,
+                content_kind: "ReAssert",
+            },
         });
-        const body = captured as { operation: { AttestAsBuyer: { proof: { content_kind: string } } } };
-        expect(body.operation.AttestAsBuyer.proof.content_kind).toBe("ReAssert");
+        const body = captured as {
+            operation: { AttestAsBuyer: { proof: { Plaintext: SequencerContentProof } } };
+        };
+        expect(body.operation.AttestAsBuyer.proof.Plaintext).toEqual({
+            spec_json: testProof.spec_json,
+            content_json: testProof.content_json,
+            clause_data: testProof.clause_data,
+            inclusion_proof: [],
+            content_kind: "ReAssert",
+        });
+    });
+
+    it("refuses a plaintext form whose clauseData is not the clauseDataHash", async () => {
+        const client = new SequencerClient({
+            url: "http://localhost:3001",
+            fetch: (async () => new Response(JSON.stringify({ id: 1 }), { status: 200 })) as typeof globalThis.fetch,
+        });
+        await expect(
+            client.submitAttestAsSeller({
+                target: testCommitment,
+                clauseId: ZERO_HASH,
+                stage: 0,
+                contentRef: ZERO_HASH,
+                sellerSig: DUMMY_SIG,
+                clauseDataHash: keccak256(stringToHex(`{"modality":"pickup"}`)),
+                inclusionProof: [],
+                checkContentInProof: {
+                    spec_json: testProof.spec_json,
+                    content_json: testProof.content_json,
+                    clause_data: testProof.clause_data,
+                    content_kind: "RuntimeWitness",
+                },
+            }),
+        ).rejects.toThrow("clauseDataHash");
+    });
+
+    it("the default attestation submission carries the coordinator's arguments and no plaintext field", async () => {
+        let raw = "";
+        const client = new SequencerClient({
+            url: "http://localhost:3001",
+            fetch: (async (_input: RequestInfo | URL, init?: RequestInit) => {
+                raw = init?.body as string;
+                return new Response(JSON.stringify({ id: 5 }), { status: 200 });
+            }) as typeof globalThis.fetch,
+        });
+        const clauseDataHash = keccak256(stringToHex(testProof.clause_data));
+        const sibling = keccak256(stringToHex("a sibling leaf"));
+        await client.submitAttestAsSeller({
+            target: testCommitment,
+            clauseId: ZERO_HASH,
+            stage: 0,
+            contentRef: ZERO_HASH,
+            sellerSig: DUMMY_SIG,
+            clauseDataHash,
+            inclusionProof: [sibling],
+        });
+        const body = JSON.parse(raw) as { operation: { AttestAsSeller: { proof: unknown } } };
+        expect(body.operation.AttestAsSeller.proof).toEqual({
+            HashOnly: { clause_data_hash: clauseDataHash, inclusion_proof: [sibling] },
+        });
+        for (const field of ["spec_json", "content_json", "clause_data\"", "content_kind", "Plaintext"]) {
+            expect(raw).not.toContain(field);
+        }
     });
 
     it("submitAttestAsSeller posts the target order alone, the seller's own order", async () => {
@@ -185,7 +256,8 @@ describe("SequencerClient", () => {
             stage: 0,
             contentRef: ZERO_HASH,
             sellerSig: DUMMY_SIG,
-            proof: testProof,
+            clauseDataHash: keccak256(stringToHex(testProof.clause_data)),
+            inclusionProof: [],
         });
         const body = captured as { operation: { AttestAsSeller: Record<string, unknown> } };
         expect(body.operation.AttestAsSeller).toHaveProperty("target");

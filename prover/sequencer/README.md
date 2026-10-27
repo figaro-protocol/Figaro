@@ -128,7 +128,10 @@ real verifier, set `SP1_PROVER=cpu` (or `cuda`) so the sequencer self-proves
 locally — or `SP1_PROVER=network` with `NETWORK_PRIVATE_KEY` to have the
 Succinct Prover Network prove it (a relay operator without hardware; paid per
 proof in PROVE by that operator; liveness only — the proof still verifies
-against the vkey) — and `SP1_PROOF_MODE` to the proof FORM the deployed
+against the vkey). `network` is not only a cost choice: the whole batch input
+goes to the network's provers, so an attestation a party sent in the plaintext
+form (its spec, content and clauseData) reaches them as well; a hash-only
+attestation, the default, carries fingerprints alone. Set `SP1_PROOF_MODE` to the proof FORM the deployed
 `FigaroBatchVerifier`'s SP1 gateway routes — `groth16` (default) or `plonk`.
 Succinct runs one gateway per form (their `contracts/deployments/<chainId>.json`
 names both); a proof of the other form reverts `RouteNotFound` on-chain, so
@@ -152,7 +155,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `ASSEMBLY_REGISTRY_ADDRESS` | zero | `AssemblyRegistry`, read by the usage-claim pre-filter for an assembly claim (kind 1) |
 | `AGREEMENT_REGISTRY_ADDRESS` | zero | `AgreementRegistry`, read by the usage-claim pre-filter for an agreement claim (kind 2) |
 | `MEMBERS_REGISTRY_ADDRESS` | zero | `MembersRegistry`, read by the usage-claim pre-filter; with `USAGE_COUNTER_ADDRESS` set, a registry left zero drops every claim that reads it |
-| `SP1_PROVER` | `mock` | `mock` (devnet), `cpu`, `cuda` (local), `network` (the Succinct Prover Network; `NETWORK_PRIVATE_KEY` = the requester key that pays in PROVE — the relay operator's cost, never the protocol's or its users') — who proves |
+| `SP1_PROVER` | `mock` | `mock` (devnet), `cpu`, `cuda` (local), `network` (the Succinct Prover Network; `NETWORK_PRIVATE_KEY` = the requester key that pays in PROVE — the relay operator's cost, never the protocol's or its users') — who proves, and who receives the batch input: under `network`, the plaintext of any attestation sent in the plaintext form |
 | `SP1_PROOF_MODE` | `groth16` | `groth16` or `plonk` — the on-chain proof form; must match the deployed gateway |
 | `SEQUENCER_PRIVATE_KEY` | none — required | Resolution tx signer (pays gas; no protocol privilege); the relay refuses to start without it |
 | `LISTEN_ADDR` | `0.0.0.0:3001` | HTTP listen address |
@@ -181,11 +184,24 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   serde externally-tagged enum (`{"Commit":{…}}`, `{"Resolve":{…}}`,
   `{"AttestAsSeller":{…}}`, `{"AttestAsBuyer":{…}}`); the SDK's
   `SequencerClient` (`@figaro-protocol/sdk/agent`) emits exactly this wire format.
+  An attestation's `proof` is `{"HashOnly":{"clause_data_hash","inclusion_proof"}}`
+  — the coordinator's arguments, which the SDK sends by default — or
+  `{"Plaintext":{"spec_json","content_json","clause_data","inclusion_proof","content_kind"}}`,
+  sent when the party chooses to have its content checked in the proof. The
+  relay writes no attestation content to its logs, its state file, its
+  journal, `/state` or `/status`; a refused attestation is logged without
+  its reason, which goes to the sender alone.
+  A resolve is `{"Resolve":{"process_id","cumulative_value","commitments","buyer_sig"}}`:
+  `buyer_sig` signs `ResolveProcess(bytes32 processId,uint256 cumulativeValue)`
+  under the verifier's domain, and the proof refuses the resolve unless the
+  process holds `cumulative_value` when it applies (`StaleResolveAuthorization`;
+  a value the process has passed is dead-lettered, one it has not reached
+  waits as a deferral).
   `200 {"id": n}` on admission — idempotent: re-submitting the same semantic
   operation (same order hash / process id / attestation identity) returns the
   original id and enqueues nothing. The identity covers every input the proof
-  or the verifier judges and admission cannot — a resolve's signer and its
-  order list, an attestation's witness spec bytes — so a submission that will be refused never makes the one that
+  or the verifier judges and admission cannot — a resolve's signer, its
+  signed cumulative value and its order list, an attestation's witness form with its clauseData hash or its spec bytes — so a submission that will be refused never makes the one that
   will be accepted a duplicate. `400` on signature or witness-gate
   rejection, or on a resolve that lists an order twice (the Core resolves the
   first listing and refuses the second, whatever the state), `422` on valid JSON that is not a `KernelOp` (wrong shape, unknown
@@ -352,8 +368,9 @@ of losing the batch:
   deadline against it, and the verifier refuses one ahead of its own block.
   A clock that cannot be read builds nothing that tick. The host's clock is
   never read.
-- **The witness spec.** An attestation carries its clause spec's text, and
-  the clause key is the `keccak256` of those bytes: the guest refuses a
+- **The witness spec.** An attestation in the plaintext form carries its
+  clause spec's text (a hash-only one carries none and commits no binding),
+  and the clause key is the `keccak256` of those bytes: the guest refuses a
   spec that does not hash to the key, and the verifier refuses a key
   `ClauseRegistry.registered` does not hold — either reverts the whole
   batch. The relay checks the hash itself, reads `registered` from the

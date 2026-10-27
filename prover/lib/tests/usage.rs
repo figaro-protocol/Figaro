@@ -193,10 +193,11 @@ fn settled_order_under(
         },
         KernelOp::Resolve {
             process_id,
+            cumulative_value: order.payment,
             commitments: vec![order.clone()],
             buyer_sig: sign_digest(
                 buyer_key,
-                &typed_data_hash(&domain, &resolve_struct_hash(&process_id)),
+                &typed_data_hash(&domain, &resolve_struct_hash(&process_id, &order.payment)),
             ),
         },
     ];
@@ -993,6 +994,25 @@ fn provenance_attestation(
     clause_data: &str,
     content_ref: B256,
 ) -> (BatchInput, B256) {
+    provenance_attestation_with(
+        committed,
+        AttestationWitness::Plaintext(AttestationContentProof {
+            spec_json: String::new(),
+            content_json: String::new(),
+            clause_data: clause_data.to_string(),
+            inclusion_proof: vec![],
+            content_kind: ContentKind::ReAssert,
+        }),
+        content_ref,
+    )
+}
+
+/// The same buyer attestation of the provenance leaf, carrying `witness`.
+fn provenance_attestation_with(
+    committed: B256,
+    witness: AttestationWitness,
+    content_ref: B256,
+) -> (BatchInput, B256) {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
     let (order, mut ops) = settled_order(&buyer, &seller, &provenance_key(), &committed, 7);
@@ -1010,13 +1030,7 @@ fn provenance_attestation(
         stage: 0,
         content_ref,
         buyer_sig: sign_digest(&buyer, &digest),
-        proof: AttestationContentProof {
-            spec_json: String::new(),
-            content_json: String::new(),
-            clause_data: clause_data.to_string(),
-            inclusion_proof: vec![],
-            content_kind: ContentKind::ReAssert,
-        },
+        proof: witness,
     });
     (batch(ops, vec![], empty_snapshot()), process_id)
 }
@@ -1047,6 +1061,41 @@ fn the_provenance_leaf_is_attestable_without_a_spec() {
         events.spec_bindings.is_empty(),
         "the provenance leaf is a fact of the agreement format; nothing anchors it in ClauseRegistry"
     );
+}
+
+/// Hash-only, the provenance leaf is accepted on inclusion alone: the
+/// guest binds the leaf's hash and cannot read its bytes, exactly as the
+/// coordinator cannot. The check that the bytes name the registered
+/// agreement and assembly stays at the usage claim. No spec binding, and
+/// the contentRef is re-emitted as signed.
+#[test]
+fn a_hash_only_provenance_attestation_is_accepted_on_inclusion_alone() {
+    let committed = provenance_leaf_data_hash(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
+    let content_ref = keccak256(b"the buyer's evidence");
+    let witness = AttestationWitness::HashOnly { clause_data_hash: committed, inclusion_proof: vec![] };
+    let (input, process_id) = provenance_attestation_with(committed, witness, content_ref);
+
+    let (_, _, events, _) = apply_batch_with_state(&input).expect("hash-only provenance attestation applies");
+    assert_eq!(events.attestations.len(), 1);
+    assert_eq!(events.attestations[0].clause_id, provenance_key());
+    assert_eq!(events.attestations[0].process_id, process_id);
+    assert_eq!(events.attestations[0].content_ref, content_ref);
+    assert!(events.spec_bindings.is_empty());
+}
+
+/// Hash-only, a provenance fingerprint the order never committed opens no
+/// leaf.
+#[test]
+fn a_hash_only_provenance_attestation_of_an_uncommitted_hash_is_refused() {
+    let committed = provenance_leaf_data_hash(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
+    let other = provenance_leaf_data_hash(&keccak256(b"another-agreement"), &keccak256(b"a-composition"));
+    let witness = AttestationWitness::HashOnly { clause_data_hash: other, inclusion_proof: vec![] };
+    let (input, _) = provenance_attestation_with(committed, witness, keccak256(b"evidence"));
+
+    match apply_batch_with_state(&input).map(|_| ()) {
+        Err(KernelError::InvalidInclusionProof) => {}
+        other => panic!("expected InvalidInclusionProof, got {other:?}"),
+    }
 }
 
 /// Bytes that name a composition, or an agreement, the order never

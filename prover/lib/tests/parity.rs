@@ -294,8 +294,10 @@ fn test_full_batch_commit_resolve_payouts() {
     let sub_buyer_sig = sign_commitment(&sub, &domain, &buyer_key);
     let sub_seller_sig = sign_commitment(&sub, &domain, &seller2_key);
 
-    // Sign resolve authorization.
-    let resolve_hash = resolve_struct_hash(&PROCESS_ID);
+    // Sign resolve authorization over the process as it stands after both
+    // commits: 100 + 50 ether.
+    let resolved_value = sub.expected_cumulative_value;
+    let resolve_hash = resolve_struct_hash(&PROCESS_ID, &resolved_value);
     let resolve_digest = typed_data_hash(&domain, &resolve_hash);
     let resolve_sig = sign_digest(&buyer_key, &resolve_digest);
 
@@ -316,6 +318,7 @@ fn test_full_batch_commit_resolve_payouts() {
             },
             KernelOp::Resolve {
                 process_id: PROCESS_ID,
+                cumulative_value: resolved_value,
                 commitments: vec![root, sub],
                 buyer_sig: resolve_sig,
             },
@@ -495,6 +498,17 @@ fn seller_attest_op(
     content_ref: B256,
     signer: &SigningKey,
 ) -> KernelOp {
+    seller_attest_op_with(f, AttestationWitness::Plaintext(proof), content_ref, signer)
+}
+
+/// A seller attestation on the fixture's root order carrying `witness`
+/// in whichever form the test picks.
+fn seller_attest_op_with(
+    f: &AttestFixture,
+    witness: AttestationWitness,
+    content_ref: B256,
+    signer: &SigningKey,
+) -> KernelOp {
     let domain = domain_separator(CHAIN_ID, CORE);
     let struct_hash = attest_seller_struct_hash(&f.root_order_hash, &f.clause_key, 0, &content_ref);
     let digest = typed_data_hash(&domain, &struct_hash);
@@ -504,7 +518,7 @@ fn seller_attest_op(
         stage: 0,
         content_ref,
         seller_sig: sign_digest(signer, &digest),
-        proof,
+        proof: witness,
     }
 }
 
@@ -567,7 +581,7 @@ fn attest_as_buyer_re_assert_passes() {
         stage: 0,
         content_ref,
         buyer_sig: sign_digest(&buyer_key, &digest),
-        proof,
+        proof: AttestationWitness::Plaintext(proof),
     };
 
     let (_pv, _positions, events) = run_attest_batch(&f, op).unwrap();
@@ -611,7 +625,7 @@ fn attest_as_buyer_wrong_signer_fails() {
         stage: 0,
         content_ref,
         buyer_sig: sign_digest(&seller1_key, &digest),
-        proof,
+        proof: AttestationWitness::Plaintext(proof),
     };
 
     match run_attest_batch(&f, op) {
@@ -728,7 +742,7 @@ fn attest_wrong_inclusion_proof_fails() {
                 stage: 0,
                 content_ref,
                 seller_sig: sign_digest(&seller1_key, &att_digest),
-                proof,
+                proof: AttestationWitness::Plaintext(proof),
             },
         ],
         prev_state: empty_snapshot(),
@@ -743,6 +757,108 @@ fn attest_wrong_inclusion_proof_fails() {
     }
 }
 
+// ── The hash-only form: the coordinator's arguments alone ─────────
+
+/// The fixture's clause as the coordinator takes it: the committed
+/// clauseData's hash and the inclusion proof (empty for the fixture's
+/// single-clause agreement).
+fn hash_only(clause_data_hash: B256, inclusion_proof: Vec<B256>) -> AttestationWitness {
+    AttestationWitness::HashOnly { clause_data_hash, inclusion_proof }
+}
+
+/// A hash-only seller attestation is accepted on gate I alone: the event
+/// carries the content reference as signed, and no spec binding is
+/// committed, so the spec-bindings hash is the hash of none.
+#[test]
+fn a_hash_only_seller_attestation_is_accepted_and_commits_no_spec_binding() {
+    let f = attest_fixture();
+    let content_ref = keccak256("evidence the seller keeps");
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let witness = hash_only(keccak256(CLAUSE_DATA.as_bytes()), vec![]);
+    let op = seller_attest_op_with(&f, witness, content_ref, &seller1_key);
+
+    let (pv, _positions, events) = run_attest_batch(&f, op).unwrap();
+
+    assert_eq!(events.attestations.len(), 1);
+    let e = &events.attestations[0];
+    assert_eq!(e.order_hash, f.root_order_hash);
+    assert_eq!(e.process_id, f.process_id);
+    assert_eq!(e.attester, SELLER1);
+    assert_eq!(e.clause_id, f.clause_key);
+    assert_eq!(e.stage, 0);
+    assert_eq!(e.content_ref, content_ref);
+    assert!(events.spec_bindings.is_empty(), "the hash-only form commits no spec binding");
+    assert_eq!(pv.spec_bindings_hash, compute_spec_bindings_hash(&[]));
+}
+
+/// The buyer's hash-only attestation, likewise.
+#[test]
+fn a_hash_only_buyer_attestation_is_accepted() {
+    let f = attest_fixture();
+    let content_ref = keccak256("evidence the buyer keeps");
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let struct_hash =
+        attest_buyer_struct_hash(&f.process_id, &f.root_order_hash, &f.clause_key, 0, &content_ref);
+    let op = KernelOp::AttestAsBuyer {
+        target: f.root.clone(),
+        clause_id: f.clause_key,
+        stage: 0,
+        content_ref,
+        buyer_sig: sign_digest(&buyer_key, &typed_data_hash(&domain, &struct_hash)),
+        proof: hash_only(keccak256(CLAUSE_DATA.as_bytes()), vec![]),
+    };
+
+    let (_pv, _positions, events) = run_attest_batch(&f, op).unwrap();
+    assert_eq!(events.attestations.len(), 1);
+    assert_eq!(events.attestations[0].attester, BUYER);
+    assert_eq!(events.attestations[0].content_ref, content_ref);
+    assert!(events.spec_bindings.is_empty());
+}
+
+/// A clauseData hash the agreement never committed opens no leaf.
+#[test]
+fn a_hash_only_attestation_with_a_wrong_clause_data_hash_is_refused() {
+    let f = attest_fixture();
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let witness = hash_only(keccak256(r#"{"modality":"pickup"}"#.as_bytes()), vec![]);
+    let op = seller_attest_op_with(&f, witness, keccak256("evidence"), &seller1_key);
+
+    match run_attest_batch(&f, op) {
+        Err(KernelError::InvalidInclusionProof) => {}
+        other => panic!("expected InvalidInclusionProof, got {other:?}"),
+    }
+}
+
+/// A proof that does not open the committed leaf against the signed
+/// checkoutHash is refused.
+#[test]
+fn a_hash_only_attestation_with_a_wrong_inclusion_proof_is_refused() {
+    let f = attest_fixture();
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let witness = hash_only(keccak256(CLAUSE_DATA.as_bytes()), vec![keccak256("a sibling nobody committed")]);
+    let op = seller_attest_op_with(&f, witness, keccak256("evidence"), &seller1_key);
+
+    match run_attest_batch(&f, op) {
+        Err(KernelError::InvalidInclusionProof) => {}
+        other => panic!("expected InvalidInclusionProof, got {other:?}"),
+    }
+}
+
+/// The hash-only form changes nothing about who may attest.
+#[test]
+fn a_hash_only_attestation_signed_by_another_wallet_is_refused() {
+    let f = attest_fixture();
+    let seller2_key = make_signing_key(SELLER2_KEY);
+    let witness = hash_only(keccak256(CLAUSE_DATA.as_bytes()), vec![]);
+    let op = seller_attest_op_with(&f, witness, keccak256("evidence"), &seller2_key);
+
+    match run_attest_batch(&f, op) {
+        Err(KernelError::NotAuthorized) => {}
+        other => panic!("expected NotAuthorized, got {other:?}"),
+    }
+}
+
 #[test]
 fn attest_on_resolved_order_fails() {
     // The evidence window closes at resolution — the coordinator's
@@ -752,7 +868,7 @@ fn attest_on_resolved_order_fails() {
     let seller1_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
 
-    let resolve_hash = resolve_struct_hash(&f.process_id);
+    let resolve_hash = resolve_struct_hash(&f.process_id, &f.root.payment);
     let resolve_sig = sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_hash));
 
     let (proof, content_ref) = runtime_witness_proof(&f);
@@ -771,6 +887,7 @@ fn attest_on_resolved_order_fails() {
             },
             KernelOp::Resolve {
                 process_id: f.process_id,
+                cumulative_value: f.root.payment,
                 commitments: vec![f.root.clone()],
                 buyer_sig: resolve_sig,
             },
@@ -780,7 +897,7 @@ fn attest_on_resolved_order_fails() {
                 stage: 0,
                 content_ref,
                 seller_sig: att_sig,
-                proof,
+                proof: AttestationWitness::Plaintext(proof),
             },
         ],
         prev_state: empty_snapshot(),
@@ -843,7 +960,7 @@ fn attest_as_seller_against_another_sellers_order_fails() {
                 stage: 0,
                 content_ref,
                 seller_sig: att_sig,
-                proof,
+                proof: AttestationWitness::Plaintext(proof),
             },
         ],
         prev_state: empty_snapshot(),
@@ -1083,8 +1200,9 @@ fn resolved_order_under(checkout_hash: B256, salt: u64) -> (Commitment, Vec<Kern
         },
         KernelOp::Resolve {
             process_id,
+            cumulative_value: order.payment,
             commitments: vec![order.clone()],
-            buyer_sig: sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_struct_hash(&process_id))),
+            buyer_sig: sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_struct_hash(&process_id, &order.payment))),
         },
     ];
     (order, ops)
@@ -1242,5 +1360,94 @@ fn the_vector_terms_leaf_never_passes_as_an_agreement() {
     match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
         Err(KernelError::ReservedKeyIsNotARegistration(k)) => assert_eq!(k, terms_key),
         other => panic!("expected ReservedKeyIsNotARegistration, got {other:?}"),
+    }
+}
+
+// ── The resolve authorization binds the state it was given for ────
+
+/// The two commits and a resolve of the process they form, the resolve
+/// signed over `signed_value` and carrying it.
+fn two_commits_then_resolve(signed_value: U256) -> BatchInput {
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let seller2_key = make_signing_key(SELLER2_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let root = root_commitment();
+    let sub = sub_commitment();
+    let resolve_sig = sign_digest(
+        &buyer_key,
+        &typed_data_hash(&domain, &resolve_struct_hash(&PROCESS_ID, &signed_value)),
+    );
+    BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![
+            KernelOp::Commit {
+                commitment: root.clone(),
+                buyer_sig: sign_commitment(&root, &domain, &buyer_key),
+                seller_sig: sign_commitment(&root, &domain, &seller1_key),
+            },
+            KernelOp::Commit {
+                commitment: sub.clone(),
+                buyer_sig: sign_commitment(&sub, &domain, &buyer_key),
+                seller_sig: sign_commitment(&sub, &domain, &seller2_key),
+            },
+            KernelOp::Resolve {
+                process_id: PROCESS_ID,
+                cumulative_value: signed_value,
+                commitments: vec![root, sub],
+                buyer_sig: resolve_sig,
+            },
+        ],
+        prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_leaf: B256::ZERO,
+    }
+}
+
+/// The buyer signs a resolve while the process holds the root order alone
+/// (cumulative value 100 ether); a second order the buyer co-signs commits
+/// after (150 ether); applying the earlier authorization is refused, so the
+/// second seller is never paid from an acceptance the buyer gave for the
+/// root order alone.
+#[test]
+fn a_resolve_signed_before_a_later_commit_is_refused() {
+    let signed = root_commitment().expected_cumulative_value;
+    let current = sub_commitment().expected_cumulative_value;
+    match apply_batch(&two_commits_then_resolve(signed)) {
+        Err(KernelError::StaleResolveAuthorization { signed: s, current: c }) => {
+            assert_eq!(s, signed, "the value the buyer signed");
+            assert_eq!(c, current, "the value the process holds at application");
+        }
+        other => panic!("expected StaleResolveAuthorization, got {other:?}"),
+    }
+}
+
+/// A resolve signed over the process's cumulative value at application
+/// resolves both orders.
+#[test]
+fn a_resolve_signed_over_the_current_cumulative_value_resolves() {
+    let current = sub_commitment().expected_cumulative_value;
+    let (_pv, positions, _events) =
+        apply_batch(&two_commits_then_resolve(current)).expect("resolves");
+    let s2 = positions.iter().find(|p| p.user == SELLER2).unwrap();
+    let ether = U256::from(1_000_000_000_000_000_000u64);
+    assert_eq!(s2.payout, U256::from(350u64) * ether, "the second seller is paid");
+}
+
+/// A relay that rewrites the signed value to the process's current one
+/// presents a value the buyer never signed: the signature recovers another
+/// signer and the resolve is refused.
+#[test]
+fn a_resolve_whose_signed_value_was_rewritten_is_refused() {
+    let mut input = two_commits_then_resolve(root_commitment().expected_cumulative_value);
+    if let KernelOp::Resolve { cumulative_value, .. } = &mut input.operations[2] {
+        *cumulative_value = sub_commitment().expected_cumulative_value;
+    }
+    match apply_batch(&input) {
+        Err(KernelError::NotProcessBuyer) | Err(KernelError::InvalidSignature) => {}
+        other => panic!("expected the signer check to refuse, got {other:?}"),
     }
 }

@@ -61,16 +61,21 @@ pub fn commitment_struct_hash(c: &Commitment) -> B256 {
 //
 // Not in FigaroCore. This is the batched equivalent of
 // msg.sender == rootBuyer. The buyer signs an EIP-712 typed message
-// authorizing process resolution. Natural replay protection: once
-// resolveProcess sets activeOrderCount = 0, the process cannot be
+// authorizing resolution of the process as it stands: its id and its
+// cumulative value. The cumulative value grows at every commit, so the
+// authorization applies only to the orders the process held when the buyer
+// signed; after a further commit the buyer signs again. Replay protection:
+// once resolveProcess sets activeOrderCount = 0, the process cannot be
 // resolved again, and the processId can never be reused.
 
 /// Compute the struct hash for a `ResolveProcess` authorization.
-pub fn resolve_struct_hash(process_id: &B256) -> B256 {
-    let type_hash = keccak256(b"ResolveProcess(bytes32 processId)");
-    let mut data = Vec::with_capacity(64);
+/// `ResolveProcess(bytes32 processId,uint256 cumulativeValue)`
+pub fn resolve_struct_hash(process_id: &B256, cumulative_value: &U256) -> B256 {
+    let type_hash = keccak256(b"ResolveProcess(bytes32 processId,uint256 cumulativeValue)");
+    let mut data = Vec::with_capacity(96);
     data.extend_from_slice(type_hash.as_slice());
     data.extend_from_slice(process_id.as_slice());
+    data.extend_from_slice(&cumulative_value.to_be_bytes::<32>());
     keccak256(&data)
 }
 

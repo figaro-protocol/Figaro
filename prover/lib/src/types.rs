@@ -37,7 +37,7 @@ pub struct Signature {
     pub s: B256,
 }
 
-// ── Attestation content proof (the in-proof clause gates) ─────────
+// ── Attestation witness (hash-only, or plaintext for the in-proof clause gates) ──
 
 /// How the attestation's `content` bytes relate to the clause spec —
 /// the two content conventions the protocol carries today.
@@ -53,10 +53,54 @@ pub enum ContentKind {
     ReAssert,
 }
 
-/// The witness payload every batched attestation carries. The direct
-/// path (AttestationCoordinator) merkle-binds and content-hash-binds but
-/// validates no content shape; the batched path will not record content
-/// it cannot validate, so the full proof is MANDATORY here.
+/// What a batched attestation carries to prove its clause, in one of two
+/// forms the attesting party picks.
+///
+/// **`HashOnly`, the default**, carries exactly what
+/// `AttestationCoordinator.attestAsSeller` / `attestAsBuyer` take: the
+/// `clauseDataHash` and the inclusion proof (the op carries `contentRef`).
+/// The guest runs gate I alone — leaf
+/// `keccak256(keccak256(clause_id ++ clause_data_hash))` opens against the
+/// TARGET order's signed `checkout_hash`, as `_verifyInclusion` does — and
+/// re-emits `content_ref` verbatim; no spec binding is committed. The
+/// relay, and the proving network under `SP1_PROVER=network`, see the same
+/// fingerprints the chain sees on the direct path, never the parties' data.
+///
+/// **`Plaintext`** is the party's explicit choice to have its content
+/// checked inside the proof: it carries the spec, the content and the
+/// committed clauseData in plaintext (`AttestationContentProof`), which
+/// the relay receives and, under `SP1_PROVER=network`, forwards to the
+/// proving network. The guest runs gates S, C and I and commits a
+/// `SpecBinding`.
+///
+/// The reserved provenance leaf (`kernel::PROVENANCE_LEAF_KEY`): under
+/// `HashOnly` the guest binds the leaf's hash and cannot read its bytes,
+/// exactly as the coordinator cannot, so the attestation is accepted on
+/// inclusion alone; the check that the bytes name the registered agreement
+/// and assembly stays where it is, at the usage claim (`UsageCounter`, and
+/// the guest's usage-claim path). Under `Plaintext` the guest keeps the
+/// agreement format's byte check (`kernel::validate_attestation_content`).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum AttestationWitness {
+    /// The coordinator's arguments: fingerprints only.
+    HashOnly {
+        /// `keccak256(clauseData)` — the committed clause's fingerprint,
+        /// as the coordinator's `clauseDataHash`.
+        clause_data_hash: B256,
+        /// Sorted-pair Merkle proof binding the clause leaf to the target
+        /// order's signed `checkout_hash`. Empty for a single-clause
+        /// agreement, where the leaf is the root itself.
+        inclusion_proof: Vec<B256>,
+    },
+    /// The plaintext form: the content checked inside the proof.
+    Plaintext(AttestationContentProof),
+}
+
+/// The plaintext form of a batched attestation's witness
+/// (`AttestationWitness::Plaintext`), sent only at the attesting party's
+/// choice: the direct path, and the batch path's default
+/// (`AttestationWitness::HashOnly`), bind hashes and validate no content
+/// shape; this form has the content validated inside the proof.
 ///
 /// In-proof gates (see `kernel::validate_attestation_content`):
 ///
@@ -127,9 +171,14 @@ pub enum KernelOp {
     },
     /// Buyer-authorized resolution. Batched equivalent of
     /// FigaroCore.resolveProcess() where msg.sender == rootBuyer
-    /// is replaced by an EIP-712 signature.
+    /// is replaced by an EIP-712 signature over the process id and the
+    /// cumulative value the buyer accepts: the authorization applies only
+    /// while the process holds that value, so it resolves exactly the prefix
+    /// of the process whose cumulative value the buyer signed — a value not
+    /// yet reached pre-authorizes exactly the orders that bring it there.
     Resolve {
         process_id: B256,
+        cumulative_value: U256,
         commitments: Vec<Commitment>,
         buyer_sig: Signature,
     },
@@ -146,7 +195,7 @@ pub enum KernelOp {
         content_ref: B256,
         /// Proves the caller is `target.seller` (replaces msg.sender).
         seller_sig: Signature,
-        proof: AttestationContentProof,
+        proof: AttestationWitness,
     },
 
     /// Buyer attestation. Batched equivalent of attestAsBuyer():
@@ -159,7 +208,7 @@ pub enum KernelOp {
         content_ref: B256,
         /// Proves the caller is `target.buyer` (replaces msg.sender).
         buyer_sig: Signature,
-        proof: AttestationContentProof,
+        proof: AttestationWitness,
     },
     // These are the coordinator's two attestation modes, as on the
     // direct path: a party attests for itself, and its signature here
@@ -509,6 +558,10 @@ pub enum KernelError {
     OrderNotCommitted(B256),
     NoActiveOrders,
     IncompleteOrderList { required: u64, provided: u64 },
+    /// The resolve authorization signs a cumulative value the process does
+    /// not hold at application: an order committed after the buyer signed
+    /// (or the buyer signed over a value the process has not reached).
+    StaleResolveAuthorization { signed: U256, current: U256 },
     DuplicateCommitment,
     InvalidRootCumulativeValue,
     ProcessAlreadyResolved,
@@ -575,6 +628,9 @@ impl core::fmt::Display for KernelError {
             }
             Self::IncompleteOrderList { required, provided } => {
                 write!(f, "IncompleteOrderList(required={required}, provided={provided})")
+            }
+            Self::StaleResolveAuthorization { signed, current } => {
+                write!(f, "StaleResolveAuthorization(signed={signed}, current={current})")
             }
             Self::OrderNotCommitted(h) => write!(f, "OrderNotCommitted({h})"),
             Self::SpecIdentityMismatch(h) => write!(f, "SpecIdentityMismatch({h})"),

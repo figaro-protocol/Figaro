@@ -123,7 +123,8 @@ reachable from the prior state root under `FigaroCore`'s rules.
 ### The live surface
 
 **Rust `FigaroCore` mirror** (`prover/lib/`): `FigaroCore`'s commit/resolve logic
-plus the attestation witness gates and the usage bridge, translated to Rust.
+plus the attestation gates (inclusion for every attestation; spec identity and
+content for one sent in the plaintext form) and the usage bridge, translated to Rust.
 Four `KernelOp` variants — `Commit`, `Resolve`, `AttestAsSeller`,
 `AttestAsBuyer` (registry mutations never enter a batch). Six-member state, hashed flat into one root (no per-order inclusion proof exists; a reader checks anything against the root only with the whole preimage),
 state (processes, orderStatus, orderProcessId, plus the three usage members
@@ -165,10 +166,18 @@ the Succinct gateway ABI, and a devnet stand-in that accepts any proof.
    dual-signature validity, monotonic cumulative value, and the
    single-denomination invariant
 2. each `resolveProcess` in the batch preserved buyer dominance, atomic
-   resolution, conservation, and direct transfer semantics
-3. each attestation preserved its authorization gates, and its content
-   validated against a witness spec whose bytes hash to a clause key
-   `ClauseRegistry.registered` holds
+   resolution, conservation, and direct transfer semantics, its buyer's
+   signature over `ResolveProcess(bytes32 processId,uint256 cumulativeValue)`
+   applied only while the process holds the signed cumulative value, so it
+   pays exactly the prefix of the process whose cumulative value the buyer
+   signed, every order of which the buyer co-signed; a value the process has
+   not yet reached pre-authorizes exactly the orders that bring it there
+3. each attestation preserved the coordinator's checks — its signer is the
+   party, its order is committed and open, and its `clauseDataHash` opens
+   against the order's signed `checkoutHash` under its inclusion proof — and
+   re-emits its `contentRef` as signed; an attestation sent in the plaintext
+   form also had its content validated against a witness spec whose bytes
+   hash to a clause key `ClauseRegistry.registered` holds
 4. the resulting state root follows from the prior state root under the
    `FigaroCore`'s rules — no transition skipped, reordered, or fabricated
 
@@ -351,7 +360,8 @@ per-clause validator contracts — is permanently rejected (`CONTRACTS.md`
 **The live architecture.** The guest holds a generic clause *engine* — parse +
 validate + encode (`prover/clause/src/spec.rs`, `validate.rs`, `encode.rs`) —
 and no clauses: no embedded spec table, no per-clause code path anywhere in
-`prover/`. The spec is a witness input, and its clause key IS its content
+`prover/`. The engine runs for an attestation the party sends in the plaintext
+form (§ "The two attestation forms"). The spec is a witness input, and its clause key IS its content
 hash: `registerClause` anchors `clauseKey = keccak256(canonical spec JSON)`,
 the guest's Gate S requires `keccak256(spec_json bytes) == clause_id` on the
 bytes it was given, canonicalizing nothing (`prover/lib/src/kernel.rs`), the
@@ -366,6 +376,43 @@ covers *the engine* — "content validated against whatever spec the registry
 says is canonical for this id." The protocol's own specs in `clauses/` are
 input like any other clause's — nothing is special-cased, and a never-seen
 clause resolves through the proven path with zero code changes.
+
+### The two attestation forms
+
+A batched attestation carries its witness in one of two forms
+(`AttestationWitness`, `prover/lib/src/types.rs`), picked by the attesting
+party:
+
+- **Hash-only, the default.** Exactly what `AttestationCoordinator` takes: the
+  `clauseDataHash` and the inclusion proof, beside the signed `contentRef`. The
+  guest runs Gate I alone — the leaf
+  `keccak256(keccak256(clauseId ++ clauseDataHash))` opens against the order's
+  signed `checkoutHash` — re-emits the `contentRef` as signed, and commits no
+  spec binding, so the verifier consults no registry for it, as the
+  coordinator consults none. The relay and the proving network see the
+  fingerprints the chain sees on the direct path, never the parties' data.
+- **Plaintext, the party's choice.** The spec, the content and the committed
+  clauseData, to have the content checked inside the proof: Gate S (the
+  spec's bytes hash to the clause key), Gate C (the content validates against
+  the spec and hashes to the `contentRef`) and Gate I, with a spec binding
+  committed for the verifier's registry check. The relay receives that
+  plaintext and, under `SP1_PROVER=network`, forwards it to the proving
+  network.
+
+The reserved provenance leaf (`PROVENANCE_LEAF_KEY`): hash-only, the guest
+binds the leaf's hash and cannot read its bytes, exactly as the coordinator
+cannot, so the attestation is accepted on inclusion alone; the check that the
+bytes name the registered agreement and assembly stays at the usage claim
+(`UsageCounter`, and the guest's usage-claim path). Plaintext, the guest
+keeps the agreement format's byte check.
+
+Both forms bind what a direct attestation binds — the signer, an open order,
+the leaf, the `contentRef` — and the event the verifier re-emits for a
+hash-only attestation is the coordinator's byte for byte
+(`prover/lib/tests/attestation_vectors.rs` against
+`test/core/attestation/AttestationVectorsTest.t.sol`; the differential fuzz,
+`KernelDifferentialFuzzTest` with `fuzz_stream.rs`, replays every coordinator
+attestation in the hash-only form).
 
 The engine exists once in each of the two lockstep languages: Rust
 (`prover/clause`, used by the guest and the sequencer) and TypeScript
@@ -450,7 +497,10 @@ by the REQUESTER (the relay operator; never the protocol, never its
 participants). It is a liveness dependency only: the proof still verifies
 against the program vkey, so a faulty or adversarial prover cannot forge a
 proof that resolves — the same liveness-not-safety boundary the sequencer
-trust model draws. `SP1_PROOF_MODE` (`groth16` default | `plonk`) picks the
+trust model draws. It is not only a cost choice: under `network` the whole
+batch input reaches the network's provers — every operation, and the spec,
+content and clauseData of any attestation sent in the plaintext form; a
+hash-only attestation sends them its fingerprints alone. `SP1_PROOF_MODE` (`groth16` default | `plonk`) picks the
 form; it must be the form the deployed verifier's gateway routes. The generic
 clause engine's in-circuit cost is what makes offloading proof generation to
 the network the natural answer rather than scaling a self-hosted prover.
@@ -481,7 +531,9 @@ anything (`FigaroCore` takes no cut and offers no MEV surface).
 
 **1. Submission.** Participants submit signed operations over HTTP. Each
 carries the operation type (commit, resolve, attest-as-seller,
-attest-as-buyer), the payload, and the required EIP-712 signatures. The
+attest-as-buyer), the payload, and the required EIP-712 signatures; an
+attestation carries the hash-only form by default, or the plaintext form at
+the attesting party's choice (§ "The two attestation forms"). The
 sequencer validates signatures on receipt and rejects malformed or mis-signed
 operations.
 

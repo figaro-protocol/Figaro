@@ -85,7 +85,7 @@ fn the_guest_reproduces_every_batch_authorization() {
         let kind = s(&a["type"]);
         let m = &a["message"];
         let struct_hash = match kind {
-            "ResolveProcess" => resolve_struct_hash(&b256(&m["processId"])),
+            "ResolveProcess" => resolve_struct_hash(&b256(&m["processId"]), &u256(&m["cumulativeValue"])),
             "AttestSeller" => attest_seller_struct_hash(
                 &b256(&m["orderHash"]),
                 &b256(&m["clauseId"]),

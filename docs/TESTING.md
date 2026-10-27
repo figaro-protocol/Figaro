@@ -24,7 +24,7 @@ not by this paragraph. Current: `FigaroCoreTest`, `FigaroCore_RevertBranch`,
 `FigaroBatchVerifierTest`, `UsageCounterTest`, `RpgfMinterTest`, `RpgfIntegrationTest`,
 `TreasuryProcurementTest`, `MockDisperseTest`, `ReentrancyAdversarialTest`,
 `Eip712ParityTest`, `MerkleParityTest`, `KernelTransitionVectorsTest`,
-`KernelDifferentialFuzzTest`,
+`AttestationVectorsTest`, `KernelDifferentialFuzzTest`,
 `WeirdTokenTest`, `DeployWiringTest`, `HalmosFigaroCore`, `FlorinToken.t.sol`.
 
 `UsageCounterTest` covers the reward-accrual counter: the RESOLVED-order gate, merkle
@@ -134,7 +134,7 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 65 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 20 + RelayState 8 + its deferral 10)
+## TLA+ (`formal/`) — 67 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 20 + RelayState 8 + its deferral 10 + its resolve authorization 2)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -245,6 +245,22 @@ so the window is cut by an operation that never applies),
 8 and 2 states long. `Spec` holds the deferral's variables at their
 initial values, so the lifecycle's figures above are unchanged by it.
 
+RelayState's third spec, `ResolveSpec` (`RelayState.tla` +
+`RelayStateResolve.cfg`, the seventh pass of `scripts/test-tla.sh`): the
+buyer's resolve authorization on the batch path (`prover/lib/src/kernel.rs`
+`apply_resolve`, `eip712.rs` `resolve_struct_hash`) — three orders, payments
+1–2, the buyer signing over the value the process holds or any it has not
+reached, and anyone holding a signature applying it under any later state.
+2 invariants — `ResolvePaysSignedPrefix` (every applied resolve pays exactly
+the prefix of the process's commits whose cumulative value the buyer signed)
+and `RTypeOK`: 17,911 states / 5,617 distinct, depth 11, seconds.
+Mutation-checked: `ResolveBoundToState` FALSE (the authorization signs the
+process id alone, not its cumulative value) fails `ResolvePaysSignedPrefix`
+in 4 states — the root order commits at 1, the buyer signs over 2, the
+authorization applies at once and pays the one order, a set no prefix of
+value 2 names. `Spec` and
+`DeferSpec` hold its variables at their initial values.
+
 ## Lean 4 (`formal/lean/`) — the equilibrium, machine-checked
 
 `FigaroEquilibrium.lean` closes the one step no model checker can express —
@@ -285,6 +301,15 @@ the Solidity side too +
 the witness-gate suite: spec-identity substitution (Gate S,
 `keccak256(spec_json) == clause_id`), a lookalike spec under the same name
 refused, content-hash mismatch, inclusion failure, attest-after-resolve; the
+hash-only form, accepted on inclusion with no spec binding and refused on a
+wrong `clauseDataHash`, a wrong inclusion proof or a wrong signer
+(`a_hash_only_*`), its provenance-leaf attestation accepted on inclusion
+alone (`usage.rs`); the attestation lock —
+`prover/lib/tests/attestation_vectors.rs` submits the arguments
+`AttestationVectorsTest` ran on the live coordinator, recorded in
+`test/fixtures/attestation-vectors.json` (`HARVEST_ATTESTATION_VECTORS=true`
+regenerates it), as hash-only batched attestations and asserts each event
+encodes to the coordinator's topics and data; the
 usage bridge in
 `prover/lib/tests/usage.rs` — same-batch credit against the post-state, cross-batch
 replay rejection (the reason the counted set rides the state root), breadth
@@ -308,8 +333,12 @@ rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof;
 `prover/script/tests/clause_keys.rs` canonicalizes every `clauses/*.json` and
 asserts it hashes to the SDK's key in `test/fixtures/clause-keys.json`),
 and `figaro-sequencer` (mempool runs the mirror's own witness gates at the
-door; a dedup slot belongs to the submission that will be accepted — a
-stranger's resolve, the buyer's signature over another order list, and an
+door, admitting a hash-only attestation and refusing a wrong `clauseDataHash`;
+the relay writes no attestation content to its logs, state file, journal,
+`/state` or `/status`, a refused attestation logged without its reason
+(`the_relay_writes_no_attestation_content_to_its_logs_state_or_routes`); a dedup slot belongs to the submission that will be accepted — a
+stranger's resolve, the buyer's signature over another order list or another
+cumulative value, and an
 attestation with other witness spec bytes each leave the real one queued; the state store — the kept state
 survives a restart with its root, a batch's state is held across a crash
 before its receipt and for as long as the batch can land, a held root is not
@@ -334,7 +363,7 @@ publishes — re-applied from the previous state, it lands on the root the proof
 committed, `the_published_stream_rebuilds_the_root_the_batch_committed`).
 
 `sdk/tests/batch-e2e.test.ts` is the cross-language lock: TS signs + builds
-the witness payload, the Rust sequencer binary proves + submits, the Solidity
+a plaintext attestation witness, the Rust sequencer binary proves + submits, the Solidity
 verifier checks the hashes and the registry anchor on a live Anvil — value
 legs asserted from the chain. Between its two batches the test starts a relay
 that holds no state, which must refuse to start; starts a second relay on the
@@ -494,8 +523,9 @@ into `test/fixtures/clause-engine-vectors.json`
 (`HARVEST_CLAUSE_ENGINE_VECTORS=1` regenerates);
 `prover/clause/tests/engine_vectors.rs` asserts the guest's engine gives the
 same verdicts and the same bytes. The EIP-712 fixture carries the batch
-path's three authorizations — `ResolveProcess`, `AttestSeller`, `AttestBuyer`,
-hashed by viem from the type strings — and
+path's three authorizations — `ResolveProcess` (over the process id and the
+cumulative value the buyer accepts), `AttestSeller`, `AttestBuyer`, hashed by
+viem from the type strings — and
 `prover/lib/tests/eip712_vectors.rs` asserts the guest's hashes and digests
 against them and against the commitment vectors.
 
@@ -520,23 +550,29 @@ whether the spec parses, whether the content validates, and the canonical ABI
 bytes; `prover/clause/tests/fuzz_vectors.rs` asks the guest's engine the same
 three questions. Without the variable the SDK file asserts the generator is
 deterministic. The `FigaroCore` stream has two halves.
-`test/core/kernel/KernelDifferentialFuzzTest.t.sol` draws a stream of commits
-and resolutions from the seed, over five wallets and two tokens: valid ones,
+`test/core/kernel/KernelDifferentialFuzzTest.t.sol` draws a stream of commits,
+resolutions and attestations from the seed, over five wallets and two tokens,
+every order signing a two-clause agreement derived from its salt: valid ones,
 and malformed ones (an expired deadline, a zero payment, a wrong signer, a
 cumulative value off by one, an unknown or resolved process, another wallet as
 buyer, the other token, a replay, a payment in the overflow window, a high-s
 signature, a recovery id written 0/1, a zeroed signature; a resolution by a
 wallet that is not the buyer, one order short, holding a foreign order, of a
-resolved process, of an unknown process). Each runs on `FigaroCore`; the ids
-it returned, or the error it reverted with, go to
+resolved process, of an unknown process; an attestation with a
+`clauseDataHash` or an inclusion proof the agreement does not open, by a
+wallet that is not the party, on an unknown or resolved order, naming one
+leaf's key with the other's hash). Each commit and resolution runs on
+`FigaroCore` and each attestation on `AttestationCoordinator`; the ids
+returned or the log emitted, or the error reverted with, go to
 `test/fixtures/streams/kernel.jsonl`, one JSON object per line, followed by every
 wallet's deposits and payouts and every process's final state. The generator
 asserts nothing about which error a malformed operation earns: `FigaroCore`'s
 answer is the oracle. `prover/lib/tests/fuzz_stream.rs` replays the stream
 through `apply_batch_with_state`, one operation per batch over the state the
-previous batch left, with the stream's own signature bytes, and asserts the
-same acceptance, the same error, the same ids, deposits, payouts, accumulators
-and active counts. The Rust half is `#[ignore]`d under a plain `cargo test`
+previous batch left, with the stream's own commit signature bytes and each
+attestation in the hash-only form, and asserts the same acceptance, the same
+error, the same ids, the coordinator's log bytes with no spec binding, the
+same deposits, payouts, accumulators and active counts. The Rust half is `#[ignore]`d under a plain `cargo test`
 (it needs the stream) and fails, never skips, when run without one.
 `prover-ci`'s `cross-impl-fuzz` job runs four rounds on every push, seeded
 from the run id; a divergence prints the seed and the step.

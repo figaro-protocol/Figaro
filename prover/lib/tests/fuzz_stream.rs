@@ -2,16 +2,23 @@
 //! operations FigaroCore itself ran, and must answer as FigaroCore did.
 //!
 //! `test/core/kernel/KernelDifferentialFuzzTest.t.sol` draws a stream of
-//! commits and resolutions from a seed — valid ones and deliberately
-//! malformed ones — runs each on `FigaroCore`, and writes what FigaroCore
-//! did to `test/fixtures/streams/kernel.jsonl`, one JSON object per line. This
+//! commits, resolutions and attestations from a seed — valid ones and
+//! deliberately malformed ones — runs each on `FigaroCore` or
+//! `AttestationCoordinator`, and writes what the contract did to
+//! `test/fixtures/streams/kernel.jsonl`, one JSON object per line. This
 //! file replays the stream through `apply_batch_with_state`, one operation
-//! per batch over the state the previous batch left, and asserts:
+//! per batch over the state the previous batch left — each attestation as
+//! `AttestationWitness::HashOnly`, the coordinator's own arguments — and
+//! asserts:
 //!
 //!   - every operation FigaroCore accepted, the mirror accepts, with the
 //!     same process id and order hash;
 //!   - every operation FigaroCore rejected, the mirror rejects, with the
 //!     same error;
+//!   - every attestation the coordinator accepted, the mirror accepts and
+//!     emits the coordinator's log — the same topics and data, byte for
+//!     byte — with no spec binding; every one it refused, the mirror
+//!     refuses with the same error;
 //!   - every wallet's deposits and payouts, per token, are FigaroCore's;
 //!   - every process ends on FigaroCore's accumulator and active count.
 //!
@@ -19,7 +26,8 @@
 //! FigaroCore refuses (high-s, a 0/1 recovery id, zero bytes) reaches the mirror
 //! as FigaroCore saw it. A resolution has no signature on the direct path
 //! (FigaroCore reads `msg.sender`); the mirror's equivalent is the caller's
-//! signature over the resolve struct, made here with the caller's key.
+//! signature over the resolve struct, made here with the caller's key; an
+//! attestation's caller likewise signs the attest struct here.
 //!
 //! The test is `#[ignore]`d because it needs the stream the Foundry half
 //! writes; `scripts/test-cross-impl-fuzz.sh` runs both halves under one seed.
@@ -88,6 +96,30 @@ fn signature(v: &serde_json::Value) -> Signature {
     }
 }
 
+fn words(v: &serde_json::Value) -> Vec<B256> {
+    v.as_array().expect("array").iter().map(b256).collect()
+}
+
+fn hex_bytes(v: &serde_json::Value) -> Vec<u8> {
+    let hex = s(v).trim_start_matches("0x");
+    (0..hex.len()).step_by(2).map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("hex")).collect()
+}
+
+/// The `Attestation` event as the EVM logs it: the signature and the three
+/// indexed words as topics, the three unindexed words as data.
+fn encode_log(e: &AttestationEventData) -> (Vec<B256>, Vec<u8>) {
+    let signature = keccak256(b"Attestation(bytes32,bytes32,address,bytes32,uint8,bytes32)");
+    let mut attester = [0u8; 32];
+    attester[12..].copy_from_slice(e.attester.as_slice());
+    let mut data = Vec::with_capacity(96);
+    data.extend_from_slice(e.clause_id.as_slice());
+    let mut stage = [0u8; 32];
+    stage[31] = e.stage;
+    data.extend_from_slice(&stage);
+    data.extend_from_slice(e.content_ref.as_slice());
+    (vec![signature, e.order_hash, e.process_id, B256::from(attester)], data)
+}
+
 fn make_signing_key(secret: u64) -> SigningKey {
     let mut bytes = [0u8; 32];
     bytes[24..].copy_from_slice(&secret.to_be_bytes());
@@ -147,6 +179,10 @@ fn kernel_name(e: &KernelError) -> &'static str {
         KernelError::ProcessAlreadyResolved => "ProcessAlreadyResolved",
         KernelError::Overflow => "Panic",
         KernelError::InvalidSignature => "ECDSAInvalidSignature",
+        KernelError::UnknownOrder => "UnknownOrder",
+        KernelError::OrderResolved => "OrderResolved",
+        KernelError::NotAuthorized => "NotAuthorized",
+        KernelError::InvalidInclusionProof => "InvalidInclusionProof",
         _ => "outside the kernel",
     }
 }
@@ -188,7 +224,7 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
     let mut deposits: BTreeMap<(Address, Address), U256> = BTreeMap::new();
     let mut payouts: BTreeMap<(Address, Address), U256> = BTreeMap::new();
     let mut divergences: Vec<String> = Vec::new();
-    let (mut accepted, mut rejected) = (0usize, 0usize);
+    let (mut accepted, mut rejected, mut attestations) = (0usize, 0usize, 0usize);
 
     for step in steps {
         let i = count(&step["index"]);
@@ -207,11 +243,53 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                 let commitments = (0..count(&step["orderCount"]))
                     .map(|k| committed[&count(&step[format!("r{k}")])].clone())
                     .collect();
-                let digest = typed_data_hash(&domain, &resolve_struct_hash(&process_id));
+                // The buyer signs over the process as it stands: its
+                // cumulative value in the mirror's state (zero for a
+                // process the mirror never saw).
+                let cumulative_value = state
+                    .processes
+                    .get(&process_id)
+                    .map(|p| p.cumulative_value)
+                    .unwrap_or(U256::ZERO);
+                let digest = typed_data_hash(&domain, &resolve_struct_hash(&process_id, &cumulative_value));
                 KernelOp::Resolve {
                     process_id,
+                    cumulative_value,
                     commitments,
                     buyer_sig: sign_digest(&keys[&caller], &digest),
+                }
+            }
+            "attestAsSeller" | "attestAsBuyer" => {
+                let target = commitment(step);
+                let (order_hash, process_id) = derive_commitment_ids(&domain, &target);
+                let clause_id = b256(&step["clauseId"]);
+                let stage: u8 = s(&step["stage"]).parse().unwrap();
+                let content_ref = b256(&step["contentRef"]);
+                let key = &keys[&addr(&step["caller"])];
+                let proof = AttestationWitness::HashOnly {
+                    clause_data_hash: b256(&step["clauseDataHash"]),
+                    inclusion_proof: words(&step["inclusionProof"]),
+                };
+                if kind == "attestAsSeller" {
+                    let h = attest_seller_struct_hash(&order_hash, &clause_id, stage, &content_ref);
+                    KernelOp::AttestAsSeller {
+                        target,
+                        clause_id,
+                        stage,
+                        content_ref,
+                        seller_sig: sign_digest(key, &typed_data_hash(&domain, &h)),
+                        proof,
+                    }
+                } else {
+                    let h = attest_buyer_struct_hash(&process_id, &order_hash, &clause_id, stage, &content_ref);
+                    KernelOp::AttestAsBuyer {
+                        target,
+                        clause_id,
+                        stage,
+                        content_ref,
+                        buyer_sig: sign_digest(key, &typed_data_hash(&domain, &h)),
+                        proof,
+                    }
                 }
             }
             other => panic!("seed {seed}, step {i}: unknown kind {other}"),
@@ -229,8 +307,23 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
         };
 
         match (apply_batch_with_state(&input), outcome) {
-            (Ok((_pv, positions, _events, next)), "ok") => {
+            (Ok((_pv, positions, events, next)), "ok") => {
                 accepted += 1;
+                if kind.starts_with("attest") {
+                    attestations += 1;
+                    match events.attestations.as_slice() {
+                        [e] => {
+                            let (topics, data) = encode_log(e);
+                            if topics != words(&step["topics"]) || data != hex_bytes(&step["data"]) {
+                                divergences.push(format!("step {i} ({kind}): the event bytes differ from the coordinator's"));
+                            }
+                        }
+                        other => divergences.push(format!("step {i} ({kind}): {} events, the coordinator emitted one", other.len())),
+                    }
+                    if !events.spec_bindings.is_empty() {
+                        divergences.push(format!("step {i} ({kind}): a hash-only attestation committed a spec binding"));
+                    }
+                }
                 if kind == "commit" {
                     let c = commitment(step);
                     let (order_hash, process_id) = derive_commitment_ids(&domain, &c);
@@ -301,11 +394,14 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
     }
 
     assert!(accepted > 0 && rejected > 0, "seed {seed}: the stream exercises both outcomes");
+    assert!(attestations > 0, "seed {seed}: the stream holds accepted attestations");
     assert!(
         divergences.is_empty(),
         "seed {seed}: {} divergences between the kernel and its mirror:\n{}",
         divergences.len(),
         divergences.join("\n")
     );
-    println!("seed {seed}: {accepted} accepted, {rejected} rejected, {processes} processes — no divergence");
+    println!(
+        "seed {seed}: {accepted} accepted ({attestations} attestations), {rejected} rejected, {processes} processes — no divergence"
+    );
 }

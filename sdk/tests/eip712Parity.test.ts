@@ -148,7 +148,9 @@ function batchVectors() {
     const orderHash = keccak256(toBytes("batch-order"));
     const clauseId = keccak256(toBytes("batch-clause"));
     const contentRef = keccak256(toBytes("batch-content"));
-    const resolve = { processId };
+    // The cumulative value the buyer accepts: a word past 2^128, so the
+    // guest's big-endian uint256 encoding is exercised beyond one limb.
+    const resolve = { processId, cumulativeValue: 2n ** 130n + 1_500n };
     const authorizations = [1, 0, 255].flatMap((stage) => {
         const seller = { orderHash, clauseId, stage, contentRef };
         const buyer = { processId, orderHash, clauseId, stage, contentRef };
@@ -173,7 +175,7 @@ function batchVectors() {
         authorizations: [
             {
                 type: "ResolveProcess",
-                message: resolve,
+                message: { processId, cumulativeValue: resolve.cumulativeValue.toString() },
                 structHash: hashStruct({ types: RESOLVE_PROCESS_TYPES, primaryType: "ResolveProcess", data: resolve }),
                 digest: hashTypedData({ domain, types: RESOLVE_PROCESS_TYPES, primaryType: "ResolveProcess", message: resolve }),
             },

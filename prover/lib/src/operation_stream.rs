@@ -14,7 +14,11 @@
 //! - every `Commit`, whole: the signed commitment and both signatures, as the
 //!   direct path's `commit` carries them in calldata;
 //! - every `Resolve`, whole: the process, the buyer's signature and the open
-//!   commitments it names, as `FigaroCore.resolveProcess` carries them;
+//!   commitments it names, as `FigaroCore.resolveProcess` carries them; the
+//!   cumulative value the signature covers is the sum of those commitments'
+//!   payments (a resolve lists every order of its process, and the guest
+//!   applies one only while the process holds the value it signs), so the
+//!   decoder derives it and the entry carries no word for it;
 //! - every usage claim, whole, because the usage sets ride the state root
 //!   (`KernelState::usage_counted`, `usage_seller_seen`) and cannot be rebuilt
 //!   from the accrual the verifier writes;
@@ -79,6 +83,7 @@ pub fn encode_operation_stream(operations: &[KernelOp], claims: &[UsageClaim]) -
                 process_id,
                 commitments,
                 buyer_sig,
+                ..
             } => {
                 out.push(TAG_RESOLVE);
                 out.extend_from_slice(process_id.as_slice());
@@ -152,8 +157,11 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<(Vec<KernelOp>, Vec<Usag
                 for _ in 0..count {
                     commitments.push(r.commitment()?);
                 }
+                let cumulative_value = resolved_cumulative_value(&commitments)
+                    .ok_or_else(|| "a resolve whose payments overflow".to_string())?;
                 operations.push(KernelOp::Resolve {
                     process_id,
+                    cumulative_value,
                     commitments,
                     buyer_sig,
                 });
@@ -187,6 +195,15 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<(Vec<KernelOp>, Vec<Usag
         }
     }
     Ok((operations, claims))
+}
+
+/// The cumulative value a resolve listing `commitments` signs when it
+/// applies: the sum of their payments, which is the process's accumulator
+/// once every order of the process is listed. `None` on overflow.
+pub fn resolved_cumulative_value(commitments: &[Commitment]) -> Option<U256> {
+    commitments
+        .iter()
+        .try_fold(U256::ZERO, |sum, c| sum.checked_add(c.payment))
 }
 
 fn put_commitment(out: &mut Vec<u8>, c: &Commitment) {

@@ -317,7 +317,7 @@ export default function Faq() {
                     A separate contract resolves many orders under one proof. It shares no state with FigaroCore and never calls it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    FigaroCore&apos;s rules do not change. A process resolved on the batch path has its record in the verifier, and the proof re-checks every clause against the spec the registry anchors.
+                    FigaroCore&apos;s rules do not change. A process resolved on the batch path is held by the verifier, and the proof checks every attestation&apos;s inclusion as the coordinator does, and its content against the spec the registry anchors when its party sends it in plaintext.
                 </p>
             </MarketingSection>
 
