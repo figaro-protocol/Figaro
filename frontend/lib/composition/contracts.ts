@@ -11,7 +11,7 @@
  * the terminal needs none of this bundled.
  */
 import { isValidAddress } from "@/lib/shared/evm";
-import { getUsageCounter as getKernelUsageCounter } from "@/lib/kernel/contracts";
+import { getUsageCounter as getKernelUsageCounter, getBatchVerifier as getKernelBatchVerifier } from "@/lib/kernel/contracts";
 
 const COMPOSITION_CONTRACTS = {
     attestationCoordinator: (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR || "") as `0x${string}`,
@@ -20,7 +20,6 @@ const COMPOSITION_CONTRACTS = {
     swapRouter: (process.env.NEXT_PUBLIC_SWAP_ROUTER || "") as `0x${string}`,
     swapQuoter: (process.env.NEXT_PUBLIC_SWAP_QUOTER || "") as `0x${string}`,
     rpgfMinter: (process.env.NEXT_PUBLIC_RPGF_MINTER || "") as `0x${string}`,
-    batchVerifier: (process.env.NEXT_PUBLIC_BATCH_VERIFIER || "") as `0x${string}`,
     multisender: (process.env.NEXT_PUBLIC_MULTISENDER || "") as `0x${string}`,
 };
 
@@ -80,14 +79,10 @@ export function getUsageCounter(): `0x${string}` | null {
     return getKernelUsageCounter();
 }
 
-/** The FigaroBatchVerifier — the batch path, the second of the two resolution paths. It shares no state
- *  with FigaroCore and never calls it, so it is not a Core contract and does
- *  not belong in `lib/kernel/contracts.ts`: a batch-resolved process never
- *  acquires FigaroCore status (docs/SCALING_STRATEGY.md § "The two paths share no
- *  state"). Readers that fold both paths resolve the address here. Resolved-empty: null = the batch path is unreadable on this
- *  network, which is absence, never "not resolved". */
+/** The FigaroBatchVerifier, the Core's batch path: read from the Core's
+ *  configuration (`lib/kernel/contracts.ts`), its one source. */
 export function getBatchVerifier(): `0x${string}` | null {
-    return resolveAddress(COMPOSITION_CONTRACTS.batchVerifier);
+    return getKernelBatchVerifier();
 }
 
 /** The public multisender the payout-routing surface composes with —

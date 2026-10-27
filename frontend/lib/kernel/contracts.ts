@@ -40,6 +40,10 @@ export interface ChainConfig {
     florinToken: `0x${string}`;
     /** UsageCounter — the designer rewards' verified-usage ledger (counted at resolve, claimed per period). */
     usageCounter: `0x${string}`;
+    /** FigaroBatchVerifier — the Core's batch path. It emits FigaroCore's own
+     *  order and process events for every batched order, so the order readers
+     *  read it beside `core`. */
+    batchVerifier: `0x${string}`;
 }
 
 export const CONTRACTS: ChainConfig = {
@@ -50,6 +54,7 @@ export const CONTRACTS: ChainConfig = {
     agreementRegistry: (process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY || "") as `0x${string}`,
     florinToken: (process.env.NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS || "") as `0x${string}`,
     usageCounter: (process.env.NEXT_PUBLIC_USAGE_COUNTER || "") as `0x${string}`,
+    batchVerifier: (process.env.NEXT_PUBLIC_BATCH_VERIFIER || "") as `0x${string}`,
 };
 
 /** The MembersRegistry address if it's a well-formed address, else null. */
@@ -67,6 +72,15 @@ export function getMembersRegistry(): `0x${string}` | null {
  *  contract call with a garbage address. */
 export function getUsageCounter(): `0x${string}` | null {
     const a = CONTRACTS.usageCounter;
+    return isValidAddress(a) ? a : null;
+}
+
+/** The FigaroBatchVerifier address if it's a well-formed address, else null:
+ *  null means the batch path is unreadable on this network (absence, never
+ *  "not resolved"). The canonical parse of `NEXT_PUBLIC_BATCH_VERIFIER`;
+ *  `lib/composition/contracts.ts`'s `getBatchVerifier()` delegates here. */
+export function getBatchVerifier(): `0x${string}` | null {
+    const a = CONTRACTS.batchVerifier;
     return isValidAddress(a) ? a : null;
 }
 

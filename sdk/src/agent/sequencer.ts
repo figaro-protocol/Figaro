@@ -21,7 +21,6 @@
  */
 
 import type { Hex, Address, Commitment } from "../types.js";
-import { readCappedResponseText } from "./httpChannel.js";
 
 // ── Sequencer operation types (match Rust KernelOp variants) ────────────────
 
@@ -135,16 +134,6 @@ export interface SubmitResult {
     id: number;
 }
 
-/** The relay's retention window. A relay is bounded, so a cursor older than
- *  `first_batch` means the gap has already been dropped — read this BEFORE
- *  replaying so eviction is visible rather than silent. */
-export interface SequencerRetentionWindow {
-    first_batch: number | null;
-    last_batch: number | null;
-    retained_batches: number;
-    max_batches: number;
-}
-
 export interface SequencerStatus {
     state_root: string;
     pending_ops: number;
@@ -163,120 +152,8 @@ export interface SequencerStatus {
     dropped_usage_claims?: number;
     /** The most recent claim drop's reason, verbatim; null while clean. */
     last_dropped_claim_error?: string | null;
-    /** The publication window. Absent on a relay predating the read routes. */
-    archive?: SequencerRetentionWindow;
 }
 
-// ── Publication reads — FigaroCore's events, for the batch universe ─────────
-//
-// `FigaroCore` both RESOLVES an order and PUBLISHES it (OrderCommitted /
-// OrderSeller / OrderCurrency carry the struct; the signatures sit in the
-// commit calldata). The batch path resolves the same trade and publishes none
-// of it — `FigaroBatchVerifier`'s public values carry no order hashes and
-// `BatchSettled` names no order — so a batched order's buyer, seller, payment
-// and checkoutHash exist only under the proven state root. These read types
-// mirror the relay's publication routes, which close that gap.
-//
-// NOTHING HERE IS AUTHORITY. A relay can omit or delay, never forge: every
-// field is checkable by the reader (the struct hashes to `order_hash` under
-// the VERIFIER's EIP-712 domain, the signatures recover to the parties named
-// inside that struct, the payouts are a pure function of the struct, and the
-// batch is anchored on chain by its state-root transition). Consumers MUST
-// verify before displaying — see `frontend/lib/audit/batchRelay.ts`.
-
-/** Where a published fact was resolved, so the reader can anchor it on chain.
- *  `batch` is THIS relay's own sequence number — a cursor, not a protocol
- *  identity; another relay numbers differently. The chain-anchored identity is
- *  `new_state_root` + `resolution_tx`. */
-export interface SequencerBatchRef {
-    batch: number;
-    chain_id: number;
-    /** The EIP-712 `verifyingContract` for this batch's signatures — the
-     *  VERIFIER, not FigaroCore. */
-    verifying_contract: Address;
-    prev_state_root: Hex;
-    new_state_root: Hex;
-    /** null on a dry run: the batch proved but was never resolved on chain. */
-    resolution_tx: Hex | null;
-    block_timestamp: number;
-}
-
-export interface SequencerCommitView {
-    /** The 9-field struct exactly as signed — `process_id` is zero for a root
-     *  order. Amounts are hex quantities; use `fromSequencerCommitment`. */
-    commitment: SequencerCommitment;
-    buyer_signature: SequencerSignature;
-    seller_signature: SequencerSignature;
-    batch: SequencerBatchRef;
-}
-
-export interface SequencerResolutionView {
-    seller: Address;
-    /** Hex quantity. `2 × expectedCumulativeValue + payment`. */
-    seller_payout: string;
-    /** Hex quantity. `payment`. */
-    buyer_payout: string;
-    batch: SequencerBatchRef;
-}
-
-/** One published order. Either leg may be absent: `commit` is null when the
- *  committing batch aged out of retention, `resolution` is null while the
- *  process is still open. */
-export interface SequencerOrderView {
-    order_hash: Hex;
-    process_id: Hex;
-    commit: SequencerCommitView | null;
-    resolution: SequencerResolutionView | null;
-}
-
-export interface SequencerProcessResolutionView {
-    buyer: Address;
-    order_count: number;
-    /** The signature that authorized resolution — the batched form of the
-     *  FigaroCore's `msg.sender == rootBuyer`. */
-    buyer_signature: SequencerSignature;
-    batch: SequencerBatchRef;
-}
-
-export interface SequencerProcessView {
-    process_id: Hex;
-    orders: SequencerOrderView[];
-    resolution: SequencerProcessResolutionView | null;
-}
-
-export interface SequencerBatchRecord extends SequencerBatchRef {
-    commits: Array<{
-        order_hash: Hex;
-        process_id: Hex;
-        commitment: SequencerCommitment;
-        buyer_signature: SequencerSignature;
-        seller_signature: SequencerSignature;
-    }>;
-    resolutions: Array<{
-        process_id: Hex;
-        buyer: Address;
-        order_count: number;
-        buyer_signature: SequencerSignature;
-        orders: Array<{
-            order_hash: Hex;
-            seller: Address;
-            seller_payout: string;
-            buyer_payout: string;
-        }>;
-    }>;
-}
-
-export interface SequencerBatchPage {
-    batches: SequencerBatchRecord[];
-    /** Pass as `from` to continue; null means the end of what this relay has
-     *  resolved. */
-    next_cursor: number | null;
-    retained: SequencerRetentionWindow;
-}
-
-// ── Conversion helpers ──────────────────────────────────────────────────────
-
-/** Convert an SDK Commitment to the sequencer wire format. */
 export function toSequencerCommitment(c: Commitment): SequencerCommitment {
     return {
         process_id: c.processId,
@@ -534,82 +411,6 @@ export class SequencerClient {
             );
         }
         return res.json();
-    }
-
-    // ── Publication reads ───────────────────────────────────────────────────
-
-    /**
-     * GET a publication route, returning null on `404`.
-     *
-     * The null is load-bearing and MUST NOT be widened: `404` from a relay
-     * means "not in THIS relay's archive" — resolved by another relay, resolved
-     * directly against FigaroCore, or aged out of retention (check
-     * `status().archive`). It NEVER means the trade did not happen. Every other
-     * failure throws, because an unreachable or broken relay is a different
-     * fact from an absent record and callers must be able to tell them apart.
-     */
-    private async read<T>(path: string): Promise<T | null> {
-        let res: Response;
-        try {
-            res = await this._fetch(`${this.url}${path}`, {
-                method: "GET",
-                headers: { "Accept": "application/json" },
-            });
-        } catch (e) {
-            throw new SequencerError(
-                `relay unreachable at ${this.url}${path}: ${e instanceof Error ? e.message : String(e)}`,
-                0,
-            );
-        }
-        if (res.status === 404) return null;
-        if (!res.ok) {
-            const body = await res.json().catch(() => ({ error: res.statusText }));
-            throw new SequencerError(
-                body.error ?? `Relay returned ${res.status}`,
-                res.status,
-            );
-        }
-        // A relay is untrusted transport, so its body is attacker-influenceable:
-        // read it under a hard byte ceiling rather than letting `res.json()`
-        // buffer whatever arrives.
-        const text = await readCappedResponseText(res);
-        try {
-            return JSON.parse(text) as T;
-        } catch {
-            throw new SequencerError(`relay returned malformed JSON for ${path}`, res.status);
-        }
-    }
-
-    /** One published order by its order hash, or null when this relay has no
-     *  leg of it. Verify before displaying — the relay is transport. */
-    async order(orderHash: Hex): Promise<SequencerOrderView | null> {
-        return this.read<SequencerOrderView>(`/orders/${orderHash}`);
-    }
-
-    /** A published process — its orders and its resolution facts — or null when
-     *  this relay has none of it. The primary route for reading batched trade. */
-    async process(processId: Hex): Promise<SequencerProcessView | null> {
-        return this.read<SequencerProcessView>(`/processes/${processId}`);
-    }
-
-    /**
-     * A bounded page of resolved batches, for replaying the batch universe the
-     * way an indexer replays FigaroCore logs. `limit` is clamped to 50 by the relay
-     * whatever is asked; follow `next_cursor` until it is null, and check
-     * `retained` against your cursor first — a cursor older than `first_batch`
-     * means this relay already dropped the gap.
-     */
-    async batches(range?: { from?: number; limit?: number }): Promise<SequencerBatchPage> {
-        const params = new URLSearchParams();
-        if (range?.from !== undefined) params.set("from", String(range.from));
-        if (range?.limit !== undefined) params.set("limit", String(range.limit));
-        const query = params.toString();
-        const page = await this.read<SequencerBatchPage>(
-            `/batches${query ? `?${query}` : ""}`,
-        );
-        // /batches has no 404: an empty relay returns an empty page.
-        if (!page) throw new SequencerError("relay returned no batch page", 404);
-        return page;
     }
 
     /** Check if the sequencer is reachable (returns true/false, never throws). */

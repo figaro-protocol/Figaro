@@ -74,7 +74,7 @@ export function buildHashAppendix(
         kind: "order-hash",
         label: "Order hash",
         hash: order.orderHash,
-        sourceLocation: "FigaroCore.orderStatus[orderHash] / OrderCommitted.orderHash",
+        sourceLocation: "OrderCommitted.orderHash (FigaroCore, or FigaroBatchVerifier for a batched order)",
     });
 
     // 2. Agreement root.

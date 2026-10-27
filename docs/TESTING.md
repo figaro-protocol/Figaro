@@ -329,12 +329,9 @@ allowance cover the bond, a commit the chain cannot be asked about is dropped
 conservatively, no verifier means no reads; the re-queue cap dead-letters an
 op after the third transient failure and a fresh admission starts it over;
 HTTP API incl. the per-address submit rate limit (`429`, another address
-still served) and arrival-order draining across clients; mempool→assemble→mirror→advance pipeline; and the
-publication archive — retention survives the drain that clears the mempool,
-the window is bounded and evicts cleanly, the journal survives a restart and
-rotates instead of growing, and every read route republishes what `FigaroCore`
-would have emitted, asserted VERIFIABLE: the published struct re-derives its
-own order hash and both signatures recover to the parties named inside it).
+still served) and arrival-order draining across clients; mempool→assemble→mirror→advance pipeline; and the operation stream a batch
+publishes — re-applied from the previous state, it lands on the root the proof
+committed, `the_published_stream_rebuilds_the_root_the_batch_committed`).
 
 `sdk/tests/batch-e2e.test.ts` is the cross-language lock: TS signs + builds
 the witness payload, the Rust sequencer binary proves + submits, the Solidity
@@ -363,14 +360,15 @@ next batch — the balances, the one `BatchSettled` and the per-order answers
 read from the chain, the dead-letter count and its reason from `/status`.
 Same gate as the batch test; `prover-ci` runs both.
 
-`frontend/tests/e2e/audit-relay.devnet.spec.ts` is the audit page's end of the
-same path: it starts the built sequencer against the DEVNET's own verifier (the
-devnet pins that binary's guest, `scripts/deploy-local.sh`), commits one order
-through the relay as an agent would (`SequencerClient`), waits for the batch,
-reads the verifier's `stateRoot()` and the relay's `GET /state` out of band and
-holds the recomputed root to the chain's, then opens `/audit/view` with the
-relay as the browser's endpoint and asserts the order's verdict and its
-`state-inclusion` check on screen. Skips when no binary is built.
+`frontend/tests/e2e/batch-events.devnet.spec.ts` is the app's end of the same
+path: it starts the built sequencer with nothing (`REBUILD_FROM_CHAIN=1`)
+against the DEVNET's own verifier (the devnet pins that binary's guest,
+`scripts/deploy-local.sh`), commits one order through it as an agent would
+(`SequencerClient`), waits for the batch, reads the verifier's `stateRoot()`,
+the buyer's balance and the verifier's `OrderCommitted` out of band, then
+opens `/audit/view` with no relay endpoint anywhere and asserts the order
+renders from chain events, its signatures "Proved in a batch", bound to the
+batch the chain names. Skips when no binary is built.
 
 ## Frontend Vitest (`frontend/tests/`) — 2 tiers
 

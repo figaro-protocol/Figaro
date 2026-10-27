@@ -20,7 +20,6 @@ use figaro_prove_test::{
     BUYER_KEY, CHAIN_ID, CORE, SELLER1_KEY,
 };
 use figaro_sequencer::api::{self, record_dropped, ApiConfig, AppState, FailureLog};
-use figaro_sequencer::archive::{self, Archive, ArchiveConfig, BatchRecord};
 use figaro_sequencer::assembler::{self, AssemblerConfig, UsageContext};
 use figaro_sequencer::gas::{self, SettleItems};
 use figaro_sequencer::submitter::settle_calldata;
@@ -682,7 +681,6 @@ fn test_app_state() -> AppState {
     AppState {
         mempool: mempool(),
         state_mirror: StateMirror::genesis(),
-        archive: Archive::in_memory(archive::DEFAULT_MAX_BATCHES),
         batch_count: std::sync::Arc::new(tokio::sync::RwLock::new(0)),
         failures: figaro_sequencer::api::FailureLog::default(),
         funding: None,
@@ -1252,13 +1250,7 @@ async fn e2e_http_submission_flows_into_formed_batch() {
     assert_eq!(state.state_mirror.state_root().await, pv.new_state_root);
 }
 
-// ── Publication archive: retention ────────────────────────────────
-//
-// FigaroCore PUBLISHES what it resolves; the batch verifier does not (its
-// public values carry no order hashes, its storage is a root and a count).
-// These tests hold the relay to FigaroCore's publication role: what a
-// batch resolved must still be readable after the mempool that carried it
-// has been cleared, must be bounded, and must survive a restart.
+// ── The canonical fixture's ids ─────────────────────────────────
 
 fn domain() -> B256 {
     domain_separator(CHAIN_ID, CORE)
@@ -1273,481 +1265,6 @@ fn canonical_ids() -> (B256, B256) {
     derive_commitment_ids(&domain(), commitment)
 }
 
-/// Resolve a batch the way the batch loop does — assemble, apply — and
-/// build the publication record for what it resolved.
-fn settle_and_publish(number: u64, ops: Vec<KernelOp>, tx: Option<B256>) -> BatchRecord {
-    let batch = assembler::assemble_batch(
-        CHAIN_ID,
-        CORE,
-        1000,
-        ops,
-        empty_snapshot(),
-        UsageContext::default(),
-    );
-    let (pv, _, _, _) = apply_batch_with_state(&batch).expect("the canonical batch applies");
-    let (commits, resolutions) =
-        archive::publication_from_ops(batch.chain_id, batch.verifying_contract, &batch.operations);
-    BatchRecord {
-        batch: number,
-        chain_id: batch.chain_id,
-        verifying_contract: batch.verifying_contract,
-        prev_state_root: pv.prev_state_root,
-        new_state_root: pv.new_state_root,
-        resolution_tx: tx,
-        block_timestamp: batch.block_timestamp,
-        commits,
-        resolutions,
-    }
-}
-
-/// A resolved batch that carried no trade — used to push the window along.
-fn filler_record(number: u64) -> BatchRecord {
-    BatchRecord {
-        batch: number,
-        chain_id: CHAIN_ID,
-        verifying_contract: CORE,
-        prev_state_root: B256::ZERO,
-        new_state_root: B256::repeat_byte(number as u8),
-        resolution_tx: None,
-        block_timestamp: 1000 + number,
-        commits: vec![],
-        resolutions: vec![],
-    }
-}
-
-fn temp_journal(tag: &str) -> std::path::PathBuf {
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    std::env::temp_dir().join(format!("figaro-archive-{tag}-{nanos}.jsonl"))
-}
-
-#[tokio::test]
-async fn archive_retains_what_batch_assembly_clears() {
-    // `Mempool::drain` clears the queue AND its dedup index at assembly —
-    // nothing about a resolved order survives there. The archive is what
-    // makes the batch universe readable afterwards.
-    let mp = mempool();
-    for op in canonical_ops() {
-        mp.submit(op).await.unwrap();
-    }
-    let pending = mp.drain().await;
-    assert_eq!(
-        mp.len().await,
-        0,
-        "the mempool keeps nothing after assembly"
-    );
-
-    let ops: Vec<_> = pending.iter().map(|p| p.op.clone()).collect();
-    let archive = Archive::in_memory(archive::DEFAULT_MAX_BATCHES);
-    archive
-        .record(settle_and_publish(1, ops, Some(B256::repeat_byte(0xab))))
-        .await;
-
-    let (order_hash, process_id) = canonical_ids();
-    let view = archive
-        .order(order_hash)
-        .await
-        .expect("the order is published");
-    assert!(view.commit.is_some(), "the commitment struct + signatures");
-    assert!(view.resolution.is_some(), "and the resolution facts");
-    assert_eq!(view.process_id, process_id);
-    assert!(archive.process(process_id).await.is_some());
-}
-
-#[tokio::test]
-async fn archive_is_bounded_and_the_evicted_batch_stops_answering() {
-    let archive = Archive::in_memory(1);
-    archive
-        .record(settle_and_publish(1, canonical_ops(), None))
-        .await;
-    let (order_hash, process_id) = canonical_ids();
-    assert!(
-        archive.order(order_hash).await.is_some(),
-        "published while retained"
-    );
-
-    archive.record(filler_record(2)).await;
-    assert_eq!(archive.len().await, 1, "the window is bounded");
-    assert!(
-        archive.order(order_hash).await.is_none(),
-        "an evicted batch leaves no dangling index entry"
-    );
-    assert!(archive.process(process_id).await.is_none());
-
-    let window = archive.window().await;
-    assert_eq!(window.first_batch, Some(2));
-    assert_eq!(window.last_batch, Some(2));
-    assert_eq!(window.max_batches, 1);
-}
-
-#[tokio::test]
-async fn archive_misses_an_unknown_hash() {
-    let archive = Archive::in_memory(4);
-    archive
-        .record(settle_and_publish(1, canonical_ops(), None))
-        .await;
-    assert!(archive.order(B256::repeat_byte(0x11)).await.is_none());
-    assert!(archive.process(B256::repeat_byte(0x22)).await.is_none());
-}
-
-#[tokio::test]
-async fn archive_journal_survives_a_restart() {
-    let path = temp_journal("restart");
-    let tx = B256::repeat_byte(0x07);
-    {
-        let archive = Archive::open(ArchiveConfig {
-            path: Some(path.clone()),
-            max_batches: 8,
-        })
-        .await;
-        archive
-            .record(settle_and_publish(1, canonical_ops(), Some(tx)))
-            .await;
-    }
-
-    let reopened = Archive::open(ArchiveConfig {
-        path: Some(path.clone()),
-        max_batches: 8,
-    })
-    .await;
-    let (order_hash, _) = canonical_ids();
-    let view = reopened
-        .order(order_hash)
-        .await
-        .expect("published across the restart");
-    assert_eq!(
-        view.commit.expect("commit leg").batch.resolution_tx,
-        Some(tx),
-        "including which transaction resolved it"
-    );
-    assert_eq!(
-        reopened.last_batch().await,
-        Some(1),
-        "and the relay resumes its batch numbering instead of colliding"
-    );
-    std::fs::remove_file(&path).ok();
-}
-
-#[tokio::test]
-async fn archive_journal_rotates_and_stays_bounded_on_disk() {
-    let path = temp_journal("rotate");
-    let archive = Archive::open(ArchiveConfig {
-        path: Some(path.clone()),
-        max_batches: 2,
-    })
-    .await;
-    for n in 1..=8 {
-        archive.record(filler_record(n)).await;
-    }
-    assert_eq!(archive.len().await, 2, "memory window bounded");
-    let lines = std::fs::read_to_string(&path).unwrap().lines().count();
-    assert!(
-        lines <= 4,
-        "journal rotates instead of growing: {lines} lines"
-    );
-
-    let reopened = Archive::open(ArchiveConfig {
-        path: Some(path.clone()),
-        max_batches: 2,
-    })
-    .await;
-    assert_eq!(reopened.len().await, 2);
-    assert_eq!(
-        reopened.window().await.last_batch,
-        Some(8),
-        "the newest survive"
-    );
-    std::fs::remove_file(&path).ok();
-    std::fs::remove_file(path.with_extension("jsonl.tmp")).ok();
-}
-
-// ── Publication reads: FigaroCore's events over HTTP ──────────────
-
-fn published_app_state(archive: Archive) -> AppState {
-    AppState {
-        archive,
-        ..test_app_state()
-    }
-}
-
-async fn get_json(app: axum::Router, uri: &str) -> (StatusCode, serde_json::Value) {
-    let req = Request::builder().uri(uri).body(Body::empty()).unwrap();
-    let response = app.oneshot(req).await.unwrap();
-    let status = response.status();
-    let body = axum::body::to_bytes(response.into_body(), 4 * 1024 * 1024)
-        .await
-        .unwrap();
-    (status, serde_json::from_slice(&body).unwrap())
-}
-
-async fn app_with_canonical_batch() -> axum::Router {
-    let archive = Archive::in_memory(archive::DEFAULT_MAX_BATCHES);
-    archive
-        .record(settle_and_publish(
-            1,
-            canonical_ops(),
-            Some(B256::repeat_byte(0xab)),
-        ))
-        .await;
-    api::router(published_app_state(archive), ApiConfig::default())
-}
-
-#[tokio::test]
-async fn api_order_route_publishes_the_signed_struct_and_both_signatures() {
-    let (order_hash, process_id) = canonical_ids();
-    let (status, json) = get_json(
-        app_with_canonical_batch().await,
-        &format!("/orders/{order_hash}"),
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK);
-
-    let ops = canonical_ops();
-    let KernelOp::Commit {
-        commitment,
-        buyer_sig,
-        seller_sig,
-    } = &ops[0]
-    else {
-        panic!("ops[0] is the commit");
-    };
-    assert_eq!(
-        json["order_hash"],
-        serde_json::to_value(order_hash).unwrap()
-    );
-    assert_eq!(
-        json["process_id"],
-        serde_json::to_value(process_id).unwrap()
-    );
-    // The whole commitment struct — the same information OrderCommitted +
-    // OrderSeller + OrderCurrency carry, in the wire format /submit takes.
-    assert_eq!(
-        json["commit"]["commitment"],
-        serde_json::to_value(commitment).unwrap()
-    );
-    // And the signatures, which FigaroCore leaves in commit calldata.
-    assert_eq!(
-        json["commit"]["buyer_signature"],
-        serde_json::to_value(buyer_sig).unwrap()
-    );
-    assert_eq!(
-        json["commit"]["seller_signature"],
-        serde_json::to_value(seller_sig).unwrap()
-    );
-    assert_eq!(
-        json["commit"]["batch"]["resolution_tx"],
-        serde_json::to_value(B256::repeat_byte(0xab)).unwrap(),
-        "and where to anchor it on chain"
-    );
-}
-
-#[tokio::test]
-async fn api_order_route_publishes_the_resolution_payouts() {
-    let (order_hash, _) = canonical_ids();
-    let (status, json) = get_json(
-        app_with_canonical_batch().await,
-        &format!("/orders/{order_hash}"),
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK);
-
-    let ops = canonical_ops();
-    let KernelOp::Commit { commitment, .. } = &ops[0] else {
-        panic!("ops[0] is the commit");
-    };
-    let (seller_payout, buyer_payout) = resolution_payouts(commitment).unwrap();
-    assert_eq!(
-        json["resolution"]["seller_payout"],
-        serde_json::to_value(seller_payout).unwrap(),
-        "OrderResolved.sellerPayout — 2×cumulativeValue + payment"
-    );
-    assert_eq!(
-        json["resolution"]["buyer_payout"],
-        serde_json::to_value(buyer_payout).unwrap()
-    );
-    assert_eq!(
-        json["resolution"]["seller"],
-        serde_json::to_value(commitment.seller).unwrap()
-    );
-}
-
-#[tokio::test]
-async fn published_order_is_verifiable_by_the_reader() {
-    // The trust story, asserted: nothing here is taken on the relay's
-    // word. The published struct must hash to the published order hash
-    // under the VERIFIER's EIP-712 domain, both signatures must recover to
-    // the parties named INSIDE that struct, and the payout figures must be
-    // FigaroCore's own function of it.
-    let (order_hash, _) = canonical_ids();
-    let (_, json) = get_json(
-        app_with_canonical_batch().await,
-        &format!("/orders/{order_hash}"),
-    )
-    .await;
-
-    let commitment: Commitment =
-        serde_json::from_value(json["commit"]["commitment"].clone()).expect("wire round-trip");
-    let buyer_sig: Signature =
-        serde_json::from_value(json["commit"]["buyer_signature"].clone()).unwrap();
-    let seller_sig: Signature =
-        serde_json::from_value(json["commit"]["seller_signature"].clone()).unwrap();
-
-    let (derived_order_hash, derived_process_id) = derive_commitment_ids(&domain(), &commitment);
-    assert_eq!(
-        serde_json::to_value(derived_order_hash).unwrap(),
-        json["order_hash"],
-        "the struct hashes to the published order hash"
-    );
-    assert_eq!(
-        serde_json::to_value(derived_process_id).unwrap(),
-        json["process_id"]
-    );
-
-    let digest = typed_data_hash(&domain(), &commitment_struct_hash(&commitment));
-    assert_eq!(
-        recover_signer(&digest, &buyer_sig).unwrap(),
-        commitment.buyer,
-        "the buyer signature recovers to the buyer in the struct"
-    );
-    assert_eq!(
-        recover_signer(&digest, &seller_sig).unwrap(),
-        commitment.seller
-    );
-
-    let (seller_payout, _) = resolution_payouts(&commitment).unwrap();
-    assert_eq!(
-        json["resolution"]["seller_payout"],
-        serde_json::to_value(seller_payout).unwrap(),
-        "the payout is derivable from the signed struct alone"
-    );
-}
-
-#[tokio::test]
-async fn api_process_route_publishes_its_orders_and_resolution_facts() {
-    let (order_hash, process_id) = canonical_ids();
-    let (status, json) = get_json(
-        app_with_canonical_batch().await,
-        &format!("/processes/{process_id}"),
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK);
-
-    assert_eq!(
-        json["process_id"],
-        serde_json::to_value(process_id).unwrap()
-    );
-    let orders = json["orders"].as_array().expect("orders array");
-    assert_eq!(orders.len(), 1);
-    assert_eq!(
-        orders[0]["order_hash"],
-        serde_json::to_value(order_hash).unwrap()
-    );
-    assert!(
-        orders[0]["commit"].is_object(),
-        "each order carries its commit leg"
-    );
-
-    // ProcessResolved(processId, buyer, orderCount) + the authorizing sig.
-    let ops = canonical_ops();
-    let KernelOp::Resolve { buyer_sig, .. } = &ops[3] else {
-        panic!("ops[3] is the resolve");
-    };
-    assert_eq!(json["resolution"]["order_count"], 1);
-    assert_eq!(
-        json["resolution"]["buyer_signature"],
-        serde_json::to_value(buyer_sig).unwrap()
-    );
-    let KernelOp::Commit { commitment, .. } = &ops[0] else {
-        panic!("ops[0] is the commit");
-    };
-    assert_eq!(
-        json["resolution"]["buyer"],
-        serde_json::to_value(commitment.buyer).unwrap()
-    );
-}
-
-#[tokio::test]
-async fn api_batches_route_pages_with_a_cursor() {
-    let archive = Archive::in_memory(100);
-    for n in 1..=3 {
-        archive.record(filler_record(n)).await;
-    }
-    let app = api::router(published_app_state(archive), ApiConfig::default());
-
-    let (status, json) = get_json(app.clone(), "/batches?limit=2").await;
-    assert_eq!(status, StatusCode::OK);
-    assert_eq!(json["batches"].as_array().unwrap().len(), 2);
-    assert_eq!(json["next_cursor"], 3);
-    assert_eq!(json["retained"]["first_batch"], 1);
-    assert_eq!(json["retained"]["last_batch"], 3);
-
-    let (_, json) = get_json(app, "/batches?from=3&limit=2").await;
-    assert_eq!(json["batches"].as_array().unwrap().len(), 1);
-    assert!(json["next_cursor"].is_null(), "the replay has caught up");
-}
-
-#[tokio::test]
-async fn api_batches_route_clamps_the_page_size() {
-    let archive = Archive::in_memory(200);
-    for n in 1..=60 {
-        archive.record(filler_record(n)).await;
-    }
-    let app = api::router(published_app_state(archive), ApiConfig::default());
-    let (status, json) = get_json(app, "/batches?limit=999").await;
-    assert_eq!(status, StatusCode::OK);
-    assert_eq!(
-        json["batches"].as_array().unwrap().len(),
-        archive::MAX_PAGE_LIMIT,
-        "a public read surface is bounded whatever the caller asks for"
-    );
-}
-
-#[tokio::test]
-async fn api_read_routes_reject_absence_and_garbage_structurally() {
-    let app = app_with_canonical_batch().await;
-
-    let (status, json) =
-        get_json(app.clone(), &format!("/orders/{}", B256::repeat_byte(0x11))).await;
-    assert_eq!(status, StatusCode::NOT_FOUND);
-    assert!(
-        json["error"].as_str().unwrap().contains("another relay"),
-        "absence must never read as 'it did not happen': {json}"
-    );
-
-    let (status, json) = get_json(
-        app.clone(),
-        &format!("/processes/{}", B256::repeat_byte(0x22)),
-    )
-    .await;
-    assert_eq!(status, StatusCode::NOT_FOUND);
-    assert!(json["error"].is_string());
-
-    let (status, json) = get_json(app.clone(), "/orders/not-a-hash").await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(
-        json["error"].as_str().unwrap().contains("32-byte hash"),
-        "{json}"
-    );
-
-    let (status, json) = get_json(app, "/batches?from=abc").await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(json["error"].is_string(), "{json}");
-}
-
-#[tokio::test]
-async fn api_status_reports_the_publication_window() {
-    let archive = Archive::in_memory(64);
-    archive.record(filler_record(7)).await;
-    let app = api::router(published_app_state(archive), ApiConfig::default());
-    let (status, json) = get_json(app, "/status").await;
-    assert_eq!(status, StatusCode::OK);
-    assert_eq!(json["archive"]["first_batch"], 7);
-    assert_eq!(json["archive"]["last_batch"], 7);
-    assert_eq!(json["archive"]["retained_batches"], 1);
-    assert_eq!(json["archive"]["max_batches"], 64);
-}
 
 // ── Mempool: a dedup slot belongs to the op the proof will accept ─────
 
@@ -1867,13 +1384,10 @@ fn canonical_next() -> NextState {
         UsageContext::default(),
     );
     let (pv, _, _, post) = apply_batch_with_state(&batch).expect("the canonical batch applies");
-    let record = settle_and_publish(0, canonical_ops(), None);
-    assert_eq!(record.prev_state_root, pv.prev_state_root);
-    assert_eq!(record.new_state_root, pv.new_state_root);
     NextState {
         root: pv.new_state_root,
         state: post.to_snapshot(),
-        record,
+        prev_root: pv.prev_state_root,
     }
 }
 
@@ -1882,8 +1396,7 @@ fn canonical_next() -> NextState {
 fn next_between(prev: B256, root: B256) -> NextState {
     let mut next = canonical_next();
     next.root = root;
-    next.record.prev_state_root = prev;
-    next.record.new_state_root = root;
+    next.prev_root = prev;
     next
 }
 
@@ -1929,7 +1442,7 @@ async fn state_store_holds_the_next_state_across_a_crash_before_the_receipt() {
     match held_state_for(&mirror, &store, next.root).await {
         Some(Held::Next(found)) => {
             assert_eq!(found.root, next.root);
-            assert_eq!(found.record.prev_state_root, mirror.state_root().await);
+            assert_eq!(found.prev_root, mirror.state_root().await);
             let rebuilt = StateMirror::from_snapshot(found.state);
             assert_eq!(rebuilt.state_root().await, next.root);
         }
@@ -2001,12 +1514,13 @@ async fn state_store_does_not_replace_a_held_root() {
     let (store, _) = StateStore::open(Some(temp_state("held"))).await.unwrap();
     let first = canonical_next();
     let mut second = canonical_next();
-    second.record.block_timestamp += 10;
+    // A different entry under the same root, told apart by its content.
+    second.state.order_status.push((B256::repeat_byte(0xEE), 1));
     store.hold_next(first.clone()).await.unwrap();
     store.hold_next(second).await.unwrap();
     assert_eq!(store.next_roots().await, vec![first.root]);
     let held = store.next_for(first.root).await.unwrap();
-    assert_eq!(held.record.block_timestamp, first.record.block_timestamp);
+    assert_eq!(held.state.order_status.len(), first.state.order_status.len());
 }
 
 #[tokio::test]

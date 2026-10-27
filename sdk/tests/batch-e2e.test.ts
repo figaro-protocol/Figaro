@@ -119,8 +119,6 @@ const CLAUSE_DATA = `{"modality":"delivery"}`;
 const STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}.json`);
 /** The second relay's state file: written by the relay itself from the first's GET /state. */
 const TAKEOVER_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-takeover.json`);
-/** The relay's sequencer archive for this run, deleted with the state in afterAll. */
-const ARCHIVE_PATH = `sequencer-archive-e2e-${process.pid}.jsonl`;
 /** The state file of the relay that rebuilds from the chain alone (the pass test). */
 const REBUILT_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-rebuilt.json`);
 
@@ -286,7 +284,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             // The relay's state, kept across the restart this test performs
             // between its two batches.
             statePath: STATE_PATH,
-            archivePath: ARCHIVE_PATH,
         };
         sequencerProcess = startSequencer(relay);
 
@@ -320,7 +317,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             fs.rmSync(TAKEOVER_STATE_PATH + suffix, { force: true });
             fs.rmSync(REBUILT_STATE_PATH + suffix, { force: true });
         }
-        fs.rmSync(ARCHIVE_PATH, { force: true });
     });
 
     it("skips when Anvil is unreachable", () => {
@@ -453,7 +449,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         // builds on genesis against a verifier that is past it.
         const stateless = startSequencer(relay, {
             STATE_PATH: path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-holds-nothing.json`),
-            ARCHIVE_PATH: "",
             LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT + 1}`,
         });
         let statelessOutput = "";
@@ -484,7 +479,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         secondProcess = startSequencer(relay, {
             STATE_PATH: TAKEOVER_STATE_PATH,
             STATE_FROM: SEQUENCER_URL,
-            ARCHIVE_PATH: "",
             LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT + 2}`,
         });
         attachLogs(secondProcess);
@@ -630,42 +624,34 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         expect(status.batches_settled, "the second relay settled batch 2").toBe(1);
         expect(status.pending_ops).toBe(0);
         expect(status.state_root.toLowerCase()).toBe(finalRoot.toLowerCase());
-        expect((await sequencerClient.status()).batches_settled, "the first relay settled batch 1 alone").toBe(1);
+        // The first relay landed batch 1, then was restarted: its count is of
+        // the batches it has landed since it started, which is none. The chain,
+        // not a relay, says how many batches landed (batchCount, above).
+        expect((await sequencerClient.status()).batches_settled, "the restarted first relay has landed nothing since").toBe(0);
 
-        // ── 8. What the relay PUBLISHED, read as a stranger reads it ──
-        // The relay's wire and this client's types are two statements of one
-        // record; a field the two name differently arrives as `undefined` and
-        // reads as a batch that never reached the chain. Every anchor the
-        // relay publishes is checked against the chain's own receipt.
-        // Each relay publishes what it settled: the first the commit, the
-        // second the resolution.
-        const publishedCommit = await sequencerClient.order(orderHash);
-        expect(publishedCommit, "the first relay publishes the order it committed").not.toBeNull();
-        const publishedResolution = await secondClient.order(orderHash);
-        expect(publishedResolution, "the second relay publishes the order it resolved").not.toBeNull();
-        const commitAnchor = publishedCommit!.commit!.batch;
-        const resolutionAnchor = publishedResolution!.resolution!.batch;
-        expect(resolutionAnchor.new_state_root, "the resolution's batch left the final root").toBe(finalRoot);
-        for (const [leg, anchor] of [["commit", commitAnchor], ["resolution", resolutionAnchor]] as const) {
-            expect(anchor.resolution_tx, `${leg}: the relay names the transaction`).toMatch(/^0x[0-9a-f]{64}$/);
-            const receipt = await publicClient.getTransactionReceipt({ hash: anchor.resolution_tx! });
-            expect(receipt.status, `${leg}: that transaction succeeded`).toBe("success");
-            expect(receipt.to?.toLowerCase(), `${leg}: and it called the verifier`).toBe(
-                batchVerifierAddress.toLowerCase(),
-            );
-            expect(anchor.verifying_contract.toLowerCase()).toBe(batchVerifierAddress.toLowerCase());
-            expect(anchor.chain_id).toBe(Number(await publicClient.getChainId()));
-        }
-        expect(commitAnchor.resolution_tx).not.toBe(resolutionAnchor.resolution_tx);
-        expect((await sequencerClient.batches()).batches.map((b) => b.resolution_tx)).toEqual([
-            commitAnchor.resolution_tx,
-        ]);
-        expect((await secondClient.batches()).batches.map((b) => b.resolution_tx)).toEqual([
-            resolutionAnchor.resolution_tx,
-        ]);
+        // ── 8. What the chain carries, read as a stranger reads it ──
+        // The verifier publishes the batched order as FigaroCore publishes a
+        // direct one: the same events, in the transactions that landed the
+        // commit and the resolution. No relay is asked.
+        const [committed] = await publicClient.getContractEvents({
+            address: batchVerifierAddress, abi: CORE_ABI, eventName: "OrderCommitted",
+            args: { orderHash }, fromBlock: 0n,
+        });
+        const [resolved] = await publicClient.getContractEvents({
+            address: batchVerifierAddress, abi: CORE_ABI, eventName: "OrderResolved",
+            args: { orderHash }, fromBlock: 0n,
+        });
+        expect(committed, "the chain names the commit").toBeDefined();
+        expect(resolved, "the chain names the resolution").toBeDefined();
+        expect(committed.args.processId).toBe(processId);
+        expect(committed.args.seller?.toLowerCase()).toBe(sellerAccount.address.toLowerCase());
+        expect(committed.args.payment).toBe(PAYMENT);
+        expect(resolved.args.sellerPayout).toBe(3n * PAYMENT);
+        expect(resolved.args.buyerPayout).toBe(PAYMENT);
+        expect(committed.transactionHash).not.toBe(resolved.transactionHash);
     }, 5 * 60_000);
     // ── The pass test of the batch design (punch-list band 0) ─────────────
-    // Batch and Core are equivalent: with every relay's state file and archive
+    // Batch and Core are equivalent: with every relay's state file
     // deleted and every relay stopped, a stranger rebuilds the state behind
     // the verifier's root from the chain alone, and the buyer, or anyone
     // carrying the buyer's signed resolve, proves and submits the resolution.
@@ -762,8 +748,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                 fs.rmSync(STATE_PATH + suffix, { force: true });
                 fs.rmSync(TAKEOVER_STATE_PATH + suffix, { force: true });
             }
-            fs.rmSync(ARCHIVE_PATH, { force: true });
-
+    
             // ── 4. A relay with nothing rebuilds the state from the chain ──
             // It replays every settled batch's operations from the verifier's
             // transactions, checks each root against the chain's, writes the
@@ -771,8 +756,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             const REBUILT_URL = `http://127.0.0.1:${SEQUENCER_PORT + 3}`;
             rebuiltProcess = startSequencer(relay, {
                 STATE_PATH: REBUILT_STATE_PATH,
-                ARCHIVE_PATH: "",
-                LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT + 3}`,
+                    LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT + 3}`,
                 REBUILD_FROM_CHAIN: "1",
             });
             attachLogs(rebuiltProcess);

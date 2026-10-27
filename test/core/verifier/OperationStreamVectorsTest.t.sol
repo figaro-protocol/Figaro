@@ -196,6 +196,60 @@ contract OperationStreamVectorsTest is Test {
         }
     }
 
+    function test_theStreamIsInTheLogsWhateverTheCallPath() public {
+        // A batch submitted through another contract: the stream is in this
+        // verifier's logs all the same, so a rebuild reads no call trace.
+        string memory json = vm.readFile(FIXTURE);
+        bytes memory stream = vm.parseJsonBytes(json, ".streams[1].stream");
+        Forwarder fwd = new Forwarder();
+        bytes32 prev = verifier.stateRoot();
+        bytes32 next = keccak256("via-forwarder");
+        bytes memory data = _settleCalldata(prev, next, stream);
+        vm.recordLogs();
+        fwd.forward(address(verifier), data);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bool found;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (
+                logs[i].emitter == address(verifier)
+                    && logs[i].topics[0] == FigaroBatchVerifier.BatchOperations.selector
+            ) {
+                (uint64 ts, uint8 period, bytes32 leaf, bytes memory ops) =
+                    abi.decode(logs[i].data, (uint64, uint8, bytes32, bytes));
+                assertEq(ts, uint64(block.timestamp), "the clock the guest checked");
+                assertEq(period, 0);
+                assertEq(leaf, bytes32(0));
+                assertEq(keccak256(ops), keccak256(stream), "the logged stream is the bound one");
+                found = true;
+            }
+        }
+        assertTrue(found, "the verifier logs the stream");
+        assertEq(verifier.stateRoot(), next);
+    }
+
+    function _settleCalldata(bytes32 prev, bytes32 next, bytes memory stream) internal view returns (bytes memory) {
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        FigaroBatchVerifier.BatchUsageData memory usage;
+        usage.accruals = new IUsageCounter.BatchAccrual[](0);
+        usage.sellers = new address[](0);
+        bytes memory pv = abi.encode(
+            prev,
+            next,
+            uint64(block.chainid),
+            address(verifier),
+            keccak256(""),
+            keccak256(""),
+            keccak256(""),
+            keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0), uint64(0))),
+            uint64(block.timestamp),
+            keccak256(stream)
+        );
+        return abi.encodeCall(verifier.settleBatch, (hex"", pv, positions, events, usage, stream));
+    }
+
     function test_aStreamTheProofDidNotCommitIsRefusedBeforeAnyEvent() public {
         string memory json = vm.readFile(FIXTURE);
         bytes memory stream = vm.parseJsonBytes(json, ".streams[0].stream");
@@ -235,5 +289,18 @@ contract OperationStreamVectorsTest is Test {
         // The gateway's shape: a contract with code but no VERIFIER_HASH().
         vm.expectRevert(FigaroBatchVerifier.VerifierNotPinned.selector);
         new FigaroBatchVerifier(address(token), VKEY, address(registry), address(counter));
+    }
+}
+
+/// @dev Any contract that forwards a call: a multisig, a 7702-delegated
+///      wallet, a batching relay.
+contract Forwarder {
+    function forward(address to, bytes calldata data) external {
+        (bool ok, bytes memory ret) = to.call(data);
+        if (!ok) {
+            assembly ("memory-safe") {
+                revert(add(ret, 32), mload(ret))
+            }
+        }
     }
 }

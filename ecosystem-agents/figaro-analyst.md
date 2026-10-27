@@ -354,15 +354,13 @@ and lets you buy telemetry on the fly instead of a stale snapshot.
 ## Two resolution universes — never conclude "not resolved" from an absent event
 
 `FigaroCore` (direct) and `FigaroBatchVerifier` (batched, proof-based) are DISJOINT state
-universes; a batch-resolved process acquires no `FigaroCore` status and emits no `FigaroCore` order
-event, permanently. For an analyst that has one consequence and it is large: **absence from
-the process graph is not absence from the network.** Report it as "not in this corpus", name
-the two live possibilities (batch-resolved, or outside your synced range), and check the
-other universe before concluding anything.
+universes; a batch-resolved process acquires no `FigaroCore` status. The verifier emits the
+same order and process events `FigaroCore` emits, under its own address, so **a corpus
+that reads one address misses the other path.** Read both addresses; report anything
+outside your synced range as "not in this corpus", never as absent from the network.
 
-The full statement — what a relay is and is not, why `null` from one means "not in THIS
-relay's archive", which chain facts to confirm against `BATCH_VERIFIER_ABI`, and why the
-attestation topic hash must be filtered by contract ADDRESS — is `figaro-operator` §§ "The
+The full statement — which chain facts to confirm against `BATCH_VERIFIER_ABI`, and why
+every event topic must be filtered by contract ADDRESS — is `figaro-operator` §§ "The
 two paths share no state" and "Getting the wallet's trade ONTO the batch path". That manual
 owns it; read it there rather than a second version here. `fetchAttestationRecords` already
 folds both universes for you and tags each row, which is why an overlay entry carries its

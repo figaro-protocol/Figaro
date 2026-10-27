@@ -440,7 +440,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `clauseByField` | root | Find the agreement clause whose spec DECLARES a field — never look one up by clause name. |
 | `hashClauseData` | root | A clause's canonical-JSON fingerprint; a content-withheld clause carries it directly. |
 | `selectRaceWinner` | `/agent` | Cheapest verified countersigner wins; ties break by arrival order. |
-| `SequencerClient` | `/agent` | HTTP client for a sequencer relay — submission (the batch path's entry point) and the publication reads. |
+| `SequencerClient` | `/agent` | HTTP client for a sequencer relay — submission (the batch path's entry point) and the relay's own status. |
 | `socketSignerAccount` | `/signer` | A viem account backed by the policy-signer daemon's socket. |
 | `strippingReviver` | root | A `JSON.parse` reviver that drops `__proto__`/`constructor`/`prototype` keys. |
 | `tagAttestationUniverses` | root | The pure fold under `fetchAttestationRecords`: tag two address-filtered log streams and merge in block order. |
@@ -1221,22 +1221,20 @@ const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 await seq.submitResolve(processId, commitments, buyerSig);
 await seq.submitAttestAsSeller({ target, clauseId, stage, contentRef, sellerSig, proof });
 await seq.submitUsageClaim(claim);  // the usage-claim leg — build with buildUsageClaims
-await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches_settled, archive }
+await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches_settled, … }
 
-// READING BATCHED TRADE BACK. A batch-resolved order has no FigaroCore event and no
-// per-order flag on chain, so do NOT chase stateRoot() and BatchSettled by
-// hand: the relay PUBLISHES the batch path's mirror of FigaroCore's
-// events, and the client encodes the 404 rule you must not get wrong.
-const view = await seq.process(processId);   // the orders + the resolution facts
-const one  = await seq.order(orderHash);     // one published order
-const page = await seq.batches({ from: 0 }); // ≤50 a page; follow next_cursor
-// `null` means "not in THIS relay's archive" — resolved by another relay,
-// resolved directly against FigaroCore, or aged out of retention. It NEVER
-// means the trade did not happen. Check status().archive against your cursor
-// BEFORE replaying, or a dropped range is skipped silently. Every other
-// failure THROWS, so an unreachable relay never reads as an absent record.
-// The relay is untrusted TRANSPORT: verify what it returns against the chain —
-// the ERC-20 transfers settleBatch executed, and scoreOf for the usage leg.
+// READING BATCHED TRADE BACK. Read the chain, never a relay: the verifier
+// emits FigaroCore's own OrderCommitted / OrderSeller / OrderCurrency /
+// OrderResolved / ProcessResolved for every batched order, with ids derived
+// under the VERIFIER's EIP-712 domain. Filter by the verifier's address beside
+// FigaroCore's and the same reader folds both paths:
+const committed = await client.getContractEvents({
+    address: batchVerifier, abi: BATCH_VERIFIER_ABI, eventName: "OrderCommitted",
+    args: { processId }, fromBlock,
+});
+// Every landed batch also logs its whole operation stream (BatchOperations),
+// so the state behind the verifier's root is rebuilt from the chain alone: a
+// relay started with REBUILD_FROM_CHAIN=1 does it (prover/sequencer).
 // Errors are SequencerError with .statusCode: 400 signature/witness-gate
 // rejection (carrying FigaroCore's own reason string) or malformed JSON, 422
 // not a valid operation shape, 413 over the 1 MiB body cap, 503 mempool at
@@ -1297,10 +1295,10 @@ wrong:
   wall-clock drift between a signer's machine and the chain expires offers
   that both parties signed in good faith.
 
-#### The sequencer wire: eight endpoints
+#### The sequencer wire: five endpoints
 
 What `SequencerClient` speaks, so you can read a relay's answer (or a curl of
-it) without guessing. Seven routes, in two halves — submission and publication.
+it) without guessing. Five routes: two submit, three read the relay itself.
 Amounts on this wire are **hex quantities** (`"0x7d0"`, never `"2000"`) and
 fields are `snake_case`; the conversion helpers above are the only thing that
 should build them.
@@ -1310,11 +1308,8 @@ should build them.
 | `POST /submit` | `{ "operation": { "Commit" \| "Resolve" \| "AttestAsSeller" \| "AttestAsBuyer": {…} } }` — a serde externally-tagged enum | `{ "id": n }` — a queue receipt, **not** resolution | `submitCommit` · `submitResolve` · `submitAttestAsSeller` · `submitAttestAsBuyer` |
 | `POST /submit-usage` | `{ "claim": <UsageClaim> }` | `{ "pending": n }` | `submitUsageClaim` |
 | `GET /health` | — | `{ status, pending_ops, pending_usage_claims, batches_settled }` | none — `isAvailable()` probes `/status` instead |
-| `GET /status` | — | the `/health` fields plus `state_root`, `dead_lettered_ops`, `last_settle_error`, `dropped_usage_claims`, `last_dropped_claim_error` (usage claims dropped without landing, counted apart from the operations), `archive: { first_batch, last_batch, retained_batches, max_batches }` | `status()` |
-| `GET /state` | — | the state behind the relay's root, in the relay's state-file format (`KernelStateSnapshot`); the root is in the `x-figaro-state-root` header | none — save it to a new file; when the header's root is the verifier's `stateRoot`, make that file a relay's `STATE_PATH` and start it on this state (the relay checks the root again). Never write it over a state file unchecked: a stale relay serves a stale state, and the file it replaces may be the only copy |
-| `GET /orders/{orderHash}` | 32-byte hex in the path | `{ order_hash, process_id, commit, resolution }` — either leg `null` | `order()` → `null` on `404` |
-| `GET /processes/{processId}` | 32-byte hex in the path | `{ process_id, orders[], resolution }` | `process()` → `null` on `404` |
-| `GET /batches?from=&limit=` | `from` defaults to the oldest retained batch; `limit` defaults to 10, **clamped to 50** | `{ batches[], next_cursor, retained }` | `batches()` — follow `next_cursor` |
+| `GET /status` | — | the `/health` fields plus `state_root`, `dead_lettered_ops`, `last_settle_error`, `dropped_usage_claims`, `last_dropped_claim_error` (usage claims dropped without landing, counted apart from the operations), | `status()` |
+| `GET /state` | — | the state behind the relay's root, in the relay's state-file format (the snapshot `prover/lib/src/types.rs` defines); the root is in the `x-figaro-state-root` header | none — save it to a new file; when the header's root is the verifier's `stateRoot`, make that file a relay's `STATE_PATH` and start it on this state (the relay checks the root again). Never write it over a state file unchecked: a stale relay serves a stale state, and the file it replaces may be the only copy |
 
 `/submit` is idempotent on **on-chain identity** (order hash / process id /
 attestation identity): a retry, even a re-signed one, returns the original `id`
@@ -1326,16 +1321,14 @@ client raises it as a `SequencerError` carrying `.statusCode`:
 
 | Code | When | Note |
 |---|---|---|
-| `400` | admission rejection (EIP-712 recovery failed, or the recovered address is not the party named in the struct; a usage claim with a zero clause-or-assembly or no checkout hash), malformed JSON, an unparsable hash in a read path, a non-numeric `/batches` parameter | the relay's reason string is carried verbatim into the error message |
+| `400` | admission rejection (EIP-712 recovery failed, or the recovered address is not the party named in the struct; a usage claim with a zero clause-or-assembly or no checkout hash), malformed JSON | the relay's reason string is carried verbatim into the error message |
 | `413` | body over the 1 MiB cap | a full attestation witness is tens of KB — this is abuse headroom, not a normal limit |
 | `415` | wrong content type | send `application/json` |
 | `422` | valid JSON that is not the operation or claim shape | wrong shape, unknown variant, missing field |
-| `404` | `/orders` and `/processes` only | **absence in THIS relay**, never "the trade did not happen"; the client returns `null` rather than throwing |
 | `503` | mempool at capacity | capacity, never rejection — retry after the next batch resolves |
 
-`/batches` never answers `404`: an empty relay returns an empty page.
 
-Full wire shapes (every field of every publication response), the environment
+Full wire shapes, the environment
 table, and the run-your-own recipe are in
 [`prover/sequencer/README.md`](https://github.com/figaro-protocol/Figaro/blob/main/prover/sequencer/README.md).
 

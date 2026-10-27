@@ -207,6 +207,17 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     );
     event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount);
 
+    /// @notice The batch's operation stream and the inputs its replay needs
+    ///         beside it: the clock the guest checked deadlines against and
+    ///         the usage period and provenance leaf its claims were applied
+    ///         under (the chain id and the verifying contract are the chain's
+    ///         and this contract's). Emitted in the same transaction as
+    ///         `BatchSettled`, so the state behind any root is rebuilt from
+    ///         this contract's logs alone, however the call reached it.
+    event BatchOperations(
+        uint64 indexed batchId, uint64 blockTimestamp, uint8 usagePeriod, bytes32 provenanceLeaf, bytes operations
+    );
+
     /// @notice Summary event emitted per resolved batch.
     event BatchSettled(
         uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount
@@ -445,6 +456,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         stateRoot = pv.newRoot;
         uint64 newBatchId = ++batchCount;
 
+        emit BatchOperations(newBatchId, pv.blockTimestamp, usage.period, usage.provenanceLeaf, operations);
         emit BatchSettled(newBatchId, pv.prevRoot, pv.newRoot, positions.length);
     }
 

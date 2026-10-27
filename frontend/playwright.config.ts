@@ -60,7 +60,6 @@ if (E2E_CHAIN === 'sepolia') {
         // Devnet-only mocks stay unset on Sepolia — the frontend feature-gates absence.
         NEXT_PUBLIC_TOKEN_ADDRESS: '',
         NEXT_PUBLIC_PERMIT_TOKEN_ADDRESS: '',
-        NEXT_PUBLIC_BATCH_RELAY_URL: '',
     });
     for (const [k, v] of Object.entries(SEPOLIA_ENV)) process.env[k] = v;
 }

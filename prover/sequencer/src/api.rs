@@ -13,8 +13,8 @@ use std::time::{Duration, Instant};
 
 use axum::{
     extract::{
-        rejection::{JsonRejection, QueryRejection},
-        ConnectInfo, DefaultBodyLimit, Path, Query, State,
+        rejection::JsonRejection,
+        ConnectInfo, DefaultBodyLimit, State,
     },
     http::{HeaderName, Method, StatusCode},
     middleware::{self, Next},
@@ -28,11 +28,9 @@ use tower_http::timeout::TimeoutLayer;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
-use crate::archive::{Archive, RetentionWindow};
 use crate::mempool::{Mempool, SubmitError};
 use crate::state::StateMirror;
 use crate::submitter::{self, FundingGate};
-use alloy_primitives::B256;
 use figaro_kernel::types::{KernelOp, UsageClaim};
 
 /// Shared application state for axum handlers.
@@ -40,8 +38,6 @@ use figaro_kernel::types::{KernelOp, UsageClaim};
 pub struct AppState {
     pub mempool: Mempool,
     pub state_mirror: StateMirror,
-    /// What this relay has resolved, kept so it can be read back.
-    pub archive: Archive,
     /// Cumulative number of batches resolved by this sequencer.
     pub batch_count: std::sync::Arc<tokio::sync::RwLock<u64>>,
     /// Cumulative failure facts — see `FailureLog`.
@@ -305,20 +301,6 @@ pub struct StatusResponse {
     pub dropped_usage_claims: u64,
     /// The most recent claim drop's reason, its URLs taken out; null while clean.
     pub last_dropped_claim_error: Option<String>,
-    /// The publication window — what `/batches` can still serve. A
-    /// consumer reads this BEFORE replaying, so a gap between its cursor
-    /// and `first_batch` is visible rather than silently skipped.
-    pub archive: RetentionWindow,
-}
-
-/// Query parameters for the batch range read.
-#[derive(Deserialize)]
-pub struct RangeQuery {
-    /// First batch number to return (inclusive). Omitted = from the
-    /// oldest retained batch.
-    pub from: Option<u64>,
-    /// Page size, clamped to `MAX_PAGE_LIMIT`.
-    pub limit: Option<usize>,
 }
 
 #[derive(Serialize)]
@@ -352,9 +334,8 @@ pub fn router(state: AppState, config: ApiConfig) -> Router {
         // Outermost last: the in-flight cap admits, the timeout bounds.
         .layer(TimeoutLayer::new(config.request_timeout))
         .layer(in_flight.clone());
-    // The read routes answer a page on any origin (the site's `/audit` reads
-    // `/state` and the publication routes from the reader's browser): GET
-    // and its preflight, `/state`'s root header exposed. The read routes
+    // The read routes answer a page on any origin: GET and its preflight,
+    // `/state`'s root header exposed. The read routes
     // change nothing, and serve what the relay already serves to any client
     // on `LISTEN_ADDR`. The cross-origin header is outermost, so an answer
     // the timeout gives (`408`) reaches the page too.
@@ -363,10 +344,6 @@ pub fn router(state: AppState, config: ApiConfig) -> Router {
         .route("/status", get(status))
         // The state behind the verifier's root, as this relay holds it.
         .route("/state", get(get_state))
-        // Publication — the batch universe's mirror of FigaroCore's events.
-        .route("/orders/:order_hash", get(get_order))
-        .route("/processes/:process_id", get(get_process))
-        .route("/batches", get(get_batches))
         .layer(TimeoutLayer::new(config.request_timeout))
         .layer(in_flight)
         .layer(
@@ -496,7 +473,6 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
     let pending = state.mempool.len().await;
     let pending_usage = state.mempool.usage_len().await;
     let batches = *state.batch_count.read().await;
-    let archive = state.archive.window().await;
     let (dead_lettered_ops, last_settle_error) = state.failures.snapshot().await;
     let (dropped_usage_claims, last_dropped_claim_error) = state.failures.claims_snapshot().await;
 
@@ -509,15 +485,15 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
         last_settle_error,
         dropped_usage_claims,
         last_dropped_claim_error,
-        archive,
     })
 }
 
 /// `GET /state` — the state behind this relay's root: the kept-state file's
 /// own format (`KernelStateSnapshot`), so it gives another relay the state
-/// to start on (`STATE_FROM=<this relay's base URL>`). Nothing in it is
-/// private: it is derived from the signed operations the publication routes
-/// serve. It is checked, never trusted — the relay started on it recomputes
+/// to start on (`STATE_FROM=<this relay's base URL>`), a faster start than
+/// rebuilding it from the chain (`REBUILD_FROM_CHAIN=1`). Nothing in it is
+/// private: it is derived from the operation streams every landed batch
+/// logs. It is checked, never trusted — the relay started on it recomputes
 /// the root from the body and adopts the state only when that root is the
 /// verifier's and it does not already hold the state behind it
 /// (`state::takeover`); the `x-figaro-state-root` header is what this relay
@@ -531,82 +507,6 @@ async fn get_state(State(state): State<AppState>) -> impl IntoResponse {
         [("x-figaro-state-root", format!("{root:?}"))],
         Json(snapshot),
     )
-}
-
-// ── Publication reads ────────────────────────────────────────────
-//
-// The batch path resolves trade that `FigaroCore` would have PUBLISHED —
-// the commitment struct, the seller and currency, the per-order and
-// per-process resolution facts, and the signatures that admitted it. The
-// verifier publishes none of that (its public values carry no order
-// hashes; its storage is a state root and a count), so these routes mirror
-// FigaroCore's publication role for the batch universe.
-//
-// They are a CONVENIENCE, never an authority. Every field is verifiable
-// against the chain by the reader (structs hash to the order hash under
-// the VERIFIER's EIP-712 domain, signatures recover to the named parties,
-// the batch is anchored by its state-root transition), and both parties
-// already hold their own signed copies — so a relay that omits, delays, or
-// forgets a record costs nobody their evidence.
-
-fn error_response(route: &'static str, status: StatusCode, error: String) -> Response {
-    warn!(route, %status, %error, "read rejected");
-    (status, Json(ErrorResponse { error })).into_response()
-}
-
-/// Parse a 32-byte hash path parameter, with a structured 400 on garbage.
-fn parse_hash(route: &'static str, raw: &str) -> Result<B256, Response> {
-    raw.parse::<B256>().map_err(|e| {
-        error_response(
-            route,
-            StatusCode::BAD_REQUEST,
-            format!("invalid 32-byte hash: {e}"),
-        )
-    })
-}
-
-/// The absence message is deliberately explicit: this relay is one among
-/// any number, so "not here" never means "did not happen".
-const ABSENT: &str =
-    "not in this relay's archive — it may have been resolved by another relay, resolved directly \
-     against FigaroCore, or aged out of this relay's retention window (see /status)";
-
-async fn get_order(State(state): State<AppState>, Path(raw): Path<String>) -> Response {
-    let order_hash = match parse_hash("/orders", &raw) {
-        Ok(h) => h,
-        Err(response) => return response,
-    };
-    match state.archive.order(order_hash).await {
-        Some(view) => (StatusCode::OK, Json(view)).into_response(),
-        None => error_response("/orders", StatusCode::NOT_FOUND, ABSENT.to_string()),
-    }
-}
-
-async fn get_process(State(state): State<AppState>, Path(raw): Path<String>) -> Response {
-    let process_id = match parse_hash("/processes", &raw) {
-        Ok(h) => h,
-        Err(response) => return response,
-    };
-    match state.archive.process(process_id).await {
-        Some(view) => (StatusCode::OK, Json(view)).into_response(),
-        None => error_response("/processes", StatusCode::NOT_FOUND, ABSENT.to_string()),
-    }
-}
-
-/// Bounded, cursor-paged replay of everything this relay has resolved — the
-/// batch universe's equivalent of walking FigaroCore's logs from a block.
-async fn get_batches(
-    State(state): State<AppState>,
-    query: Result<Query<RangeQuery>, QueryRejection>,
-) -> Response {
-    let Query(range) = match query {
-        Ok(q) => q,
-        Err(rej) => {
-            return error_response("/batches", rej.status(), rej.body_text());
-        }
-    };
-    let page = state.archive.range(range.from, range.limit).await;
-    (StatusCode::OK, Json(page)).into_response()
 }
 
 #[cfg(test)]
@@ -639,12 +539,6 @@ mod failure_tests {
             last_settle_error: None,
             dropped_usage_claims: 0,
             last_dropped_claim_error: None,
-            archive: RetentionWindow {
-                first_batch: None,
-                last_batch: None,
-                retained_batches: 0,
-                max_batches: 1,
-            },
         })
         .unwrap();
         assert_eq!(clean["dead_lettered_ops"], 0);

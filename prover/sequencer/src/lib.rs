@@ -1,5 +1,4 @@
 pub mod api;
-pub mod archive;
 pub mod assembler;
 pub mod gas;
 pub mod mempool;

@@ -26,7 +26,7 @@ import {
  * and the manage-tier edit page (`/members/edit/endpoints`, save in place).
  */
 const FIELDS: HintedFieldDef<
-    "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "batchRelayUrl" | "analystUrl"
+    "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "analystUrl"
 >[] = [
     {
         key: "ipfsApiUrl",
@@ -45,12 +45,6 @@ const FIELDS: HintedFieldDef<
         label: "Chain RPC",
         placeholder: "https://rpc.example.com",
         hint: "Your own JSON-RPC provider — chain reads and writes go through it. Applies on the next reload.",
-    },
-    {
-        key: "batchRelayUrl",
-        label: "Verifier relay",
-        placeholder: "https://relay.example.com",
-        hint: "The relay batched trade is read through. Untrusted by construction — the audit surface re-derives everything a relay publishes.",
     },
     {
         key: "analystUrl",
@@ -73,11 +67,10 @@ const TOKEN_FIELDS: HintedFieldDef<"analystToken">[] = [
 export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
     const mounted = useMounted();
     const router = useRouter();
-    const [form, setForm] = useState<Required<Pick<UserEndpointOverrides, "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "batchRelayUrl" | "analystUrl" | "analystToken">>>({
+    const [form, setForm] = useState<Required<Pick<UserEndpointOverrides, "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "analystUrl" | "analystToken">>>({
         ipfsApiUrl: "",
         ipfsGatewayUrl: "",
         rpcUrl: "",
-        batchRelayUrl: "",
         analystUrl: "",
         analystToken: "",
     });
@@ -89,7 +82,6 @@ export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
             ipfsApiUrl: current.ipfsApiUrl ?? "",
             ipfsGatewayUrl: current.ipfsGatewayUrl ?? "",
             rpcUrl: current.rpcUrl ?? "",
-            batchRelayUrl: current.batchRelayUrl ?? "",
             analystUrl: current.analystUrl ?? "",
             analystToken: current.analystToken ?? "",
         });

@@ -317,10 +317,10 @@ describe("verifyOrderCommitSignatures", () => {
 });
 
 /**
- * The batch universe. The verifier's `OrderCommitted` and the signatures in
- * `settleBatch`'s operation stream are not yet read, so the direct walk finds nothing —
- * but the guest verified both signatures inside the proof, and the verifier's
- * re-emitted `Attestation` is the one public per-order trace that says so.
+ * The batch universe. A batched order's signatures sit in the batch's
+ * operation stream, not in a `commit` call, so the direct walk does not apply —
+ * the guest verified both inside the proof, and the verifier's re-emitted
+ * `Attestation` and `BatchSettled` bind the order to that proof.
  */
 describe("verifyOrderCommitSignatures — batch path", () => {
     const VKEY = `0x${"aa".repeat(32)}` as Hex;
@@ -356,6 +356,24 @@ describe("verifyOrderCommitSignatures — batch path", () => {
             transactionHash: null,
             batch: { batchId: 7n, transactionHash: SETTLE_TX, verifier: BATCH_VERIFIER, programVKey: VKEY },
         });
+    });
+
+    it("reports PROVED for a commit the VERIFIER logged, never fetching its transaction", async () => {
+        // The order readers fold both emitters, so a batched order's
+        // OrderCommitted arrives beside the Core's; its emitter decides.
+        getAllOrderCommittedMock.mockResolvedValue([
+            { address: BATCH_VERIFIER, args: { orderHash }, transactionHash: SETTLE_TX },
+        ]);
+        // No attestation at all: the verifier's own commit log binds the order.
+        getBatchAttestationsByOrderMock.mockResolvedValue([]);
+        getAllBatchSettledMock.mockResolvedValue([
+            { args: { batchId: 7n }, transactionHash: SETTLE_TX },
+        ]);
+        const verdicts = await verifyOrderCommitSignatures(batchClient(), CHAIN_ID, orderHash);
+        expect(verdicts.buyer).toBe("proved");
+        expect(verdicts.seller).toBe("proved");
+        expect(verdicts.batch?.batchId).toBe(7n);
+        expect(verdicts.batch?.transactionHash).toBe(SETTLE_TX);
     });
 
     it("falls back to the weaker statement when no BatchSettled binds the order", async () => {

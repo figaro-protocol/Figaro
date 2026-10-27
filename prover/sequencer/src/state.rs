@@ -22,7 +22,6 @@ use figaro_kernel::state::KernelState;
 use figaro_kernel::types::KernelStateSnapshot;
 use serde::{Deserialize, Serialize};
 
-use crate::archive::BatchRecord;
 
 /// Thread-safe wrapper around the local guest state.
 #[derive(Clone)]
@@ -90,9 +89,8 @@ pub struct NextState {
     /// The root the verifier holds once the batch lands.
     pub root: B256,
     pub state: KernelStateSnapshot,
-    /// What the batch publishes once it lands. `batch` and `resolution_tx`
-    /// are set then.
-    pub record: BatchRecord,
+    /// The root the batch was built on: the verifier's root it can land on.
+    pub prev_root: B256,
 }
 
 /// The relay's state on disk: the kept state at `path`, and beside it a
@@ -222,7 +220,7 @@ impl StateStore {
             let bytes = serde_json::to_vec(state).map_err(std::io::Error::other)?;
             write_whole(&path, &bytes).await?;
         }
-        inner.next.retain(|n| n.record.prev_state_root == root && n.root != root);
+        inner.next.retain(|n| n.prev_root == root && n.root != root);
         if let Err(e) = inner.write_journal().await {
             // The kept file is the state; a journal that still lists states
             // which can no longer land costs disk, not correctness.

@@ -52,6 +52,7 @@ import * as path from "node:path";
 
 import {
     BATCH_VERIFIER_ABI,
+    CORE_ABI,
     ERC20_ABI,
     buildCommitment,
     buildDomain,
@@ -81,7 +82,6 @@ const REQUIRE = process.env.REQUIRE_BATCH_E2E === "1";
 const SEQUENCER_PORT = 13011;
 const SEQUENCER_URL = `http://127.0.0.1:${SEQUENCER_PORT}`;
 const STATE_PATH = path.join(os.tmpdir(), `sequencer-state-revoke-e2e-${process.pid}.json`);
-const ARCHIVE_PATH = `sequencer-archive-revoke-e2e-${process.pid}.jsonl`;
 
 // Fresh wallets per run: no anvil index is shared with another suite.
 const relayKey = generatePrivateKey();
@@ -177,7 +177,6 @@ describe.skipIf(SKIP)("Batch E2E: a revocation mid-flight dead-letters the revok
             privateKey: relayKey,
             port: SEQUENCER_PORT,
             statePath: STATE_PATH,
-            archivePath: ARCHIVE_PATH,
         };
     }, 20 * 60_000);
 
@@ -189,7 +188,6 @@ describe.skipIf(SKIP)("Batch E2E: a revocation mid-flight dead-letters the revok
         for (const suffix of ["", ".tmp", ".next.jsonl", ".next.jsonl.tmp"]) {
             fs.rmSync(STATE_PATH + suffix, { force: true });
         }
-        fs.rmSync(ARCHIVE_PATH, { force: true });
     });
 
     it("skips when Anvil is unreachable or the sequencer binary is not built", () => {
@@ -355,11 +353,19 @@ describe.skipIf(SKIP)("Batch E2E: a revocation mid-flight dead-letters the revok
         expect(buyerBal, "the buyer bonded the one commit that landed").toBe(bonds.buyerBond);
         expect(verifierBal).toBe(bonds.buyerBond + bonds.sellerBond);
 
-        // ── 7. What the relay publishes, beside the chain ───────
-        const publishedA = await sequencerClient.order(orderA);
-        expect(publishedA, "the relay publishes seller A's order").not.toBeNull();
-        expect(publishedA!.commit!.batch.resolution_tx).toBe(settled[0].transactionHash);
-        expect(await sequencerClient.order(orderB), "seller B's order is in no batch").toBeNull();
+        // ── 7. What the chain carries ─────────────────────────────
+        const committedA = await publicClient.getContractEvents({
+            address: batchVerifierAddress, abi: CORE_ABI, eventName: "OrderCommitted",
+            args: { orderHash: orderA }, fromBlock: 0n,
+        });
+        expect(committedA.map((l) => l.transactionHash), "seller A's order is in the batch that landed").toEqual([
+            settled[0].transactionHash,
+        ]);
+        const committedB = await publicClient.getContractEvents({
+            address: batchVerifierAddress, abi: CORE_ABI, eventName: "OrderCommitted",
+            args: { orderHash: orderB }, fromBlock: 0n,
+        });
+        expect(committedB, "seller B's order is in no batch").toHaveLength(0);
 
         // ── 8. The relay's claim: /status ────────────────────────
         expect(status.batches_settled).toBe(1);

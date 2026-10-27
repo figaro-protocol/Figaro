@@ -274,7 +274,7 @@ function SearchMode() {
                 found.push({
                     kind: "orderHash",
                     label: `Order hash for buyer ${order.buyer} ↔ seller ${order.seller}`,
-                    location: `OrderCommitted.orderHash on FigaroCore (orderStatus[${order.orderHash}] = ${order.state})`,
+                    location: `OrderCommitted.orderHash on FigaroCore or its batch verifier (state ${order.state})`,
                 });
             }
             if (hexEqual(order.processId, target)) {

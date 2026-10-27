@@ -25,13 +25,6 @@ export interface UserEndpointOverrides {
      *  between); OpenStreetMap's public instance by default, the user's
      *  own instance if set. */
     geocodeUrl?: string;
-    /** A batch-resolution RELAY to read batched trade through. Multiple relays
-     *  are legal by construction — resolution is permissionless, so anyone can
-     *  run one — and nothing published by a relay is trusted: `/audit`
-     *  re-derives every struct, signature and payout and anchors the batch on
-     *  chain before showing it. So pointing this at any relay, or at your own,
-     *  is safe by construction rather than by reputation. */
-    batchRelayUrl?: string;
     /** An ANALYST to ask free-form questions of on `/data/explore`. An analyst
      *  is an agent anyone runs over the public event log — operator-hosted
      *  for a site's public analyses, user-run for analyses that also read the
@@ -74,7 +67,6 @@ export function readUserEndpoints(): UserEndpointOverrides {
         ipfsApiUrl: sanitizeEndpointUrl(raw.ipfsApiUrl),
         ipfsGatewayUrl: sanitizeEndpointUrl(raw.ipfsGatewayUrl),
         geocodeUrl: sanitizeEndpointUrl(raw.geocodeUrl),
-        batchRelayUrl: sanitizeEndpointUrl(raw.batchRelayUrl),
         analystUrl: sanitizeEndpointUrl(raw.analystUrl),
         analystToken: sanitizeBearerToken(raw.analystToken),
     };
@@ -86,7 +78,6 @@ export function writeUserEndpoints(next: UserEndpointOverrides): void {
         ipfsApiUrl: sanitizeEndpointUrl(next.ipfsApiUrl),
         ipfsGatewayUrl: sanitizeEndpointUrl(next.ipfsGatewayUrl),
         geocodeUrl: sanitizeEndpointUrl(next.geocodeUrl),
-        batchRelayUrl: sanitizeEndpointUrl(next.batchRelayUrl),
         analystUrl: sanitizeEndpointUrl(next.analystUrl),
         analystToken: sanitizeBearerToken(next.analystToken),
     });

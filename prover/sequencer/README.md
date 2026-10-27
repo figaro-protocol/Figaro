@@ -18,53 +18,20 @@ always go to `FigaroCore` directly; a process opened on the batch path
 resolves on the batch path, through any relay that holds the state behind the
 verifier's root (§ "The state behind the root").
 
-### Publication inherits the same posture
+### The chain carries what a batch resolved
 
-`FigaroCore` does two things for an order: it resolves it, and it **publishes**
-it. `OrderCommitted` / `OrderSeller` / `OrderCurrency` carry the whole
-commitment struct; `OrderResolved` / `ProcessResolved` carry the resolution
-facts; and the two signatures that admitted the order sit in the commit
-transaction's calldata, readable by anyone. The batch path resolves the same
-trade and publishes its signed operations in the calldata of the transaction that
-lands the batch (the operation stream, bound to public value 9), and emits the
-Core's own events for every commit and resolution it carries (`OrderCommitted`,
-`OrderSeller`, `OrderCurrency`, `OrderResolved`, `ProcessResolved`, under the
-verifier's address); its storage stays `stateRoot` + `batchCount`, and
-`BatchSettled` names the batch. So a batched order's buyer, seller, payment and
-`checkoutHash` are readable from the chain as a direct order's are. The read routes below
-close that gap: they mirror `FigaroCore`'s publication role for the batch
-universe.
-
-**Everything published is verifiable by the reader, so a relay can omit or
-delay, never forge:**
-
-- the commitment struct hashes to the published `order_hash` and `process_id`
-  (`keccak256(processId, structHash)`, `FigaroCore`'s own derivation);
-- both signatures recover to the `buyer` and `seller` named *inside* that
-  struct. **Batch-path signatures are over the VERIFIER's EIP-712 domain, not
-  `FigaroCore`'s** — `FigaroBatchVerifier` requires
-  `pv.verifyingContract == address(this)`, so verify against the
-  `verifying_contract` and `chain_id` each entry carries;
-- `seller_payout` / `buyer_payout` are a pure function of the signed struct
-  (`2 × expectedCumulativeValue + payment`, and `payment`);
-- the batch itself is anchored on chain by its `prev_state_root →
-  new_state_root` transition and, when present, `resolution_tx`.
-
-A relay that publishes a struct nobody signed publishes something that fails
-these checks. A relay that publishes nothing is simply less useful than one
-that does — which is why `404` here says "not in **this** relay's archive",
-never "did not happen".
-
-**Who holds what.** The parties always hold their own signed commitments —
-each keeps its copy of the commitment and the signatures it produced. A relay
-is a convenience publisher, never the only holder: if every relay drops an
-entry, the parties still have it, and any of them can re-publish or
-re-submit it.
-
-**Attestations are already on chain.** `FigaroBatchVerifier` re-emits every
-batched attestation as an `Attestation` event, so that family needs no relay
-mirror — read it from the chain. The archive covers exactly the families the
-`FigaroCore` publishes that the batch path does not.
+`FigaroCore` resolves an order and publishes it: `OrderCommitted` /
+`OrderSeller` / `OrderCurrency` carry the whole commitment struct,
+`OrderResolved` / `ProcessResolved` the resolution facts. `FigaroBatchVerifier`
+does the same for every batch: it emits those events, under its own address,
+for every commit and resolution the batch carries, with the ids derived under
+its own EIP-712 domain, and logs the batch's whole operation stream
+(`BatchOperations`, bound to public value 9 before it is logged). So a
+batched order is read from the chain as a direct one is, and a relay
+publishes nothing a reader needs: it is transport. A relay that delays a
+batch costs time; it cannot hide one, because the batch it lands carries its
+own operation stream, and a relay started with nothing rebuilds the state
+behind the verifier's root from those logs (`REBUILD_FROM_CHAIN=1`).
 
 ## Getting the binary
 
@@ -199,8 +166,6 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `REQUEST_TIMEOUT_SECS` | `10` | A request not answered by then is `408` |
 | `MAX_IN_FLIGHT` | `256` | Requests served at once, across every route; the rest wait |
 | `SUBMITS_PER_MINUTE_PER_IP` | `60` | Submissions one client address may make a minute before `429`; `0` disables |
-| `ARCHIVE_PATH` | `sequencer-archive.jsonl` | Publication journal; empty = in-memory only |
-| `ARCHIVE_MAX_BATCHES` | `10000` | Retained resolved batches (see Publication bounds) |
 | `RUST_LOG` | `figaro_sequencer=info,sequencer=info` | Log filter. Two targets: the library's modules log as `figaro_sequencer`, the binary's own lines (startup, every refusal to start, the batch loop) as `sequencer` — name both |
 | `STATE_PATH` | `sequencer-state-<chain id>-<verifier>.json` | The relay's state, the preimage of the verifier's root (see The state behind the root); empty = in-memory only |
 | `REBUILD_FROM_CHAIN` | unset | `1`: at startup this relay rebuilds the state behind the verifier's root from the chain alone, replaying every landed batch's operation stream from `REBUILD_FROM_BLOCK` (default `0`; the verifier's deployment block saves the scan), holding each root to its `BatchSettled`, and keeps the result as its state file before starting. Refuses, writing nothing, on a batch landed through another contract's call. |
@@ -238,10 +203,8 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
 
 ### Status
 
-The read routes below and the publication routes (`/orders`, `/processes`,
-`/batches`) answer a page on any origin: `Access-Control-Allow-Origin: *` for
-`GET` and its `OPTIONS` preflight, with `x-figaro-state-root` exposed, so a
-browser page (the site's `/audit`) reads them from the reader's own browser.
+The read routes below answer a page on any origin: `Access-Control-Allow-Origin: *`
+for `GET` and its `OPTIONS` preflight, with `x-figaro-state-root` exposed.
 They change nothing, and serve what the relay already serves to any client on
 `LISTEN_ADDR`. The cross-origin header is outermost, so a `408` reaches the
 page too. The submission routes carry no cross-origin header: a JSON
@@ -260,15 +223,16 @@ its visitors' browsers submit for it, each from an address of its own past
   file does not already hold that root; a served state behind any other root,
   or whose header names a root other than the body's, is a refusal to start
   and writes nothing. Nothing in it is private — it is derived from the
-  signed operations the publication routes serve.
+  operation streams every landed batch logs. A relay started with
+  `REBUILD_FROM_CHAIN=1` needs no `GET /state` at all.
 - `GET /health` — liveness + bounded counts:
   `{ "status": "ok", "pending_ops", "pending_usage_claims", "batches_settled" }`.
-- `GET /status` — the above plus the sequencer's local `state_root` mirror,
-  the failure surface, and the publication window:
+- `GET /status` — the above plus the sequencer's local `state_root` mirror
+  and the failure surface:
   `{ "state_root", "pending_ops", "pending_usage_claims", "batches_settled",
   "dead_lettered_ops", "last_settle_error",
-  "dropped_usage_claims", "last_dropped_claim_error",
-  "archive": { "first_batch", "last_batch", "retained_batches", "max_batches" } }`.
+  "dropped_usage_claims", "last_dropped_claim_error" }`.
+  `batches_settled` counts the batches this relay has landed since it started.
   `pending_ops` counts the deferred operations with the queued ones.
   `dead_lettered_ops` counts, for the whole relay, the ops dropped without
   resolving, whatever the path — one deferred at formation whose window ran
@@ -285,60 +249,8 @@ its visitors' browsers submit for it, each from an address of its own past
   the operations, and `last_dropped_claim_error` carries the latest reason. Neither says whose
   operation died: anyone may submit an operation that fails at formation, so
   the counter grows without the reader's own having moved. A client follows
-  its own order on `/orders/:order_hash` and its process on
-  `/processes/:process_id`, and the root on `/status`.
-  Read `archive` BEFORE replaying: a cursor older than `first_batch` means this
-  relay has already dropped the gap.
-
-### Publication — `FigaroCore`'s events, for the batch universe
-
-Same wire dialect as `/submit`: `Commitment` and `Signature` are the exact
-serde shapes `SequencerOp` sends (`snake_case` fields; `B256`/`Address` as
-`0x`-hex, `U256` as a **hex quantity** — `"0x7d0"`, not `"2000"`).
-
-- `GET /orders/{orderHash}` — one order:
-  ```jsonc
-  {
-    "order_hash": "0x…", "process_id": "0x…",
-    // absent (null) if the committing batch has aged out of retention
-    "commit": {
-      "commitment": { /* the 9-field struct exactly as signed */ },
-      "buyer_signature":  { "v": 28, "r": "0x…", "s": "0x…" },
-      "seller_signature": { "v": 28, "r": "0x…", "s": "0x…" },
-      "batch": { "batch": 1, "chain_id": 31337, "verifying_contract": "0x…",
-                 "prev_state_root": "0x…", "new_state_root": "0x…",
-                 "resolution_tx": "0x…" /* null on a dry run */,
-                 "block_timestamp": 1000 }
-    },
-    // absent (null) while the process is still open
-    "resolution": { "seller": "0x…", "seller_payout": "0x…",
-                    "buyer_payout": "0x…", "batch": { … } }
-  }
-  ```
-  `400` on a malformed hash, `404` when neither leg is retained.
-- `GET /processes/{processId}` — the process's orders and its resolution facts:
-  `{ "process_id", "orders": [ <the /orders shape, one per order> ],
-     "resolution": { "buyer", "order_count", "buyer_signature", "batch" } | null }`.
-  `resolution` is the `ProcessResolved` equivalent, plus the buyer signature
-  that authorized it (the batched form of `msg.sender == rootBuyer`); each
-  order's own `resolution` is its `OrderResolved` equivalent. `400` / `404`
-  as above.
-- `GET /batches?from=<n>&limit=<n>` — bounded replay of everything this relay
-  has resolved, for an indexer walking the batch universe the way it walks
-  `FigaroCore` logs:
-  `{ "batches": [ { "batch", "chain_id", "verifying_contract",
-  "prev_state_root", "new_state_root", "resolution_tx", "block_timestamp",
-  "commits": [...], "resolutions": [...] } ], "next_cursor": n | null,
-  "retained": { … } }`.
-  `from` defaults to the oldest retained batch; `limit` defaults to 10 and is
-  **clamped to 50** whatever the caller asks. Follow `next_cursor` until it is
-  `null`. `400` on a non-numeric parameter.
-
-`batch` numbers are **this relay's own resolved sequence** — a cursor, not a
-protocol identity. Another relay numbers its batches differently; the
-chain-anchored identity is `new_state_root` + `resolution_tx`. The number
-resumes from the archive across a restart, so it never collides with what was
-already published.
+  its own order on chain, in the verifier's `OrderCommitted` and
+  `OrderResolved`, and the relay's root on `/status`.
 
 ## The guest fingerprint
 
@@ -558,25 +470,3 @@ re-measuring them. The position constant assumes a plain ERC-20: a token
 whose transfer costs more is the parties' choice, and a batch it over-runs
 fails at the send like any transient failure — re-proved, then
 dead-lettered with every operation batched beside it, each re-submittable.
-
-## Publication bounds
-
-`Mempool::drain` clears the queue and its dedup index at assembly — nothing
-about a resolved order survives there — so retention is its own thing.
-
-- **In memory**: at most `ARCHIVE_MAX_BATCHES` resolved batches, oldest evicted
-  first, indices dropped with them. A public relay must not grow without
-  limit; `/status` publishes the window so eviction is visible rather than
-  silent.
-- **On disk**: an append-only JSONL journal at `ARCHIVE_PATH` (one
-  `BatchRecord` per line — no database; the crate adds no dependency for it).
-  Replayed at startup, rebuilding the indices. It is **rotated**, not grown:
-  once more than `ARCHIVE_MAX_BATCHES` lines have been appended since the last
-  rewrite, the file is rewritten from the retained window (via a temp file +
-  rename, so a crash mid-rewrite leaves the previous journal intact). The file
-  therefore stays under 2× the window, and a rewrite costs O(window) once per
-  window rather than per batch.
-- Set `ARCHIVE_PATH=` (empty) for an in-memory-only relay — it then answers for
-  the process's lifetime and forgets on restart.
-- Publication **follows** resolution and never gates it: a journal write error
-  is logged and the batch stays resolved and readable in memory.

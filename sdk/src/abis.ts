@@ -504,6 +504,9 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "event OrderCurrency(bytes32 indexed orderHash, address indexed currency)",
     "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
     "event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)",
+    // The batch's whole operation stream and its replay inputs: the state
+    // behind any root is rebuilt from these logs alone.
+    "event BatchOperations(uint64 indexed batchId, uint64 blockTimestamp, uint8 usagePeriod, bytes32 provenanceLeaf, bytes operations)",
 
     // ── Views ────────────────────────────────────────────────────────
     "function stateRoot() view returns (bytes32)",

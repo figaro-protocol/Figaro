@@ -3,7 +3,10 @@
 # the box-local fork (default) for layer 2, or live Sepolia for the real
 # resolve. The batch pair arrives via BATCH_VERIFIER / USAGE_COUNTER (a
 # fork-deployed validation pair, or the committed record's); registry
-# addresses come from the record. SEQUENCER_PRIVATE_KEY arrives via the
+# addresses come from the record. The relay rebuilds the state behind the
+# verifier's root from the chain at every start (REBUILD_FROM_CHAIN=1), scanning
+# from the record's deployment block, which is at or before the verifier's.
+# SEQUENCER_PRIVATE_KEY arrives via the
 # invocation environment — never written to disk.
 #
 # The full sequencer environment table is prover/sequencer/README.md's.
@@ -29,8 +32,9 @@ MEMBERS_REGISTRY_ADDRESS="$(addr membersRegistry)" \
 SP1_PROVER=cpu \
 SP1_PROOF_MODE=groth16 \
 BATCH_INTERVAL_SECS=30 \
-ARCHIVE_PATH="$HOME/sequencer-archive-$(date +%s).jsonl" \
 STATE_PATH="$HOME/sequencer-state-$BATCH_VERIFIER.json" \
+REBUILD_FROM_CHAIN=1 \
+REBUILD_FROM_BLOCK="${REBUILD_FROM_BLOCK:-$(addr deploymentBlock)}" \
 LISTEN_ADDR=127.0.0.1:3001 \
 RUST_LOG=figaro_sequencer=debug,info \
 nohup ./target/release/sequencer > "$HOME/sequencer-current.log" 2>&1 &

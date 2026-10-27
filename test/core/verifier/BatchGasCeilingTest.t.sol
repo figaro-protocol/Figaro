@@ -47,14 +47,15 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     uint256 internal constant SETTLE_GAS_PER_USAGE_SELLER = 12_000;
     uint256 internal constant SETTLE_FIXED_EXEC_GAS = 105_000;
     /// @dev The operation stream's execution: the calldata copy, the keccak
-    ///      over it and the memory it expands into. Linear in the stream's
-    ///      32-byte words plus a quadratic memory term — measured 22 a word
-    ///      at 256 words, 33 at 1,024, 54 at 2,048 — so the model is
-    ///      `words * SETTLE_GAS_PER_STREAM_WORD + words² / SETTLE_STREAM_QUADRATIC_DIVISOR`,
-    ///      each part a ceiling over its measurement (17.4 linear, 1/56
-    ///      quadratic, fitted). The calldata's own per-byte charge is
-    ///      intrinsic and planned apart.
-    uint256 internal constant SETTLE_GAS_PER_STREAM_WORD = 56;
+    ///      over it, the memory it expands into, and the `BatchOperations`
+    ///      log that carries it (8 gas a byte, 256 a word, most of the cost).
+    ///      Linear in the stream's 32-byte words plus a quadratic memory term,
+    ///      so the model is `words * SETTLE_GAS_PER_STREAM_WORD
+    ///      + words² / SETTLE_STREAM_QUADRATIC_DIVISOR`, each part a ceiling
+    ///      over `test_Gas_settleStreamWord`'s measurement (308 a word; a
+    ///      64 KiB stream 786,717 against 812,800 modeled). The calldata's own
+    ///      per-byte charge is intrinsic and planned apart.
+    uint256 internal constant SETTLE_GAS_PER_STREAM_WORD = 320;
     uint256 internal constant SETTLE_STREAM_QUADRATIC_DIVISOR = 32;
     /// @dev A commit entry read for its events: the decode, the struct and
     ///      typed-data hashes that derive its ids, and the three Core events;
@@ -330,7 +331,8 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         uint256 g0 = _settleCallGas(hex"");
         uint256 g8 = _settleCallGas(_claimEntries(8, 1));
         uint256 g16 = _settleCallGas(_claimEntries(16, 1));
-        uint256 perClaim = (g16 - g8) / 8;
+        // Net of the entry's own 11 words, which the word anchor prices.
+        uint256 perClaim = (g16 - g8) / 8 - 11 * SETTLE_GAS_PER_STREAM_WORD;
         emit log_named_uint("settle_gas_per_stream_claim", perClaim);
         // The words: 8 claims with 1-word proofs against 8 with 65-word proofs.
         uint256 g8wide = _settleCallGas(_claimEntries(8, 65));

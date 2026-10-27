@@ -34,12 +34,13 @@ pub const SETTLE_GAS_PER_ACCRUAL: u64 = 190_000;
 pub const SETTLE_GAS_PER_USAGE_SELLER: u64 = 12_000;
 /// The call's execution with nothing to publish.
 pub const SETTLE_FIXED_EXEC_GAS: u64 = 105_000;
-/// The operation stream's execution — the calldata copy, the keccak over it
-/// and the memory it expands into — is linear in its 32-byte words plus a
+/// The operation stream's execution — the calldata copy, the keccak over it,
+/// the memory it expands into and the `BatchOperations` log that carries it —
+/// is linear in its 32-byte words plus a
 /// quadratic memory term: `words * SETTLE_GAS_PER_STREAM_WORD
 /// + words² / SETTLE_STREAM_QUADRATIC_DIVISOR` (`stream_exec_gas`), each part
 /// a ceiling over `BatchGasCeilingTest`'s measurement.
-pub const SETTLE_GAS_PER_STREAM_WORD: u64 = 56;
+pub const SETTLE_GAS_PER_STREAM_WORD: u64 = 320;
 pub const SETTLE_STREAM_QUADRATIC_DIVISOR: u64 = 32;
 /// A commit entry read for its events: the decode, the two hashes that
 /// derive its ids, the three Core events; a resolved order: the decode, one
@@ -395,11 +396,11 @@ mod tests {
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(1)), 1);
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(2)), 2);
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(7) - 1), 6);
-        assert_eq!(max_orders_in_one_settle(DEFAULT_SETTLE_GAS_CAP), 222);
-        assert!(resolve_settle_gas(222) <= DEFAULT_SETTLE_GAS_CAP && resolve_settle_gas(223) > DEFAULT_SETTLE_GAS_CAP);
+        assert_eq!(max_orders_in_one_settle(DEFAULT_SETTLE_GAS_CAP), 216);
+        assert!(resolve_settle_gas(216) <= DEFAULT_SETTLE_GAS_CAP && resolve_settle_gas(217) > DEFAULT_SETTLE_GAS_CAP);
         // The least cap admits a process of one order, and no less.
         assert_eq!(MIN_SETTLE_GAS_CAP, resolve_settle_gas(1));
-        assert_eq!(MIN_SETTLE_GAS_CAP, 606_947);
+        assert_eq!(MIN_SETTLE_GAS_CAP, 609_851);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP), 1);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP - 1), 0);
     }

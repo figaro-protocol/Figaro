@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePublicClient } from "wagmi";
-import { useAuditProcessOrders } from "@/hooks/useAuditProcessOrders";
+import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import {
     getAttestationsByOrder,
@@ -103,7 +103,7 @@ function OrderSignatureRows({
                     data-testid={`audit-sig-batch-${orderHash}`}
                 >
                     {verdicts.batch.batchId !== null
-                        ? `Batch #${verdicts.batch.batchId} re-emitted this order's attestation, so both signatures were verified inside that proof or an earlier one in the same state-root chain. `
+                        ? `Batch #${verdicts.batch.batchId} logged this order, so both signatures were verified inside that proof or an earlier one in the same state-root chain. `
                         : "No log binds this order to a specific batch, so the statement is the weaker one: both signatures were verified inside some proof this verifier accepted. "}
                     You are trusting that proof rather than a signature recomputed here &mdash; check it against verifier{" "}
                     <span className="font-mono break-all">{verdicts.batch.verifier}</span>
@@ -119,10 +119,9 @@ function OrderSignatureRows({
 }
 
 export function ProcessClauseEvidence({ processId }: { processId: string }) {
-    // BOTH resolution universes: the Core's readers do not yet fold the
-    // verifier's OrderCommitted, so reading only the Core would render no
-    // evidence and make the "proved" signature verdict below unreachable.
-    const { orders } = useAuditProcessOrders(processId);
+    // Both resolution paths: the order readers fold the verifier's events
+    // beside the Core's, so batched orders reach the verdict below.
+    const orders = useProcessOrders(processId);
     const publicClient = usePublicClient();
     const chainId = publicClient?.chain?.id ?? 0;
     // Warm the chain→IPFS clause-spec cache at this surface's boundary, so the

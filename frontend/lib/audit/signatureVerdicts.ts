@@ -34,8 +34,9 @@
  * All of the above describes the DIRECT path only. There are two resolution
  * paths and two DISJOINT state universes (docs/SCALING_STRATEGY.md): the
  * verifier emits `OrderCommitted` for a batched order under its own address,
- * and `settleBatch` carries the batch's operation stream, signatures included,
- * as its last calldata argument; this module reads neither yet. So for batched trade the walk above finds
+ * which the order readers fold beside the Core's, and its signatures sit in
+ * the batch's operation stream, not in a `commit` call. A commit the
+ * verifier logged is routed to the batch verdict below. So for batched trade the walk above finds
  * nothing, and reporting "unavailable" would understate what is actually known.
  *
  * What IS known, and why it is a different KIND of evidence: the zkVM guest
@@ -170,24 +171,25 @@ export async function verdictsForCommitCalldata(
  * Batch-path provenance for an order, or null when the batch universe says
  * nothing about it.
  *
- * The binding is transitive and that is the strongest one on chain: the
- * verifier stores no per-order state and its public values carry no order
- * hashes (only roots + context + four aggregate hashes), so the sole per-order
- * trace a batch leaves is a re-emitted `Attestation`. That log's transaction is
- * the `settleBatch` call, and the `BatchSettled` in the SAME transaction names
- * the batch. An order the verifier never attested leaves no public trace at all
- * — hence null, never a manufactured verdict.
+ * The binding is transitive: a per-order log the verifier emitted sits in
+ * the `settleBatch` transaction that carried the order, and the
+ * `BatchSettled` in the SAME transaction names the batch. The per-order log
+ * is the verifier's `OrderCommitted` (`settleTx`, when the order readers
+ * found it) or, failing that, a re-emitted `Attestation`. An order the
+ * verifier logged neither way leaves no trace — hence null, never a
+ * manufactured verdict.
  */
 async function resolveBatchProvenance(
     client: PublicClient,
     chainId: number,
     orderHash: string,
+    settleTx: string | null = null,
 ): Promise<BatchProvenance | null> {
     const verifier = getBatchVerifier();
     if (!verifier) return null;
 
-    const attestations = await getBatchAttestationsByOrder(client, chainId, orderHash);
-    if (attestations.length === 0) return null;
+    const attestations = settleTx ? [] : await getBatchAttestationsByOrder(client, chainId, orderHash);
+    if (!settleTx && attestations.length === 0) return null;
 
     // The vkey is what makes the proof checkable by the reader; report it when
     // readable, but its absence never invalidates the binding above.
@@ -202,7 +204,7 @@ async function resolveBatchProvenance(
         programVKey = null;
     }
 
-    const transactionHash = attestations[0]?.transactionHash ?? null;
+    const transactionHash = (settleTx as Hex | null) ?? attestations[0]?.transactionHash ?? null;
     if (!transactionHash) return { batchId: null, transactionHash: null, verifier, programVKey };
 
     // Name the batch by finding the BatchSettled emitted in the same settleBatch
@@ -238,6 +240,12 @@ export async function verifyOrderCommitSignatures(
 ): Promise<OrderSignatureVerdicts> {
     const all = await getAllOrderCommitted(client, chainId);
     const log = all.find((l) => hexEqual(getStringArg(l, "orderHash"), orderHash));
+    // The order readers fold both emitters: a commit the verifier logged was
+    // checked inside the proof that landed its batch, never by calldata here.
+    const verifier = getBatchVerifier();
+    if (log && verifier && hexEqual(log.address as string, verifier)) {
+        return provedOrUnavailable(client, chainId, orderHash, log.transactionHash ?? null);
+    }
     const transactionHash = log?.transactionHash ?? null;
     if (!transactionHash) return provedOrUnavailable(client, chainId, orderHash);
 
@@ -269,10 +277,11 @@ async function provedOrUnavailable(
     client: PublicClient,
     chainId: number,
     orderHash: string,
+    settleTx: string | null = null,
 ): Promise<OrderSignatureVerdicts> {
     let batch: BatchProvenance | null = null;
     try {
-        batch = await resolveBatchProvenance(client, chainId, orderHash);
+        batch = await resolveBatchProvenance(client, chainId, orderHash, settleTx);
     } catch {
         batch = null;
     }

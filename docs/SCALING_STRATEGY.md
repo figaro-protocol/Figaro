@@ -73,11 +73,14 @@ returns 0 — UNKNOWN — for it, permanently. And the converse holds: a
   its own counted set (under the state root) rather than consulting the
   counter's `processCounted`. That would be unsound if a process could resolve
   on both paths — and it cannot.
-- **A reader must fold BOTH.** An indexer, a reward calculator, or an
-  interface that reads only `FigaroCore` events sees the direct path alone and
-  under-reports everything that scaled. The two event streams are deliberately
-  distinguishable (`FigaroBatchVerifier.Attestation` shares the coordinator's
-  topic hash — filter by contract address).
+- **A reader must fold BOTH.** The verifier emits `FigaroCore`'s own
+  `OrderCommitted`, `OrderSeller`, `OrderCurrency`, `OrderResolved` and
+  `ProcessResolved` for every batched order, and re-emits its attestations, so
+  an indexer, a reward calculator or an interface reads both addresses with
+  one decoder; one that reads only `FigaroCore` sees the direct path alone and
+  under-reports everything that scaled. The streams stay distinguishable by
+  contract address (`FigaroBatchVerifier.Attestation` shares the coordinator's
+  topic hash; the order events share `FigaroCore`'s).
 
 **What crosses the boundary, and what does not.** Exactly one thing crosses:
 the usage accrual for designer rewards, carried by `settleBatch` into
@@ -148,8 +151,9 @@ hash-verifies auxiliary calldata (positions, attestation events, spec
 bindings, the usage accrual), checks each (clause key, spec hash) binding —
 the two words equal and the key `ClauseRegistry.registered` — executes net
 token transfers, re-emits
-proven `Attestation` events, and carries the batch's usage accrual to
-`UsageCounter.applyBatchAccrual`. It is not a florin minter. Uses a
+proven `Attestation` events, emits the Core's order and process events from
+the operation stream and logs the stream itself (`BatchOperations`), and
+carries the batch's usage accrual to `UsageCounter.applyBatchAccrual`. It is not a florin minter. Uses a
 `BatchEventData` struct to avoid stack-too-deep.
 
 **Verifier interface and mock** (`ISP1Verifier.sol`, `MockSP1Verifier.sol`):
@@ -173,8 +177,10 @@ the Succinct gateway ABI, and a devnet stand-in that accepts any proof.
 - throughput becomes a function of proof generation, not block gas limits
 - the on-chain footprint per batch collapses to a single proof verification,
   state-root update, and net token reconciliation
-- attestation events are hash-verified against the proof and re-emitted for
-  interface/indexer compatibility
+- attestation events are hash-verified against the proof and re-emitted, and
+  the order and process events are emitted from the proof-bound operation
+  stream, for interface and indexer compatibility; the stream itself is
+  logged, so the state behind any root is rebuilt from the chain alone
 - `FigaroCore` invariants are preserved exactly — the proof enforces the same
   rules the Solidity `FigaroCore` enforces, at batch scale
 
@@ -455,11 +461,11 @@ the network the natural answer rather than scaling a self-hosted prover.
 
 The off-chain service that collects signed protocol operations, assembles
 them into batches, runs the SP1 prover, submits the proof and auxiliary data
-to `FigaroBatchVerifier.settleBatch()`, and **publishes what it resolved**
-(the batch path's mirror of `FigaroCore`'s event publication, which the
-verifier does not emit). It is implemented as a Rust crate in
+to `FigaroBatchVerifier.settleBatch()`. It publishes nothing a reader needs:
+the batch it lands carries its operation stream and the Core's own events. It
+is implemented as a Rust crate in
 `prover/sequencer/`; that crate's README owns the module contract, the route
-contract, retention bounds, and the run-your-own recipe. This section owns
+contract and the run-your-own recipe. This section owns
 the trust model.
 
 The sequencer is a **coordination convenience, not a trust assumption**. It
@@ -467,7 +473,7 @@ cannot fabricate operations (every operation requires valid EIP-712
 signatures, verified inside the zkVM). It cannot keep a new process out
 (any process can open on `FigaroCore` directly); a process already open on
 the batch path resolves only through a batch built on the state behind the
-verifier's root, which the relay that built the last batch holds
+verifier's root, which any relay rebuilds from the verifier's logs
 (§ "Operational requirements"). It cannot collect
 anything (`FigaroCore` takes no cut and offers no MEV surface).
 
@@ -513,7 +519,9 @@ publicValues, positions, events, usage, operations)`. The verifier: verifies the
 checks state-root continuity and chain binding; verifies the auxiliary
 calldata hashes against the proof's commitments; checks each spec binding
 (`specHash == clauseId`, `ClauseRegistry.registered(clauseId)`); executes the net token transfers;
-re-emits protocol-compatible events; forwards the usage accrual to
+re-emits the attestations and emits the Core's order and process events from
+the operation stream, and logs the stream (`BatchOperations`); forwards the
+usage accrual to
 `UsageCounter.applyBatchAccrual`; advances the state root.
 
 ### Trust analysis
@@ -642,8 +650,6 @@ of ~21k gas, repeatable against specific counterparties.
 The sequencer's trusted scope cannot reach `FigaroCore`: it cannot undo a
 resolved process, cannot reorder or modify payouts, cannot drain `FigaroCore`
 (the verifier is a separate contract), and cannot forge proofs. The worst
-outcome of a compromised or stopped sequencer is delayed batch resolution
-while the state behind the on-chain root survives: a sequencer started on
-that state resumes. That state is held by the relay that built the last
-batch; a relay that loses or withholds it leaves the processes open on the
-batch path with no resolve (`AUDITOR_HANDOVER.md` Known limitation 6).
+outcome of a compromised or stopped sequencer is delayed batch resolution:
+any relay, started on the state rebuilt from the verifier's logs
+(`REBUILD_FROM_CHAIN=1`), resumes (`AUDITOR_HANDOVER.md` Known limitation 6).

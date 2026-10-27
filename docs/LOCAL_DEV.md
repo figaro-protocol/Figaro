@@ -195,16 +195,6 @@ NEXT_PUBLIC_DAO_TREASURY=0x...
 # SP1_VERIFIER / SP1_PROGRAM_VKEY env)
 NEXT_PUBLIC_BATCH_VERIFIER=0x...
 
-# Batch-resolution RELAY the frontend READS batched trade from (prover/sequencer,
-# or any other relay). Deliberately EMPTY: resolving a batch is permissionless, so
-# a relay is one publisher among any number and there is no default endpoint of
-# ours. Unset = batched trade is unreadable here, which /audit states plainly.
-# Readers can override it per-browser (the client-side endpoint override read
-# by readUserEndpoints()). Nothing a relay publishes is
-# trusted: lib/audit/batchRelay.ts re-derives every struct, signature and payout
-# and anchors the batch's state root on chain before rendering it.
-NEXT_PUBLIC_BATCH_RELAY_URL=
-
 # ANALYST the data explorer (/data/explore) asks free-form questions of — an agent
 # anyone runs over the public event record (ecosystem-agents/figaro-analyst.md;
 # runnable at ecosystem-agents/runtime/figaro-analyst.mjs). Deliberately EMPTY:

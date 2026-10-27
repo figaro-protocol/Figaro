@@ -21,6 +21,9 @@ import type { PublicClient } from "viem";
 import { cachedGetLogs, cachedGetReceiptLogs } from "./eventCache";
 import { hexEqual } from "@/lib/shared/evm";
 import { CONTRACTS } from "./contracts";
+
+/** Every contract that emits the Core's order and process events. */
+const ORDER_EMITTERS = (): string[] => [CONTRACTS.core, CONTRACTS.batchVerifier];
 import {
     EV_ORDER_COMMITTED,
     EV_ORDER_SELLER,
@@ -35,8 +38,9 @@ type IndexedLogWithArgs = IndexedLog & { args?: Record<string, unknown> };
 
 /**
  * Fetch the same event type from one or more contract addresses and merge
- * results by block number (ascending). A generic multi-source reader — each
- * protocol event today has a single emitting contract.
+ * results by block number (ascending). The order and process events have two
+ * emitters: FigaroCore on the direct path and FigaroBatchVerifier on the batch
+ * path, which emits the same events for every batched order.
  */
 export async function cachedGetLogsMulti(
     client: PublicClient,
@@ -56,9 +60,13 @@ export async function cachedGetLogsMulti(
         ),
     );
     if (results.length === 1) return results[0];
-    // Merge and sort by block number (ascending)
+    // Merge and sort by block, then by position in the block.
     const merged = results.flat();
-    merged.sort((a, b) => Number(a.blockNumber ?? 0) - Number(b.blockNumber ?? 0));
+    merged.sort(
+        (a, b) =>
+            Number(a.blockNumber ?? 0) - Number(b.blockNumber ?? 0) ||
+            Number(a.logIndex ?? 0) - Number(b.logIndex ?? 0),
+    );
     return merged;
 }
 
@@ -76,16 +84,14 @@ export function getStringArg(log: IndexedLog, key: string): string | null {
 // ---------------------------------------------------------------------------
 
 export async function getAllOrderCommitted(client: PublicClient, chainId: number) {
-    return cachedGetLogs(client, chainId, {
-        address: CONTRACTS.core as `0x${string}`,
+    return cachedGetLogsMulti(client, chainId, ORDER_EMITTERS(), {
         event: EV_ORDER_COMMITTED,
         eventName: "OrderCommitted",
     });
 }
 
 export async function getAllOrderResolved(client: PublicClient, chainId: number) {
-    return cachedGetLogs(client, chainId, {
-        address: CONTRACTS.core as `0x${string}`,
+    return cachedGetLogsMulti(client, chainId, ORDER_EMITTERS(), {
         event: EV_ORDER_RESOLVED,
         eventName: "OrderResolved",
     });
@@ -96,8 +102,7 @@ export async function getAllOrderResolved(client: PublicClient, chainId: number)
  *  leg of the SDK's `CoreEvents` triple, which the graph projections
  *  (`@figaro-protocol/sdk/derive`) fold to know a process closed. */
 export async function getAllProcessResolved(client: PublicClient, chainId: number) {
-    return cachedGetLogs(client, chainId, {
-        address: CONTRACTS.core as `0x${string}`,
+    return cachedGetLogsMulti(client, chainId, ORDER_EMITTERS(), {
         event: EV_PROCESS_RESOLVED,
         eventName: "ProcessResolved",
     });
@@ -115,8 +120,7 @@ export async function getOrderCommittedByBuyer(client: PublicClient, chainId: nu
 
 /** OrderSeller logs — indexed seller lookup, no full-table scan. */
 async function getAllOrderSeller(client: PublicClient, chainId: number) {
-    return cachedGetLogs(client, chainId, {
-        address: CONTRACTS.core as `0x${string}`,
+    return cachedGetLogsMulti(client, chainId, ORDER_EMITTERS(), {
         event: EV_ORDER_SELLER,
         eventName: "OrderSeller",
     });

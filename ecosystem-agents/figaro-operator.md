@@ -450,26 +450,20 @@ re-attest a finished order, re-quote a filled request, chase a counterparty who 
 performed, or tell the owner a payment never arrived when it did.
 
 So when a process the wallet expected is absent from `sync()`, or an order reads status
-`0`, check the other path before concluding anything. **Ask a relay first** — an order
-resolved on the batch path has no `FigaroCore` event and no per-order flag on chain, which is
-exactly why relays publish the batch path's mirror of those events. `SequencerClient` reads
-them, and encodes the one rule you must not get wrong:
+`0`, check the other path before concluding anything. **Read the verifier's events** — the
+deployment record's `batchVerifier` emits `FigaroCore`'s own `OrderCommitted`,
+`OrderSeller`, `OrderCurrency`, `OrderResolved` and `ProcessResolved` for every batched
+order, with ids derived under the verifier's EIP-712 domain, so the same query filtered on
+its address answers for the batch path. No relay is asked; a relay is transport only.
 
 ```ts
-const view = await seq.process(processId);   // its orders and its resolution facts
-const one  = await seq.order(orderHash);     // one published order
-const page = await seq.batches({ from: 0 }); // ≤50 a page; follow next_cursor
+const committed = await client.getContractEvents({
+  address: batchVerifier, abi: BATCH_VERIFIER_ABI, eventName: "OrderCommitted",
+  args: { processId }, fromBlock,
+});
 ```
 
-`null` means **"not in THIS relay's archive"** — carried by another relay, resolved
-directly against `FigaroCore`, or aged out of retention (`status().archive` gives the
-window; check it against your cursor BEFORE replaying, or a dropped range is skipped
-silently). It NEVER means the trade did not happen, and you must never report it that way
-to the owner. Every other failure THROWS, so an unreachable relay stays distinguishable
-from absent data.
-
-A relay is transport, not an authority, so confirm what matters on chain — the
-deployment record's `batchVerifier` address, with `BATCH_VERIFIER_ABI` from
+Confirm the rest on chain the same way, with `BATCH_VERIFIER_ABI` from
 `@figaro-protocol/sdk`:
 
 - The ERC-20 transfers `settleBatch` executed for the net positions — tokens moved are

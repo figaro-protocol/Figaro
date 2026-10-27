@@ -180,14 +180,12 @@ opened on the batch path resolves on the batch path, through a batch built on
 the state behind the verifier's root, which the relay that built the last
 batch holds (Known limitation 6).
 It holds one key, `SEQUENCER_PRIVATE_KEY`, which signs the `settleBatch`
-transaction and pays its gas; the key grants no protocol privilege. What the
-relay publishes is how a stranger checks that a batch happened; nothing it
-publishes is authority, and every field is checkable against the chain, with one
-stated limit: the wire carries no inclusion proof, so a browser checks that a given
-order is under the root only by recomputing the root from the whole served state
-(`frontend/lib/audit/batchRelay.ts`, up to 64 MiB), never from an inclusion proof.
-Review goals: a stall for free, mempool poisoning, re-queue exhaustion, the
-handling of its one key, and a publication that misleads its reader.
+transaction and pays its gas; the key grants no protocol privilege. A reader
+needs nothing from it: every batch it lands logs its operation stream and the
+Core's own order events, and its `GET /state` is a convenience a second relay
+may start on, checked against the verifier's root, never trusted.
+Review goals: a stall for free, mempool poisoning, re-queue exhaustion, and the
+handling of its one key.
 
 ### In scope — configuration
 
@@ -652,7 +650,7 @@ The constants and constructor arguments the mainnet deploy fixes
 | `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:109` |
 | `PUBLIC_VALUES_LENGTH` | 320 bytes, ten words; any other length is refused by name | `FigaroBatchVerifier.sol:113` |
 | `MAX_BATCH_OPS` | the relay's bound on what the prover finishes in one sitting, 100 operations by default; an operator's environment variable | `prover/sequencer/src/main.rs:121` |
-| The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order `settleBatch` call's 606,947, or at or past 95 percent of the block limit read at startup, the relay refuses to start); the call's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
+| The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order `settleBatch` call's 609,851, or at or past 95 percent of the block limit read at startup, the relay refuses to start); the call's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
 | Re-queue bound | an operation re-queued after a transient submission failure is re-queued at most three times, then dead-lettered; a deferral at batch formation spends nothing of it | `prover/sequencer/README.md`; `mempool.rs`, `requeue` |
 | Deferral window | an operation deferred at batch formation (it applies against no order of its drain, or its funding could not be read) is dead-lettered once 600 seconds have passed since its own first deferral, retried or not, and what was filtered behind it goes with it — each operation that no longer applies without it, whether it names its order or counts its payment in a cumulative value (past `MAX_DEPENDENCY_RERUNS` re-runs a tick, each following operation of its process that it precedes); an operator's environment variable, `DEFER_WINDOW_SECS` | `prover/sequencer/src/mempool.rs`, `DEFAULT_DEFER_WINDOW` |
 | Clause, agreement and assembly registration stake | 0.05 ETH per registration, no cooldown, withdrawable once; the binding stays | `DeployMainnet.s.sol:160`, `:174`, `:167` |
@@ -1190,17 +1188,16 @@ read it first.
   sent and held for as long as the batch can land; the relay reads
   `stateRoot()` at startup and before every batch, adopts a held state whose
   root it is, refuses to start (exit 2) when it reads a root and holds no state
-  for it, and builds nothing while it holds none. A batch that landed without
-  the relay reading its receipt is published under the transaction its
-  `BatchSettled` log names (`state.rs`, `StateStore`, `held_state_for`;
-  `main.rs`, `step_to`, `adopt`; `submitter.rs`, `find_settle_tx`; the
+  for it, and builds nothing while it holds none, unless it is started with
+  `REBUILD_FROM_CHAIN=1`, which rebuilds that state from the verifier's logs
+  (`state.rs`, `StateStore`, `held_state_for`; `main.rs`, `step_to`, `adopt`;
+  `rebuild.rs`, `rebuild_from_chain`; the
   `state_store_*` and `held_state_for_*` tests; `sdk/tests/batch-e2e.test.ts`
   restarts the relay between its two batches and starts one holding no state,
   which must exit 2). `GET /state` serves the state under an
   `x-figaro-state-root` header (`api.rs`, `get_state`;
   `api_state_route_serves_the_state_another_relay_starts_on`). The read
-  routes (`/health`, `/status`, `/state`, `/orders`, `/processes`,
-  `/batches`) answer any origin for `GET` and its preflight, the root header
+  routes (`/health`, `/status`, `/state`) answer any origin for `GET` and its preflight, the root header
   exposed, the cross-origin header outermost so a `408` carries it
   (`a_timed_out_read_still_answers_a_cross_origin_page`); the submission
   routes answer none: a JSON submission from a page needs a preflight they
@@ -1318,24 +1315,20 @@ Stated so the review does not spend hours finding them.
    via-IR artifacts at that commit. The chain's post-fork gas repricing
    (~6.8× on these deploys) needs forge's gas estimator multiplied past its
    default. The disclosure and advisory legs remain unrehearsed.
-6. **The state behind the verifier's root lives off chain.** The verifier
-   stores a root. The state it commits to is held by the relay that built the
-   last batch (`STATE_PATH`) and published by it (`GET /state`), so a party
-   can keep a copy and a second relay can start on it (`STATE_FROM`), the
-   relay itself refusing any copy whose root is not the verifier's; the
-   commitments and signatures a resolve needs as witness are in a second store, the
-   relay's archive (`ARCHIVE_PATH`), capped at a number of batches and evicting the
-   oldest. Neither is needed to resolve: every landed batch publishes its
-   signed operations in its own transaction (`settleBatch`'s `operations`,
-   bound to public value 9), so a submitter cannot land a batch and publish
-   nothing, and a relay started with `REBUILD_FROM_CHAIN=1`
-   (`prover/sequencer/src/rebuild.rs`) rebuilds the state behind the
-   verifier's root from the chain alone and builds the buyer's resolve on it
-   (`sdk/tests/batch-e2e.test.ts`, the pass test). The rebuild reads a batch
-   whose top-level call is `settleBatch` on the verifier; a batch landed
-   through another contract's internal call carries its stream only in a
-   call trace, and the rebuild refuses it, naming the transaction. A relay that does not hold
-   the state refuses to start and builds nothing.
+6. **The state behind the verifier's root is rebuilt from the chain, not
+   stored on it.** The verifier stores a root. Every batch it lands logs its
+   whole operation stream (`BatchOperations`, bound to public value 9 before
+   it is logged) and the Core's own order events, however the call reached it,
+   so a submitter cannot land a batch and publish nothing; a relay started
+   with `REBUILD_FROM_CHAIN=1` (`prover/sequencer/src/rebuild.rs`) replays
+   those logs from the verifier's deployment block, holds each root to the one
+   its `BatchSettled` names, and builds the buyer's resolution on the result
+   (`sdk/tests/batch-e2e.test.ts`, the pass test). The relay's own
+   `STATE_PATH` and `GET /state` are a faster start, never a dependency. The
+   limit that remains is the chain's: history expiry (EIP-4444) would reach
+   these logs as it reaches the direct path's events. A relay that does not
+   hold the state and is not told to rebuild it refuses to start and builds
+   nothing.
 7. **A deferral at batch formation is bounded by a window, not by the
    dependency.** An operation that applies against no order of its drain, or
    a commit whose funding the node could not read, waits for its dependency

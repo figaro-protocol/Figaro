@@ -7,10 +7,8 @@ use alloy::network::EthereumWallet;
 /// FigaroBatchVerifier contract via alloy.
 use alloy::primitives::{Address, Bytes, B256};
 use alloy::providers::{Provider, ProviderBuilder};
-use alloy::rpc::types::Filter;
 use alloy::signers::local::PrivateKeySigner;
 use alloy::sol;
-use alloy::sol_types::SolEvent;
 use tracing::info;
 
 use alloy::primitives::U256;
@@ -441,6 +439,10 @@ sol! {
             uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount
         );
 
+        event BatchOperations(
+            uint64 indexed batchId, uint64 blockTimestamp, uint8 usagePeriod, bytes32 provenanceLeaf, bytes operations
+        );
+
         function stateRoot() external view returns (bytes32);
         function clauseRegistry() external view returns (address);
         function programVKey() external view returns (bytes32);
@@ -748,56 +750,6 @@ pub async fn submit_batch(
     Ok(tx_hash)
 }
 
-/// How far back [`find_settle_tx`] reads, in blocks, and in what steps:
-/// under every public node's range cap, and about six weeks of 12-second
-/// blocks in all.
-const SETTLE_LOG_CHUNK: u64 = 5_000;
-const SETTLE_LOG_CHUNKS: u64 = 60;
-
-/// The transaction that moved the verifier's root from `prev_root` to
-/// `new_root`, read from its `BatchSettled` log. `None`: no such log in the
-/// blocks read. The relay asks this for a batch that landed without it
-/// reading the receipt — its own transaction, or the same proof sent by
-/// someone else.
-pub async fn find_settle_tx(
-    rpc_url: &str,
-    verifier_address: Address,
-    prev_root: alloy::primitives::B256,
-    new_root: alloy::primitives::B256,
-) -> Result<Option<alloy::primitives::B256>, String> {
-    let provider = ProviderBuilder::new().connect_http(
-        rpc_url
-            .parse()
-            .map_err(|e| format!("invalid rpc url: {e}"))?,
-    );
-    let head = provider
-        .get_block_number()
-        .await
-        .map_err(|e| format!("block number read failed: {e}"))?;
-    let mut to = head;
-    for _ in 0..SETTLE_LOG_CHUNKS {
-        let from = to.saturating_sub(SETTLE_LOG_CHUNK - 1);
-        let filter = Filter::new()
-            .address(verifier_address)
-            .event_signature(IFigaroBatchVerifier::BatchSettled::SIGNATURE_HASH)
-            .topic2(prev_root)
-            .topic3(new_root)
-            .from_block(from)
-            .to_block(to);
-        let logs = provider
-            .get_logs(&filter)
-            .await
-            .map_err(|e| format!("BatchSettled log read failed: {e}"))?;
-        if let Some(tx) = logs.iter().rev().find_map(|log| log.transaction_hash) {
-            return Ok(Some(tx));
-        }
-        if from == 0 {
-            break;
-        }
-        to = from - 1;
-    }
-    Ok(None)
-}
 
 /// The mirror's positions and events as the verifier's call types: the
 /// send and the gas estimate encode the same arguments.

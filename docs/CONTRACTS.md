@@ -141,8 +141,11 @@ The proof-based path that resolves batches of processes beside the direct
   `OrderCommitted` / `OrderSeller` / `OrderCurrency` / `OrderResolved` /
   `ProcessResolved` for every commit and resolution the operation stream
   carries (ids derived under its own EIP-712 domain, `FigaroCore` v3 at its
-  address, the one the batch's signatures were made under), forwards the usage
-  accrual to `UsageCounter.applyBatchAccrual`, and advances the state root.
+  address, the one the batch's signatures were made under), logs the stream
+  itself with the clock, usage period and provenance leaf its replay needs
+  (`BatchOperations`, so the state behind any root is rebuilt from this
+  contract's logs, however the call reached it), forwards the usage accrual
+  to `UsageCounter.applyBatchAccrual`, and advances the state root.
 - Immutable `verifier` / `verifierHash` / `programVKey` / `clauseRegistry` /
   `usageCounter`; no admin, no upgrade path — a program change is a fresh
   deploy. Not a florin minter. The constructor binds one routed SP1 verifier

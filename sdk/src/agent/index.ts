@@ -195,13 +195,4 @@ export type {
     SequencerContentKind,
     SequencerStatus,
     SubmitResult,
-    SequencerRetentionWindow,
-    SequencerBatchRef,
-    SequencerCommitView,
-    SequencerResolutionView,
-    SequencerOrderView,
-    SequencerProcessResolutionView,
-    SequencerProcessView,
-    SequencerBatchRecord,
-    SequencerBatchPage,
 } from "./sequencer.js";

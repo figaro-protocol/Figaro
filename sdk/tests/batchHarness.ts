@@ -356,7 +356,6 @@ export interface RelayConfig {
     port: number;
     /** The relay's state file: the preimage of the verifier's root. */
     statePath: string;
-    archivePath: string;
 }
 
 export function startSequencer(
@@ -386,11 +385,9 @@ export function startSequencer(
             // For the batch path, it must be the batch verifier address.
             FIGARO_CORE_ADDRESS: relay.batchVerifierAddress,
             SEQUENCER_PRIVATE_KEY: relay.privateKey,
-            // A fresh archive per run: the default path persists in the sdk/
-            // cwd across runs, and a replayed journal re-admits operations
-            // against the PREVIOUS run's (dead) contract addresses — the
-            // batch poisons and nothing resolves.
-            ARCHIVE_PATH: relay.archivePath,
+            // A fresh state file per run: one left in the sdk/ cwd would name
+            // the PREVIOUS run's (dead) contract addresses' root, and the relay
+            // would refuse to start against this run's verifier.
             STATE_PATH: relay.statePath,
             LISTEN_ADDR: `0.0.0.0:${relay.port}`,
             BATCH_INTERVAL_SECS: "2",
