@@ -222,7 +222,7 @@ review SP1.
 | Trusted, not reviewed | Pinned where |
 |---|---|
 | The SP1 zkVM and the `sp1-*` crates | `prover/Cargo.lock` names the release |
-| `sp1-patches/elliptic-curves`, the patched `k256` | `prover/Cargo.lock` |
+| `sp1-patches/elliptic-curves`, the patched `k256` (tag `patch-k256-13.4-sp1-6.0.0`), and `sp1-patches/signatures`, the patched `ecdsa` and `rfc6979` (tag `sp1-skip-verify-on-recovery`): the guest's signature recovery runs on these inside the zkVM | `prover/Cargo.lock` |
 | The routed SP1 verifier contract (looked up on the gateway at deploy) | `SP1_VERIFIER`, an immutable constructor argument, probed for `VERIFIER_HASH()` so a gateway is refused |
 
 SP1 is trusted for one property: that a proof accepted under `programVKey`

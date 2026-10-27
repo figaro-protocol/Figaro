@@ -237,13 +237,13 @@ function getBigIntArg(log: IndexedLog, key: string): bigint {
 /**
  * Reconstruct a seller's full public-graph resolution history from the OrderCommitted
  * / OrderResolved process graph and the disclosure graph — all keyed to one
- * address. Attestation tallies fold BOTH resolution paths (coordinator +
- * verifier re-emissions, each stream address-filtered — SCALING_STRATEGY.md
- * § "A reader must fold BOTH"). The process/value figures read FigaroCore's
- * events alone today: the verifier now emits the same order and process
- * events for batched trade (`OrderCommitted`, `OrderResolved`, …, filtered by
- * its address), and folding them in here is the readers' sitting on the
- * punch-list; no status or process passes from one path to the other.
+ * address. Every figure folds BOTH resolution paths: the order and process
+ * readers (`lib/kernel/indexer`) read FigaroCore and FigaroBatchVerifier, which
+ * emits the same `OrderCommitted` / `OrderResolved` events for every batched
+ * order, each stream address-filtered; the attestation tallies read the
+ * coordinator and the verifier's re-emissions the same way (SCALING_STRATEGY.md
+ * § "A reader must fold BOTH"). No status or process passes from one path to
+ * the other; the fold is the reader's.
  */
 export async function getSellerResolutionHistory(
     client: PublicClient,
