@@ -474,15 +474,20 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // ── OUT-OF-BAND EXPECTATIONS: fold the chain's own record the way a
         //    stranger would — raw event scans + gateway recovery + the
         //    registered specs. Nothing below reads the page. ──
+        // Batch and Core are equivalent to a reader: FigaroBatchVerifier emits the
+        // Core's own OrderCommitted / OrderResolved / ProcessResolved for every
+        // commit and resolution it carries, and the page's readers fold both
+        // addresses. This out-of-band mirror folds the same two addresses, for
+        // the order events as for the attestations (batched orders stand on the
+        // persisted devnet from the batch-events spec and the batch-universe leg).
         const [allCommitted, allResolved, allProcessResolved, directAttestations, batchAttestations] = await Promise.all([
-            publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'OrderCommitted', fromBlock: 0n }),
-            publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'OrderResolved', fromBlock: 0n }),
-            publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'ProcessResolved', fromBlock: 0n }),
+            Promise.all([core, batchVerifier].map((address) =>
+                publicClient.getContractEvents({ address, abi: CORE_ABI, eventName: 'OrderCommitted', fromBlock: 0n }))).then((e) => e.flat()),
+            Promise.all([core, batchVerifier].map((address) =>
+                publicClient.getContractEvents({ address, abi: CORE_ABI, eventName: 'OrderResolved', fromBlock: 0n }))).then((e) => e.flat()),
+            Promise.all([core, batchVerifier].map((address) =>
+                publicClient.getContractEvents({ address, abi: CORE_ABI, eventName: 'ProcessResolved', fromBlock: 0n }))).then((e) => e.flat()),
             publicClient.getContractEvents({ address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, eventName: 'Attestation', fromBlock: 0n }),
-            // The batch verifier re-emits the SAME topic hash; the page's fold
-            // is ADDRESS-DISCRIMINATED across both resolution paths, so
-            // this out-of-band mirror must be too (the batch-universe leg
-            // leaves real batch entries on the persisted devnet).
             publicClient.getContractEvents({ address: batchVerifier, abi: ATTESTATION_COORDINATOR_ABI, eventName: 'Attestation', fromBlock: 0n }),
         ]);
         const allAttestations = [...directAttestations, ...batchAttestations];
