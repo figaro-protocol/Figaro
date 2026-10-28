@@ -118,7 +118,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["Firms and strategy"],
                 question: "What follows for the firm when a stranger's promise enforces itself for the network's gas and the time value of the bonds?",
                 result: "A proposition derived from the two proved mechanisms and from stated cost shapes of four governance modes: the bonded process is the cheaper mode where each party can bond its own link, the bonds' time value is small beside the apparatus and litigation it replaces and the buyer can judge the outcome at acceptance; where no legal order reaches both parties it is compared with a forum alone, and where no forum binds both it is the one mode available that does not rest on recurrence; above a recurrence threshold the firm keeps the cell.",
-                scope: "Takes the equilibrium as proved, for any number of orders the network resolves in one call; the cost shapes are stated, not measured, and no play by independent participants has been observed; what remains of the firm passes to composition only where the productive assets hold their own wallets.",
+                scope: "Takes the equilibrium as proved, for any number of orders the network resolves in one call; the cost shapes are stated, not measured; what remains of the firm passes to composition only where the productive assets hold their own wallets.",
             },
             {
                 title: "Coordination Substrates: Firm, Platform, Court, and Bond",
@@ -127,8 +127,8 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 keywords: ["comparative institutional analysis", "discriminating alignment", "transaction cost economics", "contract enforcement", "two-sided markets", "private ordering", "bonded commitment", "institutional substrates", "regulatory reporting", "unit of account"],
                 industries: ["Regulation and licensing", "E-invoicing and tax", "Platforms"],
                 question: "Of four substrates (the firm, the platform, the court, and the parties' own bonds), which makes a stranger's promise worth acting on at least cost, and where?",
-                result: "A comparison on ten institutional axes, with a discriminating-alignment result that follows from the two proved mechanisms and four cost shapes: against a platform the bond is cheaper for every trade among a buyer and N sellers open less than τ/((N+3)r), against a court at small value, and where a party is no person any legal order recognizes the bond is the only one of the four substrates available.",
-                scope: "A comparison of substrates, not a theory of the firm; the data a platform collects and its power to revoke admission are set aside; the shared infrastructure and any token are left out; analytic throughout, with no play by independent participants observed.",
+                result: "A comparison on ten institutional axes, with a discriminating-alignment proposition that follows from the two proved mechanisms and four stated cost shapes: between strangers at low asset specificity and below the firm's recurrence threshold, the bond is cheaper than a platform for a trade of N equal orders whose gas and matching are small beside the take while it stands open less than τ/((N+3)r), and cheaper than a court at small value; for the orders of a party no legal order recognizes it is the only one of the four available, once that party's first tokens reach it; the firm, the platform and the court keep pooled and partitioned assets, thin markets and relief after the fact.",
+                scope: "A comparison of substrates, not a theory of the firm; the cost shapes are stated, not measured, and the buyer is taken to judge the outcome when it resolves; the data a platform collects and its power to revoke admission are set aside; for a party no legal order recognizes the claim is about operation, not genesis; the shared infrastructure and any token are left out; analytic throughout.",
             },
             {
                 title: "The Florin: A Schelling-Point Token Issued at Zero",
@@ -398,7 +398,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: [],
                 question: "How does the equilibrium fare with participants who are loss-averse, boundedly reasoning, and pessimistic about strangers?",
                 result: "Four hypotheses, derived and unobserved: loss aversion weights the defecting branch; the Van Huyck coordination-failure condition is present, but pessimism buys duration rather than a worse outcome; atomic resolution gives each seller a bonded interest in every other seller's performance; and each node asks one comparison and one step of reasoning.",
-                scope: "Takes the equilibrium as proved, for any number of orders the network resolves in one call, and the experimental literature's estimates, the meta-analytic interval for loss aversion and the reasoning depth of the level-k literature, as given; no play by independent participants has been observed.",
+                scope: "Takes the equilibrium as proved, for any number of orders the network resolves in one call, and the experimental literature's estimates, the meta-analytic interval for loss aversion and the reasoning depth of the level-k literature, as given.",
             },
             {
                 title: "External Events and the Resolution Frame: One Rule for Everything the World Does Between the Two Calls",
