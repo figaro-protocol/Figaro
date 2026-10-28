@@ -588,7 +588,7 @@ runs node software, or buys liveness, never safety, from the network.
 publicValues, positions, events, usage, operations)`. The verifier: verifies the proof;
 checks state-root continuity and chain binding; verifies the auxiliary
 calldata hashes against the proof's commitments; checks each spec binding
-(`specHash == clauseId`, `ClauseRegistry.registered(clauseId)`); executes the net token transfers;
+(`specHash == clauseId`, `ClauseRegistry.registered(clauseId)`); executes the net token transfers, every pull before any payout, so a payout listed before the pull it needs lands;
 re-emits the attestations and emits the Core's order and process events from
 the operation stream, and logs the stream (`BatchOperations`); hands the
 uses to `UsageCounter.applyBatchAccrual`; advances the state root.
@@ -661,7 +661,7 @@ nothing until it is started on that state.
 
 ### Batch DoS via approval revocation
 
-`settleBatch` calls `safeTransferFrom` for each net position. If any
+`settleBatch` calls `safeTransferFrom` for each net deposit. If any
 participant has revoked their ERC-20 approval between proof generation and
 the transaction landing, the entire batch reverts. This is not fixable
 on-chain — a per-participant "revoked recently" flag would break the

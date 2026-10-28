@@ -248,6 +248,8 @@ Running your own relay, as opposed to using one, is the one advanced path that i
 | Designer-reward credit | `UsageRecorded` / `accrualOf(kind, key, period)` — one tally, route-blind | the same event and the same tally |
 | Total usage score | `UsageCounter.scoreOf(kind, clauseOrAssembly, period)` — the one tally's score | same |
 
+Operation by operation, the two paths are compared in [`docs/VERIFICATION_MAP.md`](https://github.com/figaro-protocol/Figaro/blob/main/docs/VERIFICATION_MAP.md), invariant E-13. The comparison covers who authorizes each operation, what is checked, what is emitted, what moves in tokens and who receives which data. A test replays the model's traces through both paths and holds each one to the other.
+
 ## UsageCounter — verified clause, agreement and assembly usage
 
 Counts how much real trade a clause, a registered agreement or an assembly carried, on chain, at the moment it happens — because the Core calls no registry and contracts cannot read events, the fact is recorded when it occurs, never reconstructed afterward (`src/build/rewards/UsageCounter.sol`).

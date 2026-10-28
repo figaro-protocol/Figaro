@@ -104,7 +104,7 @@ ones this document uses; `docs/LEXICON.md` defines every other.
   collects operations, proves, and calls `settleBatch` on the **verifier**
   (`FigaroBatchVerifier`), which checks the proof, the bindings and the
   **state root** (the root of the off-chain state the next batch builds on),
-  then moves the tokens and hands the batch's uses to `UsageCounter`. `settleBatch`
+  then moves the tokens, every pull before any payout, and hands the batch's uses to `UsageCounter`. `settleBatch`
   is permissionless. A process opened on one path resolves on that path.
 - `WitnessSwapAndCommitCoordinator` pays a commit's bonds through a Permit2 witness
   transfer and a Uniswap swap in the same transaction, then calls
@@ -854,7 +854,7 @@ read it first.
   effect. Accepted (the buyer chose the token and the seller), a token-choice
   concern, not a Core escape hatch. On the batch path the same class reverts one
   batch, not the protocol: a payout the token refuses reverts `settleBatch` in
-  `_executePositions` (`FigaroBatchVerifier.sol:646`), and the batch's
+  `_executePositions` (`FigaroBatchVerifier.sol:666`), and the batch's
   operations are dead-lettered and re-submittable; a process open on the batch
   path resolves on the batch path only. The relay reads each party's balance and
   allowance before it submits (`prover/sequencer/src/submitter.rs`), and a batch

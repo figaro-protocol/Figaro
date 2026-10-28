@@ -24,7 +24,7 @@ not by this paragraph. Current: `FigaroCoreTest`, `FigaroCore_RevertBranch`,
 `FigaroBatchVerifierTest`, `UsageCounterTest`, `RpgfMinterTest`, `RpgfIntegrationTest`,
 `TreasuryProcurementTest`, `MockDisperseTest`, `ReentrancyAdversarialTest`,
 `Eip712ParityTest`, `MerkleParityTest`, `KernelTransitionVectorsTest`,
-`AttestationVectorsTest`, `KernelDifferentialFuzzTest`,
+`AttestationVectorsTest`, `KernelDifferentialFuzzTest`, `CoreBatchEquivalenceTest`,
 `WeirdTokenTest`, `DeployWiringTest`, `HalmosFigaroCore`, `FlorinToken.t.sol`.
 
 `UsageCounterTest` covers the reward-accrual counter: the RESOLVED-order gate, merkle
@@ -86,6 +86,32 @@ reverts the batch (`WalletCodeAuthorizationRefused`), and a buyer with no
 code is refused (`BuyerHasNoCode`). `OperationStreamVectorsTest` lands each
 harvested stream, the wallet-code one included, and `BatchGasCeilingTest`
 measures the wallet-code check (`test_Gas_settleStreamWalletCodeCheck`).
+
+`CoreBatchEquivalenceTest` is the model-based differential run behind
+`VERIFICATION_MAP.md` § "E-13 — the two paths, operation by observable". It
+replays every trace in `test/fixtures/tlc-traces.json`, which TLC writes by
+simulating `formal/FigaroCore.tla` under `formal/MC.cfg`
+(`bash scripts/export-tlc-traces.sh`, seeded, deterministic; 96 distinct
+traces, 680 steps). Each trace runs from one snapshot through `FigaroCore` with
+`AttestationCoordinator` and a `UsageCounter`, and through
+`FigaroBatchVerifier` under `MockSP1Verifier` with its own counter. Batches
+hold one to three steps, commits and resolutions never mixed. Both parties
+attest on each new order, resolutions alternate the buyer's signature and its
+wallet's code, and each resolution claims its root order's clause. Every wallet
+and each contract's holding are held to the model (the Core after every step,
+the batch path after every batch). The Core's cumulative value and active count
+for each process are held to the model too. Every `OrderCommitted`, `OrderSeller`, `OrderCurrency`,
+`OrderResolved`, `ProcessResolved`, `Attestation` and `UsageRecorded` is held
+to the other path, per kind and in order, each id checked against its own
+domain. The batch's guest outputs are computed in the test from the guest's
+rules. `EQUIVALENCE_BREAK=payout` moves one token of each batched buyer
+payout to the seller and fails the run on tokens, which
+`test_aBrokenPayoutDivergesOnTokens` holds. Mixing a commit and its resolution
+in one batch, so that the guest's order lists a payout before the pull it
+needs, lands as the Core does, because the verifier pulls before it pays
+(`test_aBatchThatPaysBeforeItPullsLandsAsTheCoreDoes`). The run is
+four tests (`_part1` to `_part4`), because one test's gas does not hold every
+trace.
 
 `WitnessSwapAndCommitCoordinatorForkTest` is the mainnet-fork parity proof for the
 Permit2 witness digest: gated on `MAINNET_RPC_URL` (each test SKIPS without it,

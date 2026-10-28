@@ -649,24 +649,24 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
      * Users SHOULD maintain approvals, and wallet code its answer, until batch resolution is confirmed.
      */
 
-    /// @dev Reconcile net positions. For each (token, user):
-    ///      - deposit > payout → pull (deposit - payout) from user
-    ///      - payout > deposit → push (payout - deposit) to user
-    ///      Users must have approved this contract for their net deposit.
+    /// @dev Reconcile net positions in two passes over the guest's order: every
+    ///      pull (deposit > payout, from a user who approved its net deposit) before
+    ///      any push (payout > deposit), so no payout waits on a pull listed after
+    ///      it: per token, the batch lands when its holding plus its pulls covers its payouts.
     function _executePositions(NetPosition[] calldata positions) internal {
         for (uint256 i = 0; i < positions.length; i++) {
             NetPosition calldata p = positions[i];
-
-            if (p.deposit > p.payout) {
-                // User owes — pull net deposit
-                _pullExact(IERC20(p.token), p.user, p.deposit - p.payout);
-            } else if (p.payout > p.deposit) {
+            if (p.deposit > p.payout) _pullExact(IERC20(p.token), p.user, p.deposit - p.payout);
+        }
+        for (uint256 i = 0; i < positions.length; i++) {
+            NetPosition calldata p = positions[i];
+            if (p.payout > p.deposit) {
                 uint256 net = p.payout - p.deposit;
                 // Only normal resolution — transfer from contract balance
                 IERC20(p.token).safeTransfer(p.user, net);
             }
-            // deposit == payout → no transfer needed
         }
+        // deposit == payout → no transfer in either pass
     }
 
     /// @dev Pull exactly `amount` from `from`. Rejects fee-on-transfer tokens.

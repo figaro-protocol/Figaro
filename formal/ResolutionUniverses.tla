@@ -100,11 +100,11 @@
  *                             one gate whose failure has a permanent
  *                             consequence (the period race) is modeled
  *                             explicitly as AssumeAccrualGatesAligned
- *   intra-settleBatch ordering — _executePositions walks positions in
- *                             (token, user) order and can attempt a push
- *                             before the matching pull; that is a LIVENESS
- *                             hazard (audit L-6, batch reverts, nothing is
- *                             lost) and is abstracted to the net effect
+ *   intra-settleBatch ordering — _executePositions makes every pull
+ *                             before any push, so the net effect below is
+ *                             the contract's: a push fails only when the
+ *                             verifier's holding plus the batch's net is
+ *                             short
  *   multi-currency          — single currency (FigaroCore forbids mixing)
  *   deadlines, gas, reentrancy — orthogonal
  *)

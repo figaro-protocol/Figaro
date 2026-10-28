@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
+import {BatchHashes} from "test/helpers/BatchHashes.sol";
 import {VmSafe} from "forge-std/Vm.sol";
 import "src/core/verifier/FigaroBatchVerifier.sol";
 import "src/build/registries/ClauseRegistry.sol";
@@ -102,52 +103,19 @@ contract FigaroBatchVerifierTest is Test {
     // ── Hash mirrors (Rust compute_*_hash parity packing) ──────────
 
     function _hashPositions(FigaroBatchVerifier.NetPosition[] memory ps) internal pure returns (bytes32) {
-        bytes memory packed;
-        for (uint256 i = 0; i < ps.length; i++) {
-            packed = bytes.concat(packed, abi.encodePacked(ps[i].token, ps[i].user, ps[i].deposit, ps[i].payout));
-        }
-        return keccak256(packed);
+        return BatchHashes.positions(ps);
     }
 
     function _hashAttestations(FigaroBatchVerifier.AttestationData[] memory atts) internal pure returns (bytes32) {
-        bytes memory packed;
-        for (uint256 i = 0; i < atts.length; i++) {
-            packed = bytes.concat(
-                packed,
-                abi.encodePacked(
-                    atts[i].orderHash,
-                    atts[i].processId,
-                    atts[i].attester,
-                    atts[i].clauseId,
-                    atts[i].stage,
-                    atts[i].contentRef
-                )
-            );
-        }
-        return keccak256(packed);
+        return BatchHashes.attestations(atts);
     }
 
     function _hashBindings(FigaroBatchVerifier.SpecBinding[] memory bs) internal pure returns (bytes32) {
-        bytes memory packed;
-        for (uint256 i = 0; i < bs.length; i++) {
-            packed = bytes.concat(packed, abi.encodePacked(bs[i].clauseId, bs[i].specHash));
-        }
-        return keccak256(packed);
+        return BatchHashes.bindings(bs);
     }
 
-    /// @dev Independent re-implementation of the packing — deliberately built
-    ///      from `abi.encodePacked` rather than the contract's assembly, so a
-    ///      slip in the hand-rolled version (a wrong offset, a missing length
-    ///      prefix) shows up as a mismatch instead of being mirrored.
     function _hashUsage(FigaroBatchVerifier.BatchUsageData memory u) internal pure returns (bytes32) {
-        bytes memory packed = abi.encodePacked(u.period, u.provenanceLeaf, uint64(u.uses.length));
-        for (uint256 i = 0; i < u.uses.length; i++) {
-            packed = bytes.concat(
-                packed,
-                abi.encodePacked(u.uses[i].clauseOrAssembly, u.uses[i].kind, u.uses[i].processId, u.uses[i].seller)
-            );
-        }
-        return keccak256(packed);
+        return BatchHashes.usage(u);
     }
 
     function _emptyUsage() internal pure returns (FigaroBatchVerifier.BatchUsageData memory u) {

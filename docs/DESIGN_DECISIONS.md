@@ -142,7 +142,11 @@ before resolving waits in vain. What the lost key takes is the seller's voice wh
 the process is open: its attestations. The same pre-installed EIP-7702
 delegation answers it. The delegated code can originate `attestAsSeller` from
 the seller's address. What the code allows is the seller's own act and the
-seller's own risk, as the buyer's is. New commitments are not rescuable, for the
+seller's own risk, as the buyer's is. On the batch path that answer does not yet
+hold: a batched attestation is accepted only under the party's ECDSA signature,
+so the delegated code has no form to attest in a batch (§ 21 gives the buyer's
+resolve its wallet-code form; the attestation's is built with the next change
+that moves the verification key). New commitments are not rescuable, for the
 same reason: each needs a fresh signature from the lost key.
 
 ---

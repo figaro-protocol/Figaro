@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
+import {BatchHashes} from "test/helpers/BatchHashes.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
@@ -213,10 +214,6 @@ contract ReentrancyAdversarialTest is Test {
 
     /// @dev Mirror of FigaroBatchVerifier._hashPositions (104-byte packing).
     function _hashPositions(FigaroBatchVerifier.NetPosition[] memory ps) internal pure returns (bytes32) {
-        bytes memory packed;
-        for (uint256 i = 0; i < ps.length; i++) {
-            packed = bytes.concat(packed, abi.encodePacked(ps[i].token, ps[i].user, ps[i].deposit, ps[i].payout));
-        }
-        return keccak256(packed);
+        return BatchHashes.positions(ps);
     }
 }
