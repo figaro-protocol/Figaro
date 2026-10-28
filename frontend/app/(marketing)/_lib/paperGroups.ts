@@ -233,12 +233,12 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "The Wallet as Legal Subject",
                 href: "/papers/wallet-legal-subject",
-                summary: "Employment law classifies workers by subordination. Under bonded commitments no party holds a power to direct another's work, so the tests find no directive relation to classify; a wallet whose operator holds its own key is property and party at once.",
+                summary: "Employment law classifies workers by subordination. Under bonded commitments no party holds a power to direct another's work, so the tests find no directive relation to classify; the wallet is the on-chain position of the asset that trades through it, and where its operator holds its own key that position is property and party at once.",
                 keywords: ["labor law", "employee classification", "gig economy", "private government", "subordination", "legal subject", "self-sovereign identity"],
                 industries: ["Platform work", "Legal and dispute resolution"],
                 question: "What do labor law's subordination tests find when productive exchange runs as bonded commitments between wallets?",
-                result: "Argued: no party holds a power to direct another's conduct, so the tests find no directive relation to classify, and a wallet whose operator holds its own key is property and party at once, collapsing the Roman partition of res and persona.",
-                scope: "Where a relation stays employment-shaped in substance, or a layer of dispatch, reputation, or key-holding rebuilds a platform's position, existing doctrine reaches it; the leveling reaches only those who can fund a bond.",
+                result: "Argued: no party holds a power to direct another's conduct, so the tests find no directive relation to classify, and the limbs that test something else (the ABC test's prongs B and C, Aslam's finding on entrepreneurial opportunity) are answered on their own terms; the wallet is the position of a legal subject, the asset that trades through it, and where its operator holds its own key that position is property and party at once, collapsing the Roman partition of res and persona.",
+                scope: "Where a relation stays employment-shaped in substance, or a layer of dispatch, reputation, key-holding, or the design of the terms rebuilds a platform's position, existing doctrine reaches it; the leveling reaches only those who can fund a bond and hold their own key.",
             },
             {
                 title: "The Coercion Variable",
