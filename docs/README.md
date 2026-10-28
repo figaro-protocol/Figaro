@@ -20,7 +20,8 @@ content. (This is the instruction-system form of "derive, don't store.")
 | The data layer — the public/sealed seam, and the rule that decides it | `DATA_LAYER.md` |
 | Open-world lens, composition model, semantic layer | `OPEN_WORLD.md` §1–§3 |
 | The equilibrium theorem and its proof | the asymmetric-bonding paper (`frontend/app/(marketing)/papers/asymmetric-bonding/page.tsx`); its figures once in `sdk/src/equilibrium.json`, guarded |
-| The equilibrium bound to the Core's transfers, the six properties | `THEORY.md` |
+| The equilibrium bound to the Core's transfers | `THEORY.md` |
+| The six invariants, stated once | `frontend/app/(marketing)/(research)/invariants/page.tsx` (each mapped to its code, test and formal layer in `VERIFICATION_MAP.md`) |
 | Vision, post-firm economy, where value goes after the firm | the cryptoeconomic-system paper, `/papers/figaro-as-a-cryptoeconomic-system` (public; the agent's frame is `CLAUDE.md` § "What this is") |
 | Intentional vulnerability-lookalike patterns | `DESIGN_DECISIONS.md` |
 | What the protocol has no contract for (not listed = does not exist) | `CONTRACTS.md` § "What the protocol has no contract for" |
@@ -99,7 +100,7 @@ Each layer owns one thing; every other layer states it as a summary plus a point
 ## Start Here
 
 1. `/papers/figaro-as-a-cryptoeconomic-system` — the whole, read through the field's definitions (what it governs, guarantees and is; the markets; the institution); `CLAUDE.md` § "What this is" is the agent's frame of the same
-2. `THEORY.md` — the equilibrium bound to the Core's transfers, and the six properties; the theorem itself is the asymmetric-bonding paper's
+2. `THEORY.md` — the equilibrium bound to the Core's transfers; the six invariants are the invariants page's, and the theorem itself is the asymmetric-bonding paper's
 3. `FLORIN_TOKEN.md` — token canonical reference (`DESIGNER_REWARDS.md` and `DAO.md` sit beside it: three concepts, three files)
 
 ## Main Groups

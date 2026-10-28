@@ -11,8 +11,8 @@ export const metadata: Metadata = withOg({
         "The six facts the Figaro core cannot violate — asymmetric bonding, cumulative bonding, buyer dominance, atomic resolution, immutable evidence, no escape hatches — each with what it means for you, and the four things that follow from them: what the chain holds, what couples to it, who may act, and where the meaning lives.",
 });
 
-// THE INVARIANTS PAGE — it states the six invariants named in CLAUDE.md
-// § "The Core", in the general-public register, and nothing else is
+// THE INVARIANTS PAGE — it states the six invariants, the one place in the
+// repo that lists them (docs/README.md § "Ownership Map"), in the general-public register, and nothing else is
 // re-derived here: /kernel owns the mechanism derivation, /data owns the
 // public/sealed boundary, /agents owns actor-neutrality, /working-groups routes to
 // the formal case.
