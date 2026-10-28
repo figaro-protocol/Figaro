@@ -163,12 +163,12 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "Figaro as a Cryptoeconomic System",
                 href: "/papers/figaro-as-a-cryptoeconomic-system",
-                summary: "Figaro read through the field's own definitions of cryptoeconomics: what it governs, what it guarantees and at what cost to a defector, its incentive mechanisms and their several ends, the system and what emerges from it, and its place among institutions.",
-                keywords: ["cryptoeconomics", "cryptoeconomic systems", "complex systems", "incentive mechanisms", "purpose-driven tokens", "institutional economics"],
+                summary: "Trade between strangers bears three costs a credible promise would not impose: attracting buyers, handling disputes, and the intermediary's capture of the trade's data. Read against the field's three definitions of a cryptoeconomic system, every part of Figaro has its place, and what emerges is a substrate on which economic forms compose.",
+                keywords: ["cryptoeconomics", "cryptoeconomic systems", "two-sided markets", "transaction costs", "purpose-driven tokens", "institutional economics"],
                 industries: [],
-                question: "What does Figaro govern, what does it guarantee, and what is it as a whole, read by the three founding definitions of cryptoeconomics?",
-                result: "A system-level reading, argued from the definitions: Figaro governs trade in goods, work or data, guarantees six invariants, meets the field's statement of security at every order, and acts as an institution before the trade, where the firm, the platform and the court act after it.",
-                scope: "Takes the definitions of Zamfir, Buterin, and Voshmgir and Zargham as the field states them, and the equilibrium as proved, for any number of orders the network resolves in one call; it reports no play by independent participants.",
+                question: "In which frame does the whole of Figaro hold together, and what does every other axis (the Core alone, the product, the interface, the firm, the platform) bring with it?",
+                result: "Cryptoeconomics is the one frame in which the whole holds together: the bond carries the cost of disputes, the cost of attracting buyers moves to a staked listing, the communities and a designer's token, no party in the middle holds the data, and each part has its place under Zamfir's, Buterin's, or Voshmgir and Zargham's definition; every other axis leaves a part without a place or restores a party that stands over the system.",
+                scope: "The definitions as the field states them and the equilibrium as proved, not observed; the chain beneath is governed and inherited; the road to the network-state, governance and cypherpunk programs is a possibility the substrate opens, not a prediction.",
             },
             {
                 title: "Air Service as Coordinated Resource Markets",

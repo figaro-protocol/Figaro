@@ -99,7 +99,7 @@ Each layer owns one thing; every other layer states it as a summary plus a point
 
 ## Start Here
 
-1. `/papers/figaro-as-a-cryptoeconomic-system` — the whole, read through the field's definitions (what it governs, guarantees and is; the markets; the institution); `CLAUDE.md` § "What this is" is the agent's frame of the same
+1. `/papers/figaro-as-a-cryptoeconomic-system` — the whole, read through the field's definitions (the three costs of trade between strangers; what it governs, guarantees and is; what emerges; the institution); `CLAUDE.md` § "What this is" is the agent's frame of the same
 2. `THEORY.md` — the equilibrium bound to the Core's transfers; the six invariants are the invariants page's, and the theorem itself is the asymmetric-bonding paper's
 3. `FLORIN_TOKEN.md` — token canonical reference (`DESIGNER_REWARDS.md` and `DAO.md` sit beside it: three concepts, three files)
 
