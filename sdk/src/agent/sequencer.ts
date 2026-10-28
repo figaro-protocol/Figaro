@@ -84,6 +84,17 @@ export type SequencerOp =
         buyer_sig: SequencerSignature;
     }
     | {
+        type: "ResolveByWalletCode";
+        process_id: Hex;
+        /** The cumulative value the authorization accepts (decimal string),
+         *  as for `Resolve`. */
+        cumulative_value: string;
+        commitments: SequencerCommitment[];
+        /** Bytes the buyer's own account code validates for
+         *  `hashResolveProcess(process_id, cumulative_value)` (ERC-1271). */
+        authorization: Hex;
+    }
+    | {
         type: "AttestAsSeller";
         target: SequencerCommitment;
         clause_id: Hex;
@@ -370,6 +381,33 @@ export class SequencerClient {
             cumulative_value: cumulativeValue.toString(),
             commitments: commitments.map(toSequencerCommitment),
             buyer_sig: toSequencerSig(buyerSig),
+        });
+    }
+
+    /**
+     * Submit a resolve authorized by the buyer's wallet code: `authorization`
+     * is bytes the buyer's own account code validates for
+     * `hashResolveProcess(processId, cumulativeValue, { chainId, core:
+     * verifier })` through ERC-1271's `isValidSignature` — the form a wallet
+     * whose key is lost resolves with, through code it installed while it held
+     * the key. The wallet's code produces the bytes, never `signTypedData`. The
+     * proof checks the process, the value and the order list and publishes the
+     * bytes; `FigaroBatchVerifier` asks the buyer's code at resolution and
+     * reverts the batch on any answer but the magic value. The relay asks the
+     * same code at its door and refuses bytes the code does not validate.
+     */
+    async submitResolveByWalletCode(
+        processId: Hex,
+        cumulativeValue: bigint,
+        commitments: Commitment[],
+        authorization: Hex,
+    ): Promise<SubmitResult> {
+        return this.submit({
+            type: "ResolveByWalletCode",
+            process_id: processId,
+            cumulative_value: cumulativeValue.toString(),
+            commitments: commitments.map(toSequencerCommitment),
+            authorization,
         });
     }
 

@@ -162,6 +162,7 @@ export {
     verifyCommitmentSignature,
     RESOLVE_PROCESS_TYPES,
     verifyResolveProcessSignature,
+    hashResolveProcess,
     computeCommitmentProcessId,
     computeOrderHash,
     orderToCommitment,

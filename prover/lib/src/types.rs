@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, B256, U256};
+use alloy_primitives::{Address, Bytes, B256, U256};
 use serde::{Deserialize, Serialize};
 
 // ── Commitment (matches CommitmentTypes.sol) ──────────────────────
@@ -181,6 +181,26 @@ pub enum KernelOp {
         cumulative_value: U256,
         commitments: Vec<Commitment>,
         buyer_sig: Signature,
+    },
+    /// Resolution authorized by the buyer's wallet code: `authorization`
+    /// is bytes the buyer's own account code validates for the
+    /// `ResolveProcess(processId, cumulativeValue)` digest (ERC-1271
+    /// `isValidSignature`), the batched equivalent of a `resolveProcess`
+    /// call that code installed on the buyer's wallet makes as
+    /// `msg.sender == rootBuyer` — an EIP-7702 delegation carrying the
+    /// wallet's own guardian authorization, which can resolve after the
+    /// key is lost. The guest cannot run the wallet's code: it checks the
+    /// process, the value and the order list exactly as for `Resolve` and
+    /// nothing about the bytes, and publishes them in the operation stream
+    /// (public value 9). `FigaroBatchVerifier.settleBatch` derives the
+    /// digest under its own domain, requires the buyer's account to have
+    /// code, calls its `isValidSignature`, and refuses the whole batch on any
+    /// other answer: the proven root holds the resolve, so it never drops alone.
+    ResolveByWalletCode {
+        process_id: B256,
+        cumulative_value: U256,
+        commitments: Vec<Commitment>,
+        authorization: Bytes,
     },
 
     // ── AttestationCoordinator ────────────────────────────────────

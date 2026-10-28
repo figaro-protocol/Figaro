@@ -167,7 +167,8 @@ pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bo
         KernelError::CumulativeValueMismatch { expected, actual } => expected < actual,
         KernelError::StaleResolveAuthorization { signed, current } => signed < current,
         KernelError::OrderNotCommitted(_) => match op {
-            KernelOp::Resolve { process_id, commitments, .. } => commitments
+            KernelOp::Resolve { process_id, commitments, .. }
+            | KernelOp::ResolveByWalletCode { process_id, commitments, .. } => commitments
                 .iter()
                 .any(|c| figaro_kernel::kernel::derive_commitment_ids(domain, c).1 != *process_id),
             _ => false,
@@ -288,7 +289,8 @@ fn referenced_ids(domain: &B256, op: &KernelOp) -> Vec<B256> {
                 vec![commitment.process_id]
             }
         }
-        KernelOp::Resolve { process_id, commitments, .. } => {
+        KernelOp::Resolve { process_id, commitments, .. }
+        | KernelOp::ResolveByWalletCode { process_id, commitments, .. } => {
             let mut ids = vec![*process_id];
             ids.extend(commitments.iter().map(|c| {
                 figaro_kernel::eip712::compute_order_hash(process_id, &figaro_kernel::eip712::commitment_struct_hash(c))
@@ -370,7 +372,7 @@ pub fn filter_commits_within_resolve_capacity(
                 }
                 active.insert(commitment.process_id, count);
             }
-            KernelOp::Resolve { process_id, .. } => {
+            KernelOp::Resolve { process_id, .. } | KernelOp::ResolveByWalletCode { process_id, .. } => {
                 active.insert(*process_id, 0);
             }
             _ => {}

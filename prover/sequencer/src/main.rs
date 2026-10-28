@@ -649,11 +649,20 @@ async fn batch_loop(
         // An attestation whose witness spec does not hash to its clause key,
         // or whose key is not registered, reverts the whole batch on chain:
         // dropped here, alone.
-        let (mut valid, unanchored) = submitter::filter_anchored_attestations(funding.as_ref(), valid).await;
+        let (valid, mut unanchored) = submitter::filter_anchored_attestations(funding.as_ref(), valid).await;
         for (p, reason) in &unanchored {
             warn!(id = p.id, %reason, "Dropped attestation at batch formation");
             failures.record(1, reason.clone()).await;
         }
+        // A wallet-code resolve whose buyer's code does not validate it, as
+        // the verifier will ask, reverts the whole batch on chain: dropped
+        // here, alone, as an unanchored attestation is.
+        let (mut valid, unvalidated) = submitter::filter_wallet_code_resolves(funding.as_ref(), valid).await;
+        for (p, reason) in &unvalidated {
+            warn!(id = p.id, %reason, "Dropped wallet-code resolve at batch formation");
+            failures.record(1, reason.clone()).await;
+        }
+        unanchored.extend(unvalidated);
         // What was filtered into an order behind a dropped commit or
         // attestation is filtered again without it, as after a capacity
         // drop: left in the batch, it would fail the Core's rules at planning and
@@ -1039,7 +1048,32 @@ async fn batch_loop(
                     let (revoked, unverifiable): (Vec<_>, Vec<_>) = unfunded
                         .into_iter()
                         .partition(|(_, why, _)| !submitter::is_unverifiable_drop(why));
-                    if revoked.is_empty() {
+                    // The other cause a party controls at no cost to anyone
+                    // else's bond: a wallet-code resolve whose buyer's code
+                    // answered yes at formation and no at resolution. Its
+                    // code is asked again; only a verdict names it, a read
+                    // failure re-queues with the rest.
+                    let (kept, code_dropped) =
+                        submitter::filter_wallet_code_resolves(funding.as_ref(), std::mem::take(&mut still_funded)).await;
+                    still_funded = kept;
+                    let (code_unread, code_refused): (Vec<_>, Vec<_>) = code_dropped
+                        .into_iter()
+                        .partition(|(_, why)| why.starts_with("the buyer's code could not be asked"));
+                    still_funded.extend(code_unread.into_iter().map(|(op, _)| op));
+                    // A named party's operations are dead-lettered and the
+                    // rest re-queued; nobody named, a batch carrying a
+                    // wallet-code resolve dead-letters those resolves alone
+                    // (its buyer's code may answer an eth_call otherwise than
+                    // the transaction, for free); only a batch with neither
+                    // dead-letters whole (`classify_deterministic_revert`).
+                    let named_revoker = !revoked.is_empty();
+                    let verdict = submitter::classify_deterministic_revert(
+                        still_funded,
+                        revoked,
+                        unverifiable.into_iter().map(|(op, _, _)| op).collect(),
+                        code_refused,
+                    );
+                    if verdict.whole {
                         // No revoker named: some other deterministic cause,
                         // or the re-read could not see one (a revoker who
                         // re-approved before the re-read lands here — the
@@ -1053,30 +1087,36 @@ async fn batch_loop(
                         failures.record_claims(batch.usage_claims.len() as u64, e.message.clone()).await;
                         failures.record(op_count as u64, e.message).await;
                     } else {
-                        let mut revokers: Vec<Address> = Vec::new();
-                        for (op, why, who) in &revoked {
-                            error!(id = op.id, %who, %why, "Approval revoked after the funding check — dead-lettered, re-submittable once funded");
-                            failures.record(1, format!("revoked after the funding check: {why}")).await;
-                            if !revokers.contains(who) {
-                                revokers.push(*who);
+                        let mut signaled: Vec<Address> = Vec::new();
+                        for (op, why, who) in &verdict.dead {
+                            error!(id = op.id, who = ?who, %why, "Named by the refused batch — dead-lettered, re-submittable");
+                            failures.record(1, why.clone()).await;
+                            if let Some(who) = who {
+                                if !signaled.contains(who) {
+                                    signaled.push(*who);
+                                }
                             }
                         }
-                        failures.record_claims(batch.usage_claims.len() as u64, "the batch was refused for a revoked approval".to_string()).await;
-                        for who in revokers {
+                        let reason = if named_revoker {
+                            "the batch was refused for a revoked approval"
+                        } else {
+                            "the batch was refused by a buyer's wallet code"
+                        };
+                        failures.record_claims(batch.usage_claims.len() as u64, reason.to_string()).await;
+                        for who in signaled {
                             let hits = revocations.record(who);
                             if hits > 1 {
-                                error!(%who, hits, window_secs = submitter::REVOCATION_SIGNAL_WINDOW.as_secs(), "ADVERSARIAL SIGNAL — repeated revocation refusals from one address within the window");
+                                error!(%who, hits, window_secs = submitter::REVOCATION_SIGNAL_WINDOW.as_secs(), "ADVERSARIAL SIGNAL — repeated refusals from one address within the window");
                             }
                         }
                         // A wallet whose re-read failed re-queues with the
-                        // funded ops: the next formation reads funding again
-                        // and decides. Re-queued ops re-prove at most to the
-                        // re-queue cap — "never re-proved" holds only for
-                        // the whole-batch dead-letter above.
-                        still_funded.extend(unverifiable.into_iter().map(|(op, _, _)| op));
-                        if !still_funded.is_empty() {
-                            info!(ops = still_funded.len(), "Re-queuing the funded operations — the next batch is built without the revoker");
-                            requeue_or_dead_letter(&mempool, &failures, still_funded).await;
+                        // rest: the next formation reads again and decides.
+                        // Re-queued ops re-prove at most to the re-queue cap
+                        // — "never re-proved" holds only for the whole-batch
+                        // dead-letter above.
+                        if !verdict.requeue.is_empty() {
+                            info!(ops = verdict.requeue.len(), "Re-queuing the other operations — the next batch is built without what the refusal named");
+                            requeue_or_dead_letter(&mempool, &failures, verdict.requeue).await;
                         }
                     }
                 }

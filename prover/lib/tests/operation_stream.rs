@@ -196,3 +196,30 @@ fn a_batch_of_nothing_commits_the_empty_stream_hash_as_word_nine() {
     assert_eq!(abi.len(), 320);
     assert_eq!(&abi[288..320], pv.operations_hash.as_slice(), "word nine is the operations hash");
 }
+
+/// A wallet-code resolve is its own entry, `0x04 processId len(2)
+/// authorization count(2) commitment*`, and round-trips with its bytes: the
+/// verifier reads the authorization from it and the rebuild replays it.
+#[test]
+fn a_wallet_code_resolve_round_trips_with_its_authorization() {
+    let ops = vec![KernelOp::ResolveByWalletCode {
+        process_id: B256::repeat_byte(0x01),
+        cumulative_value: U256::from(300u64),
+        commitments: vec![commitment(1), commitment(2)],
+        authorization: alloy_primitives::Bytes::from(vec![0xab; 97]),
+    }];
+    let bytes = encode_operation_stream(&ops, &[]);
+    assert_eq!(bytes.len(), 1 + 32 + 2 + 97 + 2 + 2 * COMMITMENT_BYTES);
+    assert_eq!(bytes[0], 0x04, "the wallet-code resolve's tag");
+    let (ops2, _) = decode_operation_stream(&bytes).expect("decodes");
+    assert_eq!(encode_operation_stream(&ops2, &[]), bytes, "re-encoding is the identity");
+    match &ops2[0] {
+        KernelOp::ResolveByWalletCode { cumulative_value, authorization, .. } => {
+            assert_eq!(*cumulative_value, U256::from(300u64), "derived from the listed payments");
+            assert_eq!(authorization.len(), 97);
+        }
+        other => panic!("expected the wallet-code resolve, got {other:?}"),
+    }
+    // A short authorization length is refused, never re-split.
+    assert!(decode_operation_stream(&bytes[..1 + 32 + 2 + 50]).is_err());
+}

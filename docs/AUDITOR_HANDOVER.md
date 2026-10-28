@@ -15,8 +15,8 @@ the review's is its own.
 | Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | set when an audit is engaged; the line counts are the tree's at the latest commit, the results the commits their rows name (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 14 contract files, 1,541 lines of code (3,731 physical); 3 deploy scripts, 398 lines of code (842 physical) |
-| Rust in scope | 4 crates, 22 files under `src/`, 6,715 lines of code (9,520 physical) net of their inline test modules |
+| Solidity in scope | 14 contract files, 1,592 lines of code (3,838 physical); 3 deploy scripts, 398 lines of code (842 physical) |
+| Rust in scope | 4 crates, 22 files under `src/`, 6,993 lines of code (9,941 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
@@ -215,7 +215,7 @@ review SP1.
 | In scope: the project's use of SP1 | Where |
 |---|---|
 | The interface the verifier calls | `src/core/verifier/ISP1Verifier.sol` |
-| The one proof check, and everything `settleBatch` does with the public values after it | `FigaroBatchVerifier.sol:359` |
+| The one proof check, and everything `settleBatch` does with the public values after it | `FigaroBatchVerifier.sol:381` |
 | The guest's three SP1 calls: entry point, input read, public-values commit | `prover/program/src/main.rs` |
 | The verification key: derived from the guest, pinned at construction, immutable | `FigaroBatchVerifier` constructor; `sequencer --vkey` |
 | The choice of the patched `k256` for signature recovery inside the zkVM | `prover/Cargo.toml` `[patch.crates-io]` |
@@ -422,7 +422,7 @@ the guest's test files under `prover/lib/tests/`.
   reproduces the two-key bytes, an assembly claim verifies its membership
   proof under the compositionHash with the same sorted-pair verifier, and a
   claim keyed on either reserved key, or an assembly claim naming either as
-  its agreementKey, is refused (`kernel.rs:860-864`).
+  its agreementKey, is refused (`kernel.rs:854-861`).
 - The relay reads `AgreementRegistry.bindings` for a kind-2 claim
   (`AGREEMENT_REGISTRY_ADDRESS`, `main.rs`) and drops a claim naming either
   reserved key before proving (`submitter.rs`, `names_a_reserved_key`).
@@ -631,7 +631,7 @@ never reads `msg.sender`, and `resolveProcess` is gated by presence
 
 | Actor | Can | Cannot |
 |---|---|---|
-| Buyer | sign an order; call `resolveProcess` on its own process; sign the batch path's resolve authorization; attest on its own orders | resolve a process it did not open; resolve one order of a process |
+| Buyer | sign an order; call `resolveProcess` on its own process; sign the batch path's resolve authorization, or have code its wallet installed validate one (ERC-1271, checked by the verifier at resolution); attest on its own orders | resolve a process it did not open; resolve one order of a process |
 | Seller of record | sign an order; attest on its own orders | move any bond; resolve |
 | Designer / registrant | register a clause, registered agreement or assembly under a stake; withdraw that stake (the binding stays); claim designer rewards on the keys it registered while its member stake is live | edit or remove a registration; earn on an unstaked key |
 | Member | register, update, request withdrawal, withdraw after the cooldown | act for another wallet |
@@ -663,10 +663,10 @@ The constants and constructor arguments the mainnet deploy fixes
 | Parameter | Value | Where |
 |---|---|---|
 | Bond multiple | 2× payment (buyer), 2× cumulative value (seller) | `FigaroCore.sol:208-209` |
-| `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:113` |
-| `PUBLIC_VALUES_LENGTH` | 320 bytes, ten words; any other length is refused by name | `FigaroBatchVerifier.sol:118` |
+| `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:127` |
+| `PUBLIC_VALUES_LENGTH` | 320 bytes, ten words; any other length is refused by name | `FigaroBatchVerifier.sol:132` |
 | `MAX_BATCH_OPS` | the relay's bound on what the prover finishes in one sitting, 100 operations by default; an operator's environment variable | `prover/sequencer/src/main.rs:121` |
-| The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order `settleBatch` call's 609,851, or at or past 95 percent of the block limit read at startup, the relay refuses to start); the call's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
+| The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order `settleBatch` call's 1,178,439 — planned in the dearer of the resolve's two forms, the wallet-code one with 500,000 for the wallet's own code and 2,048 bytes of authorization, the relay's plan and never the protocol's — or at or past 95 percent of the block limit read at startup, the relay refuses to start); the call's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
 | Re-queue bound | an operation re-queued after a transient submission failure is re-queued at most three times, then dead-lettered; a deferral at batch formation spends nothing of it | `prover/sequencer/README.md`; `mempool.rs`, `requeue` |
 | Deferral window | an operation deferred at batch formation (it applies against no order of its drain, or its funding could not be read) is dead-lettered once 600 seconds have passed since its own first deferral, retried or not, and what was filtered behind it goes with it — each operation that no longer applies without it, whether it names its order or counts its payment in a cumulative value (past `MAX_DEPENDENCY_RERUNS` re-runs a tick, each following operation of its process that it precedes); an operator's environment variable, `DEFER_WINDOW_SECS` | `prover/sequencer/src/mempool.rs`, `DEFAULT_DEFER_WINDOW` |
 | Clause, agreement and assembly registration stake | 0.05 ETH per registration, no cooldown, withdrawable once; the binding stays | `DeployMainnet.s.sol:160`, `:174`, `:167` |
@@ -796,7 +796,12 @@ direct path would have refused.
    `ResolveProcess(processId, cumulativeValue)` signature, no nonce and no
    deadline, refused unless the process holds the signed cumulative value
    (`DESIGN_DECISIONS.md` #21) — replayable, or applicable to orders the
-   buyer did not accept, to any effect?
+   buyer did not accept, to any effect? And its wallet-code form, which the
+   guest applies without checking the bytes and the verifier checks against
+   the buyer's code (`_resolveByWalletCode`, `_checkWalletCode`): can a
+   stream make the verifier ask a code other than the buyer's, about a
+   digest other than the one the guest applied, or can a call to the buyer's
+   code reach any state the batch then reads?
 9. Can one client stall the relay, or exhaust its re-queue, at a cost below its
    own rate-limit budget?
 
@@ -849,7 +854,7 @@ read it first.
   effect. Accepted (the buyer chose the token and the seller), a token-choice
   concern, not a Core escape hatch. On the batch path the same class reverts one
   batch, not the protocol: a payout the token refuses reverts `settleBatch` in
-  `_executePositions` (`FigaroBatchVerifier.sol:624`), and the batch's
+  `_executePositions` (`FigaroBatchVerifier.sol:646`), and the batch's
   operations are dead-lettered and re-submittable; a process open on the batch
   path resolves on the batch path only. The relay reads each party's balance and
   allowance before it submits (`prover/sequencer/src/submitter.rs`), and a batch
@@ -871,6 +876,26 @@ read it first.
   the buyer co-signed; a value the process has not yet reached pre-authorizes
   exactly the orders that bring it there. A process resolves once, so the
   authorization has one use.
+- The authorization comes in a second form: bytes the buyer's own account
+  code validates for the same digest (`KernelOp::ResolveByWalletCode`), the
+  batched equivalent of a `resolveProcess` call made by code the buyer's
+  wallet installed while it held its key (`DESIGN_DECISIONS.md` #4). The
+  guest checks the process, the value and the order list and nothing about
+  the bytes, and publishes them in the operation stream's `0x04` entry, bound
+  by public value 9; the public-values layout is unchanged, ten words. At
+  resolution `settleBatch` reads the entry, derives the digest under its own
+  domain from the process id and the listed payments, takes the buyer from
+  the listed orders, refuses a buyer with no code (`BuyerHasNoCode`), and
+  STATICCALLs `isValidSignature(digest, bytes)` with the gas left, reading
+  one word of the answer; any answer but `0x1626ba7e` reverts the batch
+  (`WalletCodeAuthorizationRefused`); the question is asked at step 4,
+  before any token moves, so it is about the state before the batch. The
+  whole batch reverts because the proven root already holds the resolve, so
+  the entry cannot be dropped alone. The relay asks the same code first
+  (`submitter.rs`, `check_wallet_code_resolve`); code that answers the
+  relay's `eth_call` otherwise than the transaction sinks a batch at no cost,
+  and the relay then dead-letters the batch's wallet-code resolves alone and
+  re-queues the rest (Known limitation 3).
 - The two paths share no state. A batch-resolved process never acquires Core
   status; `UsageCounter` is the one place the two meet, and only the uses
   cross, counted into the one tally the direct path feeds.
@@ -879,7 +904,7 @@ read it first.
   (`AttestationWitness::HashOnly`, `prover/lib/src/types.rs`) carries exactly
   the coordinator's `clauseDataHash`, inclusion proof and `contentRef`, runs
   the inclusion gate alone and commits no spec binding
-  (`validate_attestation_witness`, `prover/lib/src/kernel.rs:568`); the event
+  (`validate_attestation_witness`, `prover/lib/src/kernel.rs:577`); the event
   the verifier re-emits for it is the coordinator's byte for byte
   (`a_hash_only_batched_attestation_emits_the_coordinator_s_event_bytes`,
   `prover/lib/tests/attestation_vectors.rs`, against the log
@@ -908,11 +933,11 @@ read it first.
   `prover/lib/tests/parity.rs`.
 - The verifier accepts an in-proof clause validation only for a registered
   key whose spec the proof validated. The guest's Gate S requires
-  `keccak256(spec_json bytes) == clause_id` (`prover/lib/src/kernel.rs:479-481`)
+  `keccak256(spec_json bytes) == clause_id` (`prover/lib/src/kernel.rs:488-490`)
   and commits the binding with both words; `_checkSpecBindings` requires
   `specHash == clauseId` (`SpecBindingMismatch`) and
   `clauseRegistry.registered(clauseId)` (`ClauseNotRegistered`)
-  (`FigaroBatchVerifier.sol:601-609`). Tests:
+  (`FigaroBatchVerifier.sol:623-631`). Tests:
   `test_settleBatch_revertsOnSpecBindingMismatch`,
   `test_settleBatch_revertsOnUnregisteredClauseBinding`,
   `test_permissionless_newClause_settlesWithZeroVerifierChanges`
@@ -937,7 +962,7 @@ read it first.
   kind, and `_isAuthor(kind, key, account)` reads the one registry the kind
   names (`RpgfMinter.sol:329-343`). The verifier's `_hashUsage` packs
   `key(32) ‖ kind(1) ‖ processId(32) ‖ seller(20)` per use, span `41 + 85n`
-  (`FigaroBatchVerifier.sol:557-592`), and the guest's
+  (`FigaroBatchVerifier.sol:579-614`), and the guest's
   `compute_usage_accrual_hash` mirrors it. `DESIGN_DECISIONS.md` § 23 states
   the pattern. Tests:
   `test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt`,
@@ -1040,7 +1065,7 @@ read it first.
   (`:556-558`). `AgreementRegistry.registerAgreement` refuses both as
   registrations (`AgreementRegistry.sol:162-164`). The guest refuses a claim
   keyed on either, of any kind, and an assembly claim naming either as its
-  agreementHash (`prover/lib/src/kernel.rs:845-852`, `apply_usage_claims`).
+  agreementHash (`prover/lib/src/kernel.rs:854-861`, `apply_usage_claims`).
   The counter's batch path skips either: `applyBatchAccrual` continues past
   them before the registration gate (`UsageCounter.sol:690`). The relay drops
   such a claim before proving (`submitter.rs`, `names_a_reserved_key`;
@@ -1090,8 +1115,8 @@ read it first.
   own rule: the committed bytes are reproduced from the agreementHash and the
   assemblyHash they carry, the attestation's `contentRef` is their
   keccak, and the leaf opens against the signed `checkoutHash`; it consults
-  no clause spec and emits no spec binding (`prover/lib/src/kernel.rs:385`,
-  `validate_provenance_attestation`, reached at `:462`;
+  no clause spec and emits no spec binding (`prover/lib/src/kernel.rs:394`,
+  `validate_provenance_attestation`, reached at `:471`;
   `the_provenance_leaf_is_attestable_without_a_spec`). It refuses bytes that
   name a key the agreement never committed
   (`a_provenance_attestation_of_an_uncommitted_key_is_refused`), a
@@ -1329,10 +1354,10 @@ design: a batch the mirror refuses has no proof.
 
 Current design realities accepted by the protocol surface, not accidental defects:
 
-1. buyer key loss is terminal for an active process because the Core has no timeout or admin recovery path
+1. buyer key loss is terminal for an active process because the Core has no timeout or admin recovery path, unless code the buyer's wallet installed while it held the key resolves for it — `msg.sender` on the direct path, an ERC-1271 authorization the verifier checks on the batch path (`DESIGN_DECISIONS.md` #4)
 2. very large processes are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
 3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the Core; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #9 states the consequence); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
-4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:113`, checked at `:379`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the Core refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
+4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:127`, checked at `:401`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the Core refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
 5. a batched attestation's witness form is not signed (the typed data covers `orderHash`, `clauseId`, `stage`, `contentRef`), so a relay holding a plaintext operation can submit it hash-only and the `Attestation` event is identical for both forms: the in-proof content check assures the attesting party's own submission and is not evidence to a reader, whose evidence (signer, open order, inclusion, `contentRef`) is identical on every path (`DESIGN_DECISIONS.md` #26)
 
 ## Known limitations
@@ -1348,7 +1373,7 @@ Stated so the review does not spend hours finding them.
    proof of equivalence.
 2. **The relay is not mutation-tested.** Mutation testing covers the guest
    (`figaro-kernel`, `figaro-clause`), where a defect costs a wrong resolution.
-   The relay has its 110 integration tests, 21 unit tests and the batch
+   The relay has its 114 integration tests, 22 unit tests and the batch
    end-to-end test.
 3. **A mid-flight revocation sinks a shared batch once.** A party who revokes
    its allowance after the funding check and before `settleBatch` reverts that
@@ -1368,7 +1393,18 @@ Stated so the review does not spend hours finding them.
    as before; and each refusal costs the innocent operations one of their
    three re-queues, so distinct revoking addresses — the per-address signal
    does not aggregate them — can burn a co-batched operation's cap. The
-   direct path stays open to a new process throughout.
+   direct path stays open to a new process throughout. A third way is
+   neither gas-priced nor a revocation: a buyer's wallet code can answer yes
+   to the relay's `eth_call` and no in the transaction (branching on
+   `tx.origin`, `gasleft()` or a block field) at no cost and with no state
+   change, so the arm's re-ask, again an `eth_call`, may name nobody. The arm
+   then dead-letters the refused batch's wallet-code resolves alone,
+   re-submittable, counts each buyer in the adversarial signal, and
+   re-queues the rest (`classify_deterministic_revert`); a code the re-ask
+   does name is dead-lettered the same way. Only a batch that carries no
+   wallet-code resolve dead-letters whole on an unnamed refusal. The
+   attacker's cost is its own resubmission with fresh bytes; each refusal
+   still costs the co-batched operations one of their three re-queues.
 4. **The batch path's per-position gas figure is pre-fork.** The direct
    path's per-order constants are measured on live post-fork Sepolia
    receipts against the deployed Core (resolve ~73,000 + ~29,800·N;

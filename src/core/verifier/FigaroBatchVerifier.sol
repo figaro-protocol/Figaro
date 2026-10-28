@@ -87,6 +87,22 @@ interface IUsageCounter {
 ///              the signed operations behind its root; with the `usage`
 ///              argument's period and provenance leaf and the public values'
 ///              chain binding and clock, they rebuild the state behind it.
+///
+///         A resolve comes in two forms, as `FigaroCore.resolveProcess`'s
+///         `msg.sender == rootBuyer` admits the buyer's key and any code the
+///         buyer's wallet installed while it held the key. The first, the
+///         buyer's ECDSA signature, the guest recovers. The second, bytes the
+///         buyer's own account code validates (ERC-1271), the guest cannot
+///         check: it applies the resolve on the process, the value and the
+///         order list alone and publishes the bytes in the stream's `0x04`
+///         entry. `settleBatch` reads the entry, derives the
+///         `ResolveProcess(processId, cumulativeValue)` digest under this
+///         contract's domain, requires the buyer's account to have code, and
+///         calls its `isValidSignature`, before any token moves; any answer
+///         but the magic value reverts the whole batch, because the proven
+///         root already holds the resolve, so the entry cannot be dropped
+///         alone. On both paths only the buyer's wallet, by its key or by its
+///         code, resolves.
 contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
     using CommitmentTypes for CommitmentTypes.Commitment;
@@ -268,6 +284,14 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     error VerifierNotContract();
     error ZeroClauseRegistry();
     error ZeroUsageCounter();
+    /// @dev A resolve in the wallet-code form names a buyer whose account
+    ///      has no code to ask: only the buyer's ECDSA signature can resolve
+    ///      for it, in the first form.
+    error BuyerHasNoCode(bytes32 processId, address buyer);
+    /// @dev The buyer's account code did not answer the resolve's digest and
+    ///      bytes with the ERC-1271 magic value (it answered otherwise,
+    ///      reverted, or returned no word).
+    error WalletCodeAuthorizationRefused(bytes32 processId, address buyer);
 
     // ── Constructor ───────────────────────────────────────────────
 
@@ -340,9 +364,11 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///                     public value 9): every commit and resolve it applied,
     ///                     whole, and every usage claim, in the guest's canonical
     ///                     bytes (`prover/lib/src/operation_stream.rs`). The
-    ///                     contract reads none of it; it is published so that
-    ///                     anyone can rebuild the state behind the new root from
-    ///                     this transaction and the ones before it.
+    ///                     contract reads it for the Core's events and asks the
+    ///                     buyer's code about each `0x04` entry, before any
+    ///                     token moves; it is published so that anyone can
+    ///                     rebuild the state behind the new root from this
+    ///                     transaction and the ones before it.
     function settleBatch(
         bytes calldata proof,
         bytes calldata publicValues,
@@ -399,13 +425,17 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
         // ── 4. Anchor every witness spec to the live registry ─────
         _checkSpecBindings(events.specBindings);
+        //    and ask the buyer's code about every wallet-code resolve,
+        //    against the state before the batch moves a token: the state the
+        //    relay's own check read, never a payout's.
+        _walkOperations(operations, false);
 
         // ── 5. Execute token transfers ────────────────────────────
         _executePositions(positions);
 
         // ── 6. Publish the batch's orders and resolutions as the Core does ─
         _emitAttestations(events.attestations);
-        _emitOperations(operations);
+        _walkOperations(operations, true);
 
         // ── 7. Hand the batch's uses to the counter ─────────────────
         //    The uses are the proof's; the reward's own gates (open
@@ -612,9 +642,11 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
     /**
      * @dev BATCH RESOLUTION DOS RISK
-     * If any user in a batch revokes approval before settleBatch executes, the entire batch reverts.
-     * Mitigation: Sequencer MUST verify approvals immediately before proof submission.
-     * Users SHOULD maintain approvals until batch resolution is confirmed.
+     * Two causes revert the entire batch after its proof: a user who revokes approval before settleBatch
+     * executes, and a buyer whose wallet code refuses its wallet-code resolve at step 4 though it validated
+     * the bytes when the relay asked.
+     * Mitigation: Sequencer MUST verify approvals and ask each buyer's code immediately before proof submission.
+     * Users SHOULD maintain approvals, and wallet code its answer, until batch resolution is confirmed.
      */
 
     /// @dev Reconcile net positions. For each (token, user):
@@ -651,37 +683,53 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     // The stream's bytes are the guest's (`prover/lib/src/operation_stream.rs`):
     // `0x01 commitment sig sig` for a commit, `0x02 processId sig count
     // commitment*` for a resolution, `0x03 commitment key kind … proof` for a
-    // usage claim; a commitment is 252 packed bytes, a signature 65, a count
-    // a big-endian uint16. A proven batch's stream is well-formed by
-    // construction (the proof bound its hash); the refusal below is the
-    // decoder's, never a judgment.
+    // usage claim, `0x04 processId len authorization count commitment*` for a
+    // resolution authorized by the buyer's wallet code; a commitment is 252
+    // packed bytes, a signature 65, a count or a length a big-endian uint16.
+    // A proven batch's stream is well-formed by construction (the proof bound
+    // its hash); the refusal below is the decoder's, never a judgment. The
+    // one judgment the stream carries to this contract is the wallet-code
+    // resolve's, and it is the buyer's code's, asked in `_checkWalletCode`.
 
     uint256 private constant COMMITMENT_BYTES = 252;
     uint256 private constant SIGNATURE_BYTES = 65;
 
-    function _emitOperations(bytes calldata s) internal {
+    /// @dev The batch path's resolve authorization, the type the guest's
+    ///      `resolve_struct_hash` hashes (`prover/lib/src/eip712.rs`).
+    bytes32 private constant RESOLVE_PROCESS_TYPEHASH =
+        keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)");
+    /// @dev ERC-1271's magic value, `isValidSignature(bytes32,bytes)`'s selector.
+    bytes4 private constant ERC1271_MAGIC_VALUE = 0x1626ba7e;
+
+    /// @dev Walk the stream. With `publish` false, ask the buyer's code about
+    ///      every `0x04` entry and emit nothing (step 4); with `publish` true,
+    ///      emit the Core's events for every commit and resolution (step 6).
+    function _walkOperations(bytes calldata s, bool publish) internal {
         uint256 p;
         uint256 n = s.length;
         while (p < n) {
             uint256 tag = _byteAt(s, p);
             p += 1;
             if (tag == 0x01) {
-                CommitmentTypes.Commitment memory c = _readCommitment(s, p);
+                if (publish) _emitCommitted(_readCommitment(s, p));
                 p += COMMITMENT_BYTES + 2 * SIGNATURE_BYTES;
-                _emitCommitted(c);
             } else if (tag == 0x02) {
                 bytes32 processId = _wordAt(s, p);
                 p += 32 + SIGNATURE_BYTES;
                 uint256 count = _countAt(s, p);
                 p += 2;
-                address buyer;
-                for (uint256 i = 0; i < count; i++) {
-                    CommitmentTypes.Commitment memory c = _readCommitment(s, p);
-                    p += COMMITMENT_BYTES;
-                    buyer = c.buyer;
-                    _emitResolved(processId, c);
+                if (publish) {
+                    address buyer;
+                    for (uint256 i = 0; i < count; i++) {
+                        CommitmentTypes.Commitment memory c = _readCommitment(s, p + i * COMMITMENT_BYTES);
+                        buyer = c.buyer;
+                        _emitResolved(processId, c);
+                    }
+                    emit ProcessResolved(processId, buyer, count);
                 }
-                emit ProcessResolved(processId, buyer, count);
+                p += count * COMMITMENT_BYTES;
+            } else if (tag == 0x04) {
+                p = _resolveByWalletCode(s, p, publish);
             } else if (tag == 0x03) {
                 p += COMMITMENT_BYTES + 32; // the order and the key
                 uint256 kind = _byteAt(s, p);
@@ -700,6 +748,65 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             }
             if (p > n) revert MalformedOperationStream();
         }
+    }
+
+    /// @dev A `0x04` entry from its process id on. With `publish` false the
+    ///      buyer's code is asked; with `publish` true the entry publishes as
+    ///      a `0x02` one does. The cumulative value is the listed payments' sum
+    ///      (the guest applied the resolve only while the process held it,
+    ///      every order of the process listed) and the buyer is the listed
+    ///      orders' (every order of a process carries its root buyer).
+    ///      Returns the offset past the entry.
+    function _resolveByWalletCode(bytes calldata s, uint256 p, bool publish) private returns (uint256) {
+        bytes32 processId = _wordAt(s, p);
+        uint256 len = _countAt(s, p + 32);
+        uint256 at = p + 34;
+        if (at + len + 2 > s.length) revert MalformedOperationStream();
+        bytes calldata authorization = s[at:at + len];
+        p = at + len;
+        uint256 count = _countAt(s, p);
+        p += 2;
+        if (count == 0 || p + count * COMMITMENT_BYTES > s.length) revert MalformedOperationStream();
+        address buyer = address(bytes20(_wordAt(s, p + 32)));
+        if (!publish) {
+            uint256 cumulativeValue;
+            for (uint256 i = 0; i < count; i++) {
+                cumulativeValue += uint256(_wordAt(s, p + i * COMMITMENT_BYTES + 92));
+            }
+            _checkWalletCode(processId, buyer, cumulativeValue, authorization);
+            return p + count * COMMITMENT_BYTES;
+        }
+        for (uint256 i = 0; i < count; i++) {
+            _emitResolved(processId, _readCommitment(s, p));
+            p += COMMITMENT_BYTES;
+        }
+        emit ProcessResolved(processId, buyer, count);
+        return p;
+    }
+
+    /// @dev Ask the buyer's account code whether `authorization` authorizes
+    ///      resolving `processId` at `cumulativeValue`: the ERC-1271 call,
+    ///      a STATICCALL with the gas left, reading one word of the answer
+    ///      (a longer answer is never copied). An account with no code is
+    ///      refused by name; the whole answer word is compared with the magic
+    ///      value left-aligned and zero-padded, as OpenZeppelin's
+    ///      `SignatureChecker` compares it, and any other word refuses the
+    ///      batch.
+    function _checkWalletCode(bytes32 processId, address buyer, uint256 cumulativeValue, bytes calldata authorization)
+        private
+        view
+    {
+        if (buyer.code.length == 0) revert BuyerHasNoCode(processId, buyer);
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(RESOLVE_PROCESS_TYPEHASH, processId, cumulativeValue)));
+        bytes memory query = abi.encodeWithSelector(ERC1271_MAGIC_VALUE, digest, authorization);
+        bool ok;
+        bytes32 answer;
+        assembly ("memory-safe") {
+            ok := staticcall(gas(), buyer, add(query, 32), mload(query), 0, 32)
+            if lt(returndatasize(), 32) { ok := 0 }
+            answer := mload(0)
+        }
+        if (!ok || answer != bytes32(ERC1271_MAGIC_VALUE)) revert WalletCodeAuthorizationRefused(processId, buyer);
     }
 
     // The stream is read with `calldataload` at an offset into `s`: a word,

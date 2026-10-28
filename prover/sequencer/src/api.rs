@@ -392,6 +392,7 @@ fn op_kind(op: &KernelOp) -> &'static str {
     match op {
         KernelOp::Commit { .. } => "Commit",
         KernelOp::Resolve { .. } => "Resolve",
+        KernelOp::ResolveByWalletCode { .. } => "ResolveByWalletCode",
         KernelOp::AttestAsSeller { .. } => "AttestAsSeller",
         KernelOp::AttestAsBuyer { .. } => "AttestAsBuyer",
     }
@@ -425,6 +426,28 @@ async fn submit_op(
             }
             Err(read) => {
                 warn!(route = "/submit", kind, %read, "funding unverifiable at the door; the batch-time check decides");
+            }
+        }
+    }
+    // A wallet-code resolve is asked of the buyer's code at the door, as the
+    // verifier will ask it at resolution: bytes the code refuses would revert
+    // a whole batch. A read failure is not a verdict — the batch-time check
+    // decides.
+    if let (Some(gate), KernelOp::ResolveByWalletCode { .. }) = (&state.funding, &req.operation) {
+        match submitter::check_wallet_code_resolve(gate, &req.operation).await {
+            Ok(Ok(())) => {}
+            Ok(Err(refused)) => {
+                warn!(route = "/submit", kind, %refused, "wallet-code resolve refused");
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse {
+                        error: format!("wallet-code resolve refused: {refused}"),
+                    }),
+                )
+                    .into_response();
+            }
+            Err(read) => {
+                warn!(route = "/submit", kind, %read, "the buyer's code could not be asked at the door; the batch-time check decides");
             }
         }
     }

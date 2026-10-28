@@ -11,6 +11,7 @@ import "src/build/registries/ClauseRegistry.sol";
 import {MembersRegistry} from "src/app/MembersRegistry.sol";
 import "src/build/rewards/UsageCounter.sol";
 import "src/core/kernel/FigaroCore.sol";
+import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 
 /// @title The operation stream's cross-language lock, chain side
 /// @notice `test/fixtures/operation-stream-vectors.json` is written by the
@@ -166,6 +167,18 @@ contract OperationStreamVectorsTest is Test {
             string memory sb = string.concat(".streams[", vm.toString(s), "]");
             bytes memory stream = vm.parseJsonBytes(json, string.concat(sb, ".stream"));
             uint256 entries = vm.parseJsonUint(json, string.concat(sb, ".entryCount"));
+            // A wallet-code resolve's buyer carries code that validates the
+            // entry's bytes for the digest the verifier derives: set before
+            // the expectations, which bind the next call (the settle).
+            for (uint256 e = 0; e < entries; e++) {
+                string memory eb = string.concat(sb, ".entries[", vm.toString(e), "]");
+                if (
+                    keccak256(bytes(vm.parseJsonString(json, string.concat(eb, ".kind"))))
+                        == keccak256("resolveByWalletCode")
+                ) {
+                    _approveWalletCode(json, eb);
+                }
+            }
             for (uint256 e = 0; e < entries; e++) {
                 string memory eb = string.concat(sb, ".entries[", vm.toString(e), "]");
                 string memory kind = vm.parseJsonString(json, string.concat(eb, ".kind"));
@@ -193,6 +206,33 @@ contract OperationStreamVectorsTest is Test {
                 string.concat("stream landed: ", vm.parseJsonString(json, string.concat(sb, ".name")))
             );
         }
+    }
+
+    /// @dev `ResolveProcess` over the entry's process and the sum of its listed
+    ///      payments, under the verifier's domain, approved by mock code
+    ///      etched at the listed orders' buyer.
+    function _approveWalletCode(string memory json, string memory eb) internal {
+        bytes32 processId = vm.parseJsonBytes32(json, string.concat(eb, ".processId"));
+        address buyer = vm.parseJsonAddress(json, string.concat(eb, ".commitments[0].buyer"));
+        uint256 cumulativeValue;
+        for (uint256 i = 0; vm.keyExistsJson(json, string.concat(eb, ".commitments[", vm.toString(i), "]")); i++) {
+            cumulativeValue += _uint(json, string.concat(eb, ".commitments[", vm.toString(i), "].payment"));
+        }
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                _domainSeparator(),
+                keccak256(
+                    abi.encode(
+                        keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)"),
+                        processId,
+                        cumulativeValue
+                    )
+                )
+            )
+        );
+        vm.etch(buyer, type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(buyer).approve(digest, vm.parseJsonBytes(json, string.concat(eb, ".authorization")));
     }
 
     function test_theStreamIsInTheLogsWhateverTheCallPath() public {

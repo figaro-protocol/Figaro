@@ -530,4 +530,8 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "error SpecBindingMismatch(bytes32 clauseId, bytes32 proven)",
     "error ClauseNotRegistered(bytes32 clauseId)",
     "error FeeOnTransferDetected()",
+    // A resolve in the wallet-code form: the buyer's account has no code, or
+    // its `isValidSignature` did not answer with the ERC-1271 magic value.
+    "error BuyerHasNoCode(bytes32 processId, address buyer)",
+    "error WalletCodeAuthorizationRefused(bytes32 processId, address buyer)",
 ]);

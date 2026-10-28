@@ -182,7 +182,7 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
 
 - `POST /submit` — body `{ "operation": <KernelOp> }` where `KernelOp` is the
   serde externally-tagged enum (`{"Commit":{…}}`, `{"Resolve":{…}}`,
-  `{"AttestAsSeller":{…}}`, `{"AttestAsBuyer":{…}}`); the SDK's
+  `{"ResolveByWalletCode":{…}}`, `{"AttestAsSeller":{…}}`, `{"AttestAsBuyer":{…}}`); the SDK's
   `SequencerClient` (`@figaro-protocol/sdk/agent`) emits exactly this wire format.
   An attestation's `proof` is `{"HashOnly":{"clause_data_hash","inclusion_proof"}}`
   — the coordinator's arguments, which the SDK sends by default — or
@@ -197,6 +197,17 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   process holds `cumulative_value` when it applies (`StaleResolveAuthorization`;
   a value the process has passed is dead-lettered, one it has not reached
   waits as a deferral).
+  A resolve authorized by the buyer's wallet code is
+  `{"ResolveByWalletCode":{"process_id","cumulative_value","commitments","authorization"}}`:
+  `authorization` (hex, at most `MAX_WALLET_AUTHORIZATION_BYTES`, 2,048) is
+  bytes the buyer's own account code validates for the same digest through
+  ERC-1271's `isValidSignature` — the form code installed on the buyer's
+  wallet while it held its key resolves with after the key is lost. The
+  proof checks the process, the value and the order list and publishes the
+  bytes; the verifier asks the buyer's code at resolution and reverts the
+  batch on any answer but the magic value, so the relay asks the same code
+  first (see Before proving); `/submit` answers `400` with the reason when
+  the buyer's account has no code or its code does not validate the bytes.
   `200 {"id": n}` on admission — idempotent: re-submitting the same semantic
   operation (same order hash / process id / attestation identity) returns the
   original id and enqueues nothing. The identity covers every input the proof
@@ -362,7 +373,7 @@ read again when it is next drained (see Mempool bounds).
 
 ## Before proving
 
-Two more checks run at batch formation, each dropping one operation instead
+Three more checks run at batch formation, each dropping one operation instead
 of losing the batch:
 
 - **The clock.** The batch's timestamp is the latest block's, read from the
@@ -378,7 +389,27 @@ of losing the batch:
   batch. The relay checks the hash itself, reads `registered` from the
   verifier's own registry (`clauseRegistry()`), and drops an attestation
   that fails either, so a copy of a landed attestation with one byte
-  changed costs nobody else their batch. Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
+  changed costs nobody else their batch.
+- **The buyer's wallet code.** A wallet-code resolve is asked of the buyer's
+  account code as the verifier will ask it — `isValidSignature(digest,
+  authorization)` from the verifier's address, the digest `ResolveProcess`
+  under the verifier's domain over the process and the listed payments, the
+  buyer the listed orders' — at the door and again here, against the latest
+  block, under `WALLET_CODE_EXECUTION_GAS` (500,000), the gas this relay plans
+  for the wallet's own code (`prover/sequencer/src/gas.rs`). A resolve whose
+  buyer has no code, or whose code does not answer with the magic value, is
+  dropped with the reason and is re-submittable; a read failure drops it
+  conservatively. The verifier asks the code at resolution before any token
+  moves; code that answers this relay's `eth_call` otherwise than the
+  transaction (branching on `tx.origin`, `gasleft()` or a block field)
+  reverts the batch at no cost, and an `eth_call` re-ask may name nobody, so
+  on any refused batch the relay dead-letters the batch's wallet-code
+  resolves alone (re-submittable, each buyer counted in the adversarial
+  signal) and re-queues the rest; only a batch with no wallet-code resolve
+  dead-letters whole. The gas and the length are this
+  relay's plan, never the protocol's: the verifier bounds neither.
+
+Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
 nothing is read. A read failure at the door is not a verdict — the batch-time
 check decides; a read failure at batch time defers the commit, never proves it.
 
@@ -466,7 +497,9 @@ gives the next tick's claims the first half of the budget, so a deep
 operation queue never starves them. A batch-path process is kept within
 what one `settleBatch` call can resolve: a commit that would grow a process past that
 (`gas::max_orders_in_one_settle`, one position an order and one for the
-buyer — about 220 orders under the default cap) is dropped at batch
+buyer, planned in the dearer of the resolve's two forms so the process
+resolves by its buyer's key or its buyer's wallet code alike — about 210
+orders under the default cap) is dropped at batch
 formation and dead-lettered with the reason, since such a process would
 have no resolve any relay on the chain could land and its bonds would
 stay where they are. An operation that fits no `settleBatch` call under the cap on its own is
@@ -481,7 +514,7 @@ past that is a refusal to run, read against the block at startup or, when
 startup could not read it, on the first tick that does — and
 a limit that later falls below the cap holds such a batch until it
 returns. A tick whose block cannot be read plans under the cap alone. The budget is the
-chain's own: under the default cap a resolution plans on about 220 orders, each a position, a published commitment and its events; a
+chain's own: under the default cap a resolution plans on about 210 orders, each a position, a published commitment and its events; a
 chain without the cap gives about 930 at a 60M block and about 3,000 at
 Sepolia's 200M, and a rise in the limit flows through at the next tick
 with nothing set, while a fork that reprices the items is met by

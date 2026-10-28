@@ -181,6 +181,29 @@
 (* Signatures are unforgeable here as everywhere in this module: an       *)
 (* authorization is one the buyer gave, and one whose signed value a      *)
 (* relay rewrote recovers another signer, which the guest refuses.        *)
+(*                                                                         *)
+(* The authorization comes in two forms, as on the Core, where            *)
+(* `resolveProcess` reads `msg.sender == rootBuyer` and so admits the      *)
+(* buyer's key and any code the buyer's wallet installed while it held     *)
+(* the key. The buyer's ECDSA signature is the first form. The second is   *)
+(* a wallet-code authorization: bytes the buyer's own account code         *)
+(* validates (`isValidSignature`, ERC-1271). The guest cannot run the      *)
+(* wallet's code, so it checks the process, the value and the order list   *)
+(* and publishes the bytes in the operation stream; the verifier calls the *)
+(* buyer's code at resolution and refuses the batch unless the code        *)
+(* validates the digest. Here the wallet installs its code only while it   *)
+(* holds its key, the key can be lost, and the installed code authorizes   *)
+(* after the loss as before it; anyone may submit bytes in the second form *)
+(* for any value. `OnlyBuyerWalletResolves`: every applied resolve was     *)
+(* authorized by the buyer's key or by the code the buyer's wallet         *)
+(* installed. The design switch:                                           *)
+(*   VerifierChecksWalletCode — TRUE: a wallet-code resolve lands only if  *)
+(*                              the buyer's account has code and the code  *)
+(*                              validates the digest. FALSE: the verifier  *)
+(*                              takes the second form on the guest's word, *)
+(*                              which checked nothing about the bytes      *)
+(*                              (fails `OnlyBuyerWalletResolves`: a        *)
+(*                              stranger's bytes resolve the process)      *)
 (***************************************************************************)
 EXTENDS Naturals, Sequences, FiniteSets
 
@@ -209,7 +232,9 @@ CONSTANTS
     DeferOwnWindow,
     DeferDependentEdge,
     AdmitRefusesDoubleListing,
-    ResolveBoundToState  \* the resolve authorization signs the cumulative value
+    ResolveBoundToState, \* the resolve authorization signs the cumulative value
+    VerifierChecksWalletCode \* the verifier calls the buyer's code on a
+                             \* wallet-code resolve
 
 Genesis == 0
 Roots == 0..MaxBatches
@@ -863,9 +888,14 @@ VARIABLES
     rAuths,     \* the cumulative values the buyer signed authorizations
                 \* over; anyone holding one may apply it
     rPaid,      \* ghost: the orders the resolution paid
-    rSigned     \* ghost: the cumulative value the applied authorization signed
+    rSigned,    \* ghost: the cumulative value the applied authorization signed
+    rKey,       \* the buyer's wallet holds its key
+    rCode,      \* the buyer's wallet carries code it installed with its key
+    rCodeAuths, \* the cumulative values the installed code validates
+    rBy         \* ghost: who authorized the applied resolve — "key", "code"
+                \* (the wallet's installed code) or "other"
 
-rvars == <<rSeq, rPay, rCv, rResolved, rAuths, rPaid, rSigned>>
+rvars == <<rSeq, rPay, rCv, rResolved, rAuths, rPaid, rSigned, rKey, rCode, rCodeAuths, rBy>>
 everyvars == <<allvars, rvars>>
 
 \* The cumulative value of the first k orders the process committed.
@@ -881,6 +911,10 @@ RTypeOK ==
     /\ rAuths \subseteq 0..RMaxCv
     /\ rPaid \subseteq ROrders
     /\ rSigned \in 0..RMaxCv
+    /\ rKey \in BOOLEAN
+    /\ rCode \in BOOLEAN
+    /\ rCodeAuths \subseteq 0..RMaxCv
+    /\ rBy \in {"none", "key", "code", "other"}
 
 RInit ==
     /\ rSeq = <<>>
@@ -890,6 +924,10 @@ RInit ==
     /\ rAuths = {}
     /\ rPaid = {}
     /\ rSigned = 0
+    /\ rKey = TRUE
+    /\ rCode = FALSE
+    /\ rCodeAuths = {}
+    /\ rBy = "none"
 
 \* A commit, the buyer's and its seller's signatures both on it: the root
 \* order creates the process, each later one extends it while it is open.
@@ -899,16 +937,41 @@ RCommit(o, p) ==
     /\ rSeq' = Append(rSeq, o)
     /\ rPay' = [rPay EXCEPT ![o] = p]
     /\ rCv' = rCv + p
-    /\ UNCHANGED <<rResolved, rAuths, rPaid, rSigned>>
+    /\ UNCHANGED <<rResolved, rAuths, rPaid, rSigned, rKey, rCode, rCodeAuths, rBy>>
 
 \* The buyer signs a resolve over the value the process holds or over one it
 \* has not reached.
 RSign(v) ==
     /\ ~rResolved
+    /\ rKey
     /\ rSeq # <<>>
     /\ v >= rCv
     /\ rAuths' = rAuths \cup {v}
-    /\ UNCHANGED <<rSeq, rPay, rCv, rResolved, rPaid, rSigned>>
+    /\ UNCHANGED <<rSeq, rPay, rCv, rResolved, rPaid, rSigned, rKey, rCode, rCodeAuths, rBy>>
+
+\* The buyer's wallet installs its own code (an EIP-7702 delegation carrying
+\* the wallet's own guardian authorization), which needs the key.
+RInstall ==
+    /\ rKey
+    /\ ~rCode
+    /\ rCode' = TRUE
+    /\ UNCHANGED <<rSeq, rPay, rCv, rResolved, rAuths, rPaid, rSigned, rKey, rCodeAuths, rBy>>
+
+\* The buyer loses its key; whatever its wallet installed stays.
+RLoseKey ==
+    /\ rKey
+    /\ rKey' = FALSE
+    /\ UNCHANGED <<rSeq, rPay, rCv, rResolved, rAuths, rPaid, rSigned, rCode, rCodeAuths, rBy>>
+
+\* The installed code authorizes a resolve over the value the process holds
+\* or one it has not reached, with the key or without it.
+RCodeSign(v) ==
+    /\ ~rResolved
+    /\ rCode
+    /\ rSeq # <<>>
+    /\ v >= rCv
+    /\ rCodeAuths' = rCodeAuths \cup {v}
+    /\ UNCHANGED <<rSeq, rPay, rCv, rResolved, rAuths, rPaid, rSigned, rKey, rCode, rBy>>
 
 \* A batch applies an authorization, whoever holds it. The guest resolves
 \* every order the process holds (the listing must be complete), and under
@@ -919,12 +982,33 @@ RApply(v) ==
     /\ rResolved' = TRUE
     /\ rPaid' = Range(rSeq)
     /\ rSigned' = v
-    /\ UNCHANGED <<rSeq, rPay, rCv, rAuths>>
+    /\ rBy' = "key"
+    /\ UNCHANGED <<rSeq, rPay, rCv, rAuths, rKey, rCode, rCodeAuths>>
+
+\* A batch applies a wallet-code resolve: bytes anyone submitted for value
+\* v. The guest checks the process, the value and the list as for the
+\* first form and nothing about the bytes; under the design the verifier
+\* then requires the buyer's account to have code and the code to validate
+\* the digest, and refuses the batch otherwise.
+RApplyCode(v) ==
+    /\ ~rResolved
+    /\ rSeq # <<>>     \* the guest refuses an unknown process
+    /\ ResolveBoundToState => v = rCv
+    /\ VerifierChecksWalletCode => (rCode /\ v \in rCodeAuths)
+    /\ rResolved' = TRUE
+    /\ rPaid' = Range(rSeq)
+    /\ rSigned' = v
+    /\ rBy' = IF rCode /\ v \in rCodeAuths THEN "code" ELSE "other"
+    /\ UNCHANGED <<rSeq, rPay, rCv, rAuths, rKey, rCode, rCodeAuths>>
 
 RNext ==
     \/ \E o \in ROrders, p \in RPayments : RCommit(o, p)
     \/ \E v \in 0..RMaxCv : RSign(v)
     \/ \E v \in rAuths : RApply(v)
+    \/ RInstall
+    \/ RLoseKey
+    \/ \E v \in 0..RMaxCv : RCodeSign(v)
+    \/ \E v \in 0..RMaxCv : RApplyCode(v)
 
 Spec == Init /\ DInit /\ RInit /\ [][Next /\ UNCHANGED <<dvars, rvars>>]_everyvars
 
@@ -942,6 +1026,12 @@ ResolvePaysSignedPrefix ==
         \E k \in 0..Len(rSeq) :
             /\ PrefixSum(k) = rSigned
             /\ rPaid = {rSeq[i] : i \in 1..k}
+
+\* Only the buyer's wallet resolves, by its key or by the code it installed
+\* while it held the key: the Core's `msg.sender == rootBuyer`, read on the
+\* batch path.
+OnlyBuyerWalletResolves ==
+    rResolved => rBy \in {"key", "code"}
 
 (***************************************************************************)
 (* The deferral's invariants.                                              *)

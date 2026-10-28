@@ -131,7 +131,16 @@ The proof-based path that resolves batches of processes beside the direct
   resolve the batch applied, whole, and every usage claim, bound to public
   value 9 (`OperationsHashMismatch`), so a batch cannot land without
   publishing, in its own transaction, what rebuilds the state behind its root;
-  the contract reads none of it;
+- before any token moves, asks the buyer's account code about every resolve
+  the stream carries in the wallet-code form (`0x04`, bytes the buyer's own code validates — the
+  batched equivalent of a `resolveProcess` call made by code the buyer's
+  wallet installed while it held its key): it derives the
+  `ResolveProcess(processId, cumulativeValue)` digest under its own domain
+  from the process and the listed payments, refuses a buyer with no code
+  (`BuyerHasNoCode`), and calls `isValidSignature` (ERC-1271) with the bytes,
+  reverting the whole batch on any answer word but the magic value's
+  (`WalletCodeAuthorizationRefused`), since the proven root already holds the
+  resolve and the entry cannot be dropped alone;
 - checks every spec binding, one per clause a plaintext attestation names (a
   hash-only attestation commits none, as the coordinator consults no
   registry): the clause key is the hash of the witness spec,
@@ -593,6 +602,13 @@ deploy script wires and under which environment variable.
   stand-in, not the production interface.
 - `MockSP1Verifier.sol` — accepts any proof unless `setRejectProofs(true)`, so the batch path runs end to end and a rejected proof is testable
   on a devnet without proving hardware.
+- `MockERC1271Wallet.sol` — account code whose `isValidSignature` (ERC-1271)
+  answers the magic value for the (digest, bytes) pairs a test approves; etched
+  at a buyer's address, it stands in for code the buyer's EOA carries through
+  an EIP-7702 delegation installed while it held its key (a commit recovers the
+  buyer by ECDSA, so a contract wallet is never a buyer) for
+  `FigaroBatchVerifier`'s wallet-code resolve; `setBalanceCeiling` makes its
+  answer depend on its own token balance. Foundry tests only.
 - `MockReentrantToken.sol` — a malicious ERC-20 that re-enters on transfer;
   proves the `nonReentrant` guards on `commit`, `resolveProcess`, and
   `settleBatch` fire under a live attempt. Foundry tests only.

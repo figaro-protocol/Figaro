@@ -298,6 +298,24 @@ impl Mempool {
                     buf.extend_from_slice(order_hash.as_slice());
                 }
             }
+            KernelOp::ResolveByWalletCode {
+                process_id,
+                cumulative_value,
+                commitments,
+                authorization,
+            } => {
+                // The buyer's code judges the bytes, at resolution: they are
+                // in the key, so bytes the code refuses never make bytes it
+                // validates a duplicate.
+                buf.extend_from_slice(b"resolve-by-wallet-code");
+                buf.extend_from_slice(process_id.as_slice());
+                buf.extend_from_slice(&cumulative_value.to_be_bytes::<32>());
+                buf.extend_from_slice(keccak256(authorization).as_slice());
+                for commitment in commitments {
+                    let (order_hash, _) = derive_commitment_ids(&domain, commitment);
+                    buf.extend_from_slice(order_hash.as_slice());
+                }
+            }
             KernelOp::AttestAsSeller {
                 target,
                 clause_id,
@@ -517,7 +535,7 @@ impl Mempool {
         let process = |c: &Commitment| derive_commitment_ids(&domain, c).1;
         match op {
             KernelOp::Commit { commitment, .. } => vec![process(commitment)],
-            KernelOp::Resolve { process_id, .. } => vec![*process_id],
+            KernelOp::Resolve { process_id, .. } | KernelOp::ResolveByWalletCode { process_id, .. } => vec![*process_id],
             KernelOp::AttestAsSeller { target, .. } => vec![process(target)],
             KernelOp::AttestAsBuyer { target, .. } => vec![process(target)],
         }
@@ -810,6 +828,35 @@ impl Mempool {
                 // the Core resolves the first listing and reads the second
                 // as not committed (`OrderNotCommitted`). The list rides
                 // unsigned, so this is refused here, never deferred.
+                let mut listed = HashSet::with_capacity(commitments.len());
+                for c in commitments {
+                    let order_hash = compute_order_hash(process_id, &commitment_struct_hash(c));
+                    if !listed.insert(order_hash) {
+                        return Err(format!(
+                            "resolve lists order {order_hash} twice — the Core resolves an order once and refuses the second listing (OrderNotCommitted)"
+                        ));
+                    }
+                }
+                Ok(())
+            }
+            KernelOp::ResolveByWalletCode {
+                process_id,
+                commitments,
+                authorization,
+                ..
+            } => {
+                // The bytes are the buyer's code's to judge, at resolution;
+                // the relay asks the same code against the chain at its door
+                // and again at batch formation
+                // (`submitter::check_wallet_code_resolve`). Here: the length
+                // this relay plans for, and the listing.
+                if authorization.len() > crate::gas::MAX_WALLET_AUTHORIZATION_BYTES {
+                    return Err(format!(
+                        "wallet-code authorization of {} bytes is longer than the {} this relay plans a resolve for",
+                        authorization.len(),
+                        crate::gas::MAX_WALLET_AUTHORIZATION_BYTES
+                    ));
+                }
                 let mut listed = HashSet::with_capacity(commitments.len());
                 for c in commitments {
                     let order_hash = compute_order_hash(process_id, &commitment_struct_hash(c));

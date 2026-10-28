@@ -58,7 +58,10 @@ fn commitment_json(c: &Commitment) -> Value {
 }
 
 /// The vectors: a root commit; a process of two orders (a root commit, an
-/// extension naming the process, a resolve of both); a claim-bearing stream
+/// extension naming the process, a resolve of both); the same process
+/// resolved by its buyer's wallet code, with authorizations of 17, 0 and 300
+/// bytes (the length's low byte alone, none, and its high byte); a
+/// claim-bearing stream
 /// whose claims the chain parses and skips.
 fn vectors() -> Value {
     let process = B256::repeat_byte(0xAA);
@@ -116,6 +119,48 @@ fn vectors() -> Value {
             vec![],
         ),
         (
+            "twoOrdersResolvedByWalletCode",
+            vec![
+                KernelOp::Commit {
+                    commitment: first.clone(),
+                    buyer_sig: signature(3),
+                    seller_sig: signature(4),
+                },
+                KernelOp::Commit {
+                    commitment: second.clone(),
+                    buyer_sig: signature(5),
+                    seller_sig: signature(6),
+                },
+                KernelOp::ResolveByWalletCode {
+                    process_id: process,
+                    cumulative_value: second.expected_cumulative_value,
+                    commitments: vec![first.clone(), second.clone()],
+                    authorization: alloy_primitives::Bytes::from(b"guardian-approval".to_vec()),
+                },
+            ],
+            vec![],
+        ),
+        (
+            "walletCodeResolveWithAnEmptyAuthorization",
+            vec![KernelOp::ResolveByWalletCode {
+                process_id: process,
+                cumulative_value: second.expected_cumulative_value,
+                commitments: vec![first.clone(), second.clone()],
+                authorization: alloy_primitives::Bytes::new(),
+            }],
+            vec![],
+        ),
+        (
+            "walletCodeResolveWithA300ByteAuthorization",
+            vec![KernelOp::ResolveByWalletCode {
+                process_id: process,
+                cumulative_value: second.expected_cumulative_value,
+                commitments: vec![first.clone(), second.clone()],
+                authorization: alloy_primitives::Bytes::from((0..300u16).map(|i| i as u8).collect::<Vec<u8>>()),
+            }],
+            vec![],
+        ),
+        (
             "claimsAfterOperations",
             vec![KernelOp::Commit {
                 commitment: first.clone(),
@@ -135,6 +180,12 @@ fn vectors() -> Value {
                 KernelOp::Resolve { process_id, commitments, .. } => entries.push(json!({
                     "kind": "resolve",
                     "processId": format!("{:#x}", process_id),
+                    "commitments": commitments.iter().map(commitment_json).collect::<Vec<_>>(),
+                })),
+                KernelOp::ResolveByWalletCode { process_id, commitments, authorization, .. } => entries.push(json!({
+                    "kind": "resolveByWalletCode",
+                    "processId": format!("{:#x}", process_id),
+                    "authorization": format!("{authorization:#x}"),
                     "commitments": commitments.iter().map(commitment_json).collect::<Vec<_>>(),
                 })),
                 _ => {}

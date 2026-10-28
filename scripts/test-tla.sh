@@ -72,11 +72,16 @@
 #      models the deferral of an operation dropped at batch formation: 10
 #      invariants, nine switches, each FALSE failing the invariant it names.
 #      Its third spec, ResolveSpec (formal/RelayStateResolve.cfg), models the
-#      buyer's resolve authorization on the batch path: 2 invariants, the
-#      load-bearing one ResolvePaysSignedPrefix (every applied resolve pays
+#      buyer's resolve authorization on the batch path: 3 invariants, the
+#      load-bearing ones ResolvePaysSignedPrefix (every applied resolve pays
 #      exactly the prefix of the process's commits whose cumulative value
-#      the buyer signed); its switch ResolveBoundToState FALSE (a signature
-#      over the process id alone) MUST fail it.
+#      the buyer signed) and OnlyBuyerWalletResolves (every applied resolve
+#      was authorized by the buyer's key or by the code its wallet installed
+#      while it held the key, the second form checked by the verifier
+#      against the buyer's code at resolution); its switch
+#      ResolveBoundToState FALSE (a signature over the process id alone)
+#      MUST fail the first, and VerifierChecksWalletCode FALSE (the
+#      wallet-code form taken on the guest's word) MUST fail the second.
 #
 # All five models complete exhaustive state exploration in under 20 minutes
 # total with -workers auto on a modern laptop.
@@ -95,7 +100,7 @@
 #   TLA2TOOLS=/path/to/tla2tools.jar ./scripts/test-tla.sh
 #
 # Exit codes:
-#   0  — all 67 invariants (and RelayState's two action properties) hold across the
+#   0  — all 69 invariants (and RelayState's two action properties) hold across the
 #        explored state space (five models, seven configurations)
 #   >0 — an invariant violation was found OR the environment is misconfigured
 
@@ -189,7 +194,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 7/7 — The batch path's resolve authorization (2 invariants)"
+echo "▶ Pass 7/7 — The batch path's resolve authorization (3 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config RelayStateResolve.cfg \

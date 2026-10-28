@@ -48,12 +48,33 @@ pub const SETTLE_STREAM_QUADRATIC_DIVISOR: u64 = 32;
 /// `BatchGasCeilingTest`'s measurements, mirrored by the lockstep guard.
 pub const SETTLE_GAS_PER_STREAM_COMMIT: u64 = 12_000;
 pub const SETTLE_GAS_PER_STREAM_RESOLVED_ORDER: u64 = 6_000;
-pub const SETTLE_GAS_PER_STREAM_RESOLUTION: u64 = 3_000;
-/// A usage claim entry, parsed and skipped.
-pub const SETTLE_GAS_PER_STREAM_CLAIM: u64 = 1_500;
+pub const SETTLE_GAS_PER_STREAM_RESOLUTION: u64 = 4_500;
+/// A usage claim entry, parsed and skipped by each of the stream's two walks.
+pub const SETTLE_GAS_PER_STREAM_CLAIM: u64 = 2_000;
+/// A resolution in the wallet-code form beyond the same resolution signed:
+/// the payments summed, the digest derived, the buyer's code size read and
+/// its `isValidSignature` called, with a minimal wallet's validation.
+pub const SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK: u64 = 15_000;
+
+/// The most gas this relay plans for a buyer's own `isValidSignature` in a
+/// wallet-code resolve, beside `SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK`:
+/// enough for a wallet that verifies a P-256 signature in contract code. It
+/// is this relay's plan, never the protocol's: the verifier forwards the
+/// call all the gas left, and the relay's off-chain check
+/// (`submitter::check_wallet_code_resolve`) runs the call under this much
+/// gas, so a wallet whose code needs more is refused at this relay's door
+/// with the reason and can resolve through a relay that plans more, or a
+/// batch it submits itself.
+pub const WALLET_CODE_EXECUTION_GAS: u64 = 500_000;
+
+/// The longest authorization a wallet-code resolve may carry to this relay,
+/// in bytes: a WebAuthn assertion or a handful of guardian signatures fit.
+/// The relay's plan, like `WALLET_CODE_EXECUTION_GAS`; the stream's own
+/// bound is a `u16` length.
+pub const MAX_WALLET_AUTHORIZATION_BYTES: usize = 2_048;
 
 /// The execution gas of an operation stream of `words` 32-byte words.
-pub fn stream_exec_gas(words: u64) -> u64 {
+pub const fn stream_exec_gas(words: u64) -> u64 {
     words * SETTLE_GAS_PER_STREAM_WORD + words * words / SETTLE_STREAM_QUADRATIC_DIVISOR
 }
 /// The proof's verification by the SP1 gateway, read from live receipts.
@@ -79,14 +100,20 @@ const SETTLE_FRAMING_CALLDATA_GAS: u64 = 2_600 * CALLDATA_NONZERO_BYTE_GAS;
 /// The bytes a resolve's operation stream carries per order: the commitment
 /// the entry carries whole (`operation_stream::COMMITMENT_BYTES`).
 const RESOLVE_STREAM_ORDER_BYTES: u64 = 252;
-/// The bytes a resolve's operation stream carries besides its orders: the
-/// entry's tag, process id, signature and count.
-const RESOLVE_STREAM_FIXED_BYTES: u64 = 100;
+/// The bytes a resolve's operation stream carries besides its orders, in
+/// the dearer of its two forms, the wallet-code one at the longest
+/// authorization this relay takes: the entry's tag, process id, length,
+/// authorization and count (the signed form carries a 65-byte signature in
+/// place of the length and the authorization).
+const RESOLVE_STREAM_FIXED_BYTES: u64 = 1 + 32 + 2 + MAX_WALLET_AUTHORIZATION_BYTES as u64 + 2;
 
-/// The gas a resolution of `orders` orders is planned at: the fixed
-/// cost and framing, a position per order and one for the buyer, and the
-/// stream — its calldata charged as nonzero bytes and its execution.
-fn resolve_settle_gas(orders: u64) -> u64 {
+/// The gas a resolution of `orders` orders is planned at, in the dearer of
+/// its two forms, so that every process this relay admits resolves by its
+/// buyer's key or by its buyer's wallet code alike: the fixed cost and
+/// framing, a position per order and one for the buyer, the stream — its
+/// calldata charged as nonzero bytes and its execution — and the wallet
+/// code's check with the execution this relay plans for the wallet.
+const fn resolve_settle_gas(orders: u64) -> u64 {
     let stream_bytes = RESOLVE_STREAM_FIXED_BYTES + orders * RESOLVE_STREAM_ORDER_BYTES;
     SETTLE_PROOF_VERIFY_GAS
         + SETTLE_FIXED_EXEC_GAS
@@ -97,6 +124,8 @@ fn resolve_settle_gas(orders: u64) -> u64 {
         + stream_exec_gas(stream_bytes.div_ceil(32))
         + SETTLE_GAS_PER_STREAM_RESOLUTION
         + orders * SETTLE_GAS_PER_STREAM_RESOLVED_ORDER
+        + SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK
+        + WALLET_CODE_EXECUTION_GAS
 }
 
 /// The calldata one net position occupies, charged as nonzero bytes: the
@@ -105,17 +134,9 @@ const POSITION_CALLDATA_GAS: u64 = 128 * CALLDATA_NONZERO_BYTE_GAS;
 
 /// The least a settle cap can be: a settle resolving a process of one
 /// order (two positions, and the one commitment its stream carries) with
-/// its framing. A cap below it would admit no commit at all.
-pub const MIN_SETTLE_GAS_CAP: u64 = SETTLE_PROOF_VERIFY_GAS
-    + SETTLE_FIXED_EXEC_GAS
-    + TX_BASE_GAS
-    + SETTLE_FRAMING_CALLDATA_GAS
-    + 2 * (SETTLE_GAS_PER_POSITION + POSITION_CALLDATA_GAS)
-    + (RESOLVE_STREAM_FIXED_BYTES + RESOLVE_STREAM_ORDER_BYTES) * CALLDATA_NONZERO_BYTE_GAS
-    + 11 * SETTLE_GAS_PER_STREAM_WORD
-    + 11 * 11 / SETTLE_STREAM_QUADRATIC_DIVISOR
-    + SETTLE_GAS_PER_STREAM_RESOLUTION
-    + SETTLE_GAS_PER_STREAM_RESOLVED_ORDER;
+/// its framing, in the dearer form. A cap below it would admit no commit at
+/// all.
+pub const MIN_SETTLE_GAS_CAP: u64 = resolve_settle_gas(1);
 
 /// Calldata gas: a transaction's base cost and the per-byte charge.
 const TX_BASE_GAS: u64 = 21_000;
@@ -140,6 +161,9 @@ pub struct SettleItems {
     pub stream_resolutions: usize,
     /// The stream's usage claim entries, each parsed and skipped.
     pub stream_claims: usize,
+    /// The stream's wallet-code resolutions, each a check of the buyer's
+    /// code, planned with the wallet's own execution.
+    pub stream_wallet_code_checks: usize,
 }
 
 impl SettleItems {
@@ -155,6 +179,7 @@ impl SettleItems {
             stream_resolved_orders: 0,
             stream_resolutions: 0,
             stream_claims: 0,
+            stream_wallet_code_checks: 0,
         }
     }
 
@@ -169,6 +194,11 @@ impl SettleItems {
                 KernelOp::Resolve { commitments, .. } => {
                     self.stream_resolutions += 1;
                     self.stream_resolved_orders += commitments.len();
+                }
+                KernelOp::ResolveByWalletCode { commitments, .. } => {
+                    self.stream_resolutions += 1;
+                    self.stream_resolved_orders += commitments.len();
+                    self.stream_wallet_code_checks += 1;
                 }
                 _ => {}
             }
@@ -199,6 +229,7 @@ pub fn settle_gas_estimate(calldata: &[u8], items: SettleItems) -> u64 {
         + items.stream_resolved_orders as u64 * SETTLE_GAS_PER_STREAM_RESOLVED_ORDER
         + items.stream_resolutions as u64 * SETTLE_GAS_PER_STREAM_RESOLUTION
         + items.stream_claims as u64 * SETTLE_GAS_PER_STREAM_CLAIM
+        + items.stream_wallet_code_checks as u64 * (SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK + WALLET_CODE_EXECUTION_GAS)
 }
 
 /// The gas a batch may plan on in a block with this limit, under the
@@ -371,10 +402,10 @@ mod tests {
 
     #[test]
     fn the_estimate_is_the_sum_of_its_parts() {
-        let items = SettleItems { positions: 2, attestations: 1, spec_bindings: 1, uses: 1, stream_words: 0, stream_commits: 0, stream_resolved_orders: 0, stream_resolutions: 0, stream_claims: 0 };
+        let items = SettleItems { positions: 2, attestations: 1, spec_bindings: 1, uses: 1, stream_words: 0, stream_commits: 0, stream_resolved_orders: 0, stream_resolutions: 0, stream_claims: 0, stream_wallet_code_checks: 1 };
         assert_eq!(
             settle_gas_estimate(&[1], items),
-            21_016 + 300_000 + 105_000 + 120_000 + 6_000 + 4_500 + SETTLE_GAS_PER_USE
+            21_016 + 300_000 + 105_000 + 120_000 + 6_000 + 4_500 + SETTLE_GAS_PER_USE + 15_000 + 500_000
         );
     }
 
@@ -389,16 +420,18 @@ mod tests {
     fn the_resolve_capacity_is_one_position_an_order_and_one_for_the_buyer_over_the_framing() {
         // A resolve of n orders nets n + 1 positions and publishes n
         // commitments in its stream; the bound is the largest n whose
-        // resolve plans under the cap.
+        // resolve plans under the cap, in the dearer of its two forms (the
+        // wallet-code one, with the wallet's planned execution), so a
+        // process admitted resolves by its buyer's key or its buyer's code.
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(1) - 1), 0);
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(1)), 1);
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(2)), 2);
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(7) - 1), 6);
-        assert_eq!(max_orders_in_one_settle(DEFAULT_SETTLE_GAS_CAP), 216);
-        assert!(resolve_settle_gas(216) <= DEFAULT_SETTLE_GAS_CAP && resolve_settle_gas(217) > DEFAULT_SETTLE_GAS_CAP);
+        assert_eq!(max_orders_in_one_settle(DEFAULT_SETTLE_GAS_CAP), 208);
+        assert!(resolve_settle_gas(208) <= DEFAULT_SETTLE_GAS_CAP && resolve_settle_gas(209) > DEFAULT_SETTLE_GAS_CAP);
         // The least cap admits a process of one order, and no less.
         assert_eq!(MIN_SETTLE_GAS_CAP, resolve_settle_gas(1));
-        assert_eq!(MIN_SETTLE_GAS_CAP, 609_851);
+        assert_eq!(MIN_SETTLE_GAS_CAP, 1_178_439);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP), 1);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP - 1), 0);
     }

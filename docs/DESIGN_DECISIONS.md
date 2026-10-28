@@ -115,13 +115,23 @@ the buyer EOA. `resolveProcess` authorizes by `msg.sender`
 (`FigaroCore.sol:268`), so after key loss the delegated code can still
 originate the resolve call from the buyer's address — every active process the
 buyer opened through `FigaroCore` remains resolvable and none of its bonds is
-stranded. The reach stops there: a process committed through the proof-batched
-path resolves only on the buyer's own ECDSA signature over `ResolveProcess`
-(`prover/lib/src/kernel.rs`, `apply_resolve`), which delegated code cannot
-produce, so its bonds are stranded with the key. New commitments on either path
-are not rescuable: each requires a fresh EIP-712 ECDSA signature from the lost
-key. The delegation must be installed while the key is still held; it cannot be
-added after loss.
+stranded. The same code reaches the proof-batched path: a batched resolve
+carries its authorization in one of two forms, the buyer's ECDSA signature over
+`ResolveProcess`, or bytes the buyer's own account code validates for that
+digest through ERC-1271's `isValidSignature` (`KernelOp::ResolveByWalletCode`,
+`prover/lib/src/types.rs`). The guest cannot run the wallet's code, so it
+applies the second form on the process, the value and the order list alone and
+publishes the bytes in the operation stream; `FigaroBatchVerifier.settleBatch`
+derives the digest under its own domain, requires the buyer's account to have
+code, and asks the code before any token moves; any answer but the magic value
+reverts the whole batch, because the proven root already holds the resolve, so
+the entry cannot be dropped alone (`_checkWalletCode`). So after key loss the delegated code resolves the
+buyer's batched processes too, and on both paths only the buyer's wallet, by
+its key or by its code, resolves (`formal/RelayState.tla` `ResolveSpec`,
+`OnlyBuyerWalletResolves`). New commitments on either path are not rescuable:
+each requires a fresh EIP-712 ECDSA signature from the lost key. The
+delegation must be installed while the key is still held; it cannot be added
+after loss.
 
 **The seller, likewise.** A seller's key loss stalls nothing on chain: only the
 buyer resolves, and resolution pays the seller's address and refunds its bond
@@ -698,16 +708,19 @@ and a new arrow between the registries for every usage counted, to enforce a
 continuity the stake does not promise. The claim is the one moment the designer
 acts, so the gate reads there, stateless, as every other gate in the minter does.
 
-## 21. Batch-path resolve is a `ResolveProcess(processId, cumulativeValue)` signature — no nonce, no deadline
+## 21. Batch-path resolve is a `ResolveProcess(processId, cumulativeValue)` authorization — no nonce, no deadline
 
 **Pattern**: `FigaroCore` authorizes resolution by presence — `resolveProcess`
 requires `msg.sender == ps.rootBuyer`, over the orders the process holds at
-that call. The batch path replaces presence with an EIP-712 signature: the
-guest (`prover/lib/src/kernel.rs` `apply_resolve`) recovers a signature over
-`ResolveProcess(bytes32 processId,uint256 cumulativeValue)`, requires the
-signer to equal the root buyer, and refuses the resolve
-(`StaleResolveAuthorization`) unless the process's cumulative value when the
-operation applies is the signed one. No nonce, no deadline.
+that call. The batch path replaces presence with an EIP-712 authorization over
+`ResolveProcess(bytes32 processId,uint256 cumulativeValue)` in one of two
+forms: the buyer's ECDSA signature, which the guest (`prover/lib/src/kernel.rs`
+`apply_resolve`) recovers and requires to equal the root buyer; or bytes the
+buyer's own account code validates for the digest (ERC-1271), which
+`FigaroBatchVerifier` checks against the buyer's code at resolution (§ 4). The
+guest refuses either (`StaleResolveAuthorization`) unless the process's
+cumulative value when the operation applies is the authorized one. No nonce,
+no deadline.
 
 **Why it looks wrong**: a nonce-less, deadline-less authorization signature is
 the canonical replay-attack shape; every EIP-712 checklist flags it.
@@ -742,9 +755,33 @@ the prefix that value names, so late submission delivers precisely that.
 value the process holds or any it has not reached: `ResolveBoundToState` TRUE
 holds `ResolvePaysSignedPrefix` (every applied resolve pays exactly the prefix
 of the process's commits whose cumulative value the buyer signed), FALSE (a
-signature over the process id alone) fails it. The asymmetry against `FigaroCore` is the deliberate cost of the
+signature over the process id alone) fails it; the wallet-code form binds the
+same digest, so the same holds of it, and `VerifierChecksWalletCode` TRUE
+holds `OnlyBuyerWalletResolves` while FALSE (the second form taken on the
+guest's word) fails it. The asymmetry against `FigaroCore` is the deliberate cost of the
 batch universe: `msg.sender` does not exist inside a proof, so authorization
-must be carried as a signature, in its minimal sufficient form.
+must be carried as a signature or as bytes the buyer's code answers for, in
+its minimal sufficient form.
+
+**The wallet-code form's residual.** The verifier asks the buyer's code with
+the gas left, before any token moves, so the question it asks is about the
+state before the batch; the relay asks the same code the same question against
+the latest block at its door and at batch formation
+(`prover/sequencer/src/submitter.rs`, `check_wallet_code_resolve`). Any
+refusal reverts the whole batch, because the proven root already holds the
+resolve, so the entry cannot be dropped alone. A wallet's code can answer yes
+to every `eth_call` and no in the transaction (branching on `tx.origin`,
+`gasleft()` or a block field) at no cost and with no state change, so the
+relay's re-ask after the revert may name nobody. The relay then dead-letters
+the refused batch's wallet-code resolves alone, re-submittable, counts each
+buyer in the adversarial signal, and re-queues every other operation
+(`classify_deterministic_revert`); only a batch carrying no wallet-code
+resolve is dead-lettered whole. Such a wallet's cost is its own resubmission;
+each co-batched operation it sinks spends one of its three re-queues. The relay's gas plan for
+the wallet's own code (`WALLET_CODE_EXECUTION_GAS`) and for the bytes'
+length (`MAX_WALLET_AUTHORIZATION_BYTES`) is the relay's, never the protocol's:
+the verifier bounds neither, so code that needs more resolves through a relay
+that plans more or a batch its wallet submits itself.
 
 ---
 
@@ -977,7 +1014,7 @@ the root cannot land twice: its prev root is no longer current.
 | 1 | Resolved processId is permanently closed | Core-critical | Closure-less extension "sounds protocol-aligned" | The closure IS the institution dissolving; follow-on rounds sign a fresh root; the gate derives from existing state |
 | 2 | buyer == seller allowed | Core-critical | Self-dealing vector | Bond math balances; bilateral signature required |
 | 3 | No admin/pause | Core-critical | No incident response | Admin = trusted third party = breaks mechanism |
-| 4 | Buyer key loss is terminal | Core-critical | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium |
+| 4 | Buyer key loss is terminal | Core-critical | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium; code the buyer's wallet installed with its key resolves on both paths (`msg.sender` on the Core, ERC-1271 checked by the verifier on the batch path) |
 | 5 | No prevrandao salt | Core-critical | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
 | 6 | Attestation reverts on resolved orders | evidence-layer | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed data |
 | 7 | Permissionless clause registry | registry/discovery | Namespace squatting | The key is the hash of the spec's pinned bytes: there is nothing to squat but bytes, two specs with one name are two clauses; integrity routes through the key, never the registry; garbage pollutes discovery only, priced by the stake |
@@ -994,7 +1031,7 @@ the root cannot land twice: its prev root is no longer current.
 | 18 | Usage needs a live clause, agreement or assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
 | 19 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a skipped use stays uncounted and may be proved again in a later batch (conservative under-pay); the sequencer pre-filters what the counter would skip |
 | 20 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal stops resolved-but-uncounted trades counting — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is read when a use is counted; counting at resolution closes the normal window; an uncounted use counts in whichever period is open once its seller stakes again, lost only after the last period closes; residual grief is self-limiting (griefer forfeits own eligibility while unstaked) |
-| 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess(processId, cumulativeValue)` signature | batch-path | The canonical EIP-712 replay shape | The signature binds a cumulative value, so it pays exactly the prefix of the process that value names and a later commit invalidates it; resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere |
+| 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess(processId, cumulativeValue)` authorization, by the buyer's key or its wallet code | batch-path | The canonical EIP-712 replay shape | The authorization binds a cumulative value, so it pays exactly the prefix of the process that value names and a later commit invalidates it; resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere |
 | 22 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
 | 23 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
 | 24 | The assembly root is a merkle tree over registered agreement hashes | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |

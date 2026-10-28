@@ -144,6 +144,19 @@ export async function verifyCommitmentSignature(
 // over the new one; a value not yet reached pre-authorizes exactly the orders
 // that bring the process there. Its domain is the VERIFIER's — pass the verifier
 // address as `core`.
+//
+// The authorization comes in two forms, as the direct path's `msg.sender ==
+// rootBuyer` admits the buyer's key and any code the buyer's EOA carries through
+// an EIP-7702 delegation installed while it held the key, carrying the wallet's
+// own guardian authorization (a commit recovers the buyer by ECDSA, so a contract
+// wallet is never a buyer). The first is the buyer's ECDSA
+// signature over this type, made with `signTypedData` and checked by the proof.
+// The second is bytes the buyer's own account code validates for the digest
+// (`hashResolveProcess`) through ERC-1271's `isValidSignature`: the wallet's
+// code produces them, never `signTypedData`, the proof publishes them unchecked
+// in the batch's operation stream, and `FigaroBatchVerifier` asks the buyer's
+// code at resolution, reverting the batch on any answer but the magic value.
+// Submit them with `SequencerClient.submitResolveByWalletCode`.
 
 /** EIP-712 types for the batch path's `ResolveProcess` authorization —
  *  the signed form of FigaroCore's `msg.sender == rootBuyer`, bound to the
@@ -154,6 +167,26 @@ export const RESOLVE_PROCESS_TYPES = {
         { name: "cumulativeValue", type: "uint256" },
     ],
 } as const;
+
+/**
+ * The digest a batch-path resolve authorizes: `ResolveProcess(processId,
+ * cumulativeValue)` under the verifier's domain. The buyer's wallet code
+ * validates its wallet-code authorization against this digest, and the verifier
+ * derives the same one at resolution from the process and the listed payments.
+ * `ctx.core` is the FigaroBatchVerifier.
+ */
+export function hashResolveProcess(
+    processId: Hex,
+    cumulativeValue: bigint,
+    ctx: { chainId: number; core: Address },
+): Hex {
+    return hashTypedData({
+        domain: buildDomain(ctx.chainId, ctx.core),
+        types: RESOLVE_PROCESS_TYPES,
+        primaryType: "ResolveProcess",
+        message: { processId, cumulativeValue },
+    });
+}
 
 /**
  * Does `signature` authorize resolving `processId` at `cumulativeValue`, from
@@ -167,6 +200,11 @@ export const RESOLVE_PROCESS_TYPES = {
  *
  * `ctx.core` is the EIP-712 `verifyingContract` — for batched trade that is
  * the FigaroBatchVerifier, NOT FigaroCore.
+ *
+ * This checks the first form, an ECDSA signature. A resolve entry of the
+ * wallet-code form carries bytes the buyer's code validated at resolution (the
+ * verifier reverts the batch otherwise); a reader who asks again calls the
+ * buyer's `isValidSignature(hashResolveProcess(…), bytes)` through a client.
  */
 export async function verifyResolveProcessSignature(
     processId: Hex,

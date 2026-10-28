@@ -152,6 +152,33 @@ describe("SequencerClient", () => {
         expect(result.id).toBe(7);
     });
 
+    it("submitResolveByWalletCode posts the wallet-code form with its authorization bytes", async () => {
+        let captured: unknown;
+        const client = new SequencerClient({
+            url: "http://localhost:3001",
+            fetch: (async (_input: RequestInfo | URL, init?: RequestInit) => {
+                captured = JSON.parse(init?.body as string);
+                return new Response(JSON.stringify({ id: 4 }), { status: 200 });
+            }) as typeof globalThis.fetch,
+        });
+        const authorization = "0x677561726469616e2d617070726f76616c" as const;
+        const result = await client.submitResolveByWalletCode(
+            ZERO_HASH,
+            testCommitment.payment,
+            [testCommitment],
+            authorization,
+        );
+        expect(result.id).toBe(4);
+        const body = captured as { operation: Record<string, Record<string, unknown>> };
+        expect(Object.keys(body.operation)).toEqual(["ResolveByWalletCode"]);
+        expect(body.operation.ResolveByWalletCode).toEqual({
+            process_id: ZERO_HASH,
+            cumulative_value: testCommitment.payment.toString(),
+            commitments: [toSequencerCommitment(testCommitment)],
+            authorization,
+        });
+    });
+
     it("submitAttestAsBuyer posts the plaintext form only when checkContentInProof is set", async () => {
         let captured: unknown;
         const client = new SequencerClient({

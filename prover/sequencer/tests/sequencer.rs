@@ -3338,3 +3338,114 @@ async fn a_malformed_plaintext_body_is_refused_without_logging_its_values() {
     assert!(logs.contains("payload rejected"), "the refusal is logged: {logs}");
     assert!(!logs.contains(MARKER), "the log quotes a value from the body: {logs}");
 }
+
+// ── A resolve authorized by the buyer's wallet code ───────────────
+
+/// The SDK's wire for the second form (`SequencerClient.submitResolveByWalletCode`):
+/// the authorization rides as a hex string.
+fn wallet_code_resolve_from_the_wire(process_id: B256, value: alloy_primitives::U256, commitments: &[Commitment]) -> KernelOp {
+    serde_json::from_value(serde_json::json!({
+        "ResolveByWalletCode": {
+            "process_id": process_id,
+            "cumulative_value": value,
+            "commitments": commitments,
+            "authorization": "0x677561726469616e2d617070726f76616c",
+        }
+    }))
+    .expect("the wire form deserializes")
+}
+
+#[tokio::test]
+async fn a_wallet_code_resolve_is_admitted_from_the_wire_and_replays_to_the_same_root() {
+    use figaro_kernel::kernel::apply_operations;
+    use figaro_kernel::operation_stream::{decode_operation_stream, encode_operation_stream};
+    let (root_op, sub_op, root, sub, process_id, _resolve_sig) = two_order_process();
+    let resolve = wallet_code_resolve_from_the_wire(process_id, sub.expected_cumulative_value, &[root.clone(), sub.clone()]);
+    let KernelOp::ResolveByWalletCode { authorization, .. } = &resolve else { panic!("the wallet-code form") };
+    assert_eq!(authorization.as_ref(), b"guardian-approval");
+    assert!(mempool().submit(resolve.clone()).await.is_ok(), "admitted: the bytes are the buyer's code's to judge");
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![root_op, sub_op, resolve],
+        prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+        provenance_leaf: B256::ZERO,
+    };
+    let (pv, positions, events, _) = apply_batch_with_state(&input).expect("the wallet-code resolve applies");
+    let stream = encode_operation_stream(&input.operations, &[]);
+    assert_eq!(pv.operations_hash, keccak256(&stream));
+    let (operations, _) = decode_operation_stream(&stream).expect("decodes");
+    let mut state = KernelState::from_snapshot(&input.prev_state);
+    apply_operations(&mut state, input.chain_id, input.verifying_contract, input.block_timestamp, &operations)
+        .expect("the replay applies");
+    assert_eq!(state.compute_root(), pv.new_state_root, "the replay lands on the committed root");
+    // The plan counts the check of the buyer's code with the wallet's execution.
+    let items = SettleItems::of(&positions, &events).with_stream(stream.len(), &input.operations, 0);
+    assert_eq!(items.stream_wallet_code_checks, 1);
+    assert_eq!(items.stream_resolutions, 1);
+}
+
+#[tokio::test]
+async fn mempool_refuses_a_wallet_code_authorization_longer_than_the_relay_plans() {
+    let (_, _, root, _, process_id, _) = two_order_process();
+    let op = KernelOp::ResolveByWalletCode {
+        process_id,
+        cumulative_value: root.payment,
+        commitments: vec![root],
+        authorization: alloy_primitives::Bytes::from(vec![1u8; gas::MAX_WALLET_AUTHORIZATION_BYTES + 1]),
+    };
+    match mempool().submit(op).await {
+        Err(SubmitError::Invalid(why)) => assert!(why.contains("longer than"), "{why}"),
+        other => panic!("expected a refusal, got {other:?}"),
+    }
+}
+
+#[test]
+fn the_relay_asks_the_buyers_code_the_verifiers_question() {
+    use figaro_sequencer::submitter::wallet_code_question;
+    let (_, _, root, sub, process_id, _) = two_order_process();
+    let op = wallet_code_resolve_from_the_wire(process_id, sub.expected_cumulative_value, &[root.clone(), sub.clone()]);
+    let verifier = Address::repeat_byte(0x77);
+    let (buyer, digest, bytes) = wallet_code_question(CHAIN_ID, verifier, &op).expect("a wallet-code resolve");
+    assert_eq!(buyer, root.buyer, "the listed orders' buyer");
+    let expected = typed_data_hash(
+        &domain_separator(CHAIN_ID, verifier),
+        &resolve_struct_hash(&process_id, &(root.payment + sub.payment)),
+    );
+    assert_eq!(digest, expected, "ResolveProcess over the listed payments, under the verifier's domain");
+    assert_eq!(bytes.as_ref(), b"guardian-approval");
+    assert!(wallet_code_question(CHAIN_ID, verifier, &build_canonical_batch_input().operations[0]).is_none());
+}
+
+/// A wallet's code can answer yes to the relay's eth_call and no in the
+/// transaction (branching on `tx.origin`, `gasleft()` or a block field), so
+/// the re-ask names nobody. The batch's wallet-code resolves are then
+/// dead-lettered alone, their buyers counted by the adversarial signal, and
+/// every other party's operation re-queued.
+#[test]
+fn an_unnamed_refusal_dead_letters_the_wallet_code_resolves_alone() {
+    use figaro_sequencer::submitter::classify_deterministic_revert;
+    let (_, _, root, sub, process_id, _) = two_order_process();
+    let resolve = PendingOp {
+        id: 90,
+        key: B256::with_last_byte(90),
+        op: wallet_code_resolve_from_the_wire(process_id, sub.expected_cumulative_value, &[root.clone(), sub.clone()]),
+        deferred_since: None,
+        behind: Vec::new(),
+    };
+    let other_partys_commit = commit_from(&root, 91, 10);
+    // The re-reads name no revoker, and the re-ask (an eth_call) answers yes.
+    let verdict = classify_deterministic_revert(vec![other_partys_commit, resolve], vec![], vec![], vec![]);
+    assert!(!verdict.whole, "a batch carrying a wallet-code resolve is never dead-lettered whole on an unnamed refusal");
+    assert_eq!(verdict.requeue.iter().map(|p| p.id).collect::<Vec<_>>(), vec![91], "the other party's commit is re-queued");
+    assert_eq!(verdict.dead.len(), 1);
+    assert_eq!(verdict.dead[0].0.id, 90, "the wallet-code resolve alone is dead-lettered");
+    assert_eq!(verdict.dead[0].2, Some(root.buyer), "its buyer is counted by the adversarial signal");
+
+    // A batch with no wallet-code resolve still dead-letters whole.
+    let verdict = classify_deterministic_revert(vec![commit_from(&root, 92, 10)], vec![], vec![], vec![]);
+    assert!(verdict.whole);
+}

@@ -460,7 +460,8 @@ definition) and `RPGF_*` constant is a **root** export.
 | `validateContent` | `/clauses` | Validate clause content against its spec; on a closed clause, unknown fields are rejected. |
 | `validateDraft` | `/agent` | The check a candidate runs before countersigning a race draft: structure, the bound assembly (`readProfile`), and with `specs` the merkle-leaf gate (`counterSignDraft` and `quoteDraft` run it themselves and refuse without `specs`). |
 | `verifyCommitmentSignature` | root | Does this signature over this commitment recover to this signer? Refuse early, off chain. |
-| `verifyResolveProcessSignature` | root | Does this buyer's resolve signature over this process id and cumulative value recover to the buyer? From the chain, the value is the sum of the listed commitments' payments. |
+| `verifyResolveProcessSignature` | root | Does this buyer's resolve signature over this process id and cumulative value recover to the buyer? From the chain, the value is the sum of the listed commitments' payments. The first of the resolve's two forms; the second is checked by the verifier against the buyer's code. |
+| `hashResolveProcess` | root | The `ResolveProcess(processId, cumulativeValue)` digest under the verifier's domain — what a buyer's wallet code validates for a wallet-code resolve (ERC-1271), and what the verifier derives at resolution. |
 | `verifyInclusionProof` | root | Does this leaf sit under this root? The off-chain mirror of the on-chain `MerkleProof.verify`. |
 | `verifyRaceReply` | `/agent` | Buyer side: the reply's struct must EXACTLY equal the draft, and recover to the drafted candidate. |
 | `walletRecord` | `/derive` | One wallet's public trading history; resolved-empty is the answer for a wallet with no history. |
@@ -1233,6 +1234,16 @@ const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 // verifyResolveProcessSignature(processId, cumulativeValue, …) checks one; read
 // from the chain, the value is the sum of the payments the resolve entry lists.
 await seq.submitResolve(processId, cumulativeValue, commitments, buyerSig);
+// The second form: bytes the buyer's own account code validates for the same
+// digest (ERC-1271) — what code the buyer's EOA carries through an EIP-7702
+// delegation installed while it held its key resolves with after the key is
+// lost (a commit recovers the buyer by ECDSA, so a contract wallet is never one).
+// The wallet's code produces them, never signTypedData; the proof publishes
+// them and FigaroBatchVerifier asks the buyer's code at resolution, reverting
+// the batch on any answer but the magic value. The relay asks the same code at
+// its door (a 400 with the reason) and plans 500,000 gas and 2,048 bytes for it.
+const digest = hashResolveProcess(processId, cumulativeValue, { chainId, core: verifier }); // the wallet's code validates walletCodeBytes for it
+await seq.submitResolveByWalletCode(processId, cumulativeValue, commitments, walletCodeBytes);
 // An attestation sends, by default, exactly what AttestationCoordinator takes on
 // the direct path — clauseDataHash, the inclusion proof, contentRef — so the
 // relay sees fingerprints only. `checkContentInProof: { spec_json, content_json,
@@ -1326,7 +1337,7 @@ should build them.
 
 | Route | Request | `200` body | Client method |
 |---|---|---|---|
-| `POST /submit` | `{ "operation": { "Commit" \| "Resolve" \| "AttestAsSeller" \| "AttestAsBuyer": {…} } }` — a serde externally-tagged enum | `{ "id": n }` — a queue receipt, **not** resolution | `submitCommit` · `submitResolve` · `submitAttestAsSeller` · `submitAttestAsBuyer` |
+| `POST /submit` | `{ "operation": { "Commit" \| "Resolve" \| "ResolveByWalletCode" \| "AttestAsSeller" \| "AttestAsBuyer": {…} } }` — a serde externally-tagged enum | `{ "id": n }` — a queue receipt, **not** resolution | `submitCommit` · `submitResolve` · `submitResolveByWalletCode` · `submitAttestAsSeller` · `submitAttestAsBuyer` |
 | `POST /submit-usage` | `{ "claim": <UsageClaim> }` | `{ "pending": n }` | `submitUsageClaim` |
 | `GET /health` | — | `{ status, pending_ops, pending_usage_claims, batches_settled }` | none — `isAvailable()` probes `/status` instead |
 | `GET /status` | — | the `/health` fields plus `state_root`, `dead_lettered_ops`, `last_settle_error`, `dropped_usage_claims`, `last_dropped_claim_error` (usage claims dropped without landing, counted apart from the operations), | `status()` |

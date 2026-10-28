@@ -18,6 +18,7 @@ import {AssemblyRegistry} from "src/build/registries/AssemblyRegistry.sol";
 import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
 import {RpgfMinter} from "src/build/rewards/RpgfMinter.sol";
 import {FlorinToken} from "src/build/florin/FlorinToken.sol";
+import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 
 /// @dev Unit tests for the realigned batch verifier: 8-word public values,
 ///      the spec-binding anchor check against the live ClauseRegistry,
@@ -685,6 +686,150 @@ contract FigaroBatchVerifierTest is Test {
             uint64(block.timestamp),
             keccak256(operations)
         );
+    }
+
+    // ── A resolve authorized by the buyer's wallet code (ERC-1271) ───────
+    //
+    // On FigaroCore a resolve is `msg.sender == rootBuyer`, so code the
+    // buyer's wallet installed while it held its key resolves after the key
+    // is lost. The batch path's second form carries bytes the buyer's code
+    // validates: the guest publishes them in the stream unchecked, and the
+    // verifier derives the `ResolveProcess` digest under its own domain and
+    // asks the buyer's code, refusing the whole batch unless it answers
+    // with the magic value.
+
+    bytes32 constant WALLET_PROCESS = keccak256("wallet-code-process");
+    uint256 constant WALLET_PAYMENT = 10 ether;
+
+    function _walletOrder() internal view returns (CommitmentTypes.Commitment memory c) {
+        c.processId = WALLET_PROCESS;
+        c.buyer = buyer;
+        c.seller = seller;
+        c.currency = address(token);
+        c.payment = WALLET_PAYMENT;
+        c.expectedCumulativeValue = WALLET_PAYMENT;
+        c.checkoutHash = keccak256("wallet-checkout");
+        c.salt = 7;
+        c.deadline = 4_000_000_000;
+    }
+
+    /// The guest's `0x04` entry: processId, len(2), authorization, count(2), commitment.
+    function _walletEntry(bytes memory authorization) internal view returns (bytes memory) {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        return bytes.concat(
+            hex"04",
+            WALLET_PROCESS,
+            bytes2(uint16(authorization.length)),
+            authorization,
+            bytes2(uint16(1)),
+            abi.encodePacked(
+                c.processId,
+                c.buyer,
+                c.seller,
+                c.currency,
+                c.payment,
+                c.expectedCumulativeValue,
+                c.checkoutHash,
+                c.salt,
+                c.deadline
+            )
+        );
+    }
+
+    /// The digest the buyer's code is asked about: `ResolveProcess` over the
+    /// process and the listed payments, under the verifier's domain.
+    function _walletDigest() internal view returns (bytes32) {
+        bytes32 domain = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256("FigaroCore"),
+                keccak256("3"),
+                block.chainid,
+                address(verifier)
+            )
+        );
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)"), WALLET_PROCESS, WALLET_PAYMENT
+            )
+        );
+        return keccak256(abi.encodePacked("\x19\x01", domain, structHash));
+    }
+
+    /// The resolution's two payout legs: the seller its 2G + P, the buyer P.
+    function _walletPositions() internal view returns (FigaroBatchVerifier.NetPosition[] memory ps) {
+        ps = new FigaroBatchVerifier.NetPosition[](2);
+        ps[0] = FigaroBatchVerifier.NetPosition(address(token), buyer, 0, WALLET_PAYMENT);
+        ps[1] = FigaroBatchVerifier.NetPosition(address(token), seller, 0, 3 * WALLET_PAYMENT);
+    }
+
+    function _settleWalletResolve(bytes memory authorization) internal {
+        FigaroBatchVerifier.NetPosition[] memory positions = _walletPositions();
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes memory operations = _walletEntry(authorization);
+        bytes memory pv = _pvWithOperations(positions, events, keccak256("wallet-root"), operations);
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), operations);
+    }
+
+    function test_settleBatch_walletCodeResolve_paysOutWhenTheBuyersCodeValidates() public {
+        bytes memory authorization = bytes("guardian-approval");
+        vm.etch(buyer, type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(buyer).approve(_walletDigest(), authorization);
+        uint256 buyerBefore = token.balanceOf(buyer);
+        uint256 sellerBefore = token.balanceOf(seller);
+
+        vm.expectEmit(true, true, true, true, address(verifier));
+        emit FigaroBatchVerifier.ProcessResolved(WALLET_PROCESS, buyer, 1);
+        _settleWalletResolve(authorization);
+
+        assertEq(token.balanceOf(seller) - sellerBefore, 3 * WALLET_PAYMENT, "the seller is paid 2G + P");
+        assertEq(token.balanceOf(buyer) - buyerBefore, WALLET_PAYMENT, "the buyer's bond less the payment");
+        assertEq(verifier.stateRoot(), keccak256("wallet-root"), "the root advances");
+    }
+
+    function test_settleBatch_walletCodeResolve_revertsTheBatchWhenTheCodeRefuses() public {
+        vm.etch(buyer, type(MockERC1271Wallet).runtimeCode);
+        // The code validates other bytes for the digest, not these.
+        MockERC1271Wallet(buyer).approve(_walletDigest(), bytes("guardian-approval"));
+        uint256 sellerBefore = token.balanceOf(seller);
+        vm.expectRevert(
+            abi.encodeWithSelector(FigaroBatchVerifier.WalletCodeAuthorizationRefused.selector, WALLET_PROCESS, buyer)
+        );
+        _settleWalletResolve(bytes("a stranger's bytes"));
+        assertEq(token.balanceOf(seller), sellerBefore, "nothing moved");
+        assertEq(verifier.stateRoot(), GENESIS, "root must not advance");
+    }
+
+    function test_settleBatch_walletCodeResolve_refusesABuyerWithNoCode() public {
+        assertEq(buyer.code.length, 0);
+        vm.expectRevert(abi.encodeWithSelector(FigaroBatchVerifier.BuyerHasNoCode.selector, WALLET_PROCESS, buyer));
+        _settleWalletResolve(bytes("guardian-approval"));
+        assertEq(verifier.stateRoot(), GENESIS, "root must not advance");
+    }
+
+    /// The buyer's code is asked before the batch moves a token: a wallet
+    /// whose answer depends on its own balance (yes before the payout, no
+    /// after) is asked about the pre-batch state the relay checked, and the
+    /// batch resolves. Asked after the transfers, the same wallet refuses.
+    function test_settleBatch_walletCodeResolve_isAskedBeforeTheTokenTransfers() public {
+        bytes memory authorization = bytes("guardian-approval");
+        vm.etch(buyer, type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(buyer).approve(_walletDigest(), authorization);
+        // Yes while the buyer holds what it holds now; no once its payout lands.
+        MockERC1271Wallet(buyer).setBalanceCeiling(address(token), token.balanceOf(buyer));
+        _settleWalletResolve(authorization);
+        assertEq(verifier.stateRoot(), keccak256("wallet-root"), "the pre-payout answer resolves the batch");
+    }
+
+    /// Code that answers by reverting refuses as code that answers no.
+    function test_settleBatch_walletCodeResolve_revertsTheBatchWhenTheCodeReverts() public {
+        vm.etch(buyer, type(MockERC20).runtimeCode); // code with no isValidSignature
+        vm.expectRevert(
+            abi.encodeWithSelector(FigaroBatchVerifier.WalletCodeAuthorizationRefused.selector, WALLET_PROCESS, buyer)
+        );
+        _settleWalletResolve(bytes("guardian-approval"));
     }
 
     function test_settleBatch_refusesOperationsWhoseHashIsNotCommitted() public {

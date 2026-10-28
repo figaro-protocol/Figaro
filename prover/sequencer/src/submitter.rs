@@ -368,6 +368,193 @@ pub async fn filter_anchored_attestations(
     (valid, dropped)
 }
 
+// ── Wallet-code resolves: the buyer's code must validate, or the batch reverts ──
+//
+// A resolve in the wallet-code form carries bytes the buyer's own account
+// code validates (ERC-1271). The guest cannot run that code; the verifier
+// asks it at resolution and reverts the WHOLE batch on any answer but the
+// magic value. The relay therefore asks the same code the same question
+// against the latest block — at the door and again at batch formation — as
+// it reads a commit's funding: a liveness aid, never the gate. The question
+// is the verifier's: `isValidSignature(digest, bytes)` from the verifier's
+// address, the digest `ResolveProcess` under the verifier's domain over the
+// process and the listed payments, the buyer the listed orders'. The call
+// runs under `gas::WALLET_CODE_EXECUTION_GAS`, the gas this relay plans for
+// the wallet's own code. The residual window is the proving time: code whose
+// answer changes inside it reverts the batch, which the deterministic-revert
+// arm names and dead-letters alone (`filter_wallet_code_resolves`).
+
+sol! {
+    #[sol(rpc)]
+    interface IERC1271WalletCode {
+        function isValidSignature(bytes32 digest, bytes calldata signature) external view returns (bytes4);
+    }
+}
+
+/// ERC-1271's magic value.
+const ERC1271_MAGIC_VALUE: [u8; 4] = [0x16, 0x26, 0xba, 0x7e];
+
+/// What the verifier asks the buyer's code about a wallet-code resolve: the
+/// buyer (the listed orders'), the digest under the verifier's domain, and
+/// the bytes. `None` for every other op, and for a resolve listing no order
+/// (the guest refuses it).
+pub fn wallet_code_question(
+    chain_id: u64,
+    verifier: Address,
+    op: &KernelOp,
+) -> Option<(Address, B256, Bytes)> {
+    let KernelOp::ResolveByWalletCode { process_id, commitments, authorization, .. } = op else {
+        return None;
+    };
+    let buyer = commitments.first()?.buyer;
+    // The value the verifier derives: the listed payments' sum.
+    let value = figaro_kernel::operation_stream::resolved_cumulative_value(commitments)?;
+    let domain = figaro_kernel::eip712::domain_separator(chain_id, verifier);
+    let digest = figaro_kernel::eip712::typed_data_hash(
+        &domain,
+        &figaro_kernel::eip712::resolve_struct_hash(process_id, &value),
+    );
+    Some((buyer, digest, authorization.clone()))
+}
+
+/// Ask a wallet-code resolve's buyer code, as the verifier will. The outer
+/// `Err` is a read failure (the chain could not be asked); the inner `Err`
+/// is a verdict: the account has no code, or its code does not answer with
+/// the magic value under the gas this relay plans. Any other op passes.
+pub async fn check_wallet_code_resolve(gate: &FundingGate, op: &KernelOp) -> Result<Result<(), String>, String> {
+    if !matches!(op, KernelOp::ResolveByWalletCode { .. }) {
+        return Ok(Ok(()));
+    }
+    let url = gate.rpc_url.parse().map_err(|e| format!("invalid RPC_URL: {e}"))?;
+    let provider = ProviderBuilder::new().connect_http(url);
+    let chain_id = provider.get_chain_id().await.map_err(|e| format!("chain id read failed: {e}"))?;
+    let Some((buyer, digest, authorization)) = wallet_code_question(chain_id, gate.verifier, op) else {
+        return Ok(Err("a wallet-code resolve listing no order, or whose payments overflow".to_string()));
+    };
+    let code = provider
+        .get_code_at(buyer)
+        .await
+        .map_err(|e| format!("code read of {buyer} failed: {e}"))?;
+    if code.is_empty() {
+        return Ok(Err(format!(
+            "buyer {buyer} has no account code to validate a wallet-code resolve — the verifier would revert the batch (BuyerHasNoCode)"
+        )));
+    }
+    let answer = IERC1271WalletCode::new(buyer, &provider)
+        .isValidSignature(digest, authorization)
+        .from(gate.verifier)
+        .gas(crate::gas::WALLET_CODE_EXECUTION_GAS)
+        .call()
+        .await;
+    match answer {
+        Ok(magic) if magic.0 == ERC1271_MAGIC_VALUE => Ok(Ok(())),
+        Ok(other) => Ok(Err(format!(
+            "buyer {buyer}'s code answered {other} for digest {digest}, not the ERC-1271 magic value — the verifier would revert the batch (WalletCodeAuthorizationRefused)"
+        ))),
+        Err(e) if is_deterministic_send_error(&e.to_string()) => Ok(Err(format!(
+            "buyer {buyer}'s code reverted for digest {digest} under {} gas — the verifier would revert the batch (WalletCodeAuthorizationRefused)",
+            crate::gas::WALLET_CODE_EXECUTION_GAS
+        ))),
+        Err(e) => Err(format!("isValidSignature read of {buyer} failed: {e}")),
+    }
+}
+
+/// Drop every wallet-code resolve whose buyer's code does not validate it,
+/// against the latest block, before proving: one such op reverts the whole
+/// batch on chain. A read failure drops conservatively; a dropped resolve is
+/// re-submittable. `None` (no verifier configured — a prove-only dry run)
+/// passes everything through.
+pub async fn filter_wallet_code_resolves(
+    gate: Option<&FundingGate>,
+    pending: Vec<PendingOp>,
+) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
+    let Some(gate) = gate else {
+        return (pending, Vec::new());
+    };
+    let mut valid = Vec::with_capacity(pending.len());
+    let mut dropped = Vec::new();
+    for op in pending {
+        match check_wallet_code_resolve(gate, &op.op).await {
+            Ok(Ok(())) => valid.push(op),
+            Ok(Err(refused)) => dropped.push((op, refused)),
+            Err(read) => dropped.push((op, format!("the buyer's code could not be asked, dropped conservatively: {read}"))),
+        }
+    }
+    (valid, dropped)
+}
+
+/// The buyer a wallet-code resolve names: its listed orders' buyer. `None`
+/// for every other op.
+pub fn wallet_code_buyer(op: &KernelOp) -> Option<Address> {
+    match op {
+        KernelOp::ResolveByWalletCode { commitments, .. } => commitments.first().map(|c| c.buyer),
+        _ => None,
+    }
+}
+
+/// What the deterministic-revert arm does with a batch the chain refused, from
+/// what its re-reads named: the operations it dead-letters, each with its
+/// reason and, for an address the adversarial signal counts, that address;
+/// the operations it re-queues; and whether no one was named, so the whole
+/// batch is dead-lettered.
+#[derive(Debug, Default)]
+pub struct RevertVerdict {
+    pub dead: Vec<(PendingOp, String, Option<Address>)>,
+    pub requeue: Vec<PendingOp>,
+    pub whole: bool,
+}
+
+/// Decide the refused batch's fate. `still` is what the re-reads did not
+/// name, `revoked` the operations of a verified revoker, `unverifiable` those
+/// whose funding could not be read, `code_refused` the wallet-code resolves
+/// whose buyer's code refused at the re-ask.
+///
+/// A named party's operations are dead-lettered and the rest re-queued. When
+/// nobody is named and the batch carries a wallet-code resolve, those resolves
+/// are dead-lettered alone: a wallet's code can answer yes to every eth_call
+/// and no in the transaction (branching on `tx.origin`, `gasleft()`, a block
+/// field or its own balance) at no cost and with no state change, so the
+/// re-ask names nobody, and dead-lettering the whole batch would let it sink
+/// every co-batched party's operations again with fresh bytes. Its buyer is
+/// counted by the adversarial signal. Only a batch with no wallet-code resolve
+/// is dead-lettered whole.
+pub fn classify_deterministic_revert(
+    still: Vec<PendingOp>,
+    revoked: Vec<(PendingOp, String, Address)>,
+    unverifiable: Vec<PendingOp>,
+    code_refused: Vec<(PendingOp, String)>,
+) -> RevertVerdict {
+    let mut verdict = RevertVerdict::default();
+    if revoked.is_empty() && code_refused.is_empty() {
+        if still.iter().any(|p| wallet_code_buyer(&p.op).is_some()) {
+            let (by_code, rest): (Vec<_>, Vec<_>) =
+                still.into_iter().partition(|p| wallet_code_buyer(&p.op).is_some());
+            for op in by_code {
+                let buyer = wallet_code_buyer(&op.op);
+                verdict.dead.push((
+                    op,
+                    "the batch was refused on chain and nobody was named; a wallet-code resolve's buyer code may answer the relay's check otherwise than the transaction — dead-lettered, re-submittable".to_string(),
+                    buyer,
+                ));
+            }
+            verdict.requeue = rest.into_iter().chain(unverifiable).collect();
+            return verdict;
+        }
+        verdict.whole = true;
+        verdict.dead = still.into_iter().chain(unverifiable).map(|op| (op, String::new(), None)).collect();
+        return verdict;
+    }
+    for (op, why, who) in revoked {
+        verdict.dead.push((op, format!("revoked after the funding check: {why}"), Some(who)));
+    }
+    for (op, why) in code_refused {
+        let buyer = wallet_code_buyer(&op.op);
+        verdict.dead.push((op, format!("refused by the buyer's code after the check: {why}"), buyer));
+    }
+    verdict.requeue = still.into_iter().chain(unverifiable).collect();
+    verdict
+}
+
 /// The latest block's timestamp — the batch's clock. The guest checks every
 /// commitment deadline against it and the verifier refuses a timestamp
 /// ahead of its own block, so it is the chain's, never the host's.

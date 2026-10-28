@@ -1448,3 +1448,62 @@ fn a_resolve_whose_signed_value_was_rewritten_is_refused() {
         other => panic!("expected the signer check to refuse, got {other:?}"),
     }
 }
+
+// ── The second form: an authorization the buyer's wallet code validates ──
+
+/// The two commits and a resolve of the process they form, authorized by
+/// bytes the buyer's own account code validates (ERC-1271) rather than by
+/// the buyer's ECDSA signature: the form a wallet whose key is lost resolves
+/// with through code it installed while it held the key.
+fn two_commits_then_wallet_code_resolve(value: U256, authorization: &[u8]) -> BatchInput {
+    let mut input = two_commits_then_resolve(value);
+    let KernelOp::Resolve { process_id, cumulative_value, commitments, .. } = input.operations.pop().unwrap() else {
+        unreachable!("the fixture's third operation is the resolve")
+    };
+    input.operations.push(KernelOp::ResolveByWalletCode {
+        process_id,
+        cumulative_value,
+        commitments,
+        authorization: alloy_primitives::Bytes::copy_from_slice(authorization),
+    });
+    input
+}
+
+/// The guest cannot run the wallet's code, so it accepts a wallet-code
+/// resolve on the process, the value and the order list alone, pays it out
+/// as the first form, and publishes the authorization bytes in the
+/// operation stream (public value 9), where `FigaroBatchVerifier` checks
+/// them against the buyer's code at resolution.
+#[test]
+fn a_wallet_code_resolve_is_accepted_and_published_in_the_operation_stream() {
+    let current = sub_commitment().expected_cumulative_value;
+    let authorization = b"guardian-approval".to_vec();
+    let input = two_commits_then_wallet_code_resolve(current, &authorization);
+    let (pv, positions, _events) = apply_batch(&input).expect("a wallet-code resolve applies");
+    let s2 = positions.iter().find(|p| p.user == SELLER2).unwrap();
+    let ether = U256::from(1_000_000_000_000_000_000u64);
+    assert_eq!(s2.payout, U256::from(350u64) * ether, "the second seller is paid");
+    let stream = figaro_kernel::operation_stream::encode_operation_stream(&input.operations, &[]);
+    assert_eq!(pv.operations_hash, keccak256(&stream), "the stream the guest commits carries the entry");
+    let (ops, _) = figaro_kernel::operation_stream::decode_operation_stream(&stream).expect("decodes");
+    match &ops[2] {
+        KernelOp::ResolveByWalletCode { process_id, cumulative_value, authorization: a, .. } => {
+            assert_eq!(*process_id, PROCESS_ID);
+            assert_eq!(*cumulative_value, current);
+            assert_eq!(a.as_ref(), authorization.as_slice(), "the bytes the verifier hands the buyer's code");
+        }
+        other => panic!("expected the wallet-code resolve, got {other:?}"),
+    }
+}
+
+/// The wallet-code form binds the state as the first form does: bytes given
+/// for the root order's value, applied after a second order commits, are
+/// refused before any payout.
+#[test]
+fn a_wallet_code_resolve_for_a_passed_value_is_refused() {
+    let signed = root_commitment().expected_cumulative_value;
+    match apply_batch(&two_commits_then_wallet_code_resolve(signed, b"guardian-approval")) {
+        Err(KernelError::StaleResolveAuthorization { signed: s, .. }) => assert_eq!(s, signed),
+        other => panic!("expected StaleResolveAuthorization, got {other:?}"),
+    }
+}

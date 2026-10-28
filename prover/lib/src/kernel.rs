@@ -202,16 +202,20 @@ fn apply_commit(
 // ── resolveProcess ────────────────────────────────────────────────
 
 /// Apply a single resolve operation. Matches `FigaroCore.resolveProcess()`
-/// except buyer authorization is via EIP-712 signature (batched equivalent
-/// of `msg.sender == rootBuyer`) over the process id and the cumulative
-/// value the buyer accepts, refused unless the process holds that value now.
+/// except buyer authorization, the batched equivalent of
+/// `msg.sender == rootBuyer` over the process id and the cumulative value
+/// the buyer accepts, refused unless the process holds that value now. It
+/// comes in one of two forms: `Some(sig)`, the buyer's EIP-712 signature,
+/// recovered here; `None`, bytes the buyer's wallet code validates, which
+/// the guest cannot check and `FigaroBatchVerifier` checks against the
+/// buyer's code at resolution (`KernelOp::ResolveByWalletCode`).
 fn apply_resolve(
     state: &mut KernelState,
     domain: &B256,
     process_id: &B256,
     cumulative_value: &U256,
     commitments: &[Commitment],
-    buyer_sig: &Signature,
+    buyer_sig: Option<&Signature>,
     tracker: &mut TokenTracker,
 ) -> Result<(), KernelError> {
     let ps = state
@@ -220,11 +224,13 @@ fn apply_resolve(
         .ok_or(KernelError::UnknownProcess)?;
 
     // ── Buyer authorization via EIP-712 signature ──
-    let resolve_hash = resolve_struct_hash(process_id, cumulative_value);
-    let digest = typed_data_hash(domain, &resolve_hash);
-    let recovered = recover_signer(&digest, buyer_sig)?;
-    if recovered != ps.root_buyer {
-        return Err(KernelError::NotProcessBuyer);
+    if let Some(buyer_sig) = buyer_sig {
+        let resolve_hash = resolve_struct_hash(process_id, cumulative_value);
+        let digest = typed_data_hash(domain, &resolve_hash);
+        let recovered = recover_signer(&digest, buyer_sig)?;
+        if recovered != ps.root_buyer {
+            return Err(KernelError::NotProcessBuyer);
+        }
     }
 
     // ── Pre-checks ──
@@ -255,6 +261,9 @@ fn apply_resolve(
 
     // ── Per-order resolution ──
     for c in commitments {
+        // The verifier reads the buyer whose code it asks from the listed
+        // orders: an order committed under this process (status 1 below,
+        // its hash covering `buyer`) was committed by the root buyer.
         let struct_hash = commitment_struct_hash(c);
         let order_hash = compute_order_hash(process_id, &struct_hash);
 
@@ -995,7 +1004,23 @@ pub fn apply_operations(
                     process_id,
                     cumulative_value,
                     commitments,
-                    buyer_sig,
+                    Some(buyer_sig),
+                    &mut tracker,
+                )?;
+            }
+            KernelOp::ResolveByWalletCode {
+                process_id,
+                cumulative_value,
+                commitments,
+                ..
+            } => {
+                apply_resolve(
+                    state,
+                    &domain,
+                    process_id,
+                    cumulative_value,
+                    commitments,
+                    None,
                     &mut tracker,
                 )?;
             }

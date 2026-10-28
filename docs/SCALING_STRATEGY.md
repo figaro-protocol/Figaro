@@ -129,8 +129,9 @@ reachable from the prior state root under `FigaroCore`'s rules.
 **Rust `FigaroCore` mirror** (`prover/lib/`): `FigaroCore`'s commit/resolve logic
 plus the attestation gates (inclusion for every attestation; spec identity and
 content for one sent in the plaintext form) and the usage bridge, translated to Rust.
-Four `KernelOp` variants — `Commit`, `Resolve`, `AttestAsSeller`,
-`AttestAsBuyer` (registry mutations never enter a batch). Three-member state
+Five `KernelOp` variants — `Commit`, `Resolve`, `ResolveByWalletCode`,
+`AttestAsSeller`, `AttestAsBuyer` (registry mutations never enter a batch);
+the two resolves are one rule under two forms of the buyer's authorization. Three-member state
 (processes, orderStatus, orderProcessId), hashed flat into one root (no
 per-order inclusion proof exists; a reader checks anything against the root
 only with the whole preimage); a usage claim moves no state. EIP-712 signature
@@ -146,8 +147,9 @@ Architecture" below).
 zkVM and commits `PublicValues` — ten fields: prev/new state roots, chain
 binding (chainId + verifyingContract), five commitment hashes (token
 positions, attestation events, spec bindings, the uses, and the
-operation stream: every commit and resolve the batch applied, whole, and
-every usage claim, `prover/lib/src/operation_stream.rs`), and the clock the
+operation stream: every commit and resolve the batch applied, whole — a
+wallet-code resolve with its authorization bytes — and every usage claim,
+`prover/lib/src/operation_stream.rs`), and the clock the
 guest checked deadlines against. The canonical
 batch (all four op kinds) proves in ~1.2M cycles with the k256 SP1 precompile.
 
@@ -158,7 +160,11 @@ bindings, the uses), checks each (clause key, spec hash) binding —
 the two words equal and the key `ClauseRegistry.registered` — executes net
 token transfers, re-emits
 proven `Attestation` events, emits the Core's order and process events from
-the operation stream and logs the stream itself (`BatchOperations`), and
+the operation stream and logs the stream itself (`BatchOperations`), asks
+the buyer's account code about every wallet-code resolve in the stream before
+any token moves (ERC-1271 `isValidSignature` over the `ResolveProcess` digest
+it derives under its own domain, the batch reverting on any answer but the
+magic value, since the proven root already holds the resolve), and
 hands the batch's uses to `UsageCounter.applyBatchAccrual`. It is not a florin minter. Uses a
 `BatchEventData` struct to avoid stack-too-deep.
 
@@ -172,11 +178,17 @@ the Succinct gateway ABI, and a devnet stand-in that accepts any proof.
    single-denomination invariant
 2. each `resolveProcess` in the batch preserved buyer dominance, atomic
    resolution, conservation, and direct transfer semantics, its buyer's
-   signature over `ResolveProcess(bytes32 processId,uint256 cumulativeValue)`
-   applied only while the process holds the signed cumulative value, so it
+   authorization over `ResolveProcess(bytes32 processId,uint256 cumulativeValue)`
+   applied only while the process holds the authorized cumulative value, so it
    pays exactly the prefix of the process whose cumulative value the buyer
-   signed, every order of which the buyer co-signed; a value the process has
-   not yet reached pre-authorizes exactly the orders that bring it there
+   authorized, every order of which the buyer co-signed; a value the process has
+   not yet reached pre-authorizes exactly the orders that bring it there. The
+   authorization is the buyer's ECDSA signature, which the proof recovers, or
+   bytes the buyer's wallet code validates, which the proof publishes in the
+   operation stream and the verifier checks against the buyer's code at
+   resolution: as `FigaroCore.resolveProcess` reads `msg.sender == rootBuyer`,
+   code the buyer's wallet installed while it held its key resolves on both
+   paths, and nothing else does (`docs/DESIGN_DECISIONS.md` § 4)
 3. each attestation preserved the coordinator's checks — its signer is the
    party, its order is committed and open, and its `clauseDataHash` opens
    against the order's signed `checkoutHash` under its inclusion proof — and
@@ -255,7 +267,7 @@ path but one net position on the batch path. Netting is the batch path's
 structural advantage.
 
 **Why it is not "half of FigaroCore."** A naive comparison of the batch
-verifier's ceiling (about 220 orders in one resolution under the 2^24 transaction cap, about
+verifier's ceiling (about 210 orders in one resolution under the 2^24 transaction cap, about
 930 at a 60M block without it, as the relay plans a batch from its own
 execution — `prover/sequencer/src/gas.rs`) against `resolveProcess`'s
 ceiling (about 550 orders under the transaction cap, about 950 at a 30M block without it) is misleading: that figure measures only the resolve step — the
@@ -271,7 +283,7 @@ land on-chain.
 |---|---|---|---|
 | Direct `commit()` | ~74 orders | per block | ~382k/order (sub) |
 | Direct `resolveProcess()` | about 550 orders under the 2^24 transaction cap; ~950 at 30M without it | single call | ~30k/order (all-in) |
-| Batch `settleBatch()` | about 220 orders in one resolution under the 2^24 transaction cap (EIP-7825, mainnet), each one position, its commitment published in the operation stream and its events; without the cap about 460 at 30M, 930 at 60M and 3,000 at Sepolia's 200M, as the relay plans it from the batch's own execution (`prover/sequencer/src/gas.rs`); a batch-path process is kept within what one transaction resolves | single call | 60k/position planned; ~26k measured cold on the pre-fork EVM |
+| Batch `settleBatch()` | about 210 orders in one resolution under the 2^24 transaction cap (EIP-7825, mainnet), each one position, its commitment published in the operation stream and its events, planned in the dearer of the resolve's two forms (the wallet-code one, with the wallet's own execution); without the cap about 460 at 30M, 930 at 60M and 3,000 at Sepolia's 200M, as the relay plans it from the batch's own execution (`prover/sequencer/src/gas.rs`); a batch-path process is kept within what one transaction resolves | single call | 60k/position planned; ~26k measured cold on the pre-fork EVM |
 
 The correct comparison is total lifecycle cost: ~413k gas per order (direct)
 against about 26k measured per net position (batch; 60k as planned) — roughly

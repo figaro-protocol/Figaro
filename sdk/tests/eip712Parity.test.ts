@@ -30,7 +30,7 @@ import {
     computeOrderHash,
     type Commitment,
 } from "../src/index.js";
-import { RESOLVE_PROCESS_TYPES } from "../src/commitments.js";
+import { RESOLVE_PROCESS_TYPES, hashResolveProcess } from "../src/commitments.js";
 import { keccak256, encodeAbiParameters, hashStruct, hashTypedData, toBytes, type Hex } from "viem";
 
 const FIXTURE_PATH = path.resolve(__dirname, "../../test/fixtures/eip712-vectors.json");
@@ -202,6 +202,24 @@ describe("EIP-712 parity vectors — the cross-language lock", () => {
         });
         return;
     }
+
+    it("hashResolveProcess is the ResolveProcess digest the guest and the verifier derive", () => {
+        const frozen = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as {
+            chainId: number;
+            batch: {
+                verifyingContract: Hex;
+                authorizations: { type: string; message: { processId: Hex; cumulativeValue: string }; digest: Hex }[];
+            };
+        };
+        const v = frozen.batch.authorizations.find((x) => x.type === "ResolveProcess");
+        expect(v, "the fixture carries a ResolveProcess vector").toBeDefined();
+        expect(
+            hashResolveProcess(v!.message.processId, BigInt(v!.message.cumulativeValue), {
+                chainId: frozen.chainId,
+                core: frozen.batch.verifyingContract,
+            }),
+        ).toBe(v!.digest);
+    });
 
     it("the SDK reproduces the frozen fixture byte-for-byte", () => {
         expect(existsSync(FIXTURE_PATH), "fixture missing — harvest with HARVEST_EIP712_VECTORS=1").toBe(true);

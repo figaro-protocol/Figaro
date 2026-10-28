@@ -19,6 +19,13 @@
 //!   payments (a resolve lists every order of its process, and the guest
 //!   applies one only while the process holds the value it signs), so the
 //!   decoder derives it and the entry carries no word for it;
+//! - every `ResolveByWalletCode`, whole: the process, the authorization bytes
+//!   the buyer's wallet code validates and the commitments it names, the
+//!   value derived as for `Resolve`. `FigaroBatchVerifier` reads the entry,
+//!   derives the `ResolveProcess` digest under its own domain from the
+//!   process and the listed payments, and calls the buyer's
+//!   `isValidSignature` (ERC-1271) with the bytes; the buyer is the listed
+//!   orders' (every order of a process carries its root buyer);
 //! - every usage claim, whole: a claim moves no state, but the uses the
 //!   verifier hands the counter are proved from the claims, so a replay of
 //!   the stream re-derives the batch's usage hash (public value 7);
@@ -34,6 +41,8 @@
 //! entry    := 0x01 commitment sig sig            (Commit)
 //!           | 0x02 processId(32) sig count(2) commitment*   (Resolve)
 //!           | 0x03 commitment key(32) kind proof           (UsageClaim)
+//!           | 0x04 processId(32) len(2) authorization count(2) commitment*
+//!                                                   (ResolveByWalletCode)
 //! commitment := processId(32) buyer(20) seller(20) currency(20) payment(32)
 //!               expectedCumulativeValue(32) checkoutHash(32) salt(32) deadline(32)
 //! sig      := r(32) s(32) v(1)
@@ -47,7 +56,7 @@
 //! Counts are big-endian `u16`; every length is prefixed, so the stream
 //! cannot be re-split into another reading of the same bytes.
 
-use alloy_primitives::{keccak256, Address, B256, U256};
+use alloy_primitives::{keccak256, Address, Bytes, B256, U256};
 
 use crate::types::{
     Commitment, KernelOp, Signature, UsageClaim, UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY,
@@ -57,6 +66,7 @@ use crate::types::{
 const TAG_COMMIT: u8 = 0x01;
 const TAG_RESOLVE: u8 = 0x02;
 const TAG_USAGE_CLAIM: u8 = 0x03;
+const TAG_RESOLVE_BY_WALLET_CODE: u8 = 0x04;
 
 /// The packed width of one commitment.
 pub const COMMITMENT_BYTES: usize = 32 + 20 + 20 + 20 + 32 + 32 + 32 + 32 + 32;
@@ -88,6 +98,21 @@ pub fn encode_operation_stream(operations: &[KernelOp], claims: &[UsageClaim]) -
                 out.push(TAG_RESOLVE);
                 out.extend_from_slice(process_id.as_slice());
                 put_signature(&mut out, buyer_sig);
+                put_count(&mut out, commitments.len());
+                for c in commitments {
+                    put_commitment(&mut out, c);
+                }
+            }
+            KernelOp::ResolveByWalletCode {
+                process_id,
+                commitments,
+                authorization,
+                ..
+            } => {
+                out.push(TAG_RESOLVE_BY_WALLET_CODE);
+                out.extend_from_slice(process_id.as_slice());
+                put_count(&mut out, authorization.len());
+                out.extend_from_slice(authorization);
                 put_count(&mut out, commitments.len());
                 for c in commitments {
                     put_commitment(&mut out, c);
@@ -164,6 +189,27 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<(Vec<KernelOp>, Vec<Usag
                     cumulative_value,
                     commitments,
                     buyer_sig,
+                });
+            }
+            TAG_RESOLVE_BY_WALLET_CODE => {
+                if !claims.is_empty() {
+                    return Err("a resolve after a usage claim".into());
+                }
+                let process_id = r.b256()?;
+                let len = r.count()?;
+                let authorization = Bytes::copy_from_slice(r.take(len)?);
+                let count = r.count()?;
+                let mut commitments = Vec::with_capacity(count);
+                for _ in 0..count {
+                    commitments.push(r.commitment()?);
+                }
+                let cumulative_value = resolved_cumulative_value(&commitments)
+                    .ok_or_else(|| "a resolve whose payments overflow".to_string())?;
+                operations.push(KernelOp::ResolveByWalletCode {
+                    process_id,
+                    cumulative_value,
+                    commitments,
+                    authorization,
                 });
             }
             TAG_USAGE_CLAIM => {

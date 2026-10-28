@@ -40,15 +40,22 @@
  * nothing, and reporting "unavailable" would understate what is actually known.
  *
  * What IS known, and why it is a different KIND of evidence: the zkVM guest
- * verifies both EIP-712 signatures itself (`prover/lib/src/kernel.rs:126,131`
+ * verifies both EIP-712 signatures itself (`prover/lib/src/kernel.rs:111,116`
  * recover the buyer and seller from the commitment digest inside `apply_commit`
  * and reject the batch on mismatch), and an attestation can only be applied to
  * an order the guest already holds as ACTIVE (`require_known_active_commitment`,
- * `prover/lib/src/kernel.rs:326`) — a status written ONLY by `apply_commit`. `FigaroBatchVerifier`
+ * `prover/lib/src/kernel.rs:331`) — a status written ONLY by `apply_commit`. `FigaroBatchVerifier`
  * accepts a batch only against an immutable `programVKey`, and chains state via
  * `prevRoot == stateRoot`. So a verifier-re-emitted `Attestation` for an order
  * proves that order's commit passed both signature checks inside a proof this
  * verifier accepted.
+ *
+ * The verdicts are the COMMIT signatures'. A batched resolve's authorization
+ * is another object: the buyer's ECDSA signature, which the guest recovers, or
+ * bytes the buyer's wallet code validates, which the guest publishes unchecked
+ * and the verifier checks against the buyer's code at resolution — authorized
+ * by the wallet's code, checked by the verifier at resolution. Either way the
+ * commits it resolves were signed by both parties as above.
  *
  * Two honesty constraints this reader keeps:
  *   1. The reader has NOT re-verified anything. It is trusting a proof it can

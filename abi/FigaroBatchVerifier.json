@@ -673,6 +673,22 @@
   },
   {
     "type": "error",
+    "name": "BuyerHasNoCode",
+    "inputs": [
+      {
+        "name": "processId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "buyer",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ChainIdMismatch",
     "inputs": [
       {
@@ -829,6 +845,22 @@
       },
       {
         "name": "actual",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "WalletCodeAuthorizationRefused",
+    "inputs": [
+      {
+        "name": "processId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "buyer",
         "type": "address",
         "internalType": "address"
       }

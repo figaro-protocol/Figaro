@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import {FigaroBatchVerifierTest} from "test/core/verifier/FigaroBatchVerifierTest.t.sol";
 import "src/core/verifier/FigaroBatchVerifier.sol";
 import {IUsageCounter} from "src/core/verifier/FigaroBatchVerifier.sol";
+import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 
 /// @title Batch gas ceiling anchors — the empirical per-item cost of `settleBatch`
 /// @notice What a batch costs the chain is what it PUBLISHES — the net positions
@@ -62,9 +63,21 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     ///      the process event. Each a ceiling over the measurement below.
     uint256 internal constant SETTLE_GAS_PER_STREAM_COMMIT = 12_000;
     uint256 internal constant SETTLE_GAS_PER_STREAM_RESOLVED_ORDER = 6_000;
-    uint256 internal constant SETTLE_GAS_PER_STREAM_RESOLUTION = 3_000;
-    /// @dev A usage claim entry, parsed and skipped.
-    uint256 internal constant SETTLE_GAS_PER_STREAM_CLAIM = 1_500;
+    uint256 internal constant SETTLE_GAS_PER_STREAM_RESOLUTION = 4_500;
+    /// @dev A usage claim entry, parsed and skipped by each of the stream's
+    ///      two walks (the wallet-code question before the transfers, the
+    ///      events after them). The resolution's figure carries its event and
+    ///      both walks. Measured 1,461 a claim and 3,016 a resolution.
+    uint256 internal constant SETTLE_GAS_PER_STREAM_CLAIM = 2_000;
+    /// @dev A resolution in the wallet-code form beyond the same resolution
+    ///      in the signature form: the payments summed, the digest derived,
+    ///      the buyer's code size read (a cold account) and its
+    ///      `isValidSignature` called, with the mock's own validation (a cold
+    ///      slot). The wallet's own code costs what its arrangement costs; the
+    ///      relay plans an allowance for it apart (`gas.rs`). Measured 8,829
+    ///      (`test_Gas_settleStreamWalletCodeCheck`); the ceiling carries the
+    ///      allowance for the post-fork repricing of its cold reads.
+    uint256 internal constant SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK = 15_000;
     /// @dev The proof's verification, which the mock verifier does not
     ///      perform: read from the five Groth16 batches settled on Sepolia.
     ///      Receipt gas less the calldata's intrinsic cost and the items
@@ -365,6 +378,58 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         assertGe(perOrder, 1_000, "a resolved order dropped unexpectedly (verifier change?)");
         assertLe(perOrder, SETTLE_GAS_PER_STREAM_RESOLVED_ORDER, "a resolved order rose past its anchor (re-measure)");
         assertLe(perProcess, SETTLE_GAS_PER_STREAM_RESOLUTION, "a resolution rose past its anchor (re-measure)");
+    }
+
+    /// @dev The `0x04` entry for `orders` orders of the process `_resolveEntry`
+    ///      names, carrying `authorization`.
+    function _walletCodeEntry(uint256 orders, bytes memory authorization) internal view returns (bytes memory stream) {
+        bytes32 processId = keccak256("process");
+        stream = bytes.concat(
+            hex"04", processId, bytes2(uint16(authorization.length)), authorization, bytes2(uint16(orders))
+        );
+        for (uint256 i = 0; i < orders; i++) {
+            stream = bytes.concat(stream, _packedCommitment(i, processId));
+        }
+    }
+
+    /// @dev A wallet-code resolution against the same resolution signed: the
+    ///      authorization is as long as a signature, so the two streams differ
+    ///      by the entry's length word alone and the difference is the check.
+    function test_Gas_settleStreamWalletCodeCheck() public {
+        _settleCallGas(hex"");
+        bytes memory authorization = _signature(999);
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                keccak256(
+                    abi.encode(
+                        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                        keccak256("FigaroCore"),
+                        keccak256("3"),
+                        block.chainid,
+                        address(verifier)
+                    )
+                ),
+                keccak256(
+                    abi.encode(
+                        keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)"),
+                        keccak256("process"),
+                        uint256(1 ether)
+                    )
+                )
+            )
+        );
+        vm.etch(address(uint160(0xB0B)), type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(address(uint160(0xB0B))).approve(digest, authorization);
+        uint256 signed = _settleCallGas(_resolveEntry(1));
+        vm.cool(address(uint160(0xB0B)));
+        uint256 byCode = _settleCallGas(_walletCodeEntry(1, authorization));
+        uint256 marginal = byCode - signed;
+        emit log_named_uint("settle_gas_per_stream_wallet_code_check", marginal);
+        assertGe(marginal, 2_000, "a wallet-code check dropped unexpectedly (verifier change?)");
+        assertLe(
+            marginal, SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK, "a wallet-code check rose past its anchor (re-measure)"
+        );
     }
 
     function test_Gas_settleFixedExecution() public {

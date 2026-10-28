@@ -78,7 +78,14 @@ reverts) while the outer resolution completes exactly once — across
 with value legs, the ClauseRegistry spec-binding anchor gate (permissive-spec
 substitution + unregistered clause both revert; a never-seen registered clause
 resolves with zero verifier changes), state-root continuity, calldata-tamper
-reverts, and constructor guards.
+reverts, and constructor guards; and the resolve authorized by the buyer's
+wallet code (`test_settleBatch_walletCodeResolve_*`): with
+`MockERC1271Wallet` etched at the buyer, code that validates the digest and
+bytes resolves the process and pays out, code that refuses them or reverts
+reverts the batch (`WalletCodeAuthorizationRefused`), and a buyer with no
+code is refused (`BuyerHasNoCode`). `OperationStreamVectorsTest` lands each
+harvested stream, the wallet-code one included, and `BatchGasCeilingTest`
+measures the wallet-code check (`test_Gas_settleStreamWalletCodeCheck`).
 
 `WitnessSwapAndCommitCoordinatorForkTest` is the mainnet-fork parity proof for the
 Permit2 witness digest: gated on `MAINNET_RPC_URL` (each test SKIPS without it,
@@ -140,7 +147,7 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 68 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 8 + its deferral 10 + its resolve authorization 2)
+## TLA+ (`formal/`) — 69 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 8 + its deferral 10 + its resolve authorization 3)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -258,15 +265,23 @@ RelayState's third spec, `ResolveSpec` (`RelayState.tla` +
 buyer's resolve authorization on the batch path (`prover/lib/src/kernel.rs`
 `apply_resolve`, `eip712.rs` `resolve_struct_hash`) — three orders, payments
 1–2, the buyer signing over the value the process holds or any it has not
-reached, and anyone holding a signature applying it under any later state.
-2 invariants — `ResolvePaysSignedPrefix` (every applied resolve pays exactly
-the prefix of the process's commits whose cumulative value the buyer signed)
-and `RTypeOK`: 17,911 states / 5,617 distinct, depth 11, seconds.
+reached, and anyone holding a signature applying it under any later state;
+beside the signature, the wallet-code form (`KernelOp::ResolveByWalletCode`,
+checked by `FigaroBatchVerifier` against the buyer's code at resolution),
+the wallet installing its code only with its key and then able to lose the
+key, anyone submitting bytes in that form for any value.
+3 invariants — `ResolvePaysSignedPrefix` (every applied resolve pays exactly
+the prefix of the process's commits whose cumulative value the buyer signed),
+`OnlyBuyerWalletResolves` (every applied resolve was authorized by the
+buyer's key or by the code its wallet installed while it held the key) and
+`RTypeOK`: 3,293,884 states / 809,956 distinct, depth 19, under a minute.
 Mutation-checked: `ResolveBoundToState` FALSE (the authorization signs the
 process id alone, not its cumulative value) fails `ResolvePaysSignedPrefix`
 in 4 states — the root order commits at 1, the buyer signs over 2, the
 authorization applies at once and pays the one order, a set no prefix of
-value 2 names. `Spec` and
+value 2 names; `VerifierChecksWalletCode` FALSE (the wallet-code form taken
+on the guest's word) fails `OnlyBuyerWalletResolves` in 3 states — the root
+order commits and a stranger's bytes resolve it. `Spec` and
 `DeferSpec` hold its variables at their initial values.
 
 ## Lean 4 (`formal/lean/`) — the equilibrium, machine-checked

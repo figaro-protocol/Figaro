@@ -26,6 +26,10 @@ payouts. Read from the chain, a resolve entry of the verifier's
 applied it at.</p>
 <p><code>ctx.core</code> is the EIP-712 <code>verifyingContract</code> — for batched trade that is
 the FigaroBatchVerifier, NOT FigaroCore.</p>
+<p>This checks the first form, an ECDSA signature. A resolve entry of the
+wallet-code form carries bytes the buyer's code validated at resolution (the
+verifier reverts the batch otherwise); a reader who asks again calls the
+buyer's <code>isValidSignature(hashResolveProcess(…), bytes)</code> through a client.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -37,7 +41,7 @@ the FigaroBatchVerifier, NOT FigaroCore.</p>
 <li><span><span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">chainId</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">core</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span> <span class="tsd-signature-symbol">}</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L171">commitments.ts:171</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L209">commitments.ts:209</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
