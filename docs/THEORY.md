@@ -50,7 +50,7 @@ constrain or replaces the comparison the analysis turns on.
 It does not hold the goods. Value, performance, and the parties' knowledge of
 both pass off-chain, and no `FigaroCore` operation can observe or undo them. Every
 payoff below therefore has two parts: **what `FigaroCore` moves** (the bond
-deposited at `commit`, the payout made at `resolveProcess`) and **what the party
+locked at `commit`, the payout made at `resolveProcess`) and **what the party
 retains off-chain**, credited at the value the parties themselves signed — `P`
 for the exchange at an order, at most `G` for everything accumulated through
 it. The second part is always a *credit* and never a debit: a party is counted
@@ -60,7 +60,7 @@ the omission that has historically made the doubling look arbitrary.
 
 **Game setup**:
 - Players: buyer (B) and seller (S), from the state in which both bonds are
-  deposited
+  locked
 - Moves: the seller performs or holds out; the buyer resolves or withholds.
   Resolving *is* the buyer's acceptance — `FigaroCore` holds no test of
   performance of its own and admits no report of delivery
@@ -145,9 +145,9 @@ carry off. And the figure is not a report. `commit` admits exactly one value —
 the payment itself at the root, the live accumulator plus the new payment for
 any extension — and refuses every other declaration
 (`CumulativeValueMismatch`), so the seller's bond base is fixed by arithmetic
-against the signed accumulator before anything is deposited. A seller has no
+against the signed accumulator before anything is locked. A seller has no
 interest in declaring more in any case: the declaration is precisely what it
-must deposit.
+must lock.
 
 **Coordination pressure**: cumulative exposure `2Gᵢ` is non-decreasing along
 the process, and the gap a seller weighs against holding out — `Δᵢ = Pᵢ + Gᵢ
@@ -168,9 +168,9 @@ for 3, all in the process's denomination.
 | 2 | broker | 12 | 2 | 24 | 4 |
 | 3 | warehouse | 15 | 3 | 30 | 6 |
 
-If the broker holds out with the cargo in hand: its 24 stays deposited against
+If the broker holds out with the cargo in hand: its 24 stays locked against
 at most 12 it can retain — a standing position of −12 against the +2 it
-declined. The haulier's 20 stays deposited too: it performed, but nothing is
+declined. The haulier's 20 stays locked too: it performed, but nothing is
 resolved until the shipper resolves. The haulier's exposure to the broker's
 holding out is `P + 2G = 10 + 20 = 30`, readable from the chain — which is why
 the haulier has a bonded interest in the broker curing.
@@ -185,7 +185,7 @@ both sides — and the two sides are stated apart there (§ "The second half of
 the bond"). What `FigaroCore` supplies is the exactness: `commit` admits one
 cumulative value per commitment and refuses every other declaration
 (`CumulativeValueMismatch`), so the bond base is fixed by arithmetic before
-anything is deposited. Splitting an order into smaller ones changes nothing:
+anything is locked. Splitting an order into smaller ones changes nothing:
 the schedule keys to the accumulator, so the later part is bonded against the
 same accumulated total.
 
@@ -227,7 +227,7 @@ process the schedule has already secured; the credit for reaching N belongs to
 the schedule, not to the resolution rule. The paper's Lemma 1 and Theorem 3
 carry the bilateral comparisons to every position, with the same conditioning
 as Theorem 1, and its Proposition 1 shows why a per-order bond fails at depth
-(the broker in the example above would deposit 4 against cargo worth 12).
+(the broker in the example above would lock 4 against cargo worth 12).
 What `FigaroCore` supplies is the accumulator itself: exact, monotone, inclusive,
 and checked at every commit, so the bond base at position `i` is `G_i` by
 arithmetic and never by report. The Lean file instantiates the two-party
@@ -300,7 +300,7 @@ existing primitives:
 
 1. **The buyer resolves when it is satisfied.** `resolveProcess` has no
    precondition beyond buyer identity and the full active-order list. Bonds
-   stay deposited only while the buyer is not yet satisfied — a standing
+   stay locked only while the buyer is not yet satisfied — a standing
    position, held by parties who each want it refunded, which is the deterrent
    working as designed and not a missing feature.
 2. **The unwind is agreed between the parties, before resolution.** The
@@ -330,7 +330,7 @@ because it carries the same bond schedule as the process it unwinds.
 
 ## A bond is a position, not a cost
 
-Nothing in `FigaroCore` consumes a bond. At resolution every deposited token is
+Nothing in `FigaroCore` consumes a bond. At resolution every locked token is
 transferred straight back out to the two parties, and `FigaroCore`'s balance
 returns to zero. A bond is therefore a position held for the life of one
 process, refunded at its resolution — which means what a wallet needs is set

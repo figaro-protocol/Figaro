@@ -105,8 +105,10 @@ export {
     parseProcessResolvedLogs,
     parseAttestationLogs,
     fetchCoreEvents,
+    fetchProcessesResolved,
     fetchAttestationRecords,
     tagAttestationUniverses,
+    type ProcessResolvedState,
     type ResolutionUniverse,
     type UniverseAttestationEvent,
 } from "./events.js";

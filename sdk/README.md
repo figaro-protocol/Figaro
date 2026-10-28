@@ -376,6 +376,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `fetchCoreEvents` | root | The order and process events of BOTH paths in a block range — `FigaroCore`'s and, when `batchVerifier` is set, the verifier's — grouped, typed and in chain order; chunks `getLogs` internally. |
 | `fetchDiscoveryEvents` | root | Registry events (clauses, assemblies, members); an unconfigured registry contributes nothing. |
 | `fetchEndpointLogAgreement` | root | The same agreement report, fetched from caller-supplied clients over one pinned `[fromBlock, toBlock]`. |
+| `fetchProcessesResolved` | root | For each process id, whether it has resolved and the block of its `ProcessResolved`: the Core's `processes(id)` getter decides the direct path, the verifier's `ProcessResolved` the batch path. |
 | `fetchUsageRecords` | root | `UsageRecorded` events — the direct-path half of the rewards mirror. |
 | `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalog and process set. |
 | `fillCargoClause` | root | Fold the order's summed mass and volume onto its cargo leaf, found by declared field. |
@@ -2415,19 +2416,19 @@ figure. Clause, agreement and assembly stakes come back in one call —
 leaving the binding permanent, because orders already committed against them still
 resolve.
 
-**A member's deposit comes back in TWO calls**, and the split is load-bearing:
+**A member's stake comes back in TWO calls**, and the split is load-bearing:
 
 ```ts
 // 1. Leave the surface. Takes effect immediately: the dedup guard clears, the
 //    member disappears from discovery, and the wallet may register again at once.
 //    MembersRegistry.requestWithdrawal()
-// 2. Take the deposit back, once `withdrawalCooldown` seconds have passed.
+// 2. Take the stake back, once `withdrawalCooldown` seconds have passed.
 //    MembersRegistry.withdraw()          // reverts CooldownActive(releaseAt) before then
 ```
 
 Read the schedule from `withdrawalCooldown()`, `pendingDeposit(member)` and
-`releaseAt(member)`. The cooldown is what makes the deposit a real Sybil price:
-without it one deposit is recycled through identity after identity, so fabricating
+`releaseAt(member)`. The cooldown is what makes the stake a real Sybil price:
+without it one stake is recycled through identity after identity, so fabricating
 breadth costs no capital at all. De-surfacing and release are deliberately
 different moments — nobody is held on a surface they asked to leave, while the
 capital stays committed. **Anything tracking who is currently surfaced must fold
@@ -2436,10 +2437,10 @@ capital stays committed. **Anything tracking who is currently surfaced must fold
 **Reading an assembly binding.** `AssemblyRegistry.bindings(assemblyHash)` returns
 the tuple `(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)`.
 The existence check is `registeredAt != 0`, NOT the bool: after a normal registration
-`depositWithdrawn` is `false` and stays false while the deposit is still staked (the
-surfaced state) — it flips to `true` only once the registering wallet reclaims the deposit. So a
+`depositWithdrawn` is `false` and stays false while the stake is still locked (the
+surfaced state) — it flips to `true` only once the registering wallet reclaims the stake. So a
 freshly registered assembly correctly reads `depositWithdrawn == false`; that false is
-"deposit still held," not "registration failed."
+"stake still held," not "registration failed."
 
 `ClauseRegistry`'s parallel stake struct (`depositOf[clauseKey]`, surfaced to the SDK as
 `RegisteredClause.registeredBy`) spells the same field the same way — both registries
@@ -2619,8 +2620,9 @@ fact:
 
 ```ts
 import {
-  fetchCoreEvents, computeCheckoutHash, buildSignedClauseInclusionProof,
-  verifyInclusionProof, withholdClauseContent, clauseByField,
+  fetchCoreEvents, fetchProcessesResolved, computeCheckoutHash,
+  buildSignedClauseInclusionProof, verifyInclusionProof,
+  withholdClauseContent, clauseByField,
 } from "@figaro-protocol/sdk";
 
 // (a) Read the provenance anchors off the license by DECLARED FIELD.
@@ -2633,6 +2635,25 @@ const events = await fetchCoreEvents(client, addresses, BigInt(record.deployment
 const rootsFor = (processId: string) => events.orderCommitted
   .filter((e) => e.processId.toLowerCase() === processId.toLowerCase())
   .map((e) => e.checkoutHash);
+
+// (b') Every source must have RESOLVED before the sale committed: a source
+//      still open can take attestations after the sale commits, so the
+//      checks below rest on that premise. The sale's commit is the
+//      OrderCommitted carrying the sale agreement's own checkoutHash.
+const saleHash = computeCheckoutHash(saleAgreement).toLowerCase();
+const saleCommit = events.orderCommitted.find((e) => e.checkoutHash.toLowerCase() === saleHash);
+if (!saleCommit) throw new Error("the sale has not committed");
+const saleCommitBlock = saleCommit.blockNumber;
+const sources = await fetchProcessesResolved(
+  client, addresses, sourceIds, BigInt(record.deploymentBlock));
+for (const s of sources) {
+  // resolvedBlock is null when the resolution is not in the scanned range:
+  // its timing is then unknown, so refuse. A resolution in the sale's own
+  // block is refused too, since block numbers do not order the two.
+  if (!s.resolved || s.resolvedBlock === null || s.resolvedBlock >= saleCommitBlock) {
+    throw new Error(`source ${s.processId} had not resolved before the sale committed`);
+  }
+}
 
 // (c) The licensor hands over the source agreement with every clause it is
 //     NOT licensing in CONTENT-WITHHELD form — same leaf, same root, and the

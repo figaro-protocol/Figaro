@@ -287,3 +287,73 @@ export async function fetchCoreEvents(
         processResolved: parseProcessResolvedLogs(logs),
     };
 }
+
+/** Whether one process has resolved, read from chain state. */
+export interface ProcessResolvedState {
+    processId: Hex;
+    /** True once the buyer's resolution of the process is on chain. */
+    resolved: boolean;
+    /** Block of the process's `ProcessResolved` event, or null when it is
+     *  not resolved or its event lies outside the scanned range. */
+    resolvedBlock: number | null;
+}
+
+/**
+ * For each process id, whether the process has resolved, on either path.
+ *
+ * The direct path is read from `FigaroCore.processes(id)`: a process the Core
+ * knows (`rootBuyer` non-zero) has resolved exactly when its
+ * `activeOrderCount` is zero, since commit opens a process with one active
+ * order and only `resolveProcess` sets the count to zero. The getter is the
+ * authority there: a log claiming the resolution of a process the getter
+ * shows open is ignored. The batch path keeps no per-process getter (its
+ * state is a root), so a process the Core does not know is resolved exactly
+ * when `addresses.batchVerifier` emitted its `ProcessResolved` in the range;
+ * without a configured verifier such a process reads as not resolved.
+ *
+ * `resolvedBlock` comes from the `ProcessResolved` event of the path that
+ * holds the process, each emitter read address-filtered over
+ * `[fromBlock, toBlock]` — pass the deployment record's `deploymentBlock`.
+ * It lets a reader compare the resolution with another commit's block. A
+ * process the getter shows resolved whose event lies before `fromBlock`
+ * returns `resolved: true, resolvedBlock: null`.
+ */
+export async function fetchProcessesResolved(
+    client: PublicClient,
+    addresses: FigaroAddresses,
+    processIds: readonly Hex[],
+    fromBlock: bigint = 0n,
+    toBlock: bigint | "latest" = "latest",
+    chunkSize?: bigint,
+): Promise<ProcessResolvedState[]> {
+    const states = await Promise.all(processIds.map((processId) =>
+        client.readContract({
+            address: addresses.core,
+            abi: CORE_ABI,
+            functionName: "processes",
+            args: [processId],
+        }) as Promise<readonly [Address, Address, bigint, bigint]>,
+    ));
+    const onCore = states.map(([rootBuyer]) => BigInt(rootBuyer) !== 0n);
+
+    const resolvedToBlock = toBlock === "latest" ? await client.getBlockNumber() : toBlock;
+    const resolvedBlocks = async (address: Address | undefined): Promise<Map<string, number>> => {
+        const out = new Map<string, number>();
+        if (!address) return out;
+        const logs = await fetchLogsChunked(client, { address, fromBlock, toBlock: resolvedToBlock, chunkSize });
+        for (const e of parseProcessResolvedLogs(logs)) out.set(e.processId.toLowerCase(), e.blockNumber);
+        return out;
+    };
+    const coreBlocks = await resolvedBlocks(addresses.core);
+    const batchBlocks = onCore.every(Boolean) ? new Map<string, number>() : await resolvedBlocks(addresses.batchVerifier);
+
+    return processIds.map((processId, i) => {
+        const key = processId.toLowerCase();
+        if (onCore[i]) {
+            const resolved = states[i][3] === 0n;
+            return { processId, resolved, resolvedBlock: resolved ? coreBlocks.get(key) ?? null : null };
+        }
+        const block = batchBlocks.get(key);
+        return { processId, resolved: block !== undefined, resolvedBlock: block ?? null };
+    });
+}
