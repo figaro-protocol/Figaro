@@ -16,13 +16,15 @@
  * The `failed` flag is part of the shared contract: true when the last
  * registry read THREW — distinct from resolved-empty (an empty registry is
  * absence: render it; a failed read is unknown chain state: never report it
- * as loaded).
+ * as loaded). `error` is the provider's own answer to that read
+ * (`rpcErrorText`), so a page can say why it shows nothing.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Abi, Log } from "viem";
 import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
+import { rpcErrorText } from "@/lib/shared/errors";
 
 export interface RegistryEventScanConfig<Row> {
     /** The registry address if configured and well-formed, else null. */
@@ -62,6 +64,7 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
         const [data, setData] = useState<Row[] | null>(null);
         const [isLoading, setIsLoading] = useState(false);
         const [failed, setFailed] = useState(false);
+        const [error, setError] = useState<string | null>(null);
         const [generation, setGeneration] = useState(0);
 
         useEffect(() => {
@@ -77,6 +80,7 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
             let canceled = false;
             setIsLoading(true);
             setFailed(false);
+            setError(null);
 
             const reader = client ?? publicClient;
             const chainId = reader.chain?.id ?? activeChain.id;
@@ -107,6 +111,7 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
                     if (canceled) return;
                     console.warn(`[${label}] event read failed:`, err);
                     setFailed(true);
+                    setError(rpcErrorText(err, { maxLength: 300 }));
                     setData([]);
                     setIsLoading(false);
                 });
@@ -117,7 +122,7 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
         }, [registeredBy, enabled, client, generation]);
 
         const refetch = useCallback(() => setGeneration((g) => g + 1), []);
-        return useMemo(() => ({ data, isLoading, failed, refetch }), [data, isLoading, failed, refetch]);
+        return useMemo(() => ({ data, isLoading, failed, error, refetch }), [data, isLoading, failed, error, refetch]);
     };
 }
 

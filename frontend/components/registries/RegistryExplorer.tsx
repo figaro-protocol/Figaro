@@ -76,11 +76,11 @@ export function RegistryExplorer() {
     }, [state, router, pathname]);
 
     // ── The four registries, each through its own walletless reader ──
-    const { data: clauseEvents, failed: clausesFailed } = useAllRegisteredClauses();
+    const { data: clauseEvents, failed: clausesFailed, error: clausesError } = useAllRegisteredClauses();
     const { version: specVersion } = useClauseSpecs();
-    const { data: assemblies, failed: assembliesFailed } = useAssemblyChoices(undefined, { includeWithdrawn: true });
-    const { data: members, failed: membersFailed } = useRegisteredMembers();
-    const { data: agreements, failed: agreementsFailed } = usePublishedAgreements(undefined, { includeWithdrawn: true });
+    const { data: assemblies, failed: assembliesFailed, error: assembliesError } = useAssemblyChoices(undefined, { includeWithdrawn: true });
+    const { data: members, failed: membersFailed, error: membersError } = useRegisteredMembers();
+    const { data: agreements, failed: agreementsFailed, error: agreementsError } = usePublishedAgreements(undefined, { includeWithdrawn: true });
     // Each registered agreement's pinned document, read by its binding and
     // verified against its key; the rows re-derive as documents verify.
     const agreementsVersion = useRegisteredAgreementsVersion();
@@ -157,6 +157,10 @@ export function RegistryExplorer() {
     const familyFailed = state.family === "clauses" ? clausesFailed
         : state.family === "agreements" ? agreementsFailed
         : state.family === "members" ? membersFailed : assembliesFailed;
+    // The provider's own answer to the failed read — the page says why it shows nothing.
+    const familyError = state.family === "clauses" ? clausesError
+        : state.family === "agreements" ? agreementsError
+        : state.family === "members" ? membersError : assembliesError;
     const familyTotal = rows.filter((r) => r.family === state.family && isLiveRegistration(r)).length;
 
     return (
@@ -242,7 +246,10 @@ export function RegistryExplorer() {
                 {familyLoading ? (
                     <p className="text-sm text-ink-muted" data-testid="registry-loading">Reading the registry&hellip;</p>
                 ) : familyFailed ? (
-                    <p className="text-sm text-ink-muted">The registry read failed on this network &mdash; nothing is shown rather than a stale copy.</p>
+                    <p className="text-sm text-ink-muted" data-testid="registry-failed">
+                        The registry read failed on this network &mdash; nothing is shown rather than a stale copy.
+                        {familyError ? <> The RPC endpoint answered: <code className="font-mono break-all">{familyError}</code></> : null}
+                    </p>
                 ) : (
                     <>
                         <p className="text-sm text-ink-body" data-testid="registry-count">

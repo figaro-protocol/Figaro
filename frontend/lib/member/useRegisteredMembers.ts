@@ -24,6 +24,7 @@ import { CONTRACTS } from "@/lib/kernel/contracts";
 import { getActiveMembers, getAllMemberRegistered } from "@/lib/protocol/membersRegistryIndexer";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
+import { rpcErrorText } from "@/lib/shared/errors";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 
 export interface RegisteredMemberRow {
@@ -37,9 +38,10 @@ export interface RegisteredMemberRow {
     profile: MemberProfileMetadata | null;
 }
 
-export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; failed: boolean; refetch: () => void } {
+export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; failed: boolean; error: string | null; refetch: () => void } {
     const [data, setData] = useState<RegisteredMemberRow[] | null>(null);
     const [failed, setFailed] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [generation, setGeneration] = useState(0);
 
     useEffect(() => {
@@ -51,6 +53,7 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
         let canceled = false;
         const timers = new Set<ReturnType<typeof setTimeout>>();
         setFailed(false);
+        setError(null);
         const chainId = publicClient.chain?.id ?? activeChain.id;
         Promise.all([getAllMemberRegistered(publicClient, chainId), getActiveMembers(publicClient, chainId)])
             .then(async ([registered, active]) => {
@@ -99,6 +102,7 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
                 if (canceled) return;
                 console.warn("[useRegisteredMembers] registry read failed:", err);
                 setFailed(true);
+                setError(rpcErrorText(err, { maxLength: 300 }));
                 setData([]);
             });
         return () => {
@@ -109,5 +113,5 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
     }, [generation]);
 
     const refetch = useCallback(() => setGeneration((g) => g + 1), []);
-    return useMemo(() => ({ data, failed, refetch }), [data, failed, refetch]);
+    return useMemo(() => ({ data, failed, error, refetch }), [data, failed, error, refetch]);
 }

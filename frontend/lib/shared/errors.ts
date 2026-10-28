@@ -67,6 +67,23 @@ export function toError(value: unknown): Error {
     return value instanceof Error ? value : new Error(String(value));
 }
 
+/**
+ * The RPC's own answer to a failed read, for a page that states why it shows
+ * nothing: viem's `RpcRequestError` keeps the provider's JSON-RPC message in
+ * `details` ("pruned history unavailable") under the generic `shortMessage`
+ * ("RPC Request failed."); anything else falls to `extractErrorMessage`.
+ */
+export function rpcErrorText(cause: unknown, options?: { maxLength?: number }): string {
+    if (cause instanceof BaseError) {
+        const withDetails = cause.walk((err) => typeof (err as { details?: unknown }).details === "string"
+            && !!(err as { details: string }).details.trim());
+        const details = normalize((withDetails as { details?: unknown } | null)?.details, options?.maxLength);
+        if (details) return details;
+    }
+    const details = normalize((cause as { details?: unknown } | null)?.details, options?.maxLength);
+    return details ?? extractErrorMessage(cause, String(cause), options);
+}
+
 export function extractErrorMessage(
     cause: unknown,
     fallback: string,

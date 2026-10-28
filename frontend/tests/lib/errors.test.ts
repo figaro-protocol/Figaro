@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { BaseError, ContractFunctionRevertedError } from "viem";
+import { BaseError, ContractFunctionRevertedError, RpcRequestError } from "viem";
 
-import { extractErrorMessage } from "@/lib/shared/errors";
+import { extractErrorMessage, rpcErrorText } from "@/lib/shared/errors";
 
 describe("extractErrorMessage", () => {
     describe("FigaroCore revert decoding", () => {
@@ -67,5 +67,21 @@ describe("extractErrorMessage", () => {
                 extractErrorMessage({ message: "abcdefghij" }, "fallback", { maxLength: 5 }),
             ).toBe("abcde");
         });
+    });
+});
+
+describe("rpcErrorText", () => {
+    it("returns the provider's own JSON-RPC message, not viem's generic short message", () => {
+        // The error the live /registries page caught from publicnode's Sepolia endpoint.
+        const err = new RpcRequestError({
+            body: { method: "eth_getLogs" },
+            error: { code: 4444, message: "pruned history unavailable" },
+            url: "https://ethereum-sepolia-rpc.publicnode.com",
+        });
+        expect(extractErrorMessage(err, "fallback")).toBe("RPC Request failed.");
+        expect(rpcErrorText(err)).toBe("pruned history unavailable");
+    });
+    it("falls back to the message of an error with no details", () => {
+        expect(rpcErrorText(new Error("HTTP request failed. Status: 429"))).toBe("HTTP request failed. Status: 429");
     });
 });

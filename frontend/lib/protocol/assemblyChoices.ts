@@ -135,8 +135,8 @@ export interface AssemblyChoice {
 export function useAssemblyChoices(
     registeredBy?: `0x${string}` | undefined,
     opts?: { includeWithdrawn?: boolean },
-): { data: AssemblyChoice[] | null; isLoading: boolean; failed: boolean; refetch: () => void } {
-    const { data: events, isLoading, failed, refetch } = usePublishedAssemblies(registeredBy, opts);
+): { data: AssemblyChoice[] | null; isLoading: boolean; failed: boolean; error: string | null; refetch: () => void } {
+    const { data: events, isLoading, failed, error, refetch } = usePublishedAssemblies(registeredBy, opts);
     // `activeChain` is env-determined; the read uses the standalone public
     // client bound to it. Wagmi's `useChainId` would reflect the connected
     // wallet's chain, which is irrelevant for a read against a fixed chain
@@ -251,5 +251,5 @@ export function useAssemblyChoices(
             };
         });
     }, [events, hydratedState, chainId]);
-    return { data, isLoading, failed, refetch };
+    return { data, isLoading, failed, error, refetch };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getLogsAdaptive, isLogRangeCapError } from "@/lib/kernel/eventCache";
+import { getLogsAdaptive, isLogRangeCapError, isPrunedHistoryError } from "@/lib/kernel/eventCache";
 
 /** A provider that refuses any range wider than `cap` blocks the way public
  *  gateways do, and otherwise returns one synthetic log per block that
@@ -55,6 +55,41 @@ describe("getLogsAdaptive", () => {
         await expect(getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 0n })).rejects.toThrow(/429/);
     });
 
+    // publicnode's keyless Sepolia endpoint, as the live site meets it: the
+    // same eth_getLogs answers code 4444 "pruned history unavailable" from a
+    // pruned backend and the logs from the next one. The error is viem's
+    // RpcRequestError shape — `code` and `details` carry the RPC's answer.
+    const prunedHistory = () => Object.assign(new Error("RPC Request failed.\n\nDetails: pruned history unavailable"), {
+        name: "RpcRequestError", code: 4444, details: "pruned history unavailable", shortMessage: "RPC Request failed.",
+    });
+
+    it("asks the same range again on a pruned-history answer and returns its logs", async () => {
+        let failures = 3;
+        const calls: Array<[bigint, bigint]> = [];
+        const p = {
+            getBlockNumber: async () => 12_013_795n,
+            getLogs: async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint }) => {
+                calls.push([fromBlock, toBlock]);
+                if (failures-- > 0) throw prunedHistory();
+                return [{ blockNumber: 11_922_700n, transactionHash: "0x01", logIndex: 0 }];
+            },
+        };
+        const logs = await getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 11_922_698n }, { retryDelayMs: () => 0 });
+        expect(logs.map((l) => l.blockNumber)).toEqual([11_922_700n]);
+        expect(calls).toEqual(Array(4).fill([11_922_698n, 12_013_795n]));
+    });
+
+    it("propagates the RPC's own pruned-history error once every ask is spent", async () => {
+        let calls = 0;
+        const p = {
+            getBlockNumber: async () => 100n,
+            getLogs: async (): Promise<unknown[]> => { calls++; throw prunedHistory(); },
+        };
+        await expect(getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 0n }, { retryDelayMs: () => 0 }))
+            .rejects.toMatchObject({ code: 4444, details: "pruned history unavailable" });
+        expect(calls).toBeGreaterThan(1);
+    });
+
     it("returns nothing when the cursor is already past latest", async () => {
         const p = cappingProvider(10n, 5n, [1n], "unused");
         expect(await getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 6n })).toEqual([]);
@@ -74,5 +109,16 @@ describe("isLogRangeCapError", () => {
     });
     it("does not mistake other failures for a range cap", () => {
         expect(isLogRangeCapError(new Error("HTTP request failed. Status: 429"))).toBe(false);
+    });
+});
+
+describe("isPrunedHistoryError", () => {
+    it("recognizes publicnode's answer by its code and by its text", () => {
+        expect(isPrunedHistoryError(Object.assign(new Error("RPC Request failed."), { code: 4444 }))).toBe(true);
+        expect(isPrunedHistoryError(new Error("Details: pruned history unavailable"))).toBe(true);
+    });
+    it("does not mistake a range cap or a rate limit for it", () => {
+        expect(isPrunedHistoryError(new Error("exceed maximum block range: 50000"))).toBe(false);
+        expect(isPrunedHistoryError(new Error("HTTP request failed. Status: 429"))).toBe(false);
     });
 });
