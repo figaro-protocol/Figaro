@@ -145,11 +145,10 @@ function validSinglePositionBatch(
         // any event-re-emission or anchor-check property here.
         batchEvents.attestations.length == 0 &&
         batchEvents.specBindings.length == 0 &&
-        // Same strategy for the usage bridge amendment: the
-        // accrual loops are not token-flow paths — the counter call is
-        // try/catch decoupled from resolution — so collapse them too.
-        usage.accruals.length == 0 &&
-        usage.sellers.length == 0;
+        // Same strategy for the usage bridge: the per-use loop is not a
+        // token-flow path — the counter call is try/catch decoupled from
+        // resolution — so collapse it too.
+        usage.uses.length == 0;
 }
 
 // ═══════════════════════════════════════════════════════════════════

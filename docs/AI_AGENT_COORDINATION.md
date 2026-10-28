@@ -485,7 +485,7 @@ which the operator must be told rather than left to assume.
 
 ## Agent Service Endpoints (ERC-8004 Interop)
 
-ERC-8004 ("Trustless Agents", DRAFT Aug 2025) defines a standard for
+ERC-8004 ("Trustless Agents", a draft) defines a standard for
 agent discoverability via service endpoint declarations. Figaro does not
 depend on ERC-8004 — the bonding mechanism already provides trust, and the
 public, derived resolution history already provides the track (never
