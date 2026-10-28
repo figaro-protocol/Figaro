@@ -15,6 +15,9 @@ on:
             - "scripts/generate-encode-conformance-vectors.mjs"
             # The agent runtime consumes the SDK's build; either moving re-runs it.
             - "ecosystem-agents/runtime/**"
+            # The ABI parity test reads the compiled ABIs: a contract that
+            # re-emits abi/ re-runs it against the SDK's.
+            - "abi/**"
             - ".github/workflows/sdk-ci.yml"
     pull_request:
         branches: [main, develop]
@@ -24,6 +27,7 @@ on:
             - "prover/clause/tests/encode_conformance.rs"
             - "scripts/generate-encode-conformance-vectors.mjs"
             - "ecosystem-agents/runtime/**"
+            - "abi/**"
 
 permissions:
     contents: read

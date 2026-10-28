@@ -7,6 +7,9 @@
  * them — and, for functions, the same output types. A drifted fragment
  * encodes calls the contract refuses or decodes logs into nothing, and is
  * otherwise seen only on a live chain.
+ *
+ * And the reverse, for errors: every error a contract compiles is in the SDK's
+ * ABI, so a refused call decodes by name instead of raw bytes.
  */
 
 import { describe, it, expect } from "vitest";
@@ -55,6 +58,15 @@ function shape(item: Abi[number]): string | null {
 const tokenErrors = (): Abi =>
     compiled("FlorinToken").filter((i) => i.type === "error" && i.name.startsWith("ERC20"));
 
+/** The compiled errors an SDK ABI lacks, as `error Name(types)`. */
+function missingErrors(sdkAbi: Abi, compiledAbi: Abi): string[] {
+    const ours = new Set(sdkAbi.map(shape));
+    return compiledAbi
+        .filter((i) => i.type === "error")
+        .map(shape)
+        .filter((s): s is string => s !== null && !ours.has(s));
+}
+
 const PAIRS: [string, Abi, string, (() => Abi)?][] = [
     ["CORE_ABI", CORE_ABI, "FigaroCore", tokenErrors],
     ["ATTESTATION_COORDINATOR_ABI", ATTESTATION_COORDINATOR_ABI, "AttestationCoordinator"],
@@ -76,6 +88,9 @@ describe("the SDK's ABIs are the contracts' ABIs", () => {
             const drifted = sdkAbi.map(shape).filter((s): s is string => s !== null && !theirs.has(s));
             expect(drifted, `${sdkName} fragments not in abi/${contract}.json`).toEqual([]);
         });
+        it(`${sdkName} carries every error ${contract} compiles`, () => {
+            expect(missingErrors(sdkAbi, compiled(contract)), `abi/${contract}.json errors not in ${sdkName}`).toEqual([]);
+        });
     }
 
     it("a drifted fragment is caught", () => {
@@ -88,5 +103,11 @@ describe("the SDK's ABIs are the contracts' ABIs", () => {
         const theirs = new Set(compiled("FigaroCore").map(shape));
         expect(theirs.has(shape(committed))).toBe(true);
         expect(theirs.has(shape(moved))).toBe(false);
+    });
+
+    it("an error the SDK drops is caught", () => {
+        // The reverse check reads what it claims to: one error removed is a miss.
+        const dropped = BATCH_VERIFIER_ABI.filter((i) => !(i.type === "error" && i.name === "ZeroVerifier")) as Abi;
+        expect(missingErrors(dropped, compiled("FigaroBatchVerifier"))).toEqual(["error ZeroVerifier()"]);
     });
 });

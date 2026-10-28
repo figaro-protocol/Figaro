@@ -71,6 +71,18 @@ export const CORE_ABI = parseAbi([
     "error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)",
     "error ERC20InvalidApprover(address approver)",
     "error ERC20InvalidSpender(address spender)",
+
+    // ── OpenZeppelin library errors FigaroCore compiles ────────────────
+    // ECDSA.recover at commit, SafeERC20 on every transfer, nonReentrant on
+    // commit and resolve, ShortStrings under EIP712. sdk/tests/abiParity
+    // requires every error in abi/FigaroCore.json here.
+    "error ECDSAInvalidSignature()",
+    "error ECDSAInvalidSignatureLength(uint256 length)",
+    "error ECDSAInvalidSignatureS(bytes32 s)",
+    "error SafeERC20FailedOperation(address token)",
+    "error ReentrancyGuardReentrantCall()",
+    "error InvalidShortString()",
+    "error StringTooLong(string str)",
 ]);
 
 // ── Individual event ABIs (for log filtering) ───────────────────────────────
@@ -345,6 +357,35 @@ export const FLORIN_TOKEN_ABI = parseAbi([
     // emissionContract removed
     "function deployerMintRenounced() view returns (bool)",
     "function deployer() view returns (address)",
+
+    // ── Errors (every error abi/FlorinToken.json compiles;
+    //    sdk/tests/abiParity requires it) ─────────────────────────────
+    // The token's own: minting, the deployer's renounced mint, the cap.
+    "error DeployerMintRenounced()",
+    "error MinterAlreadySet()",
+    "error MinterCapExceeded()",
+    "error MinterNotRegistered()",
+    "error NotMinter()",
+    "error SupplyCapExceeded()",
+    "error ZeroAddress()",
+    // ERC-20 (ERC-6093) and ERC-2612 permit, as OpenZeppelin compiles them.
+    "error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)",
+    "error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)",
+    "error ERC20InvalidApprover(address approver)",
+    "error ERC20InvalidReceiver(address receiver)",
+    "error ERC20InvalidSender(address sender)",
+    "error ERC20InvalidSpender(address spender)",
+    "error ERC2612ExpiredSignature(uint256 deadline)",
+    "error ERC2612InvalidSigner(address signer, address owner)",
+    "error InvalidAccountNonce(address account, uint256 currentNonce)",
+    // OpenZeppelin library errors: ECDSA under permit, ReentrancyGuard,
+    // ShortStrings under EIP712.
+    "error ECDSAInvalidSignature()",
+    "error ECDSAInvalidSignatureLength(uint256 length)",
+    "error ECDSAInvalidSignatureS(bytes32 s)",
+    "error ReentrancyGuardReentrantCall()",
+    "error InvalidShortString()",
+    "error StringTooLong(string str)",
 ]);
 
 // ── UsageCounter ABI ──────────────────────────────────────────────────────
@@ -519,7 +560,8 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "event BatchSettled(uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount)",
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
 
-    // ── Errors (resolution-reachable; constructor guards omitted) ────
+    // ── Errors (every error abi/FigaroBatchVerifier.json compiles;
+    //    sdk/tests/abiParity requires it) ───────────────────────────
     "error StateRootMismatch(bytes32 expected, bytes32 actual)",
     "error ChainIdMismatch(uint64 expected, uint64 actual)",
     "error VerifyingContractMismatch(address expected, address actual)",
@@ -534,4 +576,22 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     // its `isValidSignature` did not answer with the ERC-1271 magic value.
     "error BuyerHasNoCode(bytes32 processId, address buyer)",
     "error WalletCodeAuthorizationRefused(bytes32 processId, address buyer)",
+    // The settle's own checks on its inputs: the proof's public values, the
+    // batch's timestamp window, the published operation stream.
+    "error PublicValuesLengthMismatch(uint256 expected, uint256 actual)",
+    "error BatchTimestampOutOfRange(uint64 committed, uint64 current)",
+    "error OperationsHashMismatch()",
+    "error MalformedOperationStream()",
+    // Constructor guards: a deployment refused names its cause.
+    "error ZeroVerifier()",
+    "error VerifierNotContract()",
+    "error VerifierNotPinned()",
+    "error ZeroClauseRegistry()",
+    "error ZeroUsageCounter()",
+    // OpenZeppelin library errors the verifier compiles: SafeERC20 on every
+    // transfer, nonReentrant on settleBatch, ShortStrings under EIP712.
+    "error SafeERC20FailedOperation(address token)",
+    "error ReentrancyGuardReentrantCall()",
+    "error InvalidShortString()",
+    "error StringTooLong(string str)",
 ]);

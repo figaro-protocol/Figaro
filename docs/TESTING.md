@@ -510,6 +510,13 @@ other, editorial prose never moves the root or the key, any clause value moves
 the key, the two-key provenance bytes decode back to their keys — are
 `sdk/tests/assemblyInclusion.property.test.ts`.
 
+**ABI parity — the SDK's ABIs against the compiled ones.**
+`sdk/tests/abiParity.test.ts` checks every fragment of `sdk/src/abis.ts`
+against `abi/*.json` (same name, inputs, `indexed` flags, outputs), and every
+error a contract compiles against the SDK's ABI for it, so a refused call
+decodes by name. lint-staged runs it when `abi/*.json`, `sdk/src/abis.ts` or the test is
+staged, and SDK CI re-runs on `abi/**`.
+
 **Clause keys — the two-language canonicalization lock.** A clause key is
 `keccak256` of the spec's canonical bytes, so the SDK and the guest must
 canonicalize identically. `sdk/tests/clauseKeys.test.ts` derives every
