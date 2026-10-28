@@ -107,7 +107,7 @@ export function WholeStripFrame({ n, idPrefix = "whole-strip" }: { n: number; id
             );
         case 5:
             return (
-                <Panel idPrefix={idPrefix} n={5} title="The evidence, yours" desc="The signed sheet, one copy beside each of the three wallets, and under them three readers of it: a court, the books, a market." caption="The evidence, yours.">
+                <Panel idPrefix={idPrefix} n={5} title="Your data, yours" desc="The signed sheet, one copy beside each of the three wallets, and under them three readers of it: a market, the books, a court." caption="Your data, yours.">
                     <Wallet x={X[0]} y={ROW_Y - 36} />
                     <Wallet x={X[2]} y={ROW_Y - 36} />
                     <Person x={X[4]} y={ROW_Y - 36} />

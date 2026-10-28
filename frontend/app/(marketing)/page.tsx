@@ -18,9 +18,15 @@ export const metadata: Metadata = withOg({
 // believing; the lead states the problem, an authorized institution in the
 // middle that makes a stranger's promise good after the fact; under it, what
 // Figaro does, in the maintainer's telling's plain words (everyone bonds first,
-// only the buyer closes, everyone is paid at once), with no figures: the bond
-// arithmetic and its example live on /kernel, which the last line links; then
-// the invitation and the THREE DOORS the header carries —
+// the buyer twice the payment and each seller twice the value through its
+// order, into a contract no one controls — the holder named, because a bond
+// with an implied holder reads as held by a third party; only the buyer closes,
+// and nothing sits between the parties with the power to decide — the
+// who-decides axis, stated positively, since the FAQ's line on it is what moves
+// readers off the third-party prior; every seller paid and every bond refunded at once; and what
+// happens if the buyer never closes, above the fold), with no worked example:
+// the bond arithmetic and its example live on /kernel, which the last line
+// links; then the invitation and the THREE DOORS the header carries —
 // Participate, Build, Research — each one sentence and one button to its
 // landing. Below the fold, "What it removes" pairs each part of the problem with
 // what the bond does about it (the two costs the online marketplaces failed on:
@@ -76,11 +82,11 @@ const FRAMES: { line: string; fact: string }[] = [
     },
     {
         line: "Your data is yours, to keep or to sell.",
-        fact: "Every trade leaves signed evidence of what was agreed, what each side attested and what was paid. Which wallets traded, and for how much, is public on-chain; the detail is yours to sell, private unless the terms you trade on make it public. The same evidence is there for a regulator or a court to read, and for your books and taxes.",
+        fact: "Every trade leaves signed evidence of what was agreed, what each side attested and what was paid. Which wallets traded, and for how much, is public on-chain; of the detail the chain holds only a fingerprint, and the detail itself stays with you, private unless the terms you trade on make it public, yours to keep, to disclose or to sell. The same evidence is there for your books and taxes, and for a regulator or a court to read.",
     },
     {
         line: "Use is counted, and rewarded.",
-        fact: "Once a trade closes, every term, agreement and process it used is counted. Whoever designed them is rewarded by a published formula that weighs how many processes used them and how many distinct sellers carried them.",
+        fact: "Once a trade closes, each term and each design it used counts once toward its designer, under published conditions. Whoever designed them is rewarded in florins by a published formula that weighs how many trades used them and how many distinct sellers carried them.",
     },
 ];
 
@@ -119,16 +125,16 @@ export default function Home() {
                     Figaro makes the promise good before the trade. It is an ex-ante institution for exchange: it acts before the trade, not after.
                 </p>
                 <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl">
-                    Everyone in the trade puts up a bond first. Breaking your word costs more than keeping it: a seller that delivers is paid, and once the work is delivered, closing is the buyer&rsquo;s better choice.
+                    Everyone in the trade puts up a bond first: the buyer bonds twice the payment and each seller twice the value through its order, into a smart contract that no one controls and that releases nothing until the buyer closes. Breaking your word costs more than keeping it: a seller that delivers is paid when the buyer closes, and once the work is delivered, closing is the buyer&rsquo;s better choice, since it refunds the rest of the buyer&rsquo;s own bond.
                 </p>
                 <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl">
-                    Only the buyer can close the trade. When the buyer does, everyone is paid at once. Nobody is paid until everyone is, so the sellers help each other finish, with no boss in charge.{" "}
+                    Only the buyer can close the trade (resolve it, in the contract&rsquo;s word), and nothing sits between the parties with the power to decide for them. When the buyer closes, every seller is paid and every bond refunded at once. Nobody is paid until everyone is, so the sellers help each other finish, with no boss in charge. If the buyer never closes, every bond stays locked, the buyer&rsquo;s own included, and an arbitration forum or a court can rule on the trade&rsquo;s data while it stays open.{" "}
                     <Link href="/kernel" className="text-ink-heading font-medium italic hover:underline">
-                        Why each side&apos;s best move is to keep its word.
+                        Why, once the work is delivered, closing is the buyer&apos;s better move and delivering each seller&apos;s.
                     </Link>
                 </p>
                 <p className="mt-8 text-body-lead text-ink-heading font-medium max-w-2xl">
-                    Come build any value-added process, in any currency. Keep the data.
+                    Any value-adding process runs this way, in any ERC-20 token, and the data it leaves stays with the parties.
                 </p>
                 <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8" data-testid="home-doors">
                     {DOORS.map((d) => (
@@ -146,13 +152,13 @@ export default function Home() {
                 <div className="border-t border-default pt-10">
                     <h2 className="text-heading-h2 text-ink-heading mb-5">What it removes</h2>
                     <p className="text-base text-ink-body leading-relaxed">
-                        Online marketplaces tried to connect buyers and sellers directly. Most failed on two costs: attracting buyers, and handling disputes between buyers and sellers. The data they captured did not pay for both. The marketplaces that survived became platforms, which take a share of each sale, set the rules, and keep the customers and the data.
+                        An online marketplace that connects buyers and sellers directly carries two costs: attracting buyers, and handling disputes between them. The data a marketplace captures does not pay for both, and the ones that grew became platforms, which take a share of each sale, set the rules, and keep the customers and the data.
                     </p>
                     <p className="mt-4 text-base text-ink-body leading-relaxed">
-                        The bond removes both costs. A promise carries its bond from the start, so less is left in dispute, and when a dispute does arise, the trade&apos;s data is there for an arbitration forum or a court to rule on before the buyer closes.
+                        The bond carries the second cost. A promise carries its bond from the start, so less is left in dispute, and when a dispute does arise, the trade&apos;s data is there for an arbitration forum or a court to rule on before the buyer closes. The first is carried by the members&rsquo; listing, by the communities that build on Figaro, and by a designer&rsquo;s token.
                     </p>
                     <p className="mt-4 text-base text-ink-body leading-relaxed">
-                        The protocol is decentralized and permissionless. Any token can carry a trade: a stablecoin, a community&apos;s own token, or a designer&apos;s token. A designer can make its token the way in to a resource: every trade under its assembly is paid and bonded in that token, so a buyer reaches the resource by holding it, and the token&apos;s value is that access, not a claim on anyone&apos;s revenue. A wallet that registers as a member is listed where buyers look, and the communities that build on Figaro bring their own members. Whoever designs what the network uses is rewarded by a published formula of that use.
+                        The protocol is decentralized and permissionless. Any ERC-20 token can carry a trade: a stablecoin, a community&apos;s own token, or a designer&apos;s token. A designer can make its token the way in to a resource: every trade under its assembly is paid and bonded in that token, so a buyer reaches the resource by holding it, and holding it grants that access and no claim on anyone&apos;s revenue. A wallet is all a buyer needs, with no account, identity check or sign-up; a seller that wants to be found registers as a member with a stake and is listed where buyers look, and the communities that build on Figaro bring their own members. Whoever designs what the network uses is rewarded in florins, the protocol&apos;s own token, from a reserve set aside for designers and never sold, by a published formula of that use.
                     </p>
                     <p className="mt-4 text-base text-ink-body leading-relaxed">
                         A firm exists because coordinating many people through the market costs too much, so someone has to be the boss. Flat companies and self-managed teams tried to work without one, and still needed a central operator. Figaro removes the reason for the boss. No seller is paid until every seller is, so each has reason to help the others finish, and the sellers coordinate as equals.
@@ -178,7 +184,7 @@ export default function Home() {
                     </div>
                 ))}
                 <p className="mt-12 text-base text-ink-body leading-relaxed">
-                    Courts, firms and platforms remain. Figaro displaces them without completely substituting for them, and the data a trade leaves still meets their filing and reporting needs.
+                    Courts, firms and platforms remain. Figaro displaces them without completely substituting for them, and the data a trade leaves is there for their filing and reporting.
                 </p>
 
                 <div className="mt-12 border-t border-default pt-8" data-testid="built-with">

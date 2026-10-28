@@ -323,7 +323,7 @@ export default function Faq() {
 
             <MarketingSection title="Gas, tokens, and tax." sectionId="compatibility">
                 <p className="text-base text-ink-body leading-relaxed mb-6">
-                    Five operational facts worth knowing before you commit. What you need in hand before a first trade is short. It is a wallet, some ETH for the gas each step costs, and enough of the token the trade resolves in to cover your own side of it. Your side is twice the payment as a buyer, and twice the value at your link as a seller. If what you hold is a different token, a swap composes as the on-ramp, in the same transaction as the commit.
+                    Five operational facts worth knowing before you commit. What you need in hand before a first trade is short. It is a wallet, the chain&rsquo;s gas token for what each step costs, and enough of the token the trade resolves in to cover your own side of it. Your side is twice the payment as a buyer, and twice the value at your link as a seller. If what you hold is a different token, a swap composes as the on-ramp, in the same transaction as the commit.
                 </p>
                 <ul className="space-y-6">
                     <LabelledListRow label="Tax and law" labelWidth="wide" uppercase>
