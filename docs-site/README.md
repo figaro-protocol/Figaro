@@ -6,7 +6,7 @@ The Figaro Protocol's own documents, rendered as a static site for the people wh
 
 Nothing is written here twice. Every page is one file that lives elsewhere in the repository — `docs/*.md`, `sdk/README.md`, `ecosystem-agents/*.md` — and `scripts/assemble-content.mjs` copies it into the ignored `content/` tree at build time, adds the frontmatter fumadocs needs, and rewrites repo-relative links (to the sibling page when the target is also rendered here, to GitHub otherwise). The typedoc output under `frontend/public/sdk-api/` is copied into `public/sdk-api/` the same way, so the export carries the API reference at `/sdk-api/`. Each page names its source at the top. To change a page, edit its source; to add or reorder one, edit the `SOURCES` table in the script and the `meta.json` under `site/`.
 
-`site/` holds the only pages written here: the sidebar map (`meta.json` per section), the index, the security page, and the working-groups stub.
+`site/` holds the pages written here, and the sidebar map (`meta.json` per section) that orders them beside the copied documents.
 
 `$…$` in a source is LaTeX (remark-math + rehype-katex); the sources are compiled as plain markdown, so braces and angle brackets in prose stay literal.
 

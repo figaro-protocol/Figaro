@@ -9,8 +9,7 @@
 // source path the page shows as its provenance), and rewrites repo-relative
 // links so they resolve on the site: to the sibling page when the target is
 // itself sourced here, to the file on GitHub otherwise. The site's own pages in
-// `site/` (the sidebar map, the index, the security page, the working-groups
-// stub) are copied in first; the typedoc output under
+// `site/` (the sidebar maps and every page under it) are copied in first; the typedoc output under
 // `frontend/public/sdk-api/` is copied into `public/sdk-api/` so the static
 // export carries the API reference. Nothing this script writes is committed.
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

@@ -1,0 +1,591 @@
+---
+title: Run a published composition
+description: A worked run of the containerized import chain — six registered agreements composed into one published assembly — from a cold devnet to one resolution, every step a command or an SDK call, every token delta read from the chain.
+---
+
+A composition is clauses composed into agreements, agreements into an assembly, and the assembly instantiated as a process at checkout; this tutorial runs one that is already published. The containerized import chain is six registered agreements — shipper, pre-shipment inspection, freight forwarding, reefer carriage, customs filing, destination drayage — composed into one assembly with three terms for the whole design (applicable law, a Kleros forum, property transfer). You bring up a devnet, find the assembly on the chain, register six seller wallets as members that bind it, open the process as the importer (six orders, the importer bonding twice each payment and each seller twice the value through its order), file each leg's attestations while the process is open, and resolve all six with one call, reading the token deltas from the chain after every step. The model it instantiates is on [Composition](/protocol/composition/); the sector reading behind the design is the paper [After TradeLens](https://figaroprotocol.com/papers/after-tradelens); the next tutorial, [Design a composition](/building/design-a-composition/), publishes one of your own.
+
+Every command below runs against a devnet you own. Nothing is hosted by anyone else: your Anvil, your IPFS node, contracts you deployed, the standard public Anvil test keys. Against a public chain only the deployment file, the RPC URL and the signers change.
+
+## 0. What you need
+
+- A checkout of the [public repository](https://github.com/figaro-protocol/Figaro), with `npm install` run once at its root.
+- Foundry (`anvil`, `cast`), Node 18 or later, and a running Kubo daemon (API on `127.0.0.1:5001`, gateway on `127.0.0.1:8080`).
+
+## 1. Bring up the devnet
+
+From the repository root:
+
+```bash
+./scripts/devup.sh
+```
+
+It builds `sdk/dist`, starts Anvil on `:8545` with 39 funded test accounts, deploys the protocol, and pins and registers every published clause, agreement and reference assembly — the containerized import chain among them. It writes the addresses to `.deployments/local.json`; every step reads them from that file, never from this page, because a fresh deploy puts the contracts at new addresses. Prerequisites and the native-Kubo recipe are in [`docs/LOCAL_DEV.md`](https://github.com/figaro-protocol/Figaro/blob/main/docs/LOCAL_DEV.md).
+
+Then make a project beside the checkout and install the SDK from it:
+
+```bash
+mkdir tradelens-run && cd tradelens-run
+npm init -y && npm pkg set type=module
+npm install viem ../Figaro/sdk
+export DEPLOYMENT_FILE=../Figaro/.deployments/local.json
+export RPC_URL=http://127.0.0.1:8545
+```
+
+The [SDK manual](/building/sdk/) covers the registry install and the one trap of a `file:` install.
+
+## 2. The shared module
+
+Every step imports one module: the clients, the addresses mapped from the deployment file (`addressesFromDeploymentRecord`), the network folded from the registries' events (`FigaroContext.sync()`), and the spec source — every registered clause spec, read chain → IPFS and parsed. The buyer (`BUYER`, here the importer) is Anvil index 30; the six sellers are 31 to 36. Any indices no one else on your devnet uses will do.
+
+```js title="figaro.mjs"
+// figaro.mjs — the clients, the addresses and the network every step reads.
+import { readFileSync } from "node:fs";
+import { createPublicClient, createWalletClient, http } from "viem";
+import { mnemonicToAccount } from "viem/accounts";
+import {
+    addressesFromDeploymentRecord, anchorAssembly, hydrateAssembly, parseProjectionHints,
+    tryParseMemberProfileDocument, ERC20_ABI,
+} from "@figaro-protocol/sdk";
+import { FigaroContext } from "@figaro-protocol/sdk/agent";
+import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
+
+const RPC = process.env.RPC_URL ?? "http://127.0.0.1:8545";
+const GATEWAY = process.env.IPFS_GATEWAY ?? "http://127.0.0.1:8080/ipfs/";
+const IPFS_API = process.env.IPFS_API ?? "http://127.0.0.1:5001";
+
+// The deployment file your devnet wrote: the chain id and every contract address.
+export const deployment = JSON.parse(readFileSync(process.env.DEPLOYMENT_FILE, "utf8"));
+export const addresses = addressesFromDeploymentRecord(deployment);
+export const TOKEN = deployment.tokenAddress;
+
+// The standard public Anvil test mnemonic. Pick indices no one else on your devnet uses.
+const MNEMONIC = "test test test test test test test test test test test junk";
+export const account = (index) => mnemonicToAccount(MNEMONIC, { addressIndex: index });
+// The buyer of every order: the importer in the first tutorial, the passenger in the second.
+export const BUYER = account(30);
+
+export const pub = createPublicClient({ transport: http(RPC), cacheTime: 0 });
+export const walletOf = (acct) => createWalletClient({ account: acct, transport: http(RPC) });
+
+export async function readIpfs(uri) {
+    try { return await (await fetch(GATEWAY + uri.replace("ipfs://", ""))).json(); } catch { return null; }
+}
+export async function pin(text, name = "doc.json") {
+    const form = new FormData();
+    form.append("file", new Blob([text], { type: "application/json" }), name);
+    const res = await fetch(`${IPFS_API}/api/v0/add?pin=true`, { method: "POST", body: form });
+    if (!res.ok) throw new Error(`IPFS pin failed: ${res.status}`);
+    return `ipfs://${(await res.json()).Hash}`;
+}
+
+// The network: the four registries' events folded into one catalog.
+export const ctx = new FigaroContext(pub, addresses);
+await ctx.sync();
+
+// The SpecSource: every registered clause spec, read chain → IPFS and parsed.
+const views = [];
+for (const c of ctx.getClauses()) {
+    const raw = await readIpfs(c.contentURI);
+    const parsed = raw && parseClauseSpec(raw);
+    if (parsed?.ok) views.push({ ...parsed.spec, clauseKey: c.clauseKey, hints: parseProjectionHints(raw) });
+}
+export const specs = {
+    get: (key) => views.find((v) => v.clauseKey.toLowerCase() === key.toLowerCase()),
+    list: () => views,
+};
+
+// The clause among `clauses` whose spec declares `field`: found by the spec, never by a name.
+export const clauseDeclaring = (clauses, field) =>
+    Object.keys(clauses).find((key) => (specs.get(key)?.fields ?? []).some((f) => f.name === field));
+
+// An assembly is used only when its document hashes to its assemblyHash and
+// every registered agreement it binds verifies against its key.
+export async function hydrate(registered) {
+    const doc = anchorAssembly(await readIpfs(registered.contentURI), registered.assemblyHash);
+    if (!doc) return null;
+    return hydrateAssembly(doc, async (key) => {
+        const binding = ctx.getAgreementBinding(key);
+        return binding ? readIpfs(binding.contentURI) : null;
+    });
+}
+export async function findAssembly(name) {
+    for (const registered of ctx.getAssemblies()) {
+        const hydrated = await hydrate(registered);
+        if (hydrated?.assembly.name === name) return { registered, hydrated };
+    }
+    throw new Error(`no verified assembly named "${name}" on this network`);
+}
+
+// A member's own profile, read at the moment it is needed: MembersRegistry → IPFS.
+export async function readProfile(member) {
+    await ctx.sync();
+    const m = ctx.getMembers().find((x) => x.member.toLowerCase() === member.toLowerCase());
+    return m?.metadataURI ? tryParseMemberProfileDocument(await readIpfs(m.metadataURI)) : null;
+}
+
+export const balanceOf = (who) => pub.readContract({ address: TOKEN, abi: ERC20_ABI, functionName: "balanceOf", args: [who] });
+export async function snapshot(who) {
+    return Object.fromEntries(await Promise.all(who.map(async (a) => [a, await balanceOf(a)])));
+}
+export async function printDeltas(label, before) {
+    console.log(`\n${label} (token deltas, read from the chain)`);
+    for (const [a, b] of Object.entries(before)) console.log(`  ${a}  ${(await balanceOf(a)) - b}`);
+}
+```
+
+## 3. Find the assembly
+
+The assembly is found on the chain, not in the repository: `AssemblyRegistry` emits its `assemblyHash` and `contentURI`, and `hydrate` keeps it only when the pinned document hashes to that key (`anchorAssembly`) and each registered agreement it binds verifies against its own key (`hydrateAssembly`). Selecting it by the name its designer gave it is a reader's choice; the identity is the hash.
+
+```bash
+node -e '
+const { ctx, hydrate } = await import("./figaro.mjs");
+for (const r of ctx.getAssemblies()) {
+  const h = await hydrate(r);
+  if (h) console.log(r.assemblyHash, h.assembly.agreements.length, h.assembly.name);
+}'
+```
+
+One line reads `<assemblyHash> 6 Containerized import chain`. Its six agreements, in commit order, compose these clauses (each agreement also carries the commerce and topology clauses, and every one carries the three assembly terms):
+
+| Agreement | Seller | Clauses beside commerce and topology |
+|---|---|---|
+| `agreement-0` (root) | shipper | `figaro-cargo`, `figaro-incoterms`, `figaro-chain-of-custody`, `figaro-acceptance-criteria`, `figaro-geolocation`, `figaro-modalities` |
+| `agreement-1` follows 0 | inspection service | `figaro-acceptance-criteria`, `figaro-merchant-process` |
+| `agreement-2` follows 0 | freight forwarder | `figaro-geolocation`, `figaro-merchant-process` |
+| `agreement-3` follows 2 | reefer ocean carrier | `figaro-chain-of-custody`, `figaro-cold-chain`, `figaro-courier-process`, `figaro-emissions`, `figaro-geolocation`, `figaro-handoff`, `figaro-proximity-policy` |
+| `agreement-4` follows 3 | customs agent | `figaro-consent` (the filing terms, affixed by content hash), `figaro-merchant-process` |
+| `agreement-5` follows 4 | destination drayage | `figaro-courier-process`, `figaro-freight-class`, `figaro-geolocation`, `figaro-handoff`, `figaro-proximity-policy` |
+
+The table is this deployment's design, read back from the chain; print it yourself with `agreementClauses(hydrated, entry)` over `hydrated.assembly.agreements`. Who fills each field is declared by the spec: a field in `block.design.fills` is the designer's (the property-transfer clause's anticipated events, the customs filing terms), a field in `block.checkout.catalogueFills` comes from the seller's catalog item (the cold-chain window, the freight class), and every other field is the importer's at checkout.
+
+## 4. Fund the wallets
+
+On the devnet the mock token mints to anyone. Give the importer and the six sellers 5,000 tokens each (the token has 18 decimals):
+
+```bash
+TOKEN=$(jq -r .tokenAddress "$DEPLOYMENT_FILE")
+M="test test test test test test test test test test test junk"
+for i in 30 31 32 33 34 35 36; do
+  A=$(cast wallet address --mnemonic "$M" --mnemonic-index $i)
+  cast send "$TOKEN" "mint(address,uint256)" "$A" 5000ether \
+    --private-key "$(cast wallet private-key --mnemonic "$M" --mnemonic-index 30)" --rpc-url "$RPC_URL" > /dev/null
+  echo "$i $A $(cast call "$TOKEN" 'balanceOf(address)(uint256)' "$A" --rpc-url "$RPC_URL")"
+done
+```
+
+Each wallet also needs the chain's gas token, which Anvil gives indices 0 to 38 at launch.
+
+## 5. Register the sellers as members and bind the assembly
+
+A seller accepts an order only under an assembly its own profile binds, and every seller in a process must bind it. Each seller pins a catalog (one item, its price in whole tokens) and a profile, then registers on `MembersRegistry` under the registry's stake (`registrationDeposit`, read from the chain) or, once registered, points the registry at the new pin with `updateProfile`. The shipper's binding also designates who serves each sub-order, by the process-log clause the sub-order carries: the checkout reads a sub-order's seller from these designations (`coSellerBindings`).
+
+```js title="sellers.mjs"
+// sellers.mjs — the six sellers, one per agreement of the assembly, and what each lists.
+import { account } from "./figaro.mjs";
+
+export const ASSEMBLY_NAME = "Containerized import chain";
+// The shipper designates its sub-order sellers by the process-log clause each
+// sub-order carries: the clause whose spec declares this field.
+export const DESIGNATE_BY = "eventType";
+// Prices are whole tokens: a catalog price is a human decimal.
+export const SELLERS = [
+    { agreement: "agreement-0", key: account(31), name: "Meridian Exports",   item: "Containerized cargo (invoice)", price: "700",
+      measures: { massGrams: 12_000_000, volumeMl: 33_000_000 } },
+    { agreement: "agreement-1", key: account(32), name: "Veritas Inspection", item: "Pre-shipment inspection",       price: "10" },
+    { agreement: "agreement-2", key: account(33), name: "Atlas Forwarding",   item: "Freight forwarding",            price: "30" },
+    { agreement: "agreement-3", key: account(34), name: "Boreal Lines",       item: "Reefer ocean freight",          price: "60",
+      catalogFields: { tempClass: "refrigerated", tempMinC: 2, tempMaxC: 8, recordingIntervalSeconds: 900 } },
+    { agreement: "agreement-4", key: account(35), name: "Portside Customs",   item: "Customs entry filing",          price: "20" },
+    { agreement: "agreement-5", key: account(36), name: "Delta Drayage",      item: "Destination drayage",           price: "25",
+      catalogFields: { nmfcClass: "85" } },
+];
+export const sellerKeyOf = (address) => SELLERS.find((s) => s.key.address.toLowerCase() === address.toLowerCase()).key;
+```
+
+```js title="register.mjs"
+// register.mjs — each seller publishes a profile and a catalog, and binds the assembly.
+import {
+    agreementClauses, canonicalize, planSubOrderSellers, parseMemberCatalogDocument, parseMemberProfileDocument,
+    MEMBERS_REGISTRY_ABI,
+} from "@figaro-protocol/sdk";
+import { addresses, pub, walletOf, pin, specs, TOKEN, clauseDeclaring, findAssembly, readProfile } from "./figaro.mjs";
+import { ASSEMBLY_NAME, DESIGNATE_BY, SELLERS } from "./sellers.mjs";
+
+const { registered, hydrated } = await findAssembly(ASSEMBLY_NAME);
+const assemblyHash = registered.assemblyHash;
+console.log("assemblyHash", assemblyHash);
+const clausesOf = (id) => agreementClauses(hydrated, hydrated.assembly.agreements.find((a) => a.id === id));
+
+// The root seller designates who serves each sub-order, per clause the
+// sub-order carries (the clause declaring DESIGNATE_BY), in commit order.
+const designations = {};
+for (const s of SELLERS.slice(1)) (designations[clauseDeclaring(clausesOf(s.agreement), DESIGNATE_BY)] ??= []).push(s.key.address);
+const coSellerBindings = Object.entries(designations).map(([clauseKey, list]) => ({ clauseKey, addresses: list }));
+
+const stake = await pub.readContract({ address: addresses.membersRegistry, abi: MEMBERS_REGISTRY_ABI, functionName: "registrationDeposit" });
+const chainId = await pub.getChainId();
+for (const [i, s] of SELLERS.entries()) {
+    // Catalog-sourced values go on the item, profile-sourced ones on the profile,
+    // each keyed by the clause whose spec lists the field in
+    // block.checkout.catalogueFills or block.checkout.profileFills.
+    const valuesFor = (given, hint) => {
+        const out = {};
+        for (const key of Object.keys(clausesOf(s.agreement))) {
+            const fills = specs.get(key)?.hints?.[hint] ?? [];
+            const values = Object.fromEntries(Object.entries(given ?? {}).filter(([f]) => fills.includes(f)));
+            if (Object.keys(values).length) out[key] = values;
+        }
+        return out;
+    };
+    const clauseValues = valuesFor(s.catalogFields, "catalogueFills");
+    const profileClauseValues = valuesFor(s.profileFields, "profileFills");
+    const catalog = parseMemberCatalogDocument({
+        subjectAddress: s.key.address, version: "1", unitSystem: "metric",
+        items: [{ id: `${s.agreement}-item`, name: s.item, price: s.price, available: true, ...(s.measures ?? {}),
+                  ...(Object.keys(clauseValues).length ? { clauseValues } : {}) }],
+    });
+    const profile = parseMemberProfileDocument({
+        name: s.name, subjectAddress: s.key.address, catalogURI: await pin(canonicalize(catalog), "catalog.json"),
+        acceptedTokens: [{ address: TOKEN, symbol: "MOCK", chainId }], defaultTokenAddress: TOKEN,
+        ...(Object.keys(profileClauseValues).length ? { profileClauseValues } : {}),
+        assemblyBindings: [{ bindingId: `${s.agreement}:${s.key.address.toLowerCase()}`, subjectAddress: s.key.address,
+                             assemblyHash, ...(i === 0 ? { coSellerBindings } : {}) }],
+    });
+    const metadataURI = await pin(canonicalize(profile), "profile.json");
+    const isMember = await pub.readContract({ address: addresses.membersRegistry, abi: MEMBERS_REGISTRY_ABI, functionName: "registered", args: [s.key.address] });
+    const { request } = await pub.simulateContract({
+        account: s.key, address: addresses.membersRegistry, abi: MEMBERS_REGISTRY_ABI,
+        ...(isMember ? { functionName: "updateProfile", args: [metadataURI] }
+                     : { functionName: "register", args: [metadataURI], value: stake }),
+    });
+    const receipt = await pub.waitForTransactionReceipt({ hash: await walletOf(s.key).writeContract(request) });
+    console.log(`${s.name.padEnd(19)} ${s.key.address}  ${isMember ? "updateProfile" : "register"}  ${receipt.status}  ${metadataURI}`);
+}
+
+// Read it back as a buyer will: the root seller's own profile names every sub-order's seller.
+const binding = (await readProfile(SELLERS[0].key.address)).assemblyBindings.find((b) => b.assemblyHash === assemblyHash);
+const plan = planSubOrderSellers({ hydratedAssembly: hydrated, coSellerBindings: binding.coSellerBindings });
+for (const { node, seller } of plan) console.log(`  ${node.nodeId} → ${seller}`);
+```
+
+```bash
+node register.mjs
+```
+
+Six `register  success` lines, then the five sub-orders mapped to their sellers in commit order, read back from the shipper's own profile by `planSubOrderSellers`. Check one registration from the chain:
+
+```bash
+cast call "$(jq -r .membersRegistry "$DEPLOYMENT_FILE")" "registered(address)(bool)" \
+  "$(cast wallet address --mnemonic "$M" --mnemonic-index 31)" --rpc-url "$RPC_URL"
+```
+
+## 6. Open the chain as the importer
+
+The importer knows the shipper; everything else it reads. The shipper's profile names the five sub-order sellers, each seller's catalog names its item and price, and the importer fills its particulars by the field each spec declares — never by a clause's name. `fillDerivedClauses` folds the catalog-sourced values (the cargo's mass and volume from the shipper's item, the cold-chain window from the carrier's, the freight class from the drayage carrier's). `originateChain` then walks the assembly (`reconstructOrdersFromAssembly`), signs all six orders, sends each to its seller over the channel, and commits root first only once every seller has counter-signed; each seller's handler runs the same spec gate before it signs and approves its own bond.
+
+The importer's particulars sit in their own module, keyed by field; a field no composed spec declares is ignored. The six sellers' agents run in this one process because you hold all seven keys; across machines the channel is `HttpChannel` or `A2aChannel`, with the same envelope.
+
+```js title="particulars.mjs"
+// particulars.mjs — what the importer fills at checkout, keyed by field.
+// Keyed by the FIELD each spec declares; a field no composed spec declares is ignored.
+export const PARTICULARS = {
+    modality: "delivery",
+    incotermsRule: "CIF", incotermsNamedPlace: "Port of Rotterdam",
+    custodyScheme: "ISO 17712 high-security bolt seal on ISO 6346 container", unitIdentifier: "MSKU1234565",
+    acceptanceBasis: "AQL 2.5 per ISO 2859-1 against PO 4711",
+    standard: "EN 16258",
+    handoff: ["face-to-face"], bands: ["zone-wifi"],
+    applicableLaw: "England-Wales", forum: "LCIA-arbitration", klerosCourt: "general",
+};
+// Each leg's route, as geohash cells (the geolocation spec's default standard).
+export const ROUTES = {
+    "agreement-0": { origin: "wtw3sjq", destination: "u15pmus" },
+    "agreement-2": { origin: "wtw3sjq", destination: "wtw1kqc" },
+    "agreement-3": { origin: "wtw1kqc", destination: "u15pmus" },
+    "agreement-5": { origin: "u15pmus", destination: "u173zqh" },
+};
+```
+
+```js title="open.mjs"
+// open.mjs — the sellers' agents answer; the buyer opens the process.
+import { mkdirSync, writeFileSync } from "node:fs";
+import { parseEther } from "viem";
+import {
+    planAssemblyOrders, planSubOrderSellers, fillDerivedClauses, parseMemberCatalogDocument,
+    computeDeadline, readChainTimestamp, calculateBonds, CORE_ABI,
+} from "@figaro-protocol/sdk";
+import { InProcessChannel, makeSellerOfferHandler, originateChain, serializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
+import {
+    addresses, ctx, pub, walletOf, readIpfs, specs, hydrate, findAssembly, readProfile, clauseDeclaring,
+    snapshot, printDeltas, TOKEN, BUYER,
+} from "./figaro.mjs";
+import { ASSEMBLY_NAME, SELLERS } from "./sellers.mjs";
+import { PARTICULARS, ROUTES } from "./particulars.mjs";
+
+const { registered, hydrated } = await findAssembly(ASSEMBLY_NAME);
+
+// ── The sellers' side. Each seller's agent: both refusal floors filled in,
+//    the spec gate armed, its own profile and the named design read when an
+//    offer arrives. Each keeps the order it counter-signs. ──────────────────
+const readDesign = async (provenance) => {
+    await ctx.sync();
+    const r = ctx.getAssemblies().find((a) => a.assemblyHash.toLowerCase() === provenance.assemblyHash.toLowerCase());
+    return r ? hydrate(r) : null;
+};
+mkdirSync("orders", { recursive: true });
+const channel = new InProcessChannel();
+for (const [i, s] of SELLERS.entries()) {
+    const handler = makeSellerOfferHandler(walletOf(s.key), pub, addresses, {
+        accept: (offer) => offer.commitment.currency.toLowerCase() === TOKEN.toLowerCase(),
+        policy: { requireRootShape: i === 0, currencyAllowlist: [TOKEN], maxValue: parseEther("1000") },
+        specs, readDesign, readProfile,
+    });
+    channel.register(s.key.address, async (offer) => {
+        const signed = await handler(offer);
+        if (signed) writeFileSync(`orders/${s.key.address}.json`, serializeCommitmentPayload(signed));
+        return signed;
+    });
+}
+
+// ── The buyer's side. It knows the root seller; that seller's own profile
+//    names who serves every sub-order. ─────────────────────────────────────
+const ROOT_SELLER = SELLERS[0].key.address;
+const binding = (await readProfile(ROOT_SELLER)).assemblyBindings.find((b) => b.assemblyHash === registered.assemblyHash);
+const sellerOf = { [hydrated.assembly.agreements[0].id]: ROOT_SELLER };
+for (const { node, seller } of planSubOrderSellers({ hydratedAssembly: hydrated, coSellerBindings: binding.coSellerBindings }))
+    sellerOf[node.nodeId] = seller;
+
+const nodes = [];
+for (const planned of planAssemblyOrders(hydrated)) {
+    const seller = sellerOf[planned.nodeId];
+    // What the seller lists, read from its own published catalog.
+    const profile = await readProfile(seller);
+    const item = parseMemberCatalogDocument(await readIpfs(profile.catalogURI)).items[0];
+    const payment = parseEther(item.price);
+    const line = { itemId: item.id, name: item.name, quantity: 1, unitPrice: payment.toString(),
+                   massGrams: item.massGrams, volumeMl: item.volumeMl, clauseValues: item.clauseValues };
+    // Catalog-sourced and derived values (cargo measures, the cold-chain window,
+    // the freight class) fold from the item, profile-sourced ones from the
+    // seller's profile; the buyer adds its particulars
+    // to every field still empty. The designer's fills and the topology stay as composed.
+    const base = planned.clauses;
+    const derived = fillDerivedClauses(base, [line], specs, profile.profileClauseValues);
+    const overrides = {};
+    for (const key of Object.keys(base)) {
+        const fill = {};
+        for (const [f, v] of Object.entries(derived[key] ?? {})) if (base[key]?.[f] !== v) fill[f] = v;
+        for (const f of specs.get(key)?.fields ?? []) {
+            if (base[key]?.[f.name] !== undefined || fill[f.name] !== undefined) continue;
+            const value = ROUTES[planned.nodeId]?.[f.name] ?? PARTICULARS[f.name];
+            if (value !== undefined) fill[f.name] = value;
+        }
+        if (Object.keys(fill).length) overrides[key] = fill;
+    }
+    overrides[clauseDeclaring(base, "lineItems")] = { currency: TOKEN, payment: payment.toString(),
+        lineItems: [{ itemId: line.itemId, name: line.name, quantity: 1, unitPrice: line.unitPrice }] };
+    nodes.push({ nodeId: planned.nodeId, seller, payment, overrides });
+}
+
+const before = await snapshot([BUYER.address, ...SELLERS.map((s) => s.key.address), addresses.core]);
+// Every order signed by the buyer, each counter-signed by its seller, then
+// committed root first: no commit lands unless every seller signed.
+const signed = [];
+const result = await originateChain(walletOf(BUYER), pub, addresses, {
+    assembly: hydrated, currency: TOKEN, chainId: await pub.getChainId(), core: addresses.core, nodes, specs,
+    deadline: computeDeadline(await readChainTimestamp(pub)),
+    channel: { sendOffer: async (seller, offer) => { const r = await channel.sendOffer(seller, offer); if (r) signed.push(r); return r; } },
+});
+if (!result) throw new Error("a seller declined; nothing was committed");
+
+// What landed, read from FigaroCore's events.
+let processId;
+for (const hash of result.hashes) {
+    const receipt = await pub.waitForTransactionReceipt({ hash });
+    const [e] = (await pub.getContractEvents({ address: addresses.core, abi: CORE_ABI, eventName: "OrderCommitted",
+        fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber })).filter((l) => l.transactionHash === hash);
+    processId = e.args.processId;
+    const { buyerBond, sellerBond } = calculateBonds(e.args.cumulativeValue, e.args.payment);
+    console.log(`${e.args.seller}  P ${e.args.payment}  G ${e.args.cumulativeValue}  buyer bond ${buyerBond}  seller bond ${sellerBond}`);
+}
+console.log("processId", processId);
+await printDeltas("after commit", before);
+writeFileSync("process.json", JSON.stringify({ processId, orders: signed.map(serializeCommitmentPayload) }));
+```
+
+```bash
+node open.mjs
+```
+
+The importer bonds `2P` on each order and each seller `2G`, where `G` is the process's running total through its order (`FigaroCore.commit` pulls `c.payment * 2` from the buyer and `c.expectedCumulativeValue * 2` from the seller):
+
+| Order | P | G | Importer bond | Seller bond |
+|---|---:|---:|---:|---:|
+| shipper (root) | 700 | 700 | 1,400 | 1,400 |
+| inspection service | 10 | 710 | 20 | 1,420 |
+| freight forwarder | 30 | 740 | 60 | 1,480 |
+| reefer ocean carrier | 60 | 800 | 120 | 1,600 |
+| customs agent | 20 | 820 | 40 | 1,640 |
+| destination drayage | 25 | 845 | 50 | 1,690 |
+| **total** | | | **1,690** | **9,230** |
+
+The script prints each `OrderCommitted` (in wei: `700000000000000000000` is 700 tokens) and the deltas: the importer down 1,690, each seller down its own bond, `FigaroCore` up 10,920, the two columns' sum. The same events, from `cast`:
+
+```bash
+cast logs --from-block 0 --address "$(jq -r .figaroCore "$DEPLOYMENT_FILE")" \
+  "OrderCommitted(bytes32 indexed,bytes32 indexed,address indexed,address,address,uint256,uint256,bytes32,uint256,uint256)" \
+  "" "$(jq -r .processId process.json)" --rpc-url "$RPC_URL"
+```
+
+The importer keeps its copy of the six signed orders in `process.json`, and each seller keeps its own in `orders/`; both are what the next steps attest against and resolve with.
+
+## 7. Attest each leg while the process is open
+
+An attestation is a party's signed statement about a clause of its own order, filed while the process is open. `AttestationCoordinator` accepts one from the order's seller (`attestAsSeller`) or the process's buyer (`attestAsBuyer`), only once the clause's merkle proof opens against the order's `checkoutHash`, and keeps the content's fingerprint (`contentRef`), never the content. `prepareAttestationContent` validates the content against the spec first: on the direct path the chain checks who signed and what the statement is bound to, never its shape. A witness stage is a shape the spec declares (`stages["1"]`); a process-log clause is a ladder whose event is the content and whose index in the enum is the stage.
+
+| Seller | Clause | What it files |
+|---|---|---|
+| shipper | `figaro-chain-of-custody`, stage 1 | the seal applied to the container |
+| inspection service | `figaro-acceptance-criteria`, stage 1 | the goods conform to the committed basis |
+| freight forwarder | `figaro-merchant-process` | prep started, ready for pickup, handed off |
+| reefer ocean carrier | `figaro-chain-of-custody`, `figaro-cold-chain`, `figaro-emissions`, stage 1; `figaro-courier-process` | the chain of custody taken over, the observed temperature range, the voyage's grams CO₂e, the five courier events |
+| customs agent | `figaro-merchant-process` | prep started, ready for pickup, handed off |
+| destination drayage | `figaro-courier-process`; `figaro-proximity-policy`, stage 1 | the five courier events, the band the hand-off was detected in |
+
+Each seller files on its own order and on no other. The importer then attests each order's provenance leaf, the public link from the order to the registered agreement and the assembly it instantiated (`provenanceLeafAttestation`). Times are chain time (`readChainTimestamp`), never the machine clock.
+
+```js title="attest.mjs"
+// attest.mjs — each party files what it did, on its own order, while the process is open.
+import { readFileSync } from "node:fs";
+import {
+    buildSignedClauseInclusionProof, hashClauseData, provenanceLeafAttestation, readChainTimestamp,
+    ATTESTATION_COORDINATOR_ABI,
+} from "@figaro-protocol/sdk";
+import { attestAsSeller, attestAsBuyer, prepareAttestationContent, deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
+import { addresses, pub, walletOf, specs, clauseDeclaring, BUYER } from "./figaro.mjs";
+import { SELLERS } from "./sellers.mjs";
+
+const { processId, orders } = JSON.parse(readFileSync("process.json", "utf8"));
+const now = await readChainTimestamp(pub);
+const at = (hours) => new Date(Number(now + BigInt(hours * 3600)) * 1000).toISOString();   // chain time, never the machine clock
+
+// One seller attestation: its own order, the clause found by a field its spec
+// declares, the content validated against the spec. The chain takes the
+// content's fingerprint; the content stays with the party.
+async function attest(seller, field, values, stage) {
+    const { commitment, agreement } = deserializeCommitmentPayload(readFileSync(`orders/${seller.address}.json`, "utf8"));
+    const clauseKey = clauseDeclaring(Object.fromEntries(agreement.clauses.map((c) => [c.clause, c.data])), field);
+    const spec = specs.get(clauseKey);
+    let content, contentRef;
+    if (stage === undefined) {
+        // A process-log ladder: the event is the content, its index in the enum the stage.
+        ({ content, contentRef } = prepareAttestationContent(spec, values));
+        stage = spec.fields.find((f) => f.name === field).values.indexOf(values[field]);
+    } else {
+        ({ content, contentRef } = prepareAttestationContent(spec, values, { stage }));
+    }
+    const { proof } = buildSignedClauseInclusionProof(agreement, clauseKey);
+    const clauseDataHash = hashClauseData(agreement.clauses.find((c) => c.clause === clauseKey));
+    const { hash } = await attestAsSeller(walletOf(seller), addresses.attestationCoordinator, commitment,
+        clauseKey, stage, clauseDataHash, proof, contentRef);
+    console.log(`${(await pub.waitForTransactionReceipt({ hash })).status}  ${spec.clauseId.padEnd(26)} stage ${stage}  ${seller.address}`);
+}
+const walk = async (seller, events) => { for (const eventType of events) await attest(seller, "eventType", { eventType }); };
+
+const [shipper, inspector, forwarder, carrier, customs, drayage] = SELLERS.map((s) => s.key);
+const MERCHANT = ["prep-started", "ready-for-pickup", "handed-off"];
+const COURIER = ["en-route-pickup", "arrived-pickup", "in-transit", "arrived-dropoff", "completed"];
+
+await attest(shipper, "custodyScheme", { event: "applied", unitIdentifier: "MSKU1234565", sealIdentifier: "SL-778899", occurredAt: at(1) }, 1);
+await attest(inspector, "acceptanceBasis", { outcome: "conforming", occurredAt: at(2) }, 1);
+await walk(forwarder, MERCHANT);
+await attest(carrier, "custodyScheme", { event: "transferred", unitIdentifier: "MSKU1234565", occurredAt: at(3) }, 1);
+await attest(carrier, "tempClass", { periodStart: at(3), periodEnd: at(700), observedMinC: 3, observedMaxC: 6 }, 1);
+await attest(carrier, "standard", { gramsCO2e: 480000 }, 1);
+await walk(carrier, COURIER);
+await walk(customs, MERCHANT);
+await walk(drayage, COURIER);
+await attest(drayage, "bands", { band: "zone-wifi" }, 1);
+
+// The importer attests each order's provenance leaf: the public link from the
+// order to the registered agreement and the assembly it instantiated.
+for (const { commitment, agreement } of orders.map(deserializeCommitmentPayload)) {
+    const p = provenanceLeafAttestation(agreement);
+    const { hash } = await attestAsBuyer(walletOf(BUYER), addresses.attestationCoordinator, commitment,
+        p.clauseId, p.stage, p.clauseDataHash, p.proof, p.contentRef);
+    console.log(`${(await pub.waitForTransactionReceipt({ hash })).status}  provenance leaf on ${commitment.seller}`);
+}
+const logs = await pub.getContractEvents({ address: addresses.attestationCoordinator, abi: ATTESTATION_COORDINATOR_ABI,
+    eventName: "Attestation", args: { processId }, fromBlock: 0n });
+console.log(`\nAttestation events for the process: ${logs.length}`);
+```
+
+```bash
+node attest.mjs
+```
+
+Twenty-eight `success` lines and `Attestation events for the process: 28` (twenty-two seller attestations, six provenance leaves). No token moves: an attestation is evidence, off the bond path.
+
+## 8. Resolve, and count the use
+
+Only the importer can resolve, and one call resolves every order of the process or none. `proposeActions` rebuilds the resolve struct from the chain's events and `executeAction` submits it, restoring each root's signed process id first. For each order `FigaroCore.resolveProcess` transfers `2G + P` to the seller (its bond refunded and its payment) and `P` to the importer (its `2P` bond less the payment):
+
+```js title="resolve.mjs"
+// resolve.mjs — the buyer resolves every order of the process in one call, then counts their use.
+import { readFileSync } from "node:fs";
+import { CORE_ABI } from "@figaro-protocol/sdk";
+import { proposeActions, executeAction, recordProcessUsage, deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
+import { addresses, ctx, pub, walletOf, findAssembly, snapshot, printDeltas, BUYER } from "./figaro.mjs";
+import { ASSEMBLY_NAME, SELLERS } from "./sellers.mjs";
+
+const { processId, orders } = JSON.parse(readFileSync("process.json", "utf8"));
+const before = await snapshot([BUYER.address, ...SELLERS.map((s) => s.key.address), addresses.core]);
+
+// The resolve struct is rebuilt from the chain's events; nothing had to be stored.
+await ctx.sync();
+const [resolve] = proposeActions(ctx.getProcess(processId), BUYER.address).filter((a) => a.type === "resolve-process");
+const { hash } = await executeAction(walletOf(BUYER), pub, addresses, resolve);
+const receipt = await pub.waitForTransactionReceipt({ hash });
+const [done] = await pub.getContractEvents({ address: addresses.core, abi: CORE_ABI, eventName: "ProcessResolved",
+    args: { processId }, fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber });
+console.log(`resolve ${receipt.status}: ProcessResolved, ${done.args.orderCount} orders`);
+await printDeltas("after resolution", before);
+
+// At resolution, count the use of every clause, each registered agreement and the assembly.
+const { hydrated } = await findAssembly(ASSEMBLY_NAME);
+const report = await recordProcessUsage(walletOf(BUYER), pub, addresses.usageCounter,
+    orders.map(deserializeCommitmentPayload).map(({ commitment, agreement }) => ({ commitment, agreement, assembly: hydrated.assembly })));
+console.log("\nusage:", JSON.stringify(report));
+```
+
+```bash
+node resolve.mjs
+```
+
+| Wallet | At commit | At resolution | Net |
+|---|---:|---:|---:|
+| importer | −1,690 | +845 | −845 |
+| shipper | −1,400 | +2,100 | +700 |
+| inspection service | −1,420 | +1,430 | +10 |
+| freight forwarder | −1,480 | +1,510 | +30 |
+| reefer ocean carrier | −1,600 | +1,660 | +60 |
+| customs agent | −1,640 | +1,660 | +20 |
+| destination drayage | −1,690 | +1,715 | +25 |
+| `FigaroCore` | +10,920 | −10,920 | 0 |
+
+The importer paid the chain's total, each seller earned exactly its price, and `FigaroCore` holds nothing for the process. Read the per-order payouts from the chain:
+
+```bash
+cast logs --from-block 0 --address "$(jq -r .figaroCore "$DEPLOYMENT_FILE")" \
+  "OrderResolved(bytes32 indexed,bytes32 indexed,uint256,uint256)" "" "$(jq -r .processId process.json)" \
+  --rpc-url "$RPC_URL" --json | jq -r '.[].data' | while read d; do cast abi-decode --input "f(uint256,uint256)" "$d" | tr '\n' ' '; echo; done
+```
+
+Six lines, each the seller's payout then the importer's. `recordProcessUsage`, called at resolution, counts the use of every clause the process committed, of each registered agreement and of the assembly on `UsageCounter`, from the provenance leaves; the report reads `"recorded":19,"assemblyRecorded":true,"agreementRecorded":true,"failures":[]` on a fresh devnet. A leg that cannot land (a closed accrual period, a key another caller counted first) sits in `failures` rather than throwing, so read the report. Why the count happens at resolution is on [Sharp edges](/protocol/sharp-edges/) and [Designer rewards](/token/designer-rewards/).
+
+## What the run shows, and what it does not
+
+The run shows the mechanics: six orders bonded on the schedule, the attestations bound to the signed agreements, one resolution paying every seller and refunding every bond. It is one operator holding seven keys, so it is no evidence of how independent parties play. Two variations stay inside the same calls. A leg that slips is put right before the importer resolves: the seller that cannot perform sends the importer the payment it stands to receive, and resolution then leaves it at zero with its bond refunded; a forum the parties named rules on the open process's data and never resolves. A cargo sold in transit is the property-transfer clause's case: the parties square the transfers before resolution and attest the variation (its stage 1) on each order, and the new owner takes the cargo once the importer has resolved.
+
+The commit and resolve calls here are the direct path. The batch path carries the same orders through `FigaroBatchVerifier` under one validity proof; a batched attestation in its plaintext form has its content validated in proof against a spec whose key `ClauseRegistry.registered` holds, and in its default form binds the same three hashes the coordinator takes. The [scaling page](/protocol/scaling/) covers it.

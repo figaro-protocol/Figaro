@@ -1,0 +1,350 @@
+---
+title: Design a composition
+description: Air service as the exercise — a journey decomposed into resource markets, one order per market with the passenger as the buyer of every order, the bond arithmetic of ten orders, the term each order carries from the clause specs that exist, and the steps to publish the missing clause, compose and register the agreements, anchor the assembly and bind sellers.
+---
+
+A composition is designed before anyone trades under it: a designer selects the clauses each order needs, composes them into registered agreements and the agreements into an assembly, sellers bind the assembly in their own profiles, and a buyer selects it and fills the rest at checkout. This tutorial designs one that no one has published, for air service: a domestic short-haul journey decomposed into ten resource markets (aircraft-time, fuel, crew-hours, maintenance, catering, ground handling, two airport authorities, security screening, air navigation), each an order whose buyer is the passenger. The passenger is the buyer of every order because the journey is what the passenger buys and only a process's buyer resolves it: with every provider's order in the passenger's process, every payment and every bond waits on the passenger's acceptance of the whole journey, and each provider reads from the accumulator what another's failure costs it. An assembly in which the airline is the buyer of crew-hours, fuel and the rest, and the passenger buys a seat from the airline in a process of its own, is a different composition, and a builder can make it with the same calls. The model is on [Composition](/protocol/composition/); the sector reading is the paper [Air Service as Coordinated Resource Markets](https://figaroprotocol.com/papers/air-service-coordination); [Run a published composition](/building/run-a-published-composition/) is the run this design reuses, and its project is the one you extend here.
+
+## What exists, and what you publish
+
+No reference assembly covers air service: the devnet's genesis publishes none, and nothing in the repository composes one. The clause set covers most of what a journey's orders commit (a window, a route, a credential, emissions, a cold chain, a hand-off, an acceptance basis, a forum and a governing law), and it has no event log in an air service's vocabulary; the merchant and courier logs are a merchant's and a courier's. So the design publishes one clause, seven registered agreements and one assembly, then binds ten sellers to it. Every command below runs in the previous tutorial's project, with its devnet up and the two environment variables of its step 1 exported, and every step ran on a fresh devnet in the order given.
+
+## 1. Decompose the journey into orders
+
+One order per resource market, each a buyer↔seller relationship between the passenger and one provider's wallet. No order joins one provider to another: the Core requires the process's buyer on every order, so the process is a linear sequence of commits that all run to the passenger. The first order opens the process; the topology clause states each order's own account of what it follows, here the aircraft order, for anyone who reads the process off-chain.
+
+| # | Provider wallet | P | Terms beside commerce and topology |
+|---|---|---:|---|
+| 0 | aircraft | 65 | `figaro-schedule`, `figaro-geolocation`, `figaro-credential` (airworthiness), `figaro-emissions`, the air-service event log |
+| 1 | fuel supplier | 45 | `figaro-schedule`, `figaro-merchant-process`, `figaro-emissions` |
+| 2 | crew member | 40 | `figaro-schedule`, `figaro-credential` (flight crew certificate) |
+| 3 | maintenance provider | 15 | `figaro-schedule`, `figaro-credential` (maintenance authorization), `figaro-acceptance-criteria` |
+| 4 | caterer | 5 | `figaro-schedule`, `figaro-cold-chain`, `figaro-merchant-process` |
+| 5 | ground handler | 15 | `figaro-schedule`, `figaro-handoff`, `figaro-proximity-policy`, `figaro-courier-process` |
+| 6 | origin airport authority | 20 | `figaro-schedule` |
+| 7 | destination airport authority | 20 | `figaro-schedule` |
+| 8 | security screening | 6 | `figaro-schedule` |
+| 9 | air navigation | 19 | `figaro-schedule` |
+
+The whole assembly also composes `figaro-applicable-law` and `figaro-arbitration-kleros` once, as assembly terms: the passenger chooses the law, the forum and the Kleros court at checkout, once for every order, and each provider accepts them by counter-signing its own. Orders 6 to 9 are public services, carried here as the paper carries them, a declared thought experiment: delete those four rows and every figure below shrinks while the schedule, its order dependence and the clause list read the same over the commercial providers. The decomposition is yours to change; a coarser design folds several markets into one order, a finer one splits a market into several, and the bonds follow the schedule either way.
+
+## 2. The bond arithmetic
+
+At each commit the passenger bonds `2P` and the provider bonds `2G`, where `G` is the process's running total through that provider's order, its own payment included (`FigaroCore.commit` pulls `c.payment * 2` from the buyer and `c.expectedCumulativeValue * 2` from the seller).
+
+| # | Provider | P | G after | Passenger `2P` | Provider `2G` |
+|---|---|---:|---:|---:|---:|
+| 0 | aircraft | 65 | 65 | 130 | 130 |
+| 1 | fuel supplier | 45 | 110 | 90 | 220 |
+| 2 | crew member | 40 | 150 | 80 | 300 |
+| 3 | maintenance provider | 15 | 165 | 30 | 330 |
+| 4 | caterer | 5 | 170 | 10 | 340 |
+| 5 | ground handler | 15 | 185 | 30 | 370 |
+| 6 | origin airport authority | 20 | 205 | 40 | 410 |
+| 7 | destination airport authority | 20 | 225 | 40 | 450 |
+| 8 | security screening | 6 | 231 | 12 | 462 |
+| 9 | air navigation | 19 | 250 | 38 | 500 |
+| | **total** | **250** | | **500** | **3,512** |
+
+The passenger's aggregate is twice the ticket whatever the sequence. The providers' aggregate is `2 Σ (n − j + 1) Pⱼ` over the commit positions `j`: a payment committed at position `j` sits inside the bond base of its own order and of every later one, so the commit order you write into the assembly sets how large the providers' aggregate is. Move the 19 air-navigation order to the front and it falls to 3,392, with nothing else changed. Check both with the SDK's own arithmetic:
+
+```bash
+node -e '
+const { calculateBonds } = await import("@figaro-protocol/sdk");
+const total = (ps) => { let G = 0n, buyer = 0n, sellers = 0n;
+  for (const p of ps) { G += p; const b = calculateBonds(G, p); buyer += b.buyerBond; sellers += b.sellerBond; }
+  return `${buyer} ${sellers}`; };
+console.log(total([65n, 45n, 40n, 15n, 5n, 15n, 20n, 20n, 6n, 19n]));
+console.log(total([19n, 65n, 45n, 40n, 15n, 5n, 15n, 20n, 20n, 6n]));'
+```
+
+It prints `500 3512` and `500 3392`. Until the passenger resolves, the whole pool stays locked and no payment moves; when a provider slips, the remedy is put right before the passenger resolves, and each provider can compute from its own `P + 2G` what the wait costs it.
+
+## 3. The term each order carries
+
+Who fills a field is declared by the spec, never by the design: a field in `block.design.fills` is the designer's, written into the registered agreement; a field in `block.checkout.catalogueFills` comes from the seller's catalog item; a field in `block.checkout.profileFills` from the seller's profile; every other field is the passenger's at checkout. Read each spec from the chain (the spec source in **figaro.mjs** holds them all) before you design against it.
+
+| Clause | Committed at signing | Filled by | Filed while the process is open |
+|---|---|---|---|
+| `figaro-schedule` | `windowStart`, `windowEnd`: the order's agreed window | passenger | none; what happened is an attestation |
+| `figaro-geolocation` | `geocodeStandard` (default `geohash`), `origin`, `destination`; `geocoder` | passenger; `geocoder` designer | none |
+| `figaro-credential` | `credentialRegisterUri` (a URI template with `{id}`), `credentialTitle`; `credentialId` | designer; `credentialId` seller profile | none; any reader checks the id against the register |
+| `figaro-emissions` | `standard`, the methodology | passenger | stage 1: `gramsCO2e` |
+| `figaro-cold-chain` | `tempClass`, `tempMinC`, `tempMaxC`, `recordingIntervalSeconds` | seller catalog | stage 1: the observed range over a period |
+| `figaro-acceptance-criteria` | `acceptanceBasis` | passenger | stage 1: the outcome against the basis |
+| `figaro-handoff`, `figaro-proximity-policy` | the kinds of hand-off; the detection bands that count | passenger | stage 1 of the policy: the band detected |
+| `figaro-merchant-process`, `figaro-courier-process` | nothing; an empty anchor | — | the ladder's events, in order |
+| the air-service event log | nothing; an empty anchor | — | boarding started, doors closed, pushback, takeoff, landing, in block |
+| `figaro-applicable-law`, `figaro-arbitration-kleros` | the law and forum; the Kleros court | passenger, once for the process | none |
+
+Three terms the design leaves out, each for a reason the Core states. A clause that frees a bond in a weather event would be an exit from the bonded state, and the Core has no call that executes one; cover against weather is a parallel process with an insurer as its seller. A clause scoring which delays count against whom has nothing to read beyond the agreed windows. A reschedule is a new commitment, signed by both parties like any other.
+
+## 4. Publish the clause the set lacks
+
+The air service's operating events are a process-log clause: the `attestations` article, one required enum whose values are the events in order, an optional evidence pointer, and no content at signing. Write the spec:
+
+```json title="air-service-events.json"
+{
+    "clauseId": "air-service-events",
+    "version": 1,
+    "title": "Air service operating events",
+    "description": "Event log an operating provider files for itself on its own order while the process is open: what happened to the flight, in a closed vocabulary every reader reads the same way. Each event may reference evidence (a movement message, a block-time record). The chain checks that each event is signed and bound to its order, never that it is true.",
+    "fields": [
+        {
+            "name": "eventType",
+            "type": "enum",
+            "values": ["boarding-started", "doors-closed", "pushback", "takeoff", "landing", "in-block"],
+            "valueLabels": {
+                "boarding-started": "Boarding started",
+                "doors-closed": "Doors closed",
+                "pushback": "Pushback",
+                "takeoff": "Takeoff",
+                "landing": "Landing",
+                "in-block": "In block at the arrival gate"
+            },
+            "required": true,
+            "description": "Operating event."
+        },
+        {
+            "name": "evidenceUri",
+            "type": "string",
+            "format": "evidence-capture",
+            "required": false,
+            "minLength": 0,
+            "maxLength": 512,
+            "description": "Optional public evidence pointer for the event."
+        }
+    ],
+    "stages": {},
+    "block": {
+        "design": { "article": "attestations", "scope": "agreement", "nestsUnder": null, "fills": [], "composes": null },
+        "checkout": { "catalogueFills": [], "profileFills": [] },
+        "runtime": { "interaction": null, "fields": [] }
+    }
+}
+```
+
+`parseClauseSpec` validates it against the format ([Clauses and agreements](/protocol/clauses/) owns the format); the clause key is `computeClauseKey(spec)`, the keccak256 of the canonical bytes, so the script pins exactly those bytes and registers the key on `ClauseRegistry` under the registry's stake. Registration is first write wins: the same spec registered twice is one clause. The designer is Anvil index 37.
+
+```js title="publish-clause.mjs"
+// publish-clause.mjs — validate the spec, pin its canonical bytes, register the key.
+import { readFileSync } from "node:fs";
+import { canonicalize, computeClauseKey, CLAUSE_REGISTRY_ABI } from "@figaro-protocol/sdk";
+import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
+import { addresses, pub, walletOf, pin, account } from "./figaro.mjs";
+
+export const DESIGNER = account(37);
+const spec = JSON.parse(readFileSync("air-service-events.json", "utf8"));
+const parsed = parseClauseSpec(spec);
+if (!parsed.ok) throw new Error(parsed.errors.map((e) => `${e.path}: ${e.message}`).join("; "));
+
+// The clause key is the keccak256 of the pinned bytes, so pin the canonical form.
+const clauseKey = computeClauseKey(spec);
+const contentURI = await pin(canonicalize(spec), "air-service-events.json");
+if (await pub.readContract({ address: addresses.clauseRegistry, abi: CLAUSE_REGISTRY_ABI, functionName: "registered", args: [clauseKey] })) {
+    console.log("already registered", clauseKey);
+} else {
+    const stake = await pub.readContract({ address: addresses.clauseRegistry, abi: CLAUSE_REGISTRY_ABI, functionName: "registrationDeposit" });
+    const { request } = await pub.simulateContract({ account: DESIGNER, address: addresses.clauseRegistry, abi: CLAUSE_REGISTRY_ABI,
+        functionName: "registerClause", args: [clauseKey, contentURI], value: stake });
+    const receipt = await pub.waitForTransactionReceipt({ hash: await walletOf(DESIGNER).writeContract(request) });
+    console.log("registerClause", receipt.status, clauseKey, contentURI);
+}
+```
+
+```bash
+node publish-clause.mjs
+cast call "$(jq -r .clauseRegistry "$DEPLOYMENT_FILE")" "registered(bytes32)(bool)" <clauseKey> --rpc-url "$RPC_URL"
+```
+
+The clause is one of the network's: any designer composes it, and once a resolved process carries it, `UsageCounter` counts its use for you as its registrant while your stake stays locked, like every other clause.
+
+## 5. Compose the agreements and anchor the assembly
+
+`buildAssembly` is the composition the frontend's designer canvas runs. It takes the orders with their topology, the clauses selected for each order with the designer's fills, the assembly terms, and the mandatory clauses: the live commerce and topology clauses the DAO's wallet registered, read from the `ClauseRegistered` events by `mandatoryClauses`. It writes the mandatory clauses into every agreement, keeps only design fills (the value-free rule), and returns the assembly beside each new agreement, keyed by its `agreementHash`. The script registers each agreement on `AgreementRegistry` that is not yet bound, then the assembly on `AssemblyRegistry` under its `assemblyHash` (`serializeAssembly`), each under its registry's stake, and reads the result back the way any seller or buyer will. The register URIs below are placeholders on `example.org`; a real design pins the issuing authority's register.
+
+```js title="compose.mjs"
+// compose.mjs — ten agreements, one assembly, registered and read back.
+import {
+    buildAssembly, mandatoryClauses, serializeAssembly, canonicalize,
+    CLAUSE_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
+} from "@figaro-protocol/sdk";
+import { addresses, deployment, ctx, pub, walletOf, specs, pin, account, hydrate } from "./figaro.mjs";
+
+const DESIGNER = account(37);
+
+// Selecting a clause is a design-time read: the registered spec carrying this
+// clauseId. A clause IS its key; refuse an id two registered specs share.
+const keyOf = (clauseId) => {
+    const hits = specs.list().filter((s) => s.clauseId === clauseId);
+    if (hits.length !== 1) throw new Error(`${clauseId}: ${hits.length} registered specs carry this id`);
+    return hits[0].clauseKey;
+};
+
+// The mandatory clauses (commerce and topology) are the live ones the DAO's
+// wallet registered, read from the ClauseRegistered events.
+const logs = await pub.getContractEvents({ address: addresses.clauseRegistry, abi: CLAUSE_REGISTRY_ABI, eventName: "ClauseRegistered", fromBlock: 0n });
+const withdrawn = new Set(ctx.getClauses().filter((c) => c.stakeWithdrawn).map((c) => c.clauseKey.toLowerCase()));
+const rows = logs.map((l) => ({ clauseKey: l.args.clauseKey, registeredBy: l.args.registeredBy, blockNumber: l.blockNumber,
+    logIndex: l.logIndex, stakeWithdrawn: withdrawn.has(l.args.clauseKey.toLowerCase()) }));
+const mandatory = mandatoryClauses(rows, specs, deployment.daoTreasury);
+
+// One order per resource market, in commit order. A value is written only for
+// a field the spec lists in block.design.fills; every other field is the
+// passenger's at checkout, or the seller's catalog or profile.
+const SCHEDULE = keyOf("figaro-schedule");
+const credential = (title, uriTemplate) => ({ [keyOf("figaro-credential")]: { credentialTitle: title, credentialRegisterUri: uriTemplate } });
+const ORDERS = [
+    ["aircraft", { [SCHEDULE]: {}, [keyOf("figaro-geolocation")]: {}, [keyOf("air-service-events")]: {}, [keyOf("figaro-emissions")]: {},
+                   ...credential("Airworthiness certificate", "https://register.example.org/airworthiness/{id}") }],
+    ["fuel", { [SCHEDULE]: {}, [keyOf("figaro-merchant-process")]: {}, [keyOf("figaro-emissions")]: {} }],
+    ["crew", { [SCHEDULE]: {}, ...credential("Flight crew certificate", "https://register.example.org/airmen/{id}") }],
+    ["maintenance", { [SCHEDULE]: {}, [keyOf("figaro-acceptance-criteria")]: {},
+                      ...credential("Maintenance authorization", "https://register.example.org/repair-stations/{id}") }],
+    ["catering", { [SCHEDULE]: {}, [keyOf("figaro-cold-chain")]: {}, [keyOf("figaro-merchant-process")]: {} }],
+    ["ground-handling", { [SCHEDULE]: {}, [keyOf("figaro-handoff")]: {}, [keyOf("figaro-proximity-policy")]: {}, [keyOf("figaro-courier-process")]: {} }],
+    ["origin-airport", { [SCHEDULE]: {} }],
+    ["destination-airport", { [SCHEDULE]: {} }],
+    ["security-screening", { [SCHEDULE]: {} }],
+    ["air-navigation", { [SCHEDULE]: {} }],
+];
+// Topology, the parties' own account: the aircraft order opens the process and
+// every other order follows it. The Core sees only the commit sequence.
+const orders = ORDERS.map(([id], i) => ({ orderHash: id, ...(i === 0 ? {} : { follows: ["aircraft"] }) }));
+const { assembly, agreements } = buildAssembly({
+    name: "Domestic short-haul journey",
+    summary: "Ten resource markets, each provider bonded directly to the passenger in one process.",
+    description: "Aircraft-time, fuel, crew-hours, maintenance, catering, ground handling, two airport authorities, security screening and air navigation: each an order whose buyer is the passenger, who alone resolves the journey.",
+    orders, clausesByOrderId: Object.fromEntries(ORDERS), mandatory, specs,
+    assemblyClauses: { [keyOf("figaro-applicable-law")]: {}, [keyOf("figaro-arbitration-kleros")]: {} },
+});
+
+// Each newly composed agreement is registered once (first write wins; a key
+// already bound is skipped), each under the registry's stake; then the assembly.
+const designer = walletOf(DESIGNER);
+const send = async (address, abi, functionName, args, value) => {
+    const { request } = await pub.simulateContract({ account: DESIGNER, address, abi, functionName, args, value });
+    return (await pub.waitForTransactionReceipt({ hash: await designer.writeContract(request) })).status;
+};
+const agreementStake = await pub.readContract({ address: addresses.agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, functionName: "registrationDeposit" });
+for (const [agreementHash, composed] of Object.entries(agreements)) {
+    const [, registeredAt] = await pub.readContract({ address: addresses.agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, functionName: "bindings", args: [agreementHash] });
+    if (registeredAt !== 0n) { console.log("agreement", agreementHash, "already registered"); continue; }
+    const uri = await pin(canonicalize(composed), "agreement.json");
+    console.log("agreement", agreementHash, await send(addresses.agreementRegistry, AGREEMENT_REGISTRY_ABI, "registerAgreement", [agreementHash, uri], agreementStake));
+}
+const { json, assemblyHash } = serializeAssembly(assembly);
+const assemblyStake = await pub.readContract({ address: addresses.assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, functionName: "registrationDeposit" });
+const uri = await pin(json, "assembly.json");
+console.log("assembly", assemblyHash, await send(addresses.assemblyRegistry, ASSEMBLY_REGISTRY_ABI, "registerAssembly", [assemblyHash, uri], assemblyStake));
+
+// Read it back as any seller or buyer will: chain → IPFS, verified against its hash.
+await ctx.sync();
+const found = ctx.getAssemblies().find((a) => a.assemblyHash === assemblyHash);
+const hydrated = found && await hydrate(found);
+console.log("hydrates:", Boolean(hydrated), `${hydrated?.assembly.agreements.length} agreements`);
+```
+
+```bash
+node compose.mjs
+```
+
+Seven `agreement … success` lines, one `assembly … success` line and `hydrates: true 10 agreements`. Ten orders bind seven registrations because the four orders whose only term beside commerce and topology is the schedule compose identical agreements, and an agreement's key is its content: two orders composing the same clauses bind one registration. The `assemblyHash` is content-derived too, so the same design composed by anyone collapses onto the same binding.
+
+## 6. Bind sellers and run it
+
+The run is the previous tutorial's, with the composition swapped. In its project, keep **figaro.mjs**, **register.mjs**, **open.mjs** and **resolve.mjs** unchanged, and replace **sellers.mjs** and **particulars.mjs** with these. The aircraft wallet sells the root order and designates the nine other providers by the clause every sub-order carries, the schedule (DESIGNATE_BY, the field its spec declares). Each credentialed provider declares its identifier on its profile, and the caterer lists its cold-chain window on its catalog item.
+
+```js title="sellers.mjs"
+// sellers.mjs (the journey) — ten providers, one per agreement, in commit order.
+import { account } from "./figaro.mjs";
+
+export const ASSEMBLY_NAME = "Domestic short-haul journey";
+// Every sub-order carries the schedule clause: the aircraft wallet designates
+// the nine other providers by it, in commit order.
+export const DESIGNATE_BY = "windowStart";
+const provider = (i, name, item, price, extra = {}) => ({ agreement: `agreement-${i}`, key: account(20 + i), name, item, price, ...extra });
+export const SELLERS = [
+    provider(0, "Aircraft wallet", "Aircraft-time, one sector", "65", { profileFields: { credentialId: "N123FG" } }),
+    provider(1, "Fuel supplier", "Jet fuel uplift", "45"),
+    provider(2, "Crew member", "Crew-hours, one sector", "40", { profileFields: { credentialId: "ATP-0001" } }),
+    provider(3, "Maintenance provider", "Line maintenance check", "15", { profileFields: { credentialId: "RS-0042" } }),
+    provider(4, "Caterer", "Per-passenger catering", "5",
+             { catalogFields: { tempClass: "refrigerated", tempMinC: 1, tempMaxC: 5, recordingIntervalSeconds: 600 } }),
+    provider(5, "Ground handler", "Boarding and baggage", "15"),
+    provider(6, "Origin airport authority", "Departure gate and landing slot", "20"),
+    provider(7, "Destination airport authority", "Arrival gate and landing slot", "20"),
+    provider(8, "Security screening", "Passenger screening", "6"),
+    provider(9, "Air navigation", "Air traffic services, one sector", "19"),
+];
+```
+
+```js title="particulars.mjs"
+// particulars.mjs (the journey) — what the passenger fills at checkout, keyed by field.
+import { readChainTimestamp } from "@figaro-protocol/sdk";
+import { pub } from "./figaro.mjs";
+
+const now = await readChainTimestamp(pub);
+const at = (hours) => new Date(Number(now + BigInt(hours * 3600)) * 1000).toISOString();   // chain time
+export const PARTICULARS = {
+    windowStart: at(24), windowEnd: at(26.5),                      // the journey's window
+    standard: "ICAO CORSIA", acceptanceBasis: "Release to service under the approved maintenance program",
+    handoff: ["face-to-face"], bands: ["nearby-ble"],
+    applicableLaw: "US-NY", forum: "AAA-ICDR", klerosCourt: "general",
+};
+export const ROUTES = { "agreement-0": { origin: "9q9p3", destination: "9mudd" } };
+```
+
+The aircraft wallet then files the flight's operating events on its own order, the ladder of the clause you published:
+
+```js title="attest-journey.mjs"
+// attest-journey.mjs — the aircraft wallet files the flight's operating events.
+import { readFileSync } from "node:fs";
+import { buildSignedClauseInclusionProof, hashClauseData } from "@figaro-protocol/sdk";
+import { attestAsSeller, prepareAttestationContent, deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
+import { addresses, pub, walletOf, specs, clauseDeclaring } from "./figaro.mjs";
+import { SELLERS } from "./sellers.mjs";
+
+const aircraft = SELLERS[0].key;
+const { commitment, agreement } = deserializeCommitmentPayload(readFileSync(`orders/${aircraft.address}.json`, "utf8"));
+const clauses = Object.fromEntries(agreement.clauses.map((c) => [c.clause, c.data]));
+// The ladder is found by a field only the air-service event log declares here.
+const clauseKey = Object.keys(clauses).find((k) => specs.get(k)?.fields.some((f) => f.name === "eventType" && f.values.includes("takeoff")));
+const spec = specs.get(clauseKey);
+const { proof } = buildSignedClauseInclusionProof(agreement, clauseKey);
+const clauseDataHash = hashClauseData(agreement.clauses.find((c) => c.clause === clauseKey));
+for (const [stage, eventType] of spec.fields.find((f) => f.name === "eventType").values.entries()) {
+    const { contentRef } = prepareAttestationContent(spec, { eventType });
+    const { hash } = await attestAsSeller(walletOf(aircraft), addresses.attestationCoordinator, commitment,
+        clauseKey, stage, clauseDataHash, proof, contentRef);
+    console.log(`${(await pub.waitForTransactionReceipt({ hash })).status}  ${spec.clauseId} stage ${stage} ${eventType}`);
+}
+```
+
+Fund the passenger (Anvil index 30) and the ten providers (20 to 29), then run the four steps:
+
+```bash
+TOKEN=$(jq -r .tokenAddress "$DEPLOYMENT_FILE")
+M="test test test test test test test test test test test junk"
+for i in $(seq 20 30); do
+  cast send "$TOKEN" "mint(address,uint256)" "$(cast wallet address --mnemonic "$M" --mnemonic-index $i)" 1000ether \
+    --private-key "$(cast wallet private-key --mnemonic "$M" --mnemonic-index 30)" --rpc-url "$RPC_URL" > /dev/null
+done
+node register.mjs
+node open.mjs
+node attest-journey.mjs
+node resolve.mjs
+```
+
+**register.mjs** prints ten `register  success` lines and the nine sub-orders mapped to their providers in commit order. **open.mjs** prints the ten `OrderCommitted` rows of the table in section 2 (in wei) and the deltas: the passenger down 500, each provider down its `2G`, `FigaroCore` up 4,012. **attest-journey.mjs** files six events, stages 0 to 5. **resolve.mjs** resolves the ten orders in one call: the passenger nets −250, the ticket; each provider nets its `P`; `FigaroCore` returns to where it stood; and the usage report counts fifteen clause legs, the air-service event log among them, beside the registered agreements and the assembly.
+
+## What the design leaves open
+
+The exercise is a starting point; each of these is a design decision of yours, made with the same calls.
+
+- **The commit order.** It sets the providers' aggregate, as section 2 shows, and nothing else.
+- **The windows.** The particulars module gives every order the journey's window; a per-order window is one more entry per order in the map the route already uses.
+- **Disruption.** The bonded route runs first: providers put a slip right with the passenger before the passenger resolves. A delay-compensation mechanism, an insurer's parallel process and a forum the parties name compose beside the process, and none of them resolves it.
+- **The airline as buyer.** Compose the airline's own supply as an assembly whose buyer is the airline (crew-hours, aircraft-time, fuel and the rest as its orders), and sell the passenger a seat in a one-order assembly whose seller is the airline. The providers' bonds then stand behind the airline's resolution, and the passenger's order behind the passenger's, in two processes the Core never links.
+
+Publish the result as you published this one; sellers bind it in their profiles and any buyer reaches it from the chain, as the [previous tutorial](/building/run-a-published-composition/) did with a composition it found there.

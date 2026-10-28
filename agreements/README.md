@@ -6,9 +6,10 @@ name (`name@version` where two specs share a name) with the designer's own
 fills (`block.design.fills` values only — a clause's other fields are the
 buyer's at checkout), beside the designer's words (`name`, `summary`), and the agreement it picks in
 the mandatory article (`mandatory`, a file name here): the pick's clauses merge
-in, so a file lists what the designer selects. `mandatory-clauses.json` is that
-pick: the mandatory clauses alone, the registration the designer drawer's
-mandatory article lists, registered beside the clauses at deploy; it names no
+in, so a file lists what the designer selects. That pick is the agreement of the
+mandatory clauses alone, the registration the designer drawer's mandatory
+article lists, composed and registered at seeding like any other agreement
+(`frontend/scripts/populate-clauses.mjs`); it has no file here and names no
 pick of its own.
 
 The populate path composes each file at deploy (`composeAuthoredAgreement` in
