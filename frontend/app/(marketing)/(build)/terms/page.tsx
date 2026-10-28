@@ -11,22 +11,19 @@ export const metadata: Metadata = withOg({
 });
 
 // THE BUILD LANDING — the door of whoever writes and publishes what trades are
-// made on. Its shape is the Core landing's (`/core`): one declarative sentence
-// per subject as its heading, one paragraph as its card, one button to the
-// page that owns the how — the builder documentation, clauses, assemblies,
-// the code, agents, designer rewards — then one line on what is proved and
-// checked. The builder documentation is the docs-site, a separate build under
-// `/docs` on the same host, so its button is a plain anchor. A comprehension
+// made on. Its shape is the Core landing's (`/core`): one ranked first action in
+// the hero, then one declarative sentence per subject as its heading, one
+// paragraph as its card, one button to the page that owns the how — clauses,
+// assemblies, the code, agents, designer rewards — then one line on what is
+// proved and checked. The first action is the run tutorial in the builder
+// documentation, and the second, one muted line below it, the design tutorial;
+// the builder documentation is the docs-site, a separate build under `/docs` on
+// the same host (`trailingSlash: true`), so both are plain anchors, and its root
+// is reached from the header's Build menu. The action names WHAT the tutorial
+// does; its steps live on the tutorial. A comprehension
 // gap found by any tester is closed on the page a card points to, never by
 // adding prose here.
-const SUBJECTS: { line: string; body: string; cta: string; href: string; external?: boolean }[] = [
-    {
-        line: "The builder documentation holds the how.",
-        body: "It covers the contracts, clauses, composition, scaling, the SDK, agents and verification. Each page is rendered from its source in the repository.",
-        cta: "Builder documentation",
-        href: "/docs/",
-        external: true,
-    },
+const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
     {
         line: "A clause is one term of an agreement, written once for anyone to compose.",
         body: "A clause defines one relationship, between a buyer and a seller or between two sellers, such as carriage, applicable law or the terms on which data is licensed. Its spec is public and its hash is registered on-chain.",
@@ -65,7 +62,23 @@ export default function BuildDoor() {
             <MarketingHero
                 title="Build"
                 lead="You publish clauses, reusable terms of an agreement, and assemblies, reusable designs of a process, for anyone to compose, and you are rewarded for the use real trades make of them. The Core is deployed once, decentralized and permissionless, and anyone builds above it."
-            />
+            >
+                <div className="mt-8 max-w-2xl">
+                    <p className="text-body-lead text-ink-heading font-medium mb-6">
+                        Start by running a published assembly end to end on your own machine.
+                    </p>
+                    <div className="flex flex-wrap gap-4 mb-4">
+                        <CtaLink href="/docs/building/run-a-published-composition/" external>
+                            Run a published composition
+                        </CtaLink>
+                    </div>
+                    <p className="text-sm text-ink-muted leading-relaxed">
+                        <a href="/docs/building/design-a-composition/" className="text-ink-heading font-medium hover:underline">
+                            Then: Design a composition
+                        </a>
+                    </p>
+                </div>
+            </MarketingHero>
 
             <section className="container mx-auto px-6 pb-20 max-w-3xl">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10">
@@ -74,7 +87,7 @@ export default function BuildDoor() {
                             <h2 className="text-heading-h3 text-ink-heading mb-2">{s.line}</h2>
                             <p className="text-base text-ink-body leading-relaxed grow">{s.body}</p>
                             <div className="mt-4">
-                                <CtaLink href={s.href} external={s.external}>{s.cta}</CtaLink>
+                                <CtaLink href={s.href}>{s.cta}</CtaLink>
                             </div>
                         </div>
                     ))}
