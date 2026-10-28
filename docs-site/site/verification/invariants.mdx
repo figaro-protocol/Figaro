@@ -23,7 +23,7 @@ Each is a checked fact of `FigaroCore`. The stable IDs (`K-1`…`K-9`) match the
 | K-8 | **Dual-signed commitment** — both parties sign the same struct as EIP-712 typed data, verified on chain. | `ECDSA.recover(digest, buyerSig) != c.buyer` and `ECDSA.recover(digest, sellerSig) != c.seller` in `commit` (`:161`, `:164`). |
 | K-9 | **Content-addressed order IDs** — an order hash is derived from its content, never an auto-incrementing counter. | `orderHash = keccak256(abi.encodePacked(processId, structHash))` then `if (orderStatus[orderHash] != 0) revert DuplicateCommitment()` (`:202-204`). |
 
-The mechanism these state — why twice the value, and what walking away costs — is derived, with the worked numbers, on [Theory](/start-here/theory/) and in [A Verified Resolution Contract](https://figaroprotocol.com/papers/verified-resolution-kernel). What the contracts stating them are tested against — seven independent benches — is on [Security](/verification/security/).
+The mechanism these state — why twice the value, and what walking away costs — is derived, with the worked numbers, on [Theory](/start-here/theory/); what a machine check of the contracts establishes of it, and what no check reaches, is argued in [What Formal Verification Transfers to a Bonded Contract](https://figaroprotocol.com/papers/verified-resolution-kernel). What the contracts stating them are tested against — seven independent benches — is on [Security](/verification/security/).
 
 ## The Core's boundary, read four ways
 

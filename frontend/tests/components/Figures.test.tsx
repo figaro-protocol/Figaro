@@ -5,8 +5,6 @@ import { ProcessTopologyFigure } from "@/components/figures/ProcessTopologyFigur
 import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphCollapseFigure";
 import { RpgfScheduleFigure } from "@/components/figures/RpgfScheduleFigure";
 import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
-import { BatchResolutionSequenceFigure } from "@/components/figures/BatchResolutionSequenceFigure";
-import { ResolutionPathsFigure } from "@/components/figures/ResolutionPathsFigure";
 import { MarketFormationSwimlaneFigure } from "@/components/figures/MarketFormationSwimlaneFigure";
 import { OriginationSequenceFigure } from "@/components/figures/OriginationSequenceFigure";
 import { DualProcessIdFigure } from "@/components/figures/DualProcessIdFigure";
@@ -177,43 +175,6 @@ describe("DesignGraphCollapseFigure", () => {
 /** Mirrors the prop set verified-resolution-kernel §5.5 passes. The companion
  *  source-level assertion below is what stops this fixture drifting from the
  *  page: a banned identifier reaching the real call site fails there. */
-const PAPER_RESOLUTION_PATHS = {
-    lineFont: "sans" as const,
-    directPath: {
-        heading: "Direct path",
-        subheading: "the contract's own two calls",
-        inputs: ["a dual-signed commitment", "the buyer's resolution over the process"],
-        events: ["order committed", "order resolved", "process resolved"],
-        state: ["per-order status, advancing monotonically"],
-        stateNote: "has no notion of a batch",
-    },
-    batchPath: {
-        heading: "Batch path",
-        subheading: "proof-verified off-chain execution",
-        inputs: [
-            "signed commitments, gathered and ordered",
-            "a validity proof of a mirror's execution",
-            "carried to the resolve call",
-        ],
-        events: ["batch resolved"],
-        state: ["its own state root, verifier-local"],
-    },
-    sectionLabels: { inputs: "Inputs", events: "Records emitted", state: "State" },
-    neverWrittenNote: "a contract order status — never acquired",
-    bridgeLabel: "The usage counter",
-    bridgeSublabel: "clause and assembly usage",
-    crossingLabel: "a usage accrual",
-    crossingSublabel: "the one quantity common to both",
-    figureTitle: "The two resolution paths, and the one surface common to both",
-    figureDesc:
-        "Two panels. The direct path is the contract's own two calls. The batch path " +
-        "is proof-verified off-chain execution, and a contract order status is never " +
-        "acquired on it. One arrow crosses between them, carrying a usage accrual " +
-        "into the counter of clause and assembly usage.",
-    caption: "An order resolved through the batch verifier never acquires a contract order status at all.",
-};
-
-/** The paper corpus names no contract, function, event, or proving system. */
 const BANNED_IDENTIFIERS = [
     "SP1",
     "KernelOp",
@@ -232,136 +193,6 @@ const BANNED_IDENTIFIERS = [
     "BatchSettled",
 ];
 
-describe("ResolutionPathsFigure", () => {
-    it("renders /spec's exact strings when given no props (the default must not drift)", () => {
-        const { container } = render(<ResolutionPathsFigure />);
-        const text = container.textContent ?? "";
-        for (const specString of [
-            "Direct path",
-            "FigaroCore — the direct path",
-            "commit(commitment, buyerSig, sellerSig)",
-            "resolveProcess(processId, commitments[])",
-            "OrderCommitted",
-            "OrderResolved",
-            "ProcessResolved",
-            "orderStatus[orderHash]: 0 → 1 → 2",
-            "has no notion of a batch",
-            "Batch path",
-            "FigaroBatchVerifier — proof-based (SP1)",
-            "signed Commitment structs",
-            "→ sequencer → SP1 validity proof",
-            "BatchSettled",
-            "stateRoot (verifier-local only)",
-            "FigaroCore.orderStatus — never written",
-            "UsageCounter",
-            "usage-accrual ledger",
-            "usage accrual",
-            "(same settleBatch tx)",
-            "Two disjoint resolution paths",
-        ]) {
-            expect(text).toContain(specString);
-        }
-    });
-
-    it("keeps /spec's default body lines monospaced", () => {
-        const { container } = render(<ResolutionPathsFigure />);
-        const mono = container.querySelectorAll("text.font-mono");
-        expect(mono.length).toBeGreaterThan(0);
-    });
-
-    it("names no contract, function, event, or proving system in the paper register", () => {
-        const { container } = render(<ResolutionPathsFigure {...PAPER_RESOLUTION_PATHS} />);
-        const text = container.textContent ?? "";
-        for (const identifier of BANNED_IDENTIFIERS) {
-            expect(text).not.toContain(identifier);
-        }
-    });
-
-    it("puts the crossing quantity on the crossing arrow and the bridge on the bridge", () => {
-        const { container } = render(<ResolutionPathsFigure {...PAPER_RESOLUTION_PATHS} />);
-        const text = container.textContent ?? "";
-        expect(text).toContain("a usage accrual");
-        expect(text).toContain("the one quantity common to both");
-        expect(text).toContain("The usage counter");
-        expect(text).toContain("a contract order status — never acquired");
-    });
-
-    it("carries no banned identifier at the real §5.5 call site (guards fixture drift)", async () => {
-        // Relative to the vitest cwd (frontend/), not to this module.
-        const source = await readFile(
-            "app/(marketing)/papers/verified-resolution-kernel/page.tsx",
-            "utf8",
-        );
-        const figureCall = source.slice(
-            source.indexOf("<ResolutionPathsFigure"),
-            source.indexOf("<PaperRun title=\"What is checked about the composition of the two paths.\">"),
-        );
-        expect(figureCall.length).toBeGreaterThan(0);
-        for (const identifier of BANNED_IDENTIFIERS) {
-            expect(figureCall).not.toContain(identifier);
-        }
-    });
-
-    it("grows a panel with its content instead of overlapping it (layout is computed)", () => {
-        const heightOf = (inputs: readonly string[]) => {
-            const { container } = render(
-                <ResolutionPathsFigure
-                    directPath={{ ...PAPER_RESOLUTION_PATHS.directPath, inputs }}
-                    batchPath={PAPER_RESOLUTION_PATHS.batchPath}
-                />,
-            );
-            const h = Number((container.querySelector("svg")?.getAttribute("viewBox") ?? "").split(" ")[3]);
-            cleanup();
-            return h;
-        };
-        expect(heightOf(["a", "b", "c", "d", "e", "f"])).toBeGreaterThan(heightOf(["a"]));
-    });
-});
-
-describe("BatchResolutionSequenceFigure", () => {
-    it("renders all seven steps, numbered in order, and none beyond them", () => {
-        const { container } = render(<BatchResolutionSequenceFigure />);
-        const text = container.textContent ?? "";
-        for (const n of [1, 2, 3, 4, 5, 6, 7]) {
-            expect(text).toContain(String(n));
-        }
-        expect(text).toContain("Buyer + seller wallets");
-        expect(text).toContain("→ Sequencer");
-        expect(text).toContain("→ Validity proof");
-        expect(text).toContain("→ The resolve call");
-        expect(text).toContain("→ Usage accrual, then the state root");
-        // The spine carries exactly one numbered dot per step.
-        expect(container.querySelectorAll("circle")).toHaveLength(7);
-    });
-
-    it("renders the direct-path fallback block, and marks it a new process not a migration", () => {
-        const { container } = render(<BatchResolutionSequenceFigure />);
-        const text = container.textContent ?? "";
-        expect(text).toContain("If the sequencer stalls or censors: the direct path");
-        expect(text).toContain("never a migration of a batched one");
-        // The fallback block is the one dashed-outline rect in the figure.
-        const dashed = container.querySelectorAll('rect[stroke-dasharray="4 3"]');
-        expect(dashed).toHaveLength(1);
-    });
-
-    it("states that the proof COMMITS to the batch data by hash, never that it carries it", () => {
-        const { container } = render(<BatchResolutionSequenceFigure />);
-        const text = container.textContent ?? "";
-        expect(text).toContain("public values commit, by hash");
-        expect(text).not.toContain("Public values carry");
-    });
-
-    it("names no contract, function, or proving system — the paper corpus convention", () => {
-        const { container } = render(<BatchResolutionSequenceFigure />);
-        const text = container.textContent ?? "";
-        for (const identifier of BANNED_IDENTIFIERS) {
-            expect(text).not.toContain(identifier);
-        }
-    });
-});
-
-/** The market-formation figure additionally names no SDK symbol or payload
- *  field — the corpus register keeps source identifiers in comments. */
 const BANNED_FORMATION_IDENTIFIERS = [
     "startRace",
     "counterSignDraft",

@@ -201,14 +201,14 @@ export const PAPER_GROUPS: PaperGroup[] = [
         definition: "Two complementary lenses on the protocol's CS surface: what stands above the mechanism as a research object — the composition doctrine, clause design as a discipline, the coordinator pattern — and the contract read adversarially, asking where an invariant would break and what proves that it does not. The papers here ask what engineers, cryptographers and verification people ask; the implementation work itself — clause authoring, contract development, assembly composition, frontend — organizes on Clauses and Assemblies.",
         papers: [
             {
-                title: "A Verified Resolution Contract: Formal Verification, Threat Model, and the Scope of the Claim",
+                title: "What Formal Verification Transfers to a Bonded Contract: The Payoff Table as the Specification, and What No Check Reaches",
                 href: "/papers/verified-resolution-kernel",
-                summary: "What it means to verify a contract of two calls, decentralized and permissionless, with no timeout: exhaustive model checking, property-based fuzzing, symbolic execution, specification checking, and a proof of the equilibrium algebra apart from the code — what each one reaches, and the scope of the claim they support between them.",
-                keywords: ["smart contracts", "formal verification", "model checking", "symbolic execution", "property-based fuzzing", "EIP-712", "verification scope"],
+                summary: "For a contract whose security is an equilibrium, machine verification transfers the theorem only through a specification that pins the payoff table: conservation and solvency do not pin it, two variants that conserve and stay solvent break the equilibrium, and \"formally verified\" can mean only the conjunction of checks that the code realizes the table and a proof of the equilibrium over it, with the residue no check reaches named.",
+                keywords: ["smart contracts", "formal verification", "mechanized proof", "mechanism design", "specification", "verification scope"],
                 industries: ["Security and audit"],
-                question: "How far does a machine check reach on a contract of two calls, with no upgrade path and no timeout?",
-                result: "Machine-checked, property by property: four classes of check (model checking, fuzzing, symbolic execution, specification checking) establish token conservation, solvency, the bond and payout amounts, monotonic cumulative value, buyer-only atomic resolution and a no-write guarantee for the attestation contract, each within its bounds, and a proof-assistant development proves the equilibrium algebra at any chain length over the payoff table the model checking pins to the contract.",
-                scope: "Every property belongs to the direct resolution path; the batched path has a model of its own and five named assumptions; the checks do not establish that the specification is the right one, that deployed bytecode came from the checked source, or that the denomination token behaves.",
+                question: "What does a machine check of a two-call bonded contract establish about the equilibrium its security rests on, and what does no check reach?",
+                result: "Argued and worked: a specification of conservation and solvency admits a contract that pays the seller the buyer's whole bond and one that bonds the seller by payment alone, each conserving and solvent and each breaking the equilibrium, so the specification must pin the bond schedule and the resolution's transfers; because every comparison is per position, coupled through the accumulator, a bounded model and a per-position proof cover any chain length; the conjunction never reaches rationality, off-chain performance, equilibrium selection or a composed contract's side transfers.",
+                scope: "An argument about what verification evidences for a contract of this shape, positioned against mechanized social choice and auction theory and against smart-contract verification that proves functional properties; it names no tool, run or count, and claims nothing about observed play.",
             },
         ],
     },
@@ -368,7 +368,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "AI, Optimization and Control Theory",
         discipline: "Agent coordination · allocation · control of the mesh",
         intro: "Steering and stability: encoding a coordination objective as a cost function and designing for dynamic stability around it, with the multiscale dynamics that link individual decisions to system-level outcomes.",
-        definition: "Agent-mediated coordination over bonded commitments: the Core's actor-neutrality property turns them into the missing enforcement layer for mutually-untrusted multi-agent systems. The papers here ask what control theorists and multi-agent-systems people ask; the Agent SDK at the runtime tier (FigaroContext, proposer, policy gateway, executor) is the operational realization the paper reads back as control.",
+        definition: "Agent-mediated coordination over bonded commitments: a substrate that reads signatures and bonds, never the kind of entity behind a key, is the enforcement layer mutually untrusted multi-agent systems lacked. The papers here ask what control theorists and multi-agent-systems people ask of it.",
         papers: [
             {
                 title: "Actor-Neutral Coordination over Bonded Commitments",

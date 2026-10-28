@@ -8,7 +8,7 @@
  * endpoints (the agents onboarding step). This surfaces them to a browsing party
  * and, for the did:web, RESOLVES the DID Document and checks whether it names
  * the member's on-chain address on the current chain — the "discovery vs trust"
- * split the actor-neutral-coordination architecture calls for: endpoints help a
+ * split the agent-identity model calls for: endpoints help a
  * counterparty FIND this member; the consistency check is a discovery signal,
  * NOT proof of control. Anyone can host a did:web document naming any wallet, so
  * the binding is attacker-forgeable and informs — never by itself justifies —
