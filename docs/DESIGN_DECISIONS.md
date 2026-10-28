@@ -91,9 +91,10 @@ is the safety guarantee, not a liability.
 
 ---
 
-## 4. Buyer key loss permanently locks bonds — by design
+## 4. Buyer key loss, with no code installed to resolve, permanently locks bonds — by design
 
-**Pattern**: If the root buyer loses their private key, the process cannot be
+**Pattern**: If the root buyer loses their private key with no code installed on
+their wallet that resolves for them (the mitigation below), the process cannot be
 resolved and all bonds are permanently locked. There is no timeout, no
 recovery path, no admin override.
 

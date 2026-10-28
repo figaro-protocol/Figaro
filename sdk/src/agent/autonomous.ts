@@ -77,7 +77,7 @@ export async function resolveProcess(
     commitments: Commitment[],
 ): Promise<TxResult> {
     // FigaroCore invariant: every commitment.buyer === rootBuyer (FigaroCore.sol:188),
-    // and only rootBuyer can resolve (FigaroCore.sol:260). Fail fast with a
+    // and only rootBuyer can resolve (FigaroCore.sol:268). Fail fast with a
     // clearer error than the contract's NotProcessBuyer revert.
     if (commitments.length > 0) {
         const account = walletClient.account?.address;

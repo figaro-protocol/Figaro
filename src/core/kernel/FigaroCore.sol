@@ -235,9 +235,9 @@ contract FigaroCore is EIP712, ReentrancyGuard {
 
     /// @notice Resolve all orders in a process atomically.
     ///
-    ///         If the root buyer's key is permanently lost, bonds in
-    ///         this process cannot be resolved through the contract. The
-    ///         buyer is a recovered ECDSA signer; whoever holds its key resolves.
+    ///         The buyer is a recovered ECDSA signer: whoever holds its key resolves,
+    ///         as does code its wallet installed while it held the key (DESIGN_DECISIONS
+    ///         § 4). A key lost with no such code leaves the bonds unresolvable: no other path.
     ///
     ///         GAS CEILING: Each order costs ~30k gas to resolve
     ///         (struct hash, cold SLOAD, two ERC-20 transfers, SSTORE,
