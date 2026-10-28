@@ -175,6 +175,45 @@ with real keys, and the threshold-ECDSA signing ceremony rehearsed on testnet fi
 Devnet uses a `MockTreasuryMultisig` placeholder; mainnet is config, never code.
 Who holds the treasury, and the discipline on spending it: `docs/DAO.md`.
 
+The implementation as rehearsed, which the design in `DAO.md` never states and which
+changes as the DAO sees fit:
+
+The operator account the DAO meets the ecosystem through is an **operator EOA**, an
+externally-owned account carrying an EIP-7702 delegation to
+governance-controlled code — the same delegation shape `DESIGN_DECISIONS.md`
+§ key-loss documents for any buyer. The delegated code is **MetaMask Delegation
+Framework's `EIP7702StatelessDeleGator`** at its canonical CREATE2 address
+`0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B` (v1.3.0) — audited,
+off-the-shelf, and the same address on every network, so a rehearsal is
+literal (`DelegationManager` `0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3`).
+The multisig's authority is an ERC-7710 delegation the operator grants it,
+bounded by caveat enforcers and redeemed through the framework's
+`DelegationManager` to act from the operator's address.
+
+The treasury contract itself can never sign commitments — `FigaroCore` is
+ECDSA-only — so the multisig authorizes *upstream*: it pays the operator per
+procurement, and through the delegated code it can act from the operator's
+address for `msg.sender`-authorized calls (resolution, recovery) and bound what
+the operator may do, while the operator's own key produces the EIP-712
+signatures.
+
+That operator EOA is the DAO's identity in every registry and every trade. It
+holds the DAO's member profile — buyer side, and seller side when the DAO sells
+(merchandise, tickets, its co-produced data) — and it is the buyer of record
+when the DAO procures through the protocol. Its blast radius is bounded by the
+delegation and by per-procurement funding. The operator EOA and its delegation
+are created BEFORE the DAO's member profile is registered under it
+(`RELEASE_READINESS.md` Task 13 owns the ordering); the vault address itself
+holds no profile.
+
+Devnet rehearses the shape: `Deploy.s.sol` stands up `MockTreasuryMultisig` (an
+anvil-placeholder 2-of-3) as the 300M mint target, and
+`test/build/florin/TreasuryProcurement.t.sol` drives fund → bonded commit → resolve →
+sweep-back, asserting the treasury's net spend is exactly the payment.
+Threshold-ECDSA — a multisig in cryptography, an EOA on chain — is the recorded
+upgrade for the operator's key, rehearsed on a testnet before adoption.
+
+
 ### Task 11: WYSIWYS tail — frontend delivery integrity
 
 The signing-moment mitigations already shipped
@@ -217,8 +256,7 @@ registers; every
 other reference clause and every reference assembly is registered by the founder's
 wallet, from the founder's own balance; each member profile is registered by its
 own wallet — the founder direct as a buyer-side member, the DAO under its
-EIP-7702-delegated operator EOA, never the vault address (`DAO.md` § "Who holds
-the treasury"). Registrar = designer of record = who the 600M reserve rewards
+EIP-7702-delegated operator EOA, never the vault address (Task 9). Registrar = designer of record = who the 600M reserve rewards
 (`RpgfMinter._isAuthor(kind, key, account)` reads `depositOf(key).registeredBy`
 for the clause kind, and `claim` reads the claimant's live member stake); first-write-wins and permanent per key — a clause key is
 `keccak256` of the spec's pinned canonical bytes, so a registration is one

@@ -16,9 +16,10 @@ of the allocation table in `docs/FLORIN_TOKEN.md`.
 ## Who earns
 
 **Designers of record.** A designer is the wallet that wrote and registered a
-clause, a registered agreement or an assembly; it is the designer of record
-for as long as it holds a live stake against that entry in the entry's own
-registry. An entry is a (kind, key) pair — a clause key under the clause kind
+clause, a registered agreement or an assembly. Two things are true of it and
+of different objects: the registration binding is permanent (first-write-wins,
+below), and the designer earns as designer of record for as long as it holds a
+live stake against that entry in the entry's own registry. An entry is a (kind, key) pair — a clause key under the clause kind
 (0), an assembly's `assemblyHash` under the assembly kind (1), a registered
 agreement's `agreementHash` under the agreement kind (2) — and the meter, the
 claim and the check of the designer of record are all keyed by it, so a stake
@@ -41,8 +42,9 @@ treasury aligns the treasury's interest with every trade (`docs/DAO.md`
 § "Its income").
 
 **Registering is the whole of the claim.** First-write-wins: whoever
-registers a clause key under their wallet is its designer of record, and the
-binding is irreversible. The key is the hash of the spec's pinned bytes, so
+registers a clause key under their wallet holds that registration for good, and
+the binding is irreversible; what the stake decides is whether the registrant
+earns on it (§ "Who earns", above). The key is the hash of the spec's pinned bytes, so
 what is registered is one exact document, never a name. Competing with a better clause under one's own wallet is
 equally permissionless and equally welcome.
 

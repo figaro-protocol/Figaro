@@ -62,52 +62,26 @@ nothing hardcoded:
 
 ## Who holds the treasury
 
-The DAO wallet is a **multisig** — on mainnet a canonical Safe instance,
-deployment configuration via `DAO_WALLET`, never code. The concrete
-detail (signer set, threshold, and the wallet addresses) is deployment
-configuration, disclosed in the deployment record for each network; a network's
-is named when that network deploys, not before — never withheld, just not yet
-real. *No vault contract exists or is needed* — the arrangement is composed,
-not written.
+The treasury is held by a multisig wallet: a treasury decision is its signers'
+act under the wallet's threshold, the signer set changes only by the signers'
+own act, and no florin carries a vote (`FLORIN_TOKEN.md` § "What the token is
+not"). No vault contract exists or is needed; the arrangement is composed, not
+written, and it reaches no bond, no commitment, no registry binding and no
+resolution (§ "DAO governance is NOT Core governance").
 
-**Who votes: the Safe's signers.** A treasury decision is the signers' act under
-the Safe's threshold; the signer set changes only by the signers' own act, and
-no florin carries a vote (`FLORIN_TOKEN.md` § "What the token is not").
+The DAO meets the ecosystem through one operator account, which holds the DAO's
+member profile and is its buyer of record when it procures through the protocol
+and its seller of record when it sells. The treasury funds that account per
+procurement, so what the operator can spend is bounded by what the treasury
+hands it for one trade. The operator account is created, and the treasury's
+authority over it granted, before the DAO's member profile is registered under
+it; the treasury wallet itself holds no profile.
 
-**The DAO meets the ecosystem through ONE account: its operator EOA**, an
-externally-owned account carrying an EIP-7702 delegation to
-governance-controlled code — the same delegation shape `DESIGN_DECISIONS.md`
-§ key-loss documents for any buyer. The delegated code is **MetaMask Delegation
-Framework's `EIP7702StatelessDeleGator`** at its canonical CREATE2 address
-`0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B` (v1.3.0) — audited,
-off-the-shelf, and the same address on every network, so a rehearsal is
-literal (`DelegationManager` `0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3`).
-The multisig's authority is an ERC-7710 delegation the operator grants it,
-bounded by caveat enforcers and redeemed through the framework's
-`DelegationManager` to act from the operator's address.
-
-The treasury contract itself can never sign commitments — `FigaroCore` is
-ECDSA-only — so the multisig authorizes *upstream*: it pays the operator per
-procurement, and through the delegated code it can act from the operator's
-address for `msg.sender`-authorized calls (resolution, recovery) and bound what
-the operator may do, while the operator's own key produces the EIP-712
-signatures.
-
-That operator EOA is the DAO's identity in every registry and every trade. It
-holds the DAO's member profile — buyer side, and seller side when the DAO sells
-(merchandise, tickets, its co-produced data) — and it is the buyer of record
-when the DAO procures through the protocol. Its blast radius is bounded by the
-delegation and by per-procurement funding. The operator EOA and its delegation
-are created BEFORE the DAO's member profile is registered under it
-(`RELEASE_READINESS.md` Task 13 owns the ordering); the vault address itself
-holds no profile.
-
-Devnet rehearses the shape: `Deploy.s.sol` stands up `MockTreasuryMultisig` (an
-anvil-placeholder 2-of-3) as the 300M mint target, and
-`test/build/florin/TreasuryProcurement.t.sol` drives fund → bonded commit → resolve →
-sweep-back, asserting the treasury's net spend is exactly the payment.
-Threshold-ECDSA — a multisig in cryptography, an EOA on chain — is the recorded
-upgrade for the operator's key, rehearsed on a testnet before adoption.
+The concrete form of all this (the multisig's signer set and threshold, the
+code the operator account carries, the addresses) is deployment configuration,
+recorded for each network when that network deploys and changed as the DAO
+sees fit; it is never design, and this document states none of it. The release
+gate owns the procedure that stands it up (`RELEASE_READINESS.md` Task 9).
 
 ---
 
@@ -117,7 +91,7 @@ upgrade for the operator's key, rehearsed on a testnet before adoption.
 design. It carries no projected yield, no break-even model, and no income
 forecast, and none should ever be added.
 
-The DAO Safe is designer of record of the two *scoring* mandatory clauses,
+The DAO's treasury wallet is designer of record of the two *scoring* mandatory clauses,
 `figaro-commerce` and `figaro-topology`, and of every mandatory clause it develops
 and registers after them. It holds each as a registration by clause key —
 `keccak256` of that spec's pinned bytes — so what it holds is the exact
