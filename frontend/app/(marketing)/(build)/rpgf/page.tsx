@@ -38,7 +38,7 @@ export default function DesignerRewards() {
                     <li>Your share is your clauses&apos; and assemblies&apos; numbers over everyone&apos;s. The rule is the smart contract itself.</li>
                 </ul>
                 <p className="text-base text-ink-body leading-relaxed mt-6">
-                    The two conditions in the lead are one guard, read from both ends: three distinct sellers is the smallest signal a single person cannot stage alone, and a live stake required of designer and seller alike means farming the count &mdash; padding a tally with wallets you control &mdash; costs real stake for as long as the padding stands. That stake is what stops reward farming; no cap, weight, or reviewer is needed.
+                    The two conditions in the lead are one guard, read from both ends: three distinct staked sellers is the smallest count neither one identity nor a colluding pair reaches, and staging it costs three live stakes and three resolved processes; a live stake required of designer and seller alike means farming the count &mdash; padding a tally with wallets you control &mdash; costs real stake for as long as the padding stands. That stake is what stops reward farming; no cap, weight, or reviewer is needed.
                 </p>
                 <RpgfValueLoopFigure />
                 <p className="text-base text-ink-body leading-relaxed mt-6">
