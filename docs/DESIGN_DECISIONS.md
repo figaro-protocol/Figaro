@@ -411,12 +411,17 @@ tool, by design.
 **What this does not close off: the commerce those instruments carry.**
 A cargo resale in transit needs no transferable right and no party
 substitution. The buyer agrees the sale under the outside instrument; the
-sellers are not asked to agree to it, and ownership passes when the outside
+sellers are not asked to agree to it (what they agree is the variation, the
+transfers and the revised terms), and ownership passes when the outside
 instrument says, here at resolution. The sellers make the sale possible, exactly as every
 other outside event is squared before the buyer's one terminal call: each
 returns to the buyer the whole, or the part, of its committed payment
 that answers to what the buyer will not receive, the variation is
-attested, and a single `resolveProcess` executes the schedule unchanged,
+attested under `figaro-property-transfer` (the event in the parties' words,
+the sale instrument's fingerprint, the netting transfers, the revised terms'
+fingerprint; each party against its own order, agreement among the
+attestations derived when read), and a single `resolveProcess` executes the
+schedule unchanged,
 so the sellers' transfers net inside one bond cycle. Ownership then passes to
 the new owner on the sale instrument's terms, which in this composition set it at
 resolution; a bond is tokens and references no goods. The new owner never becomes a
