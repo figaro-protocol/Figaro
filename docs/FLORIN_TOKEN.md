@@ -14,8 +14,7 @@ surfaces are inventoried in `docs/CONTRACTS.md`.
 ## Why a native token
 
 The Figaro protocol does not need a native token for security. The bonding
-mechanism is self-enforcing — the equilibrium holds regardless of which ERC-20
-the parties use. The protocol stays token-agnostic for bonding, resolution, and
+mechanism's equilibrium holds regardless of which ERC-20 the parties use. The protocol stays token-agnostic for bonding, resolution, and
 every coordination primitive, and the florin changes none of that.
 
 The token serves a different purpose: **it is a coordination Schelling point.**

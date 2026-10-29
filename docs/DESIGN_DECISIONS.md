@@ -79,8 +79,8 @@ deployer who registers minter contracts then renounces (`deployerMintRenounced`)
 **Why it looks wrong**: Most protocols include emergency controls for incident
 response.
 
-**Why it is correct**: The protocol's core property is self-enforcement between
-strangers. An admin escape hatch is a trusted third party by another name. The
+**Why it is correct**: The protocol's core property is that a stranger's promise is made good before
+the trade, by the parties' own bonds. An admin escape hatch is a trusted third party by another name. The
 absence of admin controls is not an omission — it is the mechanism. The six
 properties (asymmetric bonding, cumulative bonding, buyer dominance,
 atomic resolution, immutable evidence, no escape hatches) are mutually

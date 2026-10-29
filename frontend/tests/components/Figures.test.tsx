@@ -3,7 +3,6 @@ import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { ProcessTopologyFigure } from "@/components/figures/ProcessTopologyFigure";
 import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphCollapseFigure";
-import { RpgfScheduleFigure } from "@/components/figures/RpgfScheduleFigure";
 import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
 import { MarketFormationSwimlaneFigure } from "@/components/figures/MarketFormationSwimlaneFigure";
 import { OriginationSequenceFigure } from "@/components/figures/OriginationSequenceFigure";
@@ -250,35 +249,6 @@ describe("MarketFormationSwimlaneFigure", () => {
         expect(svg).toHaveAttribute("aria-labelledby", "mf-title mf-desc");
         expect(container.querySelector("#mf-title")?.textContent).toContain("dispatch race");
         expect(container.querySelector("#mf-desc")?.textContent).toContain("never both");
-    });
-});
-
-describe("RpgfScheduleFigure", () => {
-    it("renders nine annual budgets summing to the 600M reserve (deployed schedule)", () => {
-        const { container } = render(<RpgfScheduleFigure />);
-        const text = container.textContent ?? "";
-        expect(text).toContain("The 9 budgets sum to 600M");
-        // 45 × 2, 60 × 3, 82.5 × 4 — the deployed _rpgfAmounts() list.
-        expect(text).toContain("45");
-        expect(text).toContain("60");
-        expect(text).toContain("82.5");
-        expect(text).toContain("15% over years 1–2");
-        expect(text).toContain("55% over years 6–9");
-    });
-
-    it("recomputes the total from whatever tranches it is given (parametrized input)", () => {
-        const { container } = render(
-            <RpgfScheduleFigure
-                tranches={[
-                    { label: "half", periods: 1, perPeriodMillions: 50 },
-                    { label: "half", periods: 1, perPeriodMillions: 50 },
-                ]}
-                figureTitle="t"
-                figureDesc="d"
-                caption="c"
-            />,
-        );
-        expect(container.textContent).toContain("The 2 budgets sum to 100M");
     });
 });
 

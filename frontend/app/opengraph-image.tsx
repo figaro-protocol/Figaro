@@ -65,7 +65,7 @@ export default async function Image() {
                         marginTop: 36,
                     }}
                 >
-                    Self-enforcing agreements between strangers — on Ethereum.
+                    Agreements between strangers, made good before the trade — on Ethereum.
                 </div>
             </div>
         ),

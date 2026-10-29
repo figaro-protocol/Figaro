@@ -1,6 +1,6 @@
 # @figaro-protocol/sdk
 
-TypeScript SDK for the Figaro Protocol — self-enforcing agreements between strangers.
+TypeScript SDK for the Figaro Protocol — agreements between strangers, made good before the trade.
 
 Event parsing, state reconstruction, EIP-712 commitment building, bond math,
 agent coordination, the assembly→orders projection, and the runtime handoff
