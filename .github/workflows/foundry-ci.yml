@@ -105,11 +105,11 @@ jobs:
               with:
                   version: v1.5.1
 
-            # scripts/coverage.sh runs FOUNDRY_PROFILE=coverage forge coverage under
-            # the profile's FULL via-IR pipeline (optimizer + yul stack allocation):
-            # the minimal-optimization --ir-minimum path fails stack-too-deep in the
-            # batch verifier's decoder under coverage instrumentation. It also excludes
-            # the two gas-anchor tests calibrated for non-instrumented bytecode
+            # scripts/coverage.sh runs FOUNDRY_PROFILE=coverage forge coverage, which
+            # forge 1.5.1 compiles on the legacy un-optimized build whatever the profile
+            # says (--ir-minimum is not passed: under coverage instrumentation that path
+            # fails stack-too-deep in the batch verifier's decoder). It also excludes
+            # the five gas-anchor tests calibrated for non-instrumented bytecode
             # (see the script's own comment). --report lcov writes lcov.info at
             # the repo root alongside the printed summary table.
             - name: Run forge coverage

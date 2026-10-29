@@ -13,4 +13,26 @@ ignore = [
     # requires ruzstd ^0.8, and sp1-core-executor pins object ^0.37.3. The
     # guest does not compile it (`cargo tree -p figaro-prover` has no ruzstd).
     "RUSTSEC-2026-0344",
+    # crypto-bigint 0.5.5, timing variability in operations meant to be
+    # constant-time (fixed at 0.7.6). It reaches the host through
+    # elliptic-curve 0.13, which alloy-signer, ecdsa, p256 and sp1-curves
+    # require at ^0.5 (k256 0.13 among them, SP1's patched one included); no
+    # release of those dependents takes crypto-bigint 0.7. The guest compiles
+    # it through SP1's patched ecdsa, where execution is proven and carries no
+    # secret, so timing is no channel there; on the host the sequencer's
+    # signing key is the exposure, and the entry is revisited at every SP1
+    # release.
+    "RUSTSEC-2026-0387",
+    # zstd 0.13.3, data from an abandoned stream leaking into the next on a
+    # reused context (fixed at 0.14.3), and zstd-safe 7.x, uninitialized memory
+    # on a failed legacy-frame decompression and a Vec length set past its
+    # capacity by Seekable::decompress (both fixed at 8.2.0). All three reach
+    # the proving harness and the sequencer through sp1-sdk, whose every
+    # release to date (6.10.0 included) requires zstd ^0.13, and zstd 0.13
+    # requires zstd-safe 7. The guest does not compile zstd (`cargo tree -p
+    # figaro-prover -i zstd` is empty). zstd-safe is at 7.3.0 and zstd-sys at
+    # 2.1.2, the newest the requirement admits.
+    "RUSTSEC-2026-0391",
+    "RUSTSEC-2026-0403",
+    "RUSTSEC-2026-0398",
 ]

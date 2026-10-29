@@ -312,7 +312,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         // The pin: the bound contract names its circuit. A gateway has no
         // `VERIFIER_HASH()` and is refused here, so the path from a proven
         // batch to its resolution has no owner who can freeze it.
-        bytes32 named;
+        bytes32 named = bytes32(0);
         try ISP1VerifierWithHash(_verifier).VERIFIER_HASH() returns (bytes32 h) {
             named = h;
         } catch {
@@ -705,7 +705,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///      every `0x04` entry and emit nothing (step 4); with `publish` true,
     ///      emit the Core's events for every commit and resolution (step 6).
     function _walkOperations(bytes calldata s, bool publish) internal {
-        uint256 p;
+        uint256 p = 0;
         uint256 n = s.length;
         while (p < n) {
             uint256 tag = _byteAt(s, p);
@@ -719,7 +719,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
                 uint256 count = _countAt(s, p);
                 p += 2;
                 if (publish) {
-                    address buyer;
+                    address buyer = address(0);
                     for (uint256 i = 0; i < count; i++) {
                         CommitmentTypes.Commitment memory c = _readCommitment(s, p + i * COMMITMENT_BYTES);
                         buyer = c.buyer;
@@ -769,11 +769,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         if (count == 0 || p + count * COMMITMENT_BYTES > s.length) revert MalformedOperationStream();
         address buyer = address(bytes20(_wordAt(s, p + 32)));
         if (!publish) {
-            uint256 cumulativeValue;
-            for (uint256 i = 0; i < count; i++) {
-                cumulativeValue += uint256(_wordAt(s, p + i * COMMITMENT_BYTES + 92));
-            }
-            _checkWalletCode(processId, buyer, cumulativeValue, authorization);
+            _checkWalletCode(processId, buyer, _sumListedPayments(s, p, count), authorization);
             return p + count * COMMITMENT_BYTES;
         }
         for (uint256 i = 0; i < count; i++) {
@@ -782,6 +778,15 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         }
         emit ProcessResolved(processId, buyer, count);
         return p;
+    }
+
+    /// @dev The sum of the listed orders' payments: the process's cumulative
+    ///      value as the guest left it. Its own frame keeps the resolve
+    ///      entry's locals within the stack under coverage's un-optimized build.
+    function _sumListedPayments(bytes calldata s, uint256 p, uint256 count) private pure returns (uint256 sum) {
+        for (uint256 i = 0; i < count; i++) {
+            sum += uint256(_wordAt(s, p + i * COMMITMENT_BYTES + 92));
+        }
     }
 
     /// @dev Ask the buyer's account code whether `authorization` authorizes

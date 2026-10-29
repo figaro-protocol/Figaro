@@ -528,9 +528,10 @@ git diff -M c7f85d0d ec0e1993 -- src/kernel/ src/core/kernel/
 | SP1 | the release `prover/Cargo.lock` names for `sp1-sdk`; it embeds circuit v6.1.0 | `prover/Cargo.lock` |
 
 The bytecode that is deployed is the IR pipeline's. The gate tests that
-pipeline (`forge test --via-ir`), and so do coverage, Halmos and Certora. The
-pre-commit hook and the mutation runs compile with the legacy code generator,
-which builds in seconds; they test behaviour, not bytecode.
+pipeline (`forge test --via-ir`), and so do Halmos and Certora. Coverage, the
+pre-commit hook and the mutation runs compile with the legacy code generator
+(forge 1.5.1 disables the optimizer and via-IR for coverage whatever the
+profile says), which builds in seconds; they test behaviour, not bytecode.
 
 ### The guest and its verification key
 
@@ -1524,7 +1525,7 @@ Certora reports, each "No errors found by Prover" at `f62b71cf`:
 
 ### Test coverage, Solidity
 
-`scripts/coverage.sh` (`forge coverage` under the full via-IR pipeline; the two
+`scripts/coverage.sh` (`forge coverage`, which under forge 1.5.1 runs the un-optimized legacy build whatever the profile says; the five
 gas-anchor tests excluded, since instrumentation raises their measurements),
 over the eleven contracts in scope that hold code, measured at `f62b71cf`:
 
@@ -1650,7 +1651,7 @@ Semgrep returns only INFO gas-style rules. Both run in CI on every push
 (`.github/workflows/foundry-ci.yml`, job `static-analysis`): Semgrep fails on any WARNING or
 ERROR, and a gate holds Slither's High and Medium results to the triaged set
 below, by detector, so a new one fails the push and so does one vanishing.
-Slither's 50 results at the baseline, triaged (eight High and Medium):
+Slither's 56 results at the baseline, triaged (eight High and Medium):
 
 | Severity | Detector | Where | Verdict |
 |---|---|---|---|
@@ -1669,18 +1670,28 @@ and suspicious groups denied, over all four crates in scope — clean; Semgrep
 with the `p/rust` ruleset, failing on any WARNING or ERROR — two INFO results,
 both in the relay (it reads its arguments; it names a temporary directory);
 `cargo audit` over `prover/Cargo.lock` (`.github/workflows/guards-ci.yml`) — no advisory that
-fails the run, one set aside by id in `prover/.cargo/audit.toml`, and 13
+fails the run, five set aside by id in `prover/.cargo/audit.toml`, and 23
 warnings: nine transitive crates marked unmaintained, and unsoundness notices
-on `lru` and `chacha20`. The advisory set aside is RUSTSEC-2026-0344, a
-decompression bomb in `ruzstd` 0.8.3, fixed at 0.9.1: the crate reaches the
-relay and the proving harness through `object` 0.37.3, `backtrace` and
+on `lru`, `tokio` and `zstd-safe`. The advisories set aside, each because no
+release of the crate's dependents takes the fixed version: RUSTSEC-2026-0344, a
+decompression bomb in `ruzstd` 0.8.3, fixed at 0.9.1, which reaches the relay
+and the proving harness through `object` 0.37.3, `backtrace` and
 `sp1-recursion-compiler`, where it reads the compressed debug sections of the
-host's own executable; every `object` release to date requires `ruzstd` ^0.8
-and `sp1-core-executor` pins `object` ^0.37.3, so no lockfile update takes the
-fix. Of the crates named, one is compiled into the guest: `bincode`,
-unmaintained, through SP1's input encoding. `lru` reaches the relay through
-`alloy-provider` and `sp1-prover`; neither it, `chacha20` nor `ruzstd` is in
-the guest's graph.
+host's own executable, every `object` release requiring `ruzstd` ^0.8 and
+`sp1-core-executor` pinning `object` ^0.37.3; RUSTSEC-2026-0387, timing
+variability in `crypto-bigint` 0.5.5, fixed at 0.7.6, which `elliptic-curve`
+0.13 requires at ^0.5 for `alloy-signer`, `ecdsa`, `p256`, `k256` and
+`sp1-curves`, compiled into the guest through SP1's patched `ecdsa`, where
+execution is proven and carries no secret, and on the host where the
+sequencer's signing key is the exposure; and RUSTSEC-2026-0391, -0403 and
+-0398 in `zstd` 0.13.3 and `zstd-safe` 7.3.0 (a stream leaking into the next on
+a reused context, uninitialized memory on a failed legacy-frame decompression,
+a `Vec` length set past its capacity), fixed at `zstd` 0.14.3 and `zstd-safe`
+8.2.0, which `sp1-sdk` reaches through its `zstd` ^0.13 requirement in every
+release to date; the guest does not compile `zstd`. Of the crates named, one
+is compiled into the guest besides `crypto-bigint`: `bincode`, unmaintained,
+through SP1's input encoding. `lru` reaches the relay through `alloy-provider`
+and `sp1-prover`; neither it, `zstd` nor `ruzstd` is in the guest's graph.
 
 ### The real-proof rehearsal
 
