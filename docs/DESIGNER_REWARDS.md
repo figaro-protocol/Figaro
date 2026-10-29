@@ -15,8 +15,8 @@ of the allocation table in `docs/FLORIN_TOKEN.md`.
 
 ## Who earns
 
-**Designers of record.** A designer is the wallet that wrote and registered a
-clause, a registered agreement or an assembly. Two things are true of it and
+**Designers of record.** A designer is the wallet that first registered a
+clause, a registered agreement or an assembly, whether or not it wrote it. Two things are true of it and
 of different objects: the registration binding is permanent (first-write-wins,
 below), and the designer earns as designer of record for as long as it holds a
 live stake against that entry in the entry's own registry. An entry is a (kind, key) pair — a clause key under the clause kind
