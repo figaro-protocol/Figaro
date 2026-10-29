@@ -43,7 +43,7 @@ export default function UngovernedSubstratePaper() {
                     <li>De Filippi, Primavera, and Aaron Wright. 2018. <em>Blockchain and the Law: The Rule of Code</em>. Cambridge, MA: Harvard University Press. https://doi.org/10.4159/9780674985933.</li>
                     <li>Edge City. n.d. &ldquo;Edge City.&rdquo; https://www.edgecity.live/. Accessed October 28, 2026.</li>
                     <li>Ethereum Foundation. 2026. &ldquo;EF Mandate.&rdquo; https://ethereum.foundation/ef-mandate.pdf. Accessed October 28, 2026.</li>
-                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 28, 2026.</li>
+                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 28, 2026.</li>
                     <li>Hirschman, Albert O. 1970. <em>Exit, Voice, and Loyalty: Responses to Decline in Firms, Organizations, and States</em>. Cambridge, MA: Harvard University Press.</li>
                     <li>HolacracyOne. 2021. &ldquo;Holacracy Constitution,&rdquo; version 5.0. Released June 2, 2021. https://github.com/holacracyone/Holacracy-Constitution/releases/tag/v5.0. Accessed October 28, 2026.</li>
                     <li>Hughes, Eric. 1993. &ldquo;A Cypherpunk&rsquo;s Manifesto.&rdquo; March 9, 1993. https://www.activism.net/cypherpunk/manifesto.html. Accessed October 28, 2026.</li>

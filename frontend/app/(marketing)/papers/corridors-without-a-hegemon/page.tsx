@@ -35,7 +35,7 @@ export default function CorridorsWithoutAHegemonPaper() {
                 <>
                     <li>Council of the European Union. 2022. Council Regulation (EU) 2022/345 of 1 March 2022 amending Regulation (EU) No 833/2014 concerning restrictive measures in view of Russia&rsquo;s actions destabilising the situation in Ukraine. <em>Official Journal of the European Union</em> L 63.</li>
                     <li>Farrell, Henry, and Abraham L. Newman. 2019. &ldquo;Weaponized Interdependence: How Global Economic Networks Shape State Coercion.&rdquo; <em>International Security</em> 44 (1): 42&ndash;79. https://doi.org/10.1162/isec_a_00351.</li>
-                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 19, 2026.</li>
+                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 19, 2026.</li>
                     <li>Gramsci, Antonio. 1971. <em>Selections from the Prison Notebooks</em>. Edited and translated by Quintin Hoare and Geoffrey Nowell-Smith. New York: International Publishers.</li>
                     <li>Hirschman, Albert O. 1945. <em>National Power and the Structure of Foreign Trade</em>. Berkeley: University of California Press.</li>
                     <li>Hirschman, Albert O. 1970. <em>Exit, Voice, and Loyalty: Responses to Decline in Firms, Organizations, and States</em>. Cambridge, MA: Harvard University Press.</li>

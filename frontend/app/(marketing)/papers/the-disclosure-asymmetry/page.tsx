@@ -41,7 +41,7 @@ export default function DisclosureAsymmetryPaper() {
                     <li>Buterin, Vitalik. 2020. &ldquo;Trust Models.&rdquo; <em>Vitalik Buterin&rsquo;s Website</em> (blog), August 20, 2020. https://vitalik.eth.limo/general/2020/08/20/trust.html. Accessed October 20, 2026.</li>
                     <li>Buterin, Vitalik. 2021. &ldquo;The Most Important Scarce Resource Is Legitimacy.&rdquo; <em>Vitalik Buterin&rsquo;s Website</em> (blog), March 23, 2021. https://vitalik.eth.limo/general/2021/03/23/legitimacy.html. Accessed October 20, 2026.</li>
                     <li>De Filippi, Primavera, Morshed Mannan, and Wessel Reijers. 2020. &ldquo;Blockchain as a Confidence Machine: The Problem of Trust &amp; Challenges of Governance.&rdquo; <em>Technology in Society</em> 62: 101284. https://doi.org/10.1016/j.techsoc.2020.101284.</li>
-                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 19, 2026.</li>
+                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 19, 2026.</li>
                     <li>Gambetta, Diego, ed. 1988. <em>Trust: Making and Breaking Cooperative Relations</em>. Oxford: Basil Blackwell.</li>
                     <li>Habermas, J&uuml;rgen. 1975. <em>Legitimation Crisis</em>. Translated by Thomas McCarthy. Boston: Beacon Press.</li>
                     <li>Hardin, Russell. 2002. <em>Trust and Trustworthiness</em>. New York: Russell Sage Foundation.</li>

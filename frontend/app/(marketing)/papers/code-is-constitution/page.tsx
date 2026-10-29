@@ -33,7 +33,7 @@ export default function CodeIsConstitutionPaper() {
                     <li>Alston, Eric, Wilson Law, Ilia Murtazashvili, and Martin Weiss. 2022. &ldquo;Blockchain Networks as Constitutional and Competitive Polycentric Orders.&rdquo; <em>Journal of Institutional Economics</em> 18 (5): 707&ndash;723. https://doi.org/10.1017/S174413742100093X.</li>
                     <li>Buchanan, James M., and Gordon Tullock. 1962. <em>The Calculus of Consent: Logical Foundations of Constitutional Democracy</em>. Ann Arbor: University of Michigan Press.</li>
                     <li>De Filippi, Primavera, and Aaron Wright. 2018. <em>Blockchain and the Law: The Rule of Code</em>. Cambridge, MA: Harvard University Press. https://doi.org/10.4159/9780674985933.</li>
-                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 18, 2026.</li>
+                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 18, 2026.</li>
                     <li>Fuller, Lon L. 1964. <em>The Morality of Law</em>. New Haven, CT: Yale University Press.</li>
                     <li>Hart, H. L. A. 1961. <em>The Concept of Law</em>. Oxford: Clarendon Press.</li>
                     <li>Lessig, Lawrence. 1999. <em>Code and Other Laws of Cyberspace</em>. New York: Basic Books.</li>

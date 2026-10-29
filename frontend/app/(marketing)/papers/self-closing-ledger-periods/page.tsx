@@ -70,7 +70,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
                     <li>de Roover, Raymond. 1963. <em>The Rise and Decline of the Medici Bank, 1397&ndash;1494</em>. Cambridge, MA: Harvard University Press.</li>
                     <li>European Parliament and Council. 2014. <em>Directive 2014/55/EU of the European Parliament and of the Council of 16 April 2014 on electronic invoicing in public procurement</em>. <em>Official Journal of the European Union</em> L 133 (May 6, 2014): 1&ndash;11.</li>
                     <li>FASB (Financial Accounting Standards Board). 2014. <em>Accounting Standards Codification Topic 606: Revenue from Contracts with Customers</em>. Norwalk, CT: FASB.</li>
-                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 18, 2026.</li>
+                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 18, 2026.</li>
                     <li>Grigg, Ian. 2005. &ldquo;Triple Entry Accounting.&rdquo; Working paper, Systemics Inc. https://iang.org/papers/triple_entry.html. Accessed October 20, 2026.</li>
                     <li>Hirshleifer, Jack. 1983. &ldquo;From Weakest-Link to Best-Shot: The Voluntary Provision of Public Goods.&rdquo; <em>Public Choice</em> 41 (3): 371&ndash;386. https://doi.org/10.1007/BF00141070.</li>
                     <li>IASB (International Accounting Standards Board). 2011. <em>IFRS 13: Fair Value Measurement</em>. London: IFRS Foundation.</li>

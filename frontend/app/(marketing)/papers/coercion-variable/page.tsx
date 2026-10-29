@@ -34,7 +34,7 @@ export default function CoercionVariablePaper() {
                 <>
                     <li>Austin, John. 1832. <em>The Province of Jurisprudence Determined</em>. London: John Murray.</li>
                     <li>Elster, Jon. 1979. <em>Ulysses and the Sirens: Studies in Rationality and Irrationality</em>. Cambridge: Cambridge University Press.</li>
-                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 18, 2026.</li>
+                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 18, 2026.</li>
                     <li>Hart, H. L. A. 1961. <em>The Concept of Law</em>. Oxford: Clarendon Press.</li>
                     <li>Hobbes, Thomas. 1651. <em>Leviathan, or The Matter, Forme, and Power of a Common-Wealth Ecclesiasticall and Civill</em>. London: Andrew Crooke.</li>
                     <li>Nakamoto, Satoshi, aceat64, and ribuck. 2010. &ldquo;Escrow.&rdquo; Forum thread, <em>Bitcointalk</em>, topic 750, August 7&ndash;11, 2010: messages 8140 (Nakamoto, August 7), 8213 (aceat64, August 8), 8734 and 8742 (ribuck, August 11). https://bitcointalk.org/index.php?topic=750.0. Accessed October 18, 2026.</li>

@@ -43,7 +43,7 @@ export default function SubordinationVariablePaper() {
                     <li>Cohen, G. A. 1978. <em>Karl Marx&rsquo;s Theory of History: A Defence</em>. Princeton, NJ: Princeton University Press.</li>
                     <li>Cohen, G. A. 1983. &ldquo;The Structure of Proletarian Unfreedom.&rdquo; <em>Philosophy &amp; Public Affairs</em> 12 (1): 3&ndash;33. https://www.jstor.org/stable/2265026.</li>
                     <li>Cohen, G. A. 1995. <em>Self-Ownership, Freedom, and Equality</em>. Cambridge: Cambridge University Press.</li>
-                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 18, 2026.</li>
+                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 18, 2026.</li>
                     <li>Friedman, Milton. 1962. <em>Capitalism and Freedom</em>. Chicago: University of Chicago Press.</li>
                     <li>Grossman, Sanford J., and Oliver D. Hart. 1986. &ldquo;The Costs and Benefits of Ownership: A Theory of Vertical and Lateral Integration.&rdquo; <em>Journal of Political Economy</em> 94 (4): 691&ndash;719. https://doi.org/10.1086/261404.</li>
                     <li>Hansmann, Henry. 1996. <em>The Ownership of Enterprise</em>. Cambridge, MA: Belknap Press of Harvard University Press.</li>

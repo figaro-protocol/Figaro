@@ -86,7 +86,7 @@ export default function AfterTradeLensPaper() {
             references={
                 <>
                     <li>CargoX. n.d. &ldquo;CargoX Platform Compliance.&rdquo; https://cargox.io/legal-compliance-and-standards/. Accessed October 18, 2026.</li>
-                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 18, 2026.</li>
+                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 18, 2026.</li>
                     <li>ICC (International Chamber of Commerce). 2019. <em>Incoterms 2020: ICC Rules for the Use of Domestic and International Trade Terms</em>. ICC Publication 723E. Paris: ICC.</li>
                     <li>IMDA (Infocomm Media Development Authority of Singapore). 2026. &ldquo;What Is TradeTrust.&rdquo; TradeTrust. Last modified April 10, 2026. https://www.tradetrust.io/about/what-is-tradetrust. Accessed October 18, 2026.</li>
                     <li>Jensen, Thomas, Jonas Hedman, and Stefan Henningsson. 2019. &ldquo;How TradeLens Delivers Business Value with Blockchain Technology.&rdquo; <em>MIS Quarterly Executive</em> 18 (4): 221&ndash;243. https://doi.org/10.17705/2msqe.00018.</li>

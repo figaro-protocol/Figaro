@@ -80,7 +80,7 @@ export default function AsymmetricBondingPaper() {
     return (
         <PaperLayout slug="asymmetric-bonding"
             title="Asymmetric Bonding and Buyer Dominance"
-            subtitle="Two Composing Mechanisms for Self-Enforcing N-Party Coordination"
+            subtitle="Two Composing Mechanisms for N-Party Coordination Among Strangers"
             author="Figaro"
             date="April 2026"
             watermark="Figaro Protocol · Preprint"

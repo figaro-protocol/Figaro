@@ -49,7 +49,7 @@ export default function WalletWithoutPolityPaper() {
                     <li>Fafchamps, Marcel. 2004. <em>Market Institutions in Sub-Saharan Africa: Theory and Evidence</em>. Cambridge, MA: MIT Press. https://doi.org/10.7551/mitpress/4445.001.0001.</li>
                     <li>Farnsworth, E. Allan. 2004. <em>Contracts</em>. 4th ed. New York: Aspen Publishers.</li>
                     <li><em>Fibrosa Spolka Akcyjna v. Fairbairn Lawson Combe Barbour Ltd.</em> [1943] AC 32 (HL).</li>
-                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 20, 2026.</li>
+                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 20, 2026.</li>
                     <li>France. 2016. <em>Code civil</em>, art. 1128, as amended by Ordonnance n° 2016-131 du 10 février 2016. https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000032040794. Accessed October 20, 2026.</li>
                     <li>Gaius. 1988. <em>The Institutes of Gaius</em>. Translated by W. M. Gordon and O. F. Robinson. London: Duckworth.</li>
                     <li>Goodwin-Gill, Guy S., and Jane McAdam, with Emma Dunlop. 2021. <em>The Refugee in International Law</em>. 4th ed. Oxford: Oxford University Press. https://doi.org/10.1093/law/9780198808565.001.0001.</li>

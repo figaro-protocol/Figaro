@@ -91,7 +91,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         definition: "What a market can be built out of, once the standing firm is no longer the uniquely efficient unit of production. The papers here ask what economists and game theorists ask — the bonding equilibrium and its extension from two parties to N, institutional form, market formation, monetary design.",
         papers: [
             {
-                title: "Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination",
+                title: "Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers",
                 href: "/papers/asymmetric-bonding",
                 summary: "The two calls of the mechanism and why they compose: commit locks a bond on each side, resolve closes every order at once on the buyer's signature alone, and at every link a defector is left out of pocket even after crediting what it keeps.",
                 keywords: ["mechanism design", "subgame-perfect equilibrium", "Nash equilibrium", "asymmetric bonding", "multi-party coordination", "process chains", "peer enforcement"],
