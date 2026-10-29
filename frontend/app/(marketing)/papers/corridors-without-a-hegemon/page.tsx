@@ -19,7 +19,7 @@ export default function CorridorsWithoutAHegemonPaper() {
             title="Corridors Without a Hegemon"
             subtitle="The Substrate as Common Infrastructure Beneath Rival Trade Corridors"
             author="Figaro"
-            date="May 2026"
+            date="May 2026, revised October 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>
@@ -92,7 +92,7 @@ export default function CorridorsWithoutAHegemonPaper() {
                     Consider a position inside the substrate, held by a wallet that is no party to a trade, through which that trade&rsquo;s commitment, resolution, or data passes. The claim is false if such a position is shown and a jurisdiction can close it or read it asymmetrically.
                 </PaperRun>
                 <PaperRun title="Scope.">
-                    The claim is about a layer, never about a transaction. The physical corridor, the denomination, the ramps, the chain beneath, and the conveniences beside it stay exactly as contested as before, and an issuer&rsquo;s lever over a denomination reaches through the substrate. A state with reach over a party reaches that party&rsquo;s own trades through its law, and through a buyer every seller of the buyer&rsquo;s process, whatever bloc the seller belongs to. The argument is architectural, not a forecast of adoption.
+                    The claim is about a layer, never about a transaction. The physical corridor, the denomination, the ramps, the chain beneath, and the conveniences beside it stay exactly as contested as before, and an issuer&rsquo;s lever over a denomination reaches through the substrate. A state with reach over a party reaches that party&rsquo;s own trades through its law, and through a buyer every seller of the buyer&rsquo;s process, whatever bloc the seller belongs to. Customs, transit guarantees, and insurance are corridor levers of the same kind as that reach (premise 9): each acts on a party through a law or an institution outside the substrate, and the paper does not treat them one by one. The argument is architectural, not a forecast of adoption.
                 </PaperRun>
             </PaperSection>
 
@@ -142,8 +142,8 @@ export default function CorridorsWithoutAHegemonPaper() {
                 <PaperRemark title="The boundary: the positions around the substrate stay governed.">
                     The claim reaches the substrate and nothing around it, and four kinds of position around it stay governed. The <em>denomination</em> is the token every payment and bond of a process is counted in, one token per process. A fiat-referenced stablecoin (a token its issuer keeps at the value of a state&rsquo;s currency) has an issuer that can block an address on a sanctioning state&rsquo;s instruction. The block reaches through the substrate. Because resolution is atomic, an issuer that refuses a transfer to one seller holds the whole process open: every bond stays locked and every other seller unpaid until the issuer relents. An issuer that blocks the address holding a process&rsquo;s bonds holds that process open. Choosing a denomination is therefore choosing whose lever enters the process.
                 </PaperRemark>
-                <PaperRemark title="The ramps and the chain beneath stay governed, and the conveniences beside can delay.">
-                    The <em>ramps</em> between the denomination and local purchasing power run through exchanges and banking rails that are gated exactly where corridor politics is sharpest. The <em>chain beneath</em> is ordered by validators, who are governed entities whose choices reach the substrate from below. The <em>conveniences beside</em> the substrate, the indexers that read the data and the interfaces that present it, can see and delay what they carry. None can fabricate or alter what resolves.
+                <PaperRemark title="The ramps and the chain beneath stay governed, and the conveniences beside can delay or misrepresent.">
+                    The <em>ramps</em> between the denomination and local purchasing power run through exchanges and banking rails that are gated exactly where corridor politics is sharpest. The <em>chain beneath</em> is ordered by validators, who are governed entities whose choices reach the substrate from below. The <em>conveniences beside</em> the substrate, the indexers that read the data and the interfaces that present it, can see, delay, or misrepresent what they carry; none can sign for a party or alter what resolves, and a party that recomputes the fingerprint before it signs, and that checks the signatures against the chain afterward, is not misled by one.
                 </PaperRemark>
                 <PaperRemark title="Is the protocol&rsquo;s own token a lever?">
                     The protocol&rsquo;s own token, the florin, is one denomination among many. The mechanism counts a florin bond as it counts a bond in any other token, so whoever holds florins holds a position in that token&rsquo;s market and none over the substrate.

@@ -24,7 +24,7 @@ export default function ActorNeutralCoordinationPaper() {
             title="What a Trust Layer for Agents Acting for Principals Needs"
             subtitle="Why a Bond Locked at Commit Supplies It, and Neither a Reputation Registry nor a Legal Wrapper Does"
             author="Figaro"
-            date="May 2026"
+            date="May 2026, revised October 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>
@@ -119,7 +119,7 @@ export default function ActorNeutralCoordinationPaper() {
                     From premise 1, the principal bears whatever the agent&rsquo;s commitment costs, and once the work is under way it holds no instrument that reaches the stranger. Whatever protects it must therefore be in place when the agent signs. That is a promise made good before the fact and a ceiling on loss, which are R1 and R2.
                 </PaperRun>
                 <PaperRun title="Step 2: the reputation registry supplies neither.">
-                    From premise 3, on the commitment at hand the stranger weighs its one-time gain from defecting, the advance it keeps or the payment it withholds, against the value <Math>{"V"}</Math> of future dealing under its identity. The registry fixes neither term, and <Math>{"V"}</Math> is zero for a key the stranger means to replace, which costs it nothing. R1 then holds only on a condition the agent cannot check at signing. The registry holds no token, so on a default the principal loses what it advanced, and its one move against the stranger, posting feedback, moves no token: R2 fails. By premise 2 the history is unbonded at its source as well, so even the evidence the agent would read is unverified.
+                    From premise 3, on the commitment at hand the stranger weighs its one-time gain from defecting, the advance it keeps or the payment it withholds, against the value <Math>{"V"}</Math> of future dealing under its identity. The registry fixes neither term, and <Math>{"V"}</Math> is zero for a key the stranger means to replace, which costs it only the gas of a fresh registration. R1 then holds only on a condition the agent cannot check at signing. The registry holds no token, so on a default the principal loses what it advanced, and its one move against the stranger, posting feedback, moves no token: R2 fails. By premise 2 the history is unbonded at its source as well, so even the evidence the agent would read is unverified.
                 </PaperRun>
                 <PaperRun title="Step 3: a validator&rsquo;s stake or a trusted-execution attestation supplies neither.">
                     From premise 4, the stake, like a trusted-execution attestation, stands behind a report about work that has been done. When the agent signs, the work does not exist, so no response bears on it, and the stranger&rsquo;s comparison on this commitment is the one Step 2 describes: R1 fails. The stake secures the accuracy of the report, not the principal&rsquo;s tokens, and nothing in it bounds what the principal advanced: R2 fails. A validator&rsquo;s response can still inform the buyer&rsquo;s judgment of performance, as a forum&rsquo;s ruling can; it does not replace the promise.
@@ -174,7 +174,7 @@ export default function ActorNeutralCoordinationPaper() {
                     </p>
                 </FormalBlock>
                 <PaperRun title="Premises.">
-                    (1) One commitment moves out of a wallet at most the bond that wallet locked (Proposition 3.1, premise 7). (2) The mechanism moves a party&rsquo;s tokens only against a commitment that party signed, since commit needs both parties&rsquo; signatures and resolution only the buyer&rsquo;s (Figaro 2026, Definitions 2 and 4). (3) The mechanism moves tokens by two operations only, commit and resolution; an attestation moves none, and the mechanism sees no other call the key makes (Figaro 2026, Definition 8 and the remark &ldquo;No Escape Hatches&rdquo;). (4) The key signs only what the policy approves (Definition 4.1, stipulated).
+                    (1) One commitment moves out of a wallet at most the bond that wallet locked (Proposition 3.1, premise 7). (2) The mechanism moves a party&rsquo;s tokens only against a commitment that party signed, since commit needs both parties&rsquo; signatures and resolution only the buyer&rsquo;s authorization (Figaro 2026, Definitions 2 and 4). (3) The mechanism moves tokens by two operations only, commit and resolution; an attestation moves none, and the mechanism sees no other call the key makes (Figaro 2026, Definition 8 and the remark &ldquo;No Escape Hatches&rdquo;). (4) The key signs only what the policy approves (Definition 4.1, stipulated).
                 </PaperRun>
                 <PaperRun title="Step 1: the sum.">
                     By premises 1 and 2, each open commitment adds at most <Math>{"b_k"}</Math> to what the mechanism can move or hold from the wallet, and nothing else does, so what the mechanism can hold from the wallet is at most <Math>{"\\sum_k b_k"}</Math>, and at most <Math>{"N \\cdot B"}</Math> under the cap.
