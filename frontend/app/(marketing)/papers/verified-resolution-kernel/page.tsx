@@ -28,7 +28,7 @@ export default function VerifiedResolutionKernelPaper() {
             title="What Formal Verification Transfers to a Bonded Contract"
             subtitle="The Payoff Table as the Specification, and What No Check Reaches"
             author="Figaro"
-            date="April 2026"
+            date="April 2026, revised October 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

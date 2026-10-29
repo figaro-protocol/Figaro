@@ -20,7 +20,7 @@ export default function BehavioralGameTheoryPaper() {
             title="Behavioral Game Theory of the Two-Mechanism Bonded Commitment"
             subtitle="Loss Aversion, Coordination, Peer Pressure, and Incentive Legibility"
             author="Figaro"
-            date="May 2026"
+            date="May 2026, revised October 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

@@ -21,7 +21,7 @@ export default function VisibilityOfCoordinationPaper() {
             title="The Visibility of Coordination"
             subtitle="A Gramscian Reading of the Platform Economy and the Bonded Alternative"
             author="Figaro"
-            date="April 2026"
+            date="April 2026, revised October 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

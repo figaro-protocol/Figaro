@@ -15,7 +15,7 @@ export default function CoercionVariablePaper() {
             title="The Coercion Variable"
             subtitle="On the Boundary Between What the Sovereign Must Do and What the Bond Can Do"
             author="Figaro"
-            date="April 2026"
+            date="April 2026, revised October 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>
