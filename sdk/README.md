@@ -2559,7 +2559,25 @@ const clauses = {
 };
 const { agreement, checkoutHash } = buildOrderAgreement(buyer, seller, clauses, specs);
 assertAgreementSignable(agreement, checkoutHash, specs, commitment, hydrated, "data sale");
+
+// The buyer signs only over sources that have RESOLVED: the leaf authenticates
+// only against a resolved source, since a source still open can take
+// attestations after the sale commits, and commit reads no process but its own.
+// Read the ids off the agreement by declared field, then ask the chain.
+const sourceIds = (clauseByField(agreement, "sourceProcesses", specs)?.data
+  ?.sourceProcesses ?? []) as `0x${string}`[];
+const open = (await fetchProcessesResolved(
+  client, addresses, sourceIds, BigInt(record.deploymentBlock)))
+  .filter((s) => !s.resolved);
+if (open.length > 0) {
+  throw new Error(`do not sign: sources not resolved: ${open.map((s) => s.processId).join(", ")}`);
+}
 ```
+
+A source resolved when the buyer signs resolved before the sale's commit, which
+follows the signature. A later reader — the buyer before it resolves the sale,
+or anyone the data reaches third-hand — re-checks the same premise against the
+sale's commit block in §3 (b').
 
 The literal map above is the hand-written form. In a catalog checkout you do
 not write those license values at all — `fillClassClauses` folds them out of
@@ -2627,7 +2645,7 @@ import {
 
 // (a) Read the provenance anchors off the license by DECLARED FIELD.
 const license = clauseByField(saleAgreement, "sourceProcesses", specs);
-const sourceIds = license!.data.sourceProcesses as `0x${string}`[];
+const sourceIds = license!.data!.sourceProcesses as `0x${string}`[];
 
 // (b) The ROOT comes from the chain, never from the licensor. OrderCommitted
 //     carries the checkoutHash the two parties actually signed.
