@@ -223,7 +223,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "On-Chain Evidence, Off-Chain Adjudication",
                 href: "/papers/on-chain-evidence",
-                summary: "Resolution is on-chain by nature and adjudication off-chain by nature. The five-layer stack, the evidentiary properties of what the chain holds, and how eIDAS, the Federal Rules of Evidence, and the UNCITRAL Model Law read it, with the limit the paper attaches to each.",
+                summary: "A bonded mechanism whose only operations are commit and resolve leaves two classes of evidence, resolution byproducts and attestations, which eIDAS, the Federal Rules of Evidence, the Singapore ETA, and the UNCITRAL Model Law admit without new doctrine and weigh differently. The five-layer stack, and the limit the paper attaches to each reading.",
                 keywords: ["electronic evidence", "smart-contract law", "dispute resolution", "blockchain evidence", "eIDAS", "UNCITRAL", "jurisdictional flexibility"],
                 industries: ["Legal and dispute resolution"],
                 question: "Should a smart contract adjudicate disputes, or produce what adjudication needs?",
