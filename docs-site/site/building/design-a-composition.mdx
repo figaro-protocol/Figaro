@@ -46,7 +46,7 @@ At each commit the passenger bonds `2P` and the provider bonds `2G`, where `G` i
 | 9 | air navigation | 19 | 250 | 38 | 500 |
 | | **total** | **250** | | **500** | **3,512** |
 
-The passenger's aggregate is twice the ticket whatever the sequence. The providers' aggregate is `2 Σ (n − j + 1) Pⱼ` over the commit positions `j`: a payment committed at position `j` sits inside the bond base of its own order and of every later one, so the commit order you write into the assembly sets how large the providers' aggregate is. Move the 19 air-navigation order to the front and it falls to 3,392, with nothing else changed. Check both with the SDK's own arithmetic:
+The passenger's aggregate is twice the ticket whatever the sequence. The providers' aggregate is `2 Σ (n − j + 1) Pⱼ` over the commit positions `j`: a payment committed at position `j` sits inside the bond base of its own order and of every later one, so the commit order you write into the assembly sets how large the providers' aggregate is. Move the 5 catering order to the front and it falls to 3,222, with nothing else changed. Check both with the SDK's own arithmetic:
 
 ```bash
 node -e '
