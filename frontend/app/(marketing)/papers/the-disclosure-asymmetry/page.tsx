@@ -21,7 +21,7 @@ export default function DisclosureAsymmetryPaper() {
             title="The Disclosure Asymmetry"
             subtitle="Cryptoeconomic Mechanism Design and the Engineering of Consent"
             author="Figaro"
-            date="May 2026"
+            date="May 2026, revised October 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>
@@ -143,8 +143,8 @@ export default function DisclosureAsymmetryPaper() {
                 <PaperRun title="Does the seller not need to model the buyer?">
                     It does, and what it models is the point. The seller needs the buyer&rsquo;s payoff comparison (a), and the published rules and the signed amounts fix that comparison exactly. Neither party reasons about what the other believes, and neither needs a distribution over the other&rsquo;s type: each needs only the other&rsquo;s payoffs, and the rules publish them. A dispute about performance is decided between the parties while the process stands open, and a failing seller makes good before the buyer resolves. Outside forums may rule on the process&rsquo;s data; none can call resolution, which is terminal.
                 </PaperRun>
-                <PaperRun title="Why a lost key strands the bonds.">
-                    No path refunds a bond without the buyer&rsquo;s resolution, so a buyer that loses its key strands every bond in its process. The reason is the equilibrium. A path that refunded the bonds without the buyer&rsquo;s resolution would let a seller who never performs recover its bond: holding out would yield what the seller retains, at most <Math>{"G"}</Math>, against <Math>{"P"}</Math> for performing, and would beat performing whenever that retention exceeded <Math>{"P"}</Math>.
+                <PaperRun title="Why a buyer that cannot resolve strands the bonds.">
+                    No path refunds a bond without the buyer&rsquo;s resolution, so a buyer that loses its key, or whose address can otherwise no longer call resolve, strands every bond; any recovery is the buyer&rsquo;s own account&rsquo;s, set up while it still holds its key, and is still the buyer&rsquo;s resolution. The reason is the equilibrium. A path that refunded the bonds without the buyer&rsquo;s resolution would let a seller who never performs recover its bond: holding out would yield what the seller retains, at most <Math>{"G"}</Math>, against <Math>{"P"}</Math> for performing, and would beat performing whenever that retention exceeded <Math>{"P"}</Math>.
                 </PaperRun>
                 <PaperRun title="Why it is the participant&rsquo;s model that does the work.">
                     The security of the arrangement is a fact about the mechanism that the parties can verify. The code that runs the mechanism is public and its execution deterministic, so the rules a participant models are the rules in force, and accuracy can reach its maximum. The confidence a participant has is then <em>warranted</em> in the strict sense: it rests on a computation anyone can reproduce, not on deference to an authority&rsquo;s claim. A participant who declines to model the mechanism gains nothing from concealment, because there is none. It forgoes the warrant and, by premise 4, likely the transaction. This is <Math>{"\\partial E / \\partial a > 0"}</Math> made concrete: the mechanism delivers its outcome to the participant who knows it.

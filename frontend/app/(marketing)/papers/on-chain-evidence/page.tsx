@@ -21,7 +21,7 @@ export default function OnChainEvidencePaper() {
             title="On-Chain Evidence, Off-Chain Adjudication"
             subtitle="A Layered Approach to Smart-Contract Dispute Resolution"
             author="Figaro"
-            date="April 2026"
+            date="April 2026, revised October 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>
@@ -190,7 +190,7 @@ export default function OnChainEvidencePaper() {
                     Every commitment carries both parties&rsquo; signatures, each made with the party&rsquo;s wallet key over the material terms and the agreement root; EIP-712 is one such scheme (Bloemen, Logvinov, and Evans 2017). Each binds those fields to its signer&rsquo;s private key. Verification is deterministic, and tampering with any field invalidates the signature.
                 </PaperRun>
                 <PaperRun title="(3) Content-addressed.">
-                    Each order&rsquo;s identifier is derived from its commitment and its process (Figaro 2026). The same commitment in the same process always produces the same identifier, and different content produces a different identifier (collision resistance under the assumed hash function). This makes the evidence unforgeable in a specific sense: no second commitment can claim the same identifier.
+                    Each order&rsquo;s identifier is derived from its commitment and its process (Figaro 2026). The same commitment in the same process always produces the same identifier, and two commitments with different content yield one identifier only with negligible probability: finding such a pair is computationally infeasible under the hash function&rsquo;s collision resistance. This makes the evidence unforgeable in a specific sense: no second commitment can feasibly claim the same identifier.
                 </PaperRun>
                 <PaperRun title="(4) Immutable.">
                     On a finalized block, an entry cannot be modified or deleted. A party seeking to repudiate a commitment cannot purge the chain of the relevant entries. This is a stronger property than electronic records normally enjoy, and it is inherited from Layer 1 and bounded by it: an entry is immutable as its block is final, and the reorganizations and forks that can precede finality are the residue Layer 1 prices (Sahara 2024).

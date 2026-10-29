@@ -55,7 +55,7 @@ export default function MarketsWithoutAVenuePaper() {
             title="Markets Without a Venue"
             subtitle="Dispatch Races and Requests for Quotes as Market-Design Mechanisms over a Market-Blind Mechanism"
             author="Figaro"
-            date="August 2026"
+            date="August 2026, revised October 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>
@@ -109,7 +109,7 @@ export default function MarketsWithoutAVenuePaper() {
                 </PaperSubsection>
                 <PaperSubsection title="1.2 One position, two routes">
                     <p>
-                        A stipulated case shows both routes before the formal apparatus. A buyer <Math>{"B"}</Math> needs one job done at a <em>position</em>, an order&rsquo;s place in the sequence of orders the buyer opens (&sect;2.1); this one opens a process, so the order&rsquo;s cumulative value is its payment. Three candidates, <Math>{"S_1"}</Math>, <Math>{"S_2"}</Math>, and <Math>{"S_3"}</Math>, have published terms that can price the job. Every object exchanged is one commitment struct in one of three states: a <em>draft</em> carries no signature, an <em>answer</em> carries the candidate&rsquo;s, and a <em>commitment</em> carries both and is the one object the mechanism admits. The table gives each step of each route, and who signs what at it.
+                        A stipulated case shows both routes before the formal apparatus. A buyer <Math>{"B"}</Math> needs one job done at a <em>position</em>, an order&rsquo;s place in the sequence of orders the buyer opens (&sect;2.1); this one opens a process, so the order&rsquo;s cumulative value is its payment. Three candidates, <Math>{"S_1"}</Math>, <Math>{"S_2"}</Math>, and <Math>{"S_3"}</Math>, have published terms for jobs of this kind; on the race route their posted prices fit this one, and on the quote route none does. Every object exchanged is one commitment struct in one of three states: a <em>draft</em> carries no signature, an <em>answer</em> carries the candidate&rsquo;s, and a <em>commitment</em> carries both and is the one object the mechanism admits. The table gives each step of each route, and who signs what at it.
                     </p>
                     <PaperScroll className="my-4">
                         <table className="text-sm border-collapse">
@@ -230,7 +230,7 @@ export default function MarketsWithoutAVenuePaper() {
                         Roth (2008) names three things a market must accomplish before its allocation rule matters. It must be <em>thick</em>: enough participants on both sides that the match found is worth having. It must overcome <em>congestion</em>: participants must be able to make, receive, and evaluate enough offers in the time available. And it must be <em>safe</em>: acting straightforwardly must not expose a participant to exploitation for having done so.
                     </p>
                     <p>
-                        Safety is two things that one institution usually supplies together. <em>Formation safety</em> means that answering a solicitation exposes the answerer to no more than the trade it answered for. <em>Performance safety</em> means that the counterparty, once matched, delivers. An exchange that holds margin supplies both at once, and its design does not separate them. Here they are separate: performance safety is the mechanism&rsquo;s, complete before any market exists, and the market layer supplies only formation safety. Thickness and congestion return in &sect;4.4 as the only two ways the race&rsquo;s outcome can fail to be stable.
+                        Safety is two things that one institution usually supplies together. <em>Formation safety</em> means that answering a solicitation exposes the answerer to no more than the trade it answered for. <em>Performance safety</em> means that the counterparty, once matched, delivers. On a margined exchange, the exchange and the clearinghouse it mandates supply both, as one stack. Here they are separate: performance safety is the mechanism&rsquo;s, complete before any market exists, and the market layer supplies only formation safety. Thickness and congestion return in &sect;4.4 as the only two ways the race&rsquo;s outcome can fail to be stable.
                     </p>
                 </PaperSubsection>
 
@@ -241,7 +241,7 @@ export default function MarketsWithoutAVenuePaper() {
                     <ol className="space-y-2 list-decimal pl-6 text-sm">
                         <li><strong>Mutual exclusion.</strong> Soliciting <Math>{"k"}</Math> bids must not oblige the solicitor to <Math>{"k"}</Math> trades: at most one may bind.</li>
                         <li><strong>Discovery.</strong> A participant must learn who may be asked, and on what terms, without a prior relationship with each.</li>
-                        <li><strong>An anti-reneging bond.</strong> A bid that costs nothing to make and nothing to abandon is weak evidence of availability, so venues take bid bonds.</li>
+                        <li><strong>An anti-reneging bond.</strong> A bid that costs nothing to make and nothing to abandon is weak evidence of availability, so a tender commonly takes a bid bond.</li>
                         <li><strong>Verifiable selection.</strong> A losing participant must be able to check that the announced rule was the rule applied.</li>
                     </ol>
                 </PaperSubsection>
@@ -336,7 +336,7 @@ export default function MarketsWithoutAVenuePaper() {
                         The candidate set is derived at the moment of solicitation from the members (&sect;2.5), who register a profile with a stake so that others can find them. Registration is permissionless: the stake is in tokens and stays reclaimable, and withdrawing it removes the profile from view while leaving every admitted commitment intact. The buyer reads the members live and keeps those whose catalogs can price the position. The set is not a roster any party maintains, so an empty result means absence. What a candidate sells, and at what price, is its own declaration; which declaration is taken is the buyer&rsquo;s decision.
                     </PaperRun>
                     <PaperRun title="The answer carries its own bond.">
-                        A venue takes a bid bond because a bid is otherwise cheap talk. Here the object a candidate signs to signal availability is the object that bonds it once the commitment is admitted. A candidate cannot signal availability more cheaply than by becoming bound on admission, because there is nothing else to send. A losing answer costs its signer nothing and needs no cancellation: it lapses at the deadline the buyer fixed in every draft of the solicitation. The member stake remains as a standing signal of seriousness, held once rather than per answer.
+                        A tender takes a bid bond because a bid is otherwise cheap talk. Here the object a candidate signs to signal availability is the object that bonds it once the commitment is admitted. A candidate cannot signal availability more cheaply than by becoming bound on admission, because there is nothing else to send. A losing answer costs its signer nothing and needs no cancellation: it lapses at the deadline the buyer fixed in every draft of the solicitation. The member stake remains as a standing signal of seriousness, held once rather than per answer.
                     </PaperRun>
                     <PaperRun title="Selection is the buyer&rsquo;s own, under no announced rule.">
                         A sealed-bid venue must let a loser check the rule, because a loser in a committed mechanism has a claim if the rule was broken. Here the buyer is bound by no rule: the cheapest verified answer is a default, and the buyer may take any answer. A loser has nothing to audit and no claim to lose. The real cost is the incentive consequence of the buyer&rsquo;s non-commitment, which &sect;5.3 states.

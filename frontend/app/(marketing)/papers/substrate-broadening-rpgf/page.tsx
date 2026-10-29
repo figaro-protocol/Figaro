@@ -42,7 +42,7 @@ export default function SubstrateBroadeningRpgfPaper() {
             title="Substrate-Broadening Retroactive Public-Goods Funding"
             subtitle="Allocating a Fixed Reserve on Adoption Counted from Resolved Trade"
             author="Figaro"
-            date="July 2026"
+            date="July 2026, revised October 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>
@@ -390,7 +390,7 @@ export default function SubstrateBroadeningRpgfPaper() {
 
             <PaperSection title="12. Conclusion">
                 <p>
-                    A designer reward can rest on facts the chain already holds, and nothing else. Because a resolution is the buyer&rsquo;s terminal acceptance, a count of resolved processes measures completed trade; because the count is checked at the event against the signed merkle root and the order&rsquo;s resolution on chain, no allocator, submitter, challenger, or referee is needed to make it believable; and because breadth is counted in distinct staked sellers, the one quantity the score rewards most is the one a stake prices. The result is a Sybil resistance stated as a price: fabricated score for one registration has a flat unit price in the base currency; against an honest total taken as given, a share of a period costs an outlay convex in that share and unbounded as it approaches the whole; and every figure is recomputable from the rule&rsquo;s constants and one gas measurement. Designers of clauses, registered agreements, and assemblies are rewarded for what their work demonstrably carried, and nothing between the trade and the reward holds an opinion.
+                    A designer reward can rest on facts the chain already holds, and nothing else. Because a resolution is the buyer&rsquo;s terminal acceptance, a count of resolved processes measures completed trade; because the count is checked at the event against the signed merkle root and the order&rsquo;s resolution on chain, no allocator, submitter, challenger, or referee is needed to make it believable; and because breadth is counted in distinct staked sellers, the one quantity the score rewards most is the one a stake prices. The result is a Sybil resistance stated as a price: fabricated score for one registration has a flat unit price in the base currency; against an honest total taken as given, diluting a period&rsquo;s budget to a share costs an outlay convex in that share and unbounded as it approaches the whole; suppression by seller withdrawal lies outside that price, priced only by the withdrawer&rsquo;s lost visibility and cooldown (Section 4); and every figure is recomputable from the rule&rsquo;s constants and one gas measurement. Designers of clauses, registered agreements, and assemblies are rewarded for what their work demonstrably carried, and nothing between the trade and the reward holds an opinion.
                 </p>
             </PaperSection>
         </PaperLayout>
