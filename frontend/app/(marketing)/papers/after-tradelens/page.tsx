@@ -30,7 +30,7 @@ const HANDOFF_CHAIN = `        shipper (origin country)
             v
         inspection service (pre-shipment, optional)
             |
-            | seal event: inspected intact
+            | acceptance outcome: conforming
             v
         port of loading (terminal services)
             |
@@ -248,7 +248,7 @@ export default function AfterTradeLensPaper() {
                     <li><em>Freight forwarder</em>: the merchant process-event clause for its coordinating role; geolocation for the consolidation point; a handoff with its proximity policy where the forwarder takes physical receipt.</li>
                     <li><em>NVOCC</em>: the consent clause, binding the parties by content hash to the pinned house bill of lading, whose transferability Section 7 treats.</li>
                     <li><em>Origin and destination inland carriers</em>: the courier process-event clause, whose arrived-at-pickup and arrived-at-drop-off events mark the leg; one handoff on each carrier&rsquo;s order with its proximity policy; geolocation for origin and destination; on a road leg that needs one, the freight-class clause.</li>
-                    <li><em>Inspection service</em>: the acceptance-criteria clause, against which the inspector files its outcome; a chain of custody <em>inspected intact</em> event, filed against the shipper&rsquo;s order, where the seal regime lives; optionally the inspection report, as the evidence reference of the outcome it files under the acceptance-criteria clause.</li>
+                    <li><em>Inspection service</em>: the acceptance-criteria clause, against which the inspector files its outcome on its own order; optionally the inspection report, as the evidence reference of the outcome it files under the acceptance-criteria clause.</li>
                     <li><em>Port-of-loading and port-of-discharge authorities</em>: the payment for terminal handling and gate access; one handoff on each authority&rsquo;s order with its proximity policy; chain of custody events at each port.</li>
                     <li><em>Ocean carrier</em>: the courier process-event clause over the voyage, with any reported positions inside the evidence its events reference; one handoff with its proximity policy; chain of custody events through the voyage; geolocation for the leg&rsquo;s endpoints; an emissions clause for voyage emissions; for reefer cargo, the cold-chain clause.</li>
                     <li><em>Customs agent</em>: the payment for entry filing; the merchant process-event clause; the consent clause binding the parties to the pinned filing-terms document.</li>
