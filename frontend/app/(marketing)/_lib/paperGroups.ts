@@ -111,6 +111,16 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 scope: "One buyer and a finite set of candidates it has already found by their published terms; drafts travel over a channel, and nothing holds state between solicitation and commitment; positions form one at a time in commit order; discovery and the cost of reading published terms lie outside the model.",
             },
             {
+                title: "The Graph Layer: Economic Form Read from Signed Data Under the Open-World Assumption",
+                href: "/papers/the-graph-layer",
+                summary: "Above a mechanism that fixes only two bonds and the buyer's resolution, a party's role, its market, its community and the law the parties chose are read from composed clauses, signed topology, holdings and attestations under the open-world assumption, and no stored reading gates a trade.",
+                keywords: ["open-world assumption", "closed-world assumption", "buyer-seller networks", "economic networks", "derived meaning", "token gating", "polycentric governance", "embeddedness"],
+                industries: ["Marketplaces", "Platforms"],
+                question: "With no party standing over the trade to keep the list of who is what, where does the form of a trade live, and how is it read?",
+                result: "Argued from five premises in five steps: who a party is to a trade, which market it stands in, which community it belongs to and which law the parties chose are derivations from signed data, read under the open-world assumption, and no stored copy of them is an input to the mechanism or gates a trade; the door a designer's token opens is read from the balances both parties must lock.",
+                scope: "A claim about readings: what the mechanism enforces (commitments, bonds, resolution, signers, a term's proof against the agreement's fingerprint) is fixed; the truth of a declaration is its signer's; the equilibrium enters as proved, for parties beyond each other's coercive reach; a form needing a party that can stop others' trades is the stated falsifier.",
+            },
+            {
                 title: "From Firms to Transaction-Scoped Institutions",
                 href: "/papers/transaction-scoped-institutions",
                 summary: "The Coasean collapse: when a bond posted before the trade makes keeping its word each stranger's best reply, for the network's gas and the bond's time value, the institution a trade needs exists for the time of that trade , terms, evidence, books, the bonds that make the promise good, and the close, and what remains of the firm is a legal wrapper around assets that hold their own wallets.",
