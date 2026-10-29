@@ -52,7 +52,7 @@
         "held": 40,
         "outcomes_plain": {
             "honor": "your bond back, and the seller is paid",
-            "walk_away": "your whole bond locked for good, and nobody else gets it",
+            "walk_away": "your whole bond stays locked until the buyer resolves, and nobody else gets it",
             "buyer_out_of_pocket_after_delivery": "exactly the payment",
             "seller_locked_on_holdout": "twice the value at its link, against whatever it kept"
         },

@@ -46,22 +46,22 @@ export function LockedFundsStateFigure({
             className={className}
             svgProps={svgProps}
             viewBox="0 0 400 500"
-            title="The bond state machine"
+            title="The three states of one order"
             desc={
                 <>
-                    Three states connected by two transitions. Unknown moves
-                    to Committed when commit() pulls both the buyer&apos;s
-                    bond of twice the payment and the seller&apos;s bond of
-                    twice the cumulative value, verified by both
-                    signatures. Committed moves to Resolved only when the
-                    buyer calls resolveProcess, atomically across every
-                    order in the process, paying the seller twice the
-                    cumulative value plus the payment and returning the
-                    payment to the buyer. Two transitions out of Committed
-                    do not exist: no timeout and no override from outside the parties. If the
-                    buyer never calls resolveProcess, Committed persists
-                    indefinitely with both bonds locked — by design, not
-                    as a malfunction.
+                    Three states of one order and two steps between them.
+                    An order not yet committed becomes committed when both
+                    parties have signed and the smart contract locks both
+                    bonds: the buyer&apos;s, twice the payment, and the
+                    seller&apos;s, twice the value through its order. A
+                    committed order becomes resolved only when the buyer
+                    resolves, for every order in the process at once: the
+                    seller is paid and its bond refunded, and the
+                    buyer&apos;s bond is refunded less the payment. Two
+                    exits from a committed order do not exist: no timeout
+                    and no override from outside the parties. If the buyer
+                    never resolves, the order stays committed with both
+                    bonds locked, by design.
                 </>
             }
             caption={
@@ -78,7 +78,7 @@ export function LockedFundsStateFigure({
 
                 {/* ── State spine ─────────────────────────────────────── */}
                 <text x="200" y="16" fontSize="10" textAnchor="middle" className="fill-ink-muted font-mono">
-                    orderStatus[orderHash]
+                    the state of one order
                 </text>
 
                 {/* commit() arrow */}
@@ -88,10 +88,10 @@ export function LockedFundsStateFigure({
                     markerEnd={`url(#${arrowId})`}
                 />
                 <text x={(cx1 + r + cx2 - r) / 2} y={cy - 20} fontSize="11" fontWeight="600" textAnchor="middle" className="fill-ink-heading font-mono">
-                    commit()
+                    commit
                 </text>
                 <text x={(cx1 + r + cx2 - r) / 2} y={cy + 18} fontSize="8.5" textAnchor="middle" className="fill-ink-muted">
-                    dual signature, pulls both bonds
+                    both sign; both bonds locked
                 </text>
 
                 {/* resolveProcess() arrow */}
@@ -101,29 +101,29 @@ export function LockedFundsStateFigure({
                     markerEnd={`url(#${arrowId})`}
                 />
                 <text x={(cx2 + r + cx3 - r) / 2} y={cy - 20} fontSize="11" fontWeight="600" textAnchor="middle" className="fill-ink-heading font-mono">
-                    resolveProcess()
+                    resolve
                 </text>
                 <text x={(cx2 + r + cx3 - r) / 2} y={cy + 18} fontSize="8.5" textAnchor="middle" className="fill-ink-muted">
-                    buyer-only, atomic
+                    buyer only, all at once
                 </text>
 
                 {/* Unknown */}
                 <circle cx={cx1} cy={cy} r={r} className="fill-paper stroke-default" strokeWidth="1.5" />
-                <text x={cx1} y={cy + 9} fontSize="26" fontWeight="700" textAnchor="middle" className="fill-ink-faint">0</text>
-                <text x={cx1} y={cy + r + 22} fontSize="12" fontWeight="600" textAnchor="middle" className="fill-ink-heading">Unknown</text>
-                <text x={cx1} y={cy + r + 37} fontSize="9" textAnchor="middle" className="fill-ink-muted">order not yet committed</text>
+                <text x={cx1} y={cy + 9} fontSize="26" fontWeight="700" textAnchor="middle" className="fill-ink-faint">1</text>
+                <text x={cx1} y={cy + r + 22} fontSize="12" fontWeight="600" textAnchor="middle" className="fill-ink-heading">Not committed</text>
+                <text x={cx1} y={cy + r + 37} fontSize="9" textAnchor="middle" className="fill-ink-muted">no bond locked yet</text>
 
                 {/* Committed / Active */}
                 <circle cx={cx2} cy={cy} r={r} className="fill-subtle stroke-default-strong" strokeWidth="2.5" />
-                <text x={cx2} y={cy + 9} fontSize="26" fontWeight="700" textAnchor="middle" className="fill-ink-heading">1</text>
-                <text x={cx2} y={cy + r + 22} fontSize="12" fontWeight="600" textAnchor="middle" className="fill-ink-heading">Committed / Active</text>
-                <text x={cx2} y={cy + r + 37} fontSize="9" textAnchor="middle" className="fill-ink-muted">both bonds locked in FigaroCore</text>
+                <text x={cx2} y={cy + 9} fontSize="26" fontWeight="700" textAnchor="middle" className="fill-ink-heading">2</text>
+                <text x={cx2} y={cy + r + 22} fontSize="12" fontWeight="600" textAnchor="middle" className="fill-ink-heading">Committed</text>
+                <text x={cx2} y={cy + r + 37} fontSize="9" textAnchor="middle" className="fill-ink-muted">bonds locked</text>
 
                 {/* Resolved */}
                 <circle cx={cx3} cy={cy} r={r} className="fill-subtle-hover stroke-default" strokeWidth="1.5" />
-                <text x={cx3} y={cy + 9} fontSize="26" fontWeight="700" textAnchor="middle" className="fill-ink-faint">2</text>
+                <text x={cx3} y={cy + 9} fontSize="26" fontWeight="700" textAnchor="middle" className="fill-ink-faint">3</text>
                 <text x={cx3} y={cy + r + 22} fontSize="12" fontWeight="600" textAnchor="middle" className="fill-ink-heading">Resolved</text>
-                <text x={cx3} y={cy + r + 37} fontSize="9" textAnchor="middle" className="fill-ink-muted">payouts sent, process closed</text>
+                <text x={cx3} y={cy + r + 37} fontSize="9" textAnchor="middle" className="fill-ink-muted">paid and refunded</text>
 
                 {/* ── Two non-transitions off Committed ──────────────── */}
                 <line x1={cx2} y1="170" x2="140" y2="222" strokeDasharray="4 3" className="stroke-ink-faint" strokeWidth="1.25" />
@@ -147,31 +147,31 @@ export function LockedFundsStateFigure({
                 <g>
                     <text x={cx1} y="296" fontSize="9" fontWeight="600" textAnchor="middle" className="fill-ink-body">buyer</text>
                     <rect x={cx1 - 44} y="302" width="88" height="8" rx="2" className="fill-none stroke-default" strokeWidth="0.75" />
-                    <text x={cx1} y="322" fontSize="8" textAnchor="middle" className="fill-ink-muted">balance in wallet</text>
+                    <text x={cx1} y="322" fontSize="8" textAnchor="middle" className="fill-ink-muted">tokens in wallet</text>
 
                     <text x={cx1} y="342" fontSize="9" fontWeight="600" textAnchor="middle" className="fill-ink-body">seller</text>
                     <rect x={cx1 - 44} y="348" width="88" height="8" rx="2" className="fill-none stroke-default" strokeWidth="0.75" />
-                    <text x={cx1} y="368" fontSize="8" textAnchor="middle" className="fill-ink-muted">balance in wallet</text>
+                    <text x={cx1} y="368" fontSize="8" textAnchor="middle" className="fill-ink-muted">tokens in wallet</text>
                 </g>
 
                 <g>
                     <text x={cx2} y="296" fontSize="9" fontWeight="600" textAnchor="middle" className="fill-ink-body">buyer</text>
                     <rect x={cx2 - 44} y="302" width="88" height="8" rx="2" className="fill-default-strong" />
-                    <text x={cx2} y="322" fontSize="8" textAnchor="middle" className="fill-ink-muted">2×payment locked</text>
+                    <text x={cx2} y="322" fontSize="8" textAnchor="middle" className="fill-ink-muted">2× payment, locked</text>
 
                     <text x={cx2} y="342" fontSize="9" fontWeight="600" textAnchor="middle" className="fill-ink-body">seller</text>
                     <rect x={cx2 - 44} y="348" width="88" height="8" rx="2" className="fill-ink-heading" />
-                    <text x={cx2} y="368" fontSize="8" textAnchor="middle" className="fill-ink-muted">2×cumulativeValue locked</text>
+                    <text x={cx2} y="368" fontSize="8" textAnchor="middle" className="fill-ink-muted">2× value so far, locked</text>
                 </g>
 
                 <g>
                     <text x={cx3} y="296" fontSize="9" fontWeight="600" textAnchor="middle" className="fill-ink-body">buyer</text>
                     <rect x={cx3 - 44} y="302" width="44" height="8" rx="2" className="fill-subtle-hover stroke-default" strokeWidth="0.75" />
-                    <text x={cx3} y="322" fontSize="8" textAnchor="middle" className="fill-ink-muted">receives payment</text>
+                    <text x={cx3} y="322" fontSize="8" textAnchor="middle" className="fill-ink-muted">bond refunded, less payment</text>
 
                     <text x={cx3} y="342" fontSize="9" fontWeight="600" textAnchor="middle" className="fill-ink-body">seller</text>
                     <rect x={cx3 - 44} y="348" width="88" height="8" rx="2" className="fill-ink-heading" />
-                    <text x={cx3} y="368" fontSize="8" textAnchor="middle" className="fill-ink-muted">receives 2×cumVal + payment</text>
+                    <text x={cx3} y="368" fontSize="8" textAnchor="middle" className="fill-ink-muted">bond refunded, and paid</text>
                 </g>
 
                 {/* ── Terminal-condition note ─────────────────────────── */}
@@ -180,13 +180,13 @@ export function LockedFundsStateFigure({
                     If the buyer never resolves
                 </text>
                 <text x="200" y="436" fontSize="9.5" textAnchor="middle" className="fill-ink-body">
-                    Committed stays Committed — both bonds stay locked, inert.
+                    The order stays committed, and both bonds stay locked.
                 </text>
                 <text x="200" y="452" fontSize="9.5" textAnchor="middle" className="fill-ink-body">
-                    Not a malfunction: the buyer&apos;s own signature is the only door.
+                    By design: the buyer&apos;s own signature is the only door.
                 </text>
                 <text x="200" y="468" fontSize="8" fontStyle="italic" textAnchor="middle" className="fill-ink-muted">
-                    docs/DESIGN_DECISIONS.md §3–4
+                    No timeout and no override, by design.
                 </text>
         </FigureFrame>
     );

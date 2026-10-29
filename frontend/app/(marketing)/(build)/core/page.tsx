@@ -34,7 +34,11 @@ const SUBJECTS: { line: string; body: ReactNode; cta: string; href: string }[] =
                 <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
                     the discipline that designs and characterizes the protocols governing the production, distribution and consumption of goods and services in a decentralized digital economy
                 </Link>
-                ; Figaro is one such protocol. Each party bonds before the trade, and the bond makes keeping the agreement that party&apos;s better move, which the others can count on. Once the work is delivered, closing is the buyer&apos;s better move; since the buyer closes only then, performing is each seller&apos;s while the other sellers perform: it is paid, against a bond that stays locked and is more than the most it could keep by walking away. Only the buyer resolves, and resolution pays every seller and refunds every bond at once. Cooperation is the equilibrium of that game, and the equilibrium is proved.
+                ; Figaro is one such protocol. Each party bonds before the trade, and the bond makes keeping the agreement that party&apos;s better move, which the others can count on. Only the buyer resolves, and resolution pays every seller and refunds every bond at once. The proof that cooperation is the equilibrium is in{" "}
+                <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">
+                    Asymmetric Bonding and Buyer Dominance
+                </Link>
+                .
             </>
         ),
         cta: "The six invariants",

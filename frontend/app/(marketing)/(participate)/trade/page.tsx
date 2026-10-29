@@ -27,6 +27,25 @@ export default function TradePage() {
                 <TradeStripFigure />
             </MarketingSection>
 
+            <MarketingSection title="When several sellers can do the job.">
+                <p className="text-base text-ink-body leading-relaxed mb-3">
+                    Say a shipment needs a truck to the port, and the assembly leaves that leg open. The buyer can ask every trucker that has bound the assembly and posts a price for the leg, all at once. Each trucker receives a draft of the order at its own posted price, with no signature on it, so whoever carries the draft can commit nothing with it.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-3">
+                    A trucker that can take the leg counter-signs its draft, which holds it to that one order, at that price, until the draft&apos;s deadline. When the window the buyer set closes, the cheapest counter-signature is picked, and the buyer may pick any other reply instead. The buyer signs one, and that trucker&apos;s bond is locked at commit like any seller&apos;s; if its wallet cannot fund the bond, the commit fails and the buyer can sign the next reply. Every draft the buyer never signs expires at its deadline and binds nobody.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed mb-3">
+                    Where no posted price fits the job, the buyer asks for quotes instead: each trucker names its price under a ceiling the buyer sets, a quote can change the price and nothing else, and the cheapest verified quote is picked the same way.
+                </p>
+                <p className="text-base text-ink-body leading-relaxed">
+                    Why asking several sellers at once binds the buyer to one order only is in{" "}
+                    <Link href="/papers/markets-without-a-venue" className="text-ink-heading font-medium hover:underline">
+                        Markets Without a Venue
+                    </Link>
+                    .
+                </p>
+            </MarketingSection>
+
             <MarketingSection bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-3">
                     The same six pictures carry a repair at the door, a freight leg across an ocean, a season of work, a survey flight: what you can trade is{" "}
