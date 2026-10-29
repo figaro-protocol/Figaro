@@ -161,13 +161,16 @@ export async function getAllAttestationRecords(
 }
 
 /** A process attestation flattened to the fields the runtime model needs:
- *  which clause, which order, which stage, who attested. clauseId is DATA off
- *  the event — no caller hardcodes it. */
+ *  which clause, which order, which stage, who attested, and the fingerprint
+ *  of what was attested (`contentRef`, the keccak-CID digest a reader resolves
+ *  the published content at). clauseId is DATA off the event — no caller
+ *  hardcodes it. */
 export interface RuntimeAttestation {
     clauseId: string;
     orderHash: string;
     stage: number;
     attester: string;
+    contentRef: string;
     blockNumber: number;
 }
 
@@ -184,8 +187,8 @@ export async function getAttestationsByProcess(
         .filter((log) => getStringArg(log, "processId") === processId)
         .map((log) => parseAttestationLog(log as IndexedAttestationLog))
         .filter((r): r is AttestationRecord => r !== null)
-        .map(({ clauseId, orderHash, stage, attester, blockNumber }) => ({
-            clauseId, orderHash, stage, attester, blockNumber,
+        .map(({ clauseId, orderHash, stage, attester, contentRef, blockNumber }) => ({
+            clauseId, orderHash, stage, attester, contentRef, blockNumber,
         }))
         .sort((a, b) => a.blockNumber - b.blockNumber);
 }

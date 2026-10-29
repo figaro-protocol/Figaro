@@ -61,6 +61,7 @@ const reasserted = (clauseIndex: number, attester: string): RuntimeAttestation =
     orderHash: ORDER_HASH,
     stage: 0,
     attester,
+    contentRef: `0x${"00".repeat(32)}`,
     blockNumber: 1,
 });
 
@@ -176,7 +177,7 @@ describe("re-assert committed clauses — the provenance leaf", () => {
     });
 
     it("the buyer's own attestation of the reserved key removes it", () => {
-        const filed: RuntimeAttestation = { clauseId: PROVENANCE_LEAF_KEY, orderHash: ORDER_HASH, stage: 0, attester: BUYER, blockNumber: 2 };
+        const filed: RuntimeAttestation = { clauseId: PROVENANCE_LEAF_KEY, orderHash: ORDER_HASH, stage: 0, attester: BUYER, contentRef: `0x${"00".repeat(32)}`, blockNumber: 2 };
         expect(provenanceChoices(cardsWith(BUYER, [filed]))).toHaveLength(0);
     });
 

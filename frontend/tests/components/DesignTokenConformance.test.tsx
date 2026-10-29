@@ -39,6 +39,7 @@ vi.mock("@/components/runtime/ResolutionProceedsPanel", () => ({ ResolutionProce
 vi.mock("@/components/runtime/PayoutRoutingPanel", () => ({ PayoutRoutingPanel: () => null }));
 vi.mock("@/components/runtime/CapabilityRail", () => ({ CapabilityRail: () => null }));
 vi.mock("@/components/runtime/OrderInteractionSurfaces", () => ({ OrderInteractionSurfaces: () => null }));
+vi.mock("@/components/runtime/StageAttestationComparison", () => ({ StageAttestationComparison: () => null }));
 vi.mock("@/app/(app)/discover/_components/MemberDiscovery", () => ({ MemberDiscovery: () => null }));
 
 import { CtaLink } from "@/components/marketing/CtaLink";

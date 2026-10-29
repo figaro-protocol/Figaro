@@ -10,6 +10,8 @@
  *   - the GENERIC timeline — every attestation on the process, labeled
  *     straight from its clause's off-chain spec (`describeAttestation`), the
  *     clauseId taken from the event DATA.
+ *   - the ATTESTATIONS COMPARED reader — for any assembly-scoped clause's
+ *     declared stage, whether the parties' filings agree (derived, never stored).
  *   - the CAPABILITY rail — every action the buyer/seller can take, DERIVED by
  *     the builder (`deriveProcessModelFromRuntime`) from the clauses the
  *     agreement carries + the attestation state, executed through one path
@@ -28,6 +30,7 @@ import { ResolutionProceedsPanel } from "@/components/runtime/ResolutionProceeds
 import { PayoutRoutingPanel } from "@/components/runtime/PayoutRoutingPanel";
 import { CapabilityRail } from "@/components/runtime/CapabilityRail";
 import { OrderInteractionSurfaces } from "@/components/runtime/OrderInteractionSurfaces";
+import { StageAttestationComparison } from "@/components/runtime/StageAttestationComparison";
 import { useSemanticProcessWorkspace } from "@/hooks/useSemanticProcessWorkspace";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
 import { useMemberListings } from "@/lib/member/useMemberListings";
@@ -253,6 +256,12 @@ export function OrderTimelineView({ processId }: Props) {
                     )}
                 </ol>
             </section>
+
+            {/* Attestations compared — for every assembly-scoped clause whose
+                declared stage more than one party attested, whether their
+                filings agree, field by field. Derived from the same log and
+                the content its fingerprints resolve to; read-only, ungated. */}
+            <StageAttestationComparison attestations={workspace.processAttestations} />
 
             {/* Secondary affordances */}
             <section className="flex flex-wrap gap-3 text-sm">

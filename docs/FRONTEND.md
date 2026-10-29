@@ -55,7 +55,7 @@ writes via `WalletGate`.**
 | `/members/manage` | The registered dashboard + stake claim. |
 | `/members/{identity,agents,assemblies,buyer,catalog,endpoints,review}` | The member wizard: Identity, Sell through (`assemblies`: bind, and offer the data those trades produce), Buy through (`buyer`: subscribe, and offer the data those trades produce), Catalog, Agents, Endpoints, Review. The two assembly steps are one loop walked twice and both precede Catalog, which prices what they declare. |
 | `/members/edit/{identity,agents,assemblies,buyer,catalog,endpoints}` | Endpoints are the member's own infrastructure — device configuration via `lib/shared/userEndpoints.ts`, never pinned or published. |
-| `/orders`, `/orders/view?process=` | The wallet's actor-neutral order list, buyer and seller both; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view: its confirm names how many usage writes the wallet signs next (`lib/semantic/planUsageRecords.ts` plans them, one per distinct key across the three kinds — clause, agreement, assembly — through one `UsageWrite` union that `lib/protocol/useUsageRecorder.ts` sends; each is simulated before it is sent), and a resolved order links the party's data (`/data/yours`). |
+| `/orders`, `/orders/view?process=` | The wallet's actor-neutral order list, buyer and seller both; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view: its confirm names how many usage writes the wallet signs next (`lib/semantic/planUsageRecords.ts` plans them, one per distinct key across the three kinds — clause, agreement, assembly — through one `UsageWrite` union that `lib/protocol/useUsageRecorder.ts` sends; each is simulated before it is sent), and a resolved order links the party's data (`/data/yours`). Beside the timeline, the detail view compares the parties' filings under every declared stage of an assembly-scoped clause, field by field, derived at read time from the attestation log and the content its fingerprints resolve to (`components/runtime/StageAttestationComparison`, `lib/composition/stageAttestationComparison.ts`). |
 
 The build-baked `NEXT_PUBLIC_*` values are defaults only, so a hosted deploy never
 seizes users onto the operator's provider key or pinning node. Endpoint configuration
@@ -266,7 +266,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
   `clauseNestsUnder`, `describeClause` and the rest — takes a clause key; the
   spec's `clauseId` and `version` are its label. The other registry reads type
   the same way — `fetchAssembly`, `fetchAgreement` and
-  `fetchWitnessContent` return `Anchored` documents, and the records built
+  `fetchWitnessContent` return `Anchored` documents, and the types built
   from them (`AssemblyChoice`, `BoundAssembly`, a published assembly's view)
   require that type, so a read that skips the check does not compile.
 
