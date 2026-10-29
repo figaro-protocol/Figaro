@@ -18,8 +18,11 @@ export const metadata: Metadata = withOg({
 // believing; the lead states the problem, an authorized institution in the
 // middle that makes a stranger's promise good after the fact; under it, what
 // Figaro does, in the maintainer's telling's plain words (everyone bonds first,
-// the buyer twice the payment and each seller twice the value through its
-// order, into a contract no one controls — the holder named, because a bond
+// told by what the bond makes each party do and what the other can count on,
+// then the amounts as that behavior's consequence: the buyer twice the payment
+// and each seller twice the value through its order, into a decentralized,
+// permissionless smart contract that holds every bond until the buyer closes —
+// the holder named, because a bond
 // with an implied holder reads as held by a third party; only the buyer closes,
 // and nothing sits between the parties with the power to decide — the
 // who-decides axis, stated positively, since the FAQ's line on it is what moves
@@ -78,7 +81,7 @@ const FRAMES: { line: string; fact: string }[] = [
     },
     {
         line: "You keep what you earn.",
-        fact: "Once the work is done, closing the trade refunds the rest of the buyer's own bond, so closing is the buyer's better move. In that one transaction each seller receives its whole payment, and every bond is refunded.",
+        fact: "Once the work is done, closing the trade is the buyer's better move, since closing refunds the rest of the buyer's own bond. In that one transaction each seller receives its whole payment, and every bond is refunded.",
     },
     {
         line: "Your data is yours, to keep or to sell.",
@@ -125,7 +128,7 @@ export default function Home() {
                     Figaro makes the promise good before the trade. It is an ex-ante institution for exchange: it acts before the trade, not after.
                 </p>
                 <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl">
-                    Everyone in the trade puts up a bond first: the buyer bonds twice the payment and each seller twice the value through its order, into a smart contract that no one controls and that releases nothing until the buyer closes. Breaking your word costs more than keeping it: a seller that delivers is paid when the buyer closes, and once the work is delivered, closing is the buyer&rsquo;s better choice, since it refunds the rest of the buyer&rsquo;s own bond.
+                    Everyone in the trade puts up a bond first, and the bond makes keeping your word your better move. Once the work is delivered, closing is the buyer&rsquo;s better move, since closing refunds the buyer&rsquo;s bond less the payment, and every seller can count on that. Since the buyer closes once the work is delivered and not before, delivering is each seller&rsquo;s better move while the other sellers deliver: it is paid, against a bond that stays locked and is more than the most it could keep by walking away. So the buyer bonds twice the payment and each seller twice the value through its order, into a decentralized, permissionless smart contract that holds every bond until the buyer closes.
                 </p>
                 <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl">
                     Only the buyer can close the trade (resolve it, in the contract&rsquo;s word), and nothing sits between the parties with the power to decide for them. When the buyer closes, every seller is paid and every bond refunded at once. Nobody is paid until everyone is, so the sellers help each other finish, with no boss in charge. If the buyer never closes, every bond stays locked, the buyer&rsquo;s own included, and an arbitration forum or a court can rule on the trade&rsquo;s data while it stays open.{" "}
@@ -155,7 +158,7 @@ export default function Home() {
                         An online marketplace that connects buyers and sellers directly carries two costs: attracting buyers, and handling disputes between them. The data a marketplace captures does not pay for both, and the ones that grew became platforms, which take a share of each sale, set the rules, and keep the customers and the data.
                     </p>
                     <p className="mt-4 text-base text-ink-body leading-relaxed">
-                        The bond carries the second cost. A promise carries its bond from the start, so less is left in dispute, and when a dispute does arise, the trade&apos;s data is there for an arbitration forum or a court to rule on before the buyer closes. The first is carried by the members&rsquo; listing, by the communities that build on Figaro, and by a designer&rsquo;s token.
+                        The bond carries the second cost. From the start, each party&rsquo;s bond makes keeping its promise its better move while the others keep theirs, so less is left in dispute, and when a dispute does arise, the trade&apos;s data is there for an arbitration forum or a court to rule on before the buyer closes. The first is carried by the members&rsquo; listing, by the communities that build on Figaro, and by a designer&rsquo;s token.
                     </p>
                     <p className="mt-4 text-base text-ink-body leading-relaxed">
                         The protocol is decentralized and permissionless. Any ERC-20 token can carry a trade: a stablecoin, a community&apos;s own token, or a designer&apos;s token. A designer can make its token the way in to a resource: every trade under its assembly is paid and bonded in that token, so a buyer reaches the resource by holding it, and holding it grants that access and no claim on anyone&apos;s revenue. A wallet is all a buyer needs, with no account, identity check or sign-up; a seller that wants to be found registers as a member with a stake and is listed where buyers look, and the communities that build on Figaro bring their own members. Whoever designs what the network uses is rewarded in florins, the protocol&apos;s own token, from a reserve set aside for designers and never sold, by a published formula of that use.

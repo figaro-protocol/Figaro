@@ -411,14 +411,15 @@ tool, by design.
 **What this does not close off: the commerce those instruments carry.**
 A cargo resale in transit needs no transferable right and no party
 substitution. The buyer agrees the sale under the outside instrument; the
-sellers are not asked to agree to it, and ownership does not pass while
-the process stands. The sellers make the sale possible, exactly as every
+sellers are not asked to agree to it, and ownership passes when the outside
+instrument says, here at resolution. The sellers make the sale possible, exactly as every
 other outside event is squared before the buyer's one terminal call: each
 returns to the buyer the whole, or the part, of its committed payment
 that answers to what the buyer will not receive, the variation is
 attested, and a single `resolveProcess` executes the schedule unchanged,
 so the sellers' transfers net inside one bond cycle. Ownership then passes to
-the new owner free and clear of every bond. The new owner never becomes a
+the new owner on the sale instrument's terms, which in this composition set it at
+resolution; a bond is tokens and references no goods. The new owner never becomes a
 process party, so no in-protocol right is minted; it does what it wants
 with its own property once the transfer is final, and its protection
 between the agreed sale and the resolution is the ordinary legal layer

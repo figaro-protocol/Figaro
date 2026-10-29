@@ -8,7 +8,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Code — Figaro Protocol",
     description:
-        "Four smart contracts, decentralized and permissionless. The agreement between strangers is secured cryptoeconomically: cooperation is each party's best move. The contracts are proven and checked.",
+        "Four smart contracts, decentralized and permissionless. The agreement between strangers is secured cryptoeconomically: keeping its word is each party's best move while the others keep theirs. The contracts are proven and checked.",
 });
 
 // THE CORE LANDING — three subjects and nothing else: the four contracts,
@@ -27,14 +27,14 @@ const SUBJECTS: { line: string; body: ReactNode; cta: string; href: string }[] =
         href: "/spec",
     },
     {
-        line: "The agreement between strangers is secured cryptoeconomically: cooperation is each party's best move.",
+        line: "The agreement between strangers is secured cryptoeconomically: keeping its word is each party's best move while the others keep theirs.",
         body: (
             <>
                 Cryptoeconomics is{" "}
                 <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
                     the discipline that designs and characterizes the protocols governing the production, distribution and consumption of goods and services in a decentralized digital economy
                 </Link>
-                ; Figaro is one such protocol. Each party bonds before the trade, and the bonds are sized so that keeping the agreement is worth more to each party than breaking it. Only the buyer resolves, and resolution pays every seller and refunds every bond at once. Cooperation is the equilibrium of that game, and the equilibrium is proved.
+                ; Figaro is one such protocol. Each party bonds before the trade, and the bond makes keeping the agreement that party&apos;s better move, which the others can count on. Once the work is delivered, closing is the buyer&apos;s better move; since the buyer closes only then, performing is each seller&apos;s while the other sellers perform: it is paid, against a bond that stays locked and is more than the most it could keep by walking away. Only the buyer resolves, and resolution pays every seller and refunds every bond at once. Cooperation is the equilibrium of that game, and the equilibrium is proved.
             </>
         ),
         cta: "The six invariants",

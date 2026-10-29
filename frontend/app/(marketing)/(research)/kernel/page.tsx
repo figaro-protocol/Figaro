@@ -16,7 +16,7 @@ const CH = EQ.example.chain; // the same trade shared by three sellers — legs 
 export const metadata: Metadata = withOg({
     title: "Mechanism — Figaro Protocol",
     description:
-        "How a Figaro trade works: both sides lock a bond larger than the payment, so cooperation is the equilibrium; the buyer resolves it; every step is written down permanently.",
+        "How a Figaro trade works: each side's bond makes keeping its word its better move, and each is larger than the payment, so cooperation is the equilibrium; the buyer resolves it; every step is written down permanently.",
 });
 
 // FigaroCore's mechanism design, and ONLY that: the Core page never carries
@@ -31,7 +31,7 @@ export default function Kernel() {
                 How any two parties can transact directly, anywhere.
             </h1>
             <p className="text-body-lead text-ink-muted italic mb-8">
-                Two bonds, each bigger than the trade. One rule for who resolves. That is the entire machine.
+                Two bonds that make keeping your word each side&apos;s better move, each bigger than the trade. One rule for who resolves. That is the entire machine.
             </p>
             <h2 id="refusals" className="text-heading-h2 text-ink-heading mb-5">
                 Three refusals.
@@ -48,7 +48,7 @@ export default function Kernel() {
                 </li>
             </ul>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                The rest is arithmetic, held by a smart contract running in the open, permissionless and decentralized. Say the trade is worth {EX.payment} tokens, in the ERC-20 the participants chose. The buyer locks {EX.buyer_locks} &mdash; one bond of twice the payment, the {EX.payment} they owe carried inside it. The seller locks {EX.seller_locks} too, all of it bond: {EX.held} held, and out of reach until the buyer resolves. Only the 2&times; ratio is ever fixed, never the number.
+                The rest is arithmetic, held by a smart contract running in the open, permissionless and decentralized. Once the work is delivered, closing is the buyer&apos;s better move; since the buyer closes only then, performing is the seller&apos;s while any other sellers perform: it is paid, against a bond of twice the value through its order that stays locked, more than the most it could keep by walking away. Each bond is sized to make that so. Say the trade is worth {EX.payment} tokens, in the ERC-20 the participants chose. The buyer locks {EX.buyer_locks} &mdash; one bond of twice the payment, the {EX.payment} they owe carried inside it. The seller locks {EX.seller_locks} too, all of it bond: {EX.held} held, and out of reach until the buyer resolves. Only the 2&times; ratio is ever fixed, never the number.
             </p>
             <p className="text-base text-ink-body leading-relaxed mb-4">
                 Why twice the value, and not the payment plus a small margin? Because at twice the value there is no amount that is clever to steal &mdash; the theorem and its proof are in <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link>. What it comes to, for either side:
@@ -77,13 +77,13 @@ A bond left locked is simply value that is never refunded, held in the smart con
                 Who resolves.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                One rule decides who unlocks the smart contract: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer&apos;s own bond is locked in the same smart contract. The buyer&apos;s signature is the only thing that releases what is locked. And because nothing resolves until the buyer signs, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the trade resolves.
+                One rule decides who unlocks the smart contract: the buyer, and only the buyer. That is not an advantage held over the seller &mdash; the buyer&apos;s own bond is locked in the same smart contract. The buyer&apos;s signature is the only thing that refunds what is locked. And because nothing resolves until the buyer signs, whatever the two sides agreed to is met first &mdash; a remake, a redelivery, whatever the terms demand &mdash; then the trade resolves.
             </p>
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
                 Two mechanisms, not one.
             </h2>
             <p className="text-base text-ink-body leading-relaxed mb-5">
-                Neither mechanism is the other&apos;s consequence. The bonds are what make cheating lose on any single pair of hands. The one-resolver rule is what makes many pairs of hands resolve as one trade, all together or not at all. Bonds on their own would leave every pair separately secured and nothing tying them together &mdash; each would have to be released on its own terms; a resolver with nothing locked would simply be an authority. They compose in that order &mdash; the bonds secure each pair, the resolution carries the whole &mdash; and the composition is the machine.
+                Neither mechanism is the other&apos;s consequence. The bonds are what make cheating lose on any single pair of hands. The one-resolver rule is what makes many pairs of hands resolve as one trade, all together or not at all. Bonds on their own would leave every pair separately secured and nothing tying them together &mdash; each would have to be refunded on its own terms; a resolver with nothing locked would simply be an authority. They compose in that order &mdash; the bonds secure each pair, the resolution carries the whole &mdash; and the composition is the machine.
             </p>
             <LockedFundsStateFigure className="my-8" />
             <h2 className="text-heading-h2 text-ink-heading mt-10 mb-5">
