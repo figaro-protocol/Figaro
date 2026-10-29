@@ -149,7 +149,7 @@ against the signed accumulator before anything is locked. A seller has no
 interest in declaring more in any case: the declaration is precisely what it
 must lock.
 
-**Coordination pressure**: cumulative exposure `2Gᵢ` is non-decreasing along
+**Coordination pressure**: cumulative bond `2Gᵢ` is non-decreasing along
 the process, and the gap a seller weighs against holding out — `Δᵢ = Pᵢ + Gᵢ
 ≥ 2Pᵢ` — grows with every payment accumulated ahead of it. The ratio `2Gᵢ/Pᵢ`
 rises with what came before while falling in the seller's own payment: for
