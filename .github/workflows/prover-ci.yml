@@ -48,6 +48,7 @@ on:
             - "sdk/tests/merkleParity.test.ts"
             - "sdk/tests/clauses/clauseFuzzVectors.test.ts"
             - "clauses/**"
+            - "test/fixtures/clause-keys.json"
             - "scripts/test-cross-impl-fuzz.sh"
             - ".github/workflows/prover-ci.yml"
     pull_request:
@@ -61,6 +62,7 @@ on:
             - "sdk/tests/merkleParity.test.ts"
             - "sdk/tests/clauses/clauseFuzzVectors.test.ts"
             - "clauses/**"
+            - "test/fixtures/clause-keys.json"
             - "scripts/test-cross-impl-fuzz.sh"
 
 permissions:
