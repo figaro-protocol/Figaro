@@ -42,7 +42,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Open release tasks (testnet + mainnet) | `RELEASE_READINESS.md` |
 | External-audit handover (scope in both languages, the baseline commit, validation gate, accepted risks) | `AUDITOR_HANDOVER.md` |
 | Why the flow-map gets built under a uniform reward, and what the stake does and does not do | `DATA_LAYER.md` |
-| Comparative-substrates analysis (firm/platform/court/bond as institutional axes: fiscal legibility, monetary neutrality, transparency-verifiability-privacy conjunction, discriminating alignment) | `/papers/coordination-substrates` (`frontend/app/(marketing)/papers/coordination-substrates/page.tsx`) |
+| Comparative-substrates analysis (the firm in its two business models, hierarchy and the platform, the court and the bond, on ten institutional axes: fiscal legibility, monetary neutrality, transparency-verifiability-privacy conjunction, discriminating alignment) | `/papers/coordination-substrates` (`frontend/app/(marketing)/papers/coordination-substrates/page.tsx`) |
 | Designer-reward contract surfaces (UsageCounter, RpgfMinter) | `CONTRACTS.md` |
 | Maintainer preferences, incidents, rulings | memory dir (`MEMORY.md` index) — maintainer-private, not shipped in this repo; the docs above carry every conclusion |
 | Open work | GitHub Issues (public); the maintainer's working punch-list is private |
