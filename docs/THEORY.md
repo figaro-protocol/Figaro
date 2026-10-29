@@ -155,7 +155,7 @@ the process, and the gap a seller weighs against holding out — `Δᵢ = Pᵢ +
 rises with what came before while falling in the seller's own payment: for
 equal payments it is `2i`, linear in depth, whereas a late order with a large
 payment can face a lower ratio than its predecessor. What holds at every
-position without qualification is the exposure and the gap; the ratio need
+position without qualification is the bond and the gap; the ratio need
 not rise.
 
 **One example, used throughout.** A shipper buys the movement of a container:
