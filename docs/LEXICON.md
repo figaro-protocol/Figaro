@@ -47,3 +47,4 @@ These words are not Figaro's nouns. A sentence uses one only when it tells the l
 | `breach` | walking away, at a price | a move that leaves the party worse off than keeping its word |
 | `remedy` | compensation after the fact | put right before the buyer resolves |
 | `enforcement` | the state compelling performance | the equilibrium: keeping one's word is each party's best reply |
+| `subordination` | another party deciding what an asset is used for, a person's labor included, and taking what that use returns; title is separate | none: the asset's own wallet decides its use trade by trade and keeps what it produces |
