@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
 import { PaperLayout, PaperSection, PaperRun } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
+import { WholeSystemFigure } from "@/components/figures/WholeSystemFigure";
 
 export const metadata: Metadata = withOg({
     title: "Figaro as a Cryptoeconomic System — Figaro Protocol",
@@ -115,6 +116,15 @@ export default function FigaroAsACryptoeconomicSystemPaper() {
                     <li><strong>The data.</strong> The chain holds a fingerprint of the agreement and of the data that admits a proof of any one term against it. A party therefore shows one term, to a buyer of its data or to a forum, with that proof and nothing else. A datum is public only where the mechanism needs it beyond the two parties, at no finer grain than that need: a neighborhood cell, never a door; a hash, never the plaintext. The aggregate is public; the detail is the parties&rsquo; own, sealed or sold on their terms; the mechanism holds no data to sell.</li>
                     <li><strong>The composition with law and the market.</strong> An agreement composes legality in through its clauses: a clause may name the applicable law, a forum, the filing a jurisdiction requires, or a license. The data a process leaves meets a norm outside the mechanism, such as an electronic invoice, a sustainability report, or a tax return. A trade can thus meet its regulatory, legal, and fiscal obligations through the terms the parties signed and the data the process leaves. The mechanism reads none of those terms; it holds only the agreement&rsquo;s fingerprint.</li>
                 </ol>
+                <p>Figure 1 draws the whole as this section states it.</p>
+                <WholeSystemFigure
+                    idPrefix="cryptoeconomic-system-whole-system"
+                    caption={
+                        <>
+                            Figure 1. The whole, drawn from this section: the base chain beneath; the mechanism&rsquo;s two operations; the parts of the whole in this section&rsquo;s order; the graph composed above the rules, the designs published, the bindings sellers make and the selections buyers make; the forms it carries. The data runs beside every part: the chain holds fingerprints, the aggregate is public, the detail is the parties&rsquo; own.
+                        </>
+                    }
+                />
             </PaperSection>
 
             <PaperSection title="3. The Measure: Three Definitions and What Each Presupposes">

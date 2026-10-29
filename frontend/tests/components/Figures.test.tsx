@@ -8,6 +8,7 @@ import { MarketFormationSwimlaneFigure } from "@/components/figures/MarketFormat
 import { OriginationSequenceFigure } from "@/components/figures/OriginationSequenceFigure";
 import { DualProcessIdFigure } from "@/components/figures/DualProcessIdFigure";
 import { RegistryLifecycleFigure } from "@/components/figures/RegistryLifecycleFigure";
+import { WholeSystemFigure } from "@/components/figures/WholeSystemFigure";
 import { readFile } from "node:fs/promises";
 
 afterEach(() => {
@@ -490,5 +491,42 @@ describe("RegistryLifecycleFigure", () => {
         expect(svg).toHaveAttribute("aria-labelledby", "rl-title rl-desc");
         expect(container.querySelector("#rl-title")?.textContent).toContain("withdrawal leaves behind");
         expect(container.querySelector("#rl-desc")?.textContent).toContain("never clears");
+    });
+});
+
+describe("WholeSystemFigure", () => {
+    const PART_TITLES = [
+        "The bonded commitment",
+        "The stake",
+        "The designs and the designers\u2019 rewards",
+        "The florin",
+        "The DAO",
+        "The denominations",
+        "The composition with law and the market",
+        "8  The data",
+    ];
+
+    it("renders the eight part titles, numbered 1 to 8 in order, above the base chain", () => {
+        const { container } = render(<WholeSystemFigure />);
+        const texts = Array.from(container.querySelectorAll("svg text")).map((t) => t.textContent ?? "");
+        const positions = PART_TITLES.map((title) => texts.indexOf(title));
+        expect(positions.every((p) => p >= 0)).toBe(true);
+        expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+        for (let n = 1; n <= 7; n++) {
+            expect(texts[positions[n - 1] - 1]).toBe(String(n));
+        }
+        expect(screen.getByText("The base chain")).toBeInTheDocument();
+        expect(screen.getByText("the rules fix the bond and the resolution")).toBeInTheDocument();
+        expect(screen.getByText("mutual-aid")).toBeInTheDocument();
+    });
+
+    it("binds the accessible title and description under its id prefix", () => {
+        const { container } = render(<WholeSystemFigure idPrefix="paper-whole" />);
+        const svg = container.querySelector("svg");
+        expect(svg?.getAttribute("role")).toBe("img");
+        expect(svg?.getAttribute("aria-labelledby")).toBe("paper-whole-title paper-whole-desc");
+        expect(container.querySelector("#paper-whole-title")?.textContent).toBe("The whole of Figaro");
+        expect(container.querySelector("#paper-whole-desc")?.textContent).toContain("Bottom to top: the base chain");
+        expect(container.querySelector("figcaption")).toBeNull();
     });
 });
