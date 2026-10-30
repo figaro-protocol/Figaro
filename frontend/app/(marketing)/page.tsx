@@ -204,7 +204,7 @@ export default function Home() {
 
                 <div className="mt-12 border-t border-default pt-8">
                     <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
-                        It is safe because it is proved, by mathematics: the equilibrium&rsquo;s best replies are proof-checked in Lean 4, and the smart contracts are verified by Certora and Halmos and modeled in TLA+, beside Foundry&rsquo;s tests, Echidna&rsquo;s fuzzing and the differential fuzz of the Rust against the Solidity. The contracts are decentralized and permissionless, the code is open, and a bounty stands for anyone who finds a flaw. No audit firm has been engaged. What each bench covers:{" "}
+                        It is safe because it is proved, by mathematics: the equilibrium&rsquo;s best replies are proof-checked in Lean 4, and the smart contracts are verified by Certora and Halmos and modeled in TLA+, beside Foundry&rsquo;s tests, Echidna&rsquo;s fuzzing and the differential fuzz of the Rust against the Solidity. The contracts are decentralized and permissionless, the code is open, and a bounty stands for anyone who finds a flaw. What each bench covers:{" "}
                         <Link href="/security" className="text-ink-heading font-medium hover:underline">
                             Security
                         </Link>
