@@ -73,8 +73,8 @@ the scope.
 2. audit firms' open-source tooling applied where it fits this stack; the survey
    of their tools and programs lands here, with what each costs
 3. findings resolved, or accepted in writing in the handover
-4. the outcome stated in the release docs and in the footer's one line, "Verified
-   in-house; no audit firm engaged. Use as-is."
+4. the outcome stated in the release docs and in the footer's one line, "Formally
+   verified; no audit firm engaged. Use as-is."
 
 The program's checklist, from the survey of audit firms' open-source tooling and
 programs (sources in the commit that added it; an item marked *unverified* was

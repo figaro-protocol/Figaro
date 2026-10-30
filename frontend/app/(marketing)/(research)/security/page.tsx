@@ -29,7 +29,7 @@ export default function Security() {
 
             <MarketingSection title="External audit" sectionId="audit">
                 <p className="text-base text-ink-body leading-relaxed">
-                    No audit firm has been engaged, and the security program stands in its place: the verification stack below, recurring security audits by agents, whose reports are published here once their findings are closed, and the bounty in <a href="https://github.com/figaro-protocol/Figaro/blob/main/SECURITY.md#bug-bounty" className="text-ink-heading font-medium hover:underline">SECURITY.md</a>. Results are published on this page as they land &mdash; findings and remediations, not a summary of them.
+                    No audit firm has been engaged, and the proof stands in its place: the equilibrium&apos;s best replies are proof-checked in Lean 4, the contracts are verified by Certora and Halmos and modeled in TLA+, Foundry and Echidna test them, and the Rust is fuzzed against the Solidity; recurring security audits by agents are published here once their findings are closed, and a bounty stands in <a href="https://github.com/figaro-protocol/Figaro/blob/main/SECURITY.md#bug-bounty" className="text-ink-heading font-medium hover:underline">SECURITY.md</a>. Results are published on this page as they land &mdash; findings and remediations, not a summary of them.
                 </p>
             </MarketingSection>
 
