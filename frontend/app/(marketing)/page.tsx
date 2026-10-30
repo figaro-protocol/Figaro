@@ -149,6 +149,13 @@ export default function Home() {
                     <p className="mt-4 text-base text-ink-body leading-relaxed">
                         No one in the middle holds power over the outcome. The smart contracts run on any EVM-compatible blockchain and take nothing from a trade: the chain computes the bonds, the payments and the refunds, and what the terms are, whom to trade with and when to close are each a party&rsquo;s decision. It brings the cost of the party in the middle down to the cost of gas, plus the time value of the tokens locked while the trade is open.
                     </p>
+                    <p className="mt-4 text-base text-ink-body leading-relaxed">
+                        Buyers and sellers find each other in the{" "}
+                        <Link href="/discover" className="text-ink-heading font-medium hover:underline">
+                            public registry of members
+                        </Link>
+                        , each listed with a live stake, and in the communities that build on Figaro; no marketplace stands between them.
+                    </p>
                 </div>
 
                 <h2 className="mt-16 text-heading-h2 text-ink-heading mb-8">What changes for you</h2>
@@ -197,7 +204,7 @@ export default function Home() {
 
                 <div className="mt-12 border-t border-default pt-8">
                     <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
-                        It is safe because we can prove it. The smart contracts are decentralized and permissionless, the code is open, and seven benches, each a different method, check it and the equilibrium it enforces. What each covers:{" "}
+                        It is safe because we can prove it. The smart contracts are decentralized and permissionless, the code is open, and seven benches, each a different method, check it and the equilibrium it enforces; agents attack it in recurring security audits, and a bounty stands for anyone who finds a flaw. No audit firm has been engaged. What each covers:{" "}
                         <Link href="/security" className="text-ink-heading font-medium hover:underline">
                             Security
                         </Link>

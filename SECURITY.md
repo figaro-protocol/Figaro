@@ -65,12 +65,14 @@ design disagreement, not a vulnerability; the doc explains the reasoning.
 
 ## Audit status
 
-Not audited. No external audit has been engaged. The security work is the
-project's own, at every layer of the stack (`docs/RELEASE_READINESS.md`
-Task 2), and `docs/AUDITOR_HANDOVER.md` is kept current, at the baseline
-commit its § "The baseline commit" names — the Solidity in `src/` and the
-Rust in `prover/` together — for the day an audit is engaged; findings and
-remediations are published when they exist. The surface is verified internally across Foundry, Halmos, Certora, TLA+, Echidna
+No audit firm has been engaged, and the security program stands in its
+place (`docs/RELEASE_READINESS.md` Task 2): the verification stack below,
+recurring security audits by agents, whose reports are published once their
+findings are closed, and the bug bounty (§ "Bug bounty"). `docs/AUDITOR_HANDOVER.md`
+is kept current, at the baseline commit its § "The baseline commit" names —
+the Solidity in `src/` and the Rust in `prover/` together — for anyone who
+audits the scope, a bounty hunter or a firm alike; findings and remediations
+are published when they exist. The surface is verified internally across Foundry, Halmos, Certora, TLA+, Echidna
 and Lean 4, and the Rust against the Solidity by differential fuzz
 (`docs/VERIFICATION_MAP.md`, `docs/TESTING.md`). Each contract's
 `@custom:audit-status` NatSpec is part of the source under audit and moves

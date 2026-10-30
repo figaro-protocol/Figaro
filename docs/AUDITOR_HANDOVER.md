@@ -1,6 +1,6 @@
 # External Audit Handover
 
-The handover package for an external audit of Figaro's on-chain surface and
+The handover package for an audit of Figaro's on-chain surface and
 the proof apparatus beside it: what the system is, what is in scope and at
 which commit, how to build it and run its gate, which properties the review is
 asked to break, which behaviors are intentional, what the project's own
