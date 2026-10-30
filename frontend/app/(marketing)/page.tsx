@@ -47,27 +47,27 @@ const DOORS: { label: string; line: string; href: string }[] = [
 
 const FRAMES: { line: string; fact: string }[] = [
     {
-        line: "You trade with anyone, anywhere, in any token, and choose the communities you belong to.",
+        line: "You trade with anyone, anywhere, in any token, and nobody stands between you: no intermediary, no boss, no administrator with a key.",
         fact: "A person, a business, a machine or a software agent takes part through its own wallet. A community can have its own token: the tokens your wallet holds show which communities you belong to, and you choose them.",
     },
     {
-        line: "Anyone can write the terms trades run on.",
+        line: "Anyone writes the terms trades run on, and no firm and no shareholders stand behind them; a market, a cooperative and a mutual-aid group run on the same contracts.",
         fact: "A term, such as how goods are carried, which law applies or how data may be used, is written once and registered on-chain, and anyone can reuse it. Terms compose into whole processes, each with the economics its designer chose: a market, a cooperative and a mutual-aid group run on the same smart contracts.",
     },
     {
-        line: "You know what it pays before you start.",
+        line: "The costs of collaborating, cooperating, coordinating and communicating are gone; what is left is gas, pennies on the busiest network and fractions of a penny or nothing on others.",
         fact: "Before a seller's work begins, the buyer and that seller sign the terms of their order, the payment included.",
     },
     {
-        line: "You keep what you earn.",
+        line: "You keep what you earn. Nobody takes a cut, and no shareholder holds a claim on what you make.",
         fact: "Nobody takes a cut. When the buyer closes the trade, each seller receives its whole payment in that one transaction, and every bond is refunded.",
     },
     {
-        line: "Your data is yours, to keep or to sell.",
+        line: "Your data, your filings, your evidence and their sale are byproducts of the trade, transparent and verifiable by anyone you show them to; less is left in dispute, and the forums that rule on what is are many.",
         fact: "Every trade leaves signed evidence of what was agreed, what each side attested and what was paid. Which wallets traded, and for how much, is public on-chain; of the detail the chain holds only a fingerprint, and the detail itself stays with you, private unless the terms you trade on make it public, yours to keep, to disclose or to sell. The same evidence is there for your books and taxes, and for a regulator or a court to read.",
     },
     {
-        line: "Use is counted, and rewarded.",
+        line: "The reward: whoever wrote the terms and designs a trade used is rewarded by how much they are used.",
         fact: "Once a trade closes, each term and each design it used counts once toward its designer. Whoever designed them is rewarded in florins, the protocol's own token, by how much they are used.",
     },
 ];
