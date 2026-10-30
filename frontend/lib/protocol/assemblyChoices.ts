@@ -18,7 +18,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 import { agreementClauses, assemblyComposedClauseKeys, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { assemblyFollows } from "@/lib/shared/assembly";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
-import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
+import { scheduleContentRetry } from "@/lib/shared/ipfsService";
 import {
     usePublishedAssemblies,
     fetchHydratedAssembly, getAssemblyLoadError } from "@/lib/protocol/useAssemblyRegistry";
@@ -190,13 +190,8 @@ export function useAssemblyChoices(
                 },
             );
         };
-        const schedule = (event: (typeof events)[number], attempt: number) => {
-            const timer = setTimeout(() => {
-                timers.delete(timer);
-                read(event, attempt + 1);
-            }, contentRetryDelayMs(attempt));
-            timers.add(timer);
-        };
+        const schedule = (event: (typeof events)[number], attempt: number) =>
+            scheduleContentRetry(timers, attempt, () => read(event, attempt + 1));
         for (const event of events) {
             if (inFlightRef.current.has(event.assemblyHash)) continue;
             inFlightRef.current.add(event.assemblyHash);

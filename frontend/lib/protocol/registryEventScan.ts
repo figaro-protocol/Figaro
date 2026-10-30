@@ -20,11 +20,12 @@
  * (`rpcErrorText`), so a page can say why it shows nothing.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Abi, Log } from "viem";
 import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
 import { rpcErrorText } from "@/lib/shared/errors";
+import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
 
 export interface RegistryEventScanConfig<Row> {
     /** The registry address if configured and well-formed, else null. */
@@ -65,7 +66,7 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
         const [isLoading, setIsLoading] = useState(false);
         const [failed, setFailed] = useState(false);
         const [error, setError] = useState<string | null>(null);
-        const [generation, setGeneration] = useState(0);
+        const { generation, refetch } = useRefetchGeneration();
 
         useEffect(() => {
             if (!enabled) {
@@ -121,7 +122,6 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
             };
         }, [registeredBy, enabled, client, generation]);
 
-        const refetch = useCallback(() => setGeneration((g) => g + 1), []);
         return useMemo(() => ({ data, isLoading, failed, error, refetch }), [data, isLoading, failed, error, refetch]);
     };
 }

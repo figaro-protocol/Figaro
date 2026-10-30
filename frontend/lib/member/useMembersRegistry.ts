@@ -11,7 +11,7 @@
  * field. Lifecycle / availability is signal-by-availability off-chain,
  * not registry state.
  */
-import { useCallback, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import type { Abi } from "viem";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
@@ -21,6 +21,7 @@ import { getMemberState } from "@/lib/protocol/membersRegistryIndexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { fetchCappedContent, resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
 import { useAsyncMemberResource } from "@/lib/member/useAsyncMemberResource";
+import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
 import {
     AgentServiceInfo,
     MemberAgentServices,
@@ -71,7 +72,7 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
     // as unregistered — the /members/edit/* guards redirected mid-session
     // on exactly that window, killing in-flight saves.
     const [isLoading, setIsLoading] = useState(true);
-    const [generation, setGeneration] = useState(0);
+    const { generation, refetch } = useRefetchGeneration();
 
     useEffect(() => {
         if (!client || !address) {
@@ -108,11 +109,6 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
         return () => { canceled = true; };
     }, [client, chainId, address, generation]);
 
-    // Stable refetch — a new arrow function on every render makes any
-    // consumer that puts `refetch` in a `useEffect` dep array re-fire
-    // on every parent render, which is what powered the post-success
-    // refetch-redirect cycle on /members/edit/<route> pages.
-    const refetch = useCallback(() => setGeneration((g) => g + 1), []);
 
     return { data, isLoading, refetch };
 }

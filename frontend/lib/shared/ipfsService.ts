@@ -59,6 +59,16 @@ export function contentRetryDelayMs(attempt: number): number {
     return Math.min(10_000 * 2 ** Math.max(0, attempt), 60_000);
 }
 
+/** Schedules `retry` after `contentRetryDelayMs(attempt)`, keeping the timer in `timers` so
+ *  the reader's unmount clears it (every timer in the set is cleared there). */
+export function scheduleContentRetry(timers: Set<ReturnType<typeof setTimeout>>, attempt: number, retry: () => void): void {
+    const timer = setTimeout(() => {
+        timers.delete(timer);
+        retry();
+    }, contentRetryDelayMs(attempt));
+    timers.add(timer);
+}
+
 /** The same `/ipfs/<path>` on every OTHER gateway of the chain, in chain
  *  order — empty when `url` is not a gateway URL of the chain (an http(s)
  *  passthrough locator has no alternate: it names its own host). */

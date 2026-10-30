@@ -40,8 +40,7 @@ import {
     serializeCommitmentPayload,
     type CommitmentPayload,
 } from "@figaro-protocol/sdk/agent";
-import { buildOrderAgreement, buildAssembly, serializeAssembly } from "@figaro-protocol/sdk";
-import { canonicalize } from "@/lib/shared/canonicalJson";
+import { canonicalize, buildOrderAgreement, buildAssembly, serializeAssembly } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { mandatoryDefaults, primeClauseSpecs, resolveAuthored } from "./primeClauseSpecs";
 

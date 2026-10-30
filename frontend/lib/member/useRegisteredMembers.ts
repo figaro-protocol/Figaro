@@ -18,12 +18,13 @@
  * can show the archival view on request.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { getActiveMembers, getAllMemberRegistered } from "@/lib/protocol/membersRegistryIndexer";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
-import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
+import { scheduleContentRetry } from "@/lib/shared/ipfsService";
+import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
 import { rpcErrorText } from "@/lib/shared/errors";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 
@@ -42,7 +43,7 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
     const [data, setData] = useState<RegisteredMemberRow[] | null>(null);
     const [failed, setFailed] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [generation, setGeneration] = useState(0);
+    const { generation, refetch } = useRefetchGeneration();
 
     useEffect(() => {
         const registry = CONTRACTS.membersRegistry;
@@ -87,11 +88,7 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
                     const profile = await fetchMemberProfile(row.metadataURI).catch(() => null);
                     if (canceled) return;
                     if (!profile) {
-                        const timer = setTimeout(() => {
-                            timers.delete(timer);
-                            void read(row, attempt + 1);
-                        }, contentRetryDelayMs(attempt));
-                        timers.add(timer);
+                        scheduleContentRetry(timers, attempt, () => void read(row, attempt + 1));
                         return;
                     }
                     setData((prev) => prev?.map((p) => (p.address === row.address ? { ...p, profile } : p)) ?? prev);
@@ -112,6 +109,5 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
         };
     }, [generation]);
 
-    const refetch = useCallback(() => setGeneration((g) => g + 1), []);
     return useMemo(() => ({ data, failed, error, refetch }), [data, failed, error, refetch]);
 }
