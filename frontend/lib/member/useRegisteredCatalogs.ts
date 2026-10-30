@@ -21,6 +21,7 @@ import {
     type DiscoveryService,
 } from "@/lib/member/discoveryService";
 import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
+import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
 
 export interface UseRegisteredCatalogsResult {
     catalogs: MemberCatalog[];
@@ -45,8 +46,7 @@ export function useRegisteredCatalogs(
     const [isLoading, setIsLoading] = useState(false);
     // Re-read generation — bumped when the tab regains focus so a long-open
     // discovery surface refreshes from the chain instead of going stale.
-    // Mirrors the generation/refetch idiom in useRegisteredClausesByWallet.
-    const [generation, setGeneration] = useState(0);
+    const { generation, refetch: bump } = useRefetchGeneration();
     const client = usePublicClient();
     const chainId = useChainId();
     // The AssemblyRegistry read the surfacing rule cross-checks against —
@@ -90,7 +90,6 @@ export function useRegisteredCatalogs(
     // Refresh on focus (returning to the tab) and on tab re-visibility.
     useEffect(() => {
         if (typeof window === "undefined") return;
-        const bump = () => setGeneration((g) => g + 1);
         const onVisible = () => {
             if (document.visibilityState === "visible") bump();
         };

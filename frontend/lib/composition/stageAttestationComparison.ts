@@ -22,7 +22,7 @@
  * filing filled agrees.
  */
 import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
-import { canonicalize } from "@/lib/shared/canonicalJson";
+import { canonicalize } from "@figaro-protocol/sdk";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 
 /** The attestations one (clause, stage) received across the process's orders:
