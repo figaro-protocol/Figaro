@@ -5,7 +5,7 @@ Status: the open work between here and the public releases — the testnet line
 closed work is deleted in the session that closes it, and `git log` is the history.
 The audit handover — the scope in both languages, the baseline commit, the change
 policy, the validation gate, accepted risks — is `docs/AUDITOR_HANDOVER.md`, kept
-current for the day an external audit is engaged.
+current for anyone who audits the scope, a bounty hunter or a firm alike.
 
 ## Deployment Targets
 
@@ -20,7 +20,7 @@ Kleros courts are live on Ethereum mainnet.
 There are two finish lines, in order. **Public on testnet** is the launch flip: the site
 leaves noindex, and strangers read it and trade on Sepolia; it is blocked on the six
 items below. **Mainnet** is blocked on the in-house security program's pass over the
-audit scope (Task 2); an external audit runs the day one is affordable. Everything else
+audit scope (Task 2), which stands in place of an external audit. Everything else
 under Open Tasks is deploy-day work or sequenced behind that gate. Work that blocks
 neither line does not delay either.
 
@@ -61,9 +61,9 @@ Task numbers are stable; missing numbers are closed tasks — `git log` has each
 
 ### Task 2: Pass The In-House Security Program Over The Audit Scope
 
-Three audit firms were approached and none is affordable at present, so the
-security work is the project's own, at every layer, with the handover kept
-current for the day an external audit is engaged.
+No audit firm is engaged; the security work is the project's own, at every
+layer, with the bug bounty and the handover kept current for anyone who audits
+the scope.
 
 1. every layer named with its tooling and its evidence — the Solidity (Foundry
    invariants, Halmos, Certora, Echidna, Slither, Semgrep, mutation), the Rust
@@ -73,7 +73,8 @@ current for the day an external audit is engaged.
 2. audit firms' open-source tooling applied where it fits this stack; the survey
    of their tools and programs lands here, with what each costs
 3. findings resolved, or accepted in writing in the handover
-4. the outcome stated in the release docs, and the footer's audit line changed
+4. the outcome stated in the release docs and in the footer's one line, "Verified
+   in-house; no audit firm engaged. Use as-is."
 
 The program's checklist, from the survey of audit firms' open-source tooling and
 programs (sources in the commit that added it; an item marked *unverified* was

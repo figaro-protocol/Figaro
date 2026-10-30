@@ -7,7 +7,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = withOg({
     title: "Security — Figaro Protocol",
     description:
-        "Testing and code security: the verification stack — Foundry, Halmos, Certora, TLA+, Echidna, Lean 4 — the external-audit posture, and how to verify any trade yourself. Audit results are published here as they land.",
+        "Testing and code security: the verification stack — Foundry, Halmos, Certora, TLA+, Echidna, Lean 4 — the audit posture, and how to verify any trade yourself. Audit results are published here as they land.",
 });
 
 // Security in the crypto sense only: testing, code security, audit results.
@@ -22,14 +22,14 @@ export default function Security() {
                 title="Security."
                 lead={
                     <>
-                        Security here means what it means in crypto: testing and code security. This page holds the verification stack, the external-audit posture, and audit results as they land. The questions people ask about custody, non-delivery, disputes, or lost keys are answered once, on the <Link href="/faq" className="hover:underline">FAQ</Link>.
+                        Security here means what it means in crypto: testing and code security. This page holds the verification stack, the audit posture, and audit results as they land. The questions people ask about who holds the tokens, non-delivery, disputes, or lost keys are answered once, on the <Link href="/faq" className="hover:underline">FAQ</Link>.
                     </>
                 }
             />
 
             <MarketingSection title="External audit" sectionId="audit">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Not audited. Use as-is. Where the external audit stands is stated once, in <a href="https://github.com/figaro-protocol/Figaro/blob/main/SECURITY.md#audit-status" className="text-ink-heading font-medium hover:underline">SECURITY.md</a>; the security work meanwhile is the project&apos;s own, at every layer of the stack. Results will be published on this page when they exist &mdash; findings, remediations, and the auditor&apos;s report, not a summary of them.
+                    No audit firm has been engaged, and the security program stands in its place: the verification stack below, recurring security audits by agents, whose reports are published here once their findings are closed, and the bounty in <a href="https://github.com/figaro-protocol/Figaro/blob/main/SECURITY.md#bug-bounty" className="text-ink-heading font-medium hover:underline">SECURITY.md</a>. Results are published on this page as they land &mdash; findings and remediations, not a summary of them.
                 </p>
             </MarketingSection>
 
