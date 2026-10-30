@@ -9,7 +9,7 @@ import { WholeStripFrame } from "@/components/figures/WholeStripFigure";
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol",
     description:
-        "Every network collects rent from the people who depend on it. Figaro is a decentralized, permissionless protocol, so nobody collects rent. One buyer and one or more sellers each lock a bond in any ERC-20 token, only the buyer closes the trade, and everyone is paid at once.",
+        "Every network collects rent from the people who depend on it. Figaro is a decentralized, permissionless protocol: nobody owns it, so nobody collects rent. One buyer and one or more sellers each lock a bond in any ERC-20 token, only the buyer closes the trade, and everyone is paid at once.",
 });
 
 // THE HOME PAGE, told top-down in two speeds. The first screen is what sticks, four
@@ -101,10 +101,10 @@ export default function Home() {
         <>
             <MarketingHero
                 title="My word is my bond"
-                lead="Every network collects rent from the people who depend on it: the railroads and the highways, the power grid, the airlines, the exchanges and the asset managers, ride hailing, subscriptions, and now the cloud. Rent is where the value goes. Since the Arab Spring, people have organized against it on those same networks, and the protests have reached the West."
+                lead="Every network collects rent from the people who depend on it: the railroads and the highways, the power grid, the airlines, the exchanges and the asset managers, ride hailing, subscriptions, and now the cloud. Rent is where the money is. Since the Arab Spring, people have organized against it on those same networks, and the protests have reached the West."
             >
                 <p className="mt-6 text-base text-ink-body leading-relaxed max-w-2xl">
-                    Figaro is a decentralized, permissionless protocol, so nobody collects rent. A trade runs in any ERC-20 token. One buyer and one or more sellers each lock a bond in that token in a smart contract on a public blockchain, so keeping your word is the better move. Only the buyer closes the trade; when it does, every seller is paid and every bond is refunded at once, so the sellers finish together with no one directing them. The cost is gas.
+                    Figaro is a decentralized, permissionless protocol: nobody owns it, so nobody collects rent. A trade runs in any ERC-20 token. One buyer and one or more sellers each lock a bond in that token in a smart contract on a public blockchain, so keeping your word is the better move. Only the buyer closes the trade; when it does, every seller is paid and every bond is refunded at once, so the sellers finish together with no one directing them. The cost is gas.
                 </p>
                 <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl">
                     Build on it. Write the terms a trade runs on, compose them into processes, pick the token, and publish without asking anyone. Sellers bind your processes, buyers select them, and you are rewarded by how much they are used. Whoever trades on them keeps what they earn and the data they produce.
