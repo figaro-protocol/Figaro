@@ -19,7 +19,7 @@ export default function WalletLegalSubjectPaper() {
             title="The Wallet as Legal Subject"
             subtitle="Subordination, Property, and the Dissolution of the Employee–Contractor Line"
             author="Figaro"
-            date="April 2026, revised October 2026"
+            date="April 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

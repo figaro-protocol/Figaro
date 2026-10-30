@@ -19,7 +19,7 @@ export default function CorridorsWithoutAHegemonPaper() {
             title="Corridors Without a Hegemon"
             subtitle="The Substrate as Common Infrastructure Beneath Rival Trade Corridors"
             author="Figaro"
-            date="May 2026, revised October 2026"
+            date="May 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

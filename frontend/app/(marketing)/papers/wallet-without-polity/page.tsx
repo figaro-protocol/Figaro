@@ -20,7 +20,7 @@ export default function WalletWithoutPolityPaper() {
             title="The Wallet Without a Polity"
             subtitle="Displaced and Stateless People under the Bonded Commitment"
             author="Figaro"
-            date="April 2026, revised October 2026"
+            date="April 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

@@ -21,7 +21,7 @@ export default function OnChainEvidencePaper() {
             title="On-Chain Evidence, Off-Chain Adjudication"
             subtitle="A Layered Approach to Smart-Contract Dispute Resolution"
             author="Figaro"
-            date="April 2026, revised October 2026"
+            date="April 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

@@ -82,7 +82,7 @@ export default function AsymmetricBondingPaper() {
             title="Asymmetric Bonding and Buyer Dominance"
             subtitle="Two Composing Mechanisms for N-Party Coordination Among Strangers"
             author="Figaro"
-            date="April 2026, revised October 2026"
+            date="April 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

@@ -42,7 +42,7 @@ export default function ExternalEventsPaper() {
             title="External Events and the Resolution Frame"
             subtitle="One Rule for Everything the World Does Between the Two Calls"
             author="Figaro"
-            date="September 2026, revised October 2026"
+            date="September 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

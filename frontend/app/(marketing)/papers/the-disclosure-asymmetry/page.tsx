@@ -21,7 +21,7 @@ export default function DisclosureAsymmetryPaper() {
             title="The Disclosure Asymmetry"
             subtitle="Cryptoeconomic Mechanism Design and the Engineering of Consent"
             author="Figaro"
-            date="May 2026, revised October 2026"
+            date="May 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

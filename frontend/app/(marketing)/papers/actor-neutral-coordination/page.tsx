@@ -24,7 +24,7 @@ export default function ActorNeutralCoordinationPaper() {
             title="What a Trust Layer for Agents Acting for Principals Needs"
             subtitle="Why a Bond Locked at Commit Supplies It, and Neither a Reputation Registry nor a Legal Wrapper Does"
             author="Figaro"
-            date="May 2026, revised October 2026"
+            date="May 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

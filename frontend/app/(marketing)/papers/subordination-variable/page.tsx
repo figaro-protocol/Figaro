@@ -20,7 +20,7 @@ export default function SubordinationVariablePaper() {
             title="The Subordination Variable"
             subtitle="Why One Coordination Substrate Admits Both the Free-Association and the Frictionless-Market Reading"
             author="Figaro"
-            date="April 2026, revised October 2026"
+            date="April 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

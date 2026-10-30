@@ -42,7 +42,7 @@ export default function SelfClosingLedgerPeriodsPaper() {
             title="Bookkeeping as Protocol Byproduct"
             subtitle="Self-Closing Ledger Periods under the Bonded Commitment"
             author="Figaro"
-            date="April 2026, revised October 2026"
+            date="April 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

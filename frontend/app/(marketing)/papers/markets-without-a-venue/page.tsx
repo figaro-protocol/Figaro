@@ -55,7 +55,7 @@ export default function MarketsWithoutAVenuePaper() {
             title="Markets Without a Venue"
             subtitle="Dispatch Races and Requests for Quotes as Market-Design Mechanisms over a Market-Blind Mechanism"
             author="Figaro"
-            date="August 2026, revised October 2026"
+            date="August 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

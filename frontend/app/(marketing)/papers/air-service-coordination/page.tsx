@@ -22,7 +22,7 @@ export default function AirServiceCoordinationPaper() {
             title="Air Service as Coordinated Resource Markets"
             subtitle="An Industrial-Engineering Reading of the Bonded Architecture"
             author="Figaro"
-            date="May 2026, revised October 2026"
+            date="May 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

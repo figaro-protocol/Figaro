@@ -21,7 +21,7 @@ export default function UngovernedSubstratePaper() {
             title="The Ungoverned Substrate"
             subtitle="Network States, Holacracy, On-Chain Governance, the Ethereum Mandate, the Cypherpunks, and d/acc: The Ex-Post Frame They Share, and a Commercial Layer With No Seat"
             author="Figaro"
-            date="April 2026, revised October 2026"
+            date="April 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

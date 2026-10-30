@@ -71,7 +71,7 @@ export default function AfterTradeLensPaper() {
             title="After TradeLens"
             subtitle="A Permissionless Bonded Replacement"
             author="Figaro"
-            date="May 2026, revised October 2026"
+            date="May 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

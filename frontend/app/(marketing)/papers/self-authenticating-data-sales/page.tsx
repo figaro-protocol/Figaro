@@ -21,7 +21,7 @@ export default function SelfAuthenticatingDataSalesPaper() {
             title="Self-Authenticating Data Sales"
             subtitle="Arrow's Information Paradox Under the Bonded Commitment"
             author="Figaro"
-            date="August 2026, revised October 2026"
+            date="August 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

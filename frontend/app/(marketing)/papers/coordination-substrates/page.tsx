@@ -46,7 +46,7 @@ export default function CoordinationSubstratesPaper() {
             title="Coordination Substrates: Firm, Court, and Bond"
             subtitle="A Comparative Institutional Analysis of Trade Between Strangers"
             author="Figaro"
-            date="August 2026, revised October 2026"
+            date="August 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

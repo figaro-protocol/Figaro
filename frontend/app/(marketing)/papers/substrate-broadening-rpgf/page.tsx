@@ -42,7 +42,7 @@ export default function SubstrateBroadeningRpgfPaper() {
             title="Substrate-Broadening Retroactive Public-Goods Funding"
             subtitle="Allocating a Fixed Reserve on Adoption Counted from Resolved Trade"
             author="Figaro"
-            date="July 2026, revised October 2026"
+            date="July 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

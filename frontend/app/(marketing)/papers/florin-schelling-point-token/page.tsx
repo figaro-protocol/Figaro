@@ -20,7 +20,7 @@ export default function FlorinSchellingPointTokenPaper() {
             title="The Florin: A Schelling-Point Token Issued at Zero"
             subtitle="From Howey to Sufficiently Decentralized to a Focal Point"
             author="Figaro"
-            date="April 2026, revised October 2026"
+            date="April 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>

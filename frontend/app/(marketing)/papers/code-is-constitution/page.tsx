@@ -19,7 +19,7 @@ export default function CodeIsConstitutionPaper() {
             title="Code Is Constitution"
             subtitle="The Entrenched Layer Beneath Enactment"
             author="Figaro"
-            date="July 2026, revised October 2026"
+            date="July 2026"
             watermark="Figaro Protocol · Preprint"
             abstract={
                 <>
