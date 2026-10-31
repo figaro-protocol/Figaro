@@ -41,6 +41,9 @@ on:
         branches: [main]
         paths:
             - "prover/**"
+            - "src/core/kernel/**"
+            - "src/core/attestation/**"
+            - "src/core/verifier/**"
             - "test/core/kernel/KernelDifferentialFuzzTest.t.sol"
             - "test/core/attestation/MerkleParityTest.t.sol"
             - "sdk/src/agreement.ts"
@@ -55,6 +58,9 @@ on:
         branches: [main]
         paths:
             - "prover/**"
+            - "src/core/kernel/**"
+            - "src/core/attestation/**"
+            - "src/core/verifier/**"
             - "test/core/kernel/KernelDifferentialFuzzTest.t.sol"
             - "test/core/attestation/MerkleParityTest.t.sol"
             - "sdk/src/agreement.ts"
