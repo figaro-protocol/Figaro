@@ -29,6 +29,7 @@ import {
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { getAssemblyLoadError } from "@/lib/protocol/useAssemblyRegistry";
+import { RegistryReadFailed } from "@/components/registries/RegistryReadFailed";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -246,10 +247,7 @@ export function RegistryExplorer() {
                 {familyLoading ? (
                     <p className="text-sm text-ink-muted" data-testid="registry-loading">Reading the registry&hellip;</p>
                 ) : familyFailed ? (
-                    <p className="text-sm text-ink-muted" data-testid="registry-failed">
-                        The registry read failed on this network &mdash; nothing is shown rather than a stale copy.
-                        {familyError ? <> The RPC endpoint answered: <code className="font-mono break-all">{familyError}</code></> : null}
-                    </p>
+                    <RegistryReadFailed error={familyError} />
                 ) : (
                     <>
                         <p className="text-sm text-ink-body" data-testid="registry-count">

@@ -10,13 +10,14 @@ import {
     type Listing,
 } from "@/lib/member/memberListing";
 import { useMemberListings } from "@/lib/member/useMemberListings";
+import { RegistryReadFailed } from "@/components/registries/RegistryReadFailed";
 
 function listingAssemblies(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => deriveAssemblySlug(b.assemblyHash))));
 }
 
 export function MemberDiscovery() {
-    const { listings: allListings, isLoading: listingsLoading } = useMemberListings();
+    const { listings: allListings, isLoading: listingsLoading, failed, error } = useMemberListings();
     // Until this page has mounted and read the registry, nothing has been
     // resolved — so the static shell (what a crawler or a curl reader gets) and
     // the first paint say "loading", never "0 members": resolved-empty is
@@ -151,11 +152,17 @@ export function MemberDiscovery() {
                 ))}
             </section>
 
-            <p className="text-xs text-ink-muted">
-                {isLoading
-                    ? "Loading members…"
-                    : `${filtered.length} ${filtered.length === 1 ? "member" : "members"} shown of ${allListings.length} total.`}
-            </p>
+            {/* A failed read is unknown chain state: the page says the read failed,
+                in the provider's words, never a count or "no members registered". */}
+            {!isLoading && failed ? (
+                <RegistryReadFailed error={error} />
+            ) : (
+                <p className="text-xs text-ink-muted">
+                    {isLoading
+                        ? "Loading members…"
+                        : `${filtered.length} ${filtered.length === 1 ? "member" : "members"} shown of ${allListings.length} total.`}
+                </p>
+            )}
 
             {/* Listing grid */}
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -168,7 +175,7 @@ export function MemberDiscovery() {
                 ))}
             </section>
 
-            {filtered.length === 0 && !isLoading && (
+            {filtered.length === 0 && !isLoading && !failed && (
                 allListings.length === 0 ? (
                     <div className="text-center py-12 space-y-4">
                         <p className="text-base text-ink-body">

@@ -1,5 +1,5 @@
 /**
- * lib/mechanisms/useMemberListings.ts
+ * lib/member/useMemberListings.ts
  *
  * Discover-side counterpart to `useRegisteredCatalogs`. Reads
  * registered members from the on-chain `MembersRegistry` (via
@@ -10,7 +10,10 @@
  * and projects them into the generic `Listing` shape consumed by
  * `MemberDiscovery`. Returns an empty list when the registry isn't
  * configured or no members are registered — the consumer renders
- * the "no members yet" CTA.
+ * the "no members yet" CTA. A read that THREW — the MembersRegistry
+ * read or the AssemblyRegistry read the bindings are checked against —
+ * is `failed`, with the provider's own answer in `error`: unknown chain
+ * state, never reported as resolved-empty.
  */
 "use client";
 
@@ -25,15 +28,22 @@ import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import type { PublicClient } from "viem";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
+import { rpcErrorText } from "@/lib/shared/errors";
 
 export interface UseSellerListingsResult {
     listings: Listing[];
     isLoading: boolean;
+    /** True when a registry read threw — distinct from resolved-empty. */
+    failed: boolean;
+    /** The provider's own answer to the failed read (`rpcErrorText`). */
+    error: string | null;
 }
 
 const EMPTY_RESULT: UseSellerListingsResult = {
     listings: [],
     isLoading: false,
+    failed: false,
+    error: null,
 };
 
 function isRegistryConfigured(): boolean {
@@ -79,11 +89,17 @@ export function useMemberListings(): UseSellerListingsResult {
     // The AssemblyRegistry read the profile bindings are cross-checked
     // against. `null` = the registry is still being read — that is LOADING,
     // not absence: the unchecked member list is never rendered (NO FALLBACKS).
-    const { data: publishedAssemblies } = usePublishedAssemblies(undefined);
+    // A FAILED assembly read resolves to `data: []`: checked against it, every
+    // binding would be rejected and the page would say nothing is registered.
+    const { data: publishedAssemblies, failed: assembliesFailed, error: assembliesError } = usePublishedAssemblies(undefined);
 
     useEffect(() => {
         if (!client || !isRegistryConfigured()) {
             setState(EMPTY_RESULT);
+            return;
+        }
+        if (assembliesFailed) {
+            setState({ listings: [], isLoading: false, failed: true, error: assembliesError ?? null });
             return;
         }
         if (publishedAssemblies === null) {
@@ -101,17 +117,20 @@ export function useMemberListings(): UseSellerListingsResult {
                 setState({
                     listings: fromRegistry,
                     isLoading: false,
+                    failed: false,
+                    error: null,
                 });
             })
-            .catch(() => {
+            .catch((err) => {
                 if (canceled) return;
-                setState(EMPTY_RESULT);
+                console.warn("[useMemberListings] registry read failed:", err);
+                setState({ listings: [], isLoading: false, failed: true, error: rpcErrorText(err, { maxLength: 300 }) });
             });
 
         return () => {
             canceled = true;
         };
-    }, [client, chainId, publishedAssemblies]);
+    }, [client, chainId, publishedAssemblies, assembliesFailed, assembliesError]);
 
     return state;
 }
