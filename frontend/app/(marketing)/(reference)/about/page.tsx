@@ -5,7 +5,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = withOg({
-    title: "Who is behind Figaro — Figaro Protocol",
+    title: "Who is behind Figaro — Figaro",
     description:
         "Figaro is a pseudonym, the way the creator of Bitcoin used one. What stands behind the protocol is what anyone can verify — the code, the proofs, the chain — and the objective: permissionless, decentralized trade on a blockchain.",
 });

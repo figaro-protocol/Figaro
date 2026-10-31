@@ -8,7 +8,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "From Firms to Transaction-Scoped Institutions — Figaro Protocol",
+    title: "From Firms to Transaction-Scoped Institutions — Figaro",
     description:
         "When a bond posted before the trade makes keeping its word each stranger's best reply while the others keep theirs, for the network's gas and the bond's time value, the institution that a trade needs exists for the time of that trade: a transaction-scoped institution. Its terms are the clauses the parties signed, its evidence whatever is attested between commit and resolve, its books the data it leaves, and its close the buyer's resolution; the bonds make its promises good. The assets behind the wallets keep what the firm pooled for them; what remains of the firm is a legal wrapper, and its last chores are done by composition. The paper calls the whole of this the Coasean collapse.",
 });

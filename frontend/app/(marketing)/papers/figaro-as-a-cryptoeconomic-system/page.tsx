@@ -5,7 +5,7 @@ import { Math } from "@/components/papers/Math";
 import { WholeSystemFigure } from "@/components/figures/WholeSystemFigure";
 
 export const metadata: Metadata = withOg({
-    title: "Figaro as a Cryptoeconomic System — Figaro Protocol",
+    title: "Figaro as a Cryptoeconomic System — Figaro",
     description:
         "Trade between strangers bears three costs a credible promise would not impose: attracting buyers, handling disputes, and the intermediary's capture of the trade's data. Read against the field's three definitions of a cryptoeconomic system, Zamfir's, Buterin's, and Voshmgir and Zargham's, every part of Figaro has its place, and every other axis (the mechanism alone, the product, the interface, the firm in either of its business models) returns a closed-world prior. What emerges is a substrate on which economic forms compose.",
 });

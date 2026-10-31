@@ -5,7 +5,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 export const metadata: Metadata = withOg({
-    title: "Security — Figaro Protocol",
+    title: "Security — Figaro",
     description:
         "Testing and code security: the verification stack — Foundry, Halmos, Certora, TLA+, Echidna, Lean 4 — and how to verify any trade yourself.",
 });

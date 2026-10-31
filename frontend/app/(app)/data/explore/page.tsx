@@ -18,7 +18,7 @@ import { DataExplorer } from "@/components/data/DataExplorer";
  * The nav label derives from this title.
  */
 export const metadata: Metadata = withOg({
-    title: "Data explorer — Figaro Protocol",
+    title: "Data explorer — Figaro",
     description:
         "Query the public graphs the protocol emits — market shape per assembly, one overlay per attestable clause family in use, value flow per denomination, and any wallet's public trading record. Each layer carries its own truth boundary; projected in your browser from the network's own event record.",
 });

@@ -8,7 +8,7 @@ import {
 } from "@/components/papers/PaperLayout";
 
 export const metadata: Metadata = withOg({
-    title: "The Wallet as Legal Subject — Figaro Protocol",
+    title: "The Wallet as Legal Subject — Figaro",
     description:
         "Labor law classifies workers along one axis, subordination. Under bonded commitments between wallets no party holds a power to direct another's work, so the classification tests find no directive relation to classify. Through a wallet whose operator holds its own key, an asset is at once res and persona.",
 });

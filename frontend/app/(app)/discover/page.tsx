@@ -4,7 +4,7 @@ import Link from "@/components/shared/Link";
 import { MemberDiscovery } from "./_components/MemberDiscovery";
 
 export const metadata: Metadata = withOg({
-    title: "Discover members — Figaro Protocol",
+    title: "Discover members — Figaro",
     description:
         "Browse members — buyers and sellers — across the Figaro ecosystem. Filter by your location, search by name, pick an assembly. Click a member to open their assembly's runtime and start a bonded commitment.",
 });

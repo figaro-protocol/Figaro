@@ -6,7 +6,7 @@ import { RegisteredClausesReclaim } from "./_components/RegisteredClausesReclaim
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
 export const metadata: Metadata = withOg({
-    title: "Register a clause — Figaro Protocol",
+    title: "Register a clause — Figaro",
     description:
         "Paste a clause spec, validate it against the off-chain well-formedness check, then anchor it on the ClauseRegistry. Reclaim the registration stake of clauses you registered.",
 });

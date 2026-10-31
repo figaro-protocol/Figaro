@@ -10,7 +10,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "The Disclosure Asymmetry — Figaro Protocol",
+    title: "The Disclosure Asymmetry — Figaro",
     description:
         "Mechanism design and the engineering of consent are one instrument, and the participant's accuracy about the mechanism sets the sign of its effect. Consent-engineering reaches its outcome only while the ruled cannot model the rules; a cryptoeconomic mechanism with public, binding rules reaches its equilibrium as the ruled come to model the rules, and in full when they model them exactly. Disclosure moves the variable; commitment and neutral objectives hold the sign. A reply to Viljoen, Goldenfein, and McGuigan.",
 });

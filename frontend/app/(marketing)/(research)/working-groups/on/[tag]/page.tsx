@@ -17,7 +17,7 @@ export function generateMetadata({ params }: { params: { tag: string } }): Metad
     const entry = tagEntry(KIND, tag);
     const label = entry?.label ?? tag;
     return withOg({
-        title: `${label} — Working Groups — Figaro Protocol`,
+        title: `${label} — Working Groups — Figaro`,
         description: `The papers that treat ${label}: each with its summary, keywords, and discipline.`,
     });
 }

@@ -11,7 +11,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "Bookkeeping as Protocol Byproduct — Figaro Protocol",
+    title: "Bookkeeping as Protocol Byproduct — Figaro",
     description:
         "A bonded process is a self-closing ledger period: an accounting entity with identically zero equity, whose commitments are its journal entries and whose buyer's single atomic resolution is its closing entry, zeroing every account it opened. Bookkeeping becomes protocol byproduct; interpretive accounting and the audit of the data against the world continue.",
 });

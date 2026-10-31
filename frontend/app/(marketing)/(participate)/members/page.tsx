@@ -7,7 +7,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 
 export const metadata: Metadata = withOg({
-    title: "Join — Figaro Protocol",
+    title: "Join — Figaro",
     description:
         "Membership: one wallet, one published profile — what you sell, and what you offer from the data of the trades you buy through. People and software agents register the same way.",
 });

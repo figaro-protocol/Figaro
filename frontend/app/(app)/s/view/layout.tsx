@@ -6,7 +6,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 // layout: the one static-export-compatible home for a client page's own og
 // card.
 export const metadata: Metadata = withOg({
-    title: "Member catalog — Figaro Protocol",
+    title: "Member catalog — Figaro",
     description:
         "Browse a member's published catalog and place a bonded order.",
 });

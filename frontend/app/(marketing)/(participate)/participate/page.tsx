@@ -5,7 +5,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
-    title: "Participate — Figaro Protocol",
+    title: "Participate — Figaro",
     description:
         "Buy or sell goods, work or data with anyone, anywhere, yourself or through an agent: Figaro is decentralized and permissionless, so any wallet may trade.",
 });

@@ -4,7 +4,7 @@ import { PaperLayout, PaperSection, PaperRun, PaperRemark } from "@/components/p
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "The Graph Layer — Figaro Protocol",
+    title: "The Graph Layer — Figaro",
     description:
         "Above a mechanism that fixes only the bonds and the buyer's resolution, who a party is to a trade, which market it stands in, which community it belongs to and which law the parties chose are derived from signed data, stored by no party, and read under the open-world assumption.",
 });

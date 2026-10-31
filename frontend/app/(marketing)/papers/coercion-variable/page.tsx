@@ -4,7 +4,7 @@ import { PaperLayout, PaperSection, PaperRun, PaperRemark } from "@/components/p
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "The Coercion Variable — Figaro Protocol",
+    title: "The Coercion Variable — Figaro",
     description:
         "Bonds the parties lock at consent make priceable, bilateral, voluntary promises good before the trade, and the only decision left after consent is the buyer's resolution, made against its own locked bond. Coercion thereby becomes a variable, and between parties beyond each other's coercive reach the mechanism exercises neither of its components. Performance is each party's best reply to the others' plans, and a withheld bond stays locked and reaches no one. Remoteness is assumed because, within reach, coercion can replace the bond.",
 });

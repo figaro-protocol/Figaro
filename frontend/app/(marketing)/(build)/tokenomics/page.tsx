@@ -20,7 +20,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 // home page keeps: the florin is a pure Schelling point, not
 // one more community token, and merging them collapses that.
 export const metadata: Metadata = withOg({
-    title: "Tokenomics — Figaro Protocol",
+    title: "Tokenomics — Figaro",
     description:
         "The florin: a unit two strangers can converge on when they share no other. One billion, minted once, closed by a one-way latch. 600 million is reserved for designers, drawn in fixed period budgets in proportion to how much processes use their clauses and assemblies. The rest is held openly: 300 million the DAO treasury, 70 million the founder, 30 million supporters. The page also places the florin among the units a trade can be denominated in.",
 });

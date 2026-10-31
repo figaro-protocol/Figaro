@@ -19,7 +19,7 @@ import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 // The page is not split — no /clauses/authoring route exists. Public/private
 // data disposition belongs to /data, not here.
 export const metadata: Metadata = withOg({
-    title: "Clauses — Figaro Protocol",
+    title: "Clauses — Figaro",
     description:
         "A clause is what it is in a paper contract — one reusable term of an agreement — made verifiable: its spec public and hash-anchored on-chain. The requirements for writing one, the live registry count, and the designer rewards for clauses that get used.",
 });

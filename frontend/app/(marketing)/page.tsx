@@ -7,7 +7,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 import { WholeStripFrame } from "@/components/figures/WholeStripFigure";
 
 export const metadata: Metadata = withOg({
-    title: "Figaro Protocol",
+    title: "Figaro",
     description:
         "Every network collects rent from the people who depend on it. Figaro is a decentralized, permissionless protocol: nobody owns it, so nobody collects rent. One buyer and one or more sellers each lock a bond in any ERC-20 token, only the buyer closes the trade, and everyone is paid at once.",
 });

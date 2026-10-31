@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { AssetWalletOperatorFigure } from "@/components/figures/AssetWalletOperatorFigure";
 
 export const metadata: Metadata = withOg({
-    title: "How agents work — Figaro Protocol",
+    title: "How agents work — Figaro",
     description:
         "Participating agents — buyer, seller, or auditor wallets driven by software — use the same Core primitives as human-driven wallets: EIP-712 signatures, bonded commitments, atomic resolution. The protocol is actor-neutral. Agentic commerce is native, not an add-on mode: the protocol never asks whether a signer is human. An agent reads the public graphs directly, and what stands behind it is the bond it posted and the resolved trades behind it.",
 });

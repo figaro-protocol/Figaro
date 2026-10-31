@@ -12,7 +12,7 @@ import { RegistryExplorer } from "@/components/registries/RegistryExplorer";
 // The nav label derives from this title ("Registries"); the h1 is the
 // page name ("Registry explorer").
 export const metadata: Metadata = withOg({
-    title: "Registries — Figaro Protocol",
+    title: "Registries — Figaro",
     description:
         "Search what is registered on the network: every clause, assembly, and member, read live from the three registries' event streams and IPFS — faceted by article, registeredBy, composed clause, and live stake. Nothing bundled, nothing ranked.",
 });

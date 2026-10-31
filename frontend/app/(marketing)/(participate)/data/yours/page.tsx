@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { MerkleForestFigure } from "@/components/figures/MerkleForestFigure";
 
 export const metadata: Metadata = withOg({
-    title: "Your data — Figaro Protocol",
+    title: "Your data — Figaro",
     description:
         "Opening your own books to a buyer is an ordinary bonded sale, on your terms. What arrives carries proof of where it came from. The protocol never holds your private trade data, only a fingerprint.",
 });

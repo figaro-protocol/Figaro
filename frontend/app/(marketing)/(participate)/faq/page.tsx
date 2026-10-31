@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { AssemblyFaqs } from "@/components/assemblies/AssemblyFaqs";
 
 export const metadata: Metadata = withOg({
-    title: "FAQ — Figaro Protocol",
+    title: "FAQ — Figaro",
     description:
         "A pre-trade checklist for traders and workers, and the practical answers — what you need in hand, how and when you are paid, where orders come from, whether it works on a phone. The deeper protocol questions are answered on the Core FAQ.",
 });

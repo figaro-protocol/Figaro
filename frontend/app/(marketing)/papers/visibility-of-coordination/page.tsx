@@ -10,7 +10,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "The Visibility of Coordination — Figaro Protocol",
+    title: "The Visibility of Coordination — Figaro",
     description:
         "A Gramscian reading: “two strangers need a platform to transact safely” is a hegemonic proposition, not a structural necessity. The mechanism makes the coordination function visible as a separable design choice.",
 });

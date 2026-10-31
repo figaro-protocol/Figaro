@@ -6,7 +6,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 // layout: the one static-export-compatible home for a client page's own og
 // card.
 export const metadata: Metadata = withOg({
-    title: "Order status — Figaro Protocol",
+    title: "Order status — Figaro",
     description:
         "Live status of one bonded process: the lifecycle timeline read from chain and IPFS.",
 });

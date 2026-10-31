@@ -12,7 +12,7 @@ const TAXONOMY_URL =
     "https://research.wu.ac.at/en/publications/foundations-of-cryptoeconomic-systems-6/";
 
 export const metadata: Metadata = withOg({
-    title: "Working Groups — Figaro Protocol",
+    title: "Working Groups — Figaro",
     description:
         "Before you build on a protocol you check its arguments. The papers that carry them — the equilibrium proof, the mechanisms by which an offer forms, the scope of what is formally verified, the legal and political readings — sorted into the eight disciplines of cryptoeconomics. The eight groups, their papers, and how to contribute.",
 });

@@ -4,7 +4,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import { ProcessAuditClient } from "./ProcessAuditClient";
 
 export const metadata: Metadata = withOg({
-    title: "Process audit — Figaro Protocol",
+    title: "Process audit — Figaro",
     description: "Consolidated process-level audit: financial statements, the audit-bundle PDF, hash verification, and dispute escalation for one bonded process.",
 });
 

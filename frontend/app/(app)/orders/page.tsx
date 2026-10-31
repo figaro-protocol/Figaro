@@ -3,7 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import { OrdersList } from "./_components/OrdersList";
 
 export const metadata: Metadata = withOg({
-    title: "Your orders — Figaro Protocol",
+    title: "Your orders — Figaro",
     description: "Every order the connected wallet is on — buyer or seller — and anything awaiting its action.",
 });
 

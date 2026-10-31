@@ -43,7 +43,7 @@ export const viewport: Viewport = {
 // stable placeholder instead of a localhost default.
 export const metadata: Metadata = {
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://figaro.example"),
-    title: "Figaro Protocol — The Figaro Ecosystem",
+    title: "Figaro — The Figaro Ecosystem",
     description: "Every trade runs as a value-added process that enforces itself: each party locks a bond worth more than cheating could gain, the data it leaves is public in aggregate and the parties' own in detail, and the profit stays with the hands that made it.",
     robots: {
         index: false,
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     openGraph: {
         title: "The Figaro Ecosystem",
         description: "Every trade runs as a value-added process that enforces itself: each party locks a bond worth more than cheating could gain, the data it leaves is public in aggregate and the parties' own in detail, and the profit stays with the hands that made it.",
-        siteName: "Figaro Protocol",
+        siteName: "Figaro",
         type: "website",
     },
     twitter: {

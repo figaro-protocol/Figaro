@@ -3,7 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import { OnboardingEndpointsForm } from "@/components/members/OnboardingEndpointsForm";
 
 export const metadata: Metadata = withOg({
-    title: "Edit endpoints — Figaro Protocol",
+    title: "Edit endpoints — Figaro",
     description: "The member's own infrastructure: IPFS node, gateway, chain RPC, verifier relay. Device configuration — stored in this browser, never pinned, never published.",
 });
 

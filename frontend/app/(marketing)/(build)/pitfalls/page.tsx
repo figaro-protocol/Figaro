@@ -5,7 +5,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
 export const metadata: Metadata = withOg({
-    title: "Sharp edges — Figaro Protocol",
+    title: "Sharp edges — Figaro",
     description:
         "The canonical footguns page: twelve documented traps, organized by when each one bites — writing a clause spec, building a commit, resolving and recording, or reading resolved state — each with its mechanic and where its canonical explanation lives.",
 });

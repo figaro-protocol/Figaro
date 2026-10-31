@@ -10,7 +10,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "Self-Authenticating Data Sales — Figaro Protocol",
+    title: "Self-Authenticating Data Sales — Figaro",
     description:
         "A buyer cannot value information without seeing it, and having seen it has no reason to pay: Arrow's information paradox. Under a bonded commitment the buyer resolves after delivery because resolving refunds its own bond, so the value it has extracted cancels; provenance verifies by recomputation against an agreement's merkle root and against the content hashes a process's parties attested; and the doubled seller bond leaves a seller that ships less than its license describes out of pocket, while the buyer withholds resolution, even after it is credited with what it keeps.",
 });

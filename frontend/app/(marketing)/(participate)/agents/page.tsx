@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
-    title: "Agents — Figaro Protocol",
+    title: "Agents — Figaro",
     description:
         "A wallet is a wallet. The Core checks a signature, not who made it, so software that signs trades, publishes, and resolves exactly as a person does: the same bond, the same registries, the same resolution. An agent here is a participant, not a feature.",
 });

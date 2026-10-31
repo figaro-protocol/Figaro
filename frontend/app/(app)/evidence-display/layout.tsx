@@ -6,7 +6,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 // this pass-through layout: the one static-export-compatible home for a
 // client page's own og card.
 export const metadata: Metadata = withOg({
-    title: "Process evidence — Figaro Protocol",
+    title: "Process evidence — Figaro",
     description:
         "A forum-agnostic reader of a Figaro process's on-chain evidence timeline — embeddable by any arbitration forum, standalone by URL.",
 });

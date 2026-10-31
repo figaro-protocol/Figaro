@@ -9,7 +9,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "The Subordination Variable — Figaro Protocol",
+    title: "The Subordination Variable — Figaro",
     description:
         "The cooperative-Marxian and classical-liberal traditions both hinge on subordination and on the rent intermediaries take. A bonded commitment sets both to zero in the layer exchange runs on, so one artifact admits both traditions' readings, and their partition relocates to the graph composed above it.",
 });

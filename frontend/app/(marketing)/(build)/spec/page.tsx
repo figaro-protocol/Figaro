@@ -9,7 +9,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 // every named revert) lives once in the builder documentation at
 // /docs/protocol/contracts. Point to it, never fork it.
 export const metadata: Metadata = withOg({
-    title: "Specifications — Figaro Protocol",
+    title: "Specifications — Figaro",
     description:
         "The canonical protocol surface — every contract, its install, the per-chain deployments, and every named revert — in the builder documentation.",
 });

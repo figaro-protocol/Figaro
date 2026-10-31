@@ -7,7 +7,7 @@ import { ClausesList } from "./_components/ClausesList";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 
 export const metadata: Metadata = withOg({
-    title: "Designer — Figaro Protocol",
+    title: "Designer — Figaro",
     description: "Compose a Figaro assembly on the composition canvas. Drafts persist locally; publish to the on-chain AssemblyRegistry when ready.",
 });
 
