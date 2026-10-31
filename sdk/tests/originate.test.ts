@@ -12,6 +12,8 @@ import {
     gateSeller,
     counterSignOffer,
     offerToExecutionInputs,
+    checkDeadlineCap,
+    DEFAULT_MAX_DEADLINE_SECONDS,
     type OfferPolicy,
 } from "../src/agent/originate.js";
 import { InProcessChannel } from "../src/agent/coordination.js";
@@ -34,6 +36,9 @@ const SELLER = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae8
 const CURRENCY = "0xcccccccccccccccccccccccccccccccccccccccc" as Address;
 const CORE = "0x000000000000000000000000000000000000c0de" as Address;
 const CHAIN = 31337;
+/** The chain's now the seller legs bound the deadline from: the offers'
+ *  deadline (1_900_000_000) is one hour past it. */
+const CHAIN_NOW = 1_900_000_000n - 3600n;
 
 // signTypedData on a local account is offline — no RPC call — so a dummy transport is fine.
 const buyerW = createWalletClient({ account: BUYER, transport: http("http://localhost:0") });
@@ -89,7 +94,7 @@ describe("origination handshake (real signatures, no chain)", () => {
 
     it("seller counter-signs a clean offer WHEN accept AND policy pass; yields both execution inputs", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true, policy, SPECS, assembly, BOUND);
+        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, policy, SPECS, assembly, BOUND);
         expect(signed).not.toBeNull();
         const inputs = offerToExecutionInputs(signed!);
         expect(inputs.buyerSig).toBeDefined();
@@ -99,26 +104,26 @@ describe("origination handshake (real signatures, no chain)", () => {
 
     it("REFUSE-ALL FLOOR: a clean offer with NO accept rule is declined (null), not signed", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, undefined, policy, SPECS, assembly, BOUND);
+        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, undefined, policy, SPECS, assembly, BOUND);
         expect(signed).toBeNull();
     });
 
     it("ECONOMIC FLOOR safe default: a clean offer with NO policy is declined (null), even when accept says yes", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true, undefined, SPECS, assembly, BOUND);
+        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, undefined, SPECS, assembly, BOUND);
         expect(signed).toBeNull();
     });
 
     it("ECONOMIC FLOOR: an offer whose currency is outside the policy declines (null), not a throw", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
         const otherOnly: OfferPolicy = { ...policy, currencyAllowlist: ["0xdddddddddddddddddddddddddddddddddddddddd" as Address] };
-        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true, otherOnly, SPECS, assembly, BOUND);
+        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, otherOnly, SPECS, assembly, BOUND);
         expect(signed).toBeNull();
     });
 
     it("accept decline returns null (not a throw) on a clean offer", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => false, policy, SPECS, assembly, BOUND);
+        const signed = await counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => false, policy, SPECS, assembly, BOUND);
         expect(signed).toBeNull();
     });
 });
@@ -173,7 +178,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
         // Tamper: change the agreement so it no longer hashes to the committed checkoutHash.
         offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!.data.payment = "1";
         expect((await validateOffer(offer, SELLER.address, undefined, undefined, null, BOUND)).ok).toBe(false);
-        await expect(counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, undefined, undefined, SPECS, assembly, BOUND)).rejects.toThrow(/agreement does not hash/i);
+        await expect(counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, undefined, undefined, SPECS, assembly, BOUND)).rejects.toThrow(/agreement does not hash/i);
     });
 
     it("rejects an offer that names a different seller", async () => {
@@ -186,7 +191,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
         // Forge: same commitment, a signature from the wrong key.
         const bogus = await buildBuyerOffer(sellerW, { ...offerParams(), seller: SELLER.address });
         offer.buyerSig = bogus.buyerSig; // signature over a DIFFERENT commitment
-        await expect(counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, undefined, undefined, SPECS, assembly, BOUND)).rejects.toThrow(/does not recover/i);
+        await expect(counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, undefined, undefined, SPECS, assembly, BOUND)).rejects.toThrow(/does not recover/i);
     });
 
     // THE MERKLE-LEAF SEAM (docs/CLAUSES.md § "Every clause is a merkle
@@ -214,13 +219,13 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
         // is invisible to it; no signing path runs without specs.
         expect((await validateOffer(offer, SELLER.address, undefined, undefined, null, BOUND)).ok).toBe(true);
         await expect(
-            counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true, policy, undefined, null, BOUND),
+            counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, policy, undefined, null, BOUND),
         ).rejects.toThrow(/refusing to sign without the clause specs/);
 
         // With specs, it's caught and refused — before any signature.
         expect((await validateOffer(offer, SELLER.address, undefined, SPECS, null, BOUND)).ok).toBe(false);
         await expect(
-            counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, () => true, policy, SPECS, assembly, BOUND),
+            counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, policy, SPECS, assembly, BOUND),
         ).rejects.toThrow(/denomination/i);
     });
 
@@ -269,7 +274,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
 describe("InProcessChannel", () => {
     it("routes an offer to the registered seller handler; unregistered → null", async () => {
         const channel = new InProcessChannel();
-        channel.register(SELLER.address, (o) => counterSignOffer(sellerW, o, { chainId: CHAIN, core: CORE }, () => true, policy, SPECS, assembly, BOUND));
+        channel.register(SELLER.address, (o) => counterSignOffer(sellerW, o, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, policy, SPECS, assembly, BOUND));
         const offer = await buildBuyerOffer(buyerW, offerParams());
         const signed = await channel.sendOffer(SELLER.address, offer);
         expect(signed?.sellerSig).toBeDefined();
@@ -387,7 +392,7 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
         const clean = await buildBuyerOffer(buyerW, params({}));
         expect((await validateOffer(clean, SELLER.address, undefined, DESIGN_SPECS, designed, profileBinding(designed))).ok).toBe(true);
         expect((await validateOffer(clean, SELLER.address, undefined, DESIGN_SPECS, null, profileBinding(designed))).reason).toMatch(/was not read/);
-        await expect(counterSignOffer(sellerW, forged, { chainId: CHAIN, core: CORE }, () => true, policy, DESIGN_SPECS, designed, profileBinding(designed)))
+        await expect(counterSignOffer(sellerW, forged, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, policy, DESIGN_SPECS, designed, profileBinding(designed)))
             .rejects.toThrow(/designer/);
     });
 
@@ -402,7 +407,7 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
         const assemblyHash = assemblyHashOf(designed.assembly);
         const named = new RegExp(`figaro-consent clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(assemblyHash)} \\(${assemblyHash}\\) composes`);
         expect((await validateOffer(short, SELLER.address, undefined, DESIGN_SPECS, designed, profileBinding(designed))).reason).toMatch(named);
-        await expect(counterSignOffer(sellerW, short, { chainId: CHAIN, core: CORE }, () => true, policy, DESIGN_SPECS, designed, profileBinding(designed)))
+        await expect(counterSignOffer(sellerW, short, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, policy, DESIGN_SPECS, designed, profileBinding(designed)))
             .rejects.toThrow(named);
     });
 
@@ -425,10 +430,11 @@ describe("the seller's bound assemblies — the offer leg refuses an order under
         agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-topology")]: { follows: [] } } }],
     });
     const offeredHash = assemblyHashOf(assembly.assembly);
-    const CTX = { chainId: CHAIN, core: CORE };
-    // The handler reads only the chain id from its public client here: the
-    // bond approval is switched off, so nothing else touches the chain.
-    const pub = { getChainId: async () => CHAIN } as unknown as PublicClient;
+    const CTX = { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW };
+    // The handler reads only the chain id and the chain's clock from its
+    // public client here: the bond approval is switched off, so nothing else
+    // touches the chain.
+    const pub = { getChainId: async () => CHAIN, getBlock: async () => ({ timestamp: CHAIN_NOW }) } as unknown as PublicClient;
     const addresses = { core: CORE } as Parameters<typeof makeSellerOfferHandler>[2];
 
     it("validateOffer passes an offer under a bound assembly and refuses one under an assembly the seller has not bound, by slug and full hash", async () => {
@@ -513,7 +519,7 @@ describe("checkPayloadTerms — the one term check the offer leg and the race dr
 describe("signCommitmentAs — the one signature over a commitment the seller legs share", () => {
     it("signs the commitment under the wallet's account, and refuses a wallet with no account", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        const ctx = { chainId: CHAIN, core: CORE };
+        const ctx = { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW };
         const sig = await signCommitmentAs(sellerW, ctx, offer.commitment, "test");
         const direct = await sellerW.signTypedData({
             account: SELLER, domain: buildDomain(CHAIN, CORE), types: COMMITMENT_TYPES, primaryType: "Commitment", message: offer.commitment,
@@ -527,7 +533,7 @@ describe("signCommitmentAs — the one signature over a commitment the seller le
 describe("countersignUnderFloors — the two opt-in floors, then the seller's signature, shared by the seller legs", () => {
     it("declines with no policy, outside the policy, with no accept, or when accept says no; signs only when all three agree", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        const ctx = { chainId: CHAIN, core: CORE };
+        const ctx = { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW };
         const yes = () => true;
         const go = (pol: OfferPolicy | undefined, accept: ((p: CommitmentPayload) => boolean) | undefined) =>
             countersignUnderFloors(sellerW, offer, ctx, pol, accept, "test");
@@ -544,7 +550,7 @@ describe("countersignUnderFloors — the two opt-in floors, then the seller's si
 describe("checkSellerSignature — recovery of a seller signature to the named seller", () => {
     it("passes the seller's own signature and refuses another wallet's", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        const ctx = { chainId: CHAIN, core: CORE };
+        const ctx = { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW };
         const sig = await signCommitmentAs(sellerW, ctx, offer.commitment, "test");
         expect(await checkSellerSignature(offer.commitment, sig, SELLER.address, ctx)).toEqual({ ok: true });
         const wrong = await checkSellerSignature(offer.commitment, sig, BUYER.address, ctx);
@@ -559,5 +565,52 @@ describe("gateSeller — the head the seller legs share: the wallet's account, t
             .rejects.toThrow("who: refusing the thing — why");
         const noAccount = createWalletClient({ transport: http("http://localhost:0") });
         await expect(gateSeller(noAccount, "who", "the thing", async () => ({ ok: true }))).rejects.toThrow("who: wallet has no account");
+    });
+});
+
+describe("the seller's deadline cap — the latest deadline it will counter-sign, one field of its offer policy", () => {
+    // The offers above carry deadline 1_900_000_000n.
+    const DEADLINE = 1_900_000_000n;
+    const addresses = { core: CORE } as Parameters<typeof makeSellerOfferHandler>[2];
+    const pubAt = (timestamp: bigint) => ({
+        getChainId: async () => CHAIN,
+        getBlock: async () => ({ timestamp }),
+    }) as unknown as PublicClient;
+
+    it("checkDeadlineCap passes a deadline at most maxDeadlineSeconds past the chain's now, and refuses one past it", () => {
+        const c = { deadline: DEADLINE } as Parameters<typeof checkDeadlineCap>[0];
+        const capped: OfferPolicy = { ...policy, maxDeadlineSeconds: 600n };
+        expect(checkDeadlineCap(c, capped, DEADLINE - 600n)).toEqual({ ok: true });
+        const over = checkDeadlineCap(c, capped, DEADLINE - 601n);
+        expect(over.ok).toBe(false);
+        expect(over.reason).toMatch(/deadline .* exceeds the policy's 600-second cap/);
+    });
+
+    it("an omitted cap applies DEFAULT_MAX_DEADLINE_SECONDS, which clears the buyer's default one-hour deadline", () => {
+        const c = { deadline: DEADLINE } as Parameters<typeof checkDeadlineCap>[0];
+        expect(DEFAULT_MAX_DEADLINE_SECONDS).toBeGreaterThanOrEqual(3600n);
+        expect(checkDeadlineCap(c, policy, DEADLINE - DEFAULT_MAX_DEADLINE_SECONDS).ok).toBe(true);
+        expect(checkDeadlineCap(c, policy, DEADLINE - DEFAULT_MAX_DEADLINE_SECONDS - 1n).ok).toBe(false);
+    });
+
+    it("refuses when no chain time is given: the deadline has nothing to be bounded against", () => {
+        const c = { deadline: DEADLINE } as Parameters<typeof checkDeadlineCap>[0];
+        expect(checkDeadlineCap(c, policy, undefined).reason).toMatch(/no chain time/);
+    });
+
+    it("counterSignOffer declines (null) a deadline past the cap, signs one within it, and declines with no chainNow", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const capped: OfferPolicy = { ...policy, maxDeadlineSeconds: 600n };
+        const at = (chainNow?: bigint) => counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow }, () => true, capped, SPECS, assembly, BOUND);
+        expect(await at(DEADLINE - 601n)).toBeNull();
+        expect((await at(DEADLINE - 600n))?.sellerSig).toBeDefined();
+        expect(await at(undefined)).toBeNull();
+    });
+
+    it("makeSellerOfferHandler bounds the deadline by the chain's own clock, read at each offer", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const opts = { accept: () => true, policy: { ...policy, maxDeadlineSeconds: 600n }, approveBond: false, specs: SPECS, readDesign: async () => assembly, readProfile: BOUND };
+        expect(await makeSellerOfferHandler(sellerW, pubAt(DEADLINE - 601n), addresses, opts)(offer)).toBeNull();
+        expect((await makeSellerOfferHandler(sellerW, pubAt(DEADLINE - 600n), addresses, opts)(offer))?.sellerSig).toBeDefined();
     });
 });

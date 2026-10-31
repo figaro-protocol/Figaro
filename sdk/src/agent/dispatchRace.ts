@@ -31,11 +31,11 @@
  */
 
 import type { WalletClient } from "viem";
-import { buildCommitment, buildDomain, hashCommitmentStruct, ZERO_PROCESS_ID } from "../commitments.js";
+import { buildCommitment, buildDomain, hashCommitmentStruct, readChainTimestamp, ZERO_PROCESS_ID } from "../commitments.js";
 import { computeCheckoutHash, type Agreement, type AgreementProvenance } from "../agreement.js";
 import type { Hex, Address } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, PricedField, QuoteRequestTerms } from "./coordination.js";
-import { checkOfferPolicy, checkPayloadTerms, checkSellerSignature, countersignUnderFloors, gateSeller, instantiateRootAgreement, readOfferDesign, requireSpecs, signCommitmentAs, verifyRaceReply, type OfferCheck, type OfferPolicy } from "./originate.js";
+import { checkDeadlineCap, checkOfferPolicy, checkPayloadTerms, checkSellerSignature, countersignUnderFloors, gateSeller, instantiateRootAgreement, readOfferDesign, requireSpecs, signCommitmentAs, verifyRaceReply, type OfferCheck, type OfferPolicy, type SellerSignCtx } from "./originate.js";
 
 // One owner for the reply check: the offer loops and the race both use it.
 export { verifyRaceReply };
@@ -85,7 +85,9 @@ export async function validateDraft(
  * opt-IN floors — autonomy is never the default:
  *   - ECONOMIC FLOOR: countersigning exposes the candidate to being committed
  *     at the draft's `payment`/`expectedCumulativeValue` in its `currency`
- *     until `deadline`, so with NO `policy` the draft is declined.
+ *     until `deadline`, so with NO `policy` the draft is declined, and a
+ *     deadline past the policy's cap from `ctx.chainNow` (absent → every
+ *     draft) is declined (`checkDeadlineCap`).
  *   - REFUSE-ALL FLOOR: a clean draft countersigns ONLY when an explicit
  *     `accept` returns true.
  * A malformed/tampered draft, or one under an assembly the candidate has not
@@ -101,7 +103,7 @@ export async function validateDraft(
 export async function counterSignDraft(
     wallet: WalletClient,
     draft: CommitmentPayload,
-    ctx: { chainId: number; core: Address },
+    ctx: SellerSignCtx,
     accept?: (draft: CommitmentPayload) => boolean,
     policy?: OfferPolicy,
     specs?: SpecSource,
@@ -260,7 +262,9 @@ export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPa
  * or declines. Mirrors `counterSignDraft`'s opt-IN floors, with a PRICING
  * callback in place of the boolean accept:
  *   - ECONOMIC FLOOR: `policy` bounds the CEILING (the candidate's worst-case
- *     exposure — any valid quote is below it). No policy → decline.
+ *     exposure — any valid quote is below it) and the deadline
+ *     (`checkDeadlineCap`, from `ctx.chainNow`; absent → decline). No policy
+ *     → decline.
  *   - PRICING FLOOR: `quote` is the operator's pricing function — `null`
  *     declines; a figure above the ceiling or below the payment floor (≥ 1)
  *     declines. No pricing function → decline. Autonomy is never the default.
@@ -277,7 +281,7 @@ export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPa
 export async function quoteDraft(
     wallet: WalletClient,
     draft: CommitmentPayload,
-    ctx: { chainId: number; core: Address },
+    ctx: SellerSignCtx,
     quote?: (draft: CommitmentPayload) => bigint | null,
     policy?: OfferPolicy,
     specs?: SpecSource,
@@ -294,6 +298,7 @@ export async function quoteDraft(
     if (!policy) return null;
     const economic = checkOfferPolicy(draft.commitment, policy);
     if (!economic.ok) return null;
+    if (!checkDeadlineCap(draft.commitment, policy, ctx.chainNow).ok) return null;
 
     if (!quote) return null;
     const q = quote(draft);
@@ -500,6 +505,16 @@ export async function requestCounterSignatures(
     return startRace(() => channel, drafts, ctx).done;
 }
 
+/** The one read a mounted handler needs of the chain: its latest block's
+ *  timestamp (`readChainTimestamp`). A viem `PublicClient` fits. */
+export type ChainClock = Parameters<typeof readChainTimestamp>[0];
+
+/** The signing context with the chain's now read through `chainClient` at
+ *  this payload, the now the policy's deadline cap is measured from. */
+async function withChainNow(ctx: SellerSignCtx, chainClient: ChainClock): Promise<SellerSignCtx> {
+    return { ...ctx, chainNow: await readChainTimestamp(chainClient) };
+}
+
 /**
  * A mountable candidate-side responder for the RACE leg — wraps
  * `counterSignDraft` with the two operator floors (economic policy +
@@ -513,7 +528,7 @@ export async function requestCounterSignatures(
  */
 export function makeSellerRaceHandler(
     wallet: WalletClient,
-    ctx: { chainId: number; core: Address },
+    ctx: SellerSignCtx,
     opts: {
         accept: (draft: CommitmentPayload) => boolean;
         policy: OfferPolicy;
@@ -524,9 +539,13 @@ export function makeSellerRaceHandler(
         /** Reads the candidate's OWN member profile at acceptance time — see
          *  `makeSellerOfferHandler`. OMIT it and every draft is refused. */
         readProfile?: MemberProfileReader;
+        /** Reads the chain's clock at each draft, the now the policy's deadline
+         *  cap is measured from — see `withChainNow`. Required: a handler with
+         *  no clock would decline every draft. */
+        chainClient: ChainClock;
     },
 ): (offer: CommitmentPayload) => Promise<CommitmentPayload | null> {
-    return async (offer) => counterSignDraft(wallet, offer, ctx, opts.accept, opts.policy, opts.specs, await readOfferDesign(offer, opts.readDesign), opts.readProfile);
+    return async (offer) => counterSignDraft(wallet, offer, await withChainNow(ctx, opts.chainClient), opts.accept, opts.policy, opts.specs, await readOfferDesign(offer, opts.readDesign), opts.readProfile);
 }
 
 /**
@@ -537,7 +556,7 @@ export function makeSellerRaceHandler(
  */
 export function makeSellerQuoteHandler(
     wallet: WalletClient,
-    ctx: { chainId: number; core: Address },
+    ctx: SellerSignCtx,
     opts: {
         quote: (draft: CommitmentPayload) => bigint | null;
         policy: OfferPolicy;
@@ -548,7 +567,9 @@ export function makeSellerQuoteHandler(
         /** Reads the candidate's OWN member profile at acceptance time — see
          *  `makeSellerOfferHandler`. OMIT it and every quote request is refused. */
         readProfile?: MemberProfileReader;
+        /** Reads the chain's clock at each request, required — see `makeSellerRaceHandler`. */
+        chainClient: ChainClock;
     },
 ): (offer: CommitmentPayload) => Promise<CommitmentPayload | null> {
-    return async (offer) => quoteDraft(wallet, offer, ctx, opts.quote, opts.policy, opts.specs, await readOfferDesign(offer, opts.readDesign), opts.readProfile);
+    return async (offer) => quoteDraft(wallet, offer, await withChainNow(ctx, opts.chainClient), opts.quote, opts.policy, opts.specs, await readOfferDesign(offer, opts.readDesign), opts.readProfile);
 }

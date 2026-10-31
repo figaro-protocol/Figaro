@@ -44,7 +44,7 @@ async function buildOffer(): Promise<CommitmentPayload> {
  *  Supplies both floors — an accept rule AND an economic policy (root offer, the
  *  test currency, a cap above the payment). */
 const sellerHandler: OfferHandler = (offer) => counterSignOffer(
-    sellerW, offer, { chainId: CHAIN_ID, core: CORE }, () => true,
+    sellerW, offer, { chainId: CHAIN_ID, core: CORE, chainNow: 0n }, () => true,
     { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 10_000n },
     SPECS, assembly, profileBinding(assembly),
 );

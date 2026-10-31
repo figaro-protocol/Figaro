@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { encodeAbiParameters, encodeEventTopics, parseAbiParameters, type Log, type PublicClient } from "viem";
 import { CORE_ABI } from "../src/abis.js";
-import { fetchLogsChunked, DEFAULT_LOG_CHUNK_SIZE, fetchCoreEvents } from "../src/events.js";
+import { fetchLogsChunked, DEFAULT_LOG_CHUNK_SIZE, fetchCoreEvents, PRUNED_HISTORY_ATTEMPTS } from "../src/events.js";
+import { fetchDiscoveryEvents } from "../src/discovery.js";
 import type { Address, FigaroAddresses } from "../src/types.js";
 
 const ADDRESS = "0x000000000000000000000000000000000000c0de" as Address;
@@ -177,5 +178,70 @@ describe("fetchCoreEvents folds both resolution paths", () => {
         expect(client.getLogs).toHaveBeenCalledWith({ address: CORE, fromBlock: 0n, toBlock: 50n });
         expect(events.orderCommitted.map((e) => e.orderHash)).toEqual([id(1), id(4)]);
         expect(events.orderResolved.map((e) => e.orderHash)).toEqual([id(1)]);
+    });
+});
+
+describe("fetchLogsChunked on a pruned-history answer (publicnode's keyless Sepolia, code 4444)", () => {
+    /** viem's wrapping of the node's JSON-RPC error: the code on the error and
+     *  the node's message in `details`. */
+    function prunedError(): Error {
+        return Object.assign(new Error("RPC Request failed."), { code: 4444, details: "pruned history unavailable" });
+    }
+
+    /** Answers `failures` pruned-history errors first, then the logs in range. */
+    function prunedThenServing(allLogs: Log[], failures: number, error: () => unknown = prunedError): PublicClient {
+        let left = failures;
+        const getLogs = vi.fn(async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint }) => {
+            if (left > 0) {
+                left -= 1;
+                throw error();
+            }
+            return allLogs.filter((l) => (l.blockNumber as bigint) >= fromBlock && (l.blockNumber as bigint) <= toBlock);
+        });
+        return { getLogs, getBlockNumber: vi.fn(async () => 25n) } as unknown as PublicClient;
+    }
+    const noDelay = () => 0;
+
+    it("asks the same sub-range again and returns its logs", async () => {
+        const logs = [fakeLog(3n), fakeLog(12n)];
+        const client = prunedThenServing(logs, 2);
+        const result = await fetchLogsChunked(client, { address: ADDRESS, fromBlock: 0n, toBlock: 25n, chunkSize: 10n, retryDelayMs: noDelay });
+        expect(result).toEqual(logs);
+        // Two refusals of the first sub-range, then the three sub-ranges.
+        expect(client.getLogs).toHaveBeenCalledTimes(5);
+        expect(client.getLogs).toHaveBeenNthCalledWith(1, { address: ADDRESS, fromBlock: 0n, toBlock: 9n });
+        expect(client.getLogs).toHaveBeenNthCalledWith(3, { address: ADDRESS, fromBlock: 0n, toBlock: 9n });
+        expect(client.getLogs).toHaveBeenNthCalledWith(4, { address: ADDRESS, fromBlock: 10n, toBlock: 19n });
+    });
+
+    it("recognizes the answer by its text when the code is not on the error", async () => {
+        const client = prunedThenServing([fakeLog(1n)], 1, () => new Error("HTTP request failed. Details: pruned history unavailable"));
+        const result = await fetchLogsChunked(client, { address: ADDRESS, fromBlock: 0n, toBlock: 5n, retryDelayMs: noDelay });
+        expect(result).toHaveLength(1);
+    });
+
+    it("gives up after PRUNED_HISTORY_ATTEMPTS asks of one sub-range and throws the node's last answer", async () => {
+        const client = prunedThenServing([], Number.MAX_SAFE_INTEGER);
+        await expect(fetchLogsChunked(client, { address: ADDRESS, fromBlock: 0n, toBlock: 5n, retryDelayMs: noDelay }))
+            .rejects.toMatchObject({ code: 4444 });
+        expect(client.getLogs).toHaveBeenCalledTimes(PRUNED_HISTORY_ATTEMPTS);
+    });
+
+    it("propagates any other error on the first answer", async () => {
+        const client = prunedThenServing([], 1, () => new Error("execution reverted"));
+        await expect(fetchLogsChunked(client, { address: ADDRESS, fromBlock: 0n, toBlock: 5n, retryDelayMs: noDelay }))
+            .rejects.toThrow(/execution reverted/);
+        expect(client.getLogs).toHaveBeenCalledTimes(1);
+    });
+
+    it("carries the retry into fetchCoreEvents and fetchDiscoveryEvents", async () => {
+        const core = prunedThenServing([], 1);
+        await expect(fetchCoreEvents(core, { core: ADDRESS }, 0n, 25n)).resolves.toMatchObject({ orderCommitted: [] });
+        expect(core.getLogs).toHaveBeenCalledTimes(2);
+
+        const registries = prunedThenServing([], 1);
+        await expect(fetchDiscoveryEvents(registries, { core: ADDRESS, clauseRegistry: ADDRESS } as FigaroAddresses, 0n, 25n))
+            .resolves.toBeDefined();
+        expect(registries.getLogs).toHaveBeenCalledTimes(2);
     });
 });

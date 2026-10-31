@@ -26,6 +26,8 @@
 
 import { keccak256, stringToHex } from "viem";
 import type { Hex, Address, Commitment } from "../types.js";
+import { readCappedBytes } from "../cappedRead.js";
+import { strippingReviver } from "../safeJson.js";
 
 // ── Sequencer operation types (match Rust KernelOp variants) ────────────────
 
@@ -302,6 +304,47 @@ function attestationWitness(args: {
     return { Plaintext: { ...content, inclusion_proof: args.inclusionProof } };
 }
 
+// ── Response reads ──────────────────────────────────────────────────────────
+
+/**
+ * Byte ceiling on any sequencer response. A sequencer is anyone's (the
+ * client takes whatever URL its caller names), so its body is
+ * attacker-sizable: read whole, an oversized one exhausts the agent's memory.
+ * Every answer the API gives is bytes-scale (an id, a pending count, the
+ * status figures and one error string); 1 MiB clears them with margin.
+ */
+export const MAX_SEQUENCER_RESPONSE_BYTES = 1024 * 1024;
+
+/** The body's text under `MAX_SEQUENCER_RESPONSE_BYTES`, or a SequencerError
+ *  carrying the response's status. */
+async function readSequencerText(res: Response): Promise<string> {
+    const bytes = await readCappedBytes(res, MAX_SEQUENCER_RESPONSE_BYTES);
+    if (bytes === null) {
+        throw new SequencerError(`sequencer response exceeds the ${MAX_SEQUENCER_RESPONSE_BYTES}-byte cap`, res.status);
+    }
+    return new TextDecoder().decode(bytes);
+}
+
+/** A successful response's JSON, read under the cap. */
+async function readSequencerJson<T>(res: Response): Promise<T> {
+    return JSON.parse(await readSequencerText(res), strippingReviver) as T;
+}
+
+/** The refusal a non-ok response carries: its JSON body's `error` field, or
+ *  "Sequencer returned <status>" when the JSON names none, or the status text
+ *  when the body is not JSON. A body over the cap throws the cap's refusal
+ *  instead. */
+async function sequencerRefusal(res: Response): Promise<SequencerError> {
+    const text = await readSequencerText(res);
+    let body: { error?: string } | null;
+    try {
+        body = JSON.parse(text, strippingReviver) as { error?: string } | null;
+    } catch {
+        return new SequencerError(res.statusText, res.status);
+    }
+    return new SequencerError(body?.error ?? `Sequencer returned ${res.status}`, res.status);
+}
+
 // ── Sequencer client ────────────────────────────────────────────────────────
 
 export interface SequencerClientConfig {
@@ -333,14 +376,8 @@ export class SequencerClient {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ operation }),
         });
-        if (!res.ok) {
-            const body = await res.json().catch(() => ({ error: res.statusText }));
-            throw new SequencerError(
-                body.error ?? `Sequencer returned ${res.status}`,
-                res.status,
-            );
-        }
-        const body = await res.json();
+        if (!res.ok) throw await sequencerRefusal(res);
+        const body = await readSequencerJson<{ id: number }>(res);
         return { id: body.id };
     }
 
@@ -484,14 +521,8 @@ export class SequencerClient {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ claim }),
         });
-        if (!res.ok) {
-            const body = await res.json().catch(() => ({ error: res.statusText }));
-            throw new SequencerError(
-                body.error ?? `Sequencer returned ${res.status}`,
-                res.status,
-            );
-        }
-        return { pending: (await res.json()).pending };
+        if (!res.ok) throw await sequencerRefusal(res);
+        return { pending: (await readSequencerJson<{ pending: number }>(res)).pending };
     }
 
     async status(): Promise<SequencerStatus> {
@@ -500,12 +531,13 @@ export class SequencerClient {
             headers: { "Accept": "application/json" },
         });
         if (!res.ok) {
+            await res.body?.cancel().catch(() => {});
             throw new SequencerError(
                 `Status request failed: ${res.statusText}`,
                 res.status,
             );
         }
-        return res.json();
+        return readSequencerJson<SequencerStatus>(res);
     }
 
     /** Check if the sequencer is reachable (returns true/false, never throws). */

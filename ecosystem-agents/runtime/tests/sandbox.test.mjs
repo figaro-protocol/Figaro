@@ -16,7 +16,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { egressOrigins, originAllowed, rpcRelayUrl, startEgressProxy } from "../egress-proxy.mjs";
 import {
-    applyAllowReads, canonical, defaultDenyReads, renderProfile, scrubEnv, valueCarriesUrlCredential,
+    applyAllowReads, canonical, defaultDenyReads, renderProfile, runtimeReadRoots, scrubEnv, valueCarriesUrlCredential,
 } from "../sandboxProfile.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -232,7 +232,7 @@ test("the environment scrub drops secret-shaped names and URL-embedded credentia
     assert.equal(valueCarriesUrlCredential("not a url"), false);
 });
 
-test("--allow-read opens exactly a default unreadable path, and names one that is not", () => {
+test("--allow-read opens exactly a default secret path, grants any other path, and refuses a grant that undoes the default", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-home-"));
     try {
         const defaults = defaultDenyReads(home);
@@ -240,11 +240,43 @@ test("--allow-read opens exactly a default unreadable path, and names one that i
         for (const rel of [".ssh", ".aws", ".config/gh", ".gnupg", ".npmrc", ".zsh_history", ".bash_history", ".foundry/keystores"]) {
             assert.ok(defaults.includes(path.join(root, rel)), `${rel} is unreadable by default`);
         }
-        const opened = applyAllowReads(defaults, [path.join(home, ".npmrc")]);
+        const opened = applyAllowReads(defaults, [path.join(home, ".npmrc")], { home });
         assert.ok(!opened.denies.includes(path.join(root, ".npmrc")));
         assert.equal(opened.denies.length, defaults.length - 1);
-        assert.deepEqual(applyAllowReads(defaults, ["/etc/hosts"]).unknown, [canonical("/etc/hosts")]);
+        assert.deepEqual(opened.grants, [path.join(root, ".npmrc")], "opening a default grants it, and nothing else");
+        // Every other path is a read grant: reads are denied by default.
+        const granted = applyAllowReads(defaults, ["/etc/hosts", path.join(home, "records")], { home });
+        assert.deepEqual(granted.grants, [canonical("/etc/hosts"), path.join(root, "records")]);
+        assert.deepEqual(granted.refused, []);
+        // A grant that would undo the default is refused, never widened.
+        const refused = applyAllowReads(defaults, ["/", home, path.dirname(home), path.join(home, ".ssh", "known_hosts")], { home });
+        assert.deepEqual(refused.grants, []);
+        assert.equal(refused.refused.length, 4);
+        assert.match(refused.refused[3].reason, /inside the default unreadable path/);
     } finally { fs.rmSync(home, { recursive: true, force: true }); }
+});
+
+test("the launcher grants what the runtime itself reads: its own directory, its linked packages, and node's install", () => {
+    const runtimeDir = path.join(__dirname, "..");
+    const roots = runtimeReadRoots({ runtimeDir, execPath: process.execPath, command: [process.execPath] });
+    assert.ok(roots.includes(canonical(runtimeDir)), "the runtime directory");
+    assert.ok(roots.includes(canonical(path.join(runtimeDir, "node_modules", "@figaro-protocol", "sdk"))), "the SDK, linked by file:");
+    const nodePrefix = path.dirname(path.dirname(fs.realpathSync(process.execPath)));
+    assert.ok(roots.includes(nodePrefix), "node's install prefix");
+    for (const r of roots) {
+        assert.notEqual(r, "/", "never the root");
+        assert.ok(!canonical(os.homedir()).startsWith(r + path.sep) && r !== canonical(os.homedir()), `${r} contains the home directory`);
+    }
+});
+
+test("the rendered profile denies every read before it grants any, and its secret denies come last", () => {
+    const profile = renderProfile({ denyReads: ["/h/.ssh"], allowReads: ["/h/records"], home: "/h" });
+    const denyAll = profile.indexOf("(deny file-read*)\n");
+    const grant = profile.indexOf('(allow file-read* (subpath "/h/records"))');
+    const secret = profile.indexOf('(deny file-read* (subpath "/h/.ssh"))');
+    assert.ok(denyAll >= 0, "reads are denied by default");
+    assert.ok(!/\(allow default\)[\s\S]*$/.test(profile.slice(denyAll)), "nothing re-allows by default after the read deny");
+    assert.ok(denyAll < grant && grant < secret, "deny-all, then grants, then the secret denies (the last match wins)");
 });
 
 // ── OS-profile deny cases (macOS only) ──────────────────────────────────────
@@ -323,6 +355,25 @@ test("a named secret path is unreadable", { skip: !HAS_SANDBOX_EXEC }, () => {
     }
 });
 
+test("a read nobody granted is denied; the system and the workspace stay readable", { skip: !HAS_SANDBOX_EXEC }, () => {
+    const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "sbx-ws-")));
+    const outside = fs.realpathSync(fs.mkdtempSync(path.join(os.homedir(), ".sbx-unnamed-")));
+    const unnamed = path.join(outside, "notes.txt");
+    fs.writeFileSync(unnamed, "not secret, not granted");
+    fs.writeFileSync(path.join(workspace, "w.txt"), "mine");
+    try {
+        const read = sandboxed({ workspace, cmd: `cat ${unnamed}` });
+        assert.notEqual(read.status, 0, "an ungranted path outside the workspace was readable");
+        const list = sandboxed({ workspace, cmd: `ls ${outside}` });
+        assert.notEqual(list.status, 0, "an ungranted directory was listable");
+        const own = sandboxed({ workspace, cmd: `cat ${workspace}/w.txt && cat /etc/hosts >/dev/null && /usr/bin/true` });
+        assert.equal(own.status, 0, own.stderr);
+    } finally {
+        fs.rmSync(outside, { recursive: true, force: true });
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
 /** A shell that is already sandboxed (an agent harness's own sandbox) restricts a nested
  *  sandbox-exec further: it cannot reach a loopback port the outer sandbox does not open.
  *  The probe runs the same `nc` under a permissive nested profile; when THAT cannot reach
@@ -368,13 +419,14 @@ test("direct outbound network is denied, and so is every loopback port but the p
 });
 
 test("the launcher makes the secret paths unreadable BY DEFAULT; every --deny-read stands alone", { skip: !HAS_SANDBOX_EXEC }, () => {
-    // A home directory of the test's own, holding what a real one holds.
-    const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "sbx-home-")));
+    // A home directory of the test's own, holding what a real one holds, and
+    // a directory beside it — both outside temp, which the sandbox may read.
+    const home = fs.realpathSync(fs.mkdtempSync(path.join(os.homedir(), ".sbx-home-")));
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-ws-"));
     const policyFile = path.join(workspace, "policy.json");
     fs.writeFileSync(policyFile, JSON.stringify(SBX_POLICY));
     const signerDir = fs.mkdtempSync(path.join(os.homedir(), ".sbx-signer-"));
-    const elsewhere = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "sbx-opt-")));
+    const elsewhere = fs.realpathSync(fs.mkdtempSync(path.join(os.homedir(), ".sbx-opt-")));
     const put = (p, body = "secret") => { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, body); return p; };
     const secrets = {
         aws: put(path.join(home, ".aws", "credentials")),
@@ -395,11 +447,19 @@ test("the launcher makes the secret paths unreadable BY DEFAULT; every --deny-re
         b: put(path.join(elsewhere, "b", "x")),
         c: put(path.join(elsewhere, "c", "x")),
     };
-    const readable = {
+    // Reads are denied by default: a path nobody granted is unreadable
+    // whether or not anyone thought it secret.
+    const ungranted = {
         sibling: put(path.join(elsewhere, "d", "x"), "open"),
         homeFile: put(path.join(home, "notes.txt"), "open"),
+        // A keystore inside a granted directory stays a keystore.
+        keystoreInGrant: put(path.join(home, "records", "wallet-keystore.json")),
     };
-    const script = Object.entries({ ...secrets, ...readable })
+    const granted = {
+        record: put(path.join(home, "records", "11155111.json"), "open"),
+        workspaceFile: put(path.join(workspace, "in-workspace.txt"), "open"),
+    };
+    const script = Object.entries({ ...secrets, ...ungranted, ...granted })
         .map(([name, p]) => `if cat '${p}' >/dev/null 2>&1; then echo "READ ${name}"; else echo "DENIED ${name}"; fi`)
         .join("; ");
     const launch = (extra) => spawnSync("node", [
@@ -410,6 +470,7 @@ test("the launcher makes the secret paths unreadable BY DEFAULT; every --deny-re
         "--deny-read", path.join(elsewhere, "a"),
         "--deny-read", path.join(elsewhere, "b"),
         "--deny-read", path.join(elsewhere, "c"),
+        "--allow-read", path.join(home, "records"),
         ...extra,
         "--", "/bin/sh", "-c", script,
     ], { encoding: "utf-8", env: { ...process.env, HOME: home } });
@@ -417,7 +478,8 @@ test("the launcher makes the secret paths unreadable BY DEFAULT; every --deny-re
         const run = launch([]);
         assert.equal(run.status, 0, run.stderr);
         for (const name of Object.keys(secrets)) assert.match(run.stdout, new RegExp(`^DENIED ${name}$`, "m"), `${name} was readable`);
-        for (const name of Object.keys(readable)) assert.match(run.stdout, new RegExp(`^READ ${name}$`, "m"), `${name} was over-denied`);
+        for (const name of Object.keys(ungranted)) assert.match(run.stdout, new RegExp(`^DENIED ${name}$`, "m"), `${name} was readable without a grant`);
+        for (const name of Object.keys(granted)) assert.match(run.stdout, new RegExp(`^READ ${name}$`, "m"), `${name} was granted and still denied`);
 
         // --allow-read opens one default, and only that one.
         const opened = launch(["--allow-read", path.join(home, ".npmrc")]);
@@ -425,10 +487,12 @@ test("the launcher makes the secret paths unreadable BY DEFAULT; every --deny-re
         assert.match(opened.stdout, /^READ npmrc$/m);
         assert.match(opened.stdout, /^DENIED aws$/m);
 
-        // An --allow-read that names no default is refused, never ignored.
-        const refused = launch(["--allow-read", "/etc/hosts"]);
-        assert.notEqual(refused.status, 0);
-        assert.match(refused.stderr, /not on the list/);
+        // A grant that would undo the default is refused, never widened.
+        for (const broad of [home, "/", path.join(home, ".ssh", "known_hosts")]) {
+            const refused = launch(["--allow-read", broad]);
+            assert.notEqual(refused.status, 0, `${broad}: launched`);
+            assert.match(refused.stderr, /--allow-read refused/, broad);
+        }
     } finally {
         for (const d of [home, workspace, signerDir, elsewhere]) fs.rmSync(d, { recursive: true, force: true });
     }

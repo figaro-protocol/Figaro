@@ -1,7 +1,7 @@
 ;; The sandbox wrapper's macOS profile (component 4, F5/F6) — parameterized,
 ;; launched by run-sandboxed.mjs via sandbox-exec.
 ;;
-;; Posture: default-deny on the two boundaries prose cannot enforce —
+;; Posture: default-deny on the boundaries prose cannot enforce —
 ;;   WRITES  — only the agent's own workspace and the temp dirs, and never
 ;;             the signer's own directory;
 ;;   SIGNALS — only to the agent's own processes;
@@ -9,11 +9,15 @@
 ;;             are the only ways out; every other loopback service (a local
 ;;             IPFS API, a devnet, another proxy) is as closed as the
 ;;             internet, so nothing reaches past the policy's allowlist.
-;; Reads stay default-allow MINUS the secret paths: the signing key already
-;; lives outside the sandboxed process entirely (the policy signer holds it),
-;; and the launcher appends one `deny file-read*` rule per secret path — its
-;; default list (keystores, credentials, shell histories), the operator's
-;; --keystore and --deny-read paths, minus any --allow-read — after this file.
+;;   READS   — denied by default: this file grants the system, the
+;;             workspace and temp; the launcher appends one `allow
+;;             file-read*` per path the runtime itself loads (its own
+;;             directory, its linked packages, node's install) and per
+;;             --allow-read, then one `deny file-read*` per secret path — its
+;;             default list (keystores, credentials, shell histories), the
+;;             operator's --keystore and --deny-read paths, minus any
+;;             default an --allow-read names — last, so a secret inside a
+;;             grant stays unreadable (the last matching rule wins).
 
 (version 1)
 (allow default)
@@ -50,5 +54,32 @@
 (deny signal)
 (allow signal (target same-sandbox))
 
-;; ── Reads: the secret paths are unreadable ─────────────────────────────
-;; The rules follow, appended by the launcher (sandboxProfile.mjs).
+;; ── Reads: denied by default ───────────────────────────────────────────
+;; A file's contents and a directory's listing are readable only where a
+;; rule below grants them. Metadata (stat, a path's existence) stays
+;; readable everywhere: resolving any path walks its ancestors, and a secret
+;; path's own deny, appended last, covers its metadata too.
+(deny file-read*)
+(allow file-read-metadata)
+(allow file-read-data (literal "/"))
+;; The system: binaries, libraries, frameworks, the dyld cache, /etc, /dev.
+(allow file-read*
+    (subpath "/System")
+    (subpath "/usr")
+    (subpath "/bin")
+    (subpath "/sbin")
+    (subpath "/Library")
+    (subpath "/opt/homebrew")
+    (subpath "/private/etc")
+    (subpath "/private/var/db/timezone")
+    (subpath "/private/var/select")
+    (subpath "/dev"))
+;; The system keychains are never system code.
+(deny file-read* (subpath "/Library/Keychains"))
+;; The agent's own workspace and the temp dirs it may write.
+(allow file-read*
+    (subpath (param "WORKSPACE"))
+    (subpath (param "TMPDIR"))
+    (subpath "/private/tmp"))
+
+;; The launcher's grants, then the secret denies, follow (sandboxProfile.mjs).

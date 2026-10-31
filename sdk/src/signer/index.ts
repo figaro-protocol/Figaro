@@ -1,7 +1,7 @@
 /**
  * @figaro-protocol/sdk/signer — the sandboxed signer runtime's protocol-shaped half.
  *
- * The policy signer (daemon + out-of-model gate + keystore custody) and the
+ * The policy signer (daemon + out-of-model gate + keystore or Ledger custody) and the
  * socket-backed account the agent layer consumes. Design and requirements:
  * docs/AI_AGENT_COORDINATION.md § "The sandboxed signer runtime";
  * ecosystem-agents/figaro-operator.md § "Security requirements" (F1–F6).
@@ -19,6 +19,11 @@ export {
     type TypedDataRequest, type TransactionRequest, type SimulationOutcome,
 } from "./gate.js";
 export { decryptKeystore, type KeystoreV3 } from "./keystore.js";
+export { keyCustody, type SignerCustody } from "./custody.js";
+export {
+    ledgerCustody, encodeBip32Path, DEFAULT_LEDGER_PATH,
+    type LedgerTransport, type LedgerCustodyOptions,
+} from "./ledger.js";
 export { SpendJournal } from "./window.js";
 export { resolveSignerPaths, assertPrivateDir, assertOneDir, SIGNER_DIRNAME, type SignerPaths } from "./paths.js";
 export { appendAudit, type AuditEntry } from "./audit.js";
