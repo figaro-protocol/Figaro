@@ -23,7 +23,7 @@ import { Breadcrumb } from "@/components/shared/Breadcrumb";
 // carries THREE sellers — a lead and two contributors. The story follows two so
 // the arithmetic stays on one line, and says so.
 export const metadata: Metadata = withOg({
-    title: "Worked example — Figaro Protocol",
+    title: "Worked example — Figaro",
     description:
         "A buyer commissions a deliverable; the agent that takes it draws a second agent into the same process as a co-equal bonded seller. What each party bonds, how the work moves, and what one resolution closes.",
 });

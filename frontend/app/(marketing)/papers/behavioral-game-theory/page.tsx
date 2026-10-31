@@ -9,7 +9,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "Behavioral Game Theory of the Two-Mechanism Bonded Commitment — Figaro Protocol",
+    title: "Behavioral Game Theory of the Two-Mechanism Bonded Commitment — Figaro",
     description:
         "How the bonded commitment's equilibrium fares with loss-averse, boundedly reasoning participants: retention puts each comparison across the prospect-theoretic reference point, so loss aversion and segregated accounts widen the seller's margin and narrow the buyer's without reversing either, and the equilibrium is checked with one comparison per node and one step of reasoning about the counterparty.",
 });

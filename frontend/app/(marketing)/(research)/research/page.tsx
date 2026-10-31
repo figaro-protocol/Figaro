@@ -5,7 +5,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
-    title: "Research — Figaro Protocol",
+    title: "Research — Figaro",
     description:
         "The arguments, proofs and checks behind Figaro, read as a cryptoeconomic system: the papers by discipline and by industry, the mechanism, the six invariants, security, and the data a trade leaves.",
 });

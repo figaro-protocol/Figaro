@@ -9,7 +9,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 // model) lives once in the builder documentation at /docs/protocol/composition.
 // Do not restore that detail here — the door points to it, never forks it.
 export const metadata: Metadata = withOg({
-    title: "Composition — Figaro Protocol",
+    title: "Composition — Figaro",
     description:
         "What composes with Figaro — an open category, not a catalog.",
 });

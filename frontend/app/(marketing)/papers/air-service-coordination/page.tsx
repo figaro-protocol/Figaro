@@ -11,7 +11,7 @@ import { Math } from "@/components/papers/Math";
 import { ProcessTopologyFigure } from "@/components/figures/ProcessTopologyFigure";
 
 export const metadata: Metadata = withOg({
-    title: "Air Service as Coordinated Resource Markets — Figaro Protocol",
+    title: "Air Service as Coordinated Resource Markets — Figaro",
     description:
         "A journey read as coordination across resource markets — crew, aircraft, fuel, landing slots, catering, maintenance, ground handling — each provider a wallet bonded directly to the passenger in one process. Because only the passenger resolves, and resolution is atomic, every provider's payment and bond wait on every other provider's performance, so a provider whose share of a remedy costs less than what it stands to lose holds its own reason to put the passenger right directly, before the passenger resolves. A ten-order worked example: the passenger bonds $500, the providers $3,512.",
 });

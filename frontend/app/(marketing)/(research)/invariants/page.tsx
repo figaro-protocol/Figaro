@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { MerkleTreeFigure } from "@/components/figures/MerkleTreeFigure";
 
 export const metadata: Metadata = withOg({
-    title: "Invariants — Figaro Protocol",
+    title: "Invariants — Figaro",
     description:
         "The six facts the Figaro core cannot violate — asymmetric bonding, cumulative bonding, buyer dominance, atomic resolution, immutable evidence, no escape hatches — each with what it means for you, and the four things that follow from them: what the chain holds, what couples to it, who may act, and where the meaning lives.",
 });

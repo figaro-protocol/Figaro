@@ -1,8 +1,6 @@
 import Link from "@/components/shared/Link";
 
 interface BrandLogoProps {
-    /** Variant: "compact" for nav (no "Protocol" word), "full" with "Protocol" suffix. */
-    variant?: "full" | "compact";
     /** Color hint for the text — defaults to black. */
     tone?: "black" | "white";
     /** Whether the logo links to `/`. Defaults to true. */
@@ -10,11 +8,11 @@ interface BrandLogoProps {
 }
 
 /**
- * Canonical Figaro lockup: `Figaro` + ® superscript + (optional) `Protocol`.
+ * Canonical Figaro lockup: `Figaro` + ® superscript; the site's name is Figaro.
  * Used in both Header.tsx and MarketingHeader.tsx (and inside MobileNav).
  * The ® reflects the registered trademark status of "Figaro."
  */
-export function BrandLogo({ variant = "full", tone = "black", asLink = true }: BrandLogoProps) {
+export function BrandLogo({ tone = "black", asLink = true }: BrandLogoProps) {
     const colorClass = tone === "white" ? "text-paper" : "text-ink-heading";
 
     const inner = (
@@ -23,7 +21,6 @@ export function BrandLogo({ variant = "full", tone = "black", asLink = true }: B
             <span className="align-super text-xs ml-1" aria-label="registered trademark">
                 ®
             </span>
-            {variant === "full" && " Protocol"}
         </span>
     );
 

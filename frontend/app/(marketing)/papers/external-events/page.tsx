@@ -11,7 +11,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "External Events and the Resolution Frame — Figaro Protocol",
+    title: "External Events and the Resolution Frame — Figaro",
     description:
         "Everything that happens between a process's commits and its buyer's resolution (a cargo resold in transit, a partial loss, a seller that cannot perform, a forum's ruling) meets one rule: the parties square it before the buyer resolves. A fixed resolution schedule plus free transfers among the parties reaches any reallocation of the committed value; no transfer disturbs the buyer's reason to resolve; and, given a buyer that resolves once the agreed transfers have executed and not before, a seller whose reallocation closes the process executes its agreed part, where that part answers performance the buyer has not received, up to a bound set by the payment, its bond and what it retains, because that bond stays locked while the parties negotiate. The frame is deterministic and keeps exactly one discretionary act.",
 });

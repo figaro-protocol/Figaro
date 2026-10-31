@@ -5,7 +5,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
-    title: "Build — Figaro Protocol",
+    title: "Build — Figaro",
     description:
         "Publish clauses and assemblies for anyone to compose, and be rewarded for the use real trades make of them; the Core is deployed once, decentralized and permissionless, and anyone builds above it.",
 });

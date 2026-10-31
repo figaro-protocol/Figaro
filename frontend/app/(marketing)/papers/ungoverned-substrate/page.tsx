@@ -10,7 +10,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "The Ungoverned Substrate — Figaro Protocol",
+    title: "The Ungoverned Substrate — Figaro",
     description:
         "The network state, on-chain governance, holacracy, the Ethereum Foundation's mandate, the cypherpunks and d/acc share one frame: a promise is made good after the fact, so something must hold the seat that decides afterwards. A substrate on which the promise arrives with its own bond, and resolution is the buyer's own signature, leaves no decision after the fact, and so can be ungoverned.",
 });

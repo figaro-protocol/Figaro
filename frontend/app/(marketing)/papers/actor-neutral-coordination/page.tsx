@@ -4,7 +4,7 @@ import { PaperLayout, PaperSection, PaperRun } from "@/components/papers/PaperLa
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "What a Trust Layer for Agents Acting for Principals Needs — Figaro Protocol",
+    title: "What a Trust Layer for Agents Acting for Principals Needs — Figaro",
     description:
         "An agent acting for a principal needs, from a counterparty it has never met, a promise good before the work and a ceiling on what one commitment can cost. A reputation registry supplies a signal about the past that no one bonds; a validator's stake secures a report on finished work; a legal wrapper supplies a remedy after the breach. A bond locked at commit supplies the promise, the agent's own bond caps one commitment's cost, and the agent's policy bounds the rest.",
 });

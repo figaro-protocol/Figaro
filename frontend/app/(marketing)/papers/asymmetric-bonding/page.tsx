@@ -51,7 +51,7 @@ const CH_REORDERED_LAST_RHO = (2 * CH_REORDERED_G[2]) / CH_REORDERED[2];
 const fmtRatio = (x: number) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
 
 export const metadata: Metadata = withOg({
-    title: "Asymmetric Bonding and Buyer Dominance — Figaro Protocol",
+    title: "Asymmetric Bonding and Buyer Dominance — Figaro",
     description:
         "Two calls, each a mechanism design of its own, make performing and resolving best replies to each other between strangers along a process chain of any length the network resolves in one call. Commit, under asymmetric bonding, makes each party's promise one the other can count on: credited with everything it keeps, a defector is still out of pocket while its process stays unresolved, because the buyer bonds twice the payment and each seller twice the cumulative value; resolve, under buyer dominance with atomic resolution, closes every order at once on the buyer's authority and induces a weakest-link subgame among sellers. A formal mechanism-design treatment.",
 });

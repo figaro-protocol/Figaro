@@ -16,7 +16,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 // enforcers, the addresses — stays OUT of this page by the maintainer's
 // decision and lives in docs/DAO.md, where a builder or an auditor reads it.
 export const metadata: Metadata = withOg({
-    title: "The DAO — Figaro Protocol",
+    title: "The DAO — Figaro",
     description:
         "Three hundred million florins, granted once and spent by human judgment: what the treasury is for, the three ways it can spend, how it earns its living on the same counter as everyone else, and why it is allowed to run out.",
 });

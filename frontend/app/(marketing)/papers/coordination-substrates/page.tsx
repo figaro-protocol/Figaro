@@ -26,7 +26,7 @@ const EX_TAKE = (0.2 * EX_P).toFixed(0);
 const EX_WEEK_TIME_VALUE = ((EX.held * 0.05 * 7) / 365).toFixed(2);
 
 export const metadata: Metadata = withOg({
-    title: "Coordination Substrates: Firm, Court, and Bond — Figaro Protocol",
+    title: "Coordination Substrates: Firm, Court, and Bond — Figaro",
     description:
         "A comparative institutional analysis of three substrates in four columns that make trade between strangers safe (the firm in its two business models, hierarchy and the platform; the court; and the parties' own bonded commitment) on ten axes: who bears the cost of making a promise good and to whom it is revenue, who holds the map, admission, discretion, the cost of instituting, jurisdiction dependence, failure modes, fiscal and regulatory legibility, who chooses the unit of account, and whether transparency, verifiability, and privacy hold together. The alignment result gives the bond the strangers' region the cost shapes assign it, and the whole region where a party is no person any legal order recognizes.",
 });

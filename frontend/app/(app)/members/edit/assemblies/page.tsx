@@ -3,7 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import { MemberEditAssemblies } from "@/components/members/MemberEditAssemblies";
 
 export const metadata: Metadata = withOg({
-    title: "Edit what you sell through — Figaro Protocol",
+    title: "Edit what you sell through — Figaro",
     description: "Pick which assemblies the wallet participates in. Re-pins the profile JSON with the updated assemblyBindings array, then dispatches MembersRegistry.updateProfile.",
 });
 

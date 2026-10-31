@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-const SITE_SUFFIX = " — Figaro Protocol";
+const SITE_SUFFIX = " — Figaro";
 
 /**
  * Derives a page's Open Graph + Twitter metadata from its OWN `title` +
@@ -8,7 +8,7 @@ const SITE_SUFFIX = " — Figaro Protocol";
  * `metadata.title` for `openGraph`/`twitter`: a page with no `openGraph`
  * block inherits the root layout's site-wide one wholesale, so a shared
  * link unfurls as the generic homepage card instead of that page's own
- * title. `og:title` drops the " — Figaro Protocol" suffix (applied
+ * title. `og:title` drops the " — Figaro" suffix (applied
  * uniformly across every caller); the site context comes from `siteName`,
  * which MUST be set here — the wholesale replacement that motivates this
  * helper also discards the root layout's `siteName`. The same wholesale
@@ -41,7 +41,7 @@ export function withOg({
         openGraph: {
             title: ogTitle,
             description,
-            siteName: "Figaro Protocol",
+            siteName: "Figaro",
             type: "website",
             images: [OG_IMAGE],
         },

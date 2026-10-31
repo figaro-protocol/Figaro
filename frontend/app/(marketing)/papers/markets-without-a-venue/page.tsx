@@ -24,7 +24,7 @@ const EX_CEILING = EX_P + 2;
 const EX_QUOTE_HIGH = EX_P + 1;
 
 export const metadata: Metadata = withOg({
-    title: "Markets Without a Venue — Figaro Protocol",
+    title: "Markets Without a Venue — Figaro",
     description:
         "Two ways an order's commitment forms over a mechanism that knows nothing about markets: the dispatch race, a posted-price mechanism with simultaneous solicitation, and the request for quotes, which has the form of a sealed-bid first-price procurement auction with an announced reserve. A market-design treatment of formation without a venue: the class of each mechanism, where each discovers price, what each does to both sides' incentives, and why the mechanism beneath never has to learn that either happened.",
 });

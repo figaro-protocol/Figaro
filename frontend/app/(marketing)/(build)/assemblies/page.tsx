@@ -8,7 +8,7 @@ import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphCollapseFigure";
 
 export const metadata: Metadata = withOg({
-    title: "Assemblies — Figaro Protocol",
+    title: "Assemblies — Figaro",
     description:
         "Composition assemblies anchored on AssemblyRegistry — each assembly composes registered agreements, each a reusable composition of clauses, into a multi-order process. The registry explorer reads on-chain AssemblyRegistered events directly.",
 });

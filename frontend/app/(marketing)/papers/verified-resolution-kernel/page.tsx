@@ -8,7 +8,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "What Formal Verification Transfers to a Bonded Contract — Figaro Protocol",
+    title: "What Formal Verification Transfers to a Bonded Contract — Figaro",
     description:
         "For a contract whose security is an equilibrium, a machine check of the code carries the theorem only through a specification that entails the payoff table the theorem is proved over. Conservation and solvency do not entail it; two invariants, the bond schedule and the resolution's transfers, do; and the conjunction of those checks with a proof over the table never reaches rationality, off-chain performance, equilibrium selection, or a composed contract's payoffs.",
 });

@@ -14,7 +14,7 @@ import { NewAssemblyClient } from "./NewAssemblyClient";
  */
 
 export const metadata: Metadata = withOg({
-    title: "New assembly — Figaro Protocol",
+    title: "New assembly — Figaro",
     description: "Compose a Figaro assembly on the topology canvas. Drafts persist in local storage.",
 });
 

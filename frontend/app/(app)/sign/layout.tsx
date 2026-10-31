@@ -5,7 +5,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 // client-side), so its metadata rides on this pass-through layout: the one
 // static-export-compatible home for a client page's own og card.
 export const metadata: Metadata = withOg({
-    title: "Counter-sign — Figaro Protocol",
+    title: "Counter-sign — Figaro",
     description:
         "Paste a shared commitment payload, review its terms, counter-sign with your wallet, and broadcast the fully-signed commitment.",
 });

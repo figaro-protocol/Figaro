@@ -10,7 +10,7 @@ import { Math } from "@/components/papers/Math";
 import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
 
 export const metadata: Metadata = withOg({
-    title: "On-Chain Evidence, Off-Chain Adjudication — Figaro Protocol",
+    title: "On-Chain Evidence, Off-Chain Adjudication — Figaro",
     description:
         "Resolution is on-chain by nature, adjudication is off-chain by nature. A layered approach to smart-contract dispute resolution: the protocol produces evidence existing courts already know how to use.",
 });

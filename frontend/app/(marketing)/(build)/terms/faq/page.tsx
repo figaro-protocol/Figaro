@@ -11,7 +11,7 @@ import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
 const CH = KERNEL_EQUILIBRIUM.example.chain;
 
 export const metadata: Metadata = withOg({
-    title: "Builders' FAQ — Figaro Protocol",
+    title: "Builders' FAQ — Figaro",
     description:
         "Answers for the people who publish clauses and assemblies: registration and its stake, how the designer reward is computed and claimed, forking, what a clause cannot do, and what composing a forum means.",
 });

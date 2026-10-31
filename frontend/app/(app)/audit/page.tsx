@@ -21,7 +21,7 @@ import { HashVerifier } from "./_components/HashVerifier";
 import { ProcessAuditOpen } from "./_components/ProcessAuditOpen";
 
 export const metadata: Metadata = withOg({
-    title: "Audit — Figaro Protocol",
+    title: "Audit — Figaro",
     description: "Verify a hash from an audit bundle against chain state.",
 });
 

@@ -28,7 +28,7 @@ describe("Header", () => {
     it("renders the logo, a link per door and one inert menu button beside it, the reader's own marked current", () => {
         useWalletConnectedMock.mockReturnValue(false);
         render(<Header />);
-        expect(screen.getByText("Figaro Protocol")).toBeInTheDocument();
+        expect(screen.getByText("Figaro")).toBeInTheDocument();
         const nav = screen.getByTestId("desktop-nav");
         for (const group of MARKETING_MAP) {
             // The door's name links to its door page; the chevron beside it is the menu.
@@ -66,7 +66,7 @@ describe("Header", () => {
     it("logo is a link", () => {
         useWalletConnectedMock.mockReturnValue(false);
         render(<Header />);
-        const logo = screen.getByText("Figaro Protocol");
+        const logo = screen.getByText("Figaro");
         expect(logo.closest("a")).toBeTruthy();
     });
 });

@@ -13,7 +13,7 @@ import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
 const EQ = KERNEL_EQUILIBRIUM;
 
 export const metadata: Metadata = withOg({
-    title: "Core FAQ — Figaro Protocol",
+    title: "Core FAQ — Figaro",
     description:
         "Answers about the Core and what stands beside it: what is frozen, the only two calls, where it is deployed, what has been verified and what has not, and what batch resolution changes.",
 });

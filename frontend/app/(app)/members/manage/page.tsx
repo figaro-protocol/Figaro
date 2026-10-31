@@ -3,7 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import { MemberLanding } from "@/components/members/MemberLanding";
 
 export const metadata: Metadata = withOg({
-    title: "Manage membership — Figaro Protocol",
+    title: "Manage membership — Figaro",
     description: "The registered member's dashboard: view and edit the profile, leave the registry, reclaim a released stake. Unregistered wallets are sent straight to the wizard.",
 });
 

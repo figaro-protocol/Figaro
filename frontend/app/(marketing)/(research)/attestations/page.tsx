@@ -16,7 +16,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 // signature a party files inside a process already running. Companion page
 // to /clauses and /assemblies; same register, narrower concept.
 export const metadata: Metadata = withOg({
-    title: "Attestations — Figaro Protocol",
+    title: "Attestations — Figaro",
     description:
         "A signed statement a party makes about a process while it is open, bound by merkle proof to the order it concerns — the evidence a process's data holds, never a verdict itself.",
 });

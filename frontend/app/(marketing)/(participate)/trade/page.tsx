@@ -6,7 +6,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { TradeStripFigure } from "@/components/figures/TradeStripFigure";
 
 export const metadata: Metadata = withOg({
-    title: "Trade — Figaro Protocol",
+    title: "Trade — Figaro",
     description:
         "One trade, start to finish, in six pictures: three strangers, the terms signed before the work, a bond locked by each, the work, everyone paid at once when the buyer confirms, and the evidence each keeps. Any trade, of any kind.",
 });

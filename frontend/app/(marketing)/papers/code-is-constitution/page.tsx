@@ -8,7 +8,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "Code Is Constitution — Figaro Protocol",
+    title: "Code Is Constitution — Figaro",
     description:
         "We argue that a sufficiently abstract protocol, whose rules hold a simple set of invariants, is a building block that secures any economic system composed over it and gives the language of a constitution in which the laws of those systems are legislated, which moves the code-is-law debate down one layer.",
 });

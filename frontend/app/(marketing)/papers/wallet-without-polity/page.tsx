@@ -9,7 +9,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "The Wallet Without a Polity — Figaro Protocol",
+    title: "The Wallet Without a Polity — Figaro",
     description:
         "Between strangers the contract element that fails is consideration. For refugees, stateless people and others beyond stable banking and courts, a bonded commitment makes a promise credible by two acts no state is asked about: a wallet signs, and it locks its bond.",
 });

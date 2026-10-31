@@ -10,7 +10,7 @@ import { Math } from "@/components/papers/Math";
 import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphCollapseFigure";
 
 export const metadata: Metadata = withOg({
-    title: "After TradeLens: A Permissionless Bonded Replacement — Figaro Protocol",
+    title: "After TradeLens: A Permissionless Bonded Replacement — Figaro",
     description:
         "We read TradeLens's failure as structural: a competitor-controlled platform asks rival carriers to ratify a competitor's gatekeeping, and no governance fix removes that request. On that reading the fix is a published composition each party signs into, one order at a time; bonded and permissionless, it coordinates the inter-logistics perimeter.",
 });

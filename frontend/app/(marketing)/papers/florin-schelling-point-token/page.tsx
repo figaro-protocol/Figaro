@@ -9,7 +9,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "The Florin: A Schelling-Point Token Issued at Zero — Figaro Protocol",
+    title: "The Florin: A Schelling-Point Token Issued at Zero — Figaro",
     description:
         "A token issued at zero after the work is done, controlled by no central operator, disclosed in full before anyone holds it, and worth something only if strangers use it. Read against its facts, each of the securities tests' questions fails for a florin as it is first minted; the disclosure those tests exist to compel is the substrate itself. What such a token can be, and all it can be, is a Schelling point.",
 });

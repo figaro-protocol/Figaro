@@ -3,7 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import { MemberEditBuyer } from "@/components/members/MemberEditBuyer";
 
 export const metadata: Metadata = withOg({
-    title: "Edit what you buy through — Figaro Protocol",
+    title: "Edit what you buy through — Figaro",
     description: "Subscribe the assemblies the wallet buys through and choose which of its data it offers for sale. Re-pins the profile JSON, then dispatches MembersRegistry.updateProfile.",
 });
 

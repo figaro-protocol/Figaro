@@ -8,7 +8,7 @@ import {
 } from "@/components/papers/PaperLayout";
 
 export const metadata: Metadata = withOg({
-    title: "Corridors Without a Hegemon — Figaro Protocol",
+    title: "Corridors Without a Hegemon — Figaro",
     description:
         "The Belt and Road Initiative and the India-Middle East-Europe Economic Corridor are rival infrastructure-power projects in which control of the corridor is the geopolitical prize. A decentralized, permissionless bonded substrate, in which every position is held by a party over its own trade and the data is public to every reader alike, can be common ground beneath them. The physical corridor, the denomination, and the ramps stay exactly as contested as they were, and an issuer's lever over a denomination reaches through the substrate.",
 });

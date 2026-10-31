@@ -3,7 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import { MemberEditCatalog } from "@/components/members/MemberEditCatalog";
 
 export const metadata: Metadata = withOg({
-    title: "Edit catalog — Figaro Protocol",
+    title: "Edit catalog — Figaro",
     description: "Update the pinned catalog document. Re-pins items to IPFS, then re-pins the member profile pointing at the new catalog CID, then dispatches MembersRegistry.updateProfile.",
 });
 

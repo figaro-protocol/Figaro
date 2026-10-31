@@ -11,7 +11,7 @@ import {
 import { Math } from "@/components/papers/Math";
 
 export const metadata: Metadata = withOg({
-    title: "Substrate-Broadening Retroactive Public-Goods Funding — Figaro Protocol",
+    title: "Substrate-Broadening Retroactive Public-Goods Funding — Figaro",
     description:
         "A fixed rule that distributes 600 million florins to the designers of clauses, registered agreements, and assemblies over a fixed run of periods on a rising budget schedule, scoring each by the distinct staked sellers who carried it in resolved processes, counted on chain by a call anyone may make while the period is open, with Sybil resistance carried by a two-sided live stake whose price the paper derives.",
 });
