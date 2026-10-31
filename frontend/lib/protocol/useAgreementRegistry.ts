@@ -76,8 +76,8 @@ export function translateAgreementRegisterRevert(err: unknown, agreementHash: st
 /** Reclaim an agreement's registration stake (`AgreementRegistry.withdrawDeposit`).
  *  The binding is permanent; withdraw de-surfaces the agreement for new
  *  compositions while every assembly already composed from it keeps reading it.
- *  @public pending consumer: the designer of record's reclaim affordance,
- *  gated by `useWithdrawGate({ kind: "agreement", agreementHash })`. */
+ *  Consumed by `RegisteredAgreementsReclaim` on the designer landing (gated per
+ *  row by `useWithdrawGate({ kind: "agreement", agreementHash })`). */
 export const useWithdrawAgreement = createUseWithdrawStake({
     getRegistry: getAgreementRegistry,
     abi: AGREEMENT_REGISTRY_ABI,
