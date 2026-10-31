@@ -65,7 +65,10 @@ const LOCAL_ANVIL = defineChain({
     rpcUrls: { default: { http: [RPC_URL] } },
 });
 
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
+const ERC20_ABI = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+    'function allowance(address owner, address spender) view returns (uint256)',
+]);
 // anvil[0] — the fixture's default buyer (the multi-wallet FIXTURE's own
 // wallet, not world-state — the world's sellers are discovered from chain).
 const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
@@ -226,14 +229,21 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         const yourTurn = page.getByTestId('order-your-turn-card').first();
         await yourTurn.waitFor({ state: 'visible', timeout: 30000 });
 
-        // ── Accept on /orders → counter-sign + broadcast → commit ──
+        // ── Accept on /orders → terms confirm → counter-sign → approve bond → commit ──
+        // The seller's allowance to the Core before the accept: the approval is
+        // sent only after the terms confirm, so a seller who declines on reading
+        // the terms has sent no transaction and left no allowance.
+        const allowanceOf = () => publicClient.readContract({
+            address: token, abi: ERC20_ABI, functionName: 'allowance', args: [SELLER, core],
+        }) as Promise<bigint>;
+        const allowanceBefore = await allowanceOf();
         await page.getByTestId('btn-accept-order').first().click();
-        // Accept opens the agreement sign-preview ("Review before signing"). The
-        // seller's counter-sign does NOT skipPreview (the buyer's checkout does), so
-        // confirm it to proceed with counter-sign + broadcast (the on-chain commit).
-        // Accept first approves the seller's bond ("Approving bond…"), THEN opens the
-        // agreement sign-preview. Confirm it to counter-sign + broadcast (the commit).
+        // Accept opens the agreement sign-preview ("Review before signing") FIRST.
         await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
+        expect(await allowanceOf(), 'no bond allowance is approved while the terms are being read')
+            .toBe(allowanceBefore);
+        // Confirm → counter-sign → approve the seller's bond (when the allowance
+        // is short) → broadcast (the on-chain commit).
         await page.getByTestId('preview-confirm').click();
         // ── On-chain truth FIRST: exactly one NEW OrderCommitted for the buyer.
         // (Pattern 14: on a persisted devnet a generic row locator can match a
@@ -276,6 +286,10 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         //    sellerBond, FigaroCore escrow↑ both. Exact deltas — gas is paid in ETH,
         //    so the payment-token deltas are the bonds only. ──
         const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
+        // The approval landed inside the accept flow, after the confirm: the
+        // allowance covered the bond the Core pulled.
+        expect(allowanceBefore >= sellerBond || (await allowanceOf()) > allowanceBefore,
+            'the seller bond was approved after the terms confirm (or an earlier allowance covered it)').toBe(true);
         const [buyerAfter, sellerAfter, coreAfter] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);

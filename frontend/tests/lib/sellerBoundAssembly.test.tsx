@@ -35,12 +35,16 @@ const CURRENCY = `0x${"ab".repeat(20)}` as Hex;
 const ASSEMBLY_REGISTRY = `0x${"a5".repeat(20)}` as Hex;
 const AGREEMENT_REGISTRY = `0x${"a6".repeat(20)}` as Hex;
 
+// The order of the accept path's acts: the sign (which follows the terms
+// confirm), the caller's pre-broadcast step, the broadcast.
+const callOrder: string[] = [];
+
 vi.mock("wagmi", () => ({
     useAccount: () => ({ address: SELLER }),
     useChainId: () => 31337,
     usePublicClient: () => ({}),
     useWalletClient: () => ({ data: null }),
-    useSignTypedData: () => ({ signTypedDataAsync: async () => `0x${"11".repeat(65)}` }),
+    useSignTypedData: () => ({ signTypedDataAsync: async () => { callOrder.push("sign"); return `0x${"11".repeat(65)}`; } }),
 }));
 
 vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
@@ -108,7 +112,7 @@ vi.mock("@/lib/member/profileFetcher", async (importOriginal) => {
     };
 });
 
-const commitSignedOrder = vi.fn(async () => `0x${"cc".repeat(32)}` as Hex);
+const commitSignedOrder = vi.fn(async () => { callOrder.push("broadcast"); return `0x${"cc".repeat(32)}` as Hex; });
 vi.mock("@/lib/kernel/orderCommitted", () => ({ commitSignedOrder: (...args: unknown[]) => commitSignedOrder(...(args as [])) }));
 vi.mock("@/lib/kernel/useFigaroActions", () => ({ useFigaroActions: () => ({ commit: vi.fn() }) }));
 vi.mock("@/lib/composition/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit: vi.fn() }) }));
@@ -194,6 +198,25 @@ describe("every seller accept path reads the seller's own bound assemblies", () 
         await expect(result.current.acceptOrder(payloadUnder(d))).resolves.toMatch(/^0x/);
         expect(commitSignedOrder).toHaveBeenCalledTimes(1);
         expect(profileReads).toEqual([SELLER.toLowerCase()]);
+    });
+
+    it("acceptOrder runs the caller's beforeBroadcast after the sign and before the broadcast", async () => {
+        const d = design();
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
+        callOrder.length = 0;
+        const beforeBroadcast = vi.fn(async () => { callOrder.push("approve"); });
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        await expect(result.current.acceptOrder(payloadUnder(d), undefined, { beforeBroadcast })).resolves.toMatch(/^0x/);
+        expect(callOrder).toEqual(["sign", "approve", "broadcast"]);
+    });
+
+    it("acceptOrder broadcasts nothing when beforeBroadcast fails", async () => {
+        const d = design();
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
+        const beforeBroadcast = vi.fn(async () => { throw new Error("The bond approval was refused or failed."); });
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        await expect(result.current.acceptOrder(payloadUnder(d), undefined, { beforeBroadcast })).rejects.toThrow(/bond approval/);
+        expect(commitSignedOrder).not.toHaveBeenCalled();
     });
 
     it("acceptOrder refuses an order under an assembly the seller has not bound, naming it by slug and full hash", async () => {

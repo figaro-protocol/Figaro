@@ -10,7 +10,7 @@
  * the share / commit it leads into:
  *
  *   buyer:  signAndShare(preview) → sign → relay to the seller
- *   seller: acceptOrder(payload)  → sign → broadcast on-chain
+ *   seller: acceptOrder(payload)  → sign → [beforeBroadcast] → broadcast on-chain
  *
  * Every seller accept path — `acceptOrder`, `counterSignAndReturn`,
  * `quoteAndReturn` — first reads the seller's OWN profile (MembersRegistry →
@@ -331,8 +331,11 @@ export function useOrderCommitmentFlow() {
 
     /**
      * COUNTER-PARTY side (usually the seller): an incoming pending payload →
-     * counter-sign → broadcast on-chain. The bond is already approved (the page
-     * gated this on `useTokenApproval`). A seller short of the process
+     * counter-sign → broadcast on-chain. The bond's allowance is the caller's:
+     * approved beforehand (/sign), or in `opts.beforeBroadcast`, which runs
+     * after the terms confirm and the signature and before the broadcast, so
+     * a party who declines the terms has approved nothing (the /orders accept
+     * card); a throw there broadcasts nothing. A seller short of the process
      * denomination may pass `funding` — their swap-funded bond leg is quoted,
      * route-built, and witness-signed here at accept, then rides the same
      * atomic `swapAndCommit`. Returns the tx hash.
@@ -340,6 +343,7 @@ export function useOrderCommitmentFlow() {
     const acceptOrder = useCallback(async (
         incoming: CommitmentPayload,
         funding?: SellerFundingRequest,
+        opts?: { beforeBroadcast?: () => Promise<void> },
     ): Promise<Hex> => {
         setError(null);
         try {
@@ -411,6 +415,8 @@ export function useOrderCommitmentFlow() {
             const sellerFunding: SwapFundingLeg | undefined = sellerQuote
                 ? await signFundingLeg(sellerQuote, (typedData) => signTypedDataAsync(typedData) as Promise<Hex>)
                 : undefined;
+
+            await opts?.beforeBroadcast?.();
 
             setStep("committing");
             const hash = await commitSignedOrder({

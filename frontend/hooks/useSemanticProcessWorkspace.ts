@@ -7,8 +7,11 @@ import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import useTokenApproval from "@/hooks/useTokenApproval";
+import useTokenDecimals from "@/hooks/useTokenDecimals";
+import { calculateResolution } from "@figaro-protocol/sdk";
+import { formatToken } from "@/lib/shared/utils";
 import { CONTRACTS } from "@/lib/kernel/contracts";
-import { OrderState, useOrderStore } from "@/lib/kernel/store";
+import { OrderState, useOrderStore, type Order } from "@/lib/kernel/store";
 import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
 import { useUsageRecorder } from "@/lib/protocol/useUsageRecorder";
 import { fetchAssemblyByHash } from "@/lib/protocol/useAssemblyRegistry";
@@ -34,6 +37,32 @@ function collectRuntimeCapabilities(capabilities: CapabilityModel[]): Capability
     }).sort((left, right) => (right.uiPriority ?? 0) - (left.uiPriority ?? 0));
 }
 
+/**
+ * What resolving pays, stated in the resolve confirm: one line per committed
+ * order naming its seller and what that seller receives (the payment and its
+ * bond back, 2 × cumulative value + payment), then what comes back to the
+ * buyer (the rest of its bonds after the payments). Every figure is the SDK's
+ * `calculateResolution` over the committed order structs.
+ */
+export function resolvePayoutLines(
+    orders: ReadonlyArray<Pick<Order, "seller" | "payment" | "sellerBond" | "buyerBond">>,
+    figure: (amount: bigint) => string,
+): string[] {
+    if (orders.length === 0) return [];
+    let buyerPayout = 0n;
+    let buyerBonds = 0n;
+    let payments = 0n;
+    const lines = orders.map((order) => {
+        const resolution = calculateResolution(order.payment, order.sellerBond, order.buyerBond);
+        buyerPayout += resolution.buyerPayout;
+        buyerBonds += order.buyerBond;
+        payments += order.payment;
+        return `Seller ${order.seller} receives ${figure(resolution.sellerPayout)}: the payment ${figure(order.payment)} and its bond ${figure(order.sellerBond)} back.`;
+    });
+    lines.push(`You receive ${figure(buyerPayout)}: the rest of your bonds ${figure(buyerBonds)} after the payments ${figure(payments)}.`);
+    return lines;
+}
+
 interface Options {
     processId: string | null;
 }
@@ -54,6 +83,10 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const selectedCurrency = processOrders[0]?.currency as `0x${string}` | undefined;
     // The active order's on-chain currency, or undefined — never a coined default.
     const approvalTokenAddress = selectedCurrency;
+    // A token figure only once `decimals()` is read; the raw integer until then.
+    const { decimals, ready: decimalsReady } = useTokenDecimals(selectedCurrency);
+    const tokenFigure = (amount: bigint) =>
+        decimalsReady ? formatToken(amount, decimals) : `${amount.toString()} (raw — token decimals loading)`;
     const [executingCapabilityId, setExecutingCapabilityId] = useState<string | null>(null);
     const [activeActionLabel, setActiveActionLabel] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
@@ -192,13 +225,14 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         registerMember: (metadataURI) => registerMember.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
         updateMemberProfile: (metadataURI) => updateMemberProfile.updateProfile(metadataURI),
         withdrawMemberDeposit: () => withdrawMemberDeposit.withdraw(),
-        confirmResolve: (plannedUsageWrites) => window.confirm(
-            "This resolves the whole process: every seller is paid and every bond is refunded at once, and it cannot be undone."
-            + (plannedUsageWrites > 0
-                ? ` Your wallet then signs up to ${plannedUsageWrites} more ${plannedUsageWrites === 1 ? "transaction" : "transactions"} that count which clauses and which assembly this trade used, so their designers are rewarded.`
-                : "")
-            + " Continue?",
-        ),
+        confirmResolve: (plannedUsageWrites) => window.confirm([
+            "This resolves the whole process: every seller is paid and every bond is refunded at once, and it cannot be undone.",
+            ...resolvePayoutLines(processOrders, tokenFigure),
+            ...(plannedUsageWrites > 0
+                ? [`Your wallet then signs up to ${plannedUsageWrites} more ${plannedUsageWrites === 1 ? "transaction" : "transactions"} that count which clauses and which assembly this trade used, so their designers are rewarded.`]
+                : []),
+            "Continue?",
+        ].join("\n")),
         confirmWithdraw: () => window.confirm(`Leave the registry for this address? You are de-listed from discovery straight away and can register again at once — but the stake is released ${cooldownPhrase(withdrawalCooldown as bigint | undefined)}, so coming back costs a fresh one.`),
     });
 
