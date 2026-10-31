@@ -10,10 +10,16 @@
 #      stream of commits, resolutions and attestations from the seed — valid
 #      ones and deliberately malformed ones — runs each on FigaroCore or
 #      AttestationCoordinator, and writes what the contract did to
-#      test/fixtures/streams/kernel.jsonl.
+#      test/fixtures/streams/kernel.jsonl. About half the resolutions are
+#      drawn in the wallet-code form, the batch path's 0x04 entry: its bytes
+#      are also read by FigaroBatchVerifier's stream reader, the oracle of the
+#      entry's codec (offsets, the u16 length, the listed payments' sum), and
+#      what the reader did is written beside FigaroCore's answer.
 #   2. Rust (prover/lib/tests/fuzz_stream.rs) replays the stream through the
 #      mirror, one operation per batch, each attestation in the hash-only
-#      form, and must accept what the contracts accepted, reject what they
+#      form and each wallet-code resolution as ResolveByWalletCode, whose
+#      bytes its encoder and decoder must write and read as the reader did,
+#      and must accept what the contracts accepted, reject what they
 #      rejected with the same error, emit the coordinator's attestation log
 #      bytes, and arrive at the same ids, deposits, payouts and process
 #      states.

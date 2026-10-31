@@ -619,16 +619,23 @@ resolved process, of an unknown process; an attestation with a
 `clauseDataHash` or an inclusion proof the agreement does not open, by a
 wallet that is not the party, on an unknown or resolved order, naming one
 leaf's key with the other's hash). Each commit and resolution runs on
-`FigaroCore` and each attestation on `AttestationCoordinator`; the ids
+`FigaroCore` and each attestation on `AttestationCoordinator`; about half the
+resolutions are drawn in the wallet-code form, whose `0x04` entry is also read by
+`FigaroBatchVerifier`'s stream reader against code at the buyer's address; the ids
 returned or the log emitted, or the error reverted with, go to
 `test/fixtures/streams/kernel.jsonl`, one JSON object per line, followed by every
 wallet's deposits and payouts and every process's final state. The generator
 asserts nothing about which error a malformed operation earns: `FigaroCore`'s
 answer is the oracle. `prover/lib/tests/fuzz_stream.rs` replays the stream
 through `apply_batch_with_state`, one operation per batch over the state the
-previous batch left, with the stream's own commit signature bytes and each
-attestation in the hash-only form, and asserts the same acceptance, the same
-error, the same ids, the coordinator's log bytes with no spec binding, the
+previous batch left, with the stream's own commit signature bytes, each
+attestation in the hash-only form and each wallet-code resolution as
+`ResolveByWalletCode`, and asserts the same acceptance, the same
+error, the same ids, the coordinator's log bytes with no spec binding, for each
+`0x04` entry the bytes `FigaroBatchVerifier`'s stream reader read (the guest's
+encoder writes them, and its decoder reads back the same process, the u16-length
+authorization, the orders and the listed payments' sum, and stops where the
+reader stopped) and the orders it resolved, the
 same deposits, payouts, accumulators and active counts. The Rust half is `#[ignore]`d under a plain `cargo test`
 (it needs the stream) and fails, never skips, when run without one.
 `prover-ci`'s `cross-impl-fuzz` job runs four rounds on every push, seeded
