@@ -22,6 +22,23 @@
 //!   - every wallet's deposits and payouts, per token, are FigaroCore's;
 //!   - every process ends on FigaroCore's accumulator and active count.
 //!
+//! A resolution comes in the stream's two forms. The signed form is the
+//! `0x02` entry's. The wallet-code form is the `0x04` entry's, whose check
+//! lives in `FigaroBatchVerifier`, never in FigaroCore: the Foundry half
+//! builds the entry's bytes (the process, the u16 length, the authorization,
+//! the u16 count, the listed orders) followed by an empty `0x02` sentinel,
+//! writes down their hash, the authorization's length and the seed of its keccak
+//! chain (see `authorization`), hands them to the verifier's own stream reader with the buyer's account
+//! carrying code that validates exactly the authorization for the
+//! `ResolveProcess` digest over the listed payments' sum, and writes down the
+//! reader's answer, the sum and the events it published. Here each such step
+//! asserts the guest's encoder writes bytes of the same hash, its decoder reads back
+//! the same process, authorization, orders and sum, the reader resolved the
+//! same order hashes and stopped where the sentinel starts; and the mirror
+//! applies the step as `KernelOp::ResolveByWalletCode`, whose outcome joined
+//! with the reader's (the buyer's code refuses an authorization the buyer
+//! did not give) must be FigaroCore's.
+//!
 //! The commit signatures are the stream's own bytes, so a signature form the
 //! FigaroCore refuses (high-s, a 0/1 recovery id, zero bytes) reaches the mirror
 //! as FigaroCore saw it. A resolution has no signature on the direct path
@@ -40,6 +57,7 @@ use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::{apply_batch_with_state, derive_commitment_ids};
+use figaro_kernel::operation_stream::{decode_operation_stream, encode_operation_stream};
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
 
@@ -157,6 +175,122 @@ fn commitment(o: &serde_json::Value) -> Commitment {
     }
 }
 
+/// The process id of the empty `0x02` entry the Foundry half writes after
+/// every wallet-code entry, so the reader's offset past the entry is
+/// observed: `keccak256("figaro-fuzz-sentinel")`.
+fn sentinel_process_id() -> B256 {
+    keccak256(b"figaro-fuzz-sentinel")
+}
+
+/// A wallet-code step's authorization, as the Foundry half draws it: a
+/// keccak chain from the seed, word k `keccak256` of word k-1 and word 0
+/// `keccak256` of the seed, the last word cut at the length.
+fn authorization(step: &serde_json::Value) -> Vec<u8> {
+    let len = count(&step["authorizationLength"]);
+    let mut fill = b256(&step["authorizationSeed"]);
+    let mut out = Vec::with_capacity(len + 32);
+    while out.len() < len {
+        fill = keccak256(fill);
+        out.extend_from_slice(fill.as_slice());
+    }
+    out.truncate(len);
+    out
+}
+
+/// The codec of one wallet-code resolve step against the verifier's reading
+/// of the same bytes (see the module doc). Returns the decoded cumulative
+/// value, the listed payments' sum.
+fn check_wallet_code_codec(
+    i: usize,
+    step: &serde_json::Value,
+    process_id: &B256,
+    commitments: &[Commitment],
+    authorization: &[u8],
+    divergences: &mut Vec<String>,
+) -> Option<U256> {
+    let zero_sig = Signature {
+        v: 0,
+        r: B256::ZERO,
+        s: B256::ZERO,
+    };
+    let ops = vec![
+        KernelOp::ResolveByWalletCode {
+            process_id: *process_id,
+            cumulative_value: U256::ZERO,
+            commitments: commitments.to_vec(),
+            authorization: authorization.to_vec().into(),
+        },
+        KernelOp::Resolve {
+            process_id: sentinel_process_id(),
+            cumulative_value: U256::ZERO,
+            commitments: vec![],
+            buyer_sig: zero_sig,
+        },
+    ];
+    // The guest's bytes, of the hash of the bytes the verifier read: equal
+    // bytes, so decoding them decodes what the verifier read.
+    let bytes = encode_operation_stream(&ops, &[]);
+    if keccak256(&bytes) != b256(&step["walletCodeStreamHash"]) {
+        divergences.push(format!("step {i}: the guest's encoder writes other bytes than the verifier read"));
+        return None;
+    }
+    let sum = u256(&step["walletCodeSum"]);
+    let decoded = match decode_operation_stream(&bytes) {
+        Ok((ops, claims)) if claims.is_empty() => ops,
+        Ok(_) => {
+            divergences.push(format!("step {i}: the guest's decoder read a usage claim"));
+            return None;
+        }
+        Err(e) => {
+            divergences.push(format!("step {i}: the guest's decoder refused the verifier's bytes: {e}"));
+            return None;
+        }
+    };
+    let hashes = |cs: &[Commitment]| cs.iter().map(commitment_struct_hash).collect::<Vec<_>>();
+    let mut decoded_value = None;
+    match decoded.as_slice() {
+        [KernelOp::ResolveByWalletCode {
+            process_id: p,
+            cumulative_value,
+            commitments: cs,
+            authorization: a,
+        }, KernelOp::Resolve {
+            process_id: sentinel,
+            commitments: none,
+            ..
+        }] => {
+            if p != process_id || a.as_ref() != authorization || hashes(cs) != hashes(commitments) {
+                divergences.push(format!("step {i}: the guest's decoder read another entry than was written"));
+            }
+            if *cumulative_value != sum {
+                divergences.push(format!(
+                    "step {i}: the guest's decoder derives {cumulative_value}, the verifier summed {sum}"
+                ));
+            }
+            if *sentinel != sentinel_process_id() || !none.is_empty() {
+                divergences.push(format!("step {i}: the guest's decoder did not stop where the sentinel starts"));
+            }
+            decoded_value = Some(*cumulative_value);
+        }
+        other => divergences.push(format!("step {i}: the guest's decoder read {} entries, not the entry and its sentinel", other.len())),
+    }
+    if s(&step["walletCodeOutcome"]) == "ok" {
+        let expected: Vec<B256> = commitments
+            .iter()
+            .map(|c| compute_order_hash(process_id, &commitment_struct_hash(c)))
+            .collect();
+        if words(&step["walletCodeOrderHashes"]) != expected {
+            divergences.push(format!("step {i}: the verifier resolved other orders than the entry lists"));
+        }
+        if commitments.first().map(|c| c.buyer) != Some(addr(&step["walletCodeBuyer"]))
+            || count(&step["walletCodeCount"]) != commitments.len()
+        {
+            divergences.push(format!("step {i}: the verifier's ProcessResolved names another buyer or count"));
+        }
+    }
+    decoded_value
+}
+
 /// The mirror's error under FigaroCore's name. FigaroCore reports arithmetic
 /// overflow as a Solidity panic and a malformed signature through
 /// OpenZeppelin's ECDSA errors; every other name is FigaroCore's own.
@@ -225,12 +359,16 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
     let mut payouts: BTreeMap<(Address, Address), U256> = BTreeMap::new();
     let mut divergences: Vec<String> = Vec::new();
     let (mut accepted, mut rejected, mut attestations) = (0usize, 0usize, 0usize);
+    let (mut wallet_code_accepted, mut wallet_code_refused) = (0usize, 0usize);
 
     for step in steps {
         let i = count(&step["index"]);
         let kind = s(&step["kind"]);
         let outcome = s(&step["outcome"]);
 
+        let wallet_code = kind == "resolve" && step.get("form").map(s) == Some("walletCode");
+        let mut wallet_code_value: Option<U256> = None;
+        let mut applied_value = U256::ZERO;
         let op = match kind {
             "commit" => KernelOp::Commit {
                 commitment: commitment(step),
@@ -240,7 +378,7 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
             "resolve" => {
                 let process_id = b256(&step["processId"]);
                 let caller = addr(&step["caller"]);
-                let commitments = (0..count(&step["orderCount"]))
+                let commitments: Vec<Commitment> = (0..count(&step["orderCount"]))
                     .map(|k| committed[&count(&step[format!("r{k}")])].clone())
                     .collect();
                 // The buyer signs over the process as it stands: its
@@ -251,12 +389,25 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                     .get(&process_id)
                     .map(|p| p.cumulative_value)
                     .unwrap_or(U256::ZERO);
-                let digest = typed_data_hash(&domain, &resolve_struct_hash(&process_id, &cumulative_value));
-                KernelOp::Resolve {
-                    process_id,
-                    cumulative_value,
-                    commitments,
-                    buyer_sig: sign_digest(&keys[&caller], &digest),
+                applied_value = cumulative_value;
+                if wallet_code {
+                    let authorization = authorization(step);
+                    wallet_code_value =
+                        check_wallet_code_codec(i, step, &process_id, &commitments, &authorization, &mut divergences);
+                    KernelOp::ResolveByWalletCode {
+                        process_id,
+                        cumulative_value,
+                        commitments,
+                        authorization: authorization.into(),
+                    }
+                } else {
+                    let digest = typed_data_hash(&domain, &resolve_struct_hash(&process_id, &cumulative_value));
+                    KernelOp::Resolve {
+                        process_id,
+                        cumulative_value,
+                        commitments,
+                        buyer_sig: sign_digest(&keys[&caller], &digest),
+                    }
                 }
             }
             "attestAsSeller" | "attestAsBuyer" => {
@@ -306,8 +457,30 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
             provenance_leaf: B256::ZERO,
         };
 
+        // A wallet-code resolve the mirror applies lands only if the
+        // verifier's reader, asking the buyer's code, accepts its entry.
+        let verifier = if wallet_code { s(&step["walletCodeOutcome"]) } else { "ok" };
         match (apply_batch_with_state(&input), outcome) {
+            (Ok(_), kernel_error) if verifier != "ok" => {
+                rejected += 1;
+                wallet_code_refused += 1;
+                if kernel_error != "NotProcessBuyer" || verifier != "WalletCodeAuthorizationRefused" {
+                    divergences.push(format!(
+                        "step {i} (wallet-code resolve): the kernel answered {kernel_error}, the verifier's reader refused with {verifier}"
+                    ));
+                }
+            }
             (Ok((_pv, positions, events, next)), "ok") => {
+                if wallet_code {
+                    wallet_code_accepted += 1;
+                    // An applied resolve lists every order of its process, so
+                    // the value the stream leaves out is the payments' sum.
+                    if wallet_code_value != Some(applied_value) {
+                        divergences.push(format!(
+                            "step {i}: the applied value is not the listed payments' sum the decoder derives"
+                        ));
+                    }
+                }
                 accepted += 1;
                 if kind.starts_with("attest") {
                     attestations += 1;
@@ -396,12 +569,16 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
     assert!(accepted > 0 && rejected > 0, "seed {seed}: the stream exercises both outcomes");
     assert!(attestations > 0, "seed {seed}: the stream holds accepted attestations");
     assert!(
+        wallet_code_accepted > 0,
+        "seed {seed}: the stream holds accepted wallet-code resolves (0x04)"
+    );
+    assert!(
         divergences.is_empty(),
         "seed {seed}: {} divergences between the kernel and its mirror:\n{}",
         divergences.len(),
         divergences.join("\n")
     );
     println!(
-        "seed {seed}: {accepted} accepted ({attestations} attestations), {rejected} rejected, {processes} processes — no divergence"
+        "seed {seed}: {accepted} accepted ({attestations} attestations, {wallet_code_accepted} wallet-code resolves), {rejected} rejected ({wallet_code_refused} by the buyer's code), {processes} processes — no divergence"
     );
 }

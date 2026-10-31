@@ -7,6 +7,9 @@ import "src/core/kernel/CommitmentTypes.sol";
 import "src/core/attestation/AttestationCoordinator.sol";
 import "src/mocks/MockPermitToken.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {FigaroBatchVerifier} from "src/core/verifier/FigaroBatchVerifier.sol";
+import {MockSP1Verifier} from "src/mocks/MockSP1Verifier.sol";
+import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 
 /// @title KernelDifferentialFuzzTest — the seeded operation stream FigaroCore
 ///        and its Rust mirror must agree on
@@ -33,6 +36,22 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 ///         same figures. `scripts/test-cross-impl-fuzz.sh` runs
 ///         the two halves under one seed.
 ///
+///         About half the resolutions are drawn in the wallet-code form,
+///         the batch path's `0x04` entry, whose check is no FigaroCore's but
+///         `FigaroBatchVerifier`'s. FigaroCore still answers the step (its
+///         `msg.sender == rootBuyer` admits the buyer's code as it admits the
+///         key); beside it, the entry's codec has its own oracle, the
+///         verifier's stream reader: the entry is built here to the guest's
+///         format, an authorization of 0 to 65535 bytes across the u16
+///         length's boundaries, followed by an empty `0x02` sentinel, and
+///         read by the verifier with the buyer's account carrying code that
+///         validates exactly that authorization for `ResolveProcess` over the
+///         listed payments' sum (when the caller is the buyer: the buyer's
+///         code refuses what the buyer did not authorize). The reader's
+///         answer, the sum, the hash of the bytes it read, and the order
+///         hashes, buyer and count it published are recorded, and the sentinel's event must come last.
+///         The mirror asserts its own encoder and decoder agree with them.
+///
 ///         The generator asserts nothing about WHICH error a malformed
 ///         operation earns: FigaroCore's answer is the oracle, recorded as it
 ///         comes.
@@ -46,6 +65,7 @@ contract KernelDifferentialFuzzTest is Test {
     AttestationCoordinator internal coordinator;
     MockPermitToken internal tokenA;
     MockPermitToken internal tokenB;
+    StreamReader internal reader;
 
     uint256[KEY_COUNT] internal keys = [uint256(0xB0B), 0x5E11, 0x5E12, 0x5E13, 0xB0B2];
     address[KEY_COUNT] internal wallets;
@@ -76,6 +96,7 @@ contract KernelDifferentialFuzzTest is Test {
         tokenB = new MockPermitToken();
         core = new FigaroCore();
         coordinator = new AttestationCoordinator(address(core));
+        reader = new StreamReader(address(new MockSP1Verifier()));
         for (uint256 i = 0; i < KEY_COUNT; i++) {
             wallets[i] = vm.addr(keys[i]);
             tokenA.mint(wallets[i], 1 << 200);
@@ -312,7 +333,151 @@ contract KernelDifferentialFuzzTest is Test {
         vm.serializeBytes32(key, "processId", r.processId);
         vm.serializeAddress(key, "caller", r.caller);
         vm.serializeString(key, "orderCount", vm.toString(r.refs.length));
+        if (_next() % 2 == 0) {
+            (bytes memory authorization, bytes32 fillSeed) = _authorization();
+            _readWalletCodeEntry(key, r, authorization, fillSeed);
+        }
         return _runResolution(key, r);
+    }
+
+    // ── The wallet-code form: the verifier's reader as the codec's oracle ──
+
+    bytes32 internal constant SENTINEL_PROCESS_ID = keccak256("figaro-fuzz-sentinel");
+
+    /// An authorization across the u16 length: none, one byte, short, the
+    /// low byte's edge (255, 256), long, and the length's maximum. Its bytes
+    /// are a keccak chain from `fillSeed` (word k is keccak256 of word k-1,
+    /// word 0 keccak256 of the seed; the last word cut at the length), so the
+    /// stream carries the seed and the length rather than up to 64 KiB of
+    /// hex, which every later `vm.serialize*` of the step would copy again.
+    function _authorization() internal returns (bytes memory a, bytes32 fillSeed) {
+        uint256 class = _next() % 8;
+        uint256 len;
+        if (class == 0) len = 0;
+        else if (class == 1) len = 1;
+        else if (class == 2) len = 2 + _next() % 64;
+        else if (class == 3) len = 255;
+        else if (class == 4) len = 256;
+        else if (class == 5) len = 257 + _next() % 1200;
+        else if (class == 6) len = 1 + _next() % 255;
+        else len = _next() % 4 == 0 ? 65535 : 65535 - _next() % 4096;
+        a = new bytes(len);
+        fillSeed = bytes32(_next());
+        bytes32 fill = fillSeed;
+        for (uint256 k = 0; k < len; k += 32) {
+            fill = keccak256(abi.encode(fill));
+            assembly {
+                mstore(add(add(a, 32), k), fill)
+            }
+        }
+    }
+
+    /// The guest's `0x04` entry (`prover/lib/src/operation_stream.rs`):
+    /// processId, len(2), authorization, count(2), the packed orders.
+    function _walletCodeEntry(bytes32 processId, bytes memory authorization, CommitmentTypes.Commitment[] memory list)
+        internal
+        pure
+        returns (bytes memory entry)
+    {
+        entry = bytes.concat(
+            hex"04", processId, bytes2(uint16(authorization.length)), authorization, bytes2(uint16(list.length))
+        );
+        for (uint256 k = 0; k < list.length; k++) {
+            CommitmentTypes.Commitment memory c = list[k];
+            entry = bytes.concat(
+                entry,
+                abi.encodePacked(
+                    c.processId,
+                    c.buyer,
+                    c.seller,
+                    c.currency,
+                    c.payment,
+                    c.expectedCumulativeValue,
+                    c.checkoutHash,
+                    c.salt,
+                    c.deadline
+                )
+            );
+        }
+    }
+
+    /// Read the step's wallet-code entry with the verifier's own reader, on a
+    /// state snapshot reverted after (the buyer's code exists for the read
+    /// alone), and record what it read. Every draw from `rng` happens before
+    /// the snapshot, which would otherwise revert it.
+    function _readWalletCodeEntry(string memory key, Resolution memory r, bytes memory authorization, bytes32 fillSeed)
+        internal
+    {
+        CommitmentTypes.Commitment[] memory list = new CommitmentTypes.Commitment[](r.refs.length);
+        uint256 sum;
+        for (uint256 k = 0; k < r.refs.length; k++) {
+            list[k] = committedAt[r.refs[k]];
+            sum += list[k].payment;
+        }
+        bytes memory stream = bytes.concat(
+            _walletCodeEntry(r.processId, authorization, list),
+            hex"02",
+            SENTINEL_PROCESS_ID,
+            new bytes(65),
+            bytes2(uint16(0))
+        );
+        vm.serializeString(key, "form", "walletCode");
+        vm.serializeBytes32(key, "authorizationSeed", fillSeed);
+        vm.serializeString(key, "authorizationLength", vm.toString(authorization.length));
+        vm.serializeBytes32(key, "walletCodeStreamHash", keccak256(stream));
+        vm.serializeString(key, "walletCodeSum", vm.toString(sum));
+
+        uint256 readState = vm.snapshotState();
+        address asked = list.length > 0 ? list[0].buyer : address(0);
+        if (asked != address(0)) {
+            vm.etch(asked, type(MockERC1271Wallet).runtimeCode);
+            if (r.caller == asked) {
+                MockERC1271Wallet(asked).approve(reader.resolveDigest(r.processId, sum), authorization);
+            }
+        }
+        try reader.walk(stream, false) {
+            vm.recordLogs();
+            reader.walk(stream, true);
+            _recordPublished(key, r.processId, list.length, vm.getRecordedLogs());
+            vm.serializeString(key, "walletCodeOutcome", "ok");
+        } catch (bytes memory reason) {
+            vm.serializeString(key, "walletCodeOutcome", _readerErrorName(reason));
+        }
+        vm.revertToState(readState);
+    }
+
+    /// The reader's published events: one OrderResolved per listed order and
+    /// the entry's ProcessResolved, then the sentinel's ProcessResolved last,
+    /// which only an offset that stopped exactly past the entry reaches.
+    function _recordPublished(string memory key, bytes32 processId, uint256 n, Vm.Log[] memory logs) internal {
+        bytes32 resolvedSig = FigaroBatchVerifier.OrderResolved.selector;
+        bytes32 processSig = FigaroBatchVerifier.ProcessResolved.selector;
+        assertEq(logs.length, n + 2, "the reader publishes each order, the process and the sentinel");
+        bytes32[] memory hashes = new bytes32[](n);
+        for (uint256 k = 0; k < n; k++) {
+            assertEq(logs[k].topics[0], resolvedSig, "an OrderResolved per listed order");
+            assertEq(logs[k].topics[2], processId, "under the entry's process");
+            hashes[k] = logs[k].topics[1];
+        }
+        assertEq(logs[n].topics[0], processSig, "the entry's ProcessResolved");
+        assertEq(logs[n].topics[1], processId, "names the entry's process");
+        assertEq(logs[n + 1].topics[0], processSig, "the sentinel's ProcessResolved");
+        assertEq(logs[n + 1].topics[1], SENTINEL_PROCESS_ID, "the reader stopped exactly past the entry");
+        vm.serializeBytes32(key, "walletCodeOrderHashes", hashes);
+        vm.serializeAddress(key, "walletCodeBuyer", address(uint160(uint256(logs[n].topics[2]))));
+        vm.serializeString(key, "walletCodeCount", vm.toString(abi.decode(logs[n].data, (uint256))));
+    }
+
+    function _readerErrorName(bytes memory reason) internal pure returns (string memory) {
+        if (reason.length >= 4) {
+            bytes4 sel = bytes4(reason);
+            if (sel == FigaroBatchVerifier.WalletCodeAuthorizationRefused.selector) {
+                return "WalletCodeAuthorizationRefused";
+            }
+            if (sel == FigaroBatchVerifier.BuyerHasNoCode.selector) return "BuyerHasNoCode";
+            if (sel == FigaroBatchVerifier.MalformedOperationStream.selector) return "MalformedOperationStream";
+        }
+        return _errorName(reason);
     }
 
     function _draftResolution(uint256 pi, uint256 variant) internal returns (Resolution memory r) {
@@ -623,5 +788,28 @@ contract KernelDifferentialFuzzTest is Test {
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
         return abi.encodePacked(r, s, v);
+    }
+}
+
+/// @dev `FigaroBatchVerifier`'s stream reader, called directly: the walk
+///      `settleBatch` runs at its steps 4 (`publish` false, the buyer's code
+///      asked about every `0x04` entry) and 6 (`publish` true, the Core's
+///      events), and the `ResolveProcess` digest under this verifier's domain.
+///      The registry and counter are never reached by the walk.
+contract StreamReader is FigaroBatchVerifier {
+    constructor(address sp1) FigaroBatchVerifier(sp1, bytes32(uint256(1)), address(1), address(1)) {}
+
+    function walk(bytes calldata s, bool publish) external {
+        _walkOperations(s, publish);
+    }
+
+    function resolveDigest(bytes32 processId, uint256 cumulativeValue) external view returns (bytes32) {
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)"), processId, cumulativeValue
+                )
+            )
+        );
     }
 }
