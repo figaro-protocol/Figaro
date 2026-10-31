@@ -34,7 +34,7 @@ export const metadata: Metadata = withOg({
 const DOORS: { label: string; line: string; href: string }[] = [
     {
         label: "Build",
-        line: "Build on the substrate we developed for you. Use it to secure whatever economic system you want: define the processes, the data rules and the token they run in.",
+        line: "Build on the substrate we developed for you. Use it to secure whatever economic system you want: define the processes, the data rules and, if you choose, the token they run in.",
         href: "/terms",
     },
     {
