@@ -313,8 +313,8 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         // ── 2. Both candidates price and countersign over the channel. ──
         const quotePolicy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [tokenAddress], maxValue: CEILING };
         const channel = new InProcessChannel();
-        channel.register(sellerAccount.address, makeSellerQuoteHandler(sellerWallet, ctx, { quote: () => WINNING_QUOTE, policy: quotePolicy, specs: GATE_SPECS, readDesign: async () => assembly, readProfile: profileBinding(assembly) }));
-        channel.register(loserAccount.address, makeSellerQuoteHandler(loserWallet, ctx, { quote: () => LOSING_QUOTE, policy: quotePolicy, specs: GATE_SPECS, readDesign: async () => assembly, readProfile: profileBinding(assembly) }));
+        channel.register(sellerAccount.address, makeSellerQuoteHandler(sellerWallet, ctx, { quote: () => WINNING_QUOTE, policy: quotePolicy, specs: GATE_SPECS, readDesign: async () => assembly, readProfile: profileBinding(assembly), chainClient: publicClient }));
+        channel.register(loserAccount.address, makeSellerQuoteHandler(loserWallet, ctx, { quote: () => LOSING_QUOTE, policy: quotePolicy, specs: GATE_SPECS, readDesign: async () => assembly, readProfile: profileBinding(assembly), chainClient: publicClient }));
         const drafts = [requestFor(sellerAccount.address), requestFor(loserAccount.address)];
         const { replies, winner } = await requestQuotes(channel, drafts, ctx);
         expect(replies).toHaveLength(2);

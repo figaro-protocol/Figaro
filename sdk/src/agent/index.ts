@@ -116,6 +116,8 @@ export {
     makeSellerOfferHandler,
     buildChainOffers,
     originateChain,
+    checkDeadlineCap,
+    DEFAULT_MAX_DEADLINE_SECONDS,
 } from "./originate.js";
 export type {
     Assembly,
@@ -125,6 +127,7 @@ export type {
     BuildOfferParams,
     OfferCheck,
     OfferPolicy,
+    SellerSignCtx,
     OriginateParams,
     SellerOfferHandlerOpts,
     ChainNodeSpec,
@@ -154,7 +157,7 @@ export {
     makeSellerRaceHandler,
     makeSellerQuoteHandler,
 } from "./dispatchRace.js";
-export type { RaceReply, BuildQuoteRequestParams, ChannelFor, RaceOutcome, RaceRun, StartRaceOptions } from "./dispatchRace.js";
+export type { RaceReply, BuildQuoteRequestParams, ChannelFor, RaceOutcome, RaceRun, StartRaceOptions, ChainClock } from "./dispatchRace.js";
 
 // did:web identity — agents bind their on-chain address to a resolvable DID
 export {
@@ -183,6 +186,7 @@ export {
     fromSequencerCommitment,
     fromSequencerSig,
     parseWireQuantity,
+    MAX_SEQUENCER_RESPONSE_BYTES,
 } from "./sequencer.js";
 export type {
     SequencerClientConfig,

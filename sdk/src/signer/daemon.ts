@@ -4,8 +4,9 @@
  * A separate PROCESS that holds the key (F1) and exposes signing as an
  * operation over a local UNIX socket. Every request passes the out-of-model
  * policy gate (F2, F3) before anything is signed; every decision is audited.
- * The key exists only in this process — the socket carries signatures out,
- * never key bytes, and `signMessage` (personal_sign) is refused always: it
+ * The key exists only in this process, or only on the Ledger it signs
+ * through (./custody.ts) — the socket carries signatures out, never key
+ * bytes, and `signMessage` (personal_sign) is refused always: it
  * is not a protocol operation and a free-form signature is a blank check.
  */
 
@@ -13,7 +14,7 @@ import * as fs from "node:fs";
 import * as net from "node:net";
 import * as path from "node:path";
 import { createPublicClient, http, type Address, type Hex, type TransactionSerializable } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { keyCustody, type SignerCustody } from "./custody.js";
 import { simulateCalls } from "viem/actions";
 import {
     evaluateSimulation, evaluateTransaction, evaluateTypedData,
@@ -28,8 +29,13 @@ import { MAX_REQUEST_LINE_CHARS, parseRequest, wireStringify, type WireResponse 
 export interface SignerDaemonOptions {
     /** A policy that already passed `validatePolicy`. */
     policy: SignerPolicy;
-    /** The decrypted key — never leaves this process. */
-    privateKey: Hex;
+    /** The decrypted key — never leaves this process. Exactly one of
+     *  `privateKey` and `custody`. */
+    privateKey?: Hex;
+    /** A custody that signs for the daemon — a Ledger's (`ledgerCustody`),
+     *  whose key never leaves the device. Exactly one of `privateKey` and
+     *  `custody`. */
+    custody?: SignerCustody;
     socketPath: string;
     auditPath: string;
     journalPath: string;
@@ -86,7 +92,10 @@ export function createSignerDaemon(opts: SignerDaemonOptions): SignerDaemon {
     // neither sits where other users can write.
     assertOneDir({ socketPath, auditPath, journalPath });
     assertPrivateDir(path.dirname(socketPath));
-    const account = privateKeyToAccount(opts.privateKey);
+    if ((opts.privateKey === undefined) === (opts.custody === undefined)) {
+        throw new Error("the signer takes one custody: a keystore key or a Ledger, never both or neither");
+    }
+    const account: SignerCustody = opts.custody ?? keyCustody(opts.privateKey as Hex);
     const journal = new SpendJournal(journalPath, policy.ceilings.periodSecs);
     const nowSecs = opts.nowSecs ?? (() => Math.floor(Date.now() / 1000));
 
@@ -174,7 +183,7 @@ export function createSignerDaemon(opts: SignerDaemonOptions): SignerDaemon {
                 types: typed.types,
                 primaryType: typed.primaryType,
                 message: reviveTypedMessage(typed.types, typed.primaryType, typed.message),
-            } as Parameters<typeof account.signTypedData>[0]);
+            } as unknown as Parameters<SignerCustody["signTypedData"]>[0]);
             journal.record(nowSecs(), decision.risk.token, decision.risk.native);
             return { id: req.id, ok: true, result: { signature } };
         }

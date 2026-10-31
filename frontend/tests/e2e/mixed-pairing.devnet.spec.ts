@@ -119,7 +119,7 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
             // an assembly it has not bound is refused) and runs the sign gate
             // over the clause specs and the design the draft names.
             makeSellerRaceHandler(agentWallet, { chainId: 31337, core }, {
-                accept: () => true, policy, specs: specSource(), readDesign: chainDesignReader(), readProfile: chainProfileReader(),
+                chainClient: publicClient, accept: () => true, policy, specs: specSource(), readDesign: chainDesignReader(), readProfile: chainProfileReader(),
             }),
         );
         let commitReady: CommitmentPayload | null = null;

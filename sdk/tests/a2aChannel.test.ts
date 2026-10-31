@@ -51,7 +51,7 @@ async function buildOffer(): Promise<CommitmentPayload> {
 }
 
 const sellerHandler: OfferHandler = (offer) => counterSignOffer(
-    sellerW, offer, { chainId: CHAIN_ID, core: CORE }, () => true,
+    sellerW, offer, { chainId: CHAIN_ID, core: CORE, chainNow: 0n }, () => true,
     { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 10_000n },
     SPECS, assembly, profileBinding(assembly),
 );

@@ -548,7 +548,9 @@ const addresses = addressesFromDeploymentRecord(deploymentRecord);
 // `getLogs` internally in sub-ranges of
 // `DEFAULT_LOG_CHUNK_SIZE` (9,500 blocks) so a wide range doesn't exceed a
 // public RPC provider's block-range cap; pass a trailing `chunkSize` to tune
-// it for a stricter (or more permissive) provider.
+// it for a stricter (or more permissive) provider. A sub-range the node answers
+// with pruned history (code 4444, publicnode's keyless Sepolia) is asked again,
+// up to 24 times; every other error propagates.
 const events = await fetchCoreEvents(client, addresses, 0n);
 
 // Cross-endpoint corroboration. A load-balanced public RPC is a POOL whose
@@ -1130,14 +1132,18 @@ const { status, body } = await respond(rawRequestBody); // status is always 200 
 // (`design`, the hydrated assembly; null refuses a draft naming one), is
 // refused before any signature.
 import { validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner } from "@figaro-protocol/sdk/agent";
-const reply = await counterSignDraft(courierWallet, draft, { chainId, core }, accept, policy, specs, design, readProfile);
+const reply = await counterSignDraft(courierWallet, draft, { chainId, core, chainNow }, accept, policy, specs, design, readProfile);
 // Buyer side: exact struct-hash equality against the SENT draft, then recovery —
 // a doctored reply cannot ride a valid signature.
 const check = await verifyRaceReply(reply!, draft, { chainId, core });
 const winner = selectRaceWinner(replies); // cheapest countersigner; ties by arrival
 // Packaged fan-out + mountable responder (the RFQ leg below has the same pair):
 import { requestCounterSignatures, makeSellerRaceHandler } from "@figaro-protocol/sdk/agent";
-channel.register(courierAddr, makeSellerRaceHandler(courierWallet, { chainId, core }, { accept, policy, specs, readDesign, readProfile }));
+channel.register(courierAddr, makeSellerRaceHandler(courierWallet, { chainId, core }, { chainClient: publicClient, accept, policy, specs, readDesign, readProfile }));
+// `chainClient` is required: the handler reads the chain's `block.timestamp` at
+// each payload, the now the policy's `maxDeadlineSeconds` cap is measured from
+// (a direct `counterSignDraft` / `quoteDraft` call passes it as `ctx.chainNow`,
+// `readChainTimestamp(publicClient)`; without it every draft is declined).
 const race = await requestCounterSignatures(channel, drafts, { chainId, core }); // { replies, winner }
 
 // The RFQ leg — same choreography, the CANDIDATE authors the price (bespoke
@@ -1151,6 +1157,7 @@ const race = await requestCounterSignatures(channel, drafts, { chainId, core });
 // nothing else. Cheapest verified quote wins; the buyer signs exactly one.
 import { buildQuoteRequest, requestQuotes, makeSellerQuoteHandler } from "@figaro-protocol/sdk/agent";
 channel.register(courierAddr, makeSellerQuoteHandler(courierWallet, { chainId, core }, {
+    chainClient: publicClient,                     // required, as for the race handler
     quote: (draft) => myPriceFor(draft),           // null declines; > ceiling declines
     policy: { requireRootShape: true, currencyAllowlist: [myToken], maxValue: myMaxBond },
     specs, readDesign, readProfile,                // the same gate as every seller handler
@@ -1713,7 +1720,9 @@ SDK does not constrain it. Full signatures: `dist/handoff/messages.d.ts` +
 The protocol-shaped half of the sandboxed signer runtime
 (`docs/AI_AGENT_COORDINATION.md` § "The sandboxed signer runtime"): a daemon
 that holds the wallet key in ITS process only (encrypted V3 keystore,
-passphrase at start) and exposes signing as an operation over a local UNIX
+passphrase at start) or on a Ledger (`--ledger [--hd-path <path>]`, default
+`m/44'/60'/0'/0/0`; needs `@ledgerhq/hw-transport-node-hid` installed beside
+the SDK) and exposes signing as an operation over a local UNIX
 socket — every request passing an out-of-model policy gate before anything is
 signed. The gate enforces: EIP-712 **domain binding** (chainId + a
 verifyingContract on the policy's allowlist — `FigaroCore` and
@@ -1765,6 +1774,7 @@ Run it:
 ```sh
 npx figaro-signer --policy deployments/signer-policy.11155111.json \
   --keystore ~/operator.keystore.json
+#   or: --ledger [--hd-path "m/44'/60'/0'/0/0"]  (needs @ledgerhq/hw-transport-node-hid)
 # socket, audit log and journal: ~/.figaro-signer/ (--dir <dir> to move them)
 # passphrase: FIGARO_SIGNER_PASSPHRASE env, or the hidden prompt
 ```

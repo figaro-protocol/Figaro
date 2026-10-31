@@ -2,16 +2,21 @@
 /**
  * @figaro-protocol/sdk/signer — the daemon entrypoint.
  *
- *   figaro-signer --policy <policy.json> --keystore <keystore.json> \
+ *   figaro-signer --policy <policy.json> \
+ *     (--keystore <keystore.json> | --ledger [--hd-path <path>]) \
  *     [--dir <dir>] [--socket <path>]
  *
  * The socket, the audit log and the spend journal sit in one directory of
  * the signer's own — `~/.figaro-signer` unless named — never in a temp
  * directory: a sandboxed agent may write there.
  *
- * The passphrase arrives via FIGARO_SIGNER_PASSPHRASE or a hidden prompt —
- * never an argument (arguments are visible to every process lister). A
- * malformed policy or a failed keystore decrypt refuses to start.
+ * Keystore custody: the passphrase arrives via FIGARO_SIGNER_PASSPHRASE or a
+ * hidden prompt — never an argument (arguments are visible to every process
+ * lister). Ledger custody: the key stays on the device, reached over USB HID
+ * through `@ledgerhq/hw-transport-node-hid`, which the owner installs beside
+ * the SDK; the Ethereum app must be open, and the device asks for each
+ * signature. A malformed policy, a failed keystore decrypt, or a device that
+ * cannot be opened refuses to start.
  */
 
 import * as fs from "node:fs";
@@ -20,6 +25,8 @@ import * as readline from "node:readline";
 import { Writable } from "node:stream";
 import { validatePolicy } from "./policy.js";
 import { decryptKeystore, type KeystoreV3 } from "./keystore.js";
+import { keyCustody, type SignerCustody } from "./custody.js";
+import { DEFAULT_LEDGER_PATH, ledgerCustody, type LedgerTransport } from "./ledger.js";
 import { createSignerDaemon } from "./daemon.js";
 import { resolveSignerPaths } from "./paths.js";
 
@@ -54,9 +61,25 @@ async function promptPassphrase(): Promise<string> {
     });
 }
 
+/** The USB HID transport, from the package the owner installs beside the
+ *  SDK; absent, the signer refuses to start and names it. */
+async function openLedgerTransport(): Promise<LedgerTransport> {
+    const name = "@ledgerhq/hw-transport-node-hid";
+    let mod: { default?: { create(): Promise<LedgerTransport> } };
+    try {
+        mod = await import(name) as typeof mod;
+    } catch {
+        fail(`--ledger needs ${name} installed beside @figaro-protocol/sdk (npm install ${name})`);
+    }
+    if (!mod.default?.create) fail(`${name} has no default transport to open`);
+    return mod.default.create();
+}
+
 async function main() {
     const policyPath = arg("policy") ?? fail("--policy <file> is required");
-    const keystorePath = arg("keystore") ?? fail("--keystore <file> is required");
+    const keystorePath = arg("keystore");
+    const useLedger = process.argv.includes("--ledger");
+    if (Boolean(keystorePath) === useLedger) fail("name one custody: --keystore <file> or --ledger");
     const { socketPath, auditPath, journalPath } = resolveSignerPaths(
         { dir: arg("dir"), socket: arg("socket") },
         os.homedir(),
@@ -68,12 +91,17 @@ async function main() {
     }
     const policy = policyResult.policy;
 
-    const keystore = JSON.parse(fs.readFileSync(keystorePath, "utf-8")) as KeystoreV3;
-    const passphrase = process.env.FIGARO_SIGNER_PASSPHRASE ?? await promptPassphrase();
-    const privateKey = decryptKeystore(keystore, passphrase);
+    let custody: SignerCustody;
+    if (keystorePath) {
+        const keystore = JSON.parse(fs.readFileSync(keystorePath, "utf-8")) as KeystoreV3;
+        const passphrase = process.env.FIGARO_SIGNER_PASSPHRASE ?? await promptPassphrase();
+        custody = keyCustody(decryptKeystore(keystore, passphrase));
+    } else {
+        custody = await ledgerCustody({ transport: await openLedgerTransport(), path: arg("hd-path") ?? DEFAULT_LEDGER_PATH });
+    }
 
     const daemon = createSignerDaemon({
-        policy, privateKey, socketPath, auditPath, journalPath,
+        policy, custody, socketPath, auditPath, journalPath,
     });
     await daemon.listen();
     console.log(`figaro-signer: operating ${daemon.address}`);

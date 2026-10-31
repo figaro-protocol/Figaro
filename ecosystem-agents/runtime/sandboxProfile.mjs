@@ -3,13 +3,19 @@
  * so the tests drive the same functions the launcher runs.
  *
  *   - which environment variables cross into the sandbox (`scrubEnv`);
- *   - which paths are unreadable by default (`defaultDenyReads`), and how
- *     `--allow-read` opens one of them (`applyAllowReads`);
+ *   - which paths are readable at all: reads are denied by default, and the
+ *     base profile grants the system, the workspace and temp; the launcher
+ *     grants what the runtime itself loads (`runtimeReadRoots`) and each
+ *     `--allow-read` (`applyAllowReads`);
+ *   - which secret paths stay unreadable inside any grant (`defaultDenyReads`),
+ *     and how `--allow-read` opens one of them by naming it exactly;
  *   - the profile text sandbox-exec runs (`renderProfile`): the parameterized
- *     base in sandbox-macos.sb plus one deny rule per unreadable path.
+ *     base in sandbox-macos.sb, one allow rule per grant, then one deny rule
+ *     per secret path, last so that it wins inside a grant.
  */
 
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -125,18 +131,96 @@ export function defaultDenyReads(home) {
     return DEFAULT_DENY_READ.map((rel) => canonical(path.join(root, rel)));
 }
 
-/**
- * Open the defaults `--allow-read` names. Each allow must name a default
- * exactly (after canonicalization); one that names nothing on the list is
- * an error, never a silent no-op.
- */
-export function applyAllowReads(denies, allows) {
-    const open = new Set(allows.map(canonical));
-    const unknown = [...open].filter((p) => !denies.includes(p));
-    return { denies: denies.filter((p) => !open.has(p)), unknown };
+/** Is `inner` the path `outer` or under it? Both canonical. */
+function within(outer, inner) {
+    return inner === outer || inner.startsWith(outer.endsWith(path.sep) ? outer : outer + path.sep);
 }
 
-// ── The profile text ────────────────────────────────────────────────────────
+/**
+ * Read `--allow-read`. Reads are denied by default, so each allow is one of
+ * two acts:
+ *   - it names a default secret path exactly (after canonicalization), and
+ *     opens that one: its deny leaves the list and its grant joins;
+ *   - it names any other path, and grants reads under it. The secret denies
+ *     are rendered after every grant, so a secret inside a grant stays
+ *     unreadable.
+ * A grant that would undo the default is refused, never widened: the root,
+ * the home directory or a directory above it (the old default-allow posture),
+ * and a path inside a default secret path (open the default itself, by name).
+ */
+export function applyAllowReads(denies, allows, { home } = {}) {
+    const homeRoot = home ? canonical(home) : null;
+    const opened = new Set();
+    const grants = [];
+    const refused = [];
+    for (const p of [...new Set(allows.map(canonical))]) {
+        // Opened: its deny leaves, and its grant makes it readable.
+        if (denies.includes(p)) { opened.add(p); grants.push(p); continue; }
+        if (p === path.parse(p).root || (homeRoot && within(p, homeRoot))) {
+            refused.push({ path: p, reason: "it contains the home directory — grant the narrower path the agent reads" });
+            continue;
+        }
+        const holder = denies.find((d) => within(d, p));
+        if (holder) {
+            refused.push({ path: p, reason: `it is inside the default unreadable path ${holder} — open that path itself, by name` });
+            continue;
+        }
+        grants.push(p);
+    }
+    return { denies: denies.filter((p) => !opened.has(p)), grants, refused };
+}
+
+/**
+ * What the runtime itself loads, granted by the launcher so that a default-deny
+ * read posture still starts node and this package:
+ *   - the runtime's own directory (its modules and `node_modules`);
+ *   - the real path of every package a `node_modules` links elsewhere (the
+ *     SDK, installed `file:../../sdk`, is a symlink to the SDK's own
+ *     directory);
+ *   - every `node_modules` above a granted package, where node's resolution
+ *     climbs to find what the package imports (the SDK's `viem` is hoisted to
+ *     the repository's root `node_modules`), and the links inside each;
+ *   - node's install prefix (`<prefix>/bin/node`, `<prefix>/lib`), and the
+ *     directory of the command's own executable when it names a file.
+ * A root that is the filesystem root or contains the home directory is never
+ * granted (a prefix of `/usr/bin/node` is `/usr`, already a system grant).
+ */
+export function runtimeReadRoots({ runtimeDir, execPath, command = [], home = os.homedir() }) {
+    const homeRoot = canonical(home);
+    const roots = new Set();
+    const entries = (dir) => { try { return fs.readdirSync(dir, { withFileTypes: true }); } catch { return []; } };
+    const isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
+    /** Grant a package directory, the links its `node_modules` holds, and
+     *  every `node_modules` above it — each followed the same way, once. */
+    const visit = (dir) => {
+        const real = canonical(dir);
+        if (roots.has(real)) return;
+        roots.add(real);
+        for (let at = real; ; at = path.dirname(at)) {
+            const modules = path.join(at, "node_modules");
+            if (isDir(modules) && !within(real, modules)) roots.add(canonical(modules));
+            if (isDir(modules)) {
+                for (const e of entries(modules)) {
+                    const p = path.join(modules, e.name);
+                    const scoped = e.name.startsWith("@") && e.isDirectory() ? entries(p).map((x) => path.join(p, x.name)) : [p];
+                    for (const q of scoped) {
+                        try { if (fs.lstatSync(q).isSymbolicLink() && isDir(q)) visit(fs.realpathSync(q)); } catch { /* dangling */ }
+                    }
+                }
+            }
+            if (path.dirname(at) === at) break;
+        }
+    };
+    visit(runtimeDir);
+    try {
+        roots.add(path.dirname(path.dirname(fs.realpathSync(execPath))));
+    } catch { /* no node to grant */ }
+    const exe = command[0];
+    if (exe && exe.includes(path.sep)) {
+        try { roots.add(path.dirname(fs.realpathSync(exe))); } catch { /* not a file */ }
+    }
+    return [...roots].filter((r) => r !== path.parse(r).root && !within(r, homeRoot));
+}
 
 /** A path as an SBPL string literal. */
 function sbplString(p) {
@@ -150,12 +234,18 @@ function regexEscape(p) {
 
 /**
  * The profile sandbox-exec runs: sandbox-macos.sb (its parameters still
- * passed with -D), then one `deny file-read*` per unreadable path — any
- * number, none collapsed — and, when `home` is given, a rule that makes any
- * `*keystore*.json` under it unreadable wherever the owner keeps it.
+ * passed with -D; it denies every read and grants the system, the workspace
+ * and temp), then one `allow file-read*` per grant, then one `deny
+ * file-read*` per unreadable path — any number, none collapsed — and, when
+ * `home` is given, a rule that makes any `*keystore*.json` under it unreadable
+ * wherever the owner keeps it. The denies come last: the last matching rule
+ * wins, so a secret inside a grant stays unreadable.
  */
-export function renderProfile({ denyReads, home, base = fs.readFileSync(BASE_PROFILE, "utf-8") }) {
-    const lines = [...new Set(denyReads)].map((p) => `(deny file-read* (subpath ${sbplString(p)}))`);
+export function renderProfile({ denyReads, allowReads = [], home, base = fs.readFileSync(BASE_PROFILE, "utf-8") }) {
+    const lines = [
+        ...[...new Set(allowReads)].map((p) => `(allow file-read* (subpath ${sbplString(p)}))`),
+        ...[...new Set(denyReads)].map((p) => `(deny file-read* (subpath ${sbplString(p)}))`),
+    ];
     if (home) {
         lines.push(`(deny file-read* (regex #"^${regexEscape(canonical(home))}/(.*/)?[^/]*[Kk]eystore[^/]*\\.json$"))`);
     }

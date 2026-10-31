@@ -20,7 +20,7 @@
 
 import type { WalletClient, PublicClient } from "viem";
 import { verifyTypedData } from "viem";
-import { buildCommitment, buildDomain, hashCommitmentStruct, verifyCommitmentSignature, ZERO_PROCESS_ID, COMMITMENT_TYPES } from "../commitments.js";
+import { buildCommitment, buildDomain, hashCommitmentStruct, verifyCommitmentSignature, readChainTimestamp, ZERO_PROCESS_ID, COMMITMENT_TYPES } from "../commitments.js";
 import { computeCheckoutHash, type Agreement, type AgreementProvenance } from "../agreement.js";
 import { assertAgreementSignable, type SpecSource } from "../projection.js";
 import { ERC20_ABI } from "../abis.js";
@@ -162,6 +162,28 @@ export interface OfferPolicy {
      *  supplied: an absent cap leaves magnitude unbounded, so the offer is
      *  rejected. */
     maxValue?: bigint;
+    /** The latest deadline the seller counter-signs, in seconds past the
+     *  CHAIN's now (`block.timestamp`): a counter-signed commitment can be
+     *  committed, bonding the seller, at any time until its deadline, and the
+     *  buyer chose the deadline. OMIT it and `DEFAULT_MAX_DEADLINE_SECONDS`
+     *  applies. Checked at the counter-sign seams (`checkDeadlineCap`), which
+     *  take the chain's now as `ctx.chainNow`. */
+    maxDeadlineSeconds?: bigint;
+}
+
+/** The deadline cap an `OfferPolicy` that names none applies: two hours past
+ *  the chain's now, twice the buyer's default one-hour deadline
+ *  (`computeDeadline`), so a default offer clears it with the round trip and
+ *  a lagging node to spare. */
+export const DEFAULT_MAX_DEADLINE_SECONDS = 7_200n;
+
+/** The signing context of the seller legs: the EIP-712 domain, and the chain's
+ *  `block.timestamp` (`readChainTimestamp`) the deadline cap is measured from. */
+export interface SellerSignCtx {
+    chainId: number;
+    core: Address;
+    /** The chain's now; absent, every payload under a policy is declined. */
+    chainNow?: bigint;
 }
 
 /**
@@ -297,18 +319,20 @@ export async function gateSeller(
 
 /** The tail every seller leg with a boolean accept (`counterSignOffer`, `counterSignDraft`) shares:
  *  the two opt-in floors a clean payload must still pass, then the seller's signature. The
- *  ECONOMIC floor (no `policy`, or economic fields outside it, declines) and the REFUSE-ALL
+ *  ECONOMIC floor (no `policy`, economic fields outside it, or a deadline past its cap from
+ *  `ctx.chainNow`, declines) and the REFUSE-ALL
  *  floor (no `accept`, or an `accept` that says no, declines) each DECLINE with `null`;
  *  autonomy is never the default. */
 export async function countersignUnderFloors(
     wallet: WalletClient,
     payload: CommitmentPayload,
-    ctx: { chainId: number; core: Address },
+    ctx: SellerSignCtx,
     policy: OfferPolicy | undefined,
     accept: ((payload: CommitmentPayload) => boolean) | undefined,
     who: string,
 ): Promise<CommitmentPayload | null> {
     if (!policy || !checkOfferPolicy(payload.commitment, policy).ok) return null;
+    if (!checkDeadlineCap(payload.commitment, policy, ctx.chainNow).ok) return null;
     if (!accept || !accept(payload)) return null;
     return { ...payload, sellerSig: await signCommitmentAs(wallet, ctx, payload.commitment, who) };
 }
@@ -352,6 +376,22 @@ export function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck
     return { ok: true };
 }
 
+/** The deadline floor, applied at every counter-sign seam: the commitment's
+ *  `deadline` is at most the policy's `maxDeadlineSeconds` (or
+ *  `DEFAULT_MAX_DEADLINE_SECONDS`) past `chainNow`, the chain's
+ *  `block.timestamp`. With no `chainNow` the deadline has nothing to be
+ *  bounded against, so the check refuses. */
+export function checkDeadlineCap(c: Commitment, policy: OfferPolicy, chainNow: bigint | undefined): OfferCheck {
+    if (chainNow === undefined) {
+        return { ok: false, reason: "no chain time given — the offer's deadline cannot be bounded" };
+    }
+    const cap = policy.maxDeadlineSeconds ?? DEFAULT_MAX_DEADLINE_SECONDS;
+    if (c.deadline > chainNow + cap) {
+        return { ok: false, reason: `offer deadline ${c.deadline} exceeds the policy's ${cap}-second cap past the chain's now ${chainNow}` };
+    }
+    return { ok: true };
+}
+
 /**
  * Seller validates an inbound offer and counter-signs, or declines. `wallet` is
  * the seller. An offer that fails `validateOffer` (tampered, malformed, under
@@ -366,7 +406,9 @@ export function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck
  *     gate. A clean offer counter-signs ONLY when an explicit `accept` returns
  *     true; omit it (or return false) and the offer is declined.
  *   - ECONOMIC FLOOR: `policy` bounds the economic fields the seller bonds
- *     against (root-shape, currency allowlist, magnitude cap). Counter-signing
+ *     against (root-shape, currency allowlist, magnitude cap) and the deadline
+ *     until which the buyer can commit it (`checkDeadlineCap`, measured from
+ *     `ctx.chainNow`; absent, the offer is declined). Counter-signing
  *     bonds the seller against attacker-chosen `expectedCumulativeValue` /
  *     `currency`, so with NO policy the offer is declined — a bare integration
  *     never silently vouches for unbounded magnitudes or an unexpected currency.
@@ -380,7 +422,7 @@ export function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck
 export async function counterSignOffer(
     wallet: WalletClient,
     offer: CommitmentPayload,
-    ctx: { chainId: number; core: Address },
+    ctx: SellerSignCtx,
     accept?: (offer: CommitmentPayload) => boolean,
     policy?: OfferPolicy,
     specs?: SpecSource,
@@ -500,7 +542,8 @@ export interface SellerOfferHandlerOpts {
      *  writing this rule (maintainer ruling). */
     accept?: (offer: CommitmentPayload) => boolean;
     /** Economic floor: the operator's bounds on the offer's economic fields
-     *  (root-shape, currency allowlist, magnitude cap). OMIT it and the handler
+     *  (root-shape, currency allowlist, magnitude cap, deadline cap — measured
+     *  from the chain's clock, read at each offer). OMIT it and the handler
      *  declines every offer — counter-signing bonds the seller against
      *  attacker-chosen magnitudes/currency, so vouching for them is opt-IN. */
     policy?: OfferPolicy;
@@ -564,8 +607,9 @@ export function makeSellerOfferHandler(
 ): OfferHandler {
     return async (offer: CommitmentPayload): Promise<CommitmentPayload | null> => {
         const chainId = await publicClient.getChainId();
+        const chainNow = await readChainTimestamp(publicClient);
         const design = await readOfferDesign(offer, opts.readDesign);
-        const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core }, opts.accept, opts.policy, opts.specs, design, opts.readProfile);
+        const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core, chainNow }, opts.accept, opts.policy, opts.specs, design, opts.readProfile);
         if (!signed) return null;
         if (opts.approveBond !== false) {
             await approveBond(wallet, publicClient, addresses.core, offer.commitment.currency, 2n * offer.commitment.expectedCumulativeValue);

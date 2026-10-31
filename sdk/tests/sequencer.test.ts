@@ -11,6 +11,7 @@ import {
     SequencerError,
     toSequencerCommitment,
     toSequencerSig,
+    MAX_SEQUENCER_RESPONSE_BYTES,
 } from "../src/agent/sequencer.js";
 import { keccak256, stringToHex } from "viem";
 import type { Commitment } from "../src/types.js";
@@ -373,5 +374,63 @@ describe("SequencerClient", () => {
         });
         await client.submitCommit(testCommitment, DUMMY_SIG, DUMMY_SIG);
         expect(capturedUrl).toBe("http://localhost:3001/submit");
+    });
+});
+
+describe("SequencerClient reads every response under MAX_SEQUENCER_RESPONSE_BYTES", () => {
+    /** A body that streams past the cap with no Content-Length — the case the
+     *  header's fast reject cannot catch: 16 MiB, closed so a whole read
+     *  ends. Counts the bytes it was asked for. */
+    function overCapStream(): { body: ReadableStream<Uint8Array>; pulled: () => number } {
+        const piece = new TextEncoder().encode(`{"id":1,"pad":"${"x".repeat(64 * 1024)}`);
+        let pulled = 0;
+        const body = new ReadableStream<Uint8Array>({
+            pull(controller) {
+                pulled += piece.byteLength;
+                controller.enqueue(piece);
+                if (pulled > 16 * 1024 * 1024) controller.close();
+            },
+        });
+        return { body, pulled: () => pulled };
+    }
+
+    const cases: Array<{ name: string; status: number; call: (c: SequencerClient) => Promise<unknown> }> = [
+        { name: "submit (accepted)", status: 200, call: (c) => c.submitCommit(testCommitment, DUMMY_SIG, DUMMY_SIG) },
+        { name: "submit (refused)", status: 400, call: (c) => c.submitCommit(testCommitment, DUMMY_SIG, DUMMY_SIG) },
+        { name: "submitUsageClaim (accepted)", status: 200, call: (c) => c.submitUsageClaim({} as never) },
+        { name: "submitUsageClaim (refused)", status: 400, call: (c) => c.submitUsageClaim({} as never) },
+        { name: "status", status: 200, call: (c) => c.status() },
+    ];
+
+    for (const { name, status, call } of cases) {
+        it(`${name}: refuses a body streaming past the cap and stops reading it`, async () => {
+            const stream = overCapStream();
+            const client = new SequencerClient({
+                url: "http://localhost:3001",
+                fetch: (async () => new Response(stream.body, { status })) as typeof globalThis.fetch,
+            });
+            await expect(call(client)).rejects.toThrow(/exceeds the \d+-byte cap/);
+            expect(stream.pulled()).toBeLessThan(2 * MAX_SEQUENCER_RESPONSE_BYTES);
+        });
+
+        it(`${name}: refuses a declared Content-Length over the cap`, async () => {
+            const client = new SequencerClient({
+                url: "http://localhost:3001",
+                fetch: (async () => new Response("{}", {
+                    status,
+                    headers: { "content-length": String(MAX_SEQUENCER_RESPONSE_BYTES + 1) },
+                })) as typeof globalThis.fetch,
+            });
+            await expect(call(client)).rejects.toThrow(SequencerError);
+            await expect(call(client)).rejects.toThrow(/exceeds the \d+-byte cap/);
+        });
+    }
+
+    it("still reads a refusal's error text under the cap", async () => {
+        const client = new SequencerClient({
+            url: "http://localhost:3001",
+            fetch: (async () => new Response(JSON.stringify({ error: "bad signature" }), { status: 400 })) as typeof globalThis.fetch,
+        });
+        await expect(client.submitCommit(testCommitment, DUMMY_SIG, DUMMY_SIG)).rejects.toThrow("bad signature");
     });
 });

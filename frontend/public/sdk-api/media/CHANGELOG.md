@@ -198,6 +198,21 @@ release lives under **Unreleased**.
   the counter is certain to refuse; a key two orders carry is sent once.
   `UsageRecordingReport` gains `excluded`, the keys left out, and `attempted`
   counts the clause legs actually sent.
+- **SDK 0.2.0 (breaking): a seller counter-signs a deadline only up to a cap from chain time.**
+  `OfferPolicy.maxDeadlineSeconds` is the latest deadline the seller counter-signs, in seconds
+  past the chain's `block.timestamp` (omitted, `DEFAULT_MAX_DEADLINE_SECONDS`, two hours), and
+  `checkDeadlineCap` applies it at every counter-sign seam. The seams read the chain's now as
+  `ctx.chainNow` (`SellerSignCtx`), and a call without it declines every offer.
+  `makeSellerRaceHandler` and `makeSellerQuoteHandler` now require `chainClient` (`ChainClock`,
+  a viem `PublicClient` fits), read at each payload; `makeSellerOfferHandler` reads its
+  `publicClient`.
+- **SDK 0.2.0: `fetchLogsChunked` asks a sub-range again on pruned history.** A sub-range the
+  node answers with code 4444 (publicnode's keyless Sepolia) is asked again, up to
+  `PRUNED_HISTORY_ATTEMPTS` (24) times, with an optional `retryDelayMs`; every other error
+  propagates. Every bulk reader goes through it, so each gets the retry.
+- **SDK 0.2.0: every sequencer response is read under a cap.** `SequencerClient` reads each
+  body, a refusal's included, under `MAX_SEQUENCER_RESPONSE_BYTES` (1 MiB) and throws a
+  `SequencerError` past it, so a sequencer's oversized body cannot exhaust the agent's memory.
 - The analyst agent's tool `deal_story` is `trade_story`, matching its route
   `/queries/trade-story`.
 

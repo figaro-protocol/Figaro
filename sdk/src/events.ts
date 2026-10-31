@@ -188,6 +188,34 @@ export function parseAttestationLogs(logs: Log[]): AttestationEvent[] {
 export const DEFAULT_LOG_CHUNK_SIZE = 9_500n;
 
 /**
+ * A node answering from a backend that no longer holds the range's logs.
+ * publicnode's keyless Sepolia endpoint balances `eth_getLogs` across
+ * backends, some of them pruned: the same request answers
+ * `{"code":4444,"message":"pruned history unavailable"}` on roughly two calls
+ * in three for any range more than a few thousand blocks deep, and the logs on
+ * the next. The answer is the backend's, never the range's, so the same
+ * request is asked again. Matched on the code and on the full error text, so
+ * viem's wrapping never hides it. The frontend's log reader
+ * (`frontend/lib/kernel/eventCache.ts`) applies the same rule.
+ */
+function isPrunedHistoryError(err: unknown): boolean {
+    if ((err as { code?: unknown } | null)?.code === 4444) return true;
+    const text = err instanceof Error
+        ? `${err.message} ${(err as { details?: string }).details ?? ""}`
+        : String(err);
+    return /pruned history/i.test(text);
+}
+
+/** How many times one sub-range is asked of a node answering
+ *  `isPrunedHistoryError`: at one success in three per call (measured on
+ *  publicnode), twenty-four asks leave about one sub-range in sixteen thousand
+ *  unread. */
+export const PRUNED_HISTORY_ATTEMPTS = 24;
+
+/** The pause before the next ask of the same sub-range. */
+const prunedHistoryDelayMs = (attempt: number): number => Math.min(100 * attempt, 1_000);
+
+/**
  * `client.getLogs` in sequential sub-ranges of at most `chunkSize` blocks,
  * concatenated in block order.
  *
@@ -196,8 +224,9 @@ export const DEFAULT_LOG_CHUNK_SIZE = 9_500n;
  * issue ONE unchunked `getLogs` over the full range — fine on a local devnet,
  * but public RPC providers commonly cap a single call's block range (10k
  * blocks, or a result-count limit), so an integrator's first wide-range read
- * against a real deployment simply fails. This is chunking only — no
- * retry/backoff beyond what `client.getLogs` already does.
+ * against a real deployment simply fails. A sub-range the node answers with
+ * pruned history (`isPrunedHistoryError`) is asked again, up to
+ * `PRUNED_HISTORY_ATTEMPTS` times; every other error propagates.
  *
  * `toBlock: "latest"` is resolved once via `getBlockNumber` so every
  * sub-range chunks against the same snapshot instead of a moving target.
@@ -209,18 +238,33 @@ export async function fetchLogsChunked(
         fromBlock: bigint;
         toBlock: bigint | "latest";
         chunkSize?: bigint;
+        /** The pause before the next ask of a sub-range answered with pruned
+         *  history, by attempt (default `prunedHistoryDelayMs`). */
+        retryDelayMs?: (attempt: number) => number;
     },
 ): Promise<Log[]> {
     const chunkSize = params.chunkSize ?? DEFAULT_LOG_CHUNK_SIZE;
+    const retryDelayMs = params.retryDelayMs ?? prunedHistoryDelayMs;
     if (chunkSize <= 0n) throw new Error("fetchLogsChunked: chunkSize must be positive");
 
     const resolvedToBlock = params.toBlock === "latest" ? await client.getBlockNumber() : params.toBlock;
 
     const logs: Log[] = [];
     let from = params.fromBlock;
+    let prunedAttempts = 0;
     while (from <= resolvedToBlock) {
         const to = from + chunkSize - 1n < resolvedToBlock ? from + chunkSize - 1n : resolvedToBlock;
-        const chunk = await client.getLogs({ address: params.address, fromBlock: from, toBlock: to });
+        let chunk: Log[];
+        try {
+            chunk = await client.getLogs({ address: params.address, fromBlock: from, toBlock: to });
+        } catch (err) {
+            if (!isPrunedHistoryError(err)) throw err;
+            prunedAttempts += 1;
+            if (prunedAttempts >= PRUNED_HISTORY_ATTEMPTS) throw err;
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs(prunedAttempts)));
+            continue;
+        }
+        prunedAttempts = 0;
         // The query names one contract. A log from any other is the node's
         // error, never data: the parsers decode by topic and would read
         // another contract's event as this one's.

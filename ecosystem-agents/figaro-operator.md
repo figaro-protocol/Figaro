@@ -175,7 +175,11 @@ without the clause, term and designer checks.
   same last positions — `counterSignDraft(wallet, draft, ctx, accept, policy, specs, design,
   readProfile)`, `quoteDraft(wallet, draft, ctx, quote, policy, specs, design, readProfile)` —
   and the mountable handlers `makeSellerRaceHandler` / `makeSellerQuoteHandler` accept
-  `specs`, `readDesign` and `readProfile` in their opts. `design` is the hydrated assembly the
+  `specs`, `readDesign` and `readProfile` in their opts, beside a required `chainClient`. The
+  direct calls' `ctx` is `{ chainId, core, chainNow }`, `chainNow` the chain's
+  `block.timestamp`, and without it every offer is declined; the handlers read it at each
+  payload, `makeSellerOfferHandler` from its `publicClient` and the race and quote handlers
+  from their `chainClient` (a viem `PublicClient`). `design` is the hydrated assembly the
   payload's provenance leaf names; `readDesign` reads it per payload (`(provenance) =>
   Promise<HydratedAssembly | null>`: the assembly by its assembly hash, verified with
   `anchorAssembly`, its registered agreements with `hydrateAssembly`). `readProfile` reads the
@@ -552,7 +556,7 @@ the next reply is the free fallback. Two legs, one choreography, from
   posted price; a counter-signature means "available at my price"; cheapest available
   wins. Buyer: build one draft per candidate, then
   `requestCounterSignatures(channel, drafts, ctx)` → verified replies + the winner.
-  Candidate: mount `makeSellerRaceHandler(wallet, ctx, { accept, policy, specs, readDesign,
+  Candidate: mount `makeSellerRaceHandler(wallet, ctx, { chainClient, accept, policy, specs, readDesign,
   readProfile })` — the same `SpecSource` and readers as everywhere else, so a draft whose
   leaf contradicts the struct, which drops a clause of its design, whose designer values
   differ from it, or whose
@@ -565,8 +569,9 @@ the next reply is the free fallback. Two legs, one choreography, from
   `requestQuotes(channel, drafts, ctx)` — every reply is verified by RECONSTRUCTION
   (your own draft re-priced at the quote must reproduce it hash-for-hash; a quote can
   change the price and nothing else). Candidate: mount
-  `makeSellerQuoteHandler(wallet, ctx, { quote, policy, specs, readDesign, readProfile })` — `quote(draft)` is the
-  owner's pricing function; `null` declines. Build the request with `deadline` in CHAIN
+  `makeSellerQuoteHandler(wallet, ctx, { chainClient, quote, policy, specs, readDesign, readProfile })` — `quote(draft)` is the
+  owner's pricing function; `null` declines. Both handlers require `chainClient` (a viem
+  `PublicClient`): each payload's deadline is checked against the chain's clock. Build the request with `deadline` in CHAIN
   time here too: `buildQuoteRequest` requires it, like every other origination call.
 
 **Declaring `services.rest` on the wallet's member profile makes it reachable by HUMAN
@@ -712,10 +717,10 @@ live risk, rather than reporting a guarantee the launch did not actually give.
   over-privileges this agent.
   *Satisfied by the sandbox wrapper (`ecosystem-agents/runtime/` — `figaro-run-sandboxed`):
   launched through it, writes land only in the agent's workspace, the environment is
-  scrubbed of anything key-shaped, the secret paths are unreadable by default (the
+  scrubbed of anything key-shaped, reads are denied by default and the secret paths stay unreadable inside every grant (the
   `--keystore` the signer decrypts, any `*keystore*.json` under the home directory,
   credentials and shell histories — nothing rests on the operator naming a deny, and
-  `--allow-read` opens one default), and ALL network except the egress proxy's one
+  `--allow-read` grants a path, or opens one default named exactly), and ALL network except the egress proxy's one
   loopback port is denied at the OS — the policy-driven egress proxy is the only way out.
   A shell inside those walls is no longer a raw HOST shell. Launched bare, this
   requirement falls back to behavioral-only.*

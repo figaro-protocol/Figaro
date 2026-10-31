@@ -54,13 +54,20 @@ addressing has no negative proof, and a gateway that cannot find a block
 usually times out rather than 404-ing.
 
 Agents fetch through this tool — never through bare `curl`/gateway reads —
-and hosts wiring their own tools call `frame()` from `dataChannel.mjs` for
-anything else that arrives from the network (an XMTP message, a relayed offer
-envelope) before it reaches the model.
+and hosts wiring their own tools frame anything else that arrives from the
+network before it reaches the model: `frameArrival({ transport, sender,
+content })` from `dataChannel.mjs` frames one coordination arrival (an XMTP
+message, a relayed offer envelope) with its transport as the source and the
+sender's transport identity as the ref, and `arrivalHandler({ transport,
+deliver })` is the `(payload, senderIdentity)` callback a host hands a channel
+subscription, so `deliver` receives the framed arrival and never the raw one.
+Every header field is one token: whitespace, control characters, the
+delimiters, `=` and `%` are percent-encoded, so a sender identity a stranger
+chose cannot end the header or start a line of its own.
 
 `node --test tests/*.test.mjs` covers the envelope facts and the property the
 frame exists for: a forged closing delimiter inside content cannot escape the
-block.
+block, and a forged one inside a header field cannot either.
 
 ## The analyst — the first manual-attached runnable
 
@@ -77,8 +84,12 @@ either, an honest `404` naming the reason, never a stub).
 ```sh
 RPC_URL=… DEPLOYMENT_RECORD=…/deployments/11155111.json IPFS_GATEWAY_URL=… \
 npx figaro-run-sandboxed --policy …/deployments/signer-policy.11155111.json \
-  --workspace ~/analyst-workspace -- npx figaro-analyst
+  --workspace ~/analyst-workspace --allow-read …/deployments \
+  -- npx figaro-analyst
 ```
+
+Reads inside the wrapper are denied by default, so the deployment record is
+readable through its `--allow-read` grant (or a copy in the workspace).
 
 No signer socket: the analyst holds no key and signs nothing, so the policy's
 signing half is inert for it and the `egress` list is the half that binds.
@@ -146,14 +157,23 @@ before the scrub and handed to the egress proxy, which relays JSON-RPC POSTs on
 `http://127.0.0.1:<proxy port>/rpc/<n>` to the n-th endpoint; the agent
 receives those relay addresses under the same names. A provider key in the
 URL's path stays outside, and the launcher refuses an endpoint whose origin
-the policy's `egress` list does not name. The secret
-paths are unreadable BY DEFAULT: keystores (`~/.foundry/keystores`, the geth
-keystore directories, and any `*keystore*.json` under the home directory),
-credentials (`~/.ssh`, `~/.gnupg`, `~/.aws`, `~/.config/gh`, `~/.npmrc`, and
-the rest of `sandboxProfile.mjs` § `DEFAULT_DENY_READ`) and shell histories.
-`--keystore <path>` names the signer's keystore wherever it sits;
-`--deny-read <path>` adds any path, each with its own rule; `--allow-read
-<path>` opens one default and refuses a path that is not on the list. The
+the policy's `egress` list does not name. Reads are
+denied BY DEFAULT: the profile grants the system (`/System`, `/usr`, `/bin`,
+`/sbin`, `/Library` minus its keychains, `/opt/homebrew`, `/private/etc`,
+`/dev`), the workspace and temp; the launcher grants what the runtime itself
+loads (its own directory, every package its `node_modules` links elsewhere and
+the `node_modules` above each, node's install prefix — `sandboxProfile.mjs` §
+`runtimeReadRoots`) and each `--allow-read <path>`. File metadata stays
+readable everywhere, since resolving any path walks its ancestors. Inside
+every grant the secret paths stay unreadable, their denies rendered last:
+keystores (`~/.foundry/keystores`, the geth keystore directories, and any
+`*keystore*.json` under the home directory), credentials (`~/.ssh`,
+`~/.gnupg`, `~/.aws`, `~/.config/gh`, `~/.npmrc`, and the rest of
+`sandboxProfile.mjs` § `DEFAULT_DENY_READ`) and shell histories. `--keystore
+<path>` names the signer's keystore wherever it sits; `--deny-read <path>`
+adds any path, each with its own rule; `--allow-read <path>` that names a
+default exactly opens that one, and is refused for the filesystem root, the
+home directory or a directory above it, and a path inside a default. The
 signer's UNIX socket is the one signing capability that crosses the boundary.
 The signing key itself is never on the sandboxed side at all.
 
@@ -179,8 +199,9 @@ inside. Deny paths are canonicalized before they reach the profile (`/var`
 is a symlink to `/private/var`; an uncanonicalized deny matches nothing).
 
 The test suite exercises the boundaries as DENY CASES — a write escape, a
-secret read, the default secret paths read through the launcher without being
-named, three `--deny-read` paths in one parent each read, a direct outbound
+secret read, a read nobody granted, the default secret paths read through the
+launcher without being named, a keystore inside a granted directory, a grant
+that would undo the default, three `--deny-read` paths in one parent each read, a direct outbound
 connection, a loopback port other than the proxy's, an egress origin on the
 wrong port or scheme, key-shaped names and URL-embedded credentials in the
 environment, a keyed RPC endpoint that stays outside while the analyst starts

@@ -117,7 +117,9 @@ attacker-chosen `currency`, so autonomy is opt-IN at two independent seams:
   `requireRootShape` (a root order signs `processId` zero and `expectedCumulativeValue ==
   payment`; omit it for a seller serving sub-orders in a chain), `currencyAllowlist` (the
   operator's own currencies — never a bundled token list), and `maxValue` (the magnitude
-  cap). Omit the policy and every offer is declined; supply one that omits the allowlist or
+  cap); and `maxDeadlineSeconds` (the latest deadline the seller counter-signs, in seconds past
+  the chain's `block.timestamp`; omitted, `DEFAULT_MAX_DEADLINE_SECONDS`, two hours, applies;
+  with no chain time at the signing seam the offer is declined). Omit the policy and every offer is declined; supply one that omits the allowlist or
   the cap and it REJECTS rather than waving the offer through — an empty allowlist vouches
   for no currency, an absent cap bounds no magnitude.
 
@@ -396,8 +398,10 @@ release gate on the whole ecosystem-agent tier.
 
 **1. The policy signer — a separate PROCESS that holds the key (F1, F2, F3).**
 `@figaro-protocol/sdk/signer`: a daemon the wallet's owner runs, loading the key into
-ITS memory only (an encrypted keystore plus a passphrase prompt, or a hardware wallet
-over the same `cast --ledger` path the seeding uses) and exposing *signing as an
+ITS memory only (an encrypted keystore plus a passphrase prompt, or a Ledger, through
+`figaro-signer --ledger` (`ledgerCustody`: the Ethereum app's commands over USB HID, each
+signature recovered against the device's address, and a signed transaction's sender
+recovered from the bytes returned)) and exposing *signing as an
 operation* over a local UNIX socket — `signTypedData(domain, types, message)` and
 `signTransaction(tx)`. Nothing hands the model key bytes. `sdk/README.md` § "The
 Policy Signer" is the manual; the daemon ships as the `figaro-signer` bin with a
@@ -441,13 +445,16 @@ member profile, raw CID, attestation witness — the registry-addressed modes re
 through the live registries and the rest by content address, each emitted as ONE
 framed block. A forged closing delimiter cannot escape the frame. F4 is structural at
 the fetch boundary when the host wires ALL network arrivals through `frame()`,
-coordination messages included.
+coordination messages included; `arrivalHandler` (`dataChannel.mjs`) is the callback a host
+hands a channel subscription for that.
 
 **4. The sandbox wrapper — the seam becomes a barrier (F5, F6).**
 `figaro-run-sandboxed`, beside the prompts: the OS profile denies all outbound network
 except the egress proxy's own loopback port and all writes outside the workspace and
-temp, and denies reads of the known secret paths by default (the keystore, shell
-histories, the cloud and git credential files; `--allow-read` opens one); the launcher
+temp, and denies every read it does not grant (the system, the workspace, temp, the runtime's
+own packages, and each `--allow-read`), with the known secret paths unreadable inside every
+grant (the keystore, shell histories, the cloud and git credential files; an `--allow-read`
+naming one exactly opens it); the launcher
 scrubs anything key-shaped from the environment, URL-embedded credentials included;
 and because an OS sandbox cannot filter egress by hostname, a **policy-driven egress
 proxy started OUTSIDE the sandbox is the only way out**, forwarding solely to the
@@ -458,8 +465,7 @@ a barrier rather than a promise.
 
 **The residuals, stated where they bind.** The Linux container variant is exercised in
 CI on demand rather than on the authoring host, which has no container runtime.
-Sandboxed reads are deny-listed by name, not default-denied — the key itself is never
-on the sandboxed side. And `Bash` inside the wrapper persists until the runtime grows
+And `Bash` inside the wrapper persists until the runtime grows
 typed tools. Run any component bare and that component falls back to behavioral-only,
 which the operator must be told rather than left to assume.
 

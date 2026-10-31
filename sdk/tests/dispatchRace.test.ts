@@ -23,7 +23,12 @@ const COURIER_B = privateKeyToAccount("0x5de4111afa1a4b94908f83103eb1f1706367c2e
 const CURRENCY = "0xcccccccccccccccccccccccccccccccccccccccc" as Address;
 const CORE = "0x000000000000000000000000000000000000c0de" as Address;
 const CHAIN = 31337;
-const CTX = { chainId: CHAIN, core: CORE };
+/** The chain's now the seller legs bound the deadline from: the offers'
+ *  deadline (1_900_000_000) is one hour past it. */
+const CHAIN_NOW = 1_900_000_000n - 3600n;
+const CTX = { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW };
+/** The chain clock a mounted handler reads at each payload, standing at CHAIN_NOW. */
+const CLOCK = { getBlock: async () => ({ timestamp: CHAIN_NOW }) };
 
 // signTypedData on a local account is offline — no RPC call — so a dummy transport is fine.
 const buyerW = createWalletClient({ account: BUYER, transport: http("http://localhost:0") });
@@ -319,8 +324,8 @@ describe("verifyQuoteReply — the reconstruction gate", () => {
 describe("requestCounterSignatures over the coordination channel", () => {
     it("fans race drafts out through mounted handlers; the cheapest posted countersigner wins, silence drops out", async () => {
         const channel = new InProcessChannel();
-        channel.register(COURIER_A.address, makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy, ...GATE, readProfile: BOUND }));
-        channel.register(COURIER_B.address, makeSellerRaceHandler(courierBW, CTX, { accept: () => true, policy, ...GATE, readProfile: BOUND }));
+        channel.register(COURIER_A.address, makeSellerRaceHandler(courierAW, CTX, { chainClient: CLOCK, accept: () => true, policy, ...GATE, readProfile: BOUND }));
+        channel.register(COURIER_B.address, makeSellerRaceHandler(courierBW, CTX, { chainClient: CLOCK, accept: () => true, policy, ...GATE, readProfile: BOUND }));
         const silent = "0x000000000000000000000000000000000000dEaD" as Address;
         const drafts = [
             await draftFor(COURIER_A.address, 3000n),
@@ -335,7 +340,7 @@ describe("requestCounterSignatures over the coordination channel", () => {
 
     it("a race handler refuses a quote request (throw → dropped), never countersigns the ceiling", async () => {
         const channel = new InProcessChannel();
-        channel.register(COURIER_A.address, makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy: quotePolicy, ...GATE, readProfile: BOUND }));
+        channel.register(COURIER_A.address, makeSellerRaceHandler(courierAW, CTX, { chainClient: CLOCK, accept: () => true, policy: quotePolicy, ...GATE, readProfile: BOUND }));
         const { replies, winner } = await requestCounterSignatures(channel, [requestFor(COURIER_A.address)], CTX);
         expect(replies).toHaveLength(0);
         expect(winner).toBeNull();
@@ -345,8 +350,8 @@ describe("requestCounterSignatures over the coordination channel", () => {
 describe("requestQuotes over the coordination channel", () => {
     it("collects verified quotes and the cheapest wins; silent candidates drop out", async () => {
         const channel = new InProcessChannel();
-        channel.register(COURIER_A.address, makeSellerQuoteHandler(courierAW, CTX, { quote: () => 700n, policy: quotePolicy, ...GATE, readProfile: BOUND }));
-        channel.register(COURIER_B.address, makeSellerQuoteHandler(courierBW, CTX, { quote: () => 500n, policy: quotePolicy, ...GATE, readProfile: BOUND }));
+        channel.register(COURIER_A.address, makeSellerQuoteHandler(courierAW, CTX, { chainClient: CLOCK, quote: () => 700n, policy: quotePolicy, ...GATE, readProfile: BOUND }));
+        channel.register(COURIER_B.address, makeSellerQuoteHandler(courierBW, CTX, { chainClient: CLOCK, quote: () => 500n, policy: quotePolicy, ...GATE, readProfile: BOUND }));
         const silent = "0x000000000000000000000000000000000000dEaD" as Address;
         const drafts = [requestFor(COURIER_A.address), requestFor(COURIER_B.address), requestFor(silent)];
         const { replies, winner } = await requestQuotes(channel, drafts, CTX);
@@ -412,9 +417,9 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
             .rejects.toThrow(/was not read/);
         const reply = await counterSignDraft(courierAW, draft, CTX, () => true, policy, SPECS, assembly, BOUND);
         expect(reply?.sellerSig).toBeDefined();
-        const viaHandler = makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy, specs: SPECS, readDesign: async () => assembly, readProfile: BOUND });
+        const viaHandler = makeSellerRaceHandler(courierAW, CTX, { chainClient: CLOCK, accept: () => true, policy, specs: SPECS, readDesign: async () => assembly, readProfile: BOUND });
         expect((await viaHandler(draft))?.sellerSig).toBeDefined();
-        const unread = makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy, specs: SPECS, readDesign: async () => null, readProfile: BOUND });
+        const unread = makeSellerRaceHandler(courierAW, CTX, { chainClient: CLOCK, accept: () => true, policy, specs: SPECS, readDesign: async () => null, readProfile: BOUND });
         await expect(unread(draft)).rejects.toThrow(/was not read/);
     });
 
@@ -490,27 +495,61 @@ describe("the seller's bound assemblies — the race and quote legs refuse a dra
         const draft = await draftFor(COURIER_A.address, 1000n);
         const reads: string[] = [];
         const race = makeSellerRaceHandler(courierAW, CTX, {
-            accept: () => true, policy, ...GATE, readProfile: async (m) => { reads.push(m); return BOUND(m); },
+            chainClient: CLOCK, accept: () => true, policy, ...GATE, readProfile: async (m) => { reads.push(m); return BOUND(m); },
         });
         expect((await race(draft))?.sellerSig).toBeDefined();
         expect(reads).toEqual([COURIER_A.address]);
-        await expect(makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy, ...GATE })(draft)).rejects.toThrow(/no member-profile reader/);
-        await expect(makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy, ...GATE, readProfile: NOT_BINDING })(draft)).rejects.toThrow(named);
+        await expect(makeSellerRaceHandler(courierAW, CTX, { chainClient: CLOCK, accept: () => true, policy, ...GATE })(draft)).rejects.toThrow(/no member-profile reader/);
+        await expect(makeSellerRaceHandler(courierAW, CTX, { chainClient: CLOCK, accept: () => true, policy, ...GATE, readProfile: NOT_BINDING })(draft)).rejects.toThrow(named);
         const req = requestFor(COURIER_A.address);
-        expect((await makeSellerQuoteHandler(courierAW, CTX, { quote: () => 700n, policy: quotePolicy, ...GATE, readProfile: BOUND })(req))?.sellerSig).toBeDefined();
-        await expect(makeSellerQuoteHandler(courierAW, CTX, { quote: () => 700n, policy: quotePolicy, ...GATE })(req)).rejects.toThrow(/no member-profile reader/);
-        await expect(makeSellerQuoteHandler(courierAW, CTX, { quote: () => 700n, policy: quotePolicy, ...GATE, readProfile: NOT_BINDING })(req)).rejects.toThrow(named);
+        expect((await makeSellerQuoteHandler(courierAW, CTX, { chainClient: CLOCK, quote: () => 700n, policy: quotePolicy, ...GATE, readProfile: BOUND })(req))?.sellerSig).toBeDefined();
+        await expect(makeSellerQuoteHandler(courierAW, CTX, { chainClient: CLOCK, quote: () => 700n, policy: quotePolicy, ...GATE })(req)).rejects.toThrow(/no member-profile reader/);
+        await expect(makeSellerQuoteHandler(courierAW, CTX, { chainClient: CLOCK, quote: () => 700n, policy: quotePolicy, ...GATE, readProfile: NOT_BINDING })(req)).rejects.toThrow(named);
     });
 
     it("a race over the channel drops a candidate that has not bound the assembly — the refusal is a rejection, never a countersignature", async () => {
         const channel = new InProcessChannel();
-        channel.register(COURIER_A.address, makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy, ...GATE, readProfile: NOT_BINDING }));
-        channel.register(COURIER_B.address, makeSellerRaceHandler(courierBW, CTX, { accept: () => true, policy, ...GATE, readProfile: BOUND }));
+        channel.register(COURIER_A.address, makeSellerRaceHandler(courierAW, CTX, { chainClient: CLOCK, accept: () => true, policy, ...GATE, readProfile: NOT_BINDING }));
+        channel.register(COURIER_B.address, makeSellerRaceHandler(courierBW, CTX, { chainClient: CLOCK, accept: () => true, policy, ...GATE, readProfile: BOUND }));
         const { replies, winner } = await requestCounterSignatures(channel, [
             await draftFor(COURIER_A.address, 500n),
             await draftFor(COURIER_B.address, 1000n),
         ], CTX);
         expect(replies).toHaveLength(1);
         expect(winner?.reply.commitment.seller.toLowerCase()).toBe(COURIER_B.address.toLowerCase());
+    });
+});
+
+describe("the candidate's deadline cap on the race and quote legs", () => {
+    // The drafts above carry deadline 1_900_000_000n.
+    const DEADLINE = 1_900_000_000n;
+    const capped: OfferPolicy = { ...policy, maxDeadlineSeconds: 600n };
+    const cappedQuote: OfferPolicy = { ...quotePolicy, maxDeadlineSeconds: 600n };
+    const clockAt = (timestamp: bigint) => ({ getBlock: async () => ({ timestamp }) });
+
+    it("counterSignDraft declines a deadline past the cap and signs one within it", async () => {
+        const draft = await draftFor(COURIER_A.address, 1000n);
+        expect(await counterSignDraft(courierAW, draft, { ...CTX, chainNow: DEADLINE - 601n }, () => true, capped, SPECS, assembly, BOUND)).toBeNull();
+        expect((await counterSignDraft(courierAW, draft, { ...CTX, chainNow: DEADLINE - 600n }, () => true, capped, SPECS, assembly, BOUND))?.sellerSig).toBeDefined();
+        expect(await counterSignDraft(courierAW, draft, { chainId: CHAIN, core: CORE }, () => true, capped, SPECS, assembly, BOUND)).toBeNull();
+    });
+
+    it("quoteDraft declines a deadline past the cap and quotes one within it", async () => {
+        const req = requestFor(COURIER_A.address);
+        expect(await quoteDraft(courierAW, req, { ...CTX, chainNow: DEADLINE - 601n }, () => 700n, cappedQuote, SPECS, assembly, BOUND)).toBeNull();
+        expect((await quoteDraft(courierAW, req, { ...CTX, chainNow: DEADLINE - 600n }, () => 700n, cappedQuote, SPECS, assembly, BOUND))?.sellerSig).toBeDefined();
+        expect(await quoteDraft(courierAW, req, { chainId: CHAIN, core: CORE }, () => 700n, cappedQuote, SPECS, assembly, BOUND)).toBeNull();
+    });
+
+    it("the mounted handlers read the chain's clock through chainClient at each payload", async () => {
+        const draft = await draftFor(COURIER_A.address, 1000n);
+        const ctx = { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW };
+        const race = (t: bigint) => makeSellerRaceHandler(courierAW, ctx, { accept: () => true, policy: capped, ...GATE, readProfile: BOUND, chainClient: clockAt(t) });
+        expect(await race(DEADLINE - 601n)(draft)).toBeNull();
+        expect((await race(DEADLINE - 600n)(draft))?.sellerSig).toBeDefined();
+        const req = requestFor(COURIER_A.address);
+        const quote = (t: bigint) => makeSellerQuoteHandler(courierAW, ctx, { quote: () => 700n, policy: cappedQuote, ...GATE, readProfile: BOUND, chainClient: clockAt(t) });
+        expect(await quote(DEADLINE - 601n)(req)).toBeNull();
+        expect((await quote(DEADLINE - 600n)(req))?.sellerSig).toBeDefined();
     });
 });

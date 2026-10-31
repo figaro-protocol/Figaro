@@ -18,6 +18,9 @@ const S2 = privateKeyToAccount("0x7c852118294e51e653712a81e05800f419141751be58f6
 const CURRENCY = "0xcccccccccccccccccccccccccccccccccccccccc" as Address;
 const CORE = "0x000000000000000000000000000000000000c0de" as Address;
 const CHAIN = 31337;
+/** The chain's now the sellers bound the deadline from: the orders'
+ *  deadline (1_900_000_000) is one hour past it. */
+const CHAIN_NOW = 1_900_000_000n - 3600n;
 
 const w = (acc: typeof BUYER) => createWalletClient({ account: acc, transport: http("http://localhost:0") });
 const buyerW = w(BUYER);
@@ -118,9 +121,9 @@ describe("buildChainOffers — the value-added chain walk", () => {
 describe("originateChain — abort on any decline (nothing commits)", () => {
     it("returns null and touches no chain when a mid-chain seller declines", async () => {
         const channel = new InProcessChannel();
-        channel.register(S0.address, (o) => counterSignOffer(w(S0), o, { chainId: CHAIN, core: CORE }, () => true, policy, SPECS, assembly, BOUND));
+        channel.register(S0.address, (o) => counterSignOffer(w(S0), o, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, policy, SPECS, assembly, BOUND));
         channel.register(S1.address, async () => null); // courier declines
-        channel.register(S2.address, (o) => counterSignOffer(w(S2), o, { chainId: CHAIN, core: CORE }, () => true, policy, SPECS, assembly, BOUND));
+        channel.register(S2.address, (o) => counterSignOffer(w(S2), o, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, policy, SPECS, assembly, BOUND));
         // A PublicClient that throws if used — proves abort happens before any chain call.
         const explodingPub = { getChainId: () => { throw new Error("chain must not be touched on abort"); } } as unknown as PublicClient;
         const result = await originateChain(buyerW, explodingPub, { core: CORE }, { ...params, channel });
@@ -151,7 +154,7 @@ describe("the buyer commits only the offer it sent", () => {
             ...rootParams, payment: 5000n, salt: 1n,
             overrides: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: "5000", lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "5000" }] } },
         });
-        const replay = await counterSignOffer(w(S0), earlier, { chainId: CHAIN, core: CORE }, () => true, policy, SPECS, rootParams.assembly, profileBinding(rootParams.assembly));
+        const replay = await counterSignOffer(w(S0), earlier, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, policy, SPECS, rootParams.assembly, profileBinding(rootParams.assembly));
         const channel = new InProcessChannel();
         channel.register(S0.address, async () => replay);
         await expect(originateProcess(buyerW, explodingPub, { core: CORE } as never, { ...rootParams, channel }))
@@ -177,11 +180,11 @@ describe("the buyer commits only the offer it sent", () => {
         let rootReply: Awaited<ReturnType<typeof counterSignOffer>> = null;
         const channel = new InProcessChannel();
         channel.register(S0.address, async (o) => {
-            rootReply = await counterSignOffer(w(S0), o, { chainId: CHAIN, core: CORE }, () => true, policy, SPECS, assembly, BOUND);
+            rootReply = await counterSignOffer(w(S0), o, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, policy, SPECS, assembly, BOUND);
             return rootReply;
         });
         channel.register(S1.address, async () => rootReply);
-        channel.register(S2.address, (o) => counterSignOffer(w(S2), o, { chainId: CHAIN, core: CORE }, () => true, policy, SPECS, assembly, BOUND));
+        channel.register(S2.address, (o) => counterSignOffer(w(S2), o, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, () => true, policy, SPECS, assembly, BOUND));
         await expect(originateChain(buyerW, explodingPub, { core: CORE } as never, { ...params, channel }))
             .rejects.toThrow(/reply for agreement-1 is not the offer sent/);
     });

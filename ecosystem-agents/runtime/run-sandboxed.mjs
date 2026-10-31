@@ -14,13 +14,17 @@
  *   2. WRITES — only the workspace and temp dirs, and never the signer's own
  *      directory (its socket, spend journal and audit log), which must be
  *      a directory apart from both.
- *   3. SECRETS — the launcher scrubs the child's environment of anything
- *      key-shaped (by name, and by a credential inside a URL value) and makes
- *      the secret paths unreadable BY DEFAULT — keystores, credentials, shell
- *      histories (sandboxProfile.mjs § DEFAULT_DENY_READ), the --keystore
- *      the signer decrypts, any `*keystore*.json` under the home directory,
- *      and every --deny-read; --allow-read opens one default. The signing
- *      key itself never was in reach (the policy signer holds it).
+ *   3. READS AND SECRETS — reads are denied by default: the profile grants
+ *      the system, the workspace and temp, and the launcher grants what the
+ *      runtime itself loads (sandboxProfile.mjs § runtimeReadRoots) and each
+ *      --allow-read path. Inside every grant the secret paths stay
+ *      unreadable — keystores, credentials, shell histories
+ *      (sandboxProfile.mjs § DEFAULT_DENY_READ), the --keystore the signer
+ *      decrypts, any `*keystore*.json` under the home directory, and every
+ *      --deny-read; an --allow-read that names a default exactly opens that
+ *      one. The launcher also scrubs the child's environment of anything
+ *      key-shaped (by name, and by a credential inside a URL value). The
+ *      signing key itself never was in reach (the policy signer holds it).
  *      The RPC endpoints stay outside too: a provider URL carries its key
  *      in its path, so the launcher hands RPC_URL and every
  *      FIGARO_ANALYST_CROSSCHECK_RPC_URLS entry to the proxy, and the agent
@@ -38,7 +42,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSignerPaths, validatePolicy } from "@figaro-protocol/sdk/signer";
 import { rpcRelayUrl, startEgressProxy } from "./egress-proxy.mjs";
-import { applyAllowReads, canonical, defaultDenyReads, renderProfile, scrubEnv } from "./sandboxProfile.mjs";
+import { applyAllowReads, canonical, defaultDenyReads, renderProfile, runtimeReadRoots, scrubEnv } from "./sandboxProfile.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -87,16 +91,23 @@ if (!policyResult.ok) fail(`policy refused:\n  ${policyResult.errors.join("\n  "
 const policy = policyResult.policy;
 
 fs.mkdirSync(workspace, { recursive: true });
+// The profile matches real paths (/var is /private/var on macOS).
+const workspaceReal = fs.realpathSync(workspace);
 
-// ── The unreadable paths: the defaults, minus --allow-read, plus the rest ──
-// Deny by default: a secret the operator forgot to name is unreadable all the
-// same. Every path gets its own rule — none is collapsed into a parent.
+// ── Reads: denied by default; the grants; the secret paths inside them ────
+// A path is readable only where a grant names it, and a secret the operator
+// forgot to name is unreadable all the same. Every path gets its own rule —
+// none is collapsed into a parent.
 
 const home = os.homedir();
-const allowed = applyAllowReads(defaultDenyReads(home), allowReads);
-if (allowed.unknown.length > 0) {
-    fail(`--allow-read opens a default unreadable path, and these are not on the list: ${allowed.unknown.join(", ")} (the list: sandboxProfile.mjs § DEFAULT_DENY_READ)`);
+const allowed = applyAllowReads(defaultDenyReads(home), allowReads, { home });
+if (allowed.refused.length > 0) {
+    fail(`--allow-read refused: ${allowed.refused.map((r) => `${r.path} (${r.reason})`).join("; ")}`);
 }
+const readGrants = [
+    ...runtimeReadRoots({ runtimeDir: __dirname, execPath: process.execPath, command, home }),
+    ...allowed.grants,
+];
 const denyReads = [
     ...allowed.denies,
     ...(keystore ? [keystore] : []),
@@ -119,7 +130,7 @@ try {
 }
 const signerSocket = path.join(signerDir, path.basename(signerSocketArg));
 const tmpDir = canonical(os.tmpdir());
-for (const writable of [canonical(workspace), tmpDir, canonical("/tmp")]) {
+for (const writable of [workspaceReal, tmpDir, canonical("/tmp")]) {
     const contains = (outer, inner) => inner === outer || inner.startsWith(outer + path.sep);
     if (contains(signerDir, writable) || contains(writable, signerDir)) {
         fail(`the signer's socket is in ${signerDir}, which is inside or contains a directory the sandbox may write (${writable}) — give the signer a directory of its own (default ~/.figaro-signer)`);
@@ -169,8 +180,8 @@ const { env, scrubbed } = scrubEnv(hostEnv, {
 if (scrubbed.length > 0) console.error(`run-sandboxed: held back from the sandbox's environment: ${scrubbed.join(", ")}`);
 
 const child = spawn("sandbox-exec", [
-    "-p", renderProfile({ denyReads, home }),
-    "-D", `WORKSPACE=${workspace}`,
+    "-p", renderProfile({ denyReads, allowReads: readGrants, home }),
+    "-D", `WORKSPACE=${workspaceReal}`,
     "-D", `TMPDIR=${tmpDir}`,
     "-D", `SIGNER_SOCKET=${signerSocket}`,
     "-D", `SIGNER_DIR=${signerDir}`,

@@ -13,7 +13,7 @@
 <h1>Type Alias PolicyResult</h1></div>
 <div class="tsd-signature"><span class="tsd-kind-type-alias">PolicyResult</span><span class="tsd-signature-symbol">:</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">ok</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">true</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">policy</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/signer.SignerPolicy.html" class="tsd-signature-type tsd-kind-interface">SignerPolicy</a> <span class="tsd-signature-symbol">}</span><br/>    <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">errors</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">ok</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">false</span> <span class="tsd-signature-symbol">}</span></div>
 <div class="tsd-comment tsd-typography"><p>@figaro-protocol/sdk/signer — the sandboxed signer runtime's protocol-shaped half.</p>
-<p>The policy signer (daemon + out-of-model gate + keystore custody) and the
+<p>The policy signer (daemon + out-of-model gate + keystore or Ledger custody) and the
 socket-backed account the agent layer consumes. Design and requirements:
 docs/AI_AGENT_COORDINATION.md § &quot;The sandboxed signer runtime&quot;;
 ecosystem-agents/figaro-operator.md § &quot;Security requirements&quot; (F1–F6).
