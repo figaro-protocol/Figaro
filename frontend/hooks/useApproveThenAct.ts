@@ -18,9 +18,12 @@ export interface UseApproveThenActArgs {
 
 /**
  * useApproveThenAct — the approve-then-auto-chain choreography shared by
- * every "bond an amount, then perform this action" surface: seller accept
- * (`YourTurnCard`), seller broadcast (`ReadyToSubmitCard`), and buyer
- * checkout (`CheckoutView`). If the current allowance already covers the
+ * every "bond an amount, then perform this action" surface: seller broadcast
+ * (`ReadyToSubmitCard`) and buyer checkout (`CheckoutView`) through
+ * `runWithApproval`; seller accept (`YourTurnCard`) through
+ * `ensureApproval`, the awaitable form the accept flow runs after its terms
+ * confirm, so a seller who declines the terms has approved nothing. If the
+ * current allowance already covers the
  * amount, the action runs immediately; otherwise a 10×-buffered approval is
  * submitted and the action is PENDED until `isApproveSuccess` flips (a prior
  * max approval just makes `needsApproval` false — no-op).
@@ -34,15 +37,22 @@ export interface UseApproveThenActArgs {
  */
 export function useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError }: UseApproveThenActArgs) {
     const pendingAction = useRef<(() => void) | null>(null);
+    // The awaited form's promise callbacks; a refusal rejects it.
+    const pendingFail = useRef<((err: Error) => void) | null>(null);
 
     useEffect(() => {
-        if (isApproveError) pendingAction.current = null;
+        if (!isApproveError) return;
+        pendingAction.current = null;
+        const fail = pendingFail.current;
+        pendingFail.current = null;
+        fail?.(new Error("The bond approval was refused or failed."));
     }, [isApproveError]);
 
     useEffect(() => {
         if (isApproveSuccess && pendingAction.current) {
             const act = pendingAction.current;
             pendingAction.current = null;
+            pendingFail.current = null;
             act();
         }
     }, [isApproveSuccess]);
@@ -61,5 +71,18 @@ export function useApproveThenAct({ needsApproval, approve, isApproveSuccess, is
         }
     }, [needsApproval, approve]);
 
-    return { runWithApproval };
+    /** The same step, awaited: resolves once the allowance covers `amount`
+     *  (at once when it already does), rejects when the approval is refused,
+     *  fails or reverts — for a flow that approves between its own steps. */
+    const ensureApproval = useCallback((amount: bigint) => new Promise<void>((resolve, reject) => {
+        try {
+            if (needsApproval(amount)) pendingFail.current = reject;
+            runWithApproval(amount, resolve);
+        } catch (err) {
+            pendingFail.current = null;
+            reject(err);
+        }
+    }), [needsApproval, runWithApproval]);
+
+    return { runWithApproval, ensureApproval };
 }

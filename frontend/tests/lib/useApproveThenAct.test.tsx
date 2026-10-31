@@ -92,6 +92,40 @@ describe("useApproveThenAct", () => {
     });
 });
 
+describe("useApproveThenAct — ensureApproval, the awaitable step an accept flow runs after its confirm", () => {
+    it("resolves at once and approves nothing when the allowance covers the amount", async () => {
+        const approve = vi.fn();
+        const { result } = renderHook(() =>
+            useApproveThenAct({ needsApproval: () => false, approve, isApproveSuccess: false, isApproveError: false }));
+        await expect(result.current.ensureApproval(5n)).resolves.toBeUndefined();
+        expect(approve).not.toHaveBeenCalled();
+    });
+
+    it("approves 10x and resolves once the approval confirms", async () => {
+        const { result, rerender, approve } = setup();
+        let settled = false;
+        const step = result.current.ensureApproval(5n).then(() => { settled = true; });
+        expect(approve).toHaveBeenCalledWith(50n);
+        await Promise.resolve();
+        expect(settled).toBe(false);
+        rerender({ isApproveSuccess: true, isApproveError: false });
+        await step;
+        expect(settled).toBe(true);
+    });
+
+    it("rejects when the approval is refused or fails, so the flow broadcasts nothing", async () => {
+        const { result, rerender } = setup();
+        const step = result.current.ensureApproval(5n);
+        rerender({ isApproveSuccess: false, isApproveError: true });
+        await expect(step).rejects.toThrow(/bond approval/i);
+    });
+
+    it("rejects on a synchronous approve() throw", async () => {
+        const { result } = setup(vi.fn(() => { throw new Error("no wallet"); }));
+        await expect(result.current.ensureApproval(5n)).rejects.toThrow("no wallet");
+    });
+});
+
 describe("useTokenApproval → useApproveThenAct — a reverted approve", () => {
     const TOKEN = "0x00000000000000000000000000000000000000aa" as const;
     const OWNER = "0x00000000000000000000000000000000000000bb" as const;

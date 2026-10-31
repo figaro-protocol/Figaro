@@ -67,9 +67,11 @@ function tokenFigure(amount: bigint, decimals: number, ready: boolean): string {
 }
 
 // ── Your-turn card: an incoming order awaiting my counter-signature ──
-function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
+export function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
     payload: CommitmentPayload;
-    onAccept: () => void;
+    /** Opens the accept flow, handing it the bond-approval step it runs after
+     *  the terms confirm and before the broadcast. */
+    onAccept: (beforeBroadcast: () => Promise<void>) => void;
     onDismiss: () => void;
     isAccepting: boolean;
     listings: ReadonlyArray<Listing>;
@@ -80,19 +82,19 @@ function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
     const sellerBond = calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
 
     // The seller locks 2× cumulative value as bond, so the Core must be allowed
-    // to pull it from this wallet. Mirror the buyer's checkout: if the allowance
-    // is short, approve the bond first, then resume the accept once the approve
-    // confirms (the buyer approves its own bond at checkout — this is the seller's
-    // missing half). A prior max approval just makes needsApproval false → no-op.
+    // to pull it from this wallet. The approval runs INSIDE the accept flow,
+    // after the terms confirm and before the broadcast: a seller who reads the
+    // terms and declines has sent no transaction and left no allowance. A
+    // prior max approval just makes needsApproval false → no-op.
     const core = CONTRACTS.core as `0x${string}` | undefined;
     const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess, isApproveError } = useTokenApproval({
         tokenAddress: commitment.currency as `0x${string}`,
         owner: address,
         spender: (core ?? ZERO_ADDRESS) as `0x${string}`,
     });
-    const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
+    const { ensureApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
     const isApproving = isApprovePending || isApproveConfirming;
-    const handleAccept = () => runWithApproval(sellerBond, onAccept);
+    const handleAccept = () => onAccept(() => ensureApproval(sellerBond));
 
     return (
         <div className="rounded-lg border border-default bg-paper p-5 space-y-4" data-testid="order-your-turn-card">
@@ -374,15 +376,16 @@ export function OrdersList() {
     const [acceptingIndex, setAcceptingIndex] = useState<number | null>(null);
     const [acceptError, setAcceptError] = useState<string | null>(null);
 
-    const handleAccept = useCallback(async (index: number) => {
+    const handleAccept = useCallback(async (index: number, beforeBroadcast: () => Promise<void>) => {
         const payload = incoming[index];
         if (!payload) return;
         // Off-chain validation (checkout-hash recompute) is enforced inside the flow's sign
         // step — acceptOrder throws on mismatch and the catch below surfaces it.
+        // The seller-bond approval runs after the terms confirm (beforeBroadcast).
         setAcceptingIndex(index);
         setAcceptError(null);
         try {
-            await acceptOrder(payload);
+            await acceptOrder(payload, undefined, { beforeBroadcast });
             dismissIncoming(index);
             reset();
         } catch (cause: unknown) {
@@ -510,7 +513,7 @@ export function OrdersList() {
                                     <YourTurnCard
                                         key={index}
                                         payload={payload}
-                                        onAccept={() => void handleAccept(index)}
+                                        onAccept={(beforeBroadcast) => void handleAccept(index, beforeBroadcast)}
                                         onDismiss={() => dismissIncoming(index)}
                                         isAccepting={acceptingIndex === index || flowStep === "signing" || flowStep === "committing"}
                                         listings={listings}
