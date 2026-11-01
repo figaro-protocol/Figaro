@@ -1,0 +1,55 @@
+---
+title: Status and limitations
+description: Per component, what a formal bench verifies, what is tested only, and what no run establishes; where the contracts are deployed; what is not built; and the open limitations a builder meets.
+---
+
+This page reads the [component status matrix](/verification/verification-map/#14-component-status-matrix) on the Verification map, which holds every cell with its bench, its result and the commit it ran at. Where this page and the matrix differ, the matrix is the one to trust. How to report a vulnerability, and the bounty, are in [SECURITY.md](https://github.com/figaro-protocol/Figaro/blob/main/SECURITY.md); what each bench can and cannot reach is on [Security](/verification/security/).
+
+## Where the contracts run
+
+**Sepolia (chain 11155111)** carries the full stack: `FigaroCore`, `AttestationCoordinator`, the four registries, `UsageCounter`, `RpgfMinter`, `FlorinToken`, `FigaroBatchVerifier` and `WitnessSwapAndCommitCoordinator`. The addresses, the `programVKey` the batch verifier pins and the block to start event scans from are in [`deployments/11155111.json`](https://github.com/figaro-protocol/Figaro/blob/main/deployments/11155111.json); read them from that file, never retype them. No contract has an upgrade path.
+
+What the registries hold is read from the chain, never from a list: a clause, agreement, assembly or member you do not find there is absent.
+
+**Ethereum mainnet** has nothing deployed. [`deployments/1.expected.json`](https://github.com/figaro-protocol/Figaro/blob/main/deployments/1.expected.json) states what must hold after the mainnet deployment; each `null` in it (the wallets, the registry stakes, the verifier's `programVKey`) is a value the file does not fix. A registry stake read on Sepolia is a deploy-time parameter of that deployment, not a mainnet figure. Which deployment the bounty schedule pays on is in [SECURITY.md § "Bug bounty"](https://github.com/figaro-protocol/Figaro/blob/main/SECURITY.md#bug-bounty).
+
+## Per component
+
+**Verified** means a formal bench passes: Halmos (symbolic execution), Certora (formal rules), TLA+ (a model checked within its bounds) or Lean 4 (a proof). **Tested** means concrete or randomized runs pass: Foundry, Echidna, the differential fuzz of the Rust against the Solidity, `cargo test`, Vitest. **Owed** means no run in the matrix's set establishes it.
+
+| Component | Verified | Tested | Owed |
+|---|---|---|---|
+| `FigaroCore` | Halmos `HalmosFigaroCore`; Certora `FigaroCore.spec` and `TokenOpsVerification.spec`; TLA+ `formal/FigaroCore.tla`; Lean 4, the payoff table | Foundry (lifecycle, every revert branch, events, weird tokens, reentrancy, resolve gas, EIP-712 parity); Echidna; differential fuzz against the proof program | the resolve cap on the post-fork EVM (below) |
+| `CommitmentTypes` | — | Foundry: the leaf function and the EIP-712 struct hashes | — |
+| `AttestationCoordinator` | Certora `AttestationCoordinator.spec` | Foundry; differential fuzz | — |
+| `FigaroBatchVerifier` | TLA+ `ResolutionUniverses`, the two resolution paths composed with `FigaroCore` and `UsageCounter` | Foundry (public-value bindings, operation stream, wallet-code resolve, the Core's traces through both paths, batch gas); differential fuzz of its stream reader | Certora `BatchVerifierTokenOps.spec` and `BatchVerifierStateRoot.spec`: no rule completes within the prover's time budget |
+| `ClauseRegistry`, `AgreementRegistry`, `AssemblyRegistry` | Halmos, the stake properties of each | Foundry | — |
+| `MembersRegistry` | Halmos `HalmosMembersRegistry` | Foundry | — |
+| `UsageCounter` | Halmos `HalmosUsageCounter`; TLA+ `ResolutionUniverses` | Foundry | — |
+| `RpgfMinter` | Certora `RpgfMinter.spec` (built without via-IR) and `RpgfMinterAuthor.spec` | Foundry, the claim path end to end | — |
+| `FlorinToken` | Certora `FlorinToken.spec`; TLA+ `formal/FlorinToken.tla` | Foundry; Echidna | — |
+| `WitnessSwapAndCommitCoordinator` | TLA+ `formal/WitnessSwapAndCommitCoordinator.tla` | Foundry | the fork suites against the live Permit2 and SwapRouter02 |
+| The proof program (`prover/`) | — | `cargo test`; differential fuzz against the Solidity | a formal proof that the guest implements the model; a Groth16 proof from the current guest accepted by the Sepolia verifier (below) |
+| The relay (`prover/sequencer`) | TLA+ `formal/RelayState.tla` in three configurations: models of the relay, not its code | `cargo test -p figaro-sequencer` | a formal proof of the code; a batch end to end, SDK to relay to verifier, on Anvil |
+| The SDK and its signer | — | Vitest, the whole suite; the Ledger path on a mock transport only | a formal proof; Ledger signing on a real device |
+| The agent runtime (`ecosystem-agents/runtime`) | — | `npm test`: the data-channel envelope and the sandbox wrapper | — |
+| The frontend | — | Vitest | Playwright against a live devnet; a formal proof |
+| The deployment scripts | — | Foundry `DeployWiringTest`: each script's wiring read back from the deployed contracts | the same read-back on a live chain |
+
+## What is not built
+
+- **A batched attestation by a party's wallet code.** On the direct path, EIP-7702 code a seller installed while holding its key can call `attestAsSeller` from the seller's address. On the batch path an attestation is accepted only under the party's ECDSA signature, so that code has no form to attest in a batch. A batched resolve does have a wallet-code form. The pattern and its reasons are [Design decisions § 4](/verification/design-decisions/#4-buyer-key-loss-with-no-code-installed-to-resolve-permanently-locks-bonds--by-design).
+- **A verifiable frontend build.** What you can check about the page you sign from is on [Security § "Verifying what you are served"](/verification/security/#verifying-what-you-are-served).
+
+What the protocol has no contract for, by design (no per-clause validators, no factory, router, governance or proxy contract, no admin surface), is on [Contracts](/protocol/contracts/).
+
+## Open limitations
+
+- **The Sepolia verifier pins an earlier guest's key.** The `programVKey` in the deployment file belongs to the guest of an earlier commit. A relay built from the current tree derives a different key from the guest it embeds, and it refuses to start against a verifier that pins another (`prover/sequencer/src/submitter.rs`). A proof from the current guest is refused by that verifier. The direct `FigaroCore` path does not depend on the verifier.
+- **A resolve at the cap has no post-fork measurement.** `maxOrdersResolvableForGasLimit` in the SDK returns 546 for any block gas limit large enough that EIP-7825's 2^24 per-transaction cap binds. The cap's receipt line, a fixed overhead of about 73,000 gas plus about 30,000 per order, is read from post-Glamsterdam Sepolia receipts at one and two orders (`sdk/src/gasCeilings.ts`). The memory term on top of it, (23·N)²/512, and a resolve at the 546-order cap fitting under 2^24 are measured only on Foundry's pre-fork `cancun` EVM (`test/core/kernel/GasCeilingTest.t.sol`). No post-fork measurement of a resolve at the cap exists. Read the cap with `maxOrdersResolvablePerProcess(client)` or `assertOrderFitsResolveCap` rather than a literal. A process grown past the cap can never resolve.
+- **The batch state is one flat root.** The proof program hashes the whole mirror state into one root before and after every batch (`compute_root` in `prover/lib/src/state.rs`, called from `prover/lib/src/kernel.rs`), so the hashing in each batch grows with the whole state, not with the batch. One relay serves each deployment, and the direct path stays open beside it ([Scaling](/protocol/scaling/)).
+- **The batch verifier's token flows and state-root chain have no completed Certora run.** Its Foundry suites, the differential fuzz and the `ResolutionUniverses` model pass.
+- **Ledger signing has run only on a mock transport.**
+- **The swap coordinator has not run against the live Permit2 and SwapRouter02.** The fork suites exist and are skipped without an RPC URL.
+
+Where the external audit stands is stated once, in [SECURITY.md § "Audit status"](https://github.com/figaro-protocol/Figaro/blob/main/SECURITY.md#audit-status). Patterns that read as vulnerabilities and hold by design, such as bonds locked when a buyer loses its key with no code installed, are [Design decisions](/verification/design-decisions/).
