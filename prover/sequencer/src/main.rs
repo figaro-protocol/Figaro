@@ -115,6 +115,13 @@ async fn main() {
     )
     .parse()
     .expect("invalid FIGARO_CORE_ADDRESS");
+    let verifying_contract = match submitter::verifying_contract_for(verifier_addr, verifying_contract) {
+        Ok(address) => address,
+        Err(reason) => {
+            error!(%reason, "refusing to start");
+            std::process::exit(2);
+        }
+    };
     let private_key =
         match submitter::signing_key_from_env(std::env::var("SEQUENCER_PRIVATE_KEY").ok()) {
             Ok(key) => key,
@@ -179,7 +186,8 @@ async fn main() {
         "STATE_PATH",
         &format!("sequencer-state-{chain_id}-{verifier_addr:#x}.json"),
     );
-    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, %settle_gas_cap, %mempool_max_ops, %mempool_max_usage, %defer_window_secs, %max_body_bytes, %state_path, "Starting Figaro sequencer");
+    // The RPC URL is never logged: a provider's URL carries its key.
+    info!(%chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, %settle_gas_cap, %mempool_max_ops, %mempool_max_usage, %defer_window_secs, %max_body_bytes, %state_path, "Starting Figaro sequencer");
 
     // ── Initialize components ─────────────────────────────────────
     let mempool = Mempool::with_caps(
@@ -799,7 +807,7 @@ async fn batch_loop(
         // is filtered again without it.
         let cap_budget = gas::settle_gas_budget(u64::MAX, config.settle_gas_cap);
         let max_orders = gas::max_orders_in_one_settle(cap_budget);
-        let (mut valid, outgrown) = assembler::filter_commits_within_resolve_capacity(&prev_state, valid, max_orders);
+        let (mut valid, outgrown) = assembler::filter_commits_within_resolve_capacity(chain_id, verifying_contract, &prev_state, valid, max_orders);
         for (p, reason) in &outgrown {
             warn!(id = p.id, %reason, "Dropped commit at batch formation");
             failures.record(1, reason.clone()).await;

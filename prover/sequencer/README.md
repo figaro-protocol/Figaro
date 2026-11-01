@@ -148,7 +148,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | --- | --- | --- |
 | `RPC_URL` | `http://127.0.0.1:8545` | Chain RPC endpoint |
 | `CHAIN_ID` | `31337` | EIP-712 domain chain id |
-| `FIGARO_CORE_ADDRESS` | zero | EIP-712 verifying contract (`FigaroCore`) |
+| `FIGARO_CORE_ADDRESS` | zero | EIP-712 verifying contract: the batch verifier, whose domain the batch path signs under; with `BATCH_VERIFIER_ADDRESS` set, any other value is a refusal to start |
 | `BATCH_VERIFIER_ADDRESS` | zero | `FigaroBatchVerifier`; zero = prove-only dry run |
 | `USAGE_COUNTER_ADDRESS` | zero | The designer-reward `UsageCounter`; zero = credit no usage |
 | `CLAUSE_REGISTRY_ADDRESS` | zero | `ClauseRegistry`, read by the usage-claim pre-filter for a clause claim (kind 0) |
@@ -168,7 +168,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `MAX_BODY_BYTES` | `1048576` | Per-request HTTP body cap |
 | `REQUEST_TIMEOUT_SECS` | `10` | A request not answered by then is `408` |
 | `MAX_IN_FLIGHT` | `256` | Requests served at once, across every route; the rest wait |
-| `SUBMITS_PER_MINUTE_PER_IP` | `60` | Submissions one client address may make a minute before `429`; `0` disables |
+| `SUBMITS_PER_MINUTE_PER_IP` | `60` | Submissions one client address (an IPv6 address by its /64) may make a minute before `429`; `0` disables |
 | `RUST_LOG` | `figaro_sequencer=info,sequencer=info` | Log filter. Two targets: the library's modules log as `figaro_sequencer`, the binary's own lines (startup, every refusal to start, the batch loop) as `sequencer` — name both |
 | `STATE_PATH` | `sequencer-state-<chain id>-<verifier>.json` | The relay's state, the preimage of the verifier's root (see The state behind the root); empty = in-memory only |
 | `REBUILD_FROM_CHAIN` | unset | `1`: at startup this relay rebuilds the state behind the verifier's root from the chain alone, replaying every landed batch's operation stream from `REBUILD_FROM_BLOCK` (default `0`; the verifier's deployment block saves the scan), holding each root to its `BatchSettled`, and keeps the result as its state file before starting. Refuses, writing nothing, on a batch landed through another contract's call. |
@@ -211,16 +211,21 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   `200 {"id": n}` on admission — idempotent: re-submitting the same semantic
   operation (same order hash / process id / attestation identity) returns the
   original id and enqueues nothing. The identity covers every input the proof
-  or the verifier judges and admission cannot — a resolve's signer, its
+  or the verifier judges — a resolve's signer (admission checks it against
+  the root buyer of a held or queued process, and it stays in the key), its
   signed cumulative value and its order list, an attestation's witness form with its clauseData hash or its spec bytes — so a submission that will be refused never makes the one that
   will be accepted a duplicate. `400` on signature or witness-gate
-  rejection, or on a resolve that lists an order twice (the Core resolves the
-  first listing and refuses the second, whatever the state), `422` on valid JSON that is not a `KernelOp` (wrong shape, unknown
+  rejection, on a resolve that lists an order twice (the Core resolves the
+  first listing and refuses the second, whatever the state), on an operation
+  whose process or order this relay neither holds nor has queued (a resolve,
+  a wallet-code resolve, a sub-order, an attestation: submit its commit
+  first), or on a resolve not signed by the process's root buyer, `422` on valid JSON that is not a `KernelOp` (wrong shape, unknown
   variant, missing field), `402` for a commit whose bonds do not fund
   (balance and allowance to the verifier, read at the door — see Funding
   below), `408` past `REQUEST_TIMEOUT_SECS`, `413` over `MAX_BODY_BYTES`,
   `415` on a wrong content type, `429` past `SUBMITS_PER_MINUTE_PER_IP`,
-  `503` when the mempool is full.
+  `503` when the mempool is full, or when a commit's bonds or a wallet-code
+  resolve's buyer code could not be read from the chain (retry).
 - `POST /submit-usage` — body `{ "claim": <UsageClaim> }`.
   `200 {"pending": n}`; same error mapping (including `422` for valid JSON
   that is not a `UsageClaim`). Idempotent by claim BYTES — a weaker guarantee
@@ -410,8 +415,9 @@ of losing the batch:
   relay's plan, never the protocol's: the verifier bounds neither.
 
 Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
-nothing is read. A read failure at the door is not a verdict — the batch-time
-check decides; a read failure at batch time defers the commit, never proves it.
+nothing is read. A read failure at the door refuses the submission (`503`,
+retry): the queue holds only what this relay could check; a read failure at
+batch time defers the commit, never proves it.
 
 ## Mempool bounds
 

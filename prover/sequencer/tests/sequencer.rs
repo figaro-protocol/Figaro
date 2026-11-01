@@ -765,6 +765,22 @@ async fn api_submissions_drain_in_arrival_order_across_clients() {
 }
 
 #[tokio::test]
+async fn a_requeued_operation_that_drains_and_is_not_requeued_leaves_no_count() {
+    // An op re-queued once, drained again, and not re-queued (its batch
+    // is on chain, or the relay refused it): the next drain holds no count for it.
+    let mp = mempool();
+    let ops = canonical_ops();
+    mp.submit(ops[0].clone()).await.unwrap();
+    let drained = mp.drain().await;
+    assert!(mp.requeue(drained).await.is_empty());
+    assert_eq!(mp.requeue_counts_held().await, 1);
+    assert_eq!(mp.drain().await.len(), 1, "drained again; its batch lands");
+    mp.submit(ops[1].clone()).await.unwrap();
+    assert_eq!(mp.drain().await.len(), 1, "the next tick drains another op");
+    assert_eq!(mp.requeue_counts_held().await, 0, "the landed op's count is gone");
+}
+
+#[tokio::test]
 async fn mempool_requeue_dead_letters_after_the_cap() {
     // A transiently failed op is re-queued, up to the cap; past it the op is
     // returned for dead-lettering with a reason, and a fresh admission of
@@ -1277,8 +1293,9 @@ fn canonical_resolve() -> (B256, alloy_primitives::U256, Vec<Commitment>, Signat
 
 #[tokio::test]
 async fn mempool_resolve_signed_by_a_stranger_does_not_take_the_buyers_slot() {
-    // Anyone can sign a resolve for any process id; admission cannot know the
-    // root buyer. A stranger's resolve must not make the buyer's a duplicate.
+    // Anyone can sign a resolve for any process id; `Mempool::submit` does not
+    // check the root buyer (the door's `refuse_unknown` does). A stranger's
+    // resolve must not make the buyer's a duplicate.
     let (process_id, cumulative_value, commitments, buyer_sig) = canonical_resolve();
     let domain = domain_separator(CHAIN_ID, CORE);
     let digest = typed_data_hash(&domain, &resolve_struct_hash(&process_id, &cumulative_value));
@@ -2011,12 +2028,14 @@ fn an_operation_that_fits_no_batch_is_returned_unfit_and_nothing_is_planned_behi
 fn a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation() {
     // The mirror holds a process of two orders; three commits grow it, a
     // resolve closes it, and a commit after the resolve starts it over.
+    // The commits are sub-orders, under the root order's derived process.
     let base = build_canonical_batch_input();
     let KernelOp::Commit { commitment: c, .. } = &base.operations[0] else { panic!("the first op is a commit") };
-    let process = c.process_id;
+    let process = derive_commitment_ids(&domain(), c).1;
     let mut prev = empty_snapshot();
     prev.processes.push((process, ProcessState { root_buyer: c.buyer, currency: c.currency, cumulative_value: c.payment, active_order_count: 2 }));
-    let commit = |salt: u64| commit_from(c, salt, 1);
+    let sub = Commitment { process_id: process, ..c.clone() };
+    let commit = |salt: u64| commit_from(&sub, salt, 1);
     let resolve = PendingOp {
         id: 99,
         key: B256::with_last_byte(99),
@@ -2025,7 +2044,7 @@ fn a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation() 
         behind: Vec::new(),
     };
     let ops = vec![commit(1), commit(2), commit(3), resolve, commit(4)];
-    let (kept, dropped) = assembler::filter_commits_within_resolve_capacity(&prev, ops, 4);
+    let (kept, dropped) = assembler::filter_commits_within_resolve_capacity(CHAIN_ID, CORE, &prev, ops, 4);
     // Two held plus the first two commits reach four, the cap; the third
     // would make five and is dropped; the resolve closes the process; the
     // commit after it is the first of a new count.
@@ -2034,7 +2053,7 @@ fn a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation() 
     assert_eq!(dropped[0].0.id, 3);
     assert!(dropped[0].1.contains("would grow the process to 5 orders, past the 4"), "{}", dropped[0].1);
     // A cap of zero keeps no commit at all; the resolve still passes.
-    let (kept, dropped) = assembler::filter_commits_within_resolve_capacity(&prev, vec![commit(1), ], 0);
+    let (kept, dropped) = assembler::filter_commits_within_resolve_capacity(CHAIN_ID, CORE, &prev, vec![commit(1), ], 0);
     assert!(kept.is_empty());
     assert_eq!(dropped.len(), 1);
 }
@@ -3448,4 +3467,167 @@ fn an_unnamed_refusal_dead_letters_the_wallet_code_resolves_alone() {
     // A batch with no wallet-code resolve still dead-letters whole.
     let verdict = classify_deterministic_revert(vec![commit_from(&root, 92, 10)], vec![], vec![], vec![]);
     assert!(verdict.whole);
+}
+
+// ── The capacity filter counts each process under its derived id ──────
+
+/// A sub-order of `root`'s process, under its derived id, with an id of `salt`.
+fn sub_order_of(root: &PendingOp, salt: u64) -> PendingOp {
+    let KernelOp::Commit { commitment: root, .. } = &root.op else { panic!("a root commit") };
+    let process = derive_commitment_ids(&domain(), root).1;
+    let mut sub = commit_from(root, salt, 1);
+    if let KernelOp::Commit { commitment, .. } = &mut sub.op {
+        commitment.process_id = process;
+    }
+    sub
+}
+
+#[test]
+fn the_capacity_filter_counts_two_root_orders_and_their_sub_orders_each_under_its_own_process() {
+    // Two root orders and a sub-order of each, in one batch. Each root order
+    // opens a process of its own (its id derived from its struct, never the
+    // zero the struct carries), and each sub-order is its process's second.
+    let base = match &canonical_ops()[0] {
+        KernelOp::Commit { commitment, .. } => commitment.clone(),
+        other => panic!("canonical ops[0] is the commit, got {other:?}"),
+    };
+    let root_a = commit_from(&base, 1, 1);
+    let root_b = commit_from(&base, 2, 1);
+    let sub_a = sub_order_of(&root_a, 11);
+    let sub_b = sub_order_of(&root_b, 12);
+    let ops = vec![root_a, root_b, sub_a, sub_b];
+    let ids = |v: &[PendingOp]| v.iter().map(|p| p.id).collect::<Vec<_>>();
+
+    // One order a process: both roots fit, both sub-orders would be a second.
+    let (kept, dropped) = assembler::filter_commits_within_resolve_capacity(CHAIN_ID, CORE, &empty_snapshot(), ops.clone(), 1);
+    assert_eq!(ids(&kept), vec![1, 2], "each root order is the first of its own process");
+    assert_eq!(dropped.iter().map(|(p, _)| p.id).collect::<Vec<_>>(), vec![11, 12], "each sub-order is its process's second");
+    for (_, reason) in &dropped {
+        assert!(reason.contains("would grow the process to 2 orders, past the 1"), "{reason}");
+    }
+
+    // Two orders a process: all four fit.
+    let (kept, dropped) = assembler::filter_commits_within_resolve_capacity(CHAIN_ID, CORE, &empty_snapshot(), ops, 2);
+    assert_eq!(ids(&kept), vec![1, 2, 11, 12]);
+    assert!(dropped.is_empty(), "{dropped:?}");
+}
+
+// ── The EIP-712 verifying contract is the batch verifier ──────────────
+
+#[test]
+fn the_relay_refuses_a_verifying_contract_that_is_not_the_batch_verifier() {
+    use figaro_sequencer::submitter::verifying_contract_for;
+    let verifier = Address::repeat_byte(0xbb);
+    let core = Address::repeat_byte(0xcc);
+    assert_eq!(verifying_contract_for(verifier, verifier), Ok(verifier), "the verifier's own domain");
+    let refused = verifying_contract_for(verifier, core).unwrap_err();
+    assert!(refused.contains("FIGARO_CORE_ADDRESS") && refused.contains("BATCH_VERIFIER_ADDRESS"), "{refused}");
+    assert!(verifying_contract_for(verifier, Address::ZERO).is_err(), "unset beside a verifier is a refusal too");
+    // The prove-only dry run has no verifier: the domain is whatever is set.
+    assert_eq!(verifying_contract_for(Address::ZERO, core), Ok(core));
+}
+
+// ── Admission refuses what it cannot verify ───────────────────────────
+
+async fn submit_status(app: &axum::Router, op: &KernelOp) -> (StatusCode, serde_json::Value) {
+    let res = app.clone().oneshot(submit_request(op)).await.unwrap();
+    let status = res.status();
+    let body = axum::body::to_bytes(res.into_body(), 1 << 20).await.unwrap();
+    (status, serde_json::from_slice(&body).unwrap_or(serde_json::Value::Null))
+}
+
+#[tokio::test]
+async fn admission_refuses_an_operation_on_a_process_or_order_the_relay_neither_holds_nor_has_queued() {
+    // Each of these names a process or an order nobody committed: admitted,
+    // it would wait out the deferral window in the queue, for free.
+    let state = test_app_state();
+    let app = api::router(state.clone(), ApiConfig::default());
+    let ops = canonical_ops();
+    let root = match &ops[0] {
+        KernelOp::Commit { commitment, .. } => commitment.clone(),
+        other => panic!("canonical ops[0] is the commit, got {other:?}"),
+    };
+    let process = derive_commitment_ids(&domain(), &root).1;
+    let sub = Commitment {
+        process_id: process,
+        salt: alloy_primitives::U256::from(77u64),
+        expected_cumulative_value: root.payment + root.payment,
+        ..root.clone()
+    };
+    for (op, what) in [
+        (ops[3].clone(), "resolve"),
+        (ops[1].clone(), "seller attestation"),
+        (ops[2].clone(), "buyer attestation"),
+        (signed_commit(&sub), "sub-order"),
+    ] {
+        let (status, json) = submit_status(&app, &op).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "a {what} on an unknown process: {json}");
+        assert!(json["error"].as_str().unwrap().contains("neither holds nor has queued"), "{json}");
+    }
+    assert_eq!(state.mempool.len().await, 0, "nothing was queued");
+
+    // The root commit queued, each is admitted.
+    for op in [&ops[0], &ops[1], &ops[2], &ops[3]] {
+        let (status, json) = submit_status(&app, op).await;
+        assert_eq!(status, StatusCode::OK, "{json}");
+    }
+    let (status, json) = submit_status(&app, &signed_commit(&sub)).await;
+    assert_eq!(status, StatusCode::OK, "{json}");
+}
+
+#[tokio::test]
+async fn admission_refuses_a_resolve_not_signed_by_the_root_buyer() {
+    let state = test_app_state();
+    let app = api::router(state.clone(), ApiConfig::default());
+    let ops = canonical_ops();
+    assert_eq!(submit_status(&app, &ops[0]).await.0, StatusCode::OK);
+    let (process_id, cumulative_value, commitments, _) = canonical_resolve();
+    let digest = typed_data_hash(&domain(), &resolve_struct_hash(&process_id, &cumulative_value));
+    let stranger = KernelOp::Resolve {
+        process_id,
+        cumulative_value,
+        commitments,
+        buyer_sig: sign_digest(&make_signing_key(SELLER1_KEY), &digest),
+    };
+    let (status, json) = submit_status(&app, &stranger).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{json}");
+    assert!(json["error"].as_str().unwrap().contains("not the process's root buyer"), "{json}");
+    assert_eq!(state.mempool.len().await, 1, "the commit alone");
+}
+
+#[tokio::test]
+async fn admission_knows_a_process_in_flight_and_one_the_relay_holds() {
+    let ops = canonical_ops();
+    // In flight: the root commit drained into a batch not yet landed.
+    let state = test_app_state();
+    let app = api::router(state.clone(), ApiConfig::default());
+    assert_eq!(submit_status(&app, &ops[0]).await.0, StatusCode::OK);
+    assert_eq!(state.mempool.drain().await.len(), 1);
+    let (status, json) = submit_status(&app, &ops[1]).await;
+    assert_eq!(status, StatusCode::OK, "an attestation on an order in flight: {json}");
+    // Held: the process behind the verifier's root, nothing queued.
+    let state = AppState { state_mirror: StateMirror::from_snapshot(landed_after(vec![ops[0].clone()])), ..test_app_state() };
+    let app = api::router(state, ApiConfig::default());
+    let (status, json) = submit_status(&app, &ops[3]).await;
+    assert_eq!(status, StatusCode::OK, "a resolve on a held process: {json}");
+}
+
+#[tokio::test]
+async fn admission_refuses_a_commit_whose_bonds_it_cannot_read() {
+    // The chain cannot be asked: the bonds are unverified, so the commit is
+    // refused (retry), never queued, and the answer carries no URL.
+    let state = AppState {
+        funding: Some(figaro_sequencer::submitter::FundingGate {
+            rpc_url: "http://127.0.0.1:1/v2/secret-key".to_string(),
+            verifier: CORE,
+        }),
+        ..test_app_state()
+    };
+    let app = api::router(state.clone(), ApiConfig::default());
+    let (status, json) = submit_status(&app, &canonical_ops()[0]).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{json}");
+    let error = json["error"].as_str().unwrap();
+    assert!(error.contains("bonds could not be read"), "{error}");
+    assert!(!error.contains("secret-key") && !error.contains("127.0.0.1"), "{error}");
+    assert_eq!(state.mempool.len().await, 0);
 }

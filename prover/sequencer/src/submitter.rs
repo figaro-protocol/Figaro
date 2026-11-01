@@ -79,6 +79,22 @@ impl RevocationLog {
     }
 }
 
+/// The EIP-712 verifying contract this relay admits and proves under. The
+/// batch path's domain is the batch verifier's: the verifier recovers every
+/// signature against its own address, so a relay that admitted under another
+/// contract (`FigaroCore`, say) would admit signatures the verifier refuses
+/// and refuse the ones it accepts. With a verifier configured,
+/// `FIGARO_CORE_ADDRESS` must name it; the prove-only dry run (no verifier)
+/// proves under whatever is set.
+pub fn verifying_contract_for(verifier: Address, verifying_contract: Address) -> Result<Address, String> {
+    if verifier == Address::ZERO || verifying_contract == verifier {
+        return Ok(verifying_contract);
+    }
+    Err(format!(
+        "FIGARO_CORE_ADDRESS ({verifying_contract:#x}) is not BATCH_VERIFIER_ADDRESS ({verifier:#x}): the batch path's EIP-712 verifying contract is the batch verifier"
+    ))
+}
+
 /// The resolution transaction signer's key, from the environment and never
 /// defaulted: a relay that fell back to a well-known devnet key would sign
 /// `settleBatch` from an account anyone can drain, on any chain it was
