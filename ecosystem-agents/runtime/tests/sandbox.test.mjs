@@ -205,6 +205,68 @@ test("the proxy relays JSON-RPC to the keyed endpoint it holds; the client never
     await stub.close();
 });
 
+// ── The bootstrap's connect to the proxy ────────────────────────────────────
+
+/** Fetch `target` from a node process that loads proxy-bootstrap.mjs and
+ *  whose first `refusals` connects to the proxy's port fail with EPERM — the
+ *  error the macOS kernel now and then returns for the one port the profile
+ *  opens. Connects to any other port are left as they are. */
+async function fetchThroughRefusingConnect({ refusals, refusePort, proxyPort, target }) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-eperm-"));
+    const inject = path.join(dir, "inject.mjs");
+    fs.writeFileSync(inject, [
+        "import net from 'node:net';",
+        "const connect = net.connect;",
+        `let left = ${refusals};`,
+        "net.connect = function (...args) {",
+        "  const o = typeof args[0] === 'object' ? args[0] : { port: args[0], host: args[1] };",
+        `  if (Number(o.port) === ${refusePort} && left > 0) {`,
+        "    left--;",
+        "    const s = new net.Socket();",
+        "    process.nextTick(() => s.destroy(Object.assign(new Error(`connect EPERM 127.0.0.1:${o.port}`),",
+        "      { code: 'EPERM', errno: -1, syscall: 'connect', address: '127.0.0.1', port: Number(o.port) })));",
+        "    return s;",
+        "  }",
+        "  return connect.apply(this, args);",
+        "};",
+    ].join("\n"));
+    const probe = path.join(dir, "probe.mjs");
+    fs.writeFileSync(probe, `const r = await fetch(${JSON.stringify(target)}); console.log("BODY=" + (await r.text()));`);
+    try {
+        return await new Promise((resolve) => {
+            const child = spawn(process.execPath, [
+                "--no-warnings", "--import", inject, "--import", path.join(__dirname, "..", "proxy-bootstrap.mjs"), probe,
+            ], { env: { PATH: process.env.PATH, HTTP_PROXY: `http://127.0.0.1:${proxyPort}`, HTTPS_PROXY: `http://127.0.0.1:${proxyPort}`, NO_PROXY: "", no_proxy: "" } });
+            let stdout = "";
+            let stderr = "";
+            child.stdout.on("data", (c) => (stdout += c));
+            child.stderr.on("data", (c) => (stderr += c));
+            child.on("close", (status) => resolve({ status, stdout, stderr }));
+        });
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+}
+
+test("the bootstrap retries a connect EPERM to the proxy's port, and a refusal that persists still fails", async () => {
+    const origin = http.createServer((_req, res) => res.end("through"));
+    await new Promise((r) => origin.listen(0, "127.0.0.1", r));
+    const target = `http://127.0.0.1:${origin.address().port}/`;
+    const proxy = await startEgressProxy({ policy: { egress: [target.slice(0, -1)], rpcUrl: "https://ipfs.io" }, port: 0 });
+    try {
+        const spurious = await fetchThroughRefusingConnect({ refusals: 2, refusePort: proxy.port, proxyPort: proxy.port, target });
+        assert.equal(spurious.status, 0, spurious.stderr);
+        assert.match(spurious.stdout, /^BODY=through$/m, "a spurious refusal of the proxy's port ended the fetch");
+
+        const persistent = await fetchThroughRefusingConnect({ refusals: 1000, refusePort: proxy.port, proxyPort: proxy.port, target });
+        assert.notEqual(persistent.status, 0, "a refusal that persists was hidden");
+        assert.match(persistent.stderr, /EPERM/);
+    } finally {
+        await proxy.close();
+        await new Promise((r) => origin.close(r));
+    }
+});
+
 // ── The launcher's pure decisions ───────────────────────────────────────────
 
 test("the environment scrub drops secret-shaped names and URL-embedded credentials", () => {
@@ -557,17 +619,12 @@ test("the launcher keeps keyed RPC endpoints outside and hands the agent the pro
     const signerDir = fs.mkdtempSync(path.join(os.homedir(), ".sbx-signer-"));
     // The agent reads RPC_URL and calls it from inside the sandbox, where the
     // stub's own port is closed: an answer can only have come through the relay.
-    // A connect EPERM to the proxy's own port is retried: the kernel's
-    // intermittent refusal of an allowed port (see the loopback test above).
+    // The probe calls once: the kernel's intermittent EPERM on the proxy's
+    // own port is the bootstrap's to retry (proxy-bootstrap.mjs).
     const probe = path.join(workspace, "probe.mjs");
     fs.writeFileSync(probe, [
-        "const call = () => fetch(process.env.RPC_URL, { method: 'POST', headers: { 'content-type': 'application/json' },",
+        "const res = await fetch(process.env.RPC_URL, { method: 'POST', headers: { 'content-type': 'application/json' },",
         "  body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }) });",
-        "let res;",
-        "for (let attempt = 0; ; attempt++) {",
-        "  try { res = await call(); break; }",
-        "  catch (e) { if (attempt >= 4 || e?.cause?.code !== 'EPERM') throw e; }",
-        "}",
         "console.log(`RPC_URL=${process.env.RPC_URL}`);",
         "console.log(`CHAIN=${(await res.json()).result}`);",
     ].join("\n"));

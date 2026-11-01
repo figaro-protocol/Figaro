@@ -104,9 +104,9 @@ export async function counterSignDraft(
     wallet: WalletClient,
     draft: CommitmentPayload,
     ctx: SellerSignCtx,
+    specs: SpecSource,
     accept?: (draft: CommitmentPayload) => boolean,
     policy?: OfferPolicy,
-    specs?: SpecSource,
     design: HydratedAssembly | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
@@ -282,9 +282,9 @@ export async function quoteDraft(
     wallet: WalletClient,
     draft: CommitmentPayload,
     ctx: SellerSignCtx,
+    specs: SpecSource,
     quote?: (draft: CommitmentPayload) => bigint | null,
     policy?: OfferPolicy,
-    specs?: SpecSource,
     design: HydratedAssembly | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
@@ -545,7 +545,7 @@ export function makeSellerRaceHandler(
         chainClient: ChainClock;
     },
 ): (offer: CommitmentPayload) => Promise<CommitmentPayload | null> {
-    return async (offer) => counterSignDraft(wallet, offer, await withChainNow(ctx, opts.chainClient), opts.accept, opts.policy, opts.specs, await readOfferDesign(offer, opts.readDesign), opts.readProfile);
+    return async (offer) => counterSignDraft(wallet, offer, await withChainNow(ctx, opts.chainClient), opts.specs, opts.accept, opts.policy, await readOfferDesign(offer, opts.readDesign), opts.readProfile);
 }
 
 /**
@@ -571,5 +571,5 @@ export function makeSellerQuoteHandler(
         chainClient: ChainClock;
     },
 ): (offer: CommitmentPayload) => Promise<CommitmentPayload | null> {
-    return async (offer) => quoteDraft(wallet, offer, await withChainNow(ctx, opts.chainClient), opts.quote, opts.policy, opts.specs, await readOfferDesign(offer, opts.readDesign), opts.readProfile);
+    return async (offer) => quoteDraft(wallet, offer, await withChainNow(ctx, opts.chainClient), opts.specs, opts.quote, opts.policy, await readOfferDesign(offer, opts.readDesign), opts.readProfile);
 }
