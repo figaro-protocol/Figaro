@@ -409,7 +409,17 @@ test("direct outbound network is denied, and so is every loopback port but the p
         const loop = sandboxed({ workspace, proxyPort, cmd: `nc -z 127.0.0.1 ${other.address().port}` });
         assert.notEqual(loop.status, 0, "a loopback service other than the proxy was reachable");
 
-        const toProxy = sandboxed({ workspace, proxyPort, cmd: `nc -z 127.0.0.1 ${proxyPort}` });
+        // The kernel now and then refuses a connect to the port the profile
+        // opens (EPERM; its log reads `Sandbox: nc deny(1) network-outbound
+        // remote:*:<proxy port>`), about one connect in forty, alone or under
+        // load, while the permissive probe above never is. One connect that
+        // lands proves the profile opens the port; the denials above are
+        // single attempts, and a spurious refusal only ever adds a deny.
+        let toProxy;
+        for (let attempt = 0; attempt < 5; attempt++) {
+            toProxy = sandboxed({ workspace, proxyPort, cmd: `nc -vz -G 3 127.0.0.1 ${proxyPort}` });
+            if (toProxy.status === 0) break;
+        }
         assert.equal(toProxy.status, 0, toProxy.stderr);
     } finally {
         await new Promise((r) => proxy.close(r));
@@ -547,10 +557,17 @@ test("the launcher keeps keyed RPC endpoints outside and hands the agent the pro
     const signerDir = fs.mkdtempSync(path.join(os.homedir(), ".sbx-signer-"));
     // The agent reads RPC_URL and calls it from inside the sandbox, where the
     // stub's own port is closed: an answer can only have come through the relay.
+    // A connect EPERM to the proxy's own port is retried: the kernel's
+    // intermittent refusal of an allowed port (see the loopback test above).
     const probe = path.join(workspace, "probe.mjs");
     fs.writeFileSync(probe, [
-        "const res = await fetch(process.env.RPC_URL, { method: 'POST', headers: { 'content-type': 'application/json' },",
+        "const call = () => fetch(process.env.RPC_URL, { method: 'POST', headers: { 'content-type': 'application/json' },",
         "  body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }) });",
+        "let res;",
+        "for (let attempt = 0; ; attempt++) {",
+        "  try { res = await call(); break; }",
+        "  catch (e) { if (attempt >= 4 || e?.cause?.code !== 'EPERM') throw e; }",
+        "}",
         "console.log(`RPC_URL=${process.env.RPC_URL}`);",
         "console.log(`CHAIN=${(await res.json()).result}`);",
     ].join("\n"));
