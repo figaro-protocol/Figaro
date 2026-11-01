@@ -186,6 +186,12 @@ release lives under **Unreleased**.
 - **SDK 0.2.0 (breaking): `SyncResult.newSellers` is renamed to `newMembers`.**
   The field counts member registrations and profile updates; a member may
   buy, sell, or both.
+- **SDK 0.2.0 (breaking): the seller signing legs take `specs` as a required fourth parameter.**
+  `counterSignOffer(wallet, offer, ctx, specs, accept, policy, design, readProfile)`,
+  `counterSignDraft(wallet, draft, ctx, specs, accept, policy, design, readProfile)` and
+  `quoteDraft(wallet, draft, ctx, specs, quote, policy, design, readProfile)`: a call that omits
+  `specs` is a compile error, and an untyped caller that passes none is refused at run time.
+  The mountable handlers take `specs` in their opts, unchanged.
 - **SDK 0.2.0 (breaking): a seller attests only about a clause of its own order.**
   `attestAsSeller` takes the attested order's commitment alone —
   `(walletClient, coordinator, target, clauseId, stage, clauseDataHash, proof, contentRef)`,

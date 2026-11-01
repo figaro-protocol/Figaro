@@ -170,10 +170,10 @@ without the clause, term and designer checks.
   The walk also fills the currency leaf from the figure the struct signs and THROWS on an
   override that contradicts it.
 - **Seller side:** `makeSellerOfferHandler(wallet, publicClient, addresses, { accept,
-  policy, specs, readDesign, readProfile })`, or `counterSignOffer(wallet, offer, ctx, accept,
-  policy, specs, design, readProfile)` directly. The market-formation legs take them in the
-  same last positions — `counterSignDraft(wallet, draft, ctx, accept, policy, specs, design,
-  readProfile)`, `quoteDraft(wallet, draft, ctx, quote, policy, specs, design, readProfile)` —
+  policy, specs, readDesign, readProfile })`, or `counterSignOffer(wallet, offer, ctx, specs,
+  accept, policy, design, readProfile)` directly. The market-formation legs take them in the
+  same positions — `counterSignDraft(wallet, draft, ctx, specs, accept, policy, design,
+  readProfile)`, `quoteDraft(wallet, draft, ctx, specs, quote, policy, design, readProfile)` —
   and the mountable handlers `makeSellerRaceHandler` / `makeSellerQuoteHandler` accept
   `specs`, `readDesign` and `readProfile` in their opts, beside a required `chainClient`. The
   direct calls' `ctx` is `{ chainId, core, chainNow }`, `chainNow` the chain's

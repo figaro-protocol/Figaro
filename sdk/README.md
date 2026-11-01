@@ -1133,7 +1133,7 @@ const { status, body } = await respond(rawRequestBody); // status is always 200 
 // (`design`, the hydrated assembly; null refuses a draft naming one), is
 // refused before any signature.
 import { validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner } from "@figaro-protocol/sdk/agent";
-const reply = await counterSignDraft(courierWallet, draft, { chainId, core, chainNow }, accept, policy, specs, design, readProfile);
+const reply = await counterSignDraft(courierWallet, draft, { chainId, core, chainNow }, specs, accept, policy, design, readProfile);
 // Buyer side: exact struct-hash equality against the SENT draft, then recovery —
 // a doctored reply cannot ride a valid signature.
 const check = await verifyRaceReply(reply!, draft, { chainId, core });
