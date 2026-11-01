@@ -16,6 +16,8 @@ import type { Address, Hex } from "../src/types.js";
 import { hydrateAuthored, profileBinding } from "./hydrate.js";
 import { forgeBuyerOffer } from "./forgeOffer.js";
 import { assemblyHashOf, deriveAssemblySlug } from "../src/assembly.js";
+import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]
 const COURIER_A = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"); // anvil[1]
@@ -100,7 +102,7 @@ describe("validateDraft", () => {
 describe("counterSignDraft (real signatures, no chain)", () => {
     it("countersigns a clean draft when both floors pass, and the reply verifies", async () => {
         const draft = await draftFor(COURIER_A.address, 1000n);
-        const reply = await counterSignDraft(courierAW, draft, CTX, () => true, policy, SPECS, assembly, BOUND);
+        const reply = await counterSignDraft(courierAW, draft, CTX, SPECS, () => true, policy, assembly, BOUND);
         expect(reply?.sellerSig).toBeDefined();
         expect(reply?.buyerSig).toBeUndefined();
         expect((await verifyRaceReply(reply!, draft, CTX)).ok).toBe(true);
@@ -108,19 +110,19 @@ describe("counterSignDraft (real signatures, no chain)", () => {
 
     it("declines with no policy — the economic floor is opt-in", async () => {
         const draft = await draftFor(COURIER_A.address, 1000n);
-        expect(await counterSignDraft(courierAW, draft, CTX, () => true, undefined, SPECS, assembly, BOUND)).toBeNull();
+        expect(await counterSignDraft(courierAW, draft, CTX, SPECS, () => true, undefined, assembly, BOUND)).toBeNull();
     });
 
     it("declines when accept is absent or refuses — the refuse-all floor", async () => {
         const draft = await draftFor(COURIER_A.address, 1000n);
-        expect(await counterSignDraft(courierAW, draft, CTX, undefined, policy, SPECS, assembly, BOUND)).toBeNull();
-        expect(await counterSignDraft(courierAW, draft, CTX, () => false, policy, SPECS, assembly, BOUND)).toBeNull();
+        expect(await counterSignDraft(courierAW, draft, CTX, SPECS, undefined, policy, assembly, BOUND)).toBeNull();
+        expect(await counterSignDraft(courierAW, draft, CTX, SPECS, () => false, policy, assembly, BOUND)).toBeNull();
     });
 
     it("THROWS on a tampered draft — never countersign a bogus commitment", async () => {
         const draft = await draftFor(COURIER_A.address, 1000n);
         const tampered = { ...draft, agreement: { ...draft.agreement, seller: COURIER_B.address } };
-        await expect(counterSignDraft(courierAW, tampered, CTX, () => true, policy, SPECS, assembly, BOUND)).rejects.toThrow(/refusing the draft — agreement parties do not match/);
+        await expect(counterSignDraft(courierAW, tampered, CTX, SPECS, () => true, policy, assembly, BOUND)).rejects.toThrow(/refusing the draft — agreement parties do not match/);
     });
 });
 
@@ -131,7 +133,7 @@ describe("verifyRaceReply", () => {
         // themselves — the signature recovers fine, so only exact struct
         // equality against the sent draft catches it.
         const doctored = await draftFor(COURIER_A.address, 9000n);
-        const reply = await counterSignDraft(courierAW, doctored, CTX, () => true, policy, SPECS, assembly, BOUND);
+        const reply = await counterSignDraft(courierAW, doctored, CTX, SPECS, () => true, policy, assembly, BOUND);
         const check = await verifyRaceReply(reply!, draft, CTX);
         expect(check.ok).toBe(false);
         expect(check.reason).toMatch(/does not match the drafted struct/);
@@ -165,14 +167,14 @@ describe("selectRaceWinner", () => {
     it("picks the cheapest countersigner; ties break by arrival order", async () => {
         const dA = await draftFor(COURIER_A.address, 3000n);
         const dB = await draftFor(COURIER_B.address, 1000n);
-        const rA = (await counterSignDraft(courierAW, dA, CTX, () => true, policy, SPECS, assembly, BOUND))!;
-        const rB = (await counterSignDraft(courierBW, dB, CTX, () => true, policy, SPECS, assembly, BOUND))!;
+        const rA = (await counterSignDraft(courierAW, dA, CTX, SPECS, () => true, policy, assembly, BOUND))!;
+        const rB = (await counterSignDraft(courierBW, dB, CTX, SPECS, () => true, policy, assembly, BOUND))!;
         const replies: RaceReply[] = [{ draft: dA, reply: rA }, { draft: dB, reply: rB }];
         expect(selectRaceWinner(replies)?.reply.commitment.seller.toLowerCase()).toBe(COURIER_B.address.toLowerCase());
 
         // Tie at the same price: the first arrival wins.
         const dB2 = await draftFor(COURIER_B.address, 3000n);
-        const rB2 = (await counterSignDraft(courierBW, dB2, CTX, () => true, policy, SPECS, assembly, BOUND))!;
+        const rB2 = (await counterSignDraft(courierBW, dB2, CTX, SPECS, () => true, policy, assembly, BOUND))!;
         const tied: RaceReply[] = [{ draft: dA, reply: rA }, { draft: dB2, reply: rB2 }];
         expect(selectRaceWinner(tied)?.reply.commitment.seller.toLowerCase()).toBe(COURIER_A.address.toLowerCase());
     });
@@ -235,7 +237,7 @@ describe("buildQuoteRequest + substitutePricedValue", () => {
 describe("quoteDraft (real signatures, no chain)", () => {
     it("quotes under the ceiling and the reply verifies by reconstruction", async () => {
         const req = requestFor(COURIER_A.address);
-        const reply = await quoteDraft(courierAW, req, CTX, () => 700n, quotePolicy, SPECS, assembly, BOUND);
+        const reply = await quoteDraft(courierAW, req, CTX, SPECS, () => 700n, quotePolicy, assembly, BOUND);
         expect(reply?.sellerSig).toBeDefined();
         expect(reply?.commitment.payment).toBe(700n);
         expect(reply?.commitment.expectedCumulativeValue).toBe(700n);
@@ -247,19 +249,19 @@ describe("quoteDraft (real signatures, no chain)", () => {
 
     it("declines without a policy, without a pricing function, on a null quote, and above the ceiling", async () => {
         const req = requestFor(COURIER_A.address);
-        expect(await quoteDraft(courierAW, req, CTX, () => 700n, undefined, SPECS, assembly, BOUND)).toBeNull();
-        expect(await quoteDraft(courierAW, req, CTX, undefined, quotePolicy, SPECS, assembly, BOUND)).toBeNull();
-        expect(await quoteDraft(courierAW, req, CTX, () => null, quotePolicy, SPECS, assembly, BOUND)).toBeNull();
-        expect(await quoteDraft(courierAW, req, CTX, () => CEILING + 1n, quotePolicy, SPECS, assembly, BOUND)).toBeNull();
-        expect(await quoteDraft(courierAW, req, CTX, () => 0n, quotePolicy, SPECS, assembly, BOUND)).toBeNull();
+        expect(await quoteDraft(courierAW, req, CTX, SPECS, () => 700n, undefined, assembly, BOUND)).toBeNull();
+        expect(await quoteDraft(courierAW, req, CTX, SPECS, undefined, quotePolicy, assembly, BOUND)).toBeNull();
+        expect(await quoteDraft(courierAW, req, CTX, SPECS, () => null, quotePolicy, assembly, BOUND)).toBeNull();
+        expect(await quoteDraft(courierAW, req, CTX, SPECS, () => CEILING + 1n, quotePolicy, assembly, BOUND)).toBeNull();
+        expect(await quoteDraft(courierAW, req, CTX, SPECS, () => 0n, quotePolicy, assembly, BOUND)).toBeNull();
     });
 
     it("the legs never cross: quoteDraft refuses a race draft, counterSignDraft refuses a quote request", async () => {
         const raceDraft = await draftFor(COURIER_A.address, 1000n);
-        await expect(quoteDraft(courierAW, raceDraft, CTX, () => 700n, quotePolicy, SPECS, assembly, BOUND))
+        await expect(quoteDraft(courierAW, raceDraft, CTX, SPECS, () => 700n, quotePolicy, assembly, BOUND))
             .rejects.toThrow(/no quote request/);
         const req = requestFor(COURIER_A.address);
-        await expect(counterSignDraft(courierAW, req, CTX, () => true, policy, SPECS, assembly, BOUND))
+        await expect(counterSignDraft(courierAW, req, CTX, SPECS, () => true, policy, assembly, BOUND))
             .rejects.toThrow(/quote request/);
     });
 });
@@ -313,7 +315,7 @@ describe("verifyQuoteReply — the reconstruction gate", () => {
 
     it("rejects a quote signed by a wallet other than the drafted candidate", async () => {
         const req = requestFor(COURIER_A.address);
-        const honest = await quoteDraft(courierAW, req, CTX, () => 700n, quotePolicy, SPECS, assembly, BOUND);
+        const honest = await quoteDraft(courierAW, req, CTX, SPECS, () => 700n, quotePolicy, assembly, BOUND);
         const forged: CommitmentPayload = { ...honest!, sellerSig: await signedBy(courierBW, honest!.commitment) };
         const check = await verifyQuoteReply(forged, req, CTX);
         expect(check.ok).toBe(false);
@@ -360,7 +362,7 @@ describe("requestQuotes over the coordination channel", () => {
         expect(winner?.reply.commitment.payment).toBe(500n);
         // The winner's struct hash is exactly the buyer's reconstruction at 500.
         expect(hashCommitmentStruct(winner!.reply.commitment))
-            .toBe(hashCommitmentStruct((await quoteDraft(courierBW, drafts[1], CTX, () => 500n, quotePolicy, SPECS, assembly, BOUND))!.commitment));
+            .toBe(hashCommitmentStruct((await quoteDraft(courierBW, drafts[1], CTX, SPECS, () => 500n, quotePolicy, assembly, BOUND))!.commitment));
     });
 });
 
@@ -390,17 +392,28 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
         expect((await validateDraft(draft, COURIER_A.address, undefined, SPECS, null, BOUND)).reason).toMatch(/denomination/i);
     });
 
+    it("counterSignOffer, counterSignDraft and quoteDraft take specs as a required parameter: omitting it is a compile error", () => {
+        const probe = fileURLToPath(new URL("./fixtures/specsRequired.typecheck.ts", import.meta.url));
+        const program = ts.createProgram([probe], {
+            target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext,
+            strict: true, noEmit: true, skipLibCheck: true, resolveJsonModule: true, esModuleInterop: true,
+        });
+        const diagnostics = ts.getPreEmitDiagnostics(program)
+            .map((d) => `${d.file?.fileName ?? ""}: ${ts.flattenDiagnosticMessageText(d.messageText, "\n")}`);
+        expect(diagnostics).toEqual([]);
+    }, 60_000);
+
     it("counterSignDraft and quoteDraft refuse to sign without specs", async () => {
         const draft = await draftFor(COURIER_A.address, 1000n);
-        await expect(counterSignDraft(courierAW, draft, CTX, () => true, policy, undefined, assembly, BOUND))
+        await expect(counterSignDraft(courierAW, draft, CTX, undefined as never, () => true, policy, assembly, BOUND))
             .rejects.toThrow(/counterSignDraft: refusing to sign without the clause specs/);
-        await expect(quoteDraft(courierAW, requestFor(COURIER_A.address), CTX, () => 700n, quotePolicy, undefined, assembly, BOUND))
+        await expect(quoteDraft(courierAW, requestFor(COURIER_A.address), CTX, undefined as never, () => 700n, quotePolicy, assembly, BOUND))
             .rejects.toThrow(/quoteDraft: refusing to sign without the clause specs/);
     });
 
     it("counterSignDraft THROWS on the contradiction when specs are supplied — the candidate never countersigns it", async () => {
         const draft = await mismatchedDraft(COURIER_A.address);
-        await expect(counterSignDraft(courierAW, draft, CTX, () => true, policy, SPECS, null, BOUND))
+        await expect(counterSignDraft(courierAW, draft, CTX, SPECS, () => true, policy, null, BOUND))
             .rejects.toThrow(/denomination/i);
     });
 
@@ -413,9 +426,9 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
         const { buyerSig: _stripped, ...draft } = offer;
         // The gate reads the design the draft names: without it the
         // candidate refuses, with it the clean draft countersigns.
-        await expect(counterSignDraft(courierAW, draft, CTX, () => true, policy, SPECS, null, BOUND))
+        await expect(counterSignDraft(courierAW, draft, CTX, SPECS, () => true, policy, null, BOUND))
             .rejects.toThrow(/was not read/);
-        const reply = await counterSignDraft(courierAW, draft, CTX, () => true, policy, SPECS, assembly, BOUND);
+        const reply = await counterSignDraft(courierAW, draft, CTX, SPECS, () => true, policy, assembly, BOUND);
         expect(reply?.sellerSig).toBeDefined();
         const viaHandler = makeSellerRaceHandler(courierAW, CTX, { chainClient: CLOCK, accept: () => true, policy, specs: SPECS, readDesign: async () => assembly, readProfile: BOUND });
         expect((await viaHandler(draft))?.sellerSig).toBeDefined();
@@ -425,14 +438,14 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
 
     it("quoteDraft with specs: a clean request quotes (outbound gate passes), a leaf-tampered request THROWS", async () => {
         const clean = requestFor(COURIER_A.address);
-        const reply = await quoteDraft(courierAW, clean, CTX, () => 700n, quotePolicy, SPECS, assembly, BOUND);
+        const reply = await quoteDraft(courierAW, clean, CTX, SPECS, () => 700n, quotePolicy, assembly, BOUND);
         expect(reply?.sellerSig).toBeDefined();
         const tampered = buildQuoteRequest({
             assembly: assembly, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
             ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n,
             overrides: fullCommerce(BAD_CURRENCY, "0"),
         });
-        await expect(quoteDraft(courierAW, tampered, CTX, () => 700n, quotePolicy, SPECS, assembly, BOUND))
+        await expect(quoteDraft(courierAW, tampered, CTX, SPECS, () => 700n, quotePolicy, assembly, BOUND))
             .rejects.toThrow(/denomination/i);
     });
 
@@ -454,8 +467,8 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
         const { buyerSig: _stripped, ...draft } = offer;
         const short = withoutTopology(draft);
         expect((await validateDraft(short, COURIER_A.address, undefined, SPECS, assembly, BOUND)).reason).toMatch(missing);
-        await expect(counterSignDraft(courierAW, short, CTX, () => true, policy, SPECS, assembly, BOUND)).rejects.toThrow(missing);
-        await expect(quoteDraft(courierAW, withoutTopology(requestFor(COURIER_A.address)), CTX, () => 700n, quotePolicy, SPECS, assembly, BOUND))
+        await expect(counterSignDraft(courierAW, short, CTX, SPECS, () => true, policy, assembly, BOUND)).rejects.toThrow(missing);
+        await expect(quoteDraft(courierAW, withoutTopology(requestFor(COURIER_A.address)), CTX, SPECS, () => 700n, quotePolicy, assembly, BOUND))
             .rejects.toThrow(missing);
     });
 });
@@ -486,9 +499,9 @@ describe("the seller's bound assemblies — the race and quote legs refuse a dra
 
     it("counterSignDraft and quoteDraft THROW on an assembly the candidate has not bound, before any signature", async () => {
         const draft = await draftFor(COURIER_A.address, 1000n);
-        await expect(counterSignDraft(courierAW, draft, CTX, () => true, policy, SPECS, assembly, NOT_BINDING)).rejects.toThrow(named);
+        await expect(counterSignDraft(courierAW, draft, CTX, SPECS, () => true, policy, assembly, NOT_BINDING)).rejects.toThrow(named);
         const req = requestFor(COURIER_A.address);
-        await expect(quoteDraft(courierAW, req, CTX, () => 700n, quotePolicy, SPECS, assembly, NOT_BINDING)).rejects.toThrow(named);
+        await expect(quoteDraft(courierAW, req, CTX, SPECS, () => 700n, quotePolicy, assembly, NOT_BINDING)).rejects.toThrow(named);
     });
 
     it("the mountable handlers read the candidate's own profile — without readProfile every draft is refused", async () => {
@@ -529,16 +542,16 @@ describe("the candidate's deadline cap on the race and quote legs", () => {
 
     it("counterSignDraft declines a deadline past the cap and signs one within it", async () => {
         const draft = await draftFor(COURIER_A.address, 1000n);
-        expect(await counterSignDraft(courierAW, draft, { ...CTX, chainNow: DEADLINE - 601n }, () => true, capped, SPECS, assembly, BOUND)).toBeNull();
-        expect((await counterSignDraft(courierAW, draft, { ...CTX, chainNow: DEADLINE - 600n }, () => true, capped, SPECS, assembly, BOUND))?.sellerSig).toBeDefined();
-        expect(await counterSignDraft(courierAW, draft, { chainId: CHAIN, core: CORE }, () => true, capped, SPECS, assembly, BOUND)).toBeNull();
+        expect(await counterSignDraft(courierAW, draft, { ...CTX, chainNow: DEADLINE - 601n }, SPECS, () => true, capped, assembly, BOUND)).toBeNull();
+        expect((await counterSignDraft(courierAW, draft, { ...CTX, chainNow: DEADLINE - 600n }, SPECS, () => true, capped, assembly, BOUND))?.sellerSig).toBeDefined();
+        expect(await counterSignDraft(courierAW, draft, { chainId: CHAIN, core: CORE }, SPECS, () => true, capped, assembly, BOUND)).toBeNull();
     });
 
     it("quoteDraft declines a deadline past the cap and quotes one within it", async () => {
         const req = requestFor(COURIER_A.address);
-        expect(await quoteDraft(courierAW, req, { ...CTX, chainNow: DEADLINE - 601n }, () => 700n, cappedQuote, SPECS, assembly, BOUND)).toBeNull();
-        expect((await quoteDraft(courierAW, req, { ...CTX, chainNow: DEADLINE - 600n }, () => 700n, cappedQuote, SPECS, assembly, BOUND))?.sellerSig).toBeDefined();
-        expect(await quoteDraft(courierAW, req, { chainId: CHAIN, core: CORE }, () => 700n, cappedQuote, SPECS, assembly, BOUND)).toBeNull();
+        expect(await quoteDraft(courierAW, req, { ...CTX, chainNow: DEADLINE - 601n }, SPECS, () => 700n, cappedQuote, assembly, BOUND)).toBeNull();
+        expect((await quoteDraft(courierAW, req, { ...CTX, chainNow: DEADLINE - 600n }, SPECS, () => 700n, cappedQuote, assembly, BOUND))?.sellerSig).toBeDefined();
+        expect(await quoteDraft(courierAW, req, { chainId: CHAIN, core: CORE }, SPECS, () => 700n, cappedQuote, assembly, BOUND)).toBeNull();
     });
 
     it("the mounted handlers read the chain's clock through chainClient at each payload", async () => {

@@ -423,9 +423,9 @@ export async function counterSignOffer(
     wallet: WalletClient,
     offer: CommitmentPayload,
     ctx: SellerSignCtx,
+    specs: SpecSource,
     accept?: (offer: CommitmentPayload) => boolean,
     policy?: OfferPolicy,
-    specs?: SpecSource,
     design: HydratedAssembly | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
@@ -609,7 +609,7 @@ export function makeSellerOfferHandler(
         const chainId = await publicClient.getChainId();
         const chainNow = await readChainTimestamp(publicClient);
         const design = await readOfferDesign(offer, opts.readDesign);
-        const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core, chainNow }, opts.accept, opts.policy, opts.specs, design, opts.readProfile);
+        const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core, chainNow }, opts.specs, opts.accept, opts.policy, design, opts.readProfile);
         if (!signed) return null;
         if (opts.approveBond !== false) {
             await approveBond(wallet, publicClient, addresses.core, offer.commitment.currency, 2n * offer.commitment.expectedCumulativeValue);
