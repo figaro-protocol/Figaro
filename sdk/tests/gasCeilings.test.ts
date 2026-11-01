@@ -1,4 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
     maxOrdersResolvableForGasLimit,
     TRANSACTION_GAS_CAP,
@@ -116,4 +119,24 @@ describe("assertOrderFitsResolveCap", () => {
             /permanently unresolvable/,
         );
     });
+});
+
+// The resolve model's memory term lives in two copies: the SDK's ceiling and the Foundry test that
+// measures it at the published cap. Each is read from its source, so a figure changed on one side
+// fails here, in CI, before the cap it publishes drifts from what was measured.
+describe("the resolve memory constants, SDK and Foundry in lockstep", () => {
+    const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+    const read = (rel: string) => readFileSync(path.join(repo, rel), "utf8");
+    const constant = (src: string, name: string): string => {
+        const m = src.match(new RegExp(`\\b${name}\\s*=\\s*(\\d[\\d_]*)n?\\s*;`));
+        if (!m) throw new Error(`${name} not found`);
+        return m[1].replace(/_/g, "");
+    };
+    const sdk = read("sdk/src/gasCeilings.ts");
+    const forge = read("test/core/kernel/GasCeilingTest.t.sol");
+    for (const name of ["RESOLVE_MEMORY_WORDS_PER_ORDER", "RESOLVE_MEMORY_QUADRATIC_DIVISOR"]) {
+        it(`${name} is the same in sdk/src/gasCeilings.ts and GasCeilingTest.t.sol`, () => {
+            expect(constant(sdk, name)).toBe(constant(forge, name));
+        });
+    }
 });
