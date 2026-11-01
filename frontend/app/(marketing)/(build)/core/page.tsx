@@ -46,7 +46,7 @@ const SUBJECTS: { line: string; body: ReactNode; cta: string; href: string }[] =
     },
     {
         line: "The contracts are proven and checked.",
-        body: "The equilibrium is machine-checked in Lean 4. The contracts are checked by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis. The contracts are frozen for the audit.",
+        body: "The equilibrium is machine-checked in Lean 4. The contracts are checked by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis.",
         cta: "Security",
         href: "/security",
     },
