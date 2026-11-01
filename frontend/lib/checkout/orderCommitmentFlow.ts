@@ -11,6 +11,7 @@
  *
  *   buyer:  signAndShare(preview) → sign → relay to the seller
  *   seller: acceptOrder(payload)  → sign → [beforeBroadcast] → broadcast on-chain
+ *   either: commitOrder(signed)   → confirm → [beforeBroadcast] → broadcast on-chain
  *
  * Every seller accept path — `acceptOrder`, `counterSignAndReturn`,
  * `quoteAndReturn` — first reads the seller's OWN profile (MembersRegistry →
@@ -545,10 +546,15 @@ export function useOrderCommitmentFlow() {
      * Gated like the sign step: off-chain validation first (a payload whose inline agreement
      * doesn't merkle to the signed checkoutHash is never broadcast — the chain
      * can't check it, so this is the last integrity gate), then the same
-     * review-before-commit confirmation the sign step uses.
+     * review-before-commit confirmation the sign step uses. The bond's
+     * allowance is the caller's, as at accept: `opts.beforeBroadcast` runs
+     * after the confirm and before the broadcast, so a party who declines has
+     * approved nothing (the /orders ready-to-submit card); a throw there
+     * broadcasts nothing.
      */
     const commitOrder = useCallback(async (
         payload: CommitmentPayload,
+        opts?: { beforeBroadcast?: () => Promise<void> },
     ): Promise<Hex> => {
         setError(null);
         try {
@@ -564,6 +570,7 @@ export function useOrderCommitmentFlow() {
                 payload.agreement,
             );
             if (!approved) throw new Error("Commit canceled by user.");
+            await opts?.beforeBroadcast?.();
             setStep("committing");
             const hash = await commitSignedOrder({
                 payload,

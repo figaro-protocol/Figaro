@@ -137,12 +137,14 @@ export function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listin
 
 // ── Ready-to-submit card: fully signed, relayed to me as seller — my broadcast ──
 // The dispatch race's last mile: the buyer signed my countersigned draft and
-// relayed it back carrying BOTH signatures. Same approve-then-act shape as the
-// accept card — being committed pulls my seller bond, so the allowance must
-// cover it before broadcasting.
-function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, listings }: {
+// relayed it back carrying BOTH signatures. Same shape as the accept card —
+// being committed pulls my seller bond, so the commit flow approves it after
+// the commit confirm and before the broadcast: declining approves nothing.
+export function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, listings }: {
     payload: CommitmentPayload;
-    onSubmit: () => void;
+    /** Opens the commit flow, handing it the bond-approval step it runs after
+     *  the commit confirm and before the broadcast. */
+    onSubmit: (beforeBroadcast: () => Promise<void>) => void;
     onDismiss: () => void;
     isSubmitting: boolean;
     listings: ReadonlyArray<Listing>;
@@ -157,9 +159,9 @@ function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, listing
         owner: address,
         spender: (core ?? ZERO_ADDRESS) as `0x${string}`,
     });
-    const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
+    const { ensureApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
     const isApproving = isApprovePending || isApproveConfirming;
-    const handleSubmit = () => runWithApproval(sellerBond, onSubmit);
+    const handleSubmit = () => onSubmit(() => ensureApproval(sellerBond));
 
     return (
         <div className="rounded-lg border border-default bg-paper p-5 space-y-4" data-testid="order-ready-to-submit-card">
@@ -402,13 +404,14 @@ export function OrdersList() {
     const [submittingIndex, setSubmittingIndex] = useState<number | null>(null);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
-    const handleSubmitReady = useCallback(async (index: number) => {
+    const handleSubmitReady = useCallback(async (index: number, beforeBroadcast: () => Promise<void>) => {
         const payload = readyToSubmit[index];
         if (!payload) return;
+        // The seller-bond approval runs after the commit confirm (beforeBroadcast).
         setSubmittingIndex(index);
         setSubmitError(null);
         try {
-            await commitOrder(payload);
+            await commitOrder(payload, { beforeBroadcast });
             dismissReady(index);
             reset();
         } catch (cause: unknown) {
@@ -534,7 +537,7 @@ export function OrdersList() {
                                     <ReadyToSubmitCard
                                         key={`ready-${index}`}
                                         payload={payload}
-                                        onSubmit={() => void handleSubmitReady(index)}
+                                        onSubmit={(beforeBroadcast) => void handleSubmitReady(index, beforeBroadcast)}
                                         onDismiss={() => dismissReady(index)}
                                         isSubmitting={submittingIndex === index}
                                         listings={listings}

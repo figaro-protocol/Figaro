@@ -18,11 +18,11 @@ export interface UseApproveThenActArgs {
 
 /**
  * useApproveThenAct — the approve-then-auto-chain choreography shared by
- * every "bond an amount, then perform this action" surface: seller broadcast
- * (`ReadyToSubmitCard`) and buyer checkout (`CheckoutView`) through
- * `runWithApproval`; seller accept (`YourTurnCard`) through
- * `ensureApproval`, the awaitable form the accept flow runs after its terms
- * confirm, so a seller who declines the terms has approved nothing. If the
+ * every "bond an amount, then perform this action" surface: buyer checkout
+ * (`CheckoutView`) through `runWithApproval`; seller accept (`YourTurnCard`)
+ * and seller broadcast (`ReadyToSubmitCard`) through `ensureApproval`, the
+ * awaitable form the accept and commit flows run after their confirm, so a
+ * seller who declines has approved nothing. If the
  * current allowance already covers the
  * amount, the action runs immediately; otherwise a 10×-buffered approval is
  * submitted and the action is PENDED until `isApproveSuccess` flips (a prior

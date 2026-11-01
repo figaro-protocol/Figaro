@@ -8,7 +8,9 @@
  * anything is signed, an order whose agreement carries no provenance leaf, an
  * order under an assembly the profile does not bind, and any order while the
  * profile cannot be read. The refusal names the assembly by its derived slug
- * and its full assembly hash.
+ * and its full assembly hash. `acceptOrder` and `commitOrder` run the
+ * caller's `beforeBroadcast` (the seller's bond approval) only after their
+ * confirm, so a declined confirm approves nothing.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
@@ -28,6 +30,7 @@ import {
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 import { specSource } from "@/lib/shared/clauseSpecSource";
+import { _setSignPreviewMode_TESTING_ONLY } from "@/lib/checkout/orderPreview";
 
 const BUYER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as Hex;
 const SELLER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as Hex;
@@ -219,6 +222,21 @@ describe("every seller accept path reads the seller's own bound assemblies", () 
         expect(commitSignedOrder).not.toHaveBeenCalled();
     });
 
+    it("acceptOrder never runs beforeBroadcast when the terms confirm is declined", async () => {
+        const d = design();
+        profiles.set(SELLER.toLowerCase(), profileBinding(d.assemblyHash));
+        const beforeBroadcast = vi.fn(async () => undefined);
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        _setSignPreviewMode_TESTING_ONLY("auto-reject");
+        try {
+            await expect(result.current.acceptOrder(payloadUnder(d), undefined, { beforeBroadcast })).rejects.toThrow(/canceled/);
+        } finally {
+            _setSignPreviewMode_TESTING_ONLY("auto-approve");
+        }
+        expect(beforeBroadcast).not.toHaveBeenCalled();
+        expect(commitSignedOrder).not.toHaveBeenCalled();
+    });
+
     it("acceptOrder refuses an order under an assembly the seller has not bound, naming it by slug and full hash", async () => {
         const d = design();
         const other = design();
@@ -266,5 +284,47 @@ describe("every seller accept path reads the seller's own bound assemblies", () 
         expect(relayed).toHaveBeenCalledTimes(1);
         await expect(result.current.quoteAndReturn(quoteRequestUnder(other), 700n)).rejects.toThrow(named(other.assemblyHash));
         expect(relayed).toHaveBeenCalledTimes(1);
+    });
+});
+
+// The broadcast of a fully signed payload (the /orders ready-to-submit card)
+// pulls the seller's bond as accept does, so its allowance is approved the
+// same way: after the commit confirm, before the broadcast.
+describe("commitOrder approves through the caller's beforeBroadcast, after the commit confirm", () => {
+    beforeAll(async () => { await primeClauseSpecs(["figaro-commerce", "figaro-consent"]); });
+    beforeEach(() => {
+        commitSignedOrder.mockClear();
+        callOrder.length = 0;
+    });
+    const fullySigned = (d: ReturnType<typeof design>): CommitmentPayload => ({ ...payloadUnder(d), sellerSig: `0x${"33".repeat(65)}` as Hex });
+
+    it("runs beforeBroadcast after the confirm and before the broadcast", async () => {
+        const d = design();
+        const beforeBroadcast = vi.fn(async () => { callOrder.push("approve"); });
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        await expect(result.current.commitOrder(fullySigned(d), { beforeBroadcast })).resolves.toMatch(/^0x/);
+        expect(callOrder).toEqual(["approve", "broadcast"]);
+    });
+
+    it("never runs beforeBroadcast when the commit confirm is declined", async () => {
+        const d = design();
+        const beforeBroadcast = vi.fn(async () => undefined);
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        _setSignPreviewMode_TESTING_ONLY("auto-reject");
+        try {
+            await expect(result.current.commitOrder(fullySigned(d), { beforeBroadcast })).rejects.toThrow(/canceled/);
+        } finally {
+            _setSignPreviewMode_TESTING_ONLY("auto-approve");
+        }
+        expect(beforeBroadcast).not.toHaveBeenCalled();
+        expect(commitSignedOrder).not.toHaveBeenCalled();
+    });
+
+    it("broadcasts nothing when beforeBroadcast fails", async () => {
+        const d = design();
+        const beforeBroadcast = vi.fn(async () => { throw new Error("The bond approval was refused or failed."); });
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        await expect(result.current.commitOrder(fullySigned(d), { beforeBroadcast })).rejects.toThrow(/bond approval/);
+        expect(commitSignedOrder).not.toHaveBeenCalled();
     });
 });
