@@ -346,13 +346,18 @@ pub fn refilter_after_drops(
 /// settle can resolve (`gas::max_orders_in_one_settle`): a process past it
 /// has no resolve any relay on the chain can settle, so its bonds would
 /// stay where they are. Counted in the batch's order from the mirror's
-/// process states; a resolve closes its process. Returns the ops kept and
+/// process states, each commit under the process it joins — a root order's
+/// derived from its struct (`derive_commitment_ids`), never the zero the
+/// struct carries; a resolve closes its process. Returns the ops kept and
 /// each dropped op with its reason.
 pub fn filter_commits_within_resolve_capacity(
+    chain_id: u64,
+    verifying_contract: Address,
     prev_state: &KernelStateSnapshot,
     ops: Vec<PendingOp>,
     max_orders: usize,
 ) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
+    let domain = figaro_kernel::eip712::domain_separator(chain_id, verifying_contract);
     let mut active: std::collections::BTreeMap<B256, u64> =
         prev_state.processes.iter().map(|(id, p)| (*id, p.active_order_count)).collect();
     let mut kept = Vec::new();
@@ -360,7 +365,8 @@ pub fn filter_commits_within_resolve_capacity(
     for op in ops {
         match &op.op {
             KernelOp::Commit { commitment, .. } => {
-                let count = active.get(&commitment.process_id).copied().unwrap_or(0) + 1;
+                let process_id = figaro_kernel::kernel::derive_commitment_ids(&domain, commitment).1;
+                let count = active.get(&process_id).copied().unwrap_or(0) + 1;
                 if count as usize > max_orders {
                     dropped.push((
                         op,
@@ -370,7 +376,7 @@ pub fn filter_commits_within_resolve_capacity(
                     ));
                     continue;
                 }
-                active.insert(commitment.process_id, count);
+                active.insert(process_id, count);
             }
             KernelOp::Resolve { process_id, .. } | KernelOp::ResolveByWalletCode { process_id, .. } => {
                 active.insert(*process_id, 0);

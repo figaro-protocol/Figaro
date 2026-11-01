@@ -118,8 +118,9 @@ struct MempoolInner {
     /// canonical JSON). Cleared on drain, like `index`.
     usage_index: HashSet<B256>,
     /// How many times each pending key has been re-queued after a transient
-    /// submission failure. Cleared on a fresh admission; consulted by
-    /// `requeue`, which dead-letters a key past `max_requeues`.
+    /// submission failure. Cleared on a fresh admission, and at a drain for
+    /// every key neither queued nor drained by it; consulted by `requeue`,
+    /// which dead-letters a key past `max_requeues`.
     requeues: HashMap<B256, u32>,
     /// Operations batch formation deferred ([`Mempool::defer`]), in groups,
     /// oldest first: each operation touches one process, so each group is
@@ -129,6 +130,15 @@ struct MempoolInner {
     /// stay in `index`. A group decides what is drained together and nothing
     /// else: each operation expires on its own window.
     deferred: VecDeque<Vec<PendingOp>>,
+    /// The root commits queued, deferred or drained by the latest drain, by
+    /// the process each opens: its key and its buyer, the process's root
+    /// buyer. Admission reads it for a process the landed state does not
+    /// hold yet ([`Mempool::refuse_unknown`]); each drain keeps the entries
+    /// whose key is queued or drained by it.
+    queued_roots: HashMap<B256, (B256, alloy_primitives::Address)>,
+    /// The keys the latest drain took: operations in flight, in a batch not
+    /// yet landed.
+    in_flight: HashSet<B256>,
     next_id: u64,
 }
 
@@ -196,6 +206,8 @@ impl Mempool {
                 usage_index: HashSet::new(),
                 requeues: HashMap::new(),
                 deferred: VecDeque::new(),
+                queued_roots: HashMap::new(),
+                in_flight: HashSet::new(),
                 next_id: 1,
             })),
             chain_id,
@@ -242,6 +254,13 @@ impl Mempool {
         inner.next_id += 1;
         inner.index.insert(key, id);
         inner.requeues.remove(&key);
+        if let KernelOp::Commit { commitment, .. } = &op {
+            if commitment.process_id == B256::ZERO {
+                let domain = domain_separator(self.chain_id, self.verifying_contract);
+                let process_id = derive_commitment_ids(&domain, commitment).1;
+                inner.queued_roots.insert(process_id, (key, commitment.buyer));
+            }
+        }
         inner.pending.push_back(PendingOp {
             id,
             key,
@@ -259,8 +278,9 @@ impl Mempool {
     /// its byte encoding — so a re-signed duplicate (ECDSA signatures are
     /// not unique per digest) still deduplicates.
     ///
-    /// The key covers every input the proof or the verifier judges and
-    /// admission cannot: a resolve's signer and its order list, an
+    /// The key covers every input the proof or the verifier judges: a
+    /// resolve's signer (admission checks it against the root buyer of a
+    /// held or queued process, and it stays in the key) and its order list, an
     /// attestation's witness spec bytes (the
     /// guest requires them to hash to the clause key). Two submissions
     /// share a slot only when both are accepted or both are refused, so one
@@ -271,9 +291,7 @@ impl Mempool {
         let mut buf: Vec<u8> = Vec::new();
         match op {
             KernelOp::Commit { commitment, .. } => {
-                let (order_hash, _) = derive_commitment_ids(&domain, commitment);
-                buf.extend_from_slice(b"commit");
-                buf.extend_from_slice(order_hash.as_slice());
+                return commit_key(&derive_commitment_ids(&domain, commitment).0);
             }
             KernelOp::Resolve {
                 process_id,
@@ -284,8 +302,9 @@ impl Mempool {
                 buf.extend_from_slice(b"resolve");
                 buf.extend_from_slice(process_id.as_slice());
                 buf.extend_from_slice(&cumulative_value.to_be_bytes::<32>());
-                // Admission checks that the signature recovers, never to
-                // whom: the root buyer is state. The signer is in the key.
+                // Admission checks the signer against the root buyer of a
+                // held or queued process (`refuse_unknown`); the signer
+                // stays in the key.
                 let digest = typed_data_hash(&domain, &resolve_struct_hash(process_id, cumulative_value));
                 if let Ok(signer) = recover_signer(&digest, buyer_sig) {
                     buf.extend_from_slice(signer.as_slice());
@@ -426,6 +445,15 @@ impl Mempool {
         for op in &drained {
             inner.index.remove(&op.key);
         }
+        // A re-queue count is kept for an operation still queued, or drained
+        // now and re-queued only after this batch; an operation drained before
+        // and not re-queued since has landed or been dropped, and its count
+        // goes with it.
+        let drained_keys: HashSet<B256> = drained.iter().map(|op| op.key).collect();
+        let MempoolInner { requeues, index, queued_roots, .. } = &mut *inner;
+        requeues.retain(|key, _| index.contains_key(key) || drained_keys.contains(key));
+        queued_roots.retain(|_, (key, _)| index.contains_key(key) || drained_keys.contains(key));
+        inner.in_flight = drained_keys;
         drained
     }
 
@@ -773,17 +801,85 @@ impl Mempool {
         dropped
     }
 
+    /// How many keys the re-queue count is held for.
+    pub async fn requeue_counts_held(&self) -> usize {
+        self.inner.lock().await.requeues.len()
+    }
+
     /// Number of pending operations, the deferred among them.
     pub async fn len(&self) -> usize {
         let inner = self.inner.lock().await;
         inner.pending.len() + inner.deferred_len()
     }
 
+    /// Refuse an operation whose process or order this relay can verify
+    /// nowhere: neither the landed state (`held`) holds it nor a root commit
+    /// queued, deferred or in flight opens it. A resolve is refused unless
+    /// its signature recovers to the process's root buyer — the landed
+    /// state's, or the queued root commit's buyer; an attestation unless its
+    /// target order is active in the landed state or its commit is queued or
+    /// in flight; a sub-order or a wallet-code resolve unless its process is
+    /// held or queued. A root commit opens its own process and passes. An
+    /// operation that names a process nobody committed would otherwise wait
+    /// out the deferral window in the queue at no cost to its sender; it is
+    /// re-submittable once its commit is.
+    pub async fn refuse_unknown(&self, op: &KernelOp, held: &crate::state::StateMirror) -> Result<(), String> {
+        let domain = domain_separator(self.chain_id, self.verifying_contract);
+        let root_buyer = |process_id: B256| async move {
+            match held.root_buyer(&process_id).await {
+                Some(buyer) => Some(buyer),
+                None => self.inner.lock().await.queued_roots.get(&process_id).map(|(_, buyer)| *buyer),
+            }
+        };
+        let unknown = |what: &str, id: &B256| {
+            format!("{what} {id} is one this relay neither holds nor has queued; submit its commit first")
+        };
+        match op {
+            KernelOp::Commit { commitment, .. } => {
+                if commitment.process_id != B256::ZERO && root_buyer(commitment.process_id).await.is_none() {
+                    return Err(unknown("the sub-order's process", &commitment.process_id));
+                }
+                Ok(())
+            }
+            KernelOp::Resolve { process_id, cumulative_value, buyer_sig, .. } => {
+                let Some(buyer) = root_buyer(*process_id).await else {
+                    return Err(unknown("the resolve's process", process_id));
+                };
+                let digest = typed_data_hash(&domain, &resolve_struct_hash(process_id, cumulative_value));
+                let signer = recover_signer(&digest, buyer_sig).map_err(|e| format!("invalid resolve signature: {e}"))?;
+                if signer != buyer {
+                    return Err(format!(
+                        "resolve signed by {signer}, not the process's root buyer {buyer} — the Core refuses it (NotProcessBuyer)"
+                    ));
+                }
+                Ok(())
+            }
+            KernelOp::ResolveByWalletCode { process_id, .. } => {
+                if root_buyer(*process_id).await.is_none() {
+                    return Err(unknown("the resolve's process", process_id));
+                }
+                Ok(())
+            }
+            KernelOp::AttestAsSeller { target, .. } | KernelOp::AttestAsBuyer { target, .. } => {
+                let order_hash = derive_commitment_ids(&domain, target).0;
+                if held.order_active(&order_hash).await {
+                    return Ok(());
+                }
+                let key = commit_key(&order_hash);
+                let inner = self.inner.lock().await;
+                if inner.index.contains_key(&key) || inner.in_flight.contains(&key) {
+                    return Ok(());
+                }
+                Err(unknown("the attestation's order", &order_hash))
+            }
+        }
+    }
+
     /// Pre-check: verify EIP-712 signature validity and (for
     /// attestations) run the mirror's witness gates before accepting into
     /// the mempool. State-dependent checks (order active, process match,
     /// root-buyer identity) cannot run here — the proof enforces them.
-    fn pre_check(&self, op: &KernelOp) -> Result<(), String> {
+    pub fn pre_check(&self, op: &KernelOp) -> Result<(), String> {
         let domain = domain_separator(self.chain_id, self.verifying_contract);
 
         match op {
@@ -933,6 +1029,13 @@ impl Mempool {
             }
         }
     }
+}
+
+/// A commit's dedup key: its order hash ([`Mempool::op_key`]).
+fn commit_key(order_hash: &B256) -> B256 {
+    let mut buf = b"commit".to_vec();
+    buf.extend_from_slice(order_hash.as_slice());
+    keccak256(&buf)
 }
 
 /// The part of an attestation's dedup key its witness contributes: the

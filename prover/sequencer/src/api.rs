@@ -198,12 +198,30 @@ impl Default for ApiConfig {
 // at no cost to the sender; this bounds how fast one address can make it
 // say so, and how fast one address can fill the queue caps with
 // well-formed, self-signed operations. Behind a proxy the address is the
-// proxy's — a deployment that fronts the relay sets the limit there.
+// proxy's — a deployment that fronts the relay sets the limit there. An IPv6
+// client holds a /64, so an IPv6 address counts by its /64. A window past its
+// minute is swept, at most once a minute, so the map holds the addresses of
+// the last two windows and no more.
+
+const RATE_WINDOW: Duration = Duration::from_secs(60);
 
 #[derive(Clone)]
 pub struct RateLimiter {
     per_minute: u32,
     windows: Arc<Mutex<HashMap<IpAddr, (Instant, u32)>>>,
+    swept: Arc<Mutex<Option<Instant>>>,
+}
+
+/// The address a window is kept for: an IPv4 address itself, an IPv6
+/// address's /64.
+fn window_key(ip: IpAddr) -> IpAddr {
+    match ip {
+        IpAddr::V4(_) => ip,
+        IpAddr::V6(v6) => {
+            let prefix = u128::from(v6) & !((1u128 << 64) - 1);
+            IpAddr::V6(std::net::Ipv6Addr::from(prefix))
+        }
+    }
 }
 
 impl RateLimiter {
@@ -211,6 +229,7 @@ impl RateLimiter {
         Self {
             per_minute,
             windows: Arc::new(Mutex::new(HashMap::new())),
+            swept: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -224,8 +243,15 @@ impl RateLimiter {
             return true;
         }
         let mut windows = self.windows.lock().expect("rate limiter lock");
-        let entry = windows.entry(ip).or_insert((now, 0));
-        if now.duration_since(entry.0) >= Duration::from_secs(60) {
+        {
+            let mut swept = self.swept.lock().expect("rate limiter lock");
+            if swept.is_none_or(|at| now.saturating_duration_since(at) >= RATE_WINDOW) {
+                windows.retain(|_, (start, _)| now.saturating_duration_since(*start) < RATE_WINDOW);
+                *swept = Some(now);
+            }
+        }
+        let entry = windows.entry(window_key(ip)).or_insert((now, 0));
+        if now.saturating_duration_since(entry.0) >= RATE_WINDOW {
             *entry = (now, 0);
         }
         if entry.1 >= self.per_minute {
@@ -388,6 +414,12 @@ fn submit_error(route: &'static str, kind: &'static str, e: SubmitError) -> Resp
     (status, Json(ErrorResponse { error })).into_response()
 }
 
+/// A submission the relay could not verify because the chain could not be
+/// asked: `503`, to retry, its reason with every URL taken out.
+fn unverifiable(error: String) -> Response {
+    (StatusCode::SERVICE_UNAVAILABLE, Json(ErrorResponse { error })).into_response()
+}
+
 fn op_kind(op: &KernelOp) -> &'static str {
     match op {
         KernelOp::Commit { .. } => "Commit",
@@ -407,10 +439,22 @@ async fn submit_op(
         Err(rej) => return payload_error("/submit", rej),
     };
     let kind = op_kind(&req.operation);
+    // The stateless checks first, so a refusal names the operation's own
+    // fault; then an operation on a process or an order this relay can
+    // verify nowhere — neither landed nor queued — is refused, never queued
+    // to wait out the deferral window (`Mempool::refuse_unknown`).
+    if let Err(invalid) = state.mempool.pre_check(&req.operation) {
+        return submit_error("/submit", kind, SubmitError::Invalid(invalid));
+    }
+    if let Err(unknown) = state.mempool.refuse_unknown(&req.operation, &state.state_mirror).await {
+        return submit_error("/submit", kind, SubmitError::Invalid(unknown));
+    }
     // A commit's bonds are checked at the door: an unfunded commit would
     // be dropped at batch formation anyway, so refusing it here costs the
-    // sender nothing and keeps the queue for operations that can land. A
-    // read failure is not a verdict — the batch-time check decides.
+    // sender nothing and keeps the queue for operations that can land. Bonds
+    // the chain could not be asked about are unverified, and an unverified
+    // commit is refused too, with a retry: the queue holds only what this
+    // relay could check.
     if let (Some(gate), KernelOp::Commit { commitment, .. }) = (&state.funding, &req.operation) {
         match submitter::check_commit_funding(gate, commitment).await {
             Ok(Ok(())) => {}
@@ -425,14 +469,16 @@ async fn submit_op(
                     .into_response();
             }
             Err(read) => {
-                warn!(route = "/submit", kind, %read, "funding unverifiable at the door; the batch-time check decides");
+                let read = without_urls(&read);
+                warn!(route = "/submit", kind, %read, "funding unverifiable at the door; refused");
+                return unverifiable(format!("the commitment's bonds could not be read; retry: {read}"));
             }
         }
     }
     // A wallet-code resolve is asked of the buyer's code at the door, as the
     // verifier will ask it at resolution: bytes the code refuses would revert
-    // a whole batch. A read failure is not a verdict — the batch-time check
-    // decides.
+    // a whole batch. Code that could not be asked is unverified, and the
+    // resolve is refused, with a retry.
     if let (Some(gate), KernelOp::ResolveByWalletCode { .. }) = (&state.funding, &req.operation) {
         match submitter::check_wallet_code_resolve(gate, &req.operation).await {
             Ok(Ok(())) => {}
@@ -447,7 +493,9 @@ async fn submit_op(
                     .into_response();
             }
             Err(read) => {
-                warn!(route = "/submit", kind, %read, "the buyer's code could not be asked at the door; the batch-time check decides");
+                let read = without_urls(&read);
+                warn!(route = "/submit", kind, %read, "the buyer's code could not be asked at the door; refused");
+                return unverifiable(format!("the buyer's code could not be asked; retry: {read}"));
             }
         }
     }
@@ -599,5 +647,38 @@ mod tests {
         assert!(limiter.admit_at(b, t0), "another address has its own window");
         assert!(limiter.admit_at(a, t0 + Duration::from_secs(60)), "a new window");
         assert!(RateLimiter::new(0).admit_at(a, t0), "zero disables");
+    }
+
+    /// The map of windows holds only the addresses seen within the last
+    /// window or two: a window past its minute is swept, so addresses that
+    /// came once never accumulate.
+    #[test]
+    fn rate_limiter_sweeps_windows_past_their_minute() {
+        let limiter = RateLimiter::new(5);
+        let t0 = Instant::now();
+        for n in 0..1_000u32 {
+            let ip = IpAddr::V4(Ipv4Addr::from(0x0a00_0000 + n));
+            assert!(limiter.admit_at(ip, t0));
+        }
+        assert_eq!(limiter.windows.lock().unwrap().len(), 1_000);
+        let late = IpAddr::V4(Ipv4Addr::new(192, 168, 0, 1));
+        assert!(limiter.admit_at(late, t0 + Duration::from_secs(121)));
+        assert_eq!(limiter.windows.lock().unwrap().len(), 1, "every window past its minute is swept");
+    }
+
+    /// An IPv6 client holds a /64, so the addresses of one /64 share one
+    /// window: rotating through them neither escapes the limit nor grows the
+    /// map.
+    #[test]
+    fn rate_limiter_counts_an_ipv6_slash_64_as_one_address() {
+        let limiter = RateLimiter::new(2);
+        let t0 = Instant::now();
+        let host = |h: u16| IpAddr::V6(std::net::Ipv6Addr::new(0x2001, 0xdb8, 0, 1, 0, 0, 0, h));
+        assert!(limiter.admit_at(host(1), t0));
+        assert!(limiter.admit_at(host(2), t0));
+        assert!(!limiter.admit_at(host(3), t0), "the third from one /64 is refused");
+        assert_eq!(limiter.windows.lock().unwrap().len(), 1);
+        let other = IpAddr::V6(std::net::Ipv6Addr::new(0x2001, 0xdb8, 0, 2, 0, 0, 0, 1));
+        assert!(limiter.admit_at(other, t0), "another /64 has its own window");
     }
 }

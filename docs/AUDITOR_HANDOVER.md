@@ -1158,7 +1158,8 @@ read it first.
   it is filtered again
   (`gas::max_orders_in_one_settle`,
   `assembler::filter_commits_within_resolve_capacity`;
-  `a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation`),
+  `a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation`,
+  `the_capacity_filter_counts_two_root_orders_and_their_sub_orders_each_under_its_own_process`),
   and an operation that fits no `settleBatch` call under the cap on its own is
   dead-lettered with the gas it was planned at, the operations filtered into
   an order behind it filtered again without it, while one that fits the cap
@@ -1408,7 +1409,7 @@ Stated so the review does not spend hours finding them.
    still costs the co-batched operations one of their three re-queues.
 4. **The batch path's per-position gas figure is pre-fork.** The direct
    path's per-order constants are measured on live post-fork Sepolia
-   receipts against the deployed Core (resolve ~73,000 + ~29,800·N;
+   receipts against the deployed Core (resolve ~73,000 + ~29,800·N, plus (23·N)²/512 of memory the loop expands into;
    sub-order commit 382,032, root 793,549 — `sdk/src/gasCeilings.ts` carries
    the provenance); the batch verifier's ~26.5k/position and its ~1,130-position
    ceiling are still pre-fork figures, re-derived when enough post-fork
@@ -1480,13 +1481,22 @@ Stated so the review does not spend hours finding them.
    Every other refusal — and every operation in the same drain that names a
    process or an order only a refused commit would have created — is
    dead-lettered at once and holds none; such a dependent arriving in a later
-   tick, after the commit was dead-lettered, reads as `UnknownProcess` or
-   `UnknownOrder` against the landed state and defers for the window. A deferring operation costs its sender nothing (a resolve of a
-   process that never comes needs only a signature that recovers), so one
-   client address can hold up to `SUBMITS_PER_MINUTE_PER_IP` (60) times the
+   tick, after the commit was dead-lettered, names a process or an order the
+   relay neither holds nor has queued and is refused at admission. Admission
+   refuses every operation whose process or order neither the landed state
+   holds nor a root commit queued, deferred or in flight opens, and a resolve
+   whose signature does not recover to the process's root buyer; bonds or a
+   buyer's code the chain could not be asked about are refused too (`503`,
+   retry) (`mempool.rs`, `refuse_unknown`; `api.rs`;
+   `admission_refuses_an_operation_on_a_process_or_order_the_relay_neither_holds_nor_has_queued`,
+   `admission_refuses_a_resolve_not_signed_by_the_root_buyer`,
+   `admission_refuses_a_commit_whose_bonds_it_cannot_read`). What defers
+   therefore stands on a root commit that passed admission, and one client
+   address can hold up to `SUBMITS_PER_MINUTE_PER_IP` (60) times the
    window's minutes of capacity — 600 operations at the defaults, against a
    `MEMPOOL_MAX_OPS` of 10,000 — rather than until each one's first drain;
-   the limit is per IP, and behind a proxy it is the proxy's.
+   the limit is per IP, an IPv6 address counted by its /64, and behind a
+   proxy it is the proxy's.
 
 ## Verification evidence
 

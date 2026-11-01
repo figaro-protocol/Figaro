@@ -63,6 +63,16 @@ impl StateMirror {
         self.inner.read().await.state.to_snapshot()
     }
 
+    /// The root buyer of a process the state holds.
+    pub async fn root_buyer(&self, process_id: &B256) -> Option<alloy_primitives::Address> {
+        self.inner.read().await.state.processes.get(process_id).map(|p| p.root_buyer)
+    }
+
+    /// Whether the state holds the order committed and not yet resolved.
+    pub async fn order_active(&self, order_hash: &B256) -> bool {
+        self.inner.read().await.state.order_status.get(order_hash).copied() == Some(1)
+    }
+
     /// Advance the local state by applying a batch.
     /// Updates both the state and the cached state root.
     pub async fn advance(&self, new_state: KernelState) {
