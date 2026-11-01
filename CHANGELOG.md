@@ -206,10 +206,12 @@ release lives under **Unreleased**.
   `makeSellerRaceHandler` and `makeSellerQuoteHandler` now require `chainClient` (`ChainClock`,
   a viem `PublicClient` fits), read at each payload; `makeSellerOfferHandler` reads its
   `publicClient`.
-- **SDK 0.2.0: `fetchLogsChunked` asks a sub-range again on pruned history.** A sub-range the
-  node answers with code 4444 (publicnode's keyless Sepolia) is asked again, up to
-  `PRUNED_HISTORY_ATTEMPTS` (24) times, with an optional `retryDelayMs`; every other error
-  propagates. Every bulk reader goes through it, so each gets the retry.
+- **SDK 0.2.0: `fetchLogsChunked` asks a sub-range again on pruned history or a rate limit.** A
+  sub-range the node answers with code 4444 (publicnode's keyless Sepolia) is asked again, up to
+  `PRUNED_HISTORY_ATTEMPTS` (24) times, and one answered with HTTP 429 or "Rate limit exceeded"
+  up to `RATE_LIMIT_ATTEMPTS` (8) times after a doubling, jittered pause, with an optional
+  `retryDelayMs`; every other error propagates. `logReadRetry` is that rule, exported, and the
+  frontend's log reader applies it. Every bulk reader goes through it, so each gets the retry.
 - **SDK 0.2.0: every sequencer response is read under a cap.** `SequencerClient` reads each
   body, a refusal's included, under `MAX_SEQUENCER_RESPONSE_BYTES` (1 MiB) and throws a
   `SequencerError` past it, so a sequencer's oversized body cannot exhaust the agent's memory.

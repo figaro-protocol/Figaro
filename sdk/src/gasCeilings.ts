@@ -58,7 +58,8 @@ export interface ResolveCapReader extends BlockGasReader {
  * Per-order cost of resolving one order during `resolveProcess`, measured on
  * REAL post-Glamsterdam transaction receipts against the deployed `FigaroCore`
  * on live Sepolia (not estimated, not a pre-fork local EVM): resolveProcess
- * over N orders costs `~73,000 + ~29,800·N` gas. A resolve is its own
+ * over N orders costs `~73,000 + ~29,800·N` gas at those receipts, plus the
+ * memory term below. A resolve is its own
  * transaction, so each order's distinct `orderStatus`/balance entries pay COLD
  * access (two ERC-20 transfers + struct keccaks + SSTORE + LOG + the order's
  * calldata). Receipt points: N=1→102,689, N=2→132,465 (marginal 29,776).
@@ -92,6 +93,20 @@ const COMMIT_GAS_PER_ORDER = 383_000n;
 const RESOLVE_FIXED_OVERHEAD = 73_000n;
 
 /**
+ * Memory the resolve expands into, per order: the struct copied from
+ * calldata for its hash (9 words), that hash's `abi.encode` buffer (11) and
+ * the order-hash buffer (3), none of them reused across the loop. The EVM
+ * charges memory as words²/512, so a resolve over N orders carries
+ * `(23·N)²/512` above the receipt line — about 319,000 at 556 orders, and
+ * nothing at the N=1 and N=2 receipts the line was read from. Measured by
+ * `test_Gas_resolveAtPublishedCapFitsTransactionCap`.
+ *
+ * Linted against the matching constants in the Foundry test.
+ */
+const RESOLVE_MEMORY_WORDS_PER_ORDER = 23n;
+const RESOLVE_MEMORY_QUADRATIC_DIVISOR = 512n;
+
+/**
  * The chain's cap on one transaction's gas: EIP-7825's 2^24, which mainnet
  * enforces on a transaction's whole gas since Fusaka, and which Glamsterdam
  * keeps on its execution gas. `resolveProcess` is one transaction, so no
@@ -115,11 +130,17 @@ const GAS_HEADROOM_PCT = 95n;
 
 // ── Pure forms (no chain access — just arithmetic) ───────────────────
 
+/** Gas of `resolveProcess` over `n` orders: the receipt line plus its memory. */
+function resolveGasForOrders(n: bigint): bigint {
+    const words = RESOLVE_MEMORY_WORDS_PER_ORDER * n;
+    return RESOLVE_FIXED_OVERHEAD + RESOLVE_GAS_PER_ORDER * n + (words * words) / RESOLVE_MEMORY_QUADRATIC_DIVISOR;
+}
+
 /**
  * Largest N such that `resolveProcess` over N orders fits in one
  * transaction: a block with the given gas limit, after safety headroom, and
  * the chain's cap on one transaction, whichever is smaller. Under the
- * default cap that is 556 orders on any block of 18M or more.
+ * default cap that is 546 orders on any block of 18M or more.
  */
 export function maxOrdersResolvableForGasLimit(
     gasLimit: bigint,
@@ -128,7 +149,10 @@ export function maxOrdersResolvableForGasLimit(
     const blockBudget = (gasLimit * GAS_HEADROOM_PCT) / 100n;
     const budget = blockBudget < transactionGasCap ? blockBudget : transactionGasCap;
     if (budget <= RESOLVE_FIXED_OVERHEAD) return 0;
-    return Number((budget - RESOLVE_FIXED_OVERHEAD) / RESOLVE_GAS_PER_ORDER);
+    // The line's bound is an upper bound; the memory term walks it down.
+    let n = (budget - RESOLVE_FIXED_OVERHEAD) / RESOLVE_GAS_PER_ORDER;
+    while (n > 0n && resolveGasForOrders(n) > budget) n--;
+    return Number(n);
 }
 
 /**

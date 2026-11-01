@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getLogsAdaptive, isLogRangeCapError, isPrunedHistoryError } from "@/lib/kernel/eventCache";
+import { getLogsAdaptive, isLogRangeCapError } from "@/lib/kernel/eventCache";
 
 /** A provider that refuses any range wider than `cap` blocks the way public
  *  gateways do, and otherwise returns one synthetic log per block that
@@ -50,9 +50,42 @@ describe("getLogsAdaptive", () => {
     it("propagates a non-range error unchanged", async () => {
         const p = {
             getBlockNumber: async () => 100n,
-            getLogs: async (): Promise<unknown[]> => { throw new Error("HTTP 429 Too Many Requests"); },
+            getLogs: async (): Promise<unknown[]> => { throw new Error("execution reverted"); },
         };
-        await expect(getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 0n })).rejects.toThrow(/429/);
+        await expect(getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 0n })).rejects.toThrow(/execution reverted/);
+    });
+
+    // The keyless node under three concurrent readers (probe usp-r7): viem's
+    // HttpRequestError with status 429 and the node's "Rate limit exceeded".
+    const rateLimited = () => Object.assign(new Error("HTTP request failed.\n\nStatus: 429\nDetails: Rate limit exceeded"), {
+        name: "HttpRequestError", status: 429, details: "Rate limit exceeded", shortMessage: "HTTP request failed.",
+    });
+
+    it("backs off and asks the same range again on a rate-limit answer", async () => {
+        let failures = 2;
+        const calls: Array<[bigint, bigint]> = [];
+        const p = {
+            getBlockNumber: async () => 12_013_795n,
+            getLogs: async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint }) => {
+                calls.push([fromBlock, toBlock]);
+                if (failures-- > 0) throw rateLimited();
+                return [{ blockNumber: 11_922_700n, transactionHash: "0x01", logIndex: 0 }];
+            },
+        };
+        const logs = await getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 11_922_698n }, { retryDelayMs: () => 0 });
+        expect(logs.map((l) => l.blockNumber)).toEqual([11_922_700n]);
+        expect(calls).toEqual(Array(3).fill([11_922_698n, 12_013_795n]));
+    });
+
+    it("propagates the RPC's own rate-limit error once every ask is spent", async () => {
+        let calls = 0;
+        const p = {
+            getBlockNumber: async () => 100n,
+            getLogs: async (): Promise<unknown[]> => { calls++; throw rateLimited(); },
+        };
+        await expect(getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 0n }, { retryDelayMs: () => 0 }))
+            .rejects.toMatchObject({ status: 429 });
+        expect(calls).toBeGreaterThan(1);
     });
 
     // publicnode's keyless Sepolia endpoint, as the live site meets it: the
@@ -90,6 +123,28 @@ describe("getLogsAdaptive", () => {
         expect(calls).toBeGreaterThan(1);
     });
 
+    it("keeps a rate limit's budget and pause apart from a run of pruned-history answers before it", async () => {
+        const answers: Array<() => unknown> = [...Array(10).fill(prunedHistory), rateLimited];
+        let calls = 0;
+        const p = {
+            getBlockNumber: async () => 100n,
+            getLogs: async (): Promise<unknown[]> => {
+                calls++;
+                const next = answers.shift();
+                if (next) throw next();
+                return [{ blockNumber: 50n, transactionHash: "0x01", logIndex: 0 }];
+            },
+        };
+        const pauses: number[] = [];
+        const logs = await getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 0n }, {
+            retryDelayMs: (attempt) => { pauses.push(attempt); return 0; },
+        });
+        expect(logs.map((l) => l.blockNumber)).toEqual([50n]);
+        expect(calls).toBe(12);
+        // The 429 is that kind's first ask, so its pause starts at attempt 1.
+        expect(pauses).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1]);
+    });
+
     it("returns nothing when the cursor is already past latest", async () => {
         const p = cappingProvider(10n, 5n, [1n], "unused");
         expect(await getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 6n })).toEqual([]);
@@ -109,16 +164,5 @@ describe("isLogRangeCapError", () => {
     });
     it("does not mistake other failures for a range cap", () => {
         expect(isLogRangeCapError(new Error("HTTP request failed. Status: 429"))).toBe(false);
-    });
-});
-
-describe("isPrunedHistoryError", () => {
-    it("recognizes publicnode's answer by its code and by its text", () => {
-        expect(isPrunedHistoryError(Object.assign(new Error("RPC Request failed."), { code: 4444 }))).toBe(true);
-        expect(isPrunedHistoryError(new Error("Details: pruned history unavailable"))).toBe(true);
-    });
-    it("does not mistake a range cap or a rate limit for it", () => {
-        expect(isPrunedHistoryError(new Error("exceed maximum block range: 50000"))).toBe(false);
-        expect(isPrunedHistoryError(new Error("HTTP request failed. Status: 429"))).toBe(false);
     });
 });
