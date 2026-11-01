@@ -32,9 +32,9 @@ a test file). Where a check runs, and what shows it is load-bearing:
 | Frontend Vitest | `cd frontend && npx vitest run` | `frontend-ci` | not mutation-checked |
 | Playwright | `cd frontend && npx playwright test --project=devnet` | `devnet-e2e-ci` runs `orders-accept` on push and the whole `devnet` project nightly | not mutation-checked |
 
-Run evidence — when each layer last ran, at which commit, and the Certora report
-URLs — is `AUDITOR_HANDOVER.md` § "Verification evidence". This document maps;
-it does not log.
+Each component's status — every bench's result and the commit it ran at — is
+§14, read from the runs; the earlier runs' figures and Certora report URLs are
+`AUDITOR_HANDOVER.md` § "Verification evidence".
 
 ---
 
@@ -515,7 +515,7 @@ that complement the Halmos token-conservation proofs.
 
 (Current spec and rule totals: `TESTING.md`. The per-rule maps below cover the FigaroCore, AttestationCoordinator, and token-ops specs.)
 
-**FigaroCore (9 sub-rules from 8 declared; Certora splits one parametric rule)**
+**FigaroCore (10 declared rules)**
 
 | CVL rule | Maps to | Type |
 |---|---|---|
@@ -527,6 +527,8 @@ that complement the Halmos token-conservation proofs.
 | `cumulativeValueMonotonic` | K-5, A-4 | Parametric rule (all methods) |
 | `rootBuyerImmutable` | K-2 | Parametric rule (all methods) |
 | `currencyImmutable` | K-7 | Parametric rule (all methods) |
+| `commitBindsTheOrderToItsProcess` | A-10 | Targeted rule (a successful commit binds the order hash it returns to the process id it returns, at status 1) |
+| `orderProcessIdImmutableOnceCommitted` | A-10 | Parametric rule (all methods) |
 
 **AttestationCoordinator (8 declared rules — the commitment-arg ABI + merkle-proof receipt binding)**
 
@@ -597,10 +599,11 @@ Verified, both rules, on the non-via-IR build (under via-IR the prover's call re
 
 ### Status
 
-**All green** — the full suite verifies with `--wait_for_results all`
+**Six of eight specs green** with `--wait_for_results all`
 (exit 0 = every rule verified; every `Violated` line in the stream is the
-`rule_not_vacuous` healthy polarity). Which run, when, and the report URLs:
-`AUDITOR_HANDOVER.md` § "Verification evidence".
+`rule_not_vacuous` healthy polarity); `BatchVerifierTokenOps` and
+`BatchVerifierStateRoot` reach the prover's global timeout with no rule
+processed, and are owed. Which run, at which commit, and the job ids: §14.
 
 ```bash
 # Install
@@ -711,3 +714,65 @@ cd frontend && npx vitest run
 ```bash
 cd frontend && npx playwright test --project=devnet  # Anvil required
 ```
+
+---
+
+## 14) Component status matrix
+
+One row per component and bench. The components are the tree's: every contract under `src/` that holds code (the mocks, the Echidna harnesses and the two interfaces, `IFlorinMinter` and `ISP1Verifier`, set aside), the proof program's crates, the relay, the SDK with its signer, the agent runtime, the frontend and the deployment. Each cell is read from a run's own output at the commit named, never from a document; a status is **pass**, **fail**, or **owed** (no run in this set establishes it). The bench run's tree matches `1d39092c` under `src/`, `test/`, `formal/`, `certora/` and `prover/`; from `1d39092c` to `04611ead` the only change under `src/`, `certora/`, `prover/program/` and `prover/lib/src/` is `certora/RpgfMinter.conf` (`98a1e953`), so a Solidity or guest result at `1d39092c` stands for the same code at `04611ead`. Foundry's cells are the whole-suite run at `04611ead`, every test passing and the fork tests skipped (run without an RPC URL).
+
+| Component | Property the bench establishes | Bench | Status | Commit |
+|---|---|---|---|---|
+| `FigaroCore` | K-1–K-9, A-1–A-10 on concrete runs: the lifecycle, every revert branch, the events, weird tokens, reentrancy, the resolve gas and a process filled to the SDK's cap resolving under 2^24, the transition vectors the guest replays, EIP-712 parity with the SDK | Foundry: `FigaroCoreTest`, `FigaroCore_RevertBranch`, `FigaroCore_EventEmission`, `WeirdTokenTest`, `ReentrancyAdversarialTest`, `GasCeilingTest`, `KernelTransitionVectorsTest`, `Eip712ParityTest` | pass | `04611ead` |
+| `FigaroCore` | conservation, solvency, bond amounts, payouts, status transition, buyer dominance, cumulative monotonicity, for every input the bounded trace admits | Halmos `HalmosFigaroCore`, 7 of 7 (two passes) | pass | `1d39092c` |
+| `FigaroCore` | the state machine (§10) and the order-to-process binding: 10 declared rules and the envfree check | Certora `FigaroCore.spec`, 11 of 11, "No errors found by Prover!" (job `1503aa797111418b85db48e2686bfdcb`) | pass | `1d39092c` |
+| `FigaroCore` | exact balance deltas and conservation at commit and at a one-order resolve: 7 declared rules and the envfree check | Certora `TokenOpsVerification.spec`, 8 of 8 (job `88cd4918a7e940a398ae97dba32a2aa1`) | pass | `1d39092c` |
+| `FigaroCore` | solvency, active count, cumulative accounting, status monotonicity, conservation, buyer dominance, atomic resolution under random call sequences | Echidna `EchidnaFuzzer`, 7 of 7 passing | pass | `1d39092c` |
+| `FigaroCore` (the model) | the 9 invariants of `formal/FigaroCore.tla` | TLA+ pass 1 of 7: 8,380,329 states generated, 6,087,113 distinct, depth 9, no error | pass | `1d39092c` |
+| `FigaroCore` (the payoff table) | the best responses at each position over the A-8/A-9 table and their instantiation along the chain | Lean 4, `lake build` in `formal/lean/`: build completed | pass | `1d39092c` |
+| `FigaroCore`, `AttestationCoordinator`, `FigaroBatchVerifier`'s stream reader, against the guest | no divergence between the Core, the coordinator and the guest's mirror over random streams, wallet-code resolves (`0x04`) among them, the verifier's reader the codec's oracle | `KernelDifferentialFuzzTest` with `prover/lib/tests/fuzz_stream.rs`, seeds 42, 1, 2, 3, 1730000000, 1761900000, 99999, 4242 and 4243: no divergence on any | pass | `0532cd3a` |
+| `CommitmentTypes` | the agreement format's one leaf function, and the struct hashes the Core signs under | Foundry: `CommitmentTypesLeafTest`, `Eip712ParityTest` | pass | `04611ead` |
+| `AttestationCoordinator` | E-1: only the order's seller or buyer attests, the leaf opens against the signed `checkoutHash`; the merkle tree three ways; the vectors the guest replays | Foundry: `AttestationCoordinatorTest`, `MerkleParityTest`, `AttestationVectorsTest` | pass | `04611ead` |
+| `AttestationCoordinator` | the role gates, the two reachability witnesses (satisfied), and that an attestation moves no Core state: 8 declared rules and the envfree check | Certora `AttestationCoordinator.spec`, 9 of 9 (job `60f8af0cbb6746a48b8d1fda425ae83b`) | pass | `1d39092c` |
+| `FigaroBatchVerifier` | E-7, E-9, E-13, E-16: the public-value bindings, the operation stream, the wallet-code resolve, the Core's traces through both paths, the batch gas ceilings | Foundry: `FigaroBatchVerifierTest`, `OperationStreamVectorsTest`, `CoreBatchEquivalenceTest`, `BatchGasCeilingTest` | pass | `04611ead` |
+| `FigaroBatchVerifier` (with `FigaroCore` and `UsageCounter`) | the two paths composed: no cross-path double payout, per-pool holdings, the one tally | TLA+ pass 4 of 7, `ResolutionUniverses` (21 invariants): 45,000,639 states generated, 12,828,199 distinct, depth 18, no error | pass | `1d39092c` |
+| `FigaroBatchVerifier` | the batch path's token flows: 4 rules | Certora `BatchVerifierTokenOps.spec`, the committed via-IR build: 0 of 4 rules processed in 121 minutes, the prover's global timeout (job `924da9f11eba4cc0ab3e4b9a82aaa0a8`) | owed: the spec's scope exceeds the prover's budget | `1d39092c` |
+| `FigaroBatchVerifier` | the state root's unbroken chain: 3 rules | Certora `BatchVerifierStateRoot.spec`, the committed via-IR build: 0 of 4 rules (3 declared and the envfree check) processed in 121 minutes, the prover's global timeout (job `d0dbb1ead1ab40269588b09888ffd388`) | owed: the spec's scope exceeds the prover's budget | `1d39092c` |
+| `ClauseRegistry` | E-2: first-write-wins, the stake and its withdrawal; the clause keys pinned across languages | Foundry `ClauseRegistryTest` | pass | `04611ead` |
+| `ClauseRegistry` | stake solvency, withdrawable in full, first-write-wins, one-shot withdrawal, eligibility ends at withdraw, key isolation | Halmos, 6 of 6 | pass | `1d39092c` |
+| `AgreementRegistry` | registration, the reserved keys refused, the stake | Foundry `AgreementRegistryTest` | pass | `04611ead` |
+| `AgreementRegistry` | the same six stake properties | Halmos, 6 of 6 | pass | `1d39092c` |
+| `AssemblyRegistry` | registration and the stake | Foundry `AssemblyRegistryTest` | pass | `04611ead` |
+| `AssemblyRegistry` | the same six stake properties | Halmos, 6 of 6 | pass | `1d39092c` |
+| `MembersRegistry` | E-4: the two-step reclaim, the cooldown, a second stake for re-registration | Foundry `MembersRegistryTest` | pass | `04611ead` |
+| `MembersRegistry` | E-5: the stake machine behind the Sybil bound | Halmos `HalmosMembersRegistry`, 7 of 7 | pass | `1d39092c` |
+| `UsageCounter` | E-7, E-11: the one tally across both routes, the per-use gates, the family separation by kind | Foundry `UsageCounterTest` | pass | `04611ead` |
+| `UsageCounter` | the accrual arithmetic: route-blind counting, `scoreOf` the one tally, period bucketing, key and kind isolation | Halmos `HalmosUsageCounter`, 9 of 9 | pass | `1d39092c` |
+| `RpgfMinter` | the claim path end to end through the counter and the registries; each kind rewards only its own designer of record | Foundry: `RpgfMinterTest`, `RpgfIntegrationTest` | pass | `04611ead` |
+| `RpgfMinter` | conservation, no double claim, period gating, the membership and live-stake gates, view parity: 10 declared rules and the envfree check | Certora `RpgfMinter.spec`, 11 of 11, built without via-IR (job `68b8486761f043548e95415fbba56d35`) | pass | `98a1e953` |
+| `RpgfMinter` | `_isAuthor` reads only its kind's registry and refuses an unknown kind: 2 declared rules and the envfree check | Certora `RpgfMinterAuthor.spec`, 3 of 3 (job `f9983a2a1597491e80a32747e0cd608b`) | pass | `1d39092c` |
+| `FlorinToken` | E-6: the cap on every mint path, multi-minter, renounce; the treasury procurement | Foundry: `FlorinTokenTest`, `TreasuryProcurementTest` | pass | `04611ead` |
+| `FlorinToken` | supply within the cap, the minter registry: 6 declared rules and the envfree check | Certora `FlorinToken.spec`, 7 of 7 (job `daf5f571efa44957921945a121b800c2`) | pass | `1d39092c` |
+| `FlorinToken` | supply and minter properties under random call sequences | Echidna `EchidnaFlorinToken`, 8 of 8 passing | pass | `1d39092c` |
+| `FlorinToken` (the model) | the 8 invariants of `formal/FlorinToken.tla` | TLA+ pass 2 of 7: 1,030,818 states generated, 160,844 distinct, no error | pass | `1d39092c` |
+| `WitnessSwapAndCommitCoordinator` | the witness binding, zero retention, allowance hygiene, swap and commit atomic | Foundry `WitnessSwapAndCommitCoordinatorTest` | pass | `04611ead` |
+| `WitnessSwapAndCommitCoordinator` | the same against the live Permit2 and SwapRouter02 | Foundry fork suites, skipped: no `MAINNET_RPC_URL` or `SEPOLIA_RPC_URL` in the run | owed | `04611ead` |
+| `WitnessSwapAndCommitCoordinator` (the model) | the 10 invariants of `formal/WitnessSwapAndCommitCoordinator.tla` | TLA+ pass 3 of 7: 38,028,525 states generated, 1,979,101 distinct, depth 17, no error | pass | `1d39092c` |
+| the proof program (`prover/program`, `prover/lib`, `prover/clause`) | the guest's rules against the Core (`parity` 41, `usage` 33, `transition_vectors` 1, `attestation_vectors` 1, `merkle_parity` 8, `operation_stream` 5, `operation_stream_vectors` 1, `packers` 3, `eip712_vectors` 2, `bincode_roundtrip` 8, unit 6), the clause engine (`conformance` 37, `encode_conformance` 14, `engine_vectors` 5), the clause keys (1) and the guest run in the executor (`guest_program` 6); 3 ignored by design, run by the fuzz script | Rust, `cargo test` over the prover workspace | pass | `1d39092c` |
+| the proof program | that the guest implements the model, by proof | no formal proof of the Rust crates | owed | — |
+| the proof program | a Groth16 proof from this tree's guest key accepted by the Sepolia verifier | no such run; the Sepolia verifier's pinned key is an earlier guest's | owed | — |
+| the relay (`prover/sequencer`) | admission, the capacity filter by derived process id, deferral, re-queue, rebuild from the chain, wallet-code resolves, no attestation content in logs, state or routes | Rust `cargo test -p figaro-sequencer`: 24 unit, 121 integration | pass | `8d11344a` |
+| the relay (the model) | the state lifecycle (8 invariants, 2 action properties), the deferral at batch formation (10), the resolve authorization (3) | TLA+ passes 5–7: 22,467,078 / 3,939,572 distinct, depth 30; 445,431 / 116,190, depth 19; 3,293,884 / 809,956, depth 19; no error | pass | `1d39092c` |
+| the relay | its behavior, by proof, beyond the TLA+ models | no formal proof of the relay's code | owed | — |
+| the relay, with the SDK and the verifier | a batch end to end, SDK → relay → verifier on Anvil | `sdk/tests/batch-e2e.test.ts` skipped in the run: no Anvil, no relay binary | owed | `d399506e` |
+| the SDK (`sdk/`) | the encoders, bonds, discovery, clauses, the cross-language parity vectors, the resolve gas model | Vitest, the whole suite | pass | `d399506e` |
+| the SDK | the resolve model's memory constants held equal to `GasCeilingTest`'s | Vitest `gasCeilings.test.ts` | pass | `04611ead` |
+| the SDK's signer (`sdk/src/signer`) | the policy gate and the keystore; a key held on a Ledger signs as the raw key does | Vitest `signer.test.ts` and `signerLedger.test.ts`, within the SDK run | pass, the Ledger on a mock transport only | `d399506e` |
+| the SDK and its signer | their behavior, by proof | no formal proof | owed | — |
+| the agent runtime (`ecosystem-agents/runtime`) | the data-channel envelope, the sandbox wrapper: outbound denied, other loopback denied, the proxy reachable | `npm test`, three runs in a row | pass | `22e2ca25` |
+| the frontend (`frontend/`) | components, hooks, semantic derivation, the order lanes' confirm before approve | Vitest, the whole suite | pass | `22e2ca25` |
+| the frontend | UI action → UI reaction against a live devnet | Playwright `--project=devnet`: no run in this set | owed | — |
+| the frontend | its behavior, by proof | no formal proof | owed | — |
+| the deployment (`script/`) | E-10: each deploy script's wiring read back from the deployed contracts | Foundry `DeployWiringTest` | pass | `04611ead` |
+| the deployment and the estate | the read-back on a live chain; the published site and docs-site | no run in this set | owed | — |
+| the resolve cap | a process at the SDK's cap resolves under EIP-7825's 2^24 | `GasCeilingTest.test_Gas_resolveAtPublishedCapFitsTransactionCap`, on Foundry's EVM, which predates the Glamsterdam fork | pass on the pre-fork EVM; owed on the post-fork EVM | `04611ead` |
