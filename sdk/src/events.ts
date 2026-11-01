@@ -187,6 +187,20 @@ export function parseAttestationLogs(logs: Log[]): AttestationEvent[] {
  */
 export const DEFAULT_LOG_CHUNK_SIZE = 9_500n;
 
+/** The error and the errors viem nests under it as `cause`, outermost first. */
+function errorChain(err: unknown): unknown[] {
+    const chain: unknown[] = [];
+    for (let e = err; e != null && chain.length < 8; e = (e as { cause?: unknown }).cause) chain.push(e);
+    return chain;
+}
+
+/** The full text of one error, so viem's wrapping never hides the node's words. */
+function errorText(err: unknown): string {
+    return err instanceof Error
+        ? `${err.message} ${(err as { details?: string }).details ?? ""} ${(err as { shortMessage?: string }).shortMessage ?? ""}`
+        : String(err);
+}
+
 /**
  * A node answering from a backend that no longer holds the range's logs.
  * publicnode's keyless Sepolia endpoint balances `eth_getLogs` across
@@ -195,15 +209,26 @@ export const DEFAULT_LOG_CHUNK_SIZE = 9_500n;
  * in three for any range more than a few thousand blocks deep, and the logs on
  * the next. The answer is the backend's, never the range's, so the same
  * request is asked again. Matched on the code and on the full error text, so
- * viem's wrapping never hides it. The frontend's log reader
- * (`frontend/lib/kernel/eventCache.ts`) applies the same rule.
+ * viem's wrapping never hides it.
  */
 function isPrunedHistoryError(err: unknown): boolean {
-    if ((err as { code?: unknown } | null)?.code === 4444) return true;
-    const text = err instanceof Error
-        ? `${err.message} ${(err as { details?: string }).details ?? ""}`
-        : String(err);
-    return /pruned history/i.test(text);
+    return errorChain(err).some((e) =>
+        (e as { code?: unknown } | null)?.code === 4444 || /pruned history/i.test(errorText(e)));
+}
+
+/**
+ * A node refusing the request for its rate, never for its range: HTTP 429
+ * (viem's `HttpRequestError` carries `status`), or a JSON-RPC body saying so
+ * ("Rate limit exceeded", "Too Many Requests"). The keyless public node
+ * answers it when several readers share it; the same request succeeds once
+ * the reader waits, so it is asked again after a growing pause.
+ */
+function isRateLimitError(err: unknown): boolean {
+    return errorChain(err).some((e) => {
+        const { status, code } = (e ?? {}) as { status?: unknown; code?: unknown };
+        if (status === 429 || code === 429) return true;
+        return /rate.?limit|too many requests|status:? 429/i.test(errorText(e));
+    });
 }
 
 /** How many times one sub-range is asked of a node answering
@@ -212,8 +237,36 @@ function isPrunedHistoryError(err: unknown): boolean {
  *  unread. */
 export const PRUNED_HISTORY_ATTEMPTS = 24;
 
+/** How many times one sub-range is asked of a node answering
+ *  `isRateLimitError`: the pauses below sum to about half a minute. */
+export const RATE_LIMIT_ATTEMPTS = 8;
+
 /** The pause before the next ask of the same sub-range. */
 const prunedHistoryDelayMs = (attempt: number): number => Math.min(100 * attempt, 1_000);
+
+/** The pause before the next ask after a rate limit: doubling from half a
+ *  second to eight, with jitter so readers refused together do not ask
+ *  together again. */
+const rateLimitDelayMs = (attempt: number): number =>
+    Math.min(500 * 2 ** (attempt - 1), 8_000) * (0.5 + Math.random() / 2);
+
+/** Which of the node's answers a retry is for. */
+export type LogReadRetryKind = "pruned-history" | "rate-limit";
+
+/**
+ * Whether a failed `eth_getLogs` is asked again, and how: the answer's kind,
+ * the attempt budget and the pause before each next ask, for an answer that
+ * is the node's state rather than the request's (pruned history, a rate
+ * limit); `null` for every other error, which propagates. A reader counts its
+ * asks per `kind`, so a run of one kind never spends the other's budget or
+ * lengthens its pause. One rule for every log reader — the SDK's
+ * `fetchLogsChunked` and the frontend's (`frontend/lib/kernel/eventCache.ts`).
+ */
+export function logReadRetry(err: unknown): { kind: LogReadRetryKind; attempts: number; delayMs: (attempt: number) => number } | null {
+    if (isPrunedHistoryError(err)) return { kind: "pruned-history", attempts: PRUNED_HISTORY_ATTEMPTS, delayMs: prunedHistoryDelayMs };
+    if (isRateLimitError(err)) return { kind: "rate-limit", attempts: RATE_LIMIT_ATTEMPTS, delayMs: rateLimitDelayMs };
+    return null;
+}
 
 /**
  * `client.getLogs` in sequential sub-ranges of at most `chunkSize` blocks,
@@ -225,8 +278,9 @@ const prunedHistoryDelayMs = (attempt: number): number => Math.min(100 * attempt
  * but public RPC providers commonly cap a single call's block range (10k
  * blocks, or a result-count limit), so an integrator's first wide-range read
  * against a real deployment simply fails. A sub-range the node answers with
- * pruned history (`isPrunedHistoryError`) is asked again, up to
- * `PRUNED_HISTORY_ATTEMPTS` times; every other error propagates.
+ * pruned history or a rate limit is asked again, up to the budget
+ * `logReadRetry` names (`PRUNED_HISTORY_ATTEMPTS`, `RATE_LIMIT_ATTEMPTS`),
+ * each kind counted on its own; every other error propagates.
  *
  * `toBlock: "latest"` is resolved once via `getBlockNumber` so every
  * sub-range chunks against the same snapshot instead of a moving target.
@@ -239,32 +293,34 @@ export async function fetchLogsChunked(
         toBlock: bigint | "latest";
         chunkSize?: bigint;
         /** The pause before the next ask of a sub-range answered with pruned
-         *  history, by attempt (default `prunedHistoryDelayMs`). */
+         *  history or a rate limit, by attempt (default: `logReadRetry`'s). */
         retryDelayMs?: (attempt: number) => number;
     },
 ): Promise<Log[]> {
     const chunkSize = params.chunkSize ?? DEFAULT_LOG_CHUNK_SIZE;
-    const retryDelayMs = params.retryDelayMs ?? prunedHistoryDelayMs;
     if (chunkSize <= 0n) throw new Error("fetchLogsChunked: chunkSize must be positive");
 
     const resolvedToBlock = params.toBlock === "latest" ? await client.getBlockNumber() : params.toBlock;
 
     const logs: Log[] = [];
     let from = params.fromBlock;
-    let prunedAttempts = 0;
+    const retryAttempts = new Map<LogReadRetryKind, number>();
     while (from <= resolvedToBlock) {
         const to = from + chunkSize - 1n < resolvedToBlock ? from + chunkSize - 1n : resolvedToBlock;
         let chunk: Log[];
         try {
             chunk = await client.getLogs({ address: params.address, fromBlock: from, toBlock: to });
         } catch (err) {
-            if (!isPrunedHistoryError(err)) throw err;
-            prunedAttempts += 1;
-            if (prunedAttempts >= PRUNED_HISTORY_ATTEMPTS) throw err;
-            await new Promise((resolve) => setTimeout(resolve, retryDelayMs(prunedAttempts)));
+            const retry = logReadRetry(err);
+            if (!retry) throw err;
+            const attempt = (retryAttempts.get(retry.kind) ?? 0) + 1;
+            retryAttempts.set(retry.kind, attempt);
+            if (attempt >= retry.attempts) throw err;
+            const delayMs = (params.retryDelayMs ?? retry.delayMs)(attempt);
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
             continue;
         }
-        prunedAttempts = 0;
+        retryAttempts.clear();
         // The query names one contract. A log from any other is the node's
         // error, never data: the parsers decode by topic and would read
         // another contract's event as this one's.

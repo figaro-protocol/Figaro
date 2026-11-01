@@ -550,7 +550,8 @@ const addresses = addressesFromDeploymentRecord(deploymentRecord);
 // public RPC provider's block-range cap; pass a trailing `chunkSize` to tune
 // it for a stricter (or more permissive) provider. A sub-range the node answers
 // with pruned history (code 4444, publicnode's keyless Sepolia) is asked again,
-// up to 24 times; every other error propagates.
+// up to 24 times, and one answered with a rate limit (HTTP 429) up to 8 times
+// after a doubling pause (`logReadRetry`); every other error propagates.
 const events = await fetchCoreEvents(client, addresses, 0n);
 
 // Cross-endpoint corroboration. A load-balanced public RPC is a POOL whose
@@ -1361,11 +1362,12 @@ client raises it as a `SequencerError` carrying `.statusCode`:
 
 | Code | When | Note |
 |---|---|---|
-| `400` | admission rejection (EIP-712 recovery failed, or the recovered address is not the party named in the struct; a usage claim with a zero clause-or-assembly or no checkout hash), malformed JSON | the relay's reason string is carried verbatim into the error message |
+| `400` | admission rejection (EIP-712 recovery failed, or the recovered address is not the party named in the struct; a resolve, wallet-code resolve, sub-order or attestation on a process or order the relay neither holds nor has queued; a resolve not signed by the process's root buyer; a usage claim with a zero clause-or-assembly or no checkout hash), malformed JSON | the relay's reason string is carried verbatim into the error message; for an unknown process or order, submit its commit first |
+| `402` | a commit whose bonds do not fund (balance and allowance to the verifier, read at admission) | the reason names the party and the shortfall; fund the bond and resubmit |
 | `413` | body over the 1 MiB cap | a plaintext attestation witness is tens of KB, a hash-only one a few hundred bytes — this is abuse headroom, not a normal limit |
 | `415` | wrong content type | send `application/json` |
 | `422` | valid JSON that is not the operation or claim shape | wrong shape, unknown variant, missing field |
-| `503` | mempool at capacity | capacity, never rejection — retry after the next batch resolves |
+| `503` | mempool at capacity, or the relay could not read a commit's bonds or a wallet-code resolve's buyer code from the chain | never rejection — retry (after the next batch resolves, for capacity) |
 
 
 Full wire shapes, the environment

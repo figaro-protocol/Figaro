@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { encodeAbiParameters, encodeEventTopics, parseAbiParameters, type Log, type PublicClient } from "viem";
 import { CORE_ABI } from "../src/abis.js";
-import { fetchLogsChunked, DEFAULT_LOG_CHUNK_SIZE, fetchCoreEvents, PRUNED_HISTORY_ATTEMPTS } from "../src/events.js";
+import { fetchLogsChunked, DEFAULT_LOG_CHUNK_SIZE, fetchCoreEvents, PRUNED_HISTORY_ATTEMPTS, RATE_LIMIT_ATTEMPTS, logReadRetry } from "../src/events.js";
 import { fetchDiscoveryEvents } from "../src/discovery.js";
 import type { Address, FigaroAddresses } from "../src/types.js";
 
@@ -243,5 +243,102 @@ describe("fetchLogsChunked on a pruned-history answer (publicnode's keyless Sepo
         await expect(fetchDiscoveryEvents(registries, { core: ADDRESS, clauseRegistry: ADDRESS } as FigaroAddresses, 0n, 25n))
             .resolves.toBeDefined();
         expect(registries.getLogs).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe("fetchLogsChunked on a rate-limit answer (HTTP 429, the keyless node under concurrent readers)", () => {
+    /** viem's HttpRequestError for a 429: the status on the error, the
+     *  node's body in `details`. */
+    function http429(): Error {
+        return Object.assign(new Error("HTTP request failed.\n\nStatus: 429\nDetails: Rate limit exceeded"), {
+            name: "HttpRequestError", status: 429, details: "Rate limit exceeded", shortMessage: "HTTP request failed.",
+        });
+    }
+    /** The same refusal as a JSON-RPC error body, which carries no status. */
+    function rpcRateLimit(): Error {
+        return Object.assign(new Error("RPC Request failed.\n\nDetails: Rate limit exceeded"), {
+            name: "RpcRequestError", code: -32005, details: "Rate limit exceeded",
+        });
+    }
+    function failingThenServing(allLogs: Log[], failures: number, error: () => unknown): PublicClient {
+        let left = failures;
+        const getLogs = vi.fn(async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint }) => {
+            if (left > 0) {
+                left -= 1;
+                throw error();
+            }
+            return allLogs.filter((l) => (l.blockNumber as bigint) >= fromBlock && (l.blockNumber as bigint) <= toBlock);
+        });
+        return { getLogs, getBlockNumber: vi.fn(async () => 25n) } as unknown as PublicClient;
+    }
+    const noDelay = () => 0;
+
+    it.each([["an HTTP 429", http429], ["a JSON-RPC rate-limit body", rpcRateLimit]])(
+        "asks the same sub-range again after %s and returns its logs",
+        async (_label, error) => {
+            const logs = [fakeLog(3n), fakeLog(12n)];
+            const client = failingThenServing(logs, 2, error);
+            const result = await fetchLogsChunked(client, { address: ADDRESS, fromBlock: 0n, toBlock: 25n, chunkSize: 10n, retryDelayMs: noDelay });
+            expect(result).toEqual(logs);
+            expect(client.getLogs).toHaveBeenCalledTimes(5);
+            expect(client.getLogs).toHaveBeenNthCalledWith(3, { address: ADDRESS, fromBlock: 0n, toBlock: 9n });
+        },
+    );
+
+    it("gives up after RATE_LIMIT_ATTEMPTS asks of one sub-range and throws the node's last answer", async () => {
+        const client = failingThenServing([], Number.MAX_SAFE_INTEGER, http429);
+        await expect(fetchLogsChunked(client, { address: ADDRESS, fromBlock: 0n, toBlock: 5n, retryDelayMs: noDelay }))
+            .rejects.toMatchObject({ status: 429 });
+        expect(client.getLogs).toHaveBeenCalledTimes(RATE_LIMIT_ATTEMPTS);
+    });
+
+    it("keeps a rate limit's budget and pause apart from a run of pruned-history answers before it", async () => {
+        const pruned = () => Object.assign(new Error("RPC Request failed."), { code: 4444, details: "pruned history unavailable" });
+        const answers: Array<() => unknown> = [...Array(10).fill(pruned), http429];
+        const getLogs = vi.fn(async () => {
+            const next = answers.shift();
+            if (next) throw next();
+            return [fakeLog(1n)];
+        });
+        const client = { getLogs, getBlockNumber: vi.fn(async () => 5n) } as unknown as PublicClient;
+        const pauses: number[] = [];
+        const result = await fetchLogsChunked(client, {
+            address: ADDRESS, fromBlock: 0n, toBlock: 5n,
+            retryDelayMs: (attempt) => { pauses.push(attempt); return 0; },
+        });
+        expect(result).toHaveLength(1);
+        expect(getLogs).toHaveBeenCalledTimes(12);
+        // The 429 is that kind's first ask, so its pause starts at attempt 1.
+        expect(pauses).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1]);
+    });
+});
+
+describe("logReadRetry", () => {
+    it("names a retry for pruned history and for a rate limit, by code, status and text", () => {
+        expect(logReadRetry(Object.assign(new Error("RPC Request failed."), { code: 4444 }))?.attempts).toBe(PRUNED_HISTORY_ATTEMPTS);
+        expect(logReadRetry(new Error("Details: pruned history unavailable"))?.attempts).toBe(PRUNED_HISTORY_ATTEMPTS);
+        expect(logReadRetry(Object.assign(new Error("HTTP request failed."), { status: 429 }))?.attempts).toBe(RATE_LIMIT_ATTEMPTS);
+        expect(logReadRetry(new Error("HTTP request failed. Status: 429"))?.attempts).toBe(RATE_LIMIT_ATTEMPTS);
+        expect(logReadRetry(new Error("Rate limit exceeded"))?.attempts).toBe(RATE_LIMIT_ATTEMPTS);
+        expect(logReadRetry(new Error("429 Too Many Requests"))?.attempts).toBe(RATE_LIMIT_ATTEMPTS);
+        // viem nests the transport's error under `cause`.
+        const wrapped = Object.assign(new Error("An unknown RPC error occurred."), { cause: Object.assign(new Error("HTTP request failed."), { status: 429 }) });
+        expect(logReadRetry(wrapped)?.attempts).toBe(RATE_LIMIT_ATTEMPTS);
+    });
+    it("backs a rate limit off further than pruned history, and never past its ceiling", () => {
+        const pruned = logReadRetry(Object.assign(new Error("x"), { code: 4444 }))!;
+        const limited = logReadRetry(Object.assign(new Error("x"), { status: 429 }))!;
+        expect(limited.delayMs(1)).toBeGreaterThanOrEqual(pruned.delayMs(1));
+        for (let a = 1; a < RATE_LIMIT_ATTEMPTS; a++) {
+            expect(limited.delayMs(a + 1)).toBeGreaterThan(0);
+            expect(limited.delayMs(a)).toBeLessThanOrEqual(8_000);
+        }
+    });
+    it("names no retry for a range cap, a revert or a malformed answer", () => {
+        expect(logReadRetry(new Error("exceed maximum block range: 50000"))).toBeNull();
+        expect(logReadRetry(new Error("error code -32005: Log response size exceeded. Maximum allowed number of requested blocks is 1000"))).toBeNull();
+        expect(logReadRetry(new Error("execution reverted"))).toBeNull();
+        expect(logReadRetry(null)).toBeNull();
+        expect(logReadRetry("boom")).toBeNull();
     });
 });

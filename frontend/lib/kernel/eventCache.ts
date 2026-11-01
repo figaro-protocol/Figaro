@@ -15,6 +15,7 @@
  * (Sequence, Envio, etc.) when the time comes.
  */
 
+import { logReadRetry, type LogReadRetryKind } from "@figaro-protocol/sdk";
 import { getAbiItem, type Abi, type Hex, type PublicClient } from "viem";
 
 type PublicGetLogsParams = NonNullable<Parameters<PublicClient["getLogs"]>[0]>;
@@ -168,38 +169,14 @@ export function isLogRangeCapError(err: unknown): boolean {
     return /block range|requested blocks|blocks range|ranges? over \d+ blocks|range too large|response size exceeded|query returned more than|too many results|exceed maximum/i.test(text);
 }
 
-/** A provider answering from a backend that no longer holds the range's
- *  logs. publicnode's keyless Sepolia endpoint balances `eth_getLogs` across
- *  backends, some of them pruned: the same request answers
- *  `{"code":4444,"message":"pruned history unavailable"}` on roughly two
- *  calls in three for any range more than a few thousand blocks deep, and
- *  the logs on the next. The answer is the backend's, never the range's, so
- *  the same request is asked again. Matched on the code and on the full
- *  error text, as `isLogRangeCapError` is. */
-export function isPrunedHistoryError(err: unknown): boolean {
-    if ((err as { code?: unknown } | null)?.code === 4444) return true;
-    const text = err instanceof Error
-        ? `${err.message} ${(err as { details?: string }).details ?? ""}`
-        : String(err);
-    return /pruned history/i.test(text);
-}
-
-/** How many times one sub-range is asked of a provider answering
- *  `isPrunedHistoryError`: at one success in three per call (measured on
- *  publicnode), twenty-four asks leave about one sub-range in sixteen
- *  thousand unread. */
-const PRUNED_HISTORY_ATTEMPTS = 24;
-
-/** The pause before the next ask of the same sub-range. */
-const prunedHistoryDelayMs = (attempt: number): number => Math.min(100 * attempt, 1_000);
-
 /**
  * `client.getLogs` over `[fromBlock, latest]`, in ONE call when the provider
  * allows it and in sequential sub-ranges when it does not: on a range-cap
  * error the current window halves (down to `MIN_LOG_CHUNK`) and the scan
- * continues from where it stopped; on a pruned-history answer the same
- * sub-range is asked again (`isPrunedHistoryError`); every other error
- * propagates, the last pruned-history answer included. `latest`
+ * continues from where it stopped; on an answer that is the node's state
+ * rather than the request's (pruned history, a rate limit) the same
+ * sub-range is asked again under the SDK's one rule (`logReadRetry`); every
+ * other error propagates, the last retried answer included. `latest`
  * is resolved once so the sub-ranges chunk against one snapshot. Exported
  * for the cache and its test — the cache is the ONE place logs are read.
  */
@@ -220,7 +197,6 @@ export async function getLogsAdaptive(
     params: { address: `0x${string}`; event: PublicGetLogsParams["event"]; fromBlock: bigint },
     options: { retryDelayMs?: (attempt: number) => number } = {},
 ): Promise<CachedLog[]> {
-    const retryDelayMs = options.retryDelayMs ?? prunedHistoryDelayMs;
     // Uncached: viem memoizes getBlockNumber for `cacheTime` (4 s default);
     // a read fired right after a receipt would otherwise bound the range
     // BELOW the block that just landed and miss its events.
@@ -229,7 +205,8 @@ export async function getLogsAdaptive(
     const logs: CachedLog[] = [];
     let from = params.fromBlock;
     let window = toBlock - from + 1n;
-    let prunedAttempts = 0;
+    // Asks of the current range, per kind of retried answer (`logReadRetry`).
+    const retryAttempts = new Map<LogReadRetryKind, number>();
     while (from <= toBlock) {
         const to = from + window - 1n < toBlock ? from + window - 1n : toBlock;
         try {
@@ -241,12 +218,15 @@ export async function getLogsAdaptive(
             });
             logs.push(...(chunk as CachedLog[]));
             from = to + 1n;
-            prunedAttempts = 0;
+            retryAttempts.clear();
         } catch (err) {
-            if (isPrunedHistoryError(err)) {
-                prunedAttempts += 1;
-                if (prunedAttempts >= PRUNED_HISTORY_ATTEMPTS) throw err;
-                await new Promise((resolve) => setTimeout(resolve, retryDelayMs(prunedAttempts)));
+            const retry = logReadRetry(err);
+            if (retry) {
+                const attempt = (retryAttempts.get(retry.kind) ?? 0) + 1;
+                retryAttempts.set(retry.kind, attempt);
+                if (attempt >= retry.attempts) throw err;
+                const delayMs = (options.retryDelayMs ?? retry.delayMs)(attempt);
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
                 continue;
             }
             if (!isLogRangeCapError(err) || window <= MIN_LOG_CHUNK) throw err;

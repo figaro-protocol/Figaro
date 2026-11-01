@@ -16,10 +16,12 @@ import "src/mocks/MockPermitToken.sol";
 ///         and resolves in one execution (pre-warming storage) and calldata is
 ///         not charged inside the measured call. So it instead (a) guards the
 ///         warm EXECUTION marginal of the resolve loop via `vm.lastCallGas()`
-///         against FigaroCore regressions, and (b) verifies atomic all-or-nothing
-///         resolution. The all-in receipt figures live in chainGasCeilings.ts;
-///         `scripts/lint-chain-gas.sh` asserts the two constants below are
-///         byte-equal to the frontend's.
+///         against FigaroCore regressions, (b) resolves a process filled to the
+///         SDK's published cap and holds it under EIP-7825's 2^24, the memory
+///         the loop expands into included, and (c) verifies atomic
+///         all-or-nothing resolution. The all-in receipt figures live in chainGasCeilings.ts;
+///         `scripts/lint-chain-gas.sh` asserts the constants below are
+///         byte-equal to the SDK's.
 contract GasCeilingTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
@@ -41,9 +43,17 @@ contract GasCeilingTest is Test {
     uint256 internal constant RESOLVE_GAS_PER_ORDER = 30_000;
     uint256 internal constant COMMIT_GAS_PER_ORDER = 383_000;
     uint256 internal constant RESOLVE_FIXED_OVERHEAD = 73_000;
+    // Memory: each order's struct copy (9 words), its abi.encode buffer
+    // (11) and its order-hash buffer (3) are never reused, and the EVM
+    // charges memory as words²/512, so the resolve's cost carries
+    // (23·N)²/512 on top of the receipt line — about 319k at 556 orders,
+    // nothing at the N = 1 and N = 2 receipts the line was read from.
+    // Measured by test_Gas_resolveAtPublishedCapFitsTransactionCap.
+    uint256 internal constant RESOLVE_MEMORY_WORDS_PER_ORDER = 23;
+    uint256 internal constant RESOLVE_MEMORY_QUADRATIC_DIVISOR = 512;
     // The chain's cap on one transaction's gas (EIP-7825's 2^24): a
     // resolve is one transaction, so the ceiling is this or the block's
-    // budget, whichever is smaller — 556 orders under the cap.
+    // budget, whichever is smaller — 546 orders under the cap.
     uint256 internal constant TRANSACTION_GAS_CAP = 16_777_216;
 
     function setUp() public {
@@ -156,6 +166,85 @@ contract GasCeilingTest is Test {
         assertGe(marginal, 9_000, "resolve per-order exec dropped unexpectedly (FigaroCore change?)");
         assertLt(marginal, RESOLVE_GAS_PER_ORDER, "warm exec marginal must stay below the cold all-in anchor");
         assertLe(marginal, 14_000, "resolve per-order exec rose unexpectedly (re-measure receipts)");
+    }
+
+    // ── The published cap resolves under the transaction cap ─────────
+
+    /// @dev The SDK's `resolveGasForOrders`: the receipt line plus the
+    ///      memory the resolve expands into.
+    function _resolveModelGas(uint256 n) internal pure returns (uint256) {
+        uint256 words = RESOLVE_MEMORY_WORDS_PER_ORDER * n;
+        return RESOLVE_FIXED_OVERHEAD + RESOLVE_GAS_PER_ORDER * n + (words * words) / RESOLVE_MEMORY_QUADRATIC_DIVISOR;
+    }
+
+    /// @dev The SDK's `maxOrdersResolvableForGasLimit` under a block large
+    ///      enough that the transaction cap binds (the block budget is the
+    ///      SDK's own branch and never the binding one at 2^24).
+    function _maxOrdersResolvable(uint256 budget) internal pure returns (uint256) {
+        if (budget <= RESOLVE_FIXED_OVERHEAD) return 0;
+        uint256 n = (budget - RESOLVE_FIXED_OVERHEAD) / RESOLVE_GAS_PER_ORDER;
+        while (n > 0 && _resolveModelGas(n) > budget) n--;
+        return n;
+    }
+
+    /// @dev The transaction's own charge for its calldata: the 21,000 base and
+    ///      the greater of the standard token price and EIP-7623's floor.
+    function _intrinsicGas(bytes memory data, uint256 execution) internal pure returns (uint256) {
+        uint256 zeros;
+        for (uint256 i = 0; i < data.length; i++) {
+            if (data[i] == 0) zeros++;
+        }
+        uint256 tokens = zeros + (data.length - zeros) * 4;
+        uint256 standard = 21_000 + tokens * 4 + execution;
+        uint256 floor = 21_000 + tokens * 10;
+        return (standard > floor ? standard : floor) - execution;
+    }
+
+    /// @dev Build a process of `n` orders, cool the Core's and the token's
+    ///      storage so the resolve pays cold access as its own transaction
+    ///      does, resolve it, and return the execution gas plus the
+    ///      transaction's intrinsic charge for its calldata.
+    function _resolveAllInGas(uint256 n, uint256 keyBase) internal returns (uint256) {
+        (bytes32 processId, CommitmentTypes.Commitment[] memory commitments) = _buildProcess(n, keyBase);
+        bytes memory data = abi.encodeCall(FigaroCore.resolveProcess, (processId, commitments));
+        vm.cool(address(core));
+        vm.cool(address(token));
+        vm.prank(buyer);
+        core.resolveProcess(processId, commitments);
+        uint256 execution = vm.lastCallGas().gasTotalUsed;
+        return execution + _intrinsicGas(data, execution);
+    }
+
+    /// @notice A process filled to the SDK's published cap under EIP-7825's 2^24
+    ///         resolves under it. Two readings: (a) the resolve run here, cold,
+    ///         with its calldata charged, is under the cap on this EVM; (b) the
+    ///         receipt model the SDK publishes, plus the part of the measured
+    ///         cost that grows faster than linearly in N (memory expansion: each
+    ///         order's struct copy and hashing buffer are never reused, and
+    ///         memory gas is quadratic in the words touched), is under the cap
+    ///         too. The faster-than-linear part is the excess of the cost at N
+    ///         over the line through N = 1 and N = 2, the two points the receipt
+    ///         anchors were read from.
+    function test_Gas_resolveAtPublishedCapFitsTransactionCap() public {
+        uint256 n = _maxOrdersResolvable(TRANSACTION_GAS_CAP);
+        uint256 g1 = _resolveAllInGas(1, 0x610000);
+        uint256 g2 = _resolveAllInGas(2, 0x620000);
+        uint256 gn = _resolveAllInGas(n, 0x630000);
+        uint256 line = g1 + (g2 - g1) * (n - 1);
+        uint256 superlinear = gn > line ? gn - line : 0;
+        uint256 modeled = RESOLVE_FIXED_OVERHEAD + RESOLVE_GAS_PER_ORDER * n + superlinear;
+
+        emit log_named_uint("resolve_cap_orders", n);
+        emit log_named_uint("resolve_all_in_gas_at_cap_local", gn);
+        emit log_named_uint("resolve_local_marginal_1_to_2", g2 - g1);
+        emit log_named_uint("resolve_superlinear_gas_at_cap", superlinear);
+        emit log_named_uint("resolve_modeled_receipt_gas_at_cap", modeled);
+
+        assertLe(gn, TRANSACTION_GAS_CAP, "a process at the published cap does not resolve under 2^24 here");
+        assertLe(modeled, TRANSACTION_GAS_CAP, "the receipt model plus the measured memory growth exceeds 2^24");
+        // The SDK's model bounds the receipt line plus the measured growth,
+        // so the cap it publishes is the cap this run resolves.
+        assertGe(_resolveModelGas(n), modeled, "the SDK's resolve model is under the measured cost at its own cap");
     }
 
     // ── Atomic enforcement: partial / empty submission always reverts ──
