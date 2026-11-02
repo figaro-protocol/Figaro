@@ -29,11 +29,10 @@ import { isValidAddress } from "@/lib/shared/evm";
 import {
     createUseWithdrawStake,
     sharedRegisterRevertMessage,
-    translateContractRevert,
     withdrawRevertMessage,
 } from "@/lib/protocol/useWithdrawStake";
 import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
-import { publishTail } from "@/lib/protocol/publishTail";
+import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 
 
 /** The ClauseRegistry address if it's a well-formed address, else null.
@@ -127,7 +126,7 @@ export function useAllRegisteredClauses() {
 /** Map a decoded `registerClause` error name (+ args) to a human-readable
  *  message, or null when unrecognized. Split from the viem extraction so it's
  *  testable without constructing a viem error. Mirrors the SHAPE of
- *  `translatePublishRevert` for assemblies. */
+ *  `assemblyRegisterRevertMessage` for assemblies. */
 export function clauseRegisterRevertMessage(
     errorName: string | undefined,
     args: readonly unknown[] | undefined,
@@ -147,15 +146,6 @@ export function clauseRegisterRevertMessage(
  *  (`withdrawRevertMessage` — the on-chain guards only; the commits==resolves
  *  gate is off-chain/advisory via `useWithdrawGate`). */
 export const clauseWithdrawRevertMessage = withdrawRevertMessage("clause");
-
-/** Extract the decoded revert (the shared preamble) and route it through the
- *  pure register-message mapper; falls through to the original error.
- *  Internal — the pure `clauseRegisterRevertMessage` above is the unit-tested
- *  surface. */
-function translateClauseRegisterRevert(err: unknown, clauseLabel: string): Error {
-    return translateContractRevert(err, (errorName, args) =>
-        clauseRegisterRevertMessage(errorName, args, clauseLabel));
-}
 
 // ── Write hooks ──────────────────────────────────────────────────────────────
 
@@ -224,7 +214,7 @@ export function useRegisterClause() {
             functionName: "registrationDeposit",
         });
 
-        const txHash = await publishTail({
+        const txHash = await simulateWriteVerify({
             client,
             writeContractAsync,
             address: registry,
@@ -233,7 +223,7 @@ export function useRegisterClause() {
             args: [clauseKey, uri],
             value: deposit,
             account: address,
-            translateRevert: (err) => translateClauseRegisterRevert(err, `${clauseId}@${version}`),
+            revertMessage: (errorName, args) => clauseRegisterRevertMessage(errorName, args, `${clauseId}@${version}`),
             failureMessage: "The clause was not registered.",
         });
         return { hash: txHash, clauseId, version, clauseKey, contentURI: uri };

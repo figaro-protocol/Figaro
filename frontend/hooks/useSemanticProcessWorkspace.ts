@@ -18,7 +18,7 @@ import { fetchAssemblyByHash } from "@/lib/protocol/useAssemblyRegistry";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
-import { useRegisterMember, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit, useWithdrawalCooldown } from "@/lib/member/useMembersRegistry";
+import { useRegisterMember, useUpdateProfile, useWithdrawDeposit, useWithdrawalCooldown } from "@/lib/member/useMembersRegistry";
 import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { createCapabilityExecutors } from "@/lib/semantic/createCapabilityExecutors";
@@ -103,7 +103,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const registerMember = useRegisterMember();
     const updateMemberProfile = useUpdateProfile();
     const withdrawMemberDeposit = useWithdrawDeposit();
-    const registrationDeposit = useRegistrationDeposit();
     const { data: withdrawalCooldown } = useWithdrawalCooldown();
     const {
         needsApproval,
@@ -222,7 +221,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         simulateUsage: usageRecorder.simulateUsage,
         recordUsage: usageRecorder.recordUsage,
         submitAttestation: attestationActions.submitAttestation,
-        registerMember: (metadataURI) => registerMember.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
+        registerMember: (metadataURI) => registerMember.register(metadataURI),
         updateMemberProfile: (metadataURI) => updateMemberProfile.updateProfile(metadataURI),
         withdrawMemberDeposit: () => withdrawMemberDeposit.withdraw(),
         confirmResolve: (plannedUsageWrites) => window.confirm([

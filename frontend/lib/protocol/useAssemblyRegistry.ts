@@ -18,9 +18,9 @@ import { safeJsonParse } from "@/lib/shared/safeJson";
 import {
     createUseWithdrawStake,
     sharedRegisterRevertMessage,
-    translateContractRevert,
     withdrawRevertMessage,
 } from "@/lib/protocol/useWithdrawStake";
+import type { RevertMessage } from "@/lib/shared/errors";
 import { createRegistryEventScan, useDesurfaced } from "@/lib/protocol/registryEventScan";
 import { fetchPinnedDocument, readRegistryBinding } from "@/lib/protocol/registryDocument";
 import { hydrateAnchoredAssembly, getRegisteredAgreementLoadError } from "@/lib/protocol/useAgreementRegistry";
@@ -72,13 +72,13 @@ interface PublishedAssembly {
     stakeWithdrawn: boolean;
 }
 
-/** Map an `AssemblyRegistry` revert into a human-readable Error. Used by
- *  `publish()` to surface a specific cause (composition already anchored,
+/** The `AssemblyRegistry.registerAssembly` revert table, by error name. Used
+ *  by `publish()` to surface a specific cause (composition already anchored,
  *  wrong deposit, empty fields) instead of viem's default "execution
- *  reverted" message. Falls through to the original error for anything we
- *  don't recognize. */
-export function translatePublishRevert(err: unknown, attemptedSlug: string): Error {
-    return translateContractRevert(err, (name, args) => {
+ *  reverted" message; a name it leaves unmapped falls to the shared
+ *  error-name translation. */
+export function assemblyRegisterRevertMessage(attemptedSlug: string): RevertMessage {
+    return (name, args) => {
         switch (name) {
             case "AssemblyAlreadyRegistered":
                 return `This assembly is already published — an identical composition is anchored on-chain as "${attemptedSlug}". Identity is the composition, so the same composition always maps to one binding; adopt the existing one rather than re-publishing.`;
@@ -87,7 +87,7 @@ export function translatePublishRevert(err: unknown, attemptedSlug: string): Err
             default:
                 return sharedRegisterRevertMessage(name, args);
         }
-    });
+    };
 }
 
 /**

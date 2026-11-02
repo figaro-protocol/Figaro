@@ -24,6 +24,37 @@ const FIGARO_ERROR_MESSAGES: Readonly<Record<string, string>> = {
     ProcessAlreadyResolved: "Process has already been resolved",
 };
 
+/** A contract's revert table: a decoded error name (and its args) to a
+ *  user-facing message, or null when the table has nothing to say. */
+export type RevertMessage = (
+    errorName: string | undefined,
+    args: readonly unknown[] | undefined,
+) => string | null;
+
+/** The message for any decoded revert: the FigaroCore wording when the name
+ *  is FigaroCore's, else the error name itself. */
+export function contractRevertMessage(errorName: string | undefined): string | null {
+    if (!errorName) return null;
+    return FIGARO_ERROR_MESSAGES[errorName] ?? errorName;
+}
+
+/**
+ * The ONE viem revert-extraction preamble: walk to the decoded
+ * `ContractFunctionRevertedError`, hand its errorName + args to the caller's
+ * message table, and fall through to the generic `toError` when the table
+ * has nothing to say (a wallet rejection, an RPC failure).
+ */
+export function translateContractRevert(err: unknown, message: RevertMessage): Error {
+    if (err instanceof BaseError) {
+        const revert = err.walk(
+            (e) => e instanceof ContractFunctionRevertedError,
+        ) as ContractFunctionRevertedError | undefined;
+        const translated = message(revert?.data?.errorName, revert?.data?.args);
+        if (translated) return new Error(translated);
+    }
+    return toError(err);
+}
+
 type ErrorLike = {
     shortMessage?: unknown;
     message?: unknown;
@@ -96,11 +127,8 @@ export function extractErrorMessage(
             (err) => err instanceof ContractFunctionRevertedError,
         );
         if (revertError instanceof ContractFunctionRevertedError) {
-            const errorName = revertError.data?.errorName;
-            if (errorName) {
-                const friendly = FIGARO_ERROR_MESSAGES[errorName];
-                return clamp(friendly ?? errorName, maxLength);
-            }
+            const message = contractRevertMessage(revertError.data?.errorName);
+            if (message) return clamp(message, maxLength);
         }
 
         const short = cause.shortMessage ?? "";

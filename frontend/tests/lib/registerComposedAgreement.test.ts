@@ -8,17 +8,19 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { agreementHashOf, type RegisteredAgreement } from "@figaro-protocol/sdk";
+import { ContractFunctionRevertedError, encodeErrorResult } from "viem";
 
 vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, agreementRegistry: "0x00000000000000000000000000000000000a9e01" } };
 });
-vi.mock("@/lib/shared/wagmi", () => ({
+vi.mock("@/lib/shared/wagmi", async () => ({
     publicClient: {},
-    activeChain: { id: 31337 },
+    activeChain: (await import("@/lib/shared/chains")).activeChain,
 }));
 
 import { registerAgreement } from "@/lib/designer/publishAssembly";
+import { activeChain } from "@/lib/shared/chains";
 
 const DESIGNER = "0x1111111111111111111111111111111111111111" as const;
 const DOC: RegisteredAgreement = {
@@ -35,7 +37,7 @@ function fakes(receiptStatus = "success") {
         simulateContract: vi.fn(async () => { calls.push("simulate"); return {}; }),
         waitForTransactionReceipt: vi.fn(async () => { calls.push("receipt"); return { status: receiptStatus }; }),
     };
-    type WriteConfig = { functionName: string; args: readonly unknown[]; value?: bigint };
+    type WriteConfig = { functionName: string; args: readonly unknown[]; value?: bigint; chain?: unknown };
     const writeContractAsync = vi.fn(async (_config: WriteConfig) => { calls.push("write"); return `0x${"77".repeat(32)}` as const; });
     const ipfs = { publishJSON: vi.fn(async (_data: unknown) => { calls.push("pin"); return { cid: "bafy", uri: "ipfs://bafy", path: "/ipfs/bafy", gatewayUrl: "http://127.0.0.1:8080/ipfs/bafy" }; }) };
     return { calls, client, writeContractAsync, ipfs };
@@ -54,6 +56,7 @@ describe("registerAgreement", () => {
         expect(write.functionName).toBe("registerAgreement");
         expect(write.args).toEqual([KEY, "ipfs://bafy"]);
         expect(write.value).toBe(STAKE);
+        expect(write.chain).toBe(activeChain);
         // The pinned document is the canonical form of the designer's document,
         // its words included — the key is over the clauses alone.
         expect(ipfs.publishJSON.mock.calls[0][0]).toEqual(DOC);
@@ -75,5 +78,18 @@ describe("registerAgreement", () => {
             client: client as never, writeContractAsync, address: DESIGNER, doc: DOC, agreementHash: KEY,
             ipfs, readBinding: async () => null,
         })).rejects.toThrow(/registration was not created/);
+    });
+
+    it("reports a registry revert by its error name, and sends nothing", async () => {
+        const { client, writeContractAsync, ipfs } = fakes();
+        const abi = [{ type: "error", name: "AgreementAlreadyRegistered", inputs: [] }] as const;
+        client.simulateContract.mockRejectedValue(new ContractFunctionRevertedError({
+            abi, data: encodeErrorResult({ abi, errorName: "AgreementAlreadyRegistered" }), functionName: "registerAgreement",
+        }));
+        await expect(registerAgreement({
+            client: client as never, writeContractAsync, address: DESIGNER, doc: DOC, agreementHash: KEY,
+            ipfs, readBinding: async () => null,
+        })).rejects.toThrow(/is already registered/);
+        expect(writeContractAsync).not.toHaveBeenCalled();
     });
 });

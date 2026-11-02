@@ -1,9 +1,9 @@
 // Core hook for Figaro protocol actions (unified commit, Commitment[] resolution)
 
-import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, usePublicClient } from "wagmi";
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, usePublicClient } from "wagmi";
+import type { Abi } from "viem";
 import { CORE_ABI, ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";
-import { TEST_HELPERS_ENABLED, windowSafe } from '@/lib/shared/testHelpers';
-import { activeChain } from "@/lib/shared/chains";
+import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import type { Commitment } from "@figaro-protocol/sdk";
 
 // Re-export for existing consumers
@@ -15,28 +15,31 @@ export const useFigaroActions = () => {
     const { writeContractAsync, data: hash, isPending } = useWriteContract();
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
     const { address: account } = useAccount();
-    const chainId = useChainId();
     const publicClient = usePublicClient();
 
-
-    // Use activeChain so wallets that enforce chain-matching
-    // (Coinbase Wallet, WalletConnect v2) don't reject the call.
-    const chainConfig = activeChain;
+    /** One write through the shared simulate → send → verify: the dry-run
+     *  catches a wrong contract address, a short ERC-20 allowance, an invalid
+     *  signature or any FigaroCore revert BEFORE the wallet prompt opens, and
+     *  the revert is reported by FigaroCore's error name. */
+    const send = async (
+        call: { address: `0x${string}`; abi: Abi; functionName: string; args: readonly unknown[] },
+        failureMessage: string,
+    ): Promise<`0x${string}`> => {
+        if (!publicClient) throw new Error("No public client available to send the transaction.");
+        if (!account) throw new Error("Wallet not connected.");
+        return simulateWriteVerify({ ...call, account, client: publicClient, writeContractAsync, failureMessage });
+    };
 
     // Token Approval: Approve ERC20 for Core contract
     const approveToken = async (
         tokenAddress: `0x${string}`,
         amount: bigint
-    ) => {
-        return writeContractAsync({
-            address: tokenAddress,
-            abi: ERC20_ABI,
-            functionName: "approve",
-            args: [CONTRACTS.core as `0x${string}`, amount],
-            account,
-            chain: chainConfig,
-        });
-    };
+    ) => send({
+        address: tokenAddress,
+        abi: ERC20_ABI as Abi,
+        functionName: "approve",
+        args: [CONTRACTS.core as `0x${string}`, amount],
+    }, "The token approval was not granted.");
 
     // Unified commit: root and sub-orders use the same function.
     // Root orders: processId = 0x00...00, expectedCumulativeValue = payment
@@ -45,55 +48,23 @@ export const useFigaroActions = () => {
         commitment: Commitment,
         buyerSig: `0x${string}`,
         sellerSig: `0x${string}`,
-    ): Promise<`0x${string}`> => {
-        // Pre-flight dry-run via eth_call. Catches: wrong contract address
-        // (no method match), insufficient ERC20 allowance, invalid sig, any
-        // FigaroCore revert path — all BEFORE the wallet prompt opens. If a
-        // browser extension swapped calldata between simulate and write,
-        // simulate would still have used clean data, so the simulate-pass
-        // is a strong "this would work" signal even if the write differs.
-        if (publicClient) {
-            await publicClient.simulateContract({
-                address: CONTRACTS.core as `0x${string}`,
-                abi: CORE_ABI,
-                functionName: "commit",
-                args: [commitment, buyerSig, sellerSig],
-                account,
-            });
-        }
-        return writeContractAsync({
-            address: CONTRACTS.core as `0x${string}`,
-            abi: CORE_ABI,
-            functionName: "commit",
-            args: [commitment, buyerSig, sellerSig],
-            account,
-            chain: chainConfig,
-        });
-    };
+    ): Promise<`0x${string}`> => send({
+        address: CONTRACTS.core as `0x${string}`,
+        abi: CORE_ABI as Abi,
+        functionName: "commit",
+        args: [commitment, buyerSig, sellerSig],
+    }, "The order was not committed.");
 
     // Resolve process: takes full Commitment[] (FigaroCore re-derives orderHash from each).
     const resolveProcess = async (
         processId: string,
         commitments: Commitment[]
-    ): Promise<`0x${string}`> => {
-        if (publicClient) {
-            await publicClient.simulateContract({
-                address: CONTRACTS.core as `0x${string}`,
-                abi: CORE_ABI,
-                functionName: "resolveProcess",
-                args: [processId as `0x${string}`, commitments],
-                account,
-            });
-        }
-        return writeContractAsync({
-            address: CONTRACTS.core as `0x${string}`,
-            abi: CORE_ABI,
-            functionName: "resolveProcess",
-            args: [processId as `0x${string}`, commitments],
-            account,
-            chain: chainConfig,
-        });
-    };
+    ): Promise<`0x${string}`> => send({
+        address: CONTRACTS.core as `0x${string}`,
+        abi: CORE_ABI as Abi,
+        functionName: "resolveProcess",
+        args: [processId as `0x${string}`, commitments],
+    }, "The process was not resolved.");
 
     return {
         // Token approval

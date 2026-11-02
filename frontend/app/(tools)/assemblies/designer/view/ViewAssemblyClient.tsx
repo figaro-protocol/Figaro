@@ -321,7 +321,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
      * already anchored (an unchanged fork, say: the name and descriptions sit
      * outside the hash), so publish could only revert. `undefined` is not yet
      * read, or a read that failed — publish stays open and its simulate remains
-     * the backstop (`translatePublishRevert`).
+     * the backstop (`assemblyRegisterRevertMessage`).
      */
     const reviewedHash = isPublishReview && review?.ok ? review.assemblyHash : null;
     const [anchoredBinding, setAnchoredBinding] = useState<{ registeredBy: `0x${string}` } | null | undefined>(undefined);

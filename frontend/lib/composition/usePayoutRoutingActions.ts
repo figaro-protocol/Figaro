@@ -5,19 +5,18 @@
  * through the composed public multisender (`payoutRouting.ts` owns the ABI
  * and leg vocabulary; `getMultisender` resolves the deployment).
  *
- * Same shape as `useSwapAndCommitActions` (simulate → write), with the one
- * extra step the aggregate token path needs: `disperseToken` pulls the batch
- * total via transferFrom, so an allowance below the total is topped up first
- * (approve → receipt → disperse). Each step waits its receipt and checks
- * status — a mined-but-reverted approve must surface, not flow on (the
- * publish-flow rule).
+ * Same shape as `useSwapAndCommitActions` (the shared simulate → send →
+ * verify, `simulateWriteVerify`), with the one extra step the aggregate token
+ * path needs: `disperseToken` pulls the batch total via transferFrom, so an
+ * allowance below the total is topped up first (approve → receipt →
+ * disperse). Each step waits its receipt and checks status — a
+ * mined-but-reverted approve must surface, not flow on.
  */
 import { useState } from "react";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
-import type { Hex } from "viem";
-import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
+import type { Abi, Hex } from "viem";
+import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
-import { activeChain } from "@/lib/shared/chains";
 import { getMultisender } from "@/lib/composition/contracts";
 import { DISPERSE_ABI, payoutTotal, validatePayoutLegs, type PayoutLeg } from "@/lib/composition/payoutRouting";
 
@@ -26,11 +25,6 @@ export function usePayoutRoutingActions() {
     const { address: account } = useAccount();
     const publicClient = usePublicClient();
     const [isRouting, setIsRouting] = useState(false);
-
-    const waitForSuccess = async (hash: Hex, label: string) => {
-        if (!publicClient) return;
-        await verifyTxSuccess(publicClient, hash, `${label} reverted on-chain.`);
-    };
 
     /** Route `legs` of `token` through the multisender in one atomic batch.
      *  Returns the disperse transaction hash. */
@@ -51,37 +45,30 @@ export function usePayoutRoutingActions() {
                 args: [account, multisender],
             }) as bigint;
             if (allowance < total) {
-                const approveTx = await writeContractAsync({
+                await simulateWriteVerify({
+                    client: publicClient,
+                    writeContractAsync,
                     address: token,
-                    abi: ERC20_ABI,
+                    abi: ERC20_ABI as Abi,
                     functionName: "approve",
                     args: [multisender, total],
                     account,
-                    chain: activeChain,
+                    failureMessage: "Token approval reverted on-chain.",
                 });
-                await waitForSuccess(approveTx, "Token approval");
             }
 
-            const args = [token, legs.map((l) => l.recipient), legs.map((l) => l.amount)] as const;
             // Pre-flight dry-run: an over-balance batch or a reverting leg
             // surfaces BEFORE the wallet prompt opens.
-            await publicClient.simulateContract({
+            return await simulateWriteVerify({
+                client: publicClient,
+                writeContractAsync,
                 address: multisender,
-                abi: DISPERSE_ABI,
+                abi: DISPERSE_ABI as Abi,
                 functionName: "disperseToken",
-                args,
+                args: [token, legs.map((l) => l.recipient), legs.map((l) => l.amount)],
                 account,
+                failureMessage: "Payout routing reverted on-chain.",
             });
-            const tx = await writeContractAsync({
-                address: multisender,
-                abi: DISPERSE_ABI,
-                functionName: "disperseToken",
-                args,
-                account,
-                chain: activeChain,
-            });
-            await waitForSuccess(tx, "Payout routing");
-            return tx;
         } finally {
             setIsRouting(false);
         }
