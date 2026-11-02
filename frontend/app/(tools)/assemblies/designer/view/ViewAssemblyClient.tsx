@@ -218,25 +218,27 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         });
                         return;
                     }
-                    // The binding is authoritative for registeredBy + withdrawn state
-                    // (registeredBy is also an indexed event topic, but reading the
-                    // binding also tells us whether the stake was already
-                    // reclaimed). A read failure falls back to the event's registeredBy
-                    // and a not-yet-withdrawn assumption.
-                    let registeredBy = log.args.registeredBy as `0x${string}`;
-                    let stakeWithdrawn = false;
+                    // The binding is authoritative for registeredBy and the stake's state.
+                    // An unread stake is never shown as live: a failed read is the
+                    // page's error, so nothing is surfaced on an assumed stake.
+                    let binding: readonly [`0x${string}`, bigint, boolean, string];
                     try {
-                        const binding = (await client.readContract({
+                        binding = (await client.readContract({
                             address: registry,
                             abi: ASSEMBLY_REGISTRY_ABI,
                             functionName: "bindings",
                             args: [assemblyHash],
                         })) as readonly [`0x${string}`, bigint, boolean, string];
-                        registeredBy = binding[0];
-                        stakeWithdrawn = binding[2];
-                    } catch {
-                        /* fall back to the event's registeredBy, stakeWithdrawn=false */
+                    } catch (err) {
+                        if (canceled) return;
+                        setResolved({
+                            kind: "error",
+                            message: extractErrorMessage(err, "The assembly's stake could not be read from the registry."),
+                        });
+                        return;
                     }
+                    const registeredBy = binding[0];
+                    const stakeWithdrawn = binding[2];
                     if (canceled) return;
                     const orders = assemblyToOrders(hydratedAssembly);
                     // The editorial name the designer published; the

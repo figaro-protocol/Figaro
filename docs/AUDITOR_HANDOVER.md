@@ -15,8 +15,8 @@ the review's is its own.
 | Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | set when an audit is engaged; the line counts are the tree's at the latest commit, the results the commits their rows name (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 14 contract files, 1,592 lines of code (3,838 physical); 3 deploy scripts, 398 lines of code (842 physical) |
-| Rust in scope | 4 crates, 22 files under `src/`, 6,993 lines of code (9,941 physical) net of their inline test modules |
+| Solidity in scope | 14 contract files, 1,595 lines of code (3,843 physical); 3 deploy scripts, 398 lines of code (842 physical) |
+| Rust in scope | 4 crates, 22 files under `src/`, 7,128 lines of code (10,143 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
