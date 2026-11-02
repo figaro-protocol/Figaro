@@ -5,33 +5,19 @@
  * has participated in (as buyer or seller).
  *
  * Live FigaroCore: orders are Active at commit time (no Pending state).
- * Only two events: OrderCommitted and OrderResolved. The fold is the SDK's
- * (`projectProcessGraph` + `walletRecord` — the same one `/data/explore`
- * answers wallet history with); this hook keeps only its own view mapping,
- * the per-process rollup `summarize` builds.
+ * History comes from the indexer's one reader (`getCoreEvents`) and live
+ * updates from `useWatchOrderEvents`, both over every order emitter. The
+ * fold is the SDK's (`walletOrders`); this hook keeps only its own view
+ * mapping, the per-process rollup `summarize` builds.
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { usePublicClient, useWatchContractEvent } from "wagmi";
-import type { WatchContractEventOnLogsParameter } from "viem";
-import {
-    parseOrderCommittedLogs,
-    parseOrderResolvedLogs,
-    type Address,
-    type CoreEvents,
-} from "@figaro-protocol/sdk";
-import { projectProcessGraph, walletRecord } from "@figaro-protocol/sdk/derive";
-import { CONTRACTS, CORE_ABI } from "@/lib/kernel/contracts";
+import { usePublicClient } from "wagmi";
+import type { CoreEvents } from "@figaro-protocol/sdk";
+import { CONTRACTS } from "@/lib/kernel/contracts";
 import { Order, OrderState, orderFromSdk, useOrderStore } from "@/lib/kernel/store";
-import {
-    getAllOrderCommitted,
-    getAllOrderResolved,
-} from "@/lib/kernel/indexer";
+import { getCoreEvents, useWatchOrderEvents, walletOrders } from "@/lib/kernel/indexer";
 import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
-
-/** The raw-log shape the SDK parsers take — cached rows and watcher logs both
- *  carry data/topics, so the one decoder runs over either. */
-type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
 
 function summarize(orders: Order[]): ProcessSummary[] {
     const map = new Map<string, Order[]>();
@@ -65,37 +51,21 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
     const eventsRef = useRef<CoreEvents>({ orderCommitted: [], orderResolved: [], processResolved: [] });
 
     const rebuild = useCallback((wallet: string) => {
-        const graph = projectProcessGraph(eventsRef.current);
-        const record = walletRecord(graph, wallet as Address);
-        const seen = new Set<string>();
-        const combined: Order[] = [];
-        for (const o of [...record.ordersAsBuyer, ...record.ordersAsSeller]) {
-            if (seen.has(o.orderHash)) continue;
-            seen.add(o.orderHash);
-            combined.push(orderFromSdk(o));
-        }
-        setSummaries(summarize(combined));
+        setSummaries(summarize(walletOrders(eventsRef.current, wallet).map(orderFromSdk)));
     }, []);
 
     useEffect(() => {
-        if (!address || !publicClient || !contractAddr) return;
+        const chainId = publicClient?.chain?.id;
+        if (!address || !publicClient || !chainId || !contractAddr) return;
 
         const client = publicClient;
         let canceled = false;
-        const chainId = client.chain?.id ?? 31337;
 
         async function load() {
             try {
-                const [committed, resolved] = await Promise.all([
-                    getAllOrderCommitted(client, chainId),
-                    getAllOrderResolved(client, chainId),
-                ]);
+                const { events } = await getCoreEvents(client, chainId!);
                 if (canceled) return;
-                eventsRef.current = {
-                    orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
-                    orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
-                    processResolved: [],
-                };
+                eventsRef.current = events;
                 rebuild(address!);
             } catch (e) {
                 console.warn("[useWalletProcessIds] indexer error:", e);
@@ -106,44 +76,20 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
         return () => { canceled = true; };
     }, [address, publicClient, contractAddr, processReloadKey, rebuild]);
 
-    const realEnabled = !!contractAddr;
-    const realAddr = realEnabled ? (contractAddr as `0x${string}`) : undefined;
     const normalizedAddress = address?.toLowerCase();
 
-    // Reference-stable onLogs: wagmi keys its watcher effect on the callback,
-    // so an inline arrow recreates the event filter every render and drops
-    // events that land between recreations (see walletProcessQueries.ts).
-    const onCommittedLogs = useCallback(
-        (logs: WatchContractEventOnLogsParameter<typeof CORE_ABI, "OrderCommitted">) => {
+    // Live batches append to the corpus; the fold dedupes by orderHash.
+    const onEvents = useCallback(
+        (events: CoreEvents) => {
             if (!normalizedAddress) return;
-            eventsRef.current.orderCommitted.push(...parseOrderCommittedLogs(logs as unknown as SdkLogs));
+            eventsRef.current.orderCommitted.push(...events.orderCommitted);
+            eventsRef.current.orderResolved.push(...events.orderResolved);
+            eventsRef.current.processResolved.push(...events.processResolved);
             rebuild(normalizedAddress);
         },
         [normalizedAddress, rebuild],
     );
-    useWatchContractEvent({
-        address: realAddr,
-        abi: CORE_ABI,
-        eventName: "OrderCommitted",
-        onLogs: onCommittedLogs,
-        enabled: realEnabled && !!normalizedAddress,
-    });
-
-    const onResolvedLogs = useCallback(
-        (logs: WatchContractEventOnLogsParameter<typeof CORE_ABI, "OrderResolved">) => {
-            if (!normalizedAddress) return;
-            eventsRef.current.orderResolved.push(...parseOrderResolvedLogs(logs as unknown as SdkLogs));
-            rebuild(normalizedAddress);
-        },
-        [normalizedAddress, rebuild],
-    );
-    useWatchContractEvent({
-        address: realAddr,
-        abi: CORE_ABI,
-        eventName: "OrderResolved",
-        onLogs: onResolvedLogs,
-        enabled: realEnabled,
-    });
+    useWatchOrderEvents(onEvents, !!contractAddr && !!normalizedAddress);
 
     return summaries;
 }

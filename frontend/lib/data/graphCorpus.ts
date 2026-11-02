@@ -9,16 +9,15 @@
  * recoverable, PROJECT the graphs, and let the caller ANSWER. Nothing is
  * re-derived here — the projections are `@figaro-protocol/sdk/derive`'s and
  * the events come from the frontend's EXISTING caches (`lib/kernel/indexer.ts`
- * for FigaroCore's own log, `lib/composition/indexer.ts` for attestations
- * across both resolution paths), so this module adds a fold, never a
- * second indexer.
+ * `getCoreEvents` for the order events, `lib/composition/indexer.ts` for
+ * attestations, each across both resolution paths), so this module adds a
+ * fold, never a second indexer.
  *
  * Three boundaries this reader states rather than papers over:
  *
- *   core events are read from FigaroCore alone here. The verifier emits the
- *   same order and process events for batched trade, filtered by its address;
- *   folding them into the process and resolution graphs is the readers'
- *   sitting on the punch-list. Attestations are already read from both
+ *   core events are read from both emitters: FigaroBatchVerifier emits the
+ *   Core's own order and process events for batched trade, so the process
+ *   and resolution graphs fold both paths. Attestations are read from both
  *   emitters and tagged.
  *
  *   substance is recovered AT THE EDGE, and often absent. An attestation's
@@ -39,13 +38,11 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Hex, PublicClient } from "viem";
 import {
-    parseOrderCommittedLogs,
-    parseOrderResolvedLogs,
-    parseProcessResolvedLogs,
     provenanceContentRef,
     agreementClauses,
     readUtilityTokenPin,
     type Address,
+    type OrderCommittedEvent,
     type SpecSource,
 } from "@figaro-protocol/sdk";
 import {
@@ -65,9 +62,7 @@ import {
     type VenueEvent,
 } from "@figaro-protocol/sdk/derive";
 import {
-    getAllOrderCommitted,
-    getAllOrderResolved,
-    getAllProcessResolved,
+    getCoreEvents,
     getReceiptLogsOf,
     type IndexedLog,
 } from "@/lib/kernel/indexer";
@@ -151,25 +146,6 @@ export function readAssemblyUtilityTokenPins(assemblies: readonly CorpusAssembly
     return pins;
 }
 
-/** Read FigaroCore's own log through the existing cache and shape it into the
- *  SDK's `CoreEvents` triple. Direct-path by construction (see the header). */
-async function readCoreEvents(client: PublicClient, chainId: number) {
-    const [committed, resolved, processResolved] = await Promise.all([
-        getAllOrderCommitted(client, chainId),
-        getAllOrderResolved(client, chainId),
-        getAllProcessResolved(client, chainId),
-    ]);
-    type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
-    return {
-        events: {
-            orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
-            orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
-            processResolved: parseProcessResolvedLogs(processResolved as unknown as SdkLogs),
-        },
-        committedLogs: committed,
-    };
-}
-
 /** How many commit receipts one pass reads at a time. */
 const RECEIPT_READ_BATCH = 8;
 
@@ -185,7 +161,7 @@ async function readCommitFundingLegs(
     client: PublicClient,
     chainId: number,
     committedLogs: readonly IndexedLog[],
-    orderCommitted: ReturnType<typeof parseOrderCommittedLogs>,
+    orderCommitted: readonly OrderCommittedEvent[],
 ): Promise<VenueEvent<SwapLeg>[]> {
     const coordinator = getWitnessSwapAndCommitCoordinator();
     if (!coordinator) return [];
@@ -310,9 +286,9 @@ async function readGraphCorpus(deps?: {
     const client = deps?.client ?? (publicClient as unknown as PublicClient);
     const chainId = deps?.chainId ?? activeChain.id;
 
-    // 1. FETCH — FigaroCore's log, and attestations from BOTH universes.
+    // 1. FETCH — the order events and the attestations, each from both emitters.
     const [{ events: core, committedLogs }, attestations] = await Promise.all([
-        readCoreEvents(client, chainId),
+        getCoreEvents(client, chainId),
         getAllAttestationRecords(client, chainId),
     ]);
     const fundingLegs = await readCommitFundingLegs(client, chainId, committedLogs, core.orderCommitted);

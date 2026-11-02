@@ -11,11 +11,14 @@
  *
  * Two surfaces consume this — the `/orders` page and the header turn-badge —
  * sharing one subscribe → fetch → deserialize → filter → accumulate path; they
- * diverge only in the `match` predicate the caller passes.
+ * diverge only in the `match` predicate the caller passes. A relayed payload
+ * still reads single-signed after its order is committed, so the shared path
+ * also drops every payload whose order is already on-chain
+ * (`useIsUncommitted`): both surfaces count the same orders.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { create } from "zustand";
-import { useAccount, useChainId, useWalletClient } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { hexEqual } from "@/lib/shared/evm";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
@@ -23,8 +26,9 @@ import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
 } from "@figaro-protocol/sdk/agent";
-import { verifyCommitmentSignature } from "@figaro-protocol/sdk";
+import { computeOrderHash, verifyCommitmentSignature, type CoreEvents } from "@figaro-protocol/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
+import { getCoreEvents, useWatchOrderEvents } from "@/lib/kernel/indexer";
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
 import { type IpfsService } from "@/lib/shared/ipfsService";
 import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro-protocol/sdk/agent";
@@ -80,6 +84,57 @@ export function awaitsMyBroadcast(p: CommitmentPayload, address: string): boolea
 }
 
 /**
+ * Is this payload's order still off-chain? Read from the indexer's one order
+ * reader and kept live by the order-event watcher, both over every order
+ * emitter. The predicate answers `false` while the read is in flight, when it
+ * failed, and for a payload whose order hash cannot be computed: an order
+ * whose chain state is unknown is not surfaced as pending.
+ */
+export function useIsUncommitted(): (payload: CommitmentPayload) => boolean {
+    const publicClient = usePublicClient();
+    const chainId = useChainId();
+    const core = CONTRACTS.core as `0x${string}` | undefined;
+    const enabled = !isE2EMockSession() && !!publicClient && !!chainId && !!core;
+    const [committed, setCommitted] = useState<ReadonlySet<string> | null>(null);
+
+    useEffect(() => {
+        setCommitted(null);
+        if (!enabled || !publicClient) return;
+        let canceled = false;
+        getCoreEvents(publicClient, chainId)
+            .then(({ events }) => {
+                if (!canceled) setCommitted(new Set(events.orderCommitted.map((e) => e.orderHash.toLowerCase())));
+            })
+            .catch((err) => {
+                if (!canceled) console.warn("[useIsUncommitted] order read failed:", err);
+            });
+        return () => {
+            canceled = true;
+        };
+    }, [enabled, publicClient, chainId]);
+
+    const onEvents = useCallback((events: CoreEvents) => {
+        if (events.orderCommitted.length === 0) return;
+        setCommitted((prev) =>
+            prev ? new Set([...prev, ...events.orderCommitted.map((e) => e.orderHash.toLowerCase())]) : prev,
+        );
+    }, []);
+    useWatchOrderEvents(onEvents, enabled);
+
+    return useCallback(
+        (payload: CommitmentPayload) => {
+            if (!committed || !core || !chainId) return false;
+            try {
+                return !committed.has(computeOrderHash(payload.commitment, chainId, core).toLowerCase());
+            } catch {
+                return false;
+            }
+        },
+        [committed, core, chainId],
+    );
+}
+
+/**
  * Dismissed-order store — a process-wide singleton so every
  * `usePendingSellerSignature` mount (header badge + /orders accept surface)
  * shares one dismiss/accept decision. Without it, each instance accumulates its
@@ -112,7 +167,8 @@ interface PendingEntry {
 
 /**
  * Subscribe to relayed payloads for the connected wallet, keeping those that
- * satisfy `match`. Returns the accumulated `pending` list plus `dismiss(index)`.
+ * satisfy `match` and whose order is not yet on-chain (`useIsUncommitted`).
+ * Returns the accumulated `pending` list plus `dismiss(index)`.
  * Dismissal is shared across every hook instance through a singleton store, so
  * accepting/dismissing on one surface immediately clears it everywhere.
  * Suppressed in `?e2e=mock` sessions (mock orders commit immediately and bypass
@@ -135,6 +191,7 @@ export function usePendingSellerSignature(
     const receivedOrderIds = useRef<Set<string>>(new Set());
     const subscribed = useRef(false);
     const isMock = isE2EMockSession();
+    const isUncommitted = useIsUncommitted();
 
     // Keep the latest predicate without re-subscribing — callers pass an inline
     // closure, but the subscription effect runs only on `address` (and wallet
@@ -234,11 +291,11 @@ export function usePendingSellerSignature(
     }, [address, hasWalletClient]);
 
     // Hide entries dismissed (or accepted) on ANY instance — the shared store
-    // is the single source of that decision. `pending`/`dismiss` index into
-    // this visible list.
+    // is the single source of that decision — and entries whose order is
+    // already on-chain. `pending`/`dismiss` index into this visible list.
     const visible = useMemo(
-        () => entries.filter((e) => !dismissed.has(e.orderId)),
-        [entries, dismissed],
+        () => entries.filter((e) => !dismissed.has(e.orderId) && isUncommitted(e.payload)),
+        [entries, dismissed, isUncommitted],
     );
     const pending = useMemo(() => visible.map((e) => e.payload), [visible]);
 

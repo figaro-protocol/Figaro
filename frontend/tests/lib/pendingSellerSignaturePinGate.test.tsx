@@ -31,6 +31,14 @@ vi.mock("wagmi", () => ({
     useAccount: () => useAccountMock(),
     useWalletClient: () => useWalletClientMock(),
     useChainId: () => 31337,
+    usePublicClient: () => CLIENT,
+}));
+const CLIENT = { chain: { id: 31337 } };
+
+// The order history the committed-order filter reads: no order is on-chain yet.
+vi.mock("@/lib/kernel/indexer", () => ({
+    getCoreEvents: async () => ({ events: { orderCommitted: [], orderResolved: [], processResolved: [] }, committedLogs: [] }),
+    useWatchOrderEvents: () => undefined,
 }));
 
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));

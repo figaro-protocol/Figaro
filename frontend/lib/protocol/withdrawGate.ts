@@ -10,9 +10,10 @@
  * `deriveAssemblyWithdrawGate` / `deriveAgreementWithdrawGate`, the last two
  * attributing an order by its verified agreement's decoded provenance
  * `{ agreementHash, assemblyHash }`) — this hook does
- * ONLY the I/O the SDK deliberately does not: read FigaroCore event log from
- * the chain, then fetch each in-flight order's pinned agreement from IPFS. It
- * never re-derives the count.
+ * ONLY the I/O the SDK deliberately does not: read the order events through
+ * the indexer (`getCoreEvents`, every order emitter, cached and chunked), then
+ * fetch each in-flight order's pinned agreement from IPFS. It never re-derives
+ * the count.
  *
  * The join is derived at read time, never stored: in-flight orders come from
  * the reconstructed topology; each order's agreement (hash-verified) names the
@@ -29,11 +30,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import {
-    parseOrderCommittedLogs,
-    parseOrderResolvedLogs,
-    parseProcessResolvedLogs,
-} from "@figaro-protocol/sdk";
+import type { PublicClient } from "viem";
 import {
     deriveInFlightOrders,
     deriveClauseWithdrawGate,
@@ -42,8 +39,9 @@ import {
     type InFlightAgreement,
     type WithdrawGate,
 } from "@figaro-protocol/sdk/derive";
-import { publicClient } from "@/lib/shared/wagmi";
+import { activeChain, publicClient } from "@/lib/shared/wagmi";
 import { CONTRACTS } from "@/lib/kernel/contracts";
+import { getCoreEvents } from "@/lib/kernel/indexer";
 import { fetchAgreement } from "@/lib/kernel/agreementFetch";
 import { isValidAddress } from "@/lib/shared/evm";
 
@@ -55,27 +53,14 @@ export type WithdrawClauseOrAssembly =
 /** Read every in-flight order off-chain, then resolve each to its committed
  *  agreement (best-effort — an un-witnessed order has no URI and resolves to
  *  null, which the SDK gate counts as unverified: surfaced, never blocking). */
-async function resolveInFlightAgreements(coreAddress: `0x${string}`): Promise<InFlightAgreement[]> {
-    // Read the order event logs directly (the SDK's `fetchCoreEvents` takes a
-    // strictly-typed PublicClient the frontend's standalone client doesn't
-    // unify with — the registry readers sidestep the same way), then hand the
-    // logs to the SDK parsers + the SDK in-flight derivation. The derivation is
-    // the SDK's; only the raw chain read is here. Both resolution paths: the
-    // verifier emits the Core's own order and process events for every batched
-    // commit and resolution, so an in-flight batched order gates a withdrawal
-    // exactly as a direct one does.
-    const verifier = CONTRACTS.batchVerifier;
-    const emitters = isValidAddress(verifier) && verifier.toLowerCase() !== coreAddress.toLowerCase()
-        ? [coreAddress, verifier]
-        : [coreAddress];
-    const logs = (await Promise.all(
-        emitters.map((address) => publicClient.getLogs({ address, fromBlock: 0n, toBlock: "latest" })),
-    )).flat();
-    const refs = deriveInFlightOrders({
-        orderCommitted: parseOrderCommittedLogs(logs),
-        orderResolved: parseOrderResolvedLogs(logs),
-        processResolved: parseProcessResolvedLogs(logs),
-    });
+async function resolveInFlightAgreements(): Promise<InFlightAgreement[]> {
+    // Both resolution paths: the verifier emits the Core's own order and
+    // process events for every batched commit and resolution, so an in-flight
+    // batched order gates a withdrawal exactly as a direct one does. The
+    // derivation is the SDK's; only the chain read is here, through the
+    // indexer's cached reader, chunked under a provider's block-range cap.
+    const { events } = await getCoreEvents(publicClient as unknown as PublicClient, activeChain.id);
+    const refs = deriveInFlightOrders(events);
     return Promise.all(
         refs.map(async (ref) => ({
             processId: ref.processId,
@@ -121,7 +106,7 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
         setIsLoading(true);
         setGate(null);
 
-        resolveInFlightAgreements(core)
+        resolveInFlightAgreements()
             .then((agreements) => {
                 if (canceled) return;
                 setGate(
