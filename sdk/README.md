@@ -1639,9 +1639,8 @@ A reader verifies a fetched spec by hashing the BYTES it fetched:
 writes an assembly or a member document by clause NAME; a published
 document carries keys. `resolveAuthoredClauseKeys` rewrites your OWN
 file — the `clauses` keys in a written agreement, `assemblyClauses` keys in a assembly;
-`disclosurePolicy[].clauseId`, `assemblyBindings[].coSellerBindings[].clauseId`
-(each becomes `clauseKey`) and `profileClauseValues` keys in a profile;
-`items[].clauseValues` keys and `items[].dataSold.clauseId` in a catalog — to
+`assemblyBindings[].coSellerBindings[].clauseId` (becomes `clauseKey`) and
+`profileClauseValues` keys in a profile; `items[].clauseValues` keys in a catalog — to
 the keys of the specs you loaded (`specs.list()`), matching each spec's
 `clauseId`, and its `version` too when you write `name@version`. It refuses a
 name two loaded specs share unless the file says which, and a name no loaded
@@ -2278,7 +2277,7 @@ registration at all.
   else is optional (`subjectAddress`, `description`, `specialty`, `location`,
   `branding`, `assets`, `acceptedTokens`, `defaultTokenAddress`,
   `profileClauseValues`, `assemblyBindings`, `buyerAssemblies`,
-  `disclosurePolicy`, `services`, and `catalogURI` — the pointer to the
+  `services`, and `catalogURI` — the pointer to the
   catalog). Token
   acceptance is an identity declaration, not a market position. Carries no
   role / archetype / category taxonomy — what a seller does is inferred from the
@@ -2307,36 +2306,18 @@ registration at all.
     surfaces the list). Without this field the cart has nowhere to read a
     sub-order co-seller's wallet from. The seller's ROLE in the assembly is
     event-derived, never declared here.
-  - `disclosurePolicy` is an array of `DisclosurePolicyEntry` — the member's
-    self-declared terms for the data they co-produce inside bonded processes
-    (the voluntary data market), each
-    `{ assemblyHash, clauseKey, posture, offered, whitelist?, calendar? }`. The
-    data a row names is DERIVED, never a stored taxonomy: `assemblyHash` (the
-    `AssemblyRegistry` key of an assembly the member binds) × `clauseKey` (the data's leaf clause) name clauses the member already composes.
-    `posture: "buyer" | "seller"` says which side the member co-produced the data on — members hold both, on the same terms structure. `offered` is the
-    toggle (`false` = explicit withholding); `whitelist` narrows who may buy/see
-    (absent = any counterparty, once offered); `calendar` says when
-    (`{ embargoDaysAfterResolution?, notBefore?, notAfter? }`). Prices never
-    appear here — a data product is priced as an item in the member's own
-    catalog (fixed | rate), the item referencing the class via `dataSold`.
-    Field absent = the paper-contract default: each party holds its own
-    copy; absence of a policy is NOT a policy of openness.
   - `buyerAssemblies` is an array of `BuyerAssemblySubscription` — the buyer's
     assembly SUBSCRIPTIONS, `{ assemblyHash }` each: which registered
     assemblies this member buys through and monetizes data from.
     Independent of `assemblyBindings` (the seller's list — a wallet does not
     buy through the assemblies it sells through); subscribing is the buyer's
-    verb, binding stays the seller's. Buyer-posture `disclosurePolicy` entries
-    derive their candidate classes from this list.
+    verb, binding stays the seller's.
 - **Catalog** (`MemberCatalogMetadata`) — the volatile item list pinned at
   `profile.catalogURI`. Required: `subjectAddress`, `items[]`, `version` — and
   `version` is a **string** (`"1"`, never `1`): `parseMemberCatalogDocument`
   throws `…version must be a string.` on a number rather than coercing it.
   Each item requires `id`, `name`, `price`, `available`; optional are
-  `description`, `category`, `image`, `dataSold` (marks a DATA-PRODUCT
-  item: `{ assemblyHash, clauseKey, posture }` referencing one of the
-  member's own declared data offers — the policy declares the terms,
-  this item is the price), physical measures (`massGrams`,
+  `description`, `category`, `image`, physical measures (`massGrams`,
   `volumeMl`, `lengthMm`/`widthMm`/`heightMm`), rate pricing
   (`pricingPolicy: "fixed" | "rate"`, `rateUnit`, `rateQuantitySource`), and
   the catalog-sourced `clauseValues` map. Split off the profile so an item
@@ -2487,50 +2468,23 @@ trade, so route by the field a clause DECLARES (`sourceProcesses`,
 `contentHandoff`, `licenseScope`) with `clauseByField`, never by matching a
 name.
 
-### 1. SELL — declare the terms, price the item
+### 1. SELL — the data product is a catalog item
 
-Two documents you already own (both from "Member Profile + Catalog Documents"
-above), each carrying exactly half of the offer:
-
-- The **profile's `disclosurePolicy`** carries the DISCLOSURE terms: one entry
-  per kind of data,
-  `{ assemblyHash, clauseKey, posture, offered, whitelist?, calendar? }`.
-  What a row names is derived, never a stored taxonomy — the assembly you bind
-  or subscribe to × the clause whose leaf holds the data × the side you traded
-  on. Absence of a row is the paper-contract default (each party holds its own
-  copy), **not** a policy of openness; `offered: false` is an explicit
-  withholding, which is a different statement.
-- The **catalog item's `dataSold`** carries the PRICE: `{ assemblyHash,
-  clauseKey, posture }` pointing at one of your own declared rows, plus the
-  ordinary `price` / `pricingPolicy` fields every other item uses. Prices never
-  appear in the policy, and the terms of the SALE (§2) ride the item's
-  `clauseValues`, not `dataSold`.
+A data product is an ordinary item in the seller's own catalog, sold through an
+assembly that composes the data clauses. Nothing about it lives on the profile:
+WHAT is sold and on WHICH terms are the data-license clause's own fields, filled
+on the item's `clauseValues` (the clause declares them catalog-filled, so the
+checkout folds them into the agreement both parties sign); the price is the
+ordinary `price` / `pricingPolicy` every item carries.
 
 ```ts
-import { parseMemberProfileDocument, parseMemberCatalogDocument } from "@figaro-protocol/sdk";
+import { parseMemberCatalogDocument } from "@figaro-protocol/sdk";
 
-// The record is a LEAF of an assembly this wallet already trades under — here,
-// the flight-record leaf of a survey assembly, co-produced as its seller. Pick
-// it by reading the assembly's own composed clauses, never from a list of
-// "data clauses": any leaf of any assembly you traded under can be a product.
-const dataOffer = {
-  assemblyHash: surveyAssemblyHash,
-  clauseKey: flightRecordKey,         // the leaf's clause key, read off the assembly's composed clauses
-  posture: "seller" as const,
-};
-
-const profile = {
-  name: "Survey operator",
-  catalogURI: "ipfs://…",
-  disclosurePolicy: [{ ...dataOffer, offered: true,
-                       calendar: { embargoDaysAfterResolution: 30 } }],
-};
 const catalog = {
   subjectAddress: me, version: "1",
   items: [{
     id: "telemetry-2026q3", name: "Flight telemetry — 2026 Q3",
     price: "50", available: true,              // HUMAN DECIMAL, like every item
-    dataSold: dataOffer,                        // WHAT is sold — the policy row above
     clauseValues: {                             // the SALE's catalog-filled terms, by clause key
       [licenseKey]: {
         licenseScope: "Flight telemetry — 2026 Q3 survey window",
@@ -2540,14 +2494,12 @@ const catalog = {
     },
   }],
 };
-parseMemberProfileDocument(profile);            // validate BEFORE pinning — both throw
-parseMemberCatalogDocument(catalog);        // on malformed input
+parseMemberCatalogDocument(catalog);            // validate BEFORE pinning — it throws on malformed input
 // …then pin + updateProfile exactly as the publish flow above does.
 ```
 
-Both postures are first class: a wallet sells the data it produced as a seller AND the data it produced as a buyer, on the same terms structure. A
-buyer-posture row draws its candidate assemblies from `buyerAssemblies`, a
-seller-posture row from `assemblyBindings`.
+A wallet sells data it co-produced as a seller or as a buyer the same way: the
+item names the source processes in the license clause, whichever side it held.
 
 ### 2. COMPOSE — the sale is an order like any other
 

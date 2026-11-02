@@ -18,10 +18,7 @@
 
 import { MemberEditGate } from "@/components/members/MemberEditGate";
 import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
-import type {
-    AssemblyBindingRecord,
-    DisclosurePolicyEntry,
-} from "@/lib/member/memberProfileMetadata";
+import type { AssemblyBindingRecord } from "@/lib/member/memberProfileMetadata";
 import { OnboardingAssembliesForm } from "@/components/members/OnboardingAssembliesForm";
 
 export function MemberEditAssemblies() {
@@ -30,7 +27,6 @@ export function MemberEditAssemblies() {
         seed: (existingProfile, update) => {
             update({
                 assemblies: existingProfile.assemblyBindings ?? [],
-                disclosurePolicy: existingProfile.disclosurePolicy ?? [],
             });
         },
     });
@@ -39,25 +35,11 @@ export function MemberEditAssemblies() {
         return <MemberEditGate gate={editor.gate} />;
     }
 
-    async function handleSave(
-        bindings: AssemblyBindingRecord[],
-        disclosurePolicy: DisclosurePolicyEntry[],
-    ): Promise<void> {
-        // Saving with an empty array is allowed — un-checking every
-        // assembly clears the bindings array on the profile (the
-        // member stays registered, just with no assembly-scoped
-        // discovery). The hook's merge keeps the field present-but-
-        // empty rather than stripping it. The disclosure policy rides
-        // along (its data derives from the bindings) — but an
-        // EMPTY policy clears the field instead of pinning `[]`: the
-        // no-policy state is the field's ABSENCE (the paper-contract
-        // default), and a member who never declared one must
-        // round-trip unchanged.
-        if (disclosurePolicy.length > 0) {
-            await editor.updater.save({ assemblyBindings: bindings, disclosurePolicy });
-        } else {
-            await editor.updater.save({ assemblyBindings: bindings }, { clear: ["disclosurePolicy"] });
-        }
+    async function handleSave(bindings: AssemblyBindingRecord[]): Promise<void> {
+        // Saving with an empty array is allowed — un-checking every assembly clears the
+        // bindings array on the profile (the member stays registered, with no
+        // assembly-scoped discovery). The hook's merge keeps the field present-but-empty.
+        await editor.updater.save({ assemblyBindings: bindings });
     }
 
     return (

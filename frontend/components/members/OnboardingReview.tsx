@@ -87,9 +87,6 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
         buyerAssemblies: state.buyerAssemblies && state.buyerAssemblies.length > 0
             ? state.buyerAssemblies
             : undefined,
-        disclosurePolicy: state.disclosurePolicy && state.disclosurePolicy.length > 0
-            ? state.disclosurePolicy
-            : undefined,
         services: state.services,
     };
 
@@ -377,38 +374,6 @@ export function OnboardingReview() {
                 ) : (
                     <p className="text-sm text-ink-muted">
                         No subscriptions — this member sells only.
-                    </p>
-                )}
-            </Card>
-
-            {/* Data disclosure */}
-            <Card className="p-6 space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                    <h2 className="text-heading-h2 text-ink-heading">Data disclosure</h2>
-                    <span className="flex items-center gap-3">
-                        <Link
-                            href="/members/assemblies"
-                            className="text-xs text-ink-muted hover:text-ink-heading underline"
-                        >
-                            Edit seller side →
-                        </Link>
-                        <Link
-                            href="/members/buyer"
-                            className="text-xs text-ink-muted hover:text-ink-heading underline"
-                        >
-                            Edit buyer side →
-                        </Link>
-                    </span>
-                </div>
-                {(profile?.disclosurePolicy?.length ?? 0) > 0 ? (
-                    <p className="text-sm text-ink-body" data-testid="review-disclosure-policy">
-                        Data offered for sale: {profile!.disclosurePolicy!.filter((e) => e.offered && e.posture === "seller").length} from the selling side,
-                        {" "}{profile!.disclosurePolicy!.filter((e) => e.offered && e.posture === "buyer").length} from the buying side.
-                    </p>
-                ) : (
-                    <p className="text-sm text-ink-muted">
-                        None declared — the default applies: each party holds its
-                        own copy of co-produced data; nothing is offered.
                     </p>
                 )}
             </Card>

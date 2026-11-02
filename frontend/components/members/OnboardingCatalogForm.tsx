@@ -20,7 +20,6 @@ import {
     onboardingStepLabel,
     useOnboardingState,
 } from "@/lib/member/onboardingState";
-import type { DisclosurePolicyEntry } from "@/lib/member/memberProfileMetadata";
 import { parseCatalogCsv } from "@/lib/member/parseCatalogCsv";
 import type {
     CatalogItemMetadata,
@@ -93,25 +92,9 @@ interface FormItem {
     pricingPolicy: "fixed" | "rate";
     rateUnit: string;
     rateQuantitySource: string;
-    /** Encoded data-sold reference for a DATA-PRODUCT item —
-     *  `assemblyHash|clauseKey|posture` of one of the member's own
-     *  declared data offers, "" for an ordinary item. The
-     *  disclosure policy declares the TERMS; this item is the PRICE. */
-    dataSoldKey: string;
 }
 
-/** Encode the data reference as a stable select-option key. */
-function dataSoldKeyOf(rc: NonNullable<CatalogItemMetadata["dataSold"]>): string {
-    return [rc.assemblyHash, rc.clauseKey, rc.posture].join("|");
-}
 
-function dataSoldFromKey(key: string): CatalogItemMetadata["dataSold"] {
-    const [assemblyHash, clauseKey, posture] = key.split("|");
-    if (!assemblyHash || !clauseKey || (posture !== "buyer" && posture !== "seller")) {
-        return undefined;
-    }
-    return { assemblyHash: assemblyHash as `0x${string}`, clauseKey: clauseKey as `0x${string}`, posture };
-}
 
 function uid(): string {
     return Math.random().toString(36).slice(2, 10);
@@ -135,7 +118,6 @@ function emptyItem(): FormItem {
         pricingPolicy: "fixed",
         rateUnit: "",
         rateQuantitySource: "checkout-quantity",
-        dataSoldKey: "",
     };
 }
 
@@ -157,7 +139,6 @@ function fromItem(item: CatalogItemMetadata, unitSystem: UnitSystem): FormItem {
         pricingPolicy: item.pricingPolicy ?? "fixed",
         rateUnit: item.rateUnit ?? "",
         rateQuantitySource: item.rateQuantitySource ?? "checkout-quantity",
-        dataSoldKey: item.dataSold ? dataSoldKeyOf(item.dataSold) : "",
     };
 }
 
@@ -178,7 +159,6 @@ function clauseValuesForSave(
 
 function toItem(form: FormItem, unitSystem: UnitSystem): CatalogItemMetadata {
     const clauseValues = clauseValuesForSave(form.clauseValues);
-    const dataSold = form.dataSoldKey ? dataSoldFromKey(form.dataSoldKey) : undefined;
     return {
         id: form.id,
         name: form.name.trim(),
@@ -193,7 +173,6 @@ function toItem(form: FormItem, unitSystem: UnitSystem): CatalogItemMetadata {
         widthMm: parseInputToMm(form.width, unitSystem),
         heightMm: parseInputToMm(form.height, unitSystem),
         ...(clauseValues && { clauseValues }),
-        ...(dataSold && { dataSold }),
         ...(form.pricingPolicy === "rate"
             ? {
                 pricingPolicy: "rate" as const,
@@ -282,14 +261,6 @@ export function OnboardingCatalogForm({
         update({ catalog: { items: validItems, unitSystem } });
     }, [items, unitSystem, hydrated, update]);
 
-    // Data-for-sale options: the member's declared data offers
-    // (offered entries, both postures) — an item referencing one is the
-    // PRICED form of that offer. Empty until the member declares some
-    // on the Sell through or Buy through step, both of which precede this one.
-    const dataSoldOptions = useMemo(
-        () => (state.disclosurePolicy ?? []).filter((e) => e.offered),
-        [state.disclosurePolicy],
-    );
 
     // Pricing-token symbol for the per-item price label.
     const defaultTokenSymbol = useMemo(() => {
@@ -432,7 +403,6 @@ export function OnboardingCatalogForm({
                         priceSymbol={defaultTokenSymbol}
                         unitSystem={unitSystem}
                         catalogClauses={catalogClauses}
-                        dataSoldOptions={dataSoldOptions}
                         onChange={(key, value) => setItemField(index, key, value)}
                         onRemove={items.length > 1 || isItemComplete(item) ? () => removeItem(index) : undefined}
                     />
@@ -508,14 +478,11 @@ interface ItemRowProps {
     /** Catalog-sourced clauses to author on this item (freight class, hazmat,
      *  cold-chain, …), derived live from the registry by the parent. */
     catalogClauses: readonly KnownClause[];
-    /** The member's declared data offers (offered entries) — the
-     *  options a data-product item can reference for its price. */
-    dataSoldOptions: readonly DisclosurePolicyEntry[];
     onChange: <K extends keyof FormItem>(key: K, value: FormItem[K]) => void;
     onRemove?: () => void;
 }
 
-function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, dataSoldOptions, onChange, onRemove }: ItemRowProps) {
+function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, onChange, onRemove }: ItemRowProps) {
     const idPrefix = `item-${item.id}`;
     return (
         <Card className="p-5 space-y-4">
@@ -582,40 +549,6 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, dataSol
                 />
             </FormField>
 
-            {/* Data product: reference one of the member's declared
-                data offers — the policy declared the terms, this
-                item is where the class gets its price. Ordinary items
-                leave it at "Not a data product". */}
-            {(dataSoldOptions.length > 0 || item.dataSoldKey) && (
-                <FormField label="Data for sale" inputId={`${idPrefix}-data-sold`}>
-                    <select
-                        id={`${idPrefix}-data-sold`}
-                        value={item.dataSoldKey}
-                        onChange={(e) => onChange("dataSoldKey", e.target.value)}
-                        className="w-full rounded border border-default px-3 py-2 text-sm"
-                        data-testid={`${idPrefix}-data-sold`}
-                    >
-                        <option value="">Not a data product</option>
-                        {dataSoldOptions.map((rc) => {
-                            const key = [rc.assemblyHash, rc.clauseKey, rc.posture].join("|");
-                            const title = getClauseSpec(rc.clauseKey)?.title ?? rc.clauseKey;
-                            return (
-                                <option key={key} value={key}>
-                                    {title} — as {rc.posture} ({truncateHex(rc.assemblyHash, { head: 10, tail: 0 })})
-                                </option>
-                            );
-                        })}
-                        {item.dataSoldKey &&
-                            !dataSoldOptions.some(
-                                (rc) => [rc.assemblyHash, rc.clauseKey, rc.posture].join("|") === item.dataSoldKey,
-                            ) && (
-                            <option value={item.dataSoldKey}>
-                                (no longer declared) {item.dataSoldKey.split("|")[1]}
-                            </option>
-                        )}
-                    </select>
-                </FormField>
-            )}
 
             {/* Pricing policy: fixed (the price IS the item price) or a RATE per
                 unit — the payment resolves at checkout as rate × quantity, the

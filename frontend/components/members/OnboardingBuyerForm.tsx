@@ -10,12 +10,10 @@ import { useMounted } from "@/hooks/useMounted";
 import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
 import type {
     BuyerAssemblySubscription,
-    DisclosurePolicyEntry,
 } from "@/lib/member/memberProfileMetadata";
 import { type AssemblyChoice, useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
-import { DisclosurePolicyEditor } from "@/components/members/DisclosurePolicyEditor";
-import { finishStep, type OnboardingStepChromeProps, toggledSet, usePostureDisclosure } from "@/components/members/OnboardingStepChrome";
+import { finishStep, type OnboardingStepChromeProps, toggledSet, useSubjectHydration } from "@/components/members/OnboardingStepChrome";
 
 /**
  * The Buy through step of the member wizard — the twin of Sell through. The member SUBSCRIBES the
@@ -30,17 +28,6 @@ import { finishStep, type OnboardingStepChromeProps, toggledSet, usePostureDiscl
  * member's own catalog.
  */
 
-/** Restrict the buyer-posture policy to the data of the
- *  assemblies currently subscribed — unsubscribing drops its rows from
- *  the saved policy (local editor state keeps them, so re-subscribing
- *  within the session restores the configuration). */
-function activeBuyerPolicy(
-    entries: DisclosurePolicyEntry[],
-    subscribedHashes: Set<string>,
-): DisclosurePolicyEntry[] {
-    return entries.filter((e) => subscribedHashes.has(e.assemblyHash));
-}
-
 function buildSubscriptions(subscribedHashes: Set<string>): BuyerAssemblySubscription[] {
     return [...subscribedHashes].map((h) => ({ assemblyHash: h as `0x${string}` }));
 }
@@ -48,15 +35,9 @@ function buildSubscriptions(subscribedHashes: Set<string>): BuyerAssemblySubscri
 export interface OnboardingBuyerFormProps extends OnboardingStepChromeProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
-     * `onSave(subscriptions, disclosurePolicy)` instead of routing to
-     * the next wizard step. The policy passed is the FULL list (seller
-     * entries carried through untouched) so an edit-mode save can't
-     * strand one side's declarations.
+     * `onSave(subscriptions)` instead of routing to the next wizard step.
      */
-    onSave?: (
-        subscriptions: BuyerAssemblySubscription[],
-        disclosurePolicy: DisclosurePolicyEntry[],
-    ) => Promise<void>;
+    onSave?: (subscriptions: BuyerAssemblySubscription[]) => Promise<void>;
 }
 
 export function OnboardingBuyerForm({
@@ -76,28 +57,20 @@ export function OnboardingBuyerForm({
     const choices: AssemblyChoice[] = choicesData ?? [];
 
     const [subscribed, setSubscribed] = useState<Set<string>>(new Set());
-    // This step edits BUYER-posture disclosure entries only (classes
-    // derive from the subscriptions). Seller-posture entries belong to
-    // the assemblies step and are carried through every write untouched.
-    const { policyEntries, setPolicyEntries, otherPostureEntries, hydrated, hydrate } =
-        usePostureDisclosure<DisclosurePolicyEntry>("buyer", subject);
+    const { hydrated, markHydrated } = useSubjectHydration(subject);
 
     useEffect(() => {
         if (hydrated || !loaded) return;
         setSubscribed(new Set((state.buyerAssemblies ?? []).map((s) => s.assemblyHash)));
-        hydrate(state.disclosurePolicy ?? []);
-    }, [hydrated, loaded, hydrate, state.buyerAssemblies, state.disclosurePolicy]);
+        markHydrated();
+    }, [hydrated, loaded, markHydrated, state.buyerAssemblies]);
 
     useEffect(() => {
         if (!hydrated) return;
         update({
             buyerAssemblies: buildSubscriptions(subscribed),
-            disclosurePolicy: [
-                ...otherPostureEntries,
-                ...activeBuyerPolicy(policyEntries, subscribed),
-            ],
         });
-    }, [subscribed, policyEntries, otherPostureEntries, hydrated, update]);
+    }, [subscribed, hydrated, update]);
 
     function toggle(assemblyHash: string) {
         setSubscribed((prev) => toggledSet(prev, assemblyHash));
@@ -106,10 +79,7 @@ export function OnboardingBuyerForm({
     function handleNext(e: React.FormEvent) {
         e.preventDefault();
         finishStep(
-            onSave && (() => onSave(
-                buildSubscriptions(subscribed),
-                [...otherPostureEntries, ...activeBuyerPolicy(policyEntries, subscribed)],
-            )),
+            onSave && (() => onSave(buildSubscriptions(subscribed))),
             () => router.push(onboardingNextHref("buyer")),
         );
     }
@@ -151,19 +121,10 @@ export function OnboardingBuyerForm({
                 })}
             </div>
 
-            {/* BUYER-side data-disclosure — classes derive from the
-                subscriptions selected above; nothing here is required. */}
-            <DisclosurePolicyEditor
-                choices={choices.filter((c) => subscribed.has(c.assemblyHash))}
-                entries={policyEntries}
-                onChange={setPolicyEntries}
-                postures={["buyer"]}
-            />
-
             {subscribed.size > 0 && (
                 <Card className="p-6 text-sm text-ink-body space-y-2">
                     <p>
-                        Price what you offered: list that data as items in{" "}
+                        Sell the data your trades produce by listing it as items in{" "}
                         <Link href="/members/catalog" className="text-ink-heading font-medium hover:underline">
                             your catalog
                         </Link>

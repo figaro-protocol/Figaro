@@ -1539,9 +1539,8 @@ every agreement clause's <code>clause</code>, the <code>clauseId</code> argument
 writes an assembly or a member document by clause NAME; a published
 document carries keys. <code>resolveAuthoredClauseKeys</code> rewrites your OWN
 file — the <code>clauses</code> keys in a written agreement, <code>assemblyClauses</code> keys in a assembly;
-<code>disclosurePolicy[].clauseId</code>, <code>assemblyBindings[].coSellerBindings[].clauseId</code>
-(each becomes <code>clauseKey</code>) and <code>profileClauseValues</code> keys in a profile;
-<code>items[].clauseValues</code> keys and <code>items[].dataSold.clauseId</code> in a catalog — to
+<code>assemblyBindings[].coSellerBindings[].clauseId</code> (becomes <code>clauseKey</code>) and
+<code>profileClauseValues</code> keys in a profile; <code>items[].clauseValues</code> keys in a catalog — to
 the keys of the specs you loaded (<code>specs.list()</code>), matching each spec's
 <code>clauseId</code>, and its <code>version</code> too when you write <code>name@version</code>. It refuses a
 name two loaded specs share unless the file says which, and a name no loaded
@@ -1901,7 +1900,7 @@ registration at all.</p>
 else is optional (<code>subjectAddress</code>, <code>description</code>, <code>specialty</code>, <code>location</code>,
 <code>branding</code>, <code>assets</code>, <code>acceptedTokens</code>, <code>defaultTokenAddress</code>,
 <code>profileClauseValues</code>, <code>assemblyBindings</code>, <code>buyerAssemblies</code>,
-<code>disclosurePolicy</code>, <code>services</code>, and <code>catalogURI</code> — the pointer to the
+<code>services</code>, and <code>catalogURI</code> — the pointer to the
 catalog). Token
 acceptance is an identity declaration, not a market position. Carries no
 role / archetype / category taxonomy — what a seller does is inferred from the
@@ -1931,27 +1930,12 @@ sub-order from; order is significant — checkout takes the first reachable, or
 surfaces the list). Without this field the cart has nowhere to read a
 sub-order co-seller's wallet from. The seller's ROLE in the assembly is
 event-derived, never declared here.</li>
-<li><code>disclosurePolicy</code> is an array of <code>DisclosurePolicyEntry</code> — the member's
-self-declared terms for the data they co-produce inside bonded processes
-(the voluntary data market), each
-<code>{ assemblyHash, clauseKey, posture, offered, whitelist?, calendar? }</code>. The
-data a row names is DERIVED, never a stored taxonomy: <code>assemblyHash</code> (the
-<code>AssemblyRegistry</code> key of an assembly the member binds) × <code>clauseKey</code> (the data's leaf clause) name clauses the member already composes.
-<code>posture: &quot;buyer&quot; | &quot;seller&quot;</code> says which side the member co-produced the data on — members hold both, on the same terms structure. <code>offered</code> is the
-toggle (<code>false</code> = explicit withholding); <code>whitelist</code> narrows who may buy/see
-(absent = any counterparty, once offered); <code>calendar</code> says when
-(<code>{ embargoDaysAfterResolution?, notBefore?, notAfter? }</code>). Prices never
-appear here — a data product is priced as an item in the member's own
-catalog (fixed | rate), the item referencing the class via <code>dataSold</code>.
-Field absent = the paper-contract default: each party holds its own
-copy; absence of a policy is NOT a policy of openness.</li>
 <li><code>buyerAssemblies</code> is an array of <code>BuyerAssemblySubscription</code> — the buyer's
 assembly SUBSCRIPTIONS, <code>{ assemblyHash }</code> each: which registered
 assemblies this member buys through and monetizes data from.
 Independent of <code>assemblyBindings</code> (the seller's list — a wallet does not
 buy through the assemblies it sells through); subscribing is the buyer's
-verb, binding stays the seller's. Buyer-posture <code>disclosurePolicy</code> entries
-derive their candidate classes from this list.</li>
+verb, binding stays the seller's.</li>
 </ul>
 </li>
 <li><strong>Catalog</strong> (<code>MemberCatalogMetadata</code>) — the volatile item list pinned at
@@ -1959,10 +1943,7 @@ derive their candidate classes from this list.</li>
 <code>version</code> is a <strong>string</strong> (<code>&quot;1&quot;</code>, never <code>1</code>): <code>parseMemberCatalogDocument</code>
 throws <code>…version must be a string.</code> on a number rather than coercing it.
 Each item requires <code>id</code>, <code>name</code>, <code>price</code>, <code>available</code>; optional are
-<code>description</code>, <code>category</code>, <code>image</code>, <code>dataSold</code> (marks a DATA-PRODUCT
-item: <code>{ assemblyHash, clauseKey, posture }</code> referencing one of the
-member's own declared data offers — the policy declares the terms,
-this item is the price), physical measures (<code>massGrams</code>,
+<code>description</code>, <code>category</code>, <code>image</code>, physical measures (<code>massGrams</code>,
 <code>volumeMl</code>, <code>lengthMm</code>/<code>widthMm</code>/<code>heightMm</code>), rate pricing
 (<code>pricingPolicy: &quot;fixed&quot; | &quot;rate&quot;</code>, <code>rateUnit</code>, <code>rateQuantitySource</code>), and
 the catalog-sourced <code>clauseValues</code> map. Split off the profile so an item
@@ -2058,29 +2039,18 @@ never a fixed corpus: a designer can compose different clauses for the same
 trade, so route by the field a clause DECLARES (<code>sourceProcesses</code>,
 <code>contentHandoff</code>, <code>licenseScope</code>) with <code>clauseByField</code>, never by matching a
 name.</p>
-<h3 id="1-sell-declare-the-terms-price-the-item" class="tsd-anchor-link">1. SELL — declare the terms, price the item<a href="#1-sell-declare-the-terms-price-the-item" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<p>Two documents you already own (both from &quot;Member Profile + Catalog Documents&quot;
-above), each carrying exactly half of the offer:</p>
-<ul>
-<li>The <strong>profile's <code>disclosurePolicy</code></strong> carries the DISCLOSURE terms: one entry
-per kind of data,
-<code>{ assemblyHash, clauseKey, posture, offered, whitelist?, calendar? }</code>.
-What a row names is derived, never a stored taxonomy — the assembly you bind
-or subscribe to × the clause whose leaf holds the data × the side you traded
-on. Absence of a row is the paper-contract default (each party holds its own
-copy), <strong>not</strong> a policy of openness; <code>offered: false</code> is an explicit
-withholding, which is a different statement.</li>
-<li>The <strong>catalog item's <code>dataSold</code></strong> carries the PRICE: <code>{ assemblyHash, clauseKey, posture }</code> pointing at one of your own declared rows, plus the
-ordinary <code>price</code> / <code>pricingPolicy</code> fields every other item uses. Prices never
-appear in the policy, and the terms of the SALE (§2) ride the item's
-<code>clauseValues</code>, not <code>dataSold</code>.</li>
-</ul>
-<pre><code class="ts"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-5">parseMemberProfileDocument</span><span class="hl-1">, </span><span class="hl-5">parseMemberCatalogDocument</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro-protocol/sdk&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">// The record is a LEAF of an assembly this wallet already trades under — here,</span><br/><span class="hl-3">// the flight-record leaf of a survey assembly, co-produced as its seller. Pick</span><br/><span class="hl-3">// it by reading the assembly&#39;s own composed clauses, never from a list of</span><br/><span class="hl-3">// &quot;data clauses&quot;: any leaf of any assembly you traded under can be a product.</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">dataOffer</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-5">assemblyHash:</span><span class="hl-1"> </span><span class="hl-5">surveyAssemblyHash</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">clauseKey:</span><span class="hl-1"> </span><span class="hl-5">flightRecordKey</span><span class="hl-1">,         </span><span class="hl-3">// the leaf&#39;s clause key, read off the assembly&#39;s composed clauses</span><br/><span class="hl-1">  </span><span class="hl-5">posture:</span><span class="hl-1"> </span><span class="hl-2">&quot;seller&quot;</span><span class="hl-1"> </span><span class="hl-6">as</span><span class="hl-1"> </span><span class="hl-4">const</span><span class="hl-1">,</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">profile</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-5">name:</span><span class="hl-1"> </span><span class="hl-2">&quot;Survey operator&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">catalogURI:</span><span class="hl-1"> </span><span class="hl-2">&quot;ipfs://…&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">disclosurePolicy:</span><span class="hl-1"> [{ ...</span><span class="hl-5">dataOffer</span><span class="hl-1">, </span><span class="hl-5">offered:</span><span class="hl-1"> </span><span class="hl-4">true</span><span class="hl-1">,</span><br/><span class="hl-1">                       </span><span class="hl-5">calendar:</span><span class="hl-1"> { </span><span class="hl-5">embargoDaysAfterResolution:</span><span class="hl-1"> </span><span class="hl-8">30</span><span class="hl-1"> } }],</span><br/><span class="hl-1">};</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">catalog</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-5">subjectAddress:</span><span class="hl-1"> </span><span class="hl-5">me</span><span class="hl-1">, </span><span class="hl-5">version:</span><span class="hl-1"> </span><span class="hl-2">&quot;1&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">items:</span><span class="hl-1"> [{</span><br/><span class="hl-1">    </span><span class="hl-5">id:</span><span class="hl-1"> </span><span class="hl-2">&quot;telemetry-2026q3&quot;</span><span class="hl-1">, </span><span class="hl-5">name:</span><span class="hl-1"> </span><span class="hl-2">&quot;Flight telemetry — 2026 Q3&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">price:</span><span class="hl-1"> </span><span class="hl-2">&quot;50&quot;</span><span class="hl-1">, </span><span class="hl-5">available:</span><span class="hl-1"> </span><span class="hl-4">true</span><span class="hl-1">,              </span><span class="hl-3">// HUMAN DECIMAL, like every item</span><br/><span class="hl-1">    </span><span class="hl-5">dataSold:</span><span class="hl-1"> </span><span class="hl-5">dataOffer</span><span class="hl-1">,                        </span><span class="hl-3">// WHAT is sold — the policy row above</span><br/><span class="hl-1">    </span><span class="hl-5">clauseValues:</span><span class="hl-1"> {                             </span><span class="hl-3">// the SALE&#39;s catalog-filled terms, by clause key</span><br/><span class="hl-1">      </span><span class="hl-5">[licenseKey]:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-5">licenseScope:</span><span class="hl-1"> </span><span class="hl-2">&quot;Flight telemetry — 2026 Q3 survey window&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-5">access:</span><span class="hl-1"> </span><span class="hl-2">&quot;stream&quot;</span><span class="hl-1">, </span><span class="hl-5">redistribution:</span><span class="hl-1"> </span><span class="hl-2">&quot;prohibited&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-5">sourceProcesses:</span><span class="hl-1"> [</span><span class="hl-5">processIdA</span><span class="hl-1">, </span><span class="hl-5">processIdB</span><span class="hl-1">],</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  }],</span><br/><span class="hl-1">};</span><br/><span class="hl-0">parseMemberProfileDocument</span><span class="hl-1">(</span><span class="hl-5">profile</span><span class="hl-1">);            </span><span class="hl-3">// validate BEFORE pinning — both throw</span><br/><span class="hl-0">parseMemberCatalogDocument</span><span class="hl-1">(</span><span class="hl-5">catalog</span><span class="hl-1">);        </span><span class="hl-3">// on malformed input</span><br/><span class="hl-3">// …then pin + updateProfile exactly as the publish flow above does.</span>
+<h3 id="1-sell-the-data-product-is-a-catalog-item" class="tsd-anchor-link">1. SELL — the data product is a catalog item<a href="#1-sell-the-data-product-is-a-catalog-item" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>A data product is an ordinary item in the seller's own catalog, sold through an
+assembly that composes the data clauses. Nothing about it lives on the profile:
+WHAT is sold and on WHICH terms are the data-license clause's own fields, filled
+on the item's <code>clauseValues</code> (the clause declares them catalog-filled, so the
+checkout folds them into the agreement both parties sign); the price is the
+ordinary <code>price</code> / <code>pricingPolicy</code> every item carries.</p>
+<pre><code class="ts"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-5">parseMemberCatalogDocument</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro-protocol/sdk&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">catalog</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-5">subjectAddress:</span><span class="hl-1"> </span><span class="hl-5">me</span><span class="hl-1">, </span><span class="hl-5">version:</span><span class="hl-1"> </span><span class="hl-2">&quot;1&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">items:</span><span class="hl-1"> [{</span><br/><span class="hl-1">    </span><span class="hl-5">id:</span><span class="hl-1"> </span><span class="hl-2">&quot;telemetry-2026q3&quot;</span><span class="hl-1">, </span><span class="hl-5">name:</span><span class="hl-1"> </span><span class="hl-2">&quot;Flight telemetry — 2026 Q3&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">price:</span><span class="hl-1"> </span><span class="hl-2">&quot;50&quot;</span><span class="hl-1">, </span><span class="hl-5">available:</span><span class="hl-1"> </span><span class="hl-4">true</span><span class="hl-1">,              </span><span class="hl-3">// HUMAN DECIMAL, like every item</span><br/><span class="hl-1">    </span><span class="hl-5">clauseValues:</span><span class="hl-1"> {                             </span><span class="hl-3">// the SALE&#39;s catalog-filled terms, by clause key</span><br/><span class="hl-1">      </span><span class="hl-5">[licenseKey]:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-5">licenseScope:</span><span class="hl-1"> </span><span class="hl-2">&quot;Flight telemetry — 2026 Q3 survey window&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-5">access:</span><span class="hl-1"> </span><span class="hl-2">&quot;stream&quot;</span><span class="hl-1">, </span><span class="hl-5">redistribution:</span><span class="hl-1"> </span><span class="hl-2">&quot;prohibited&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-5">sourceProcesses:</span><span class="hl-1"> [</span><span class="hl-5">processIdA</span><span class="hl-1">, </span><span class="hl-5">processIdB</span><span class="hl-1">],</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  }],</span><br/><span class="hl-1">};</span><br/><span class="hl-0">parseMemberCatalogDocument</span><span class="hl-1">(</span><span class="hl-5">catalog</span><span class="hl-1">);            </span><span class="hl-3">// validate BEFORE pinning — it throws on malformed input</span><br/><span class="hl-3">// …then pin + updateProfile exactly as the publish flow above does.</span>
 </code><button type="button">Copy</button></pre>
 
-<p>Both postures are first class: a wallet sells the data it produced as a seller AND the data it produced as a buyer, on the same terms structure. A
-buyer-posture row draws its candidate assemblies from <code>buyerAssemblies</code>, a
-seller-posture row from <code>assemblyBindings</code>.</p>
+<p>A wallet sells data it co-produced as a seller or as a buyer the same way: the
+item names the source processes in the license clause, whichever side it held.</p>
 <h3 id="2-compose-the-sale-is-an-order-like-any-other" class="tsd-anchor-link">2. COMPOSE — the sale is an order like any other<a href="#2-compose-the-sale-is-an-order-like-any-other" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <p>The sale composes the commerce clause plus, typically, a license clause and a
 hand-off clause; where the subject is <strong>this process's own</strong> co-produced data
@@ -2317,7 +2287,7 @@ socket via <code>HttpChannel</code>, not the in-process channel), and
 <li><a href="#data-products-sell-deliver-verify-stream"><span>Data products — sell, deliver, verify, stream</span></a></li>
 <li>
 <ul>
-<li><a href="#1-sell-declare-the-terms-price-the-item"><span>1. <wbr/>SELL — declare the terms, price the item</span></a></li>
+<li><a href="#1-sell-the-data-product-is-a-catalog-item"><span>1. <wbr/>SELL — the data product is a catalog item</span></a></li>
 <li><a href="#2-compose-the-sale-is-an-order-like-any-other"><span>2. <wbr/>COMPOSE — the sale is an order like any other</span></a></li>
 <li><a href="#3-deliver-verify--the-self-authenticating-leaf"><span>3. <wbr/>DELIVER + <wbr/>VERIFY — the self-<wbr/>authenticating leaf</span></a></li>
 <li><a href="#4-stream-is-the-repeated-game"><span>4. <wbr/>STREAM —  is the repeated game</span></a></li></ul></li>
