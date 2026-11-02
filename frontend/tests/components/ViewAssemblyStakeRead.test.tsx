@@ -1,7 +1,6 @@
 /**
- * The designer's assembly view reads the registry binding for the stake's state. An unread
- * stake is never shown as live: when the binding read fails, the page reports the failure
- * and offers no reclaim.
+ * The designer's assembly view reads the registry binding for the stake's state. Only a
+ * registration whose stake is read surfaces: when the binding read fails, nothing is rendered.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -54,13 +53,12 @@ import { ViewAssemblyClient } from "@/app/(tools)/assemblies/designer/view/ViewA
 describe("the assembly view never surfaces an unread stake as live", () => {
     beforeEach(() => { readContract.mockReset(); });
 
-    it("reports the failed binding read and offers no reclaim", async () => {
+    it("surfaces nothing when the binding read fails", async () => {
         readContract.mockImplementation(async () => { throw new Error("rpc unreachable"); });
-        render(<ViewAssemblyClient slug={SLUG} />);
-        await waitFor(() => expect(screen.getByTestId("assembly-view-error")).toBeTruthy());
-        expect(screen.getByTestId("assembly-view-error").textContent).toContain("rpc unreachable");
-        expect(screen.queryByTestId("view-withdraw-button")).toBeNull();
-        expect(readContract).toHaveBeenCalledTimes(1);
+        const { container } = render(<ViewAssemblyClient slug={SLUG} />);
+        await waitFor(() => expect(readContract).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(screen.queryByTestId("assembly-view-loading")).toBeNull());
+        expect(container.innerHTML).toBe("");
     });
 
     it("renders the published view once the binding is read", async () => {

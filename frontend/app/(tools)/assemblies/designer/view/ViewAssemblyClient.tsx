@@ -91,7 +91,9 @@ type ResolvedSource =
         /** Whether the registration stake has already been reclaimed. */
         stakeWithdrawn: boolean;
     }
-    | { kind: "error"; message: string };
+    | { kind: "error"; message: string }
+    /** The stake could not be read: nothing is surfaced. Only a registration with a stake read live surfaces. */
+    | { kind: "unsurfaced" };
 
 export function ViewAssemblyClient({ slug }: { slug: string }) {
     const router = useRouter();
@@ -219,8 +221,8 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         return;
                     }
                     // The binding is authoritative for registeredBy and the stake's state.
-                    // An unread stake is never shown as live: a failed read is the
-                    // page's error, so nothing is surfaced on an assumed stake.
+                    // Only a registration whose stake is read surfaces: a failed read
+                    // surfaces nothing.
                     let binding: readonly [`0x${string}`, bigint, boolean, string];
                     try {
                         binding = (await client.readContract({
@@ -229,12 +231,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                             functionName: "bindings",
                             args: [assemblyHash],
                         })) as readonly [`0x${string}`, bigint, boolean, string];
-                    } catch (err) {
+                    } catch {
                         if (canceled) return;
-                        setResolved({
-                            kind: "error",
-                            message: extractErrorMessage(err, "The assembly's stake could not be read from the registry."),
-                        });
+                        setResolved({ kind: "unsurfaced" });
                         return;
                     }
                     const registeredBy = binding[0];
@@ -439,6 +438,8 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             setForking(false);
         }
     }, [slug, resolved, router]);
+
+    if (resolved.kind === "unsurfaced") return null;
 
     if (resolved.kind === "loading") {
         return (
