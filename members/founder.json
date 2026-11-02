@@ -1,7 +1,7 @@
 {
   "subjectAddress": "0xB4592b12F02a46a8FD8529CE992f067403BDe3e9",
   "name": "Figaro Founder",
-  "description": "Founder of the Figaro protocol. A buyer-side member: procures work through the freelancer assembly and buys a stream of live data through the data stream assembly. The buyer's copies of co-produced data are offered under the disclosure policy below — every buyer is a seller of its data. The seller side of this profile (consulting, speaking, books) follows later on the same wallet.",
+  "description": "Founder of the Figaro protocol. A buyer-side member: procures work through the freelancer assembly and buys a stream of live data through the data stream assembly. The seller side of this profile (consulting, speaking, books) follows later on the same wallet.",
   "specialty": "protocol design — digital contracts, mechanism design",
   "acceptedTokens": [
     {
@@ -12,22 +12,11 @@
   ],
   "defaultTokenAddress": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
   "buyerAssemblies": [
-    { "assemblyHash": "0x4c57cd83dce23cbca9d2fe82d8a57134267819e62a1565bbb178509bc570ba74" },
-    { "assemblyHash": "0xed54b6ca70924ad49263a482d6f7d2bc36b86b3bca03196832a42686b1de3b22" }
-  ],
-  "disclosurePolicy": [
     {
-      "assemblyHash": "0xed54b6ca70924ad49263a482d6f7d2bc36b86b3bca03196832a42686b1de3b22",
-      "clauseId": "figaro-data-license",
-      "posture": "buyer",
-      "offered": true,
-      "calendar": { "embargoDaysAfterSettlement": 30 }
+      "assemblyHash": "0x4c57cd83dce23cbca9d2fe82d8a57134267819e62a1565bbb178509bc570ba74"
     },
     {
-      "assemblyHash": "0x4c57cd83dce23cbca9d2fe82d8a57134267819e62a1565bbb178509bc570ba74",
-      "clauseId": "figaro-content-handoff",
-      "posture": "buyer",
-      "offered": false
+      "assemblyHash": "0xed54b6ca70924ad49263a482d6f7d2bc36b86b3bca03196832a42686b1de3b22"
     }
   ]
 }

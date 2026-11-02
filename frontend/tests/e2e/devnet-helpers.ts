@@ -277,16 +277,6 @@ export interface SeedMemberProfile {
     /** The buyer's assembly SUBSCRIPTIONS — the assemblies this member buys
      *  through and monetizes records from (independent of the bindings). */
     buyerAssemblies?: Array<{ assemblyHash: `0x${string}` }>;
-    /** The member's data-disclosure policy — the data offered
-     *  (assembly assemblyHash × clauseKey × posture). */
-    disclosurePolicy?: Array<{
-        assemblyHash: `0x${string}`;
-        clauseKey: string;
-        posture: 'buyer' | 'seller';
-        offered: boolean;
-        whitelist?: `0x${string}`[];
-        calendar?: { embargoDaysAfterResolution?: number };
-    }>;
 }
 
 /** Result of `seedRegisteredMember`. Includes the on-chain address (derived

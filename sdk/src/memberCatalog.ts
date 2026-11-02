@@ -24,7 +24,6 @@ import {
     asRecord,
     asString,
 } from "./documentParse.js";
-import { isBytes32Hex } from "./types.js";
 
 /**
  * The member's preferred unit system for the catalog editor + display.
@@ -112,20 +111,6 @@ export interface CatalogItemMetadata {
      * clause's registered spec (off-chain) before publish.
      */
     clauseValues?: Record<string, Record<string, unknown>>;
-    /**
-     * The DATA this item sells, when the item is a data-market listing —
-     * one of the member's own declared data offers (assembly
-     * assemblyHash × clauseKey × the posture the member traded on).
-     * The disclosure policy on the profile declares the TERMS (offered,
-     * to whom, from when); this reference is where that class gets its
-     * PRICE, through the ordinary price fields above. Absent for every
-     * non-data item.
-     */
-    dataSold?: {
-        assemblyHash: `0x${string}`;
-        clauseKey: `0x${string}`;
-        posture: "buyer" | "seller";
-    };
 }
 
 /**
@@ -192,26 +177,6 @@ function parseItem(value: unknown, path: string): CatalogItemMetadata {
         rateUnit: asOptionalString(record.rateUnit, `${path}.rateUnit`),
         rateQuantitySource: asOptionalString(record.rateQuantitySource, `${path}.rateQuantitySource`),
         clauseValues: parseClauseValues(record.clauseValues, `${path}.clauseValues`),
-        dataSold: parseOptionalDataSold(record.dataSold, `${path}.dataSold`),
-    };
-}
-
-const DATA_SOLD_POSTURES = new Set<"buyer" | "seller">(["buyer", "seller"]);
-
-function parseOptionalDataSold(
-    value: unknown,
-    path: string,
-): CatalogItemMetadata["dataSold"] {
-    if (value === undefined) return undefined;
-    const record = asRecord(value, path);
-    const assemblyHash = record.assemblyHash;
-    if (!isBytes32Hex(assemblyHash)) {
-        throw new Error(`${path}.assemblyHash must be a 32-byte hex hash.`);
-    }
-    return {
-        assemblyHash,
-        clauseKey: asClauseKey(record.clauseKey, `${path}.clauseKey`),
-        posture: asEnum(record.posture, DATA_SOLD_POSTURES, `${path}.posture`),
     };
 }
 

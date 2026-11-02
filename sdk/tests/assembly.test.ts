@@ -312,21 +312,16 @@ describe("resolveAuthoredClauseKeys (seed-time authoring resolver)", () => {
     it("rewrites a member document's named clause references to clauseKey", () => {
         const profile = {
             name: "m",
-            disclosurePolicy: [{ assemblyHash: `0x${"1".repeat(64)}`, clauseId: "figaro-data-license", posture: "buyer", offered: true }],
             assemblyBindings: [{ bindingId: "b", coSellerBindings: [{ clauseId: "figaro-commerce", addresses: [] }] }],
             profileClauseValues: { "figaro-commerce": { a: 1 } },
         };
         const resolved = resolveAuthoredClauseKeys(profile, specs) as unknown as Record<string, any>;
-        expect(resolved.disclosurePolicy[0]).toEqual({
-            assemblyHash: `0x${"1".repeat(64)}`, clauseKey: keyOf("figaro-data-license"), posture: "buyer", offered: true,
-        });
         expect(resolved.assemblyBindings[0].coSellerBindings[0]).toEqual({ clauseKey: keyOf("figaro-commerce"), addresses: [] });
         expect(resolved.profileClauseValues).toEqual({ [keyOf("figaro-commerce")]: { a: 1 } });
 
-        const catalog = { items: [{ id: "i", clauseValues: { "figaro-commerce": {} }, dataSold: { assemblyHash: "0x", clauseId: "figaro-data-license", posture: "seller" } }] };
+        const catalog = { items: [{ id: "i", clauseValues: { "figaro-commerce": {} } }] };
         const c = resolveAuthoredClauseKeys(catalog, specs) as unknown as Record<string, any>;
         expect(c.items[0].clauseValues).toEqual({ [keyOf("figaro-commerce")]: {} });
-        expect(c.items[0].dataSold.clauseKey).toBe(keyOf("figaro-data-license"));
     });
 
     it("refuses a name two loaded specs share unless written name@version, and resolves the stated one", () => {

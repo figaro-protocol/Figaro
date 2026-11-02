@@ -1,6 +1,6 @@
 import type { CatalogItemMetadata, UnitSystem } from "@/lib/member/memberCatalogMetadata";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
-import type { AssemblyBindingRecord, DisclosurePolicyEntry, MemberAgentServices } from "@/lib/member/memberProfileMetadata";
+import type { AssemblyBindingRecord, MemberAgentServices } from "@/lib/member/memberProfileMetadata";
 
 /**
  * Buyer-side projection of a member's profile + catalog.
@@ -46,11 +46,6 @@ export interface MemberCatalog {
      *  assembly hash — the set a buyer's checkout reads to offer only
      *  sellers that bound the order's assembly (`bindsAssembly`). */
     assemblyBindings?: AssemblyBindingRecord[];
-    /** The member's data-disclosure policy (voluntary data market) —
-     *  which co-produced data is offered, to whom, when.
-     *  Absent = the paper-contract default: each party holds its own
-     *  copy; nothing is offered. */
-    disclosurePolicy?: DisclosurePolicyEntry[];
     /** Member's preferred display unit system for mass / volume. Storage
      *  is always metric; this field only governs UI formatting. */
     unitSystem?: UnitSystem;

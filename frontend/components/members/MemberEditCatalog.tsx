@@ -76,7 +76,6 @@ export function MemberEditCatalog() {
                 // Feed the data-for-sale select's options — the member's
                 // declared data offers; read-only here (the policy is
                 // edited on the assemblies / buyer surfaces).
-                disclosurePolicy: existingProfile.disclosurePolicy ?? [],
             });
         },
     });
