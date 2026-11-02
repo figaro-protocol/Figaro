@@ -20,20 +20,20 @@ a test file). Where a check runs, and what shows it is load-bearing:
 
 | Layer | Command | Runs | Fails under a mutation |
 |---|---|---|---|
-| Foundry | `forge test --via-ir` | the pre-commit hook; `foundry-ci` on every push, the fork tests included | `mewt` over every contract in scope: 912 mutants, 904 caught, 8 survivors each read as unreachable or equivalent (`AUDITOR_HANDOVER.md` § "Mutation testing, Solidity") |
+| Foundry | `forge test --via-ir` | the pre-commit hook; `foundry-ci` on every push, the fork tests included | `mewt` over every contract in scope: 912 mutants, 904 caught, 8 survivors each read as unreachable or equivalent (`AUDITOR_HANDOVER.md` § "Verification evidence") |
 | Halmos | `scripts/test-halmos.sh` | `foundry-ci` | the properties marked MUTATION-CHECKED in §9 (MembersRegistry 2, UsageCounter 2, the two designer registries 4); the seven `HalmosFigaroCore` properties are not mutation-checked |
 | Certora | `scripts/test-certora.sh` | the maintainer's gate — needs `CERTORAKEY`, never CI | `RpgfMinter`'s conservation, double-claim and eligibility rules and all three `BatchVerifierStateRoot` rules (§10); the other five specs are not mutation-checked |
 | Echidna | `scripts/test-echidna.sh` | the gate | not mutation-checked |
 | TLA+ | `scripts/test-tla.sh` | the gate | `WitnessSwapAndCommitCoordinator` 6 mutations, `ResolutionUniverses` 4 mutations + 4 reachability witnesses (§7), `RelayState` 12 (§7: the design switch, five lifecycle switches, five deferral switches, the resolve authorization's switch); `FigaroCore.tla` and `FlorinToken.tla` are not mutation-checked |
 | Lean 4 | `lake build` in `formal/lean/` | the gate | proof-checked; a mutation is a build failure |
-| Rust | `cargo test` | `prover-ci`: the guest crates on every push, the relay and the batch end-to-end on main | `cargo-mutants` over the guest crates: 617 mutants, 12 survivors each read as equivalent (`AUDITOR_HANDOVER.md` § "Mutation testing, Rust"); the relay is not mutation-tested |
+| Rust | `cargo test` | `prover-ci`: the guest crates on every push, the relay and the batch end-to-end on main | `cargo-mutants` over the guest crates: 617 mutants, 12 survivors each read as equivalent (`AUDITOR_HANDOVER.md` § "Verification evidence"); the relay is not mutation-tested |
 | SDK Vitest | `cd sdk && npm test` | `sdk-ci` | not mutation-checked; the encoders are held by the cross-language vectors and the differential fuzz (`prover-ci`) |
 | Agent runtime | `cd ecosystem-agents/runtime && npm test` | `sdk-ci` (the sandbox tests skip off macOS) | not mutation-checked |
 | Frontend Vitest | `cd frontend && npx vitest run` | `frontend-ci` | not mutation-checked |
 | Playwright | `cd frontend && npx playwright test --project=devnet` | `devnet-e2e-ci` runs `orders-accept` on push and the whole `devnet` project nightly | not mutation-checked |
 
 Each component's status — every bench's result and the commit it ran at — is
-§14, read from the runs; the earlier runs' figures and Certora report URLs are
+§14, read from the runs; the coverage, mutation, static-analysis and real-proof figures are
 `AUDITOR_HANDOVER.md` § "Verification evidence".
 
 ---
