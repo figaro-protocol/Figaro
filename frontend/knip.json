@@ -1,8 +1,19 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": ["axe-core"],
+  "entry": [
+    "scripts/**/*.{mjs,cjs}",
+    "scripts/webpack/*.cjs!"
+  ],
+  "project": [
+    "**/*.{js,mjs,cjs,ts,tsx}!",
+    "!tests/**!",
+    "!scripts/**/*.mjs!"
+  ],
   "ignore": [
     "tests/e2e/fixtures/inject-ethereum-multi.js",
-    "lib/agent/useDidWeb.ts",
+    "lib/composition/compositionTarget.ts",
     "public/sdk-api/**"
   ]
 }

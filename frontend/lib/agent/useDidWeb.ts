@@ -27,7 +27,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 export type { DIDDocument };
 
 /**
- * @public — agent-integration surface. Resolve a did:web identifier to its DID
+ * Agent-integration surface. Resolve a did:web identifier to its DID
  * Document. Returns `{ document, error, isLoading }`. Consumed by
  * `useDidConsistency` (and available directly for other resolution surfaces).
  */

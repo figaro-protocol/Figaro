@@ -1,9 +1,6 @@
 "use client";
 
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
-import { activeChain } from "@/lib/shared/chains";
-import { compositionTarget } from "@/lib/composition/compositionTarget";
-import { parseToken } from "@/lib/shared/utils";
+import { useAccount } from "wagmi";
 
 /**
  * useCompositionActions — the ONE interface→handler dispatch seam for the fifth
@@ -42,8 +39,6 @@ export interface ComposeContext {
 
 export function useCompositionActions() {
     const { address } = useAccount();
-    const publicClient = usePublicClient();
-    const { writeContractAsync } = useWriteContract();
 
     const compose = async (ctx: ComposeContext): Promise<void> => {
         switch (ctx.interface) {

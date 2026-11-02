@@ -55,13 +55,11 @@ interface CartStore {
      */
     removeLine: (catalogItemId: string, sellerId: string) => void;
     clearCart: () => void;
-    getTotalPrice: () => string;
-    getItemCount: () => number;
 }
 
 export const useCartStore = create<CartStore>()(
     persist(
-        (set, get) => ({
+        (set) => ({
             items: [],
 
             addItem: (newItem) =>
@@ -111,17 +109,6 @@ export const useCartStore = create<CartStore>()(
                 })),
 
             clearCart: () => set({ items: [] }),
-
-            getTotalPrice: () => {
-                const items = get().items;
-                const total = items.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
-                return total.toFixed(4);
-            },
-
-            getItemCount: () => {
-                const items = get().items;
-                return items.reduce((sum, item) => sum + item.quantity, 0);
-            },
         }),
         { name: "figaro-seller-cart" }
     )

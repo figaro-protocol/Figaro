@@ -13,6 +13,7 @@
         "type-check": "tsc --noEmit",
         "knip": "knip",
         "knip:files": "knip --include files",
+        "knip:prod": "knip --production",
         "test": "vitest",
         "test:ui": "vitest --ui",
         "test:coverage": "vitest --coverage",

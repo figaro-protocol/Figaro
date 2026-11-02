@@ -135,7 +135,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     HTTP (`postToAgentEndpoint`, the HttpChannel wire — mixed human×agent races are
     this branch); wallet candidates ride the coordination channel. Rendered by
     `components/runtime/DispatchRacePanel.tsx` beside the picker.
-  - *The commitment choreography:* `draftOrders.ts` and `orderPreview.ts` carry the
+  - *The commitment choreography:* `orderPreview.ts` carries the
     confirm gate — before every sign AND the standalone commit broadcast — plus the
     chain-time deadline. `orderCommitmentFlow.ts` carries buyer sign/share, the
     counterparty accept, the race candidate's `counterSignAndReturn`, and the
@@ -247,7 +247,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `ClausesList.tsx` — clauses catalog on the landing.
 - Shared DAG canvas: `components/runtime/TopologyCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in).
 
-**State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage); agreements via `lib/designer/syntheticAgreementStore.ts` (`saveAgreement`). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyToDraft.ts` (fork a published assembly's assembly into an editable draft).
+**State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyToDraft.ts` (fork a published assembly's assembly into an editable draft).
 
 **The agreement build (composition rules).** The published **assembly is the faithful statement** of what the designer composed; `buildOrderAgreement` (`@figaro-protocol/sdk`, fed by the live-cache `specSource()` adapter) is a **pure, deterministic projection** of it — the composed clauses, plus the spec-declared mandatory defaults, and nothing more. It synthesizes no meaning the assembly + specs don't determine and reads no clause by name: mandatory clauses (`block.design.article: "mandatory"` — commerce, topology) enter a new agreement as the DAO's live registrations the canvas reads from the registry (`mandatoryClausesForCanvas`), written in generically (`composeOrderAgreement`; a never-seen mandatory clause in a picked agreement merges with zero code). The merge is at composition only: `buildAssembly` refuses an order with no pick and a bound agreement lacking a clause of its pick, and checkout fills values and writes the topology, never adding or dropping a clause. Never a hardcoded clause→clause map, a named-clause branch, or a checkout-time guess; and no clause auto-spawns a DAG node — nodes are the designer's, drawn on the canvas.
 

@@ -13,6 +13,8 @@ interface RuntimeServicesProviderProps {
     children: ReactNode;
 }
 
+/** Inject services into the hooks below it (test-only: production reads the
+ *  context default). @internal */
 export function RuntimeServicesProvider({
     services = DEFAULT_RUNTIME_SERVICES,
     children,

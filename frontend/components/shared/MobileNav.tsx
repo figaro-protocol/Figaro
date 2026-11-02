@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Menu from "@/components/icons/Menu";
 import X from "@/components/icons/X";
@@ -12,10 +12,6 @@ import { Disclosure } from "@/components/ui/Disclosure";
 
 interface MobileNavProps {
     links?: NavLink[];
-    logo?: React.ReactNode;
-    /** Optional CTA pinned to the top of the slide-out drawer. No current
-     *  tier passes one; the entry stays for a tier that does. */
-    topCta?: ReactNode;
 }
 
 interface NavGroup {
@@ -83,7 +79,7 @@ function sectionHoldingReader(groups: NavGroup[], pathname: string): string | nu
  * RULE + WEIGHT is current. pl-3.5 (14px) + the 2px rule restores px-4's 16px
  * inset, so a current row's label does not shift against its neighbors.
  */
-export function MobileNav({ links, logo, topCta }: MobileNavProps) {
+export function MobileNav({ links }: MobileNavProps) {
     links = links ?? NAV_LINKS;
     const [isOpen, setIsOpen] = useState(false);
     const [openSection, setOpenSection] = useState<string | null>(null);
@@ -234,11 +230,9 @@ export function MobileNav({ links, logo, topCta }: MobileNavProps) {
                     >
                         {/* Menu Header */}
                         <div className="flex items-center justify-between gap-sm border-b border-default px-md py-sm">
-                            {logo || (
-                                <span className="text-heading-h3 text-ink-heading">
-                                    Figaro<span className="align-super text-xs ml-1" aria-label="registered trademark">®</span> Protocol
-                                </span>
-                            )}
+                            <span className="text-heading-h3 text-ink-heading">
+                                Figaro<span className="align-super text-xs ml-1" aria-label="registered trademark">®</span> Protocol
+                            </span>
                             <button
                                 onClick={close}
                                 className="flex min-h-11 min-w-11 items-center justify-center rounded-tile border-0 bg-transparent p-2 text-ink-muted hover:bg-subtle-hover hover:text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
@@ -247,15 +241,6 @@ export function MobileNav({ links, logo, topCta }: MobileNavProps) {
                                 <X className="w-5 h-5" aria-hidden="true" />
                             </button>
                         </div>
-
-                        {/* Optional top CTA — caller-controlled; currently no
-                             tier passes one. (app) must never surface a
-                             marketing CTA here. */}
-                        {topCta && (
-                            <div className="border-b border-default p-md">
-                                {topCta}
-                            </div>
-                        )}
 
                         {/* Navigation */}
                         {/* No horizontal padding: rows run to the drawer's own
