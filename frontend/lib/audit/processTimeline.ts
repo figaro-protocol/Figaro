@@ -87,13 +87,13 @@ function bigintStr(v: unknown): string {
     return String(v);
 }
 
-/** An amount in the process token's own units, its `decimals()` read from the chain; the raw
- *  base-unit integer, marked as such, when the read failed — never a magnitude on a stand-in. */
+/** An amount in the process token's own units, its `decimals()` read from the chain; nothing when
+ *  the read failed — an amount not derived from the network is not surfaced. */
 function amountIn(decimals: number | undefined) {
     return (v: unknown): string => {
-        if (v === undefined || v === null) return "0";
+        if (v === undefined || v === null) return "";
         const n = typeof v === "bigint" ? v : BigInt(String(v));
-        return decimals === undefined ? `${n.toString()} (base units)` : formatUnits(n, decimals);
+        return decimals === undefined ? "" : formatUnits(n, decimals);
     };
 }
 
