@@ -17,7 +17,7 @@
  * serializable.
  */
 
-import { getAbiItem, type Abi, type PublicClient } from "viem";
+import { erc20Abi, formatUnits, getAbiItem, type Abi, type PublicClient } from "viem";
 import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { ATTESTATION_COORDINATOR_ABI } from "@figaro-protocol/sdk";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
@@ -87,14 +87,14 @@ function bigintStr(v: unknown): string {
     return String(v);
 }
 
-function weiToDecimal(v: unknown): string {
-    if (v === undefined || v === null) return "0";
-    const n = typeof v === "bigint" ? v : BigInt(String(v));
-    const whole = n / 10n ** 18n;
-    const frac = n % 10n ** 18n;
-    if (frac === 0n) return whole.toString();
-    const fracStr = frac.toString().padStart(18, "0").replace(/0+$/, "");
-    return `${whole}.${fracStr}`;
+/** An amount in the process token's own units, its `decimals()` read from the chain; the raw
+ *  base-unit integer, marked as such, when the read failed — never a magnitude on a stand-in. */
+function amountIn(decimals: number | undefined) {
+    return (v: unknown): string => {
+        if (v === undefined || v === null) return "0";
+        const n = typeof v === "bigint" ? v : BigInt(String(v));
+        return decimals === undefined ? `${n.toString()} (base units)` : formatUnits(n, decimals);
+    };
 }
 
 async function getBlockTimestamp(
@@ -180,6 +180,18 @@ export async function buildProcessTimeline(
         abi: CORE_ABI,
         eventName: "OrderCommitted",
     }));
+
+    // One currency per process (the Core's rule), so one decimals() read covers every amount.
+    const processCurrency = (committedLogs[0]?.args as { currency?: `0x${string}` } | undefined)?.currency;
+    let processDecimals: number | undefined;
+    if (processCurrency) {
+        try {
+            processDecimals = Number(await client.readContract({ address: processCurrency, abi: erc20Abi, functionName: "decimals" }));
+        } catch {
+            processDecimals = undefined;
+        }
+    }
+    const weiToDecimal = amountIn(processDecimals);
 
     for (const log of committedLogs) {
         const a = log.args as Partial<{

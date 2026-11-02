@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/shared/Link";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
+import { activeChain } from "@/lib/shared/chains";
 import { formatToken } from "@/lib/shared/utils";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -455,7 +456,7 @@ export function OnboardingReview() {
                     <p className="text-sm text-ink-body">
                         Stake:{" "}
                         <span className="font-semibold text-ink-heading">
-                            {formatToken(deposit)} ETH
+                            {formatToken(deposit, activeChain.nativeCurrency.decimals)} tokens
                         </span>
                         {" "}— you get it back when you leave the registry, {cooldown}.
                         Withdrawing de-lists you from discovery; the stake is what

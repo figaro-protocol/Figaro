@@ -37,7 +37,7 @@ import { AgreementReview, commerceLineItems } from "@/components/runtime/Agreeme
 import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
-import { formatToken, parseToken } from "@/lib/shared/utils";
+import { parseToken, tokenFigure } from "@/lib/shared/utils";
 import { maxUint256 } from "viem";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro-protocol/sdk/agent";
@@ -211,9 +211,9 @@ function SignPageContent() {
     // The RFQ leg: this wallet names its price under the buyer's ceiling.
     const [quotePrice, setQuotePrice] = useState("");
     const handleQuoteReturn = async () => {
-        if (!parsed || !quotePrice.trim()) return;
+        if (!parsed || !quotePrice.trim() || tokenDecimals === undefined) return;
         try {
-            const returned = await quoteAndReturn(parsed, parseToken(quotePrice.trim(), tokenDecimals ?? 18));
+            const returned = await quoteAndReturn(parsed, parseToken(quotePrice.trim(), tokenDecimals));
             setParsed(returned);
         } catch {
             // Error state handled by the order commitment flow.
@@ -448,7 +448,7 @@ function SignPageContent() {
                                         <span data-testid={`sign-listed-price-listed-${line.itemId ?? i}`}>{line.listedPrice ?? "—"}</span>{" "}
                                         {listedSymbol ?? ""} · signed{" "}
                                         <span data-testid={`sign-listed-price-signed-${line.itemId ?? i}`}>
-                                            {/^\d+$/.test(line.unitPrice) ? formatToken(BigInt(line.unitPrice), tokenDecimals) : line.unitPrice}
+                                            {/^\d+$/.test(line.unitPrice) ? tokenFigure(BigInt(line.unitPrice), tokenDecimals) : line.unitPrice}
                                         </span>{" "}
                                         {currencySymbol ?? ""} each
                                     </span>
@@ -457,7 +457,7 @@ function SignPageContent() {
                             <div className="flex justify-between font-medium">
                                 <span>Payment you sign</span>
                                 <span className="tabular-nums" data-testid="sign-listed-prices-payment">
-                                    {formatToken(commitment.payment, tokenDecimals)} {currencySymbol ?? ""}
+                                    {tokenFigure(commitment.payment, tokenDecimals)} {currencySymbol ?? ""}
                                 </span>
                             </div>
                         </div>
@@ -467,7 +467,7 @@ function SignPageContent() {
                     <div className="text-xs space-y-1.5 text-ink-body border-t border-default pt-3">
                         <div className="flex justify-between">
                             <span>{myBondLabel}</span>
-                            <span>{formatToken(myBondAmount, tokenDecimals)} tokens</span>
+                            <span>{tokenFigure(myBondAmount, tokenDecimals)} tokens</span>
                         </div>
                         {!isRoot && (
                             <div className="flex justify-between">
@@ -563,7 +563,6 @@ function SignPageContent() {
                                     candidates={sellerFundingCandidates}
                                     party={address as `0x${string}`}
                                     currencySymbol={currencySymbol ?? ""}
-                                    decimals={tokenDecimals}
                                     fundingToken={sellerFundingToken}
                                     onSelect={setSellerFundingToken}
                                     authorization={sellerFunding}
@@ -586,7 +585,7 @@ function SignPageContent() {
                             <p className="text-xs text-ink-body">
                                 The buyer asks for your price — at most{" "}
                                 <span className="font-semibold" data-testid="quote-ceiling">
-                                    {formatToken(commitment!.payment, tokenDecimals)} {currencySymbol}
+                                    {tokenFigure(commitment!.payment, tokenDecimals)} {currencySymbol}
                                 </span>. Your counter-signature binds you at YOUR figure
                                 if the buyer commits it before the deadline.
                             </p>
@@ -601,7 +600,7 @@ function SignPageContent() {
                             />
                             <Button
                                 onClick={handleQuoteReturn}
-                                disabled={step === "signing" || step === "sharing" || !address || !quotePrice.trim()}
+                                disabled={step === "signing" || step === "sharing" || !address || !quotePrice.trim() || tokenDecimals === undefined}
                                 data-testid="btn-quote-return"
                                 className="w-full"
                             >

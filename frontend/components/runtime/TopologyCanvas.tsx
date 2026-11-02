@@ -100,7 +100,7 @@ export interface TopologyCanvasProps {
     viewedProcessId?: string | null;
     /** Connected wallet — used to highlight orders where the wallet is buyer or seller. */
     walletAddress?: Address | string;
-    /** Token decimals for value formatting. Defaults to 18. */
+    /** The process token's decimals(), read from the chain; figures wait for it. */
     decimals?: number;
     /** Title text in the header. Defaults to "Process Graph". */
     title?: React.ReactNode;
@@ -147,7 +147,7 @@ export function TopologyCanvas({
     orders,
     viewedProcessId,
     walletAddress,
-    decimals = 18,
+    decimals,
     title = "Process Topology",
     emptySubtitle = "Visual representation of the value-added process",
     onAddSubOrder,
