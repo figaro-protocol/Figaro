@@ -17,7 +17,7 @@
 import { useState } from "react";
 import type { useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { Button } from "@/components/ui/Button";
-import { formatToken } from "@/lib/shared/utils";
+import { tokenFigure } from "@/lib/shared/utils";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 /** The buyer's checkout-time policy for this run — window, candidate count,
@@ -36,7 +36,7 @@ interface Props {
     race: ReturnType<typeof useDispatchRace>;
     onStart: (policy: RaceStartPolicy) => void;
     tokenSymbol: string;
-    decimals: number;
+    decimals: number | undefined;
 }
 
 export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Props) {
@@ -141,7 +141,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                                     the draft went out at, which is not a quote. */}
                                 {(!quoting || c.replied) && (
                                     <span className="text-xs font-semibold text-ink-primary">
-                                        {formatToken(c.payment, decimals)} {tokenSymbol}
+                                        {tokenFigure(c.payment, decimals)} {tokenSymbol}
                                     </span>
                                 )}
                                 {c.replied ? (

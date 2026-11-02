@@ -18,7 +18,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { calculateBonds, ZERO_BYTES32, type Commitment } from "@figaro-protocol/sdk";
 
-const decimalsState = vi.hoisted(() => ({ decimals: 18, ready: false, loading: true }));
+const decimalsState = vi.hoisted(() => ({ decimals: undefined as number | undefined, ready: false, loading: true }));
 vi.mock("@/hooks/useTokenDecimals", () => ({
     default: () => decimalsState,
 }));
@@ -40,7 +40,7 @@ const commitment: Commitment = {
 
 afterEach(() => {
     cleanup();
-    decimalsState.decimals = 18;
+    decimalsState.decimals = undefined;
     decimalsState.ready = false;
     decimalsState.loading = true;
 });

@@ -19,7 +19,7 @@ import { createHash, randomBytes } from "node:crypto";
  * @typedef {object} DataEnvelope
  * @property {string} source    Where this came from (e.g. "clause-registry",
  *                              "members-registry", "ipfs", "xmtp").
- * @property {string} refKind   The provenance handle's kind: "cid" | "txHash"
+ * @property {string} refKind   The provenance handle's kind: "cid" | "uri" | "txHash"
  *                              | "address" | "url" | "inboxId".
  * @property {string} ref       The handle itself.
  * @property {string} fetchedAt ISO timestamp of the fetch.

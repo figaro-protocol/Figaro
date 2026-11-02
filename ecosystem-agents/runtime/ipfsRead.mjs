@@ -1,5 +1,6 @@
 /**
- * ipfsRead — the gateway read every runtime component shares.
+ * ipfsRead — the content read every runtime component shares: `ipfs://`
+ * through the configured gateways, `https://` from its host (`fetchUriBytes`).
  *
  * One reader, because there is one boundary: content-addressed bytes come
  * back from whatever gateway the host configured, size-capped, with the
@@ -19,12 +20,12 @@ const DEFAULT_TIMEOUT_MS = 30_000;
  *  not cap is a reader an attacker sizes. */
 const DEFAULT_MAX_BYTES = 8 * 1024 * 1024;
 
-/** The configured gateways, in order, DEDUPED — `IPFS_GATEWAY_URL` first when
- *  set, then the fallback. Pointing both at the same host is a configuration
- *  the caller should not pay for twice. */
+/** The configured gateways, in order, DEDUPED — `IPFS_GATEWAY_URL` first, then
+ *  `IPFS_FALLBACK_GATEWAY_URL`. Only what the host configured: no gateway is
+ *  assumed, so an unconfigured host reads no `ipfs://` content and says so. */
 export function ipfsGateways(env = process.env) {
     const seen = new Set();
-    return [env.IPFS_GATEWAY_URL, env.IPFS_FALLBACK_GATEWAY_URL ?? "https://ipfs.io"]
+    return [env.IPFS_GATEWAY_URL, env.IPFS_FALLBACK_GATEWAY_URL]
         .filter(Boolean)
         .map((g) => g.replace(/\/$/, ""))
         .filter((g) => !seen.has(g) && seen.add(g));
@@ -77,5 +78,40 @@ export async function fetchIpfsBytes(cid, { gateways = ipfsGateways(), timeoutMs
 /** The same read, decoded as UTF-8 text. `null` is absence, as above. */
 export async function fetchIpfsText(cid, options = {}) {
     const bytes = await fetchIpfsBytes(cid, options);
+    return bytes === null ? null : new TextDecoder().decode(bytes);
+}
+
+/**
+ * A content URI's raw bytes, whatever service the publisher chose. A registry
+ * stores a URI, never a promise that it is IPFS: `ipfs://` (or a bare CID) is
+ * read through the configured gateways, `https://` from its own host, and any
+ * other scheme is refused by name. The caller verifies the bytes against the
+ * hash the chain holds, so where they were served from carries no trust.
+ * `null` is absence, as for `fetchIpfsBytes`.
+ */
+export async function fetchUriBytes(uri, options = {}) {
+    if (uri.startsWith("https://")) {
+        const { timeoutMs = DEFAULT_TIMEOUT_MS, maxBytes = DEFAULT_MAX_BYTES } = options;
+        let res;
+        try {
+            res = await fetch(uri, { signal: AbortSignal.timeout(timeoutMs) });
+        } catch (e) {
+            throw new Error(`content ${uri} unreachable — ${e instanceof Error ? e.name : String(e)}`);
+        }
+        if (UNRESOLVED.has(res.status)) return null;
+        if (!res.ok) throw new Error(`content ${uri} unreachable — answered ${res.status}`);
+        const bytes = await readCappedBytes(res, maxBytes);
+        if (bytes === null) throw new Error(`content ${uri} unreachable — more than the ${maxBytes}-byte cap`);
+        return bytes;
+    }
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(uri) && !uri.startsWith("ipfs://")) {
+        throw new Error(`content ${uri}: the ${uri.split(":")[0]} scheme is not one this reader fetches (ipfs://, https://)`);
+    }
+    return fetchIpfsBytes(cidOf(uri), options);
+}
+
+/** The same read, decoded as UTF-8 text. `null` is absence. */
+export async function fetchUriText(uri, options = {}) {
+    const bytes = await fetchUriBytes(uri, options);
     return bytes === null ? null : new TextDecoder().decode(bytes);
 }

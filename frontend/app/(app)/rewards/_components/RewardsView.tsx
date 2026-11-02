@@ -15,7 +15,8 @@ import Link from "@/components/shared/Link";
 import { useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { useViewedWallet } from "@/lib/shared/viewedWallet";
-import { formatUnits } from "viem";
+import { tokenFigure } from "@/lib/shared/utils";
+import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { FLORIN_TOKEN_ABI } from "@figaro-protocol/sdk";
 import { Button } from "@/components/ui/Button";
 import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
@@ -51,6 +52,7 @@ export function RewardsView() {
     // names its spec once the spec is here.
     useClauseSpecs();
     const publicClient = usePublicClient();
+    const { decimals: florinDecimals } = useTokenDecimals(CONTRACTS.florinToken as `0x${string}` | undefined);
     const [busy, setBusy] = useState<string | null>(null);
     const [error, setError] = useState("");
     const [florinBalance, setFlorinBalance] = useState<bigint | null>(null);
@@ -124,7 +126,7 @@ export function RewardsView() {
                 <>
                 {account && florinBalance !== null && (
                     <p className="text-sm text-ink-muted mb-6" data-testid="florin-balance">
-                        Your florin balance: <span className="font-mono">{formatUnits(florinBalance, 18)}</span>
+                        Your florin balance: <span className="font-mono">{tokenFigure(florinBalance, florinDecimals)}</span>
                     </p>
                 )}
 
@@ -159,7 +161,7 @@ export function RewardsView() {
                             >
                                 <div className="flex items-baseline justify-between mb-2">
                                     <h2 className="text-base font-semibold text-ink-heading">
-                                        Period {t.periodId + 1} — {formatUnits(t.amount, 18)} FLORIN
+                                        Period {t.periodId + 1} — {tokenFigure(t.amount, florinDecimals)} FLORIN
                                     </h2>
                                     <span className="text-sm text-ink-muted" data-testid={`period-status-${t.periodId}`}>
                                         {status}
@@ -168,7 +170,7 @@ export function RewardsView() {
                                 <p className="text-sm text-ink-muted mb-1" data-testid={`period-total-score-${t.periodId}`}>
                                     period score across all clauses, agreements and assemblies:{" "}
                                     <span className="font-mono">{t.totalScore.toString()}</span> · minted so far{" "}
-                                    {formatUnits(t.minted, 18)} FLORIN
+                                    {tokenFigure(t.minted, florinDecimals)} FLORIN
                                 </p>
                                 {t.accruals.length > 0 && (
                                     <div className="mt-3 mb-3" data-testid={`period-accruals-${t.periodId}`}>
@@ -200,7 +202,7 @@ export function RewardsView() {
                                 )}
                                 {t.periodClosed && !t.claimed && t.claimable > 0n && (
                                     <p className="text-sm text-ink-body mb-3" data-testid={`period-claimable-${t.periodId}`}>
-                                        Claimable: <span className="font-mono">{formatUnits(t.claimable, 18)}</span> FLORIN
+                                        Claimable: <span className="font-mono">{tokenFigure(t.claimable, florinDecimals)}</span> FLORIN
                                     </p>
                                 )}
                                 <div className="flex flex-wrap gap-3">
