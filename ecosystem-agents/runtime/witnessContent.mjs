@@ -23,15 +23,10 @@
 
 import { anchorAttestationContent } from "@figaro-protocol/sdk";
 import { witnessContentCid } from "@figaro-protocol/sdk/derive";
+import { toHex } from "viem";
 import { fetchIpfsBytes } from "./ipfsRead.mjs";
 
 const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
-
-function bytesToHex(bytes) {
-    let out = "0x";
-    for (const b of bytes) out += b.toString(16).padStart(2, "0");
-    return out;
-}
 
 /**
  * Resolve a fingerprint to its published content bytes, VERIFYING the bytes
@@ -47,7 +42,7 @@ export async function fetchWitnessContent(contentRef, options = {}) {
     const cid = witnessContentCid(contentRef);
     const bytes = await fetchIpfsBytes(cid, options);
     if (bytes === null || bytes.byteLength === 0) return null;
-    const content = anchorAttestationContent(bytesToHex(bytes), contentRef);
+    const content = anchorAttestationContent(toHex(bytes), contentRef);
     if (content === null) return null;
     return { contentRef: contentRef.toLowerCase(), cid, content };
 }

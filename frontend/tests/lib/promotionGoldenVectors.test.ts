@@ -174,9 +174,10 @@ beforeAll(async () => {
         // implementation, so a re-harvest derives from it.
         const { secp256k1 } = await import("@noble/curves/secp256k1");
         const { hexToBytes } = await import("@/lib/shared/evm");
-        const { bytesToHex } = await import("@/lib/shared/evm");
-        const pubA = bytesToHex(secp256k1.getPublicKey(hexToBytes(PRIV_A), true));
-        const pubB = bytesToHex(secp256k1.getPublicKey(hexToBytes(PRIV_B), true));
+        const { bytesToHex } = await import("viem");
+        // The fixture records public keys without the `0x` prefix viem adds.
+        const pubA = bytesToHex(secp256k1.getPublicKey(hexToBytes(PRIV_A), true)).slice(2);
+        const pubB = bytesToHex(secp256k1.getPublicKey(hexToBytes(PRIV_B), true)).slice(2);
         const sharedSecretAtoB = deriveSharedSecretAsSender(PRIV_A, pubB);
         const { defaults, processLog } = projectionCases();
         const assembly = assemblyCase();

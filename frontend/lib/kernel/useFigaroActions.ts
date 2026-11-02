@@ -1,7 +1,7 @@
 // Core hook for Figaro protocol actions (unified commit, Commitment[] resolution)
 
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, usePublicClient } from "wagmi";
-import { CORE_ABI, ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";
+import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { TEST_HELPERS_ENABLED, windowSafe } from '@/lib/shared/testHelpers';
 import { activeChain } from "@/lib/shared/chains";
 import type { Commitment } from "@figaro-protocol/sdk";
@@ -22,21 +22,6 @@ export const useFigaroActions = () => {
     // Use activeChain so wallets that enforce chain-matching
     // (Coinbase Wallet, WalletConnect v2) don't reject the call.
     const chainConfig = activeChain;
-
-    // Token Approval: Approve ERC20 for Core contract
-    const approveToken = async (
-        tokenAddress: `0x${string}`,
-        amount: bigint
-    ) => {
-        return writeContractAsync({
-            address: tokenAddress,
-            abi: ERC20_ABI,
-            functionName: "approve",
-            args: [CONTRACTS.core as `0x${string}`, amount],
-            account,
-            chain: chainConfig,
-        });
-    };
 
     // Unified commit: root and sub-orders use the same function.
     // Root orders: processId = 0x00...00, expectedCumulativeValue = payment
@@ -96,9 +81,6 @@ export const useFigaroActions = () => {
     };
 
     return {
-        // Token approval
-        approveToken,
-
         // Core actions: unified commit, Commitment[] resolution.
         commit,
         resolveProcess,

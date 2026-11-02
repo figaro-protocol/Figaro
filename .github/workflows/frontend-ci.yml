@@ -49,6 +49,10 @@ jobs:
       - name: Run TypeScript type checking
         run: npm run type-check
 
+      # Production mode: source reached only from tests counts as unused.
+      - name: Find dead code (knip, production)
+        run: npm run knip:prod
+
       - name: Run ESLint
         run: npm run lint
 

@@ -188,7 +188,7 @@ export function detectSwapVenue(publicClient: PublicClient, router: Hex): Promis
     return pending;
 }
 
-/** Test-only — forget probed venues. */
+/** Test-only — forget probed venues. @internal */
 export function _resetSwapVenueCache_TESTING_ONLY(): void {
     VENUE_CACHE.clear();
 }

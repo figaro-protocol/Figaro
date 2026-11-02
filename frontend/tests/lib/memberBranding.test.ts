@@ -2,9 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
     fetchMemberBranding,
     clearBrandingCache,
-    resolveMemberBrandingFromMemberProfile,
 } from '@/lib/member/memberBranding';
-import { MEMBER_PROFILE_METADATA_EXAMPLE } from './__fixtures__/memberMetadata';
 
 describe('memberBranding', () => {
 
@@ -174,13 +172,6 @@ describe('memberBranding', () => {
                 imageBaseURI: undefined,
             });
             expect(result!.name).toBe('Bare Seller');
-        });
-
-        it('resolves branding directly from member catalog metadata', () => {
-            const result = resolveMemberBrandingFromMemberProfile(MEMBER_PROFILE_METADATA_EXAMPLE);
-
-            expect(result).not.toBeNull();
-            expect(result!.logoURI).toBe('ipfs://example/logo.png');
         });
     });
 });

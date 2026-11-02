@@ -1,4 +1,4 @@
-import { isAddress, getAddress, type Address } from "viem";
+import { bytesToHex, isAddress, getAddress, type Address } from "viem";
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 // The bytes32 sentinels and the 32-byte shape predicate — single home is the
@@ -77,20 +77,8 @@ export function addressIntegrity(addr: string): AddressIntegrity {
 }
 
 /**
- * Encode a byte sequence as a hex string (no `0x` prefix). Replaces the
- * `Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")`
- * pattern that was reinvented across handoff / encoding / store / dispute /
- * ClientInit. Callers that want a 0x-prefixed value wrap the result.
- */
-export function bytesToHex(bytes: Uint8Array): string {
-    return Array.from(bytes)
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-}
-
-/**
  * Decode a hex string (with or without `0x`) to bytes — the inverse of
- * `bytesToHex`. Replaces the per-byte `parseInt` loop that was reinvented
+ * viem's hex encoding of bytes. Replaces the per-byte `parseInt` loop that was reinvented
  * across handoff (ecdh, xmtpChannel) and core encoding.
  */
 export function hexToBytes(hex: string): Uint8Array {
@@ -110,7 +98,7 @@ export function hexToBytes(hex: string): Uint8Array {
  * supply enough entropy to fill the 32 bytes.
  */
 export function textToBytes32(text: string): string {
-    return `0x${bytesToHex(new TextEncoder().encode(text)).slice(0, 64)}`;
+    return bytesToHex(new TextEncoder().encode(text)).slice(0, 66);
 }
 
 /**
