@@ -18,6 +18,14 @@ vi.mock("wagmi", () => ({
     useAccount: () => useAccountMock(),
     useWalletClient: () => useWalletClientMock(),
     useChainId: () => 31337,
+    usePublicClient: () => CLIENT,
+}));
+const CLIENT = { chain: { id: 31337 } };
+
+// The order history the committed-order filter reads: no order is on-chain yet.
+vi.mock("@/lib/kernel/indexer", () => ({
+    getCoreEvents: async () => ({ events: { orderCommitted: [], orderResolved: [], processResolved: [] }, committedLogs: [] }),
+    useWatchOrderEvents: () => undefined,
 }));
 
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
@@ -43,7 +51,17 @@ vi.mock("@/lib/kernel/agreementFetch", () => ({
 
 // One order awaiting the seller's counter-signature (buyer has signed).
 const PAYLOAD = {
-    commitment: { buyer: BUYER, seller: SELLER },
+    commitment: {
+        processId: `0x${"00".repeat(32)}`,
+        buyer: BUYER,
+        seller: SELLER,
+        currency: "0x00000000000000000000000000000000000000d1",
+        payment: "0xa",
+        expectedCumulativeValue: "0xa",
+        checkoutHash: `0x${"22".repeat(32)}`,
+        salt: "0x1",
+        deadline: "0x77359400",
+    },
     agreement: {},
     buyerSig: "0xdeadbeef",
 };

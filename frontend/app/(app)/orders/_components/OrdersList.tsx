@@ -46,6 +46,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import {
     usePendingSellerSignature,
+    useIsUncommitted,
     awaitsMyCounterSign,
     awaitsCounterpartySignature,
     awaitsMyBroadcast,
@@ -371,6 +372,8 @@ export function OrdersList() {
         return [...byHash.values()].sort((a, b) => b.blockNumber - a.blockNumber);
     }, [buyer.rows, seller.rows]);
     const isLoading = buyer.isLoading || seller.isLoading;
+    // A failed row read is unknown chain state: no rows and no "none" either.
+    const rowsFailed = buyer.failed || seller.failed;
 
     // YOUR TURN — relayed commitments awaiting my counter-signature (accept).
     const { pending: incoming, dismiss: dismissIncoming } = usePendingSellerSignature(awaitsMyCounterSign);
@@ -452,40 +455,21 @@ export function OrdersList() {
         }
     }, [address, chainId, walletClient, handoffMessaging, evidenceTransport]);
 
-    // A relayed payload still reads single-sig after commit; hide any pending
-    // (either direction) whose order is already on-chain in `rows`.
+    // The pending lists above already drop every payload whose order is on-chain
+    // (`usePendingSellerSignature`); the tab's unsent copies go through the
+    // same predicate, and drop once their order is relayed.
+    const isUncommitted = useIsUncommitted();
     const core = CONTRACTS.core as `0x${string}` | undefined;
-    const committedHashes = new Set(rows.map((r) => r.rootOrderHash.toLowerCase()));
-    const notCommitted = (payload: CommitmentPayload) => {
-        if (!chainId || !core) return true;
-        try {
-            return !committedHashes.has(computeOrderHash(payload.commitment, chainId, core).toLowerCase());
-        } catch {
-            return true;
-        }
-    };
-    const visibleIncoming = incoming
-        .map((payload, index) => ({ payload, index }))
-        .filter(({ payload }) => notCommitted(payload));
-    // Preserve the original index into `outbound` (what `dismissOutbound`
-    // indexes), the same shape as visibleIncoming/visibleReady — a plain
-    // .filter() would misalign the dismiss index once notCommitted drops a row.
-    const visibleOutbound = outbound
-        .map((payload, index) => ({ payload, index }))
-        .filter(({ payload }) => (address && core ? notCommitted(payload) : true));
     const relayedIds = new Set(
         chainId && core
             ? outbound.map((p) => { try { return computeOrderHash(p.commitment, chainId, core).toLowerCase(); } catch { return ""; } })
             : [],
     );
-    const visibleUnsent = unsent.filter((e) => notCommitted(e.payload) && !relayedIds.has(e.orderId.toLowerCase()));
-    const visibleReady = readyToSubmit
-        .map((payload, index) => ({ payload, index }))
-        .filter(({ payload }) => notCommitted(payload));
+    const visibleUnsent = unsent.filter((e) => isUncommitted(e.payload) && !relayedIds.has(e.orderId.toLowerCase()));
 
     const activeRows = rows.filter((r) => !r.isResolved);
     const completedRows = rows.filter((r) => r.isResolved);
-    const nothing = !isLoading && rows.length === 0 && visibleIncoming.length === 0 && visibleOutbound.length === 0 && visibleReady.length === 0 && visibleUnsent.length === 0;
+    const nothing = !isLoading && !rowsFailed && rows.length === 0 && incoming.length === 0 && outbound.length === 0 && readyToSubmit.length === 0 && visibleUnsent.length === 0;
 
     return (
         <div data-testid="orders-list" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
@@ -508,11 +492,11 @@ export function OrdersList() {
                 </WalletGate>
             ) : (
                 <>
-                    {!isMock && visibleIncoming.length > 0 && (
+                    {!isMock && incoming.length > 0 && (
                         <section className="space-y-3" data-testid="orders-your-turn-section">
                             <p className="text-xs font-semibold text-ink-muted">Your turn</p>
                             <div className="space-y-3">
-                                {visibleIncoming.map(({ payload, index }) => (
+                                {incoming.map((payload, index) => (
                                     <YourTurnCard
                                         key={index}
                                         payload={payload}
@@ -529,11 +513,11 @@ export function OrdersList() {
                         </section>
                     )}
 
-                    {!isMock && visibleReady.length > 0 && (
+                    {!isMock && readyToSubmit.length > 0 && (
                         <section className="space-y-3" data-testid="orders-ready-section">
                             <p className="text-xs font-semibold text-ink-muted">Ready to submit</p>
                             <div className="space-y-3">
-                                {visibleReady.map(({ payload, index }) => (
+                                {readyToSubmit.map((payload, index) => (
                                     <ReadyToSubmitCard
                                         key={`ready-${index}`}
                                         payload={payload}
@@ -571,11 +555,11 @@ export function OrdersList() {
                         </section>
                     )}
 
-                    {visibleOutbound.length > 0 && (
+                    {outbound.length > 0 && (
                         <section className="space-y-3" data-testid="orders-pending-section">
                             <p className="text-xs font-semibold text-ink-muted">Awaiting acceptance</p>
                             <ul className="space-y-3" data-testid="orders-pending">
-                                {visibleOutbound.map(({ payload, index }) => (
+                                {outbound.map((payload, index) => (
                                     <li key={`pending-${index}`}>
                                         <AwaitingAcceptanceRow payload={payload} address={address} listings={listings} onDismiss={() => dismissOutbound(index)} />
                                     </li>
@@ -597,7 +581,7 @@ export function OrdersList() {
                         </div>
                     ) : (
                         <>
-                            <section className="space-y-3" data-testid="orders-active-section">
+                            {!rowsFailed && <section className="space-y-3" data-testid="orders-active-section">
                                 <p className="text-xs font-semibold text-ink-muted">In progress</p>
                                 {isLoading ? (
                                     <p className="text-sm text-ink-muted" data-testid="orders-loading">Loading…</p>
@@ -612,7 +596,7 @@ export function OrdersList() {
                                         ))}
                                     </ul>
                                 )}
-                            </section>
+                            </section>}
 
                             {completedRows.length > 0 && (
                                 <section className="space-y-3" data-testid="orders-completed-section">

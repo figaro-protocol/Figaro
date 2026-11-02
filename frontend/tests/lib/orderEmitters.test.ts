@@ -24,7 +24,7 @@ vi.mock('@/lib/kernel/contracts', async (importOriginal) => ({
 import {
     getAllOrderCommitted,
     getAllOrderResolved,
-    getAllProcessResolved,
+    getCoreEvents,
 } from '@/lib/kernel/indexer';
 
 const CLIENT = {} as never;
@@ -45,7 +45,6 @@ describe('the order readers fold both emitters', () => {
     for (const [name, read] of [
         ['OrderCommitted', getAllOrderCommitted],
         ['OrderResolved', getAllOrderResolved],
-        ['ProcessResolved', getAllProcessResolved],
     ] as const) {
         it(`${name} is read from the Core and the verifier, in chain order`, async () => {
             const logs = await read(CLIENT, 31337);
@@ -55,6 +54,15 @@ describe('the order readers fold both emitters', () => {
             expect(logs.map((l) => l.transactionHash)).toEqual(['0xbatch-early', '0xbatch-same-block', '0xcore']);
         });
     }
+
+    it('getCoreEvents reads every event of the triple from the Core and the verifier', async () => {
+        const { committedLogs } = await getCoreEvents(CLIENT, 31337);
+        for (const name of ['OrderCommitted', 'OrderResolved', 'ProcessResolved']) {
+            const asked = cachedGetLogsMock.mock.calls.filter((c) => c[2].eventName === name).map((c) => c[2].address).sort();
+            expect(asked).toEqual([CORE, VERIFIER].sort());
+        }
+        expect(committedLogs.map((l) => l.transactionHash)).toEqual(['0xbatch-early', '0xbatch-same-block', '0xcore']);
+    });
 
     it('a network with no verifier configured reads the Core alone', async () => {
         vi.resetModules();
