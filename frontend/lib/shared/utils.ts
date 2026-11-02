@@ -10,10 +10,10 @@ export function formatToken(amount: bigint, decimals: number): string {
     return formatUnits(amount, decimals);
 }
 
-/** A token figure once the token's `decimals()` has been read from the chain; until then the raw
- *  base-unit integer, marked as such — never a magnitude formatted on a stand-in. */
+/** A token figure once the token's `decimals()` has been read from the chain. Until then, or when
+ *  the read fails, nothing: an amount not derived from the network is not surfaced. */
 export function tokenFigure(amount: bigint, decimals: number | undefined): string {
-    return decimals === undefined ? `${amount.toString()} (raw — token decimals loading)` : formatUnits(amount, decimals);
+    return decimals === undefined ? "" : formatUnits(amount, decimals);
 }
 
 /** Parse a typed amount into base units. `decimals` is the token's `decimals()` read from the chain; there is no default. */
