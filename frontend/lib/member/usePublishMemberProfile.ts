@@ -19,8 +19,11 @@
  *      time, `updateProfile` for re-pin) BEFORE opening the wallet,
  *      so a wrong-deposit / unauthorized revert surfaces as a typed
  *      error instead of a silent on-chain failure post-submission.
- *   6. Submit via `writeContractAsync`.
+ *   6. Submit, with `chain: activeChain`.
  *   7. Explicitly wait for the receipt + verify status === "success".
+ *
+ *   Steps 5–7 are the shared `simulateWriteVerify`; a revert is reported by
+ *   the registry's error name (`membersRegistryRevertMessage`).
  *
  * Replaces the inline publish flow in `OnboardingReview` that read
  * the deposit from `useRegistrationDeposit()` (could be undefined →
@@ -33,8 +36,8 @@
 
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import type { Abi } from "viem";
-import { publishTail } from "@/lib/protocol/publishTail";
-import { toError } from "@/lib/shared/errors";
+import { simulateWriteVerify } from "@/lib/shared/contractWrite";
+import { membersRegistryRevertMessage, readRegistrationDeposit } from "@/lib/member/useMembersRegistry";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import {
     parseMemberProfileDocument,
@@ -67,26 +70,6 @@ export interface PublishMemberOutcome {
     hash: `0x${string}`;
     profileURI: string;
     catalogURI: string;
-}
-
-function translatePublishRevert(err: unknown): Error {
-    const message = err instanceof Error ? err.message : String(err);
-    // Detect the canonical reverts the registry can produce. Strings
-    // come from Solidity's `revert("...")` and viem's error formatting.
-    if (/insufficient.*deposit|wrong.*deposit|invalid.*deposit/i.test(message)) {
-        return new Error(
-            "Registration stake mismatch — the on-chain `registrationDeposit` differs from what we submitted. Anvil may have been redeployed; reload and try again.",
-        );
-    }
-    if (/already registered/i.test(message)) {
-        return new Error(
-            "This wallet is already registered. Use `updateProfile` instead, or switch to a fresh wallet.",
-        );
-    }
-    if (/insufficient funds/i.test(message)) {
-        return new Error("Insufficient ETH balance to cover the deposit + gas.");
-    }
-    return toError(err);
 }
 
 export function usePublishMemberProfile() {
@@ -146,12 +129,12 @@ export function usePublishMemberProfile() {
             functionName: "registered",
             args: [input.wallet],
         })) as boolean;
-        // Simulate → write → verify (`publishTail`, the shared registry-publish
-        // tail): a mined-but-reverted tx must surface, not flow on as success —
-        // `writeContractAsync` only confirms broadcast.
+        // Simulate → write → verify (`simulateWriteVerify`, the one write
+        // sequence): a mined-but-reverted tx must surface, not flow on as
+        // success — `writeContractAsync` only confirms broadcast.
         let txHash: `0x${string}`;
         if (alreadyRegistered) {
-            txHash = await publishTail({
+            txHash = await simulateWriteVerify({
                 client,
                 writeContractAsync,
                 address: registry,
@@ -159,16 +142,12 @@ export function usePublishMemberProfile() {
                 functionName: "updateProfile",
                 args: [profileURI],
                 account: input.wallet,
-                translateRevert: translatePublishRevert,
+                revertMessage: membersRegistryRevertMessage,
                 failureMessage: "The profile was not published.",
             });
         } else {
-            const deposit = (await client.readContract({
-                address: registry,
-                abi: MEMBERS_REGISTRY_ABI,
-                functionName: "registrationDeposit",
-            })) as bigint;
-            txHash = await publishTail({
+            const deposit = await readRegistrationDeposit(client, registry);
+            txHash = await simulateWriteVerify({
                 client,
                 writeContractAsync,
                 address: registry,
@@ -177,7 +156,7 @@ export function usePublishMemberProfile() {
                 args: [profileURI],
                 value: deposit,
                 account: input.wallet,
-                translateRevert: translatePublishRevert,
+                revertMessage: membersRegistryRevertMessage,
                 failureMessage: "The profile was not published.",
             });
         }

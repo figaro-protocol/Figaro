@@ -2,8 +2,9 @@
 
 import { useCallback, useState } from "react";
 import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
-import { activeChain, DEVNET_CHAIN_ID } from "@/lib/shared/chains";
-import type { Hex } from "viem";
+import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
+import type { Abi, Hex } from "viem";
+import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { ATTESTATION_COORDINATOR_ABI } from "@figaro-protocol/sdk";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -47,7 +48,6 @@ type AttestationInput = {
 export function useAttestationCoordinatorActions() {
     const { address } = useAccount();
     const publicClient = usePublicClient();
-    const chain = activeChain;
     const coordinator = getAttestationCoordinator();
     const hasCoordinator = !!coordinator;
     const { writeContractAsync, data: hash, isPending } = useWriteContract();
@@ -169,20 +169,23 @@ export function useAttestationCoordinatorActions() {
             // clause, already in the agreement pin.
             if (content) await publishWitnessContent({ clauseId, stage, content });
 
-            return await writeContractAsync({
+            // `loadCommitment` resolved, so the public client is present.
+            return await simulateWriteVerify({
+                client: publicClient!,
+                writeContractAsync,
                 address: attestationCoordinator,
-                abi: ATTESTATION_COORDINATOR_ABI,
+                abi: ATTESTATION_COORDINATOR_ABI as Abi,
                 functionName: role === "seller" ? "attestAsSeller" : "attestAsBuyer",
                 args: [target, clauseId, stage, clauseDataHash, proof, contentRef],
                 account,
-                chain,
+                failureMessage,
             });
         } catch (cause: unknown) {
             const message = extractErrorMessage(cause, failureMessage);
             setError(message);
             throw new Error(message);
         }
-    }, [ensureCoordinatorAccess, loadCommitment, buildReceipt, writeContractAsync, chain]);
+    }, [ensureCoordinatorAccess, loadCommitment, buildReceipt, writeContractAsync, publicClient]);
 
     return {
         submitAttestation,

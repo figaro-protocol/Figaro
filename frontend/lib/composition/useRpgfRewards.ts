@@ -25,6 +25,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
+import type { Abi } from "viem";
 import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { hexEqual } from "@/lib/shared/evm";
 import {
@@ -42,7 +43,7 @@ import {
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { CONTRACTS, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
-import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
+import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 /** One clause, agreement or assembly the connected wallet is designer of record for, with
@@ -316,8 +317,8 @@ export function useRpgfRewards(subject?: `0x${string}`) {
     }, [minter, counter, publicClient, chainId, account, discoverClausesAndAssemblies, refreshNonce]);
 
     /** Claim a closed period: one call per wallet per period, carrying every
-     *  clause, agreement or assembly the wallet designed. simulate → write → receipt → refresh, per
-     *  the publish-flow pattern — any minter revert (still accruing, already
+     *  clause, agreement or assembly the wallet designed. The shared simulate →
+     *  send → verify (`simulateWriteVerify`), then refresh — any minter revert (still accruing, already
      *  claimed, not designer of record) surfaces BEFORE the wallet prompt. */
     const claim = useCallback(
         async (periodId: number) => {
@@ -326,15 +327,17 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             const row = periods.find((t) => t.periodId === periodId);
             const clausesOrAssemblies: UsageKey[] = row?.accruals.map((a) => ({ kind: a.kind, key: a.clauseOrAssembly })) ?? [];
             if (clausesOrAssemblies.length === 0) throw new Error("This wallet designed nothing that accrued in this period.");
-            const call = {
+            if (!publicClient) throw new Error("No public client available to send the claim.");
+            const hash = await simulateWriteVerify({
+                client: publicClient,
+                writeContractAsync,
                 address: minter,
-                abi: RPGF_MINTER_ABI,
-                functionName: "claim" as const,
-                args: [periodId, clausesOrAssemblies] as const,
-            };
-            if (publicClient) await publicClient.simulateContract({ ...call, account });
-            const hash = await writeContractAsync(call);
-            if (publicClient) await verifyTxSuccess(publicClient, hash, "The reward was not claimed.");
+                abi: RPGF_MINTER_ABI as Abi,
+                functionName: "claim",
+                args: [periodId, clausesOrAssemblies],
+                account,
+                failureMessage: "The reward was not claimed.",
+            });
             refresh();
             return hash;
         },

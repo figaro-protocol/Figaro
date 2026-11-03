@@ -34,7 +34,7 @@
 
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import type { Abi } from "viem";
-import { publishTail } from "@/lib/protocol/publishTail";
+import { simulateWrite, simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { AGREEMENT_REGISTRY_ABI, canonicalize, composeOrderAgreement, serializeAssembly, type RegisteredAgreement } from "@figaro-protocol/sdk";
@@ -47,16 +47,16 @@ import { ASSEMBLY_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import {
     getAgreementRegistry,
     readAgreementBinding,
-    translateAgreementRegisterRevert,
+    agreementRegisterRevertMessage,
 } from "@/lib/protocol/useAgreementRegistry";
 import {
     getAssemblyRegistry,
-    translatePublishRevert,
+    assemblyRegisterRevertMessage,
     type PublishOutcome,
 } from "@/lib/protocol/useAssemblyRegistry";
 
 /** The client a registration needs: the stake read, the simulation and the receipt. */
-type RegistrationClient = Parameters<typeof publishTail>[0]["client"] & {
+type RegistrationClient = Parameters<typeof simulateWriteVerify>[0]["client"] & {
     readContract(args: { address: `0x${string}`; abi: Abi; functionName: string }): Promise<unknown>;
 };
 
@@ -79,7 +79,7 @@ export interface RegisteredAgreementOutcome {
  */
 export async function registerAgreement(args: {
     client: RegistrationClient;
-    writeContractAsync: Parameters<typeof publishTail>[0]["writeContractAsync"];
+    writeContractAsync: Parameters<typeof simulateWriteVerify>[0]["writeContractAsync"];
     address: `0x${string}`;
     doc: RegisteredAgreement;
     agreementHash: `0x${string}`;
@@ -104,7 +104,7 @@ export async function registerAgreement(args: {
     // The pinned document carries the designer's words beside the clauses;
     // the key is over the clauses alone.
     const pinned = await ipfs.publishJSON(JSON.parse(canonicalize(doc)));
-    const hash = await publishTail({
+    const hash = await simulateWriteVerify({
         client,
         writeContractAsync,
         address: agreementRegistry,
@@ -113,7 +113,7 @@ export async function registerAgreement(args: {
         args: [agreementHash, pinned.uri],
         value: agreementDeposit,
         account: address,
-        translateRevert: (err) => translateAgreementRegisterRevert(err, agreementHash),
+        revertMessage: agreementRegisterRevertMessage(agreementHash),
         failureMessage: "The agreement registration was not created.",
     });
     return { agreementHash, hash, ipfsURI: pinned.uri };
@@ -236,18 +236,16 @@ export function usePublishAssembly() {
         // publish that would revert (a composition already anchored, a stake
         // mismatch) leaves no agreement registered and no stake placed.
         const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
-        try {
-            await client.simulateContract({
-                address: registry,
-                abi: ASSEMBLY_REGISTRY_ABI as Abi,
-                functionName: "registerAssembly",
-                args: [assemblyHash, ipfs.uri],
-                value: deposit,
-                account: address,
-            });
-        } catch (err) {
-            throw translatePublishRevert(err, slug);
-        }
+        const assemblyCall = {
+            address: registry,
+            abi: ASSEMBLY_REGISTRY_ABI as Abi,
+            functionName: "registerAssembly",
+            args: [assemblyHash, ipfs.uri],
+            value: deposit,
+            account: address,
+            revertMessage: assemblyRegisterRevertMessage(slug),
+        };
+        await simulateWrite(client, assemblyCall);
 
         // The agreements newly composed for this assembly: each one no
         // registry binds yet is pinned and simulated now, and registered
@@ -255,15 +253,14 @@ export function usePublishAssembly() {
         // is readable the moment the assembly anchors. A key the registry
         // already binds is skipped — the same clauses always key to one
         // registration.
-        const toRegister: { agreementHash: `0x${string}`; uri: string }[] = [];
+        const toRegister: { agreementHash: `0x${string}`; uri: string; call: Parameters<typeof simulateWrite>[1] }[] = [];
         const newKeys = Object.keys(built.agreements) as `0x${string}`[];
-        const agreementRegistry = getAgreementRegistry();
-        let agreementDeposit = 0n;
         if (newKeys.length > 0) {
+            const agreementRegistry = getAgreementRegistry();
             if (!agreementRegistry) {
                 throw new Error("AgreementRegistry address not configured (NEXT_PUBLIC_AGREEMENT_REGISTRY).");
             }
-            agreementDeposit = await client.readContract({
+            const agreementDeposit = await client.readContract({
                 address: agreementRegistry,
                 abi: AGREEMENT_REGISTRY_ABI,
                 functionName: "registrationDeposit",
@@ -278,52 +275,38 @@ export function usePublishAssembly() {
                     clauses: built.agreements[agreementHash].clauses,
                 };
                 const pinned = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(canonicalize(doc)));
-                try {
-                    await client.simulateContract({
-                        address: agreementRegistry,
-                        abi: AGREEMENT_REGISTRY_ABI as Abi,
-                        functionName: "registerAgreement",
-                        args: [agreementHash, pinned.uri],
-                        value: agreementDeposit,
-                        account: address,
-                    });
-                } catch (err) {
-                    throw translateAgreementRegisterRevert(err, agreementHash);
-                }
-                toRegister.push({ agreementHash, uri: pinned.uri });
+                const call = {
+                    address: agreementRegistry,
+                    abi: AGREEMENT_REGISTRY_ABI as Abi,
+                    functionName: "registerAgreement",
+                    args: [agreementHash, pinned.uri],
+                    value: agreementDeposit,
+                    account: address,
+                    revertMessage: agreementRegisterRevertMessage(agreementHash),
+                };
+                await simulateWrite(client, call);
+                toRegister.push({ agreementHash, uri: pinned.uri, call });
             }
         }
 
         // The writes: agreements first, then the assembly. Each waits for a
-        // `success` receipt (`publishTail`), so the UI never declares success
-        // on a transaction the chain rejected.
+        // `success` receipt (`simulateWriteVerify`), so the UI never declares
+        // success on a transaction the chain rejected.
         const agreements: PublishOutcome["agreements"] = [];
-        for (const { agreementHash, uri } of toRegister) {
-            const agreementTx = await publishTail({
+        for (const { agreementHash, uri, call } of toRegister) {
+            const agreementTx = await simulateWriteVerify({
+                ...call,
                 client,
                 writeContractAsync,
-                address: agreementRegistry!,
-                abi: AGREEMENT_REGISTRY_ABI as Abi,
-                functionName: "registerAgreement",
-                args: [agreementHash, uri],
-                value: agreementDeposit,
-                account: address,
-                translateRevert: (err) => translateAgreementRegisterRevert(err, agreementHash),
                 failureMessage: "The agreement registration was not created.",
             });
             agreements.push({ agreementHash, hash: agreementTx, ipfsURI: uri });
         }
 
-        const txHash = await publishTail({
+        const txHash = await simulateWriteVerify({
+            ...assemblyCall,
             client,
             writeContractAsync,
-            address: registry,
-            abi: ASSEMBLY_REGISTRY_ABI as Abi,
-            functionName: "registerAssembly",
-            args: [assemblyHash, ipfs.uri],
-            value: deposit,
-            account: address,
-            translateRevert: (err) => translatePublishRevert(err, slug),
             failureMessage: "The composition binding was not created.",
         });
 

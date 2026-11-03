@@ -24,10 +24,10 @@
  */
 
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
-import type { PublicClient } from "viem";
+import type { Abi, PublicClient } from "viem";
 import { USAGE_COUNTER_ABI, fetchUsageClaimContext, type Commitment, type UsageClaimContext } from "@figaro-protocol/sdk";
 import { getUsageCounter } from "@/lib/kernel/contracts";
-import { activeChain } from "@/lib/shared/chains";
+import { simulateWrite, simulateWriteVerify, type ContractCall } from "@/lib/shared/contractWrite";
 
 type Hex = `0x${string}`;
 
@@ -71,7 +71,6 @@ export function useUsageRecorder() {
     const { writeContractAsync } = useWriteContract();
     const publicClient = usePublicClient();
     const { address: account } = useAccount();
-    const chainConfig = activeChain;
 
     // Fail loudly here — never let a malformed NEXT_PUBLIC_USAGE_COUNTER
     // reach a read or a write with a garbage address.
@@ -91,31 +90,36 @@ export function useUsageRecorder() {
     const fetchClaimContext = (): Promise<UsageClaimContext> =>
         fetchUsageClaimContext(requireClient() as unknown as PublicClient, requireCounter());
 
-    const usageCall = (write: UsageWrite) => {
-        const base = { address: requireCounter(), abi: USAGE_COUNTER_ABI, account } as const;
+    const usageCall = (write: UsageWrite): ContractCall => {
+        if (!account) throw new Error("Wallet not connected.");
+        const base = { address: requireCounter(), abi: USAGE_COUNTER_ABI as Abi, account };
         switch (write.kind) {
             case "clause":
-                return { ...base, functionName: "recordClauseUsage" as const, args: [write.order, write.key, write.clauseDataHash, [...write.proof]] as const };
+                return { ...base, functionName: "recordClauseUsage", args: [write.order, write.key, write.clauseDataHash, [...write.proof]] };
             case "agreement":
-                return { ...base, functionName: "recordAgreementUsage" as const, args: [write.order, write.key, write.assemblyHash, [...write.proof]] as const };
+                return { ...base, functionName: "recordAgreementUsage", args: [write.order, write.key, write.assemblyHash, [...write.proof]] };
             case "assembly":
                 return {
                     ...base,
-                    functionName: "recordAssemblyUsage" as const,
-                    args: [write.order, write.key, write.agreementHash, write.slotContentHash, [...write.proof], [...write.membershipProof]] as const,
+                    functionName: "recordAssemblyUsage",
+                    args: [write.order, write.key, write.agreementHash, write.slotContentHash, [...write.proof], [...write.membershipProof]],
                 };
         }
     };
 
-    // The three calls are one union; viem types each call by its function
-    // name, so the union is handed over as the call it is.
-    /** Throws the counter's revert when the write would not land. */
-    const simulateUsage = async (write: UsageWrite): Promise<void> => {
-        await requireClient().simulateContract(usageCall(write) as never);
-    };
+    /** Throws the counter's revert, by its error name, when the write would
+     *  not land — the planner's check before it asks the wallet. */
+    const simulateUsage = (write: UsageWrite): Promise<void> =>
+        simulateWrite(requireClient(), usageCall(write));
 
+    /** Send one usage write through the shared simulate → send → verify. */
     const recordUsage = async (write: UsageWrite): Promise<Hex> =>
-        writeContractAsync({ ...usageCall(write), chain: chainConfig } as never);
+        simulateWriteVerify({
+            ...usageCall(write),
+            client: requireClient(),
+            writeContractAsync,
+            failureMessage: "The usage was not recorded.",
+        });
 
     return { fetchClaimContext, simulateUsage, recordUsage };
 }

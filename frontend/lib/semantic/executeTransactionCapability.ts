@@ -11,7 +11,9 @@ type TransactionExecutionResult = Promise<Hex | undefined | void>;
 export interface TransactionCapabilityExecutors {
     waitForTransactionConfirmation?: (txHash?: Hex) => Promise<void>;
     resolveProcess?: (processId: string) => TransactionExecutionResult;
-    registerMember?: (metadataURI: string, value?: bigint) => TransactionExecutionResult;
+    /** Registers with the stake the registry asks for, read from the chain
+     *  inside the write. Maps to MembersRegistry.register. */
+    registerMember?: (metadataURI: string) => TransactionExecutionResult;
     /** Replaces the registered member's metadataURI in place; stake and
      *  lock period untouched. Maps to MembersRegistry.updateProfile. */
     updateMemberProfile?: (metadataURI: string) => TransactionExecutionResult;
