@@ -15,7 +15,8 @@ import { useReadContract } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
-import { formatToken } from "@/lib/shared/utils";
+import { tokenFigure } from "@/lib/shared/utils";
+import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { hexEqual } from "@/lib/shared/evm";
 
 function FundingTokenOption({
@@ -23,14 +24,14 @@ function FundingTokenOption({
     party,
     selected,
     onSelect,
-    decimals,
 }: {
     token: AcceptedTokenMetadata;
     party: `0x${string}`;
     selected: boolean;
     onSelect: () => void;
-    decimals: number;
 }) {
+    // This candidate's own decimals(), read from the chain — never the process token's.
+    const { decimals } = useTokenDecimals(token.address as `0x${string}`);
     const { data: balance } = useReadContract({
         address: token.address as `0x${string}`,
         abi: ERC20_ABI,
@@ -53,7 +54,7 @@ function FundingTokenOption({
                 <span className="font-medium text-ink-primary">{token.symbol}</span>
             </span>
             <span className="text-ink-muted tabular-nums">
-                {balance !== undefined ? `${formatToken(balance as bigint, decimals)} held` : "…"}
+                {balance !== undefined ? `${tokenFigure(balance as bigint, decimals)} held` : "…"}
             </span>
         </label>
     );
@@ -105,7 +106,6 @@ export function SwapFundingPanel({
     candidates,
     party,
     currencySymbol,
-    decimals,
     fundingToken,
     onSelect,
     authorization,
@@ -115,7 +115,6 @@ export function SwapFundingPanel({
     /** The wallet funding its bond — buyer at checkout, seller at accept. */
     party: `0x${string}`;
     currencySymbol: string;
-    decimals: number;
     fundingToken: `0x${string}` | null;
     onSelect: (token: `0x${string}` | null) => void;
     /** Where the chosen token stands with Permit2 (`fundingAuthorization`). */
@@ -142,7 +141,6 @@ export function SwapFundingPanel({
                         key={t.address}
                         token={t}
                         party={party}
-                        decimals={decimals}
                         selected={hexEqual(fundingToken, t.address)}
                         onSelect={() => onSelect(t.address as `0x${string}`)}
                     />

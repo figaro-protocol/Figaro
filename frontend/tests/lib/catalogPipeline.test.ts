@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
     fetchMemberCatalog,
     invalidateCatalogCache,
-    clearCatalogCache,
 } from "@/lib/member/catalogFetcher";
 import { publishMemberCatalog } from "@/lib/member/catalogPublisher";
 import { createCatalogService } from "@/lib/member/catalogService";
@@ -29,10 +28,6 @@ const VALID_MERCHANT_DOC: MemberCatalogMetadata = {
 // ── catalogFetcher ──────────────────────────────────────────────────────────
 
 describe("catalogFetcher", () => {
-    beforeEach(() => {
-        clearCatalogCache();
-    });
-
     afterEach(() => {
         vi.restoreAllMocks();
     });
@@ -101,22 +96,6 @@ describe("catalogFetcher", () => {
         expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 
-    it("clearCatalogCache clears all entries", async () => {
-        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-            ok: true,
-            json: () => Promise.resolve(VALID_MERCHANT_DOC),
-            text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
-        } as Response);
-
-        await fetchMemberCatalog("ipfs://QmA1111111111111111111111111111111111111111111");
-        await fetchMemberCatalog("ipfs://QmB1111111111111111111111111111111111111111111");
-        clearCatalogCache();
-        await fetchMemberCatalog("ipfs://QmA1111111111111111111111111111111111111111111");
-        await fetchMemberCatalog("ipfs://QmB1111111111111111111111111111111111111111111");
-
-        expect(fetchSpy).toHaveBeenCalledTimes(4);
-    });
-
     it("returns null on network error", async () => {
         vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Network error"));
 
@@ -141,7 +120,6 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
 
 describe("catalogPublisher", () => {
     beforeEach(() => {
-        clearCatalogCache();
         vi.clearAllMocks();
     });
 

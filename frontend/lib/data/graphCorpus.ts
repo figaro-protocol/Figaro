@@ -92,11 +92,7 @@ const SUBSTANCE_RECOVERY_CAP = 250;
 
 /** The token-metadata read every denomination row wants. Resolved-null when
  *  the token does not answer — the row then shows base units and the address,
- *  which is honest, rather than assuming 18 decimals.
- *
- *  @public — names the value type of `GraphCorpus.tokenMeta`, so any consumer
- *  formatting an amount in its own denomination needs it even though nothing
- *  imports it by name today. */
+ *  which is honest, rather than assuming 18 decimals. */
 export interface TokenMeta {
     symbol: string;
     decimals: number;

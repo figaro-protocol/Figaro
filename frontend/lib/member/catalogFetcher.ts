@@ -32,6 +32,3 @@ export const fetchMemberCatalog = catalogFetcher.fetch;
  * Call after publishing an update so the next read gets the new version.
  */
 export const invalidateCatalogCache = catalogFetcher.invalidate;
-
-/** Clear the entire catalog cache (for tests). */
-export const clearCatalogCache = catalogFetcher.clear;

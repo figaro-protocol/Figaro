@@ -112,7 +112,6 @@ The sequencer is started explicitly — `devup` does not launch it.
 # 2. Start the sequencer with the deployed addresses:
 cd prover
 RPC_URL=http://127.0.0.1:8545 \
-CHAIN_ID=31337 \
 FIGARO_CORE_ADDRESS=0x... \
 BATCH_VERIFIER_ADDRESS=0x... \
 USAGE_COUNTER_ADDRESS=0x... \
@@ -146,8 +145,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `RPC_URL` | `http://127.0.0.1:8545` | Chain RPC endpoint |
-| `CHAIN_ID` | `31337` | EIP-712 domain chain id |
+| `RPC_URL` | `http://127.0.0.1:8545` | Chain RPC endpoint; the relay reads the chain id from it once at startup (the EIP-712 domain's), and refuses to start when it cannot |
 | `FIGARO_CORE_ADDRESS` | zero | EIP-712 verifying contract: the batch verifier, whose domain the batch path signs under; with `BATCH_VERIFIER_ADDRESS` set, any other value is a refusal to start |
 | `BATCH_VERIFIER_ADDRESS` | zero | `FigaroBatchVerifier`; zero = prove-only dry run |
 | `USAGE_COUNTER_ADDRESS` | zero | The designer-reward `UsageCounter`; zero = credit no usage |
@@ -415,7 +413,7 @@ of losing the batch:
   relay's plan, never the protocol's: the verifier bounds neither.
 
 Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
-nothing is read. A read failure at the door refuses the submission (`503`,
+no funding is read; the chain id is read at startup in every mode. A read failure at the door refuses the submission (`503`,
 retry): the queue holds only what this relay could check; a read failure at
 batch time defers the commit, never proves it.
 

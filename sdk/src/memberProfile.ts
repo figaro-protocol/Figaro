@@ -30,10 +30,7 @@
 import {
     asAddress,
     asClauseKey,
-    asBoolean,
-    asEnum,
     asOptionalAddress,
-    asOptionalNumber,
     asOptionalString,
     asRecord,
     asString,
@@ -144,61 +141,6 @@ export interface BuyerAssemblySubscription {
 }
 
 /**
- * WHEN a disclosure-policy entry's data may be bought/seen.
- * All fields optional; an absent calendar means "immediately, once
- * offered". The canonical use is the resolution embargo: the data
- * opens N days after the process it belongs to resolves.
- */
-export interface DisclosureCalendar {
-    /** Days after the record's process resolves before disclosure opens. */
-    embargoDaysAfterResolution?: number;
-    /** ISO-8601 instant before which the class is not disclosable. */
-    notBefore?: string;
-    /** ISO-8601 instant after which the offer lapses. */
-    notAfter?: string;
-}
-
-/**
- * One row of the member's data-disclosure policy — one kind of DATA.
- *
- * WHAT DATA a row names is derived, never a stored taxonomy: the pair
- * (assembly `assemblyHash`, `clauseKey`) — the data of the trades a
- * member trades in comes from its own assembly lists: the BINDINGS for
- * the seller side, the buyer's SUBSCRIPTIONS (`buyerAssemblies`) for
- * the buyer side. Any UI enumerates candidates from those lists, never
- * from a hardcoded one.
- *
- * Same genus as `acceptedTokens[]`: a self-declared OFFER. It says
- * WHAT co-produced data is offered or withheld, to WHOM
- * (whitelist), and WHEN (calendar). It never carries prices — a data
- * product is priced as an item in the member's own catalog
- * (fixed | rate), the item naming the data it sells via `dataSold`.
- *
- * Members hold buyer AND seller postures; `posture` names which side
- * the member co-produced the record on. The buyer half is first-class
- * — a buyer's copy of a co-produced record is theirs to offer on
- * exactly the same terms structure.
- */
-export interface DisclosurePolicyEntry {
-    /** `AssemblyRegistry` assemblyHash of the assembly whose
-     *  co-produced records this row governs. */
-    assemblyHash: `0x${string}`;
-    /** Clause key of the record's leaf clause within that assembly's
-     *  agreements (the clause half of the pair). */
-    clauseKey: `0x${string}`;
-    /** Which posture the member held when co-producing the record. */
-    posture: "buyer" | "seller";
-    /** Toggle: is this co-produced data offered for
-     *  sale/disclosure at all. `false` is an explicit withholding —
-     *  distinct from the entry being absent. */
-    offered: boolean;
-    /** Who may buy/see. Absent = any counterparty may, once offered. */
-    whitelist?: `0x${string}`[];
-    /** When. Absent = immediately, once offered. */
-    calendar?: DisclosureCalendar;
-}
-
-/**
  * The member profile document.
  *
  * `name` is required; everything else is optional. The form's submit
@@ -267,22 +209,9 @@ export interface MemberProfileMetadata {
     /**
      * The buyer's assembly subscriptions — which registered assemblies
      * this member buys through and monetizes records from. Independent
-     * of `assemblyBindings` (the seller's list). Buyer-posture
-     * `disclosurePolicy` entries derive their candidate data
-     * from this list; seller-posture entries derive from the bindings.
+     * of `assemblyBindings` (the seller's list).
      */
     buyerAssemblies?: BuyerAssemblySubscription[];
-    /**
-     * Data-disclosure policy — the member's self-declared terms for the
-     * records they CO-PRODUCE inside bonded processes, one entry per
-     * (assembly assemblyHash × clauseKey × posture). See
-     * `DisclosurePolicyEntry` for the entry semantics.
-     *
-     * Default (field absent) is the paper-contract default: each party
-     * holds its own copy of a co-produced record. Absence of a policy
-     * is NOT a policy of openness — nothing is offered, nothing breaks.
-     */
-    disclosurePolicy?: DisclosurePolicyEntry[];
     /** ERC-8004 agent service endpoints (mcp, a2a, rest, did, ens). */
     services?: MemberAgentServices;
     /** IPFS URI of the wallet's catalog document. */
@@ -338,43 +267,6 @@ function parseAssemblyBindingDocument(value: unknown, sourceLabel = "institution
     };
 }
 
-// ── Disclosure-policy parser helpers ─────────────────────────────────────────
-
-const DISCLOSURE_POSTURES = new Set<"buyer" | "seller">(["buyer", "seller"]);
-
-function parseDisclosureCalendar(value: unknown, path: string): DisclosureCalendar | undefined {
-    if (value === undefined) return undefined;
-    const record = asRecord(value, path);
-    return {
-        embargoDaysAfterResolution: asOptionalNumber(
-            record.embargoDaysAfterResolution,
-            `${path}.embargoDaysAfterResolution`,
-        ),
-        notBefore: asOptionalString(record.notBefore, `${path}.notBefore`),
-        notAfter: asOptionalString(record.notAfter, `${path}.notAfter`),
-    };
-}
-
-function parseDisclosureWhitelist(value: unknown, path: string): `0x${string}`[] | undefined {
-    if (value === undefined) return undefined;
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array of addresses.`);
-    }
-    return value.map((addr, i) => asAddress(addr, `${path}[${i}]`));
-}
-
-function parseDisclosurePolicyEntry(value: unknown, path: string): DisclosurePolicyEntry {
-    const record = asRecord(value, path);
-    return {
-        assemblyHash: asAssemblyHash(record.assemblyHash, `${path}.assemblyHash`),
-        clauseKey: asClauseKey(record.clauseKey, `${path}.clauseKey`),
-        posture: asEnum(record.posture, DISCLOSURE_POSTURES, `${path}.posture`),
-        offered: asBoolean(record.offered, `${path}.offered`),
-        whitelist: parseDisclosureWhitelist(record.whitelist, `${path}.whitelist`),
-        calendar: parseDisclosureCalendar(record.calendar, `${path}.calendar`),
-    };
-}
-
 /** A assemblyHash is a 32-byte keccak digest, not a 20-byte address —
  *  validate the `0x` + hex shape at digest length. */
 function asAssemblyHash(value: unknown, path: string): `0x${string}` {
@@ -382,14 +274,6 @@ function asAssemblyHash(value: unknown, path: string): `0x${string}` {
         throw new Error(`${path} must be a 32-byte hex hash.`);
     }
     return value;
-}
-
-function parseDisclosurePolicy(value: unknown, path: string): DisclosurePolicyEntry[] | undefined {
-    if (value === undefined) return undefined;
-    if (!Array.isArray(value)) {
-        throw new Error(`${path} must be an array.`);
-    }
-    return value.map((entry, index) => parseDisclosurePolicyEntry(entry, `${path}[${index}]`));
 }
 
 // ── Type-specific parsers ────────────────────────────────────────────────────
@@ -524,7 +408,6 @@ export function parseMemberProfileDocument(
         profileClauseValues: parseProfileClauseValues(record.profileClauseValues, `${sourceLabel}.profileClauseValues`),
         assemblyBindings: parseAssemblyBindings(record.assemblyBindings, `${sourceLabel}.assemblyBindings`),
         buyerAssemblies: parseBuyerAssemblies(record.buyerAssemblies, `${sourceLabel}.buyerAssemblies`),
-        disclosurePolicy: parseDisclosurePolicy(record.disclosurePolicy, `${sourceLabel}.disclosurePolicy`),
         services: parseAgentServicesField(record.services, `${sourceLabel}.services`),
         catalogURI: asOptionalString(record.catalogURI, `${sourceLabel}.catalogURI`),
     };

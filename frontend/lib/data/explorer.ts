@@ -142,11 +142,7 @@ export const BOUNDARY_GLOSS: Record<TruthBoundary, string> = TRUTH_BOUNDARY_GLOS
 // ── Market shape ────────────────────────────────────────────────────────────
 
 /** One denomination's totals inside a market row. Amounts in DIFFERENT
- *  denominations never sum — they are carried per token, always.
- *
- *  @public — names the element type of `MarketRow.volumes`, so any consumer
- *  rendering a market's per-token totals needs it even though nothing imports
- *  it by name today. */
+ *  denominations never sum — they are carried per token, always. */
 export interface MarketVolume {
     token: string;
     committed: bigint;
@@ -155,10 +151,7 @@ export interface MarketVolume {
 
 /** The spacing of a market's commits in CHAIN TIME (block numbers, never a
  *  wall clock). `medianGapBlocks` is null with fewer than two processes —
- *  absence of a cadence, not a cadence of zero.
- *
- *  @public — names the type of `MarketRow.cadence`, so any consumer reading a
- *  market's spacing needs it even though nothing imports it by name today. */
+ *  absence of a cadence, not a cadence of zero. */
 export interface MarketCadence {
     firstBlock: number | null;
     lastBlock: number | null;

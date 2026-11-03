@@ -351,10 +351,9 @@ export interface AuthoredSpecSet {
  *
  * Rewritten in an authored agreement: the top-level `clauses` keys. In a
  * assembly: every `agreements[].clauses` and `assemblyClauses` key. In a
- * member profile: `disclosurePolicy[].clauseId` and
- * `assemblyBindings[].coSellerBindings[].clauseId` (each becomes
+ * member profile: `assemblyBindings[].coSellerBindings[].clauseId` (becomes
  * `clauseKey`), and the `profileClauseValues` keys. In a catalog: every
- * `items[].clauseValues` key and `items[].dataSold.clauseId` (→ `clauseKey`).
+ * `items[].clauseValues` key.
  * Everything else is copied unchanged. The input is not mutated.
  */
 export function resolveAuthoredClauseKeys<T extends object>(doc: T, specs: AuthoredSpecSet): T {
@@ -415,9 +414,6 @@ export function resolveAuthoredClauseKeys<T extends object>(doc: T, specs: Autho
     }
     if ("assemblyClauses" in src) out.assemblyClauses = rekey(src.assemblyClauses, "assemblyClauses");
     if ("profileClauseValues" in src) out.profileClauseValues = rekey(src.profileClauseValues, "profileClauseValues");
-    if ("disclosurePolicy" in src) {
-        out.disclosurePolicy = mapArray(src.disclosurePolicy, (e, i) => renameClauseId(e, `disclosurePolicy[${i}]`));
-    }
     if ("assemblyBindings" in src) {
         out.assemblyBindings = mapArray(src.assemblyBindings, (binding, i) => {
             if (!isPlainRecord(binding)) return binding;
@@ -436,7 +432,6 @@ export function resolveAuthoredClauseKeys<T extends object>(doc: T, specs: Autho
             return {
                 ...item,
                 ...("clauseValues" in item && { clauseValues: rekey(item.clauseValues, `items[${i}].clauseValues`) }),
-                ...("dataSold" in item && { dataSold: renameClauseId(item.dataSold, `items[${i}].dataSold`) }),
             };
         });
     }

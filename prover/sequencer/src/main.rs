@@ -64,9 +64,15 @@ async fn main() {
 
     // ── Configuration from environment ────────────────────────────
     let rpc_url = env_or("RPC_URL", "http://127.0.0.1:8545");
-    let chain_id: u64 = env_or("CHAIN_ID", "31337")
-        .parse()
-        .expect("invalid CHAIN_ID");
+    // The chain id is the RPC's answer, read once: the domain every signature is checked under is
+    // the chain the relay actually talks to, never a configured number that could name another.
+    let chain_id: u64 = match submitter::read_chain_id(&rpc_url).await {
+        Ok(id) => id,
+        Err(reason) => {
+            error!(%reason, "refusing to start: the chain id could not be read from RPC_URL");
+            std::process::exit(2);
+        }
+    };
     let verifier_addr: Address = env_or(
         "BATCH_VERIFIER_ADDRESS",
         "0x0000000000000000000000000000000000000000",
@@ -312,7 +318,7 @@ async fn main() {
         let from_block: u64 = env_or("REBUILD_FROM_BLOCK", "0")
             .parse()
             .expect("invalid REBUILD_FROM_BLOCK");
-        match figaro_sequencer::rebuild::rebuild_from_chain(&rpc_url, verifier_addr, from_block).await {
+        match figaro_sequencer::rebuild::rebuild_from_chain(&rpc_url, verifier_addr, from_block, chain_id).await {
             Ok(rebuilt) => {
                 if let Err(e) = state_store.keep(rebuilt.root, &rebuilt.state).await {
                     error!(%e, %state_path, "refusing to start: the rebuilt state could not be kept");
@@ -400,6 +406,7 @@ async fn main() {
     }
 
     let submitter_config = SubmitterConfig {
+        chain_id,
         rpc_url: rpc_url.clone(),
         verifier_address: verifier_addr,
         usage_counter_address: usage_counter_addr,
@@ -422,6 +429,7 @@ async fn main() {
     let funding = (verifier_addr != Address::ZERO).then(|| FundingGate {
         rpc_url: rpc_url.clone(),
         verifier: verifier_addr,
+        chain_id,
     });
     let loop_funding = funding.clone();
 

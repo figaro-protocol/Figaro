@@ -22,7 +22,7 @@ export interface CommerceIdentity {
 
 interface TokenState {
     balance: bigint | undefined;
-    decimals: number;
+    decimals: number | undefined;
 }
 
 // ── Authorization (ERC-20 approve) ──────────────────────────────
@@ -48,10 +48,9 @@ interface OrderFlowState {
 export interface CheckoutHandle {
     // Token state
     balance: bigint | undefined;
-    decimals: number;
-    /** True once the token's on-chain `decimals()` has resolved — false while
-     *  `decimals` is still the 18-default fallback. Gate pricing on this. */
-    decimalsReady: boolean;
+    /** The token's on-chain `decimals()`; undefined until the chain has answered. Nothing is
+     *  priced, parsed or shown as a magnitude before it lands. */
+    decimals: number | undefined;
 
     // Authorization
     needsAuthorization: (amount: bigint) => boolean;

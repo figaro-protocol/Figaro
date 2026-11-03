@@ -117,10 +117,10 @@ function ConsentValueToken({ token }: { token: string }) {
 }
 
 export function AgreementReview({ commitment, agreement }: Props) {
-    const { decimals, ready: decimalsReady } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     // A figure is shown only once the token's decimals are READ: until then
     // the raw integer stands alone, never a magnitude formatted on a default.
-    const figure = (amount: bigint) => decimalsReady ? formatPayment(amount, decimals) : "(token decimals loading)";
+    const figure = (amount: bigint) => decimals !== undefined ? formatPayment(amount, decimals) : "(token decimals loading)";
     const isRoot = commitment.processId === ZERO_BYTES32;
     const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
     const lineItems = commerceLineItems(agreement);

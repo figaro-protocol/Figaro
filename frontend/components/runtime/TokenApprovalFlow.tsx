@@ -9,7 +9,7 @@ import { handleOrderSurfaceFailure } from "@/lib/shared/orderSurfaceActions";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
-import { formatToken } from "@/lib/shared/utils";
+import { tokenFigure } from "@/lib/shared/utils";
 import { Button } from "@/components/ui/Button";
 
 interface TokenApprovalProps {
@@ -124,7 +124,7 @@ export function TokenApprovalFlow({
 
     if (hasInsufficientBalance || errorMessage) {
         const message = hasInsufficientBalance
-            ? `Insufficient balance. Required: ${formatToken(requiredAmount, decimals)}, Available: ${formatToken(balance, decimals)}`
+            ? `Insufficient balance. Required: ${tokenFigure(requiredAmount, decimals)}, Available: ${tokenFigure(balance, decimals)}`
             : errorMessage;
 
         return (
@@ -155,7 +155,7 @@ export function TokenApprovalFlow({
                     Authorize Figaro to hold your deposit for this order.
                 </p>
                 <div className="space-y-2 mb-4 text-sm text-warning-fg">
-                    <p>• Deposit amount: {formatToken(requiredAmount, decimals)}</p>
+                    <p>• Deposit amount: {tokenFigure(requiredAmount, decimals)}</p>
                     <p>• This exact amount will be authorized — nothing more.</p>
                 </div>
                 {/* The action is the filled-sumi default, not an amber fill:

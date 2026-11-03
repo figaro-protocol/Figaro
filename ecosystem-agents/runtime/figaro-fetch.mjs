@@ -25,7 +25,7 @@ import {
     fetchDiscoveryEvents, reconstructDiscovery,
 } from "@figaro-protocol/sdk";
 import { frame } from "./dataChannel.mjs";
-import { cidOf, fetchIpfsText } from "./ipfsRead.mjs";
+import { cidOf, fetchUriText } from "./ipfsRead.mjs";
 import { fetchWitnessContent } from "./witnessContent.mjs";
 import { fetchAnchoredClauseSpec, fetchAnchoredRegisteredAgreement, fetchAnchoredAssembly } from "./anchoredContent.mjs";
 
@@ -43,10 +43,10 @@ function requireEnv(name) {
 const [, , mode, ...args] = process.argv;
 if (!mode) fail("usage: figaro-fetch <clause|agreement|assembly|profile|ipfs|witness> <ref>");
 
-async function fetchIpfs(cid) {
+async function fetchContent(uri) {
     let text;
     try {
-        text = await fetchIpfsText(cid);
+        text = await fetchUriText(uri);
     } catch (e) {
         return fail(e instanceof Error ? e.message : String(e));
     }
@@ -70,7 +70,7 @@ async function discovery() {
 async function main() {
     if (mode === "ipfs") {
         const cid = args[0] ?? fail("usage: figaro-fetch ipfs <cid>");
-        const content = await fetchIpfs(cidOf(cid));
+        const content = await fetchContent(cid);
         console.log(frame({ source: "ipfs", refKind: "cid", ref: cidOf(cid), content }));
         return;
     }
@@ -145,9 +145,9 @@ async function main() {
         const graph = await discovery();
         const member = graph.getMember(address);
         if (!member) fail(`member ${address} is not live on the registry`);
-        const content = await fetchIpfs(cidOf(member.metadataURI));
+        const content = await fetchContent(member.metadataURI);
         console.log(frame({
-            source: "members-registry", refKind: "cid", ref: cidOf(member.metadataURI), content,
+            source: "members-registry", refKind: "uri", ref: member.metadataURI, content,
         }));
         return;
     }

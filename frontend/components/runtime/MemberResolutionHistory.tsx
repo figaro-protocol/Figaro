@@ -11,14 +11,21 @@
  * rating — the honest absence of a resolution history is itself the signal.
  */
 
-import { formatUnits } from "viem";
 import type { MemberResolutionHistory as ResolutionHistory } from "@/lib/composition/indexer";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
+import { tokenFigure } from "@/lib/shared/utils";
+import useTokenDecimals from "@/hooks/useTokenDecimals";
 
 interface Props {
     record: ResolutionHistory | null;
     isLoading: boolean;
+}
+
+/** One currency's total in that token's own units, its decimals() read from the chain. */
+function CurrencyTotal({ total, currency }: { total: bigint; currency: string }) {
+    const { decimals } = useTokenDecimals(currency as `0x${string}`);
+    return <span className="tabular-nums">{tokenFigure(total, decimals)}</span>;
 }
 
 function Stat({ label, value, testId }: { label: string; value: string; testId: string }) {
@@ -74,7 +81,7 @@ export function MemberResolutionHistory({ record, isLoading }: Props) {
                             {record.valueTransacted.map((v, i) => (
                                 <span key={v.currency}>
                                     {i > 0 ? ", " : ""}
-                                    <span className="tabular-nums">{formatUnits(v.total, 18)}</span>{" "}
+                                    <CurrencyTotal total={v.total} currency={v.currency} />{" "}
                                     <span className="font-mono text-ink-muted">{truncateHex(v.currency)}</span>
                                 </span>
                             ))}
@@ -83,7 +90,7 @@ export function MemberResolutionHistory({ record, isLoading }: Props) {
 
                     <p className="text-[11px] text-ink-muted leading-snug">
                         Every figure is recomputed from public on-chain events — resolution and
-                        coordination history, not a platform score. Token amounts shown at 18 decimals.
+                        coordination history, not a platform score.
                     </p>
                 </>
             )}

@@ -360,7 +360,6 @@ export function startSequencer(
         env: {
             ...process.env,
             RPC_URL: ANVIL_URL,
-            CHAIN_ID: "31337",
             BATCH_VERIFIER_ADDRESS: relay.batchVerifierAddress,
             // The RPGF counter the sequencer reads the open period and the
             // provenance leaf from.

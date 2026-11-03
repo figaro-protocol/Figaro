@@ -178,7 +178,7 @@ export function subscribeToPendingSign(fn: Subscriber): () => void {
     };
 }
 
-/** Test-only: reset the singleton to a clean state. */
+/** Test-only: reset the singleton to a clean state. @internal */
 export function _resetSignPreviewStore_TESTING_ONLY(): void {
     if (resolveCurrent) resolveCurrent(false);
     current = null;
@@ -188,7 +188,7 @@ export function _resetSignPreviewStore_TESTING_ONLY(): void {
     testMode = null;
 }
 
-/** Test-only: skip the modal and resolve immediately (set in the vitest setup). */
+/** Test-only: skip the modal and resolve immediately (set in the vitest setup). @internal */
 export function _setSignPreviewMode_TESTING_ONLY(
     mode: "auto-approve" | "auto-reject" | null,
 ): void {

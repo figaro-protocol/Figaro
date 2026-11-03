@@ -29,7 +29,7 @@ import {
     strippingReviver,
     assemblyHashOf,
 } from "@figaro-protocol/sdk";
-import { cidOf, fetchIpfsBytes, fetchIpfsText } from "./ipfsRead.mjs";
+import { fetchUriBytes, fetchUriText } from "./ipfsRead.mjs";
 
 /** Parse untrusted JSON text; `null` when it is not JSON. */
 function parseUntrusted(text) {
@@ -52,7 +52,7 @@ function parseUntrusted(text) {
  *          Throws only when every gateway failed to answer.
  */
 export async function fetchAnchoredClauseSpec(clause, options = {}) {
-    const bytes = await fetchIpfsBytes(cidOf(clause.contentURI), options);
+    const bytes = await fetchUriBytes(clause.contentURI, options);
     if (bytes === null) return { absent: "not served" };
     const digest = keccak256(bytes);
     if (digest.toLowerCase() !== clause.clauseKey.toLowerCase()) {
@@ -76,7 +76,7 @@ export async function fetchAnchoredClauseSpec(clause, options = {}) {
  *          every gateway failed to answer.
  */
 export async function fetchAnchoredRegisteredAgreement(agreement, options = {}) {
-    const text = await fetchIpfsText(cidOf(agreement.contentURI), options);
+    const text = await fetchUriText(agreement.contentURI, options);
     if (text === null) return { absent: "not served" };
     const parsed = parseUntrusted(text);
     if (parsed === null || typeof parsed !== "object" || parsed.clauses === null || typeof parsed.clauses !== "object") {
@@ -104,7 +104,7 @@ export async function fetchAnchoredRegisteredAgreement(agreement, options = {}) 
  *          every gateway failed to answer.
  */
 export async function fetchAnchoredAssembly(registered, options = {}) {
-    const text = await fetchIpfsText(cidOf(registered.contentURI), options);
+    const text = await fetchUriText(registered.contentURI, options);
     if (text === null) return { absent: "not served" };
     const assembly = parseUntrusted(text);
     if (assembly === null || typeof assembly !== "object" || !Array.isArray(assembly.agreements)) {

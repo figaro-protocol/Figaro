@@ -96,11 +96,7 @@ export interface AnalystStatus {
 
 /** `POST /prompt` — the model's answer plus the tool calls it made. The trace
  *  IS the audit trail: every tool in it is a deterministic route a reader can
- *  re-run and check. `answer` is null when the loop ran out of turns.
- *
- *  @public — names the payload of a successful `AnalystOutcome`, so any
- *  consumer rendering an answer with its trace needs it even though nothing
- *  imports it by name today. */
+ *  re-run and check. `answer` is null when the loop ran out of turns. */
 export interface AnalystAnswer {
     answer: string | null;
     trace: Array<{ tool: string; input: Record<string, unknown> }>;

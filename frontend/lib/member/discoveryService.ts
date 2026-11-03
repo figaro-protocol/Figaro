@@ -44,7 +44,6 @@ function profileToCatalog(
         profileClauseValues: profile.profileClauseValues,
         agentServices: profile.services,
         assemblyBindings: profile.assemblyBindings,
-        disclosurePolicy: profile.disclosurePolicy,
         unitSystem: catalog?.unitSystem,
     };
 }

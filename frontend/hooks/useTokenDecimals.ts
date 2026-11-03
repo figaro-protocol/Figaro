@@ -10,9 +10,9 @@ import { ERC20_ABI } from "@/lib/kernel/contracts";
  * to 18 and its bond/payment came out 10^decimals-delta wrong; it only worked
  * locally because localAnvil and hardhat share id 31337).
  *
- * `ready` distinguishes "resolved to 18" from "not yet resolved" — callers that
- * compute token amounts should gate on it rather than compute against the
- * fallback before the real value lands.
+ * `decimals` is undefined until the chain has answered: a caller waits for it and
+ * never computes or renders an amount against a stand-in. `ready` says the same
+ * as `decimals !== undefined`.
  */
 export default function useTokenDecimals(tokenAddress?: `0x${string}`) {
     const { data, isLoading } = useReadContract({
@@ -23,7 +23,7 @@ export default function useTokenDecimals(tokenAddress?: `0x${string}`) {
     });
 
     const ready = data !== undefined && data !== null;
-    const decimals = ready ? Number(data as number) : 18;
+    const decimals = ready ? Number(data as number) : undefined;
     return { decimals, ready, loading: isLoading } as const;
 }
 

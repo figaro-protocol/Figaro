@@ -27,8 +27,8 @@ import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 // ── Layout DSL (declared data) ───────────────────────────────────────────────
 
 /** A value drawn from the committed data — resolved by the engine, never
- *  naming a clause (leaves are found by their DECLARED FIELD). @public — the
- *  layout DSL vocabulary a document layout is written against. */
+ *  naming a clause (leaves are found by their DECLARED FIELD) — the layout
+ *  DSL vocabulary a document layout is written against. */
 export type ValueRef =
     | { const: string }
     | { orderHash: true }
@@ -39,13 +39,13 @@ export type ValueRef =
     | { lineItemNames: true }                             // commerce lineItems → names joined
     | { sumPayments: true };                              // Σ payment over the unit's orders
 
-/** When a document applies — a declarative predicate over the committed data. @public */
+/** When a document applies — a declarative predicate over the committed data. */
 export type Predicate =
     | { always: true }
     | { hasLeafField: string }   // some committed leaf declares this field
     | { isCarriageLeg: true };   // committed topology declares parents + a process-log leaf
 
-/** @public — a header/line row: label → value reference. */
+/** A header/line row: label → value reference. */
 export interface DocumentRow { label: string; ref: ValueRef }
 
 export interface DocumentLayout {
@@ -206,7 +206,7 @@ export function projectDocuments(
  * income-statement row keys and the cash-flow kinds. The projection writes its
  * labels FROM this map's keys (`FinancialStatementLabel`), so a label without a
  * legend entry does not type-check. P is an order's payment, G its cumulative
- * value; Σ sums over the orders in scope. @public
+ * value; Σ sums over the orders in scope.
  */
 export const FINANCIAL_STATEMENT_LEGEND = {
     "Buyer bonds (Σ2P)": "The buyer's bonds the Core holds for open orders: twice each payment, summed.",
@@ -238,7 +238,6 @@ interface CurrencyAgg {
  * The balance sheet + income statement + cash flow for a set of orders, as ONE
  * "Financial statements" document (RenderedDocument). Pure. `scope` = "seller"
  * for one seller's individual statement, "process" for the assembly consolidation.
- * @public
  */
 export function projectFinancialStatements(
     orders: readonly Order[],
@@ -316,7 +315,6 @@ export function projectFinancialStatements(
 /**
  * One financial-statements document PER SELLER (individual) plus one consolidated
  * (assembly) — the individual + consolidated register, exactly as finance draws it.
- * @public
  */
 export function projectAllFinancialStatements(orders: readonly Order[], processId: string): RenderedDocument[] {
     const bySeller = new Map<string, Order[]>();

@@ -2,7 +2,7 @@
 
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, usePublicClient } from "wagmi";
 import type { Abi } from "viem";
-import { CORE_ABI, ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";
+import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import type { Commitment } from "@figaro-protocol/sdk";
 
@@ -30,17 +30,6 @@ export const useFigaroActions = () => {
         return simulateWriteVerify({ ...call, account, client: publicClient, writeContractAsync, failureMessage });
     };
 
-    // Token Approval: Approve ERC20 for Core contract
-    const approveToken = async (
-        tokenAddress: `0x${string}`,
-        amount: bigint
-    ) => send({
-        address: tokenAddress,
-        abi: ERC20_ABI as Abi,
-        functionName: "approve",
-        args: [CONTRACTS.core as `0x${string}`, amount],
-    }, "The token approval was not granted.");
-
     // Unified commit: root and sub-orders use the same function.
     // Root orders: processId = 0x00...00, expectedCumulativeValue = payment
     // Sub-orders: processId = existing process, expectedCumulativeValue = prev + payment
@@ -67,9 +56,6 @@ export const useFigaroActions = () => {
     }, "The process was not resolved.");
 
     return {
-        // Token approval
-        approveToken,
-
         // Core actions: unified commit, Commitment[] resolution.
         commit,
         resolveProcess,

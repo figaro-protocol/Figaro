@@ -113,7 +113,7 @@ and `FigaroCore` as deployed forecloses adding contract-signature support. The l
 mitigation is **pre-installed EIP-7702 delegation**: while it still holds its key, the
 buyer sets a delegation (carrying its own guardian/recovery authorization) on
 the buyer EOA. `resolveProcess` authorizes by `msg.sender`
-(`FigaroCore.sol:268`), so after key loss the delegated code can still
+(`FigaroCore.sol:265`), so after key loss the delegated code can still
 originate the resolve call from the buyer's address — every active process the
 buyer opened through `FigaroCore` remains resolvable and none of its bonds is
 stranded. The same code reaches the proof-batched path: a batched resolve

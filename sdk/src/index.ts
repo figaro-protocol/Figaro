@@ -378,8 +378,6 @@ export type {
     CoSellerBinding,
     AssemblyBindingRecord,
     BuyerAssemblySubscription,
-    DisclosureCalendar,
-    DisclosurePolicyEntry,
     AgentServiceInfo,
     MemberProfileReader,
     AssemblyBindingCheck,

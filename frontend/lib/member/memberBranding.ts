@@ -13,7 +13,6 @@
  */
 
 import type { MemberBrandingMetadata } from "@/lib/member/memberBrandingMetadata";
-import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { createUriFetcher } from "@/lib/member/uriFetcher";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -58,29 +57,6 @@ function resolveMemberBrandingDocument(input: {
         logoURI: typeof b.logoURI === "string" ? b.logoURI : undefined,
         name: typeof input.name === "string" ? input.name : undefined,
     };
-}
-
-export function resolveMemberBrandingFromMemberProfile(
-    metadata: Pick<MemberProfileMetadata, "name" | "branding" | "assets"> | null | undefined,
-): ResolvedMemberBranding | null {
-    if (!metadata) {
-        return null;
-    }
-
-    const hasBranding = Boolean(
-        metadata.branding?.logoURI
-        || metadata.assets?.imageBaseURI
-    );
-
-    if (!hasBranding) {
-        return null;
-    }
-
-    return resolveMemberBrandingDocument({
-        name: metadata.name,
-        branding: metadata.branding,
-        assets: metadata.assets,
-    });
 }
 
 /**
