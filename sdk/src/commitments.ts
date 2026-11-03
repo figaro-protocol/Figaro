@@ -302,17 +302,16 @@ export function restoreSignedProcessId(c: Commitment, chainId: number, coreAddre
 // ── Salt generation ─────────────────────────────────────────────────────────
 
 /**
- * Generate a cryptographically random salt (uint256).
- * Uses Web Crypto API when available, falls back to Math.random.
+ * Generate a salt: 32 bytes from Web Crypto, read as a uint256.
+ * Throws where Web Crypto is absent, since a guessable salt is never returned.
  */
 export function generateSalt(): bigint {
-    if (typeof globalThis.crypto !== "undefined" && globalThis.crypto.getRandomValues) {
-        const buf = new Uint8Array(32);
-        globalThis.crypto.getRandomValues(buf);
-        return BigInt("0x" + Array.from(buf).map((b) => b.toString(16).padStart(2, "0")).join(""));
+    if (typeof globalThis.crypto?.getRandomValues !== "function") {
+        throw new Error("generateSalt: Web Crypto (globalThis.crypto.getRandomValues) is required");
     }
-    // Fallback for environments without Web Crypto
-    return BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
+    const buf = new Uint8Array(32);
+    globalThis.crypto.getRandomValues(buf);
+    return BigInt("0x" + Array.from(buf).map((b) => b.toString(16).padStart(2, "0")).join(""));
 }
 
 // ── Deadline computation ────────────────────────────────────────────────────
