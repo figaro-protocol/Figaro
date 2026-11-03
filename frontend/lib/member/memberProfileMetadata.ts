@@ -16,7 +16,6 @@ export type {
     CoSellerBinding,
     AssemblyBindingRecord,
     BuyerAssemblySubscription,
-    DisclosurePolicyEntry,
     AgentServiceInfo,
 } from "@figaro-protocol/sdk";
 

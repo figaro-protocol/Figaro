@@ -16,7 +16,7 @@
  * (`draftToAssembly` — the one walk publish uses).
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { agreementHashOf, serializeAssembly } from "@figaro-protocol/sdk";
+import { agreementHashOf, buildOrderAgreement, serializeAssembly } from "@figaro-protocol/sdk";
 import {
     loadNamedDraft,
     saveNamedDraft,
@@ -33,7 +33,7 @@ import {
     snapshotAssemblyIdentity,
     snapshotToAssembly,
 } from "@/lib/designer/draftToAssembly";
-import { clauseDesignFills, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { clauseDesignFills, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 
 describe("syntheticDesignStore round-trip", () => {
@@ -260,8 +260,9 @@ describe("buildSyntheticOrder — the agreement carries the clause by its key", 
             salt: 1n,
             clauseFields: { [geo]: {} },
         });
-        const stored = JSON.parse(window.localStorage.getItem(`figaro:agreement:${checkoutHash}`) ?? "null");
-        const clauseEntry = stored.clauses.find((s: { clause: string }) => s.clause.toLowerCase() === geo.toLowerCase());
+        const projected = buildOrderAgreement(syntheticAddress(0), syntheticAddress(1), { [geo]: {} }, specSource());
+        expect(projected.checkoutHash).toBe(checkoutHash);
+        const clauseEntry = projected.agreement.clauses.find((s: { clause: string }) => s.clause.toLowerCase() === geo.toLowerCase());
         expect(clauseEntry).toBeTruthy();
         expect(clauseEntry).not.toHaveProperty("version");
     });

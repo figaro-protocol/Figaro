@@ -9,17 +9,11 @@ interface HeaderShellProps {
      *  live on the pages, not in the header); (app) uses `<YourTurnBadge>` +
      *  `<ConnectWallet>`. */
     right: ReactNode;
-    /** Optional CTA pinned to the top of the mobile slide-out drawer.
-     *  No current tier passes one; the entry stays for a tier that does. */
-    mobileTopCta?: ReactNode;
     /** Override the mobile drawer link list. Marketing tier uses the
      *  default (`NAV_LINKS`, the publication row); (app) tier passes
      *  `NAV_LINKS_APP_DRAWER` for grouped publication + reference +
      *  transactional surfaces. */
     mobileLinks?: NavLink[];
-    /** Optional second row rendered under the main row (inside the same
-     *  sticky `<header>`). No current tier passes one. */
-    bottomRow?: ReactNode;
 }
 
 /**
@@ -27,14 +21,14 @@ interface HeaderShellProps {
  * container, container padding, mobile-nav trigger + logo on the left with
  * the site's one line beneath the name (a line, never the tagline), the
  * three doors as dropdowns in the center (`NavTreeRow`, one row, on every
- * page), caller-supplied right cluster; then any caller-supplied row.
+ * page), caller-supplied right cluster.
  */
-export function HeaderShell({ right, mobileTopCta, mobileLinks, bottomRow }: HeaderShellProps) {
+export function HeaderShell({ right, mobileLinks }: HeaderShellProps) {
     return (
         <header className="border-b border-default bg-canvas/80 backdrop-blur-md sticky top-0 z-50">
             <div className="container mx-auto px-6 py-5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                    <MobileNav topCta={mobileTopCta} links={mobileLinks} />
+                    <MobileNav links={mobileLinks} />
                     <div className="flex flex-col">
                         <BrandLogo />
                         <span className="text-xs md:text-sm text-ink-muted leading-tight">factotum of the blockchain</span>
@@ -43,13 +37,6 @@ export function HeaderShell({ right, mobileTopCta, mobileLinks, bottomRow }: Hea
                 <NavTreeRow />
                 <div className="flex items-center gap-3">{right}</div>
             </div>
-            {bottomRow && (
-                <div className="border-t border-default">
-                    <div className="container mx-auto px-6 py-2 flex justify-center">
-                        {bottomRow}
-                    </div>
-                </div>
-            )}
         </header>
     );
 }

@@ -91,7 +91,9 @@ type ResolvedSource =
         /** Whether the registration stake has already been reclaimed. */
         stakeWithdrawn: boolean;
     }
-    | { kind: "error"; message: string };
+    | { kind: "error"; message: string }
+    /** The stake could not be read: nothing is surfaced. Only a registration with a stake read live surfaces. */
+    | { kind: "unsurfaced" };
 
 export function ViewAssemblyClient({ slug }: { slug: string }) {
     const router = useRouter();
@@ -218,25 +220,24 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         });
                         return;
                     }
-                    // The binding is authoritative for registeredBy + withdrawn state
-                    // (registeredBy is also an indexed event topic, but reading the
-                    // binding also tells us whether the stake was already
-                    // reclaimed). A read failure falls back to the event's registeredBy
-                    // and a not-yet-withdrawn assumption.
-                    let registeredBy = log.args.registeredBy as `0x${string}`;
-                    let stakeWithdrawn = false;
+                    // The binding is authoritative for registeredBy and the stake's state.
+                    // Only a registration whose stake is read surfaces: a failed read
+                    // surfaces nothing.
+                    let binding: readonly [`0x${string}`, bigint, boolean, string];
                     try {
-                        const binding = (await client.readContract({
+                        binding = (await client.readContract({
                             address: registry,
                             abi: ASSEMBLY_REGISTRY_ABI,
                             functionName: "bindings",
                             args: [assemblyHash],
                         })) as readonly [`0x${string}`, bigint, boolean, string];
-                        registeredBy = binding[0];
-                        stakeWithdrawn = binding[2];
                     } catch {
-                        /* fall back to the event's registeredBy, stakeWithdrawn=false */
+                        if (canceled) return;
+                        setResolved({ kind: "unsurfaced" });
+                        return;
                     }
+                    const registeredBy = binding[0];
+                    const stakeWithdrawn = binding[2];
                     if (canceled) return;
                     const orders = assemblyToOrders(hydratedAssembly);
                     // The editorial name the designer published; the
@@ -437,6 +438,8 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             setForking(false);
         }
     }, [slug, resolved, router]);
+
+    if (resolved.kind === "unsurfaced") return null;
 
     if (resolved.kind === "loading") {
         return (

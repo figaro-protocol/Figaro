@@ -39,7 +39,8 @@ export function PayoutRoutingPanel({ currency }: Props) {
     // hook's 18 fallback would turn "1.5" of a 6-decimal token into 10^12×
     // the intended amount, and the exact-total approve mines before the
     // simulate refuses the batch.
-    const { decimals, ready: decimalsReady } = useTokenDecimals(currency);
+    const { decimals } = useTokenDecimals(currency);
+    const decimalsReady = decimals !== undefined;
     const { data: symbol } = useTokenSymbol(currency);
     const [legs, setLegs] = useState<LegDraft[]>([{ recipient: "", amount: "" }]);
     const [error, setError] = useState<string | null>(null);
@@ -49,7 +50,7 @@ export function PayoutRoutingPanel({ currency }: Props) {
 
     const parsedLegs = (): PayoutLeg[] => legs.map((leg) => ({
         recipient: leg.recipient.trim() as `0x${string}`,
-        amount: leg.amount.trim() === "" ? 0n : parseUnits(leg.amount.trim(), decimals),
+        amount: leg.amount.trim() === "" || decimals === undefined ? 0n : parseUnits(leg.amount.trim(), decimals),
     }));
 
     const setLeg = (i: number, patch: Partial<LegDraft>) =>

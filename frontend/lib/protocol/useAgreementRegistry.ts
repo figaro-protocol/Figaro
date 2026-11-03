@@ -165,7 +165,8 @@ export function getRegisteredAgreement(agreementHash: string): Anchored<Register
 
 /** Test-only — put a registered agreement into this tab's verified cache, as
  *  a read of its binding and pinned document would: verified against its own
- *  key (`anchorRegisteredAgreement` over its canonical bytes). Returns the key. */
+ *  key (`anchorRegisteredAgreement` over its canonical bytes). Returns the key.
+ *  @internal */
 export function _primeRegisteredAgreement_TESTING_ONLY(doc: RegisteredAgreement): `0x${string}` {
     const agreementHash = agreementHashOf(doc);
     const anchored = anchorRegisteredAgreement(canonicalize(doc), agreementHash);

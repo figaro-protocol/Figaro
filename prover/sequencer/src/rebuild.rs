@@ -43,14 +43,11 @@ pub async fn rebuild_from_chain(
     rpc_url: &str,
     verifier: Address,
     from_block: u64,
+    chain_id: u64,
 ) -> Result<Rebuilt, String> {
     let provider = ProviderBuilder::new()
         .connect_http(rpc_url.parse().map_err(|e| format!("invalid rpc url: {e}"))?);
     let contract = IFigaroBatchVerifier::new(verifier, &provider);
-    let chain_id = provider
-        .get_chain_id()
-        .await
-        .map_err(|e| format!("chain id read failed: {e}"))?;
     let head = provider
         .get_block_number()
         .await

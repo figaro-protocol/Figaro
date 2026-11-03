@@ -44,24 +44,12 @@ export function toggledSet<K>(set: ReadonlySet<K>, key: K): Set<K> {
 }
 
 /**
- * The disclosure-policy half of a posture step (Sell through edits the
- * "seller" entries, Buy through the "buyer" ones). The step edits its own
- * posture's entries; the other posture's are carried through every write
- * untouched. `hydrate(all)` splits the draft's list once per subject (the
- * wallet, or the anonymous draft before one connects) and flips `hydrated`;
- * the step's own effect hydrates its selection beside it.
+ * A step's draft is read into its local state once per subject (the wallet, or the
+ * anonymous draft before one connects): `markHydrated()` flips `hydrated` for the
+ * current subject, and a new subject starts unhydrated.
  */
-export function usePostureDisclosure<E extends { posture: string }>(posture: string, subject: string) {
-    const [policyEntries, setPolicyEntries] = useState<E[]>([]);
-    const [otherPostureEntries, setOtherPostureEntries] = useState<E[]>([]);
+export function useSubjectHydration(subject: string) {
     const [hydratedFor, setHydratedFor] = useState<string | null>(null);
-    const hydrate = useCallback((all: readonly E[]) => {
-        setPolicyEntries(all.filter((e) => e.posture === posture));
-        setOtherPostureEntries(all.filter((e) => e.posture !== posture));
-        setHydratedFor(subject);
-    }, [posture, subject]);
-    return {
-        policyEntries, setPolicyEntries, otherPostureEntries,
-        hydrated: hydratedFor === subject, hydrate,
-    };
+    const markHydrated = useCallback(() => setHydratedFor(subject), [subject]);
+    return { hydrated: hydratedFor === subject, markHydrated };
 }

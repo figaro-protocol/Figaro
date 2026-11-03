@@ -1,10 +1,8 @@
 /**
  * Synthetic process helpers for the designer canvas.
  *
- * Builds in-memory orders + their agreements for the /assemblies/designer/new
- * canvas. Persists each synthetic agreement through the normal agreementStore
- * (localStorage) so that the existing topology derivation and lens summaries
- * pick them up without any code path changes.
+ * Builds in-memory orders for the /assemblies/designer/new canvas, each
+ * anchored by the checkout hash of the agreement its clauses project.
  *
  * IDs are deterministically generated within a session by counter; checkout
  * hashes are computed from the agreement contents the same way live commits
@@ -17,7 +15,6 @@ import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { buildOrderAgreement } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
-import { saveAgreement } from "@/lib/designer/syntheticAgreementStore";
 import { draftOrderTopology } from "@/lib/shared/orderTopology";
 
 /** Address space for synthetic actors. Distinct prefix avoids visual confusion with live wallets. */
@@ -51,7 +48,6 @@ export function startSyntheticSession(): SyntheticProcessSession {
 
 export interface CreatedOrder {
     order: Order;
-    /** Persists the agreement to localStorage so loadAgreement(...) finds it. */
     checkoutHash: Hex;
 }
 
@@ -67,9 +63,7 @@ function defaultNodeClauseFields(): ClauseFields {
 
 /**
  * The single synthetic display-Order choreography: build the agreement from the
- * order's clauses + topology parents, hash it, persist it to the agreement store (so
- * the canvas + topology derivation resolve it by hash), and assemble the display
- * `Order`. Every synthetic-Order producer — the canvas node-spawn paths here
+ * order's clauses, hash it, and assemble the display `Order`. Every synthetic-Order producer — the canvas node-spawn paths here
  * and the assembly fork/`/view` reconstruction in `assemblyToDraft` —
  * routes through this one builder.
  *
@@ -96,16 +90,12 @@ export function buildSyntheticOrder(params: {
 }): CreatedOrder {
     // The clause map IS the seller's pinned assembly, valued for this order —
     // buildOrderAgreement projects it, names no clause.
-    const { agreement, checkoutHash } = buildOrderAgreement(
+    const { checkoutHash } = buildOrderAgreement(
         params.buyer,
         params.seller,
         params.clauseFields,
         specSource(),
     );
-    // Persist to the designer's authoring store (localStorage) so the in-progress
-    // design survives until publish — the assembly-management counterpart to the
-    // buyer's draftOrders.
-    saveAgreement(agreement);
 
     const order: Order = {
         orderHash: params.orderId,
@@ -198,9 +188,8 @@ export type MergeResult =
  * many-to-one merges (e.g. the diamond pattern where order 4 has parents
  * [order 2, order 3]).
  *
- * Rebuilds the child's agreement with the extended parent list, recomputes
- * its hash, and persists. The child's order id is preserved (acts as a
- * stable label in synthetic mode); only `checkoutHash` changes.
+ * Topology is first-class on the order (`follows`), so only the parent list
+ * changes; the child's order id and agreement are preserved.
  */
 export function mergeSyntheticParent(
     child: Order,
@@ -235,20 +224,9 @@ export function mergeSyntheticParent(
         }
     }
 
-    const nextParents = [...existingParents, newParentId];
-    // Topology is first-class on the order (follows below); the
-    // agreement projects the node's assembly clauses.
-    const { agreement: newAgreement, checkoutHash: newCheckoutHash } = buildOrderAgreement(
-        child.buyer as `0x${string}`,
-        child.seller as `0x${string}`,
-        defaultNodeClauseFields(),
-        specSource(),
-    );
-    saveAgreement(newAgreement);
-
     return {
         ok: true,
-        child: { ...child, checkoutHash: newCheckoutHash, follows: nextParents },
+        child: { ...child, follows: [...existingParents, newParentId] },
     };
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAccount } from "wagmi";
-import { formatToken } from "@/lib/shared/utils";
+import { tokenFigure } from "@/lib/shared/utils";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -52,7 +52,7 @@ export function ResolutionProceedsPanel({
 
     if (!address) return null;
 
-    const fmt = (v: bigint) => `${formatToken(v, decimals)}${symbol ? ` ${symbol}` : ""}`;
+    const fmt = (v: bigint) => `${tokenFigure(v, decimals)}${symbol ? ` ${symbol}` : ""}`;
 
     return (
         <div

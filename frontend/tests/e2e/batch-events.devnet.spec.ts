@@ -105,7 +105,6 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
             env: {
                 ...process.env,
                 RPC_URL,
-                CHAIN_ID: '31337',
                 BATCH_VERIFIER_ADDRESS: verifier,
                 USAGE_COUNTER_ADDRESS: config.usageCounter as string,
                 CLAUSE_REGISTRY_ADDRESS: config.clauseRegistry as string,

@@ -122,7 +122,6 @@ export function MemberDetailView({ sellerAddress }: Props) {
             widthMm: catalogItem.widthMm,
             heightMm: catalogItem.heightMm,
             clauseValues: catalogItem.clauseValues,
-            dataSold: catalogItem.dataSold,
         });
     };
 
@@ -187,20 +186,6 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                         Priced in: <span className="font-semibold text-ink-body">{tokenSymbol}</span>
                                     </span>
                                 )}
-                                {(() => {
-                                    // Data-disclosure declaration — summary chip; the
-                                    // class-by-class list renders as its own section
-                                    // below the hero. Absent policy renders nothing:
-                                    // the default (each party holds its own copy) is not a
-                                    // declaration to display.
-                                    const offered = memberCatalog.disclosurePolicy?.filter((e) => e.offered) ?? [];
-                                    if (offered.length === 0) return null;
-                                    return (
-                                        <span>
-                                            Data for sale: {offered.length} offer{offered.length === 1 ? "" : "s"}
-                                        </span>
-                                    );
-                                })()}
                             </div>
                             {/* Agent identity — the member's published did:web / service
                                 endpoints, with the did:web verified against this wallet. */}
@@ -209,53 +194,6 @@ export function MemberDetailView({ sellerAddress }: Props) {
                     </div>
                 </header>
 
-                {/* Data for sale — the member's declared offers: what data, which
-                    side they co-produced it on, who may buy, and when it
-                    opens. The PRICED form is a catalog item carrying dataSold. */}
-                {(() => {
-                    const offered = memberCatalog.disclosurePolicy?.filter((e) => e.offered) ?? [];
-                    if (offered.length === 0) return null;
-                    return (
-                        <section
-                            className="rounded-lg border border-default bg-paper p-5 space-y-3"
-                            data-testid="seller-disclosure-policy"
-                        >
-                            <p className="text-xs font-semibold text-ink-muted">Data for sale</p>
-                            <ul className="space-y-2 text-sm text-ink-body">
-                                {offered.map((entry) => {
-                                    const title = getClauseSpec(entry.clauseKey)?.title ?? entry.clauseKey;
-                                    const embargo = entry.calendar?.embargoDaysAfterResolution;
-                                    return (
-                                        <li
-                                            key={`${entry.assemblyHash}-${entry.clauseKey}-${entry.posture}`}
-                                            className="flex flex-wrap items-baseline gap-x-2"
-                                            data-testid={`disclosure-data-${entry.clauseKey}-${entry.posture}`}
-                                        >
-                                            <span className="font-medium text-ink-primary">{title}</span>
-                                            <span className="text-ink-muted">data · as {entry.posture}</span>
-                                            <span className="text-ink-muted">
-                                                · {entry.whitelist?.length
-                                                    ? `${entry.whitelist.length} wallet${entry.whitelist.length === 1 ? "" : "s"} whitelisted`
-                                                    : "any counterparty"}
-                                            </span>
-                                            <span className="text-ink-muted">
-                                                · {embargo
-                                                    ? `opens ${embargo} day${embargo === 1 ? "" : "s"} after resolution`
-                                                    : "available at resolution"}
-                                            </span>
-                                            <code className="text-[11px] text-ink-muted font-mono">
-                                                {truncateHex(entry.assemblyHash, { head: 10, tail: 0 })}
-                                            </code>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                            <p className="text-xs text-ink-muted">
-                                Priced data appears in the catalog below.
-                            </p>
-                        </section>
-                    );
-                })()}
 
                 {/* Seller resolution history — public-graph-derived resolution
                     + coordination history, recomputed from on-chain events. */}
@@ -297,14 +235,6 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                         <div className="flex-1">
                                                             <h3 className="font-semibold text-ink-primary mb-1">{catalogItem.name}</h3>
                                                             <p className="text-sm text-ink-muted mb-2">{catalogItem.description}</p>
-                                                            {catalogItem.dataSold && (
-                                                                <p
-                                                                    className="text-[11px] text-ink-muted mb-2"
-                                                                    data-testid={`catalog-item-data-sold-${catalogItem.id}`}
-                                                                >
-                                                                    Data for sale · {getClauseSpec(catalogItem.dataSold.clauseKey)?.title ?? catalogItem.dataSold.clauseKey} · as {catalogItem.dataSold.posture}
-                                                                </p>
-                                                            )}
                                                             {(catalogItem.massGrams || catalogItem.volumeMl) && (
                                                                 <p
                                                                     className="text-[11px] text-ink-muted mb-2 flex flex-wrap gap-x-2"

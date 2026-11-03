@@ -137,6 +137,18 @@ sol! {
 pub struct FundingGate {
     pub rpc_url: String,
     pub verifier: Address,
+    /// The chain id the RPC answered at startup (`read_chain_id`), the one the verifier's domain is built on.
+    pub chain_id: u64,
+}
+
+/// The chain id, read from the RPC: the one source the relay takes it from, read once at startup.
+pub async fn read_chain_id(rpc_url: &str) -> Result<u64, String> {
+    let url = rpc_url.parse().map_err(|e| format!("invalid RPC_URL: {e}"))?;
+    ProviderBuilder::new()
+        .connect_http(url)
+        .get_chain_id()
+        .await
+        .map_err(|e| format!("chain id read failed: {e}"))
 }
 
 /// A bond is funded when the wallet holds it AND has approved it to the
@@ -443,8 +455,7 @@ pub async fn check_wallet_code_resolve(gate: &FundingGate, op: &KernelOp) -> Res
     }
     let url = gate.rpc_url.parse().map_err(|e| format!("invalid RPC_URL: {e}"))?;
     let provider = ProviderBuilder::new().connect_http(url);
-    let chain_id = provider.get_chain_id().await.map_err(|e| format!("chain id read failed: {e}"))?;
-    let Some((buyer, digest, authorization)) = wallet_code_question(chain_id, gate.verifier, op) else {
+    let Some((buyer, digest, authorization)) = wallet_code_question(gate.chain_id, gate.verifier, op) else {
         return Ok(Err("a wallet-code resolve listing no order, or whose payments overflow".to_string()));
     };
     let code = provider
@@ -713,6 +724,8 @@ sol! {
 #[derive(Clone, Debug)]
 pub struct SubmitterConfig {
     pub rpc_url: String,
+    /// The chain id the RPC answered at startup (`read_chain_id`).
+    pub chain_id: u64,
     pub verifier_address: Address,
     /// The RPGF counter. `Address::ZERO` disables usage accrual — the
     /// sequencer then resolves trade without crediting it, which is exactly
@@ -815,14 +828,7 @@ pub async fn filter_usage_claims(
     let counter = IUsageCounter::new(config.usage_counter_address, &provider);
     // The process id a claim's use carries, derived under the verifier's
     // domain as the guest derives it.
-    let domain = match provider.get_chain_id().await {
-        Ok(chain_id) => figaro_kernel::eip712::domain_separator(chain_id, config.verifier_address),
-        Err(e) => {
-            let why = format!("chain id read failed: {e}");
-            dropped.extend(claims.into_iter().map(|c| (c, why.clone())));
-            return (Vec::new(), dropped);
-        }
-    };
+    let domain = figaro_kernel::eip712::domain_separator(config.chain_id, config.verifier_address);
 
     let mut valid = Vec::with_capacity(claims.len());
 
@@ -1199,6 +1205,16 @@ mod tests {
         assert!(dropped.is_empty());
     }
 
+    /// The chain id has one source, the RPC: an unreachable RPC is an error (the relay refuses to
+    /// start), never a default chain.
+    #[tokio::test]
+    async fn the_chain_id_is_read_from_the_rpc_and_never_defaulted() {
+        let err = read_chain_id("http://127.0.0.1:1").await.unwrap_err();
+        assert!(err.starts_with("chain id read failed"), "{err}");
+        let err = read_chain_id("not a url").await.unwrap_err();
+        assert!(err.starts_with("invalid RPC_URL"), "{err}");
+    }
+
     /// With a verifier configured but the chain unreachable, a commit is
     /// dropped conservatively — never proved against unverified funding —
     /// and the reason says so; a non-commit op is not a funding question.
@@ -1207,6 +1223,7 @@ mod tests {
         let gate = FundingGate {
             rpc_url: "http://127.0.0.1:1".to_string(),
             verifier: Address::repeat_byte(0x02),
+            chain_id: 31337,
         };
         let sig = figaro_kernel::types::Signature {
             v: 27,
@@ -1281,6 +1298,7 @@ mod tests {
 
     fn dummy_config(clause: Address, assembly: Address, members: Address) -> SubmitterConfig {
         SubmitterConfig {
+            chain_id: 31337,
             rpc_url: "http://127.0.0.1:1".to_string(),
             verifier_address: Address::ZERO,
             usage_counter_address: Address::ZERO,
@@ -1433,6 +1451,7 @@ mod tests {
 
     fn live_config(rpc_url: String) -> SubmitterConfig {
         SubmitterConfig {
+            chain_id: 31337,
             rpc_url,
             verifier_address: Address::ZERO,
             usage_counter_address: COUNTER,

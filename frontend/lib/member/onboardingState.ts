@@ -21,7 +21,6 @@ import { useCallback, useEffect, useState } from "react";
 import type {
     AssemblyBindingRecord,
     BuyerAssemblySubscription,
-    DisclosurePolicyEntry,
     MemberAgentServices,
     MemberAssetReferences,
 } from "@/lib/member/memberProfileMetadata";
@@ -71,12 +70,6 @@ interface OnboardingState {
      *  which assemblies this wallet buys through and monetizes data
      *  from. Independent of `assemblies` (the bindings the member sells through). */
     buyerAssemblies?: BuyerAssemblySubscription[];
-    /** Data-disclosure policy. One list; each entry carries the posture
-     *  the member traded on. Seller-posture entries are edited on the
-     *  assemblies step (classes derive from the bound assemblies);
-     *  buyer-posture entries on the buyer step (classes derive from the
-     *  subscriptions). */
-    disclosurePolicy?: DisclosurePolicyEntry[];
     /** Agent endpoints declared on screen 6 (advanced; optional). */
     services?: MemberAgentServices;
     /** True when the on-chain register/updateProfile transaction has confirmed. */
@@ -245,15 +238,12 @@ export interface OnboardingStep {
 //
 // The two assembly steps are one loop walked twice — the assemblies a member
 // sells through (it BINDS them) and the assemblies it buys through (it
-// SUBSCRIBES them) — and each ends by choosing which of the data those trades
-// co-produce is offered. They sit side by side, and both precede Catalog,
+// SUBSCRIBES them). They sit side by side, and both precede Catalog,
 // because the authority runs that way: the assemblies a member binds decide
 // which clauses its trades carry, and the clauses decide which item fields
-// exist to fill (a freight class, a hazmat number, a cold-chain range); and
-// the catalog's data-product option reads the disclosure entries BOTH steps
-// derive. Ask for the items first and the catalog has nothing to derive
-// from, so it opens every registered logistics field to a member selling one
-// mug and cannot price a data offer that has not been declared yet.
+// exist to fill (a freight class, a hazmat number, a cold-chain range). Ask for
+// the items first and the catalog has nothing to derive from, so it opens every
+// registered logistics field to a member selling one mug.
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "profile", number: 1, label: "Identity", path: "identity", optional: false },
     { id: "assemblies", number: 2, label: "Sell through", path: "assemblies", optional: false },

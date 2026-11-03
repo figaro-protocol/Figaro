@@ -14,7 +14,6 @@ import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/li
 import type {
     AssemblyBindingRecord,
     CoSellerBinding,
-    DisclosurePolicyEntry,
 } from "@/lib/member/memberProfileMetadata";
 import {
     type AssemblyChoice,
@@ -23,9 +22,8 @@ import {
 } from "@/lib/protocol/assemblyChoices";
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
 import { PinnedTokenNote } from "@/components/members/PinnedTokenNote";
-import { DisclosurePolicyEditor } from "@/components/members/DisclosurePolicyEditor";
 import { ProfileClauseValues } from "@/components/members/ProfileClauseValues";
-import { finishStep, type OnboardingStepChromeProps, toggledSet, usePostureDisclosure } from "@/components/members/OnboardingStepChrome";
+import { finishStep, type OnboardingStepChromeProps, toggledSet, useSubjectHydration } from "@/components/members/OnboardingStepChrome";
 
 /**
  * The assemblies step of the onboarding wizard. The member picks which published
@@ -84,33 +82,12 @@ function assemblyKey(choice: { assemblyHash: string }): string {
     return choice.assemblyHash.toLowerCase();
 }
 
-/** Restrict the disclosure policy to the data of the assemblies
- *  currently selected — un-binding an assembly drops its rows from the
- *  saved policy (the local editor state keeps them, so re-checking the
- *  assembly within the session restores the configuration). */
-function activePolicy(
-    entries: DisclosurePolicyEntry[],
-    selected: Set<string>,
-    choices: AssemblyChoice[],
-): DisclosurePolicyEntry[] {
-    const selectedHashes = new Set(
-        choices.filter((c) => selected.has(assemblyKey(c))).map((c) => c.assemblyHash),
-    );
-    return entries.filter((e) => selectedHashes.has(e.assemblyHash));
-}
-
 export interface OnboardingAssembliesFormProps extends OnboardingStepChromeProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
-     * `onSave(bindings, disclosurePolicy)` instead of routing to the
-     * next wizard step. The policy travels with the bindings it
-     * derives from so an edit-mode save can't strand one without the
-     * other.
+     * `onSave(bindings)` instead of routing to the next wizard step.
      */
-    onSave?: (
-        bindings: AssemblyBindingRecord[],
-        disclosurePolicy: DisclosurePolicyEntry[],
-    ) => Promise<void>;
+    onSave?: (bindings: AssemblyBindingRecord[]) => Promise<void>;
 }
 
 export function OnboardingAssembliesForm({
@@ -136,11 +113,7 @@ export function OnboardingAssembliesForm({
     const [coSellersByAssembly, setCoSellersByAssembly] = useState<
         Map<string, CoSellerBinding[]>
     >(new Map());
-    // This step edits SELLER-posture disclosure entries only (classes
-    // derive from the bindings). Buyer-posture entries belong to the
-    // buyer step and are carried through every write untouched.
-    const { policyEntries, setPolicyEntries, otherPostureEntries, hydrated, hydrate } =
-        usePostureDisclosure<DisclosurePolicyEntry>("seller", subject);
+    const { hydrated, markHydrated } = useSubjectHydration(subject);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -154,19 +127,15 @@ export function OnboardingAssembliesForm({
             }
         }
         setCoSellersByAssembly(cps);
-        hydrate(state.disclosurePolicy ?? []);
-    }, [hydrated, loaded, hydrate, state.assemblies, state.disclosurePolicy]);
+        markHydrated();
+    }, [hydrated, loaded, markHydrated, state.assemblies]);
 
     useEffect(() => {
         if (!hydrated || !choicesLoaded) return;
         update({
             assemblies: buildBindings(address ?? DRAFT_SUBJECT, selected, choices, coSellersByAssembly),
-            disclosurePolicy: [
-                ...otherPostureEntries,
-                ...activePolicy(policyEntries, selected, choices),
-            ],
         });
-    }, [selected, coSellersByAssembly, policyEntries, otherPostureEntries, hydrated, address, choices, choicesLoaded, update]);
+    }, [selected, coSellersByAssembly, hydrated, address, choices, choicesLoaded, update]);
 
     function toggle(key: string) {
         setSelected((prev) => toggledSet(prev, key));
@@ -199,10 +168,7 @@ export function OnboardingAssembliesForm({
         }
         setSubmitError(null);
         finishStep(
-            onSave && (() => onSave(
-                buildBindings(address ?? DRAFT_SUBJECT, selected, choices, coSellersByAssembly),
-                [...otherPostureEntries, ...activePolicy(policyEntries, selected, choices)],
-            )),
+            onSave && (() => onSave(buildBindings(address ?? DRAFT_SUBJECT, selected, choices, coSellersByAssembly))),
             () => router.push(onboardingNextHref("assemblies")),
         );
     }
@@ -305,17 +271,6 @@ export function OnboardingAssembliesForm({
                         },
                     })
                 }
-            />
-
-            {/* SELLER-side data-disclosure — classes derive from the
-                bindings selected above; nothing here is required. The
-                buyer side has its own step, deriving from its own
-                subscriptions. */}
-            <DisclosurePolicyEditor
-                choices={choices.filter((c) => selected.has(assemblyKey(c)))}
-                entries={policyEntries}
-                onChange={setPolicyEntries}
-                postures={["seller"]}
             />
 
             {(submitError ?? externalError) && (

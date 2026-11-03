@@ -6,8 +6,8 @@
  * identity → assemblies → catalog → buyer → agents → endpoints → review →
  * publish, ending anchored on `MembersRegistry`, pinned to IPFS, and surfacing
  * on `/s/view` and `/discover`. The buyer step subscribes an assembly the
- * wallet buys through and offers some of its data — the pinned document must
- * carry BOTH halves.
+ * wallet buys through — the pinned document must carry BOTH halves: the
+ * seller's binding and the buyer's subscription.
  *
  * Assemblies precede Catalog because the bindings decide which clauses the
  * seller's trades carry, and those clauses decide which item fields the
@@ -189,19 +189,9 @@ async function onboardViaWizard(
     await expect(assemblyRow).toContainText(slug);
 
     await assemblyRow.locator('input[type="checkbox"]').first().check();
-    // SELLER-side data: offer the first row derived from the binding — BOTH
-    // market sides declare through the same editor, each on its own step.
-    const sellerOfferBox = page
-        .locator(`[data-testid^="disclosure-${slug}-"][data-testid$="-seller-offer"]`)
-        .first();
-    await sellerOfferBox.waitFor({ state: 'visible', timeout: 30_000 });
-    if (!(await sellerOfferBox.isChecked())) {
-        await sellerOfferBox.check();
-    }
     // The binding survives a reload: it is the seller's declaration, held in
-    // this browser under this wallet until they publish it.
-    await draftCarries(page, '"offered":true');
-    // The binding the draft holds names the assembly by its full hash.
+    // this browser under this wallet until they publish it. The binding the
+    // draft holds names the assembly by its full hash.
     await draftCarries(page, assembly.assemblyHash);
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(
@@ -211,23 +201,14 @@ async function onboardViaWizard(
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/buyer/);
 
-    // Buy through: subscribe an assembly the wallet buys through, then
-    // offer some of its data for sale. Subscribing is the buying posture's
-    // verb (a profile declaration), distinct from the BINDING on the step before.
+    // Buy through: subscribe an assembly the wallet buys through. Subscribing is
+    // the buying posture's verb (a profile declaration), distinct from the
+    // BINDING on the step before.
     const buyerRow = page.getByTestId(`buyer-assembly-row-${slug}`);
     await buyerRow.waitFor({ state: 'visible', timeout: 30_000 });
     const buyerCheckbox = buyerRow.locator('input[type="checkbox"]').first();
     if (!(await buyerCheckbox.isChecked())) {
         await buyerCheckbox.check();
-    }
-    // The disclosure editor renders one buyer-posture row per clause once the
-    // subscribed assembly's assembly loads; offer the first row.
-    const offerBox = page
-        .locator(`[data-testid^="disclosure-${slug}-"][data-testid$="-buyer-offer"]`)
-        .first();
-    await offerBox.waitFor({ state: 'visible', timeout: 30_000 });
-    if (!(await offerBox.isChecked())) {
-        await offerBox.check();
     }
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/catalog/);
@@ -369,17 +350,13 @@ test.describe("member registration wizard (devnet)", () => {
             // an older single-token profile gets repaired in update mode).
             const acceptedTokens = (doc.acceptedTokens ?? []) as Array<{ address?: string }>;
             const permitToken = (config.permitTokenAddress ?? "").toLowerCase();
-            // The buyer half is part of the premise now: at least one
-            // subscription and one offered buyer-posture class. An older
-            // seller-only profile gets repaired in update mode.
+            // The buyer half is part of the premise: at least one subscription.
+            // An older seller-only profile gets repaired in update mode.
             const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ assemblyHash: string }>;
-            const policyEntries = (doc.disclosurePolicy ?? []) as Array<{ posture: string; offered: boolean }>;
-            const buyerOffered = policyEntries.some((e) => e.posture === "buyer" && e.offered === true);
-            const sellerOffered = policyEntries.some((e) => e.posture === "seller" && e.offered === true);
             conformant = bindings.length === 1 && isBindingOf(bindings[0], singleOrderAssembly!.assemblyHash)
                 && !!permitToken
                 && acceptedTokens.some((t) => t.address?.toLowerCase() === permitToken)
-                && buyerSubs.length >= 1 && buyerOffered && sellerOffered;
+                && buyerSubs.length >= 1;
         }
         let promisedSellerPage: string | undefined;
         if (!uriBefore || !conformant) {
@@ -400,11 +377,6 @@ test.describe("member registration wizard (devnet)", () => {
             const doc = await (await fetch(`${gateway}/ipfs/${profileURI!.slice("ipfs://".length)}`)).json();
             const buyerSubs = (doc.buyerAssemblies ?? []) as Array<{ assemblyHash: string }>;
             expect(buyerSubs.length, "the buyer's assembly subscription is in the pinned profile").toBeGreaterThanOrEqual(1);
-            const policy = (doc.disclosurePolicy ?? []) as Array<{ posture: string; offered: boolean; assemblyHash: string }>;
-            const buyerEntry = policy.find((e) => e.posture === "buyer" && e.offered === true);
-            expect(buyerEntry, "offered buyer-side data is in the pinned profile").toBeTruthy();
-            const sellerEntry = policy.find((e) => e.posture === "seller" && e.offered === true);
-            expect(sellerEntry, "offered seller-side data is in the pinned profile — both market sides declare").toBeTruthy();
             const tokens = (doc.acceptedTokens ?? []) as Array<{ address?: string }>;
             const permitToken = (readLocalDeploymentConfig().permitTokenAddress ?? "").toLowerCase();
             expect(
@@ -412,8 +384,8 @@ test.describe("member registration wizard (devnet)", () => {
                 "the second accepted token is in the pinned profile",
             ).toBe(true);
             expect(
-                buyerSubs.some((s) => s.assemblyHash === buyerEntry!.assemblyHash),
-                "the offered buyer class derives from a subscribed assembly",
+                buyerSubs.some((s) => s.assemblyHash.toLowerCase() === singleOrderAssembly!.assemblyHash.toLowerCase()),
+                "the subscription is the assembly the buyer step subscribed",
             ).toBe(true);
         }
 

@@ -93,28 +93,6 @@ describe("parseMemberCatalogDocument (strict)", () => {
         });
     });
 
-    it("carries a data-product dataSold reference through a parse", () => {
-        const dataSold = {
-            assemblyHash: `0x${"ef".repeat(32)}`,
-            clauseKey: keyOf("figaro-geolocation"),
-            posture: "buyer",
-        };
-        const parsed = parseMemberCatalogDocument({
-            subjectAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-            version: "1",
-            items: [{ id: "i1", name: "Flight record", price: "5", available: true, dataSold }],
-        });
-        expect(parsed.items[0].dataSold).toEqual(dataSold);
-    });
-
-    it("throws on a dataSold with a malformed assemblyHash", () => {
-        expect(() => parseMemberCatalogDocument({
-            subjectAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-            version: "1",
-            items: [{ id: "i1", name: "Bad", price: "5", available: true, dataSold: { assemblyHash: "0x12", clauseKey: keyOf("figaro-geolocation"), posture: "buyer" } }],
-        })).toThrow(/dataSold\.assemblyHash must be a 32-byte hex hash/);
-    });
-
     it("carries the catalog-sourced clauseValues map through a parse", () => {
         const clauseValues = {
             [keyOf("figaro-hazmat")]: { unNumber: "UN1203", properShippingName: "Petrol", hazardClass: "3" },

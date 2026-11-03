@@ -79,7 +79,7 @@ let activeFetcher: ClauseSpecFetcher = async (uri) => {
     return response.bytes;
 };
 
-/** Replace the default fetcher (test-only). */
+/** Replace the default fetcher (test-only). @internal */
 export function setClauseSpecFetcher(fetcher: ClauseSpecFetcher): void {
     activeFetcher = fetcher;
 }
@@ -162,7 +162,7 @@ function specFromAnchoredDocument(raw: unknown, clauseKey: Hex, uri: string): Cl
     return block !== undefined ? { ...parsed.spec, clauseKey: key, block } : { ...parsed.spec, clauseKey: key };
 }
 
-/** Test-only — clear all caches. */
+/** Test-only — clear all caches. @internal */
 export function _resetClauseSpecCache_TESTING_ONLY(): void {
     SPEC_CACHE.clear();
     SPEC_LOAD_ERRORS.clear();

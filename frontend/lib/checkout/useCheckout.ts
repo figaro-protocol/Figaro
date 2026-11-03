@@ -30,10 +30,8 @@ export function useCheckout(
     const chainId = useChainId();
 
     // ── Token metadata ──────────────────────────────────────────
-    // `decimalsReady` distinguishes the real on-chain value from the 18-default
-    // fallback — checkout must not price an order against the fallback before
-    // the token's true decimals land (a non-18-decimal token would misprice).
-    const { decimals, ready: decimalsReady } = useTokenDecimals(token);
+    // The token's decimals(), undefined until the chain answers; nothing is priced before it lands.
+    const { decimals } = useTokenDecimals(token);
 
     // ── Balance ─────────────────────────────────────────────────
     const { data: rawBalance } = useReadContract({
@@ -96,7 +94,6 @@ export function useCheckout(
         // Token state
         balance,
         decimals,
-        decimalsReady,
 
         // Authorization
         needsAuthorization: needsApproval,
