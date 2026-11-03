@@ -22,6 +22,7 @@ import { scheduleContentRetry } from "@/lib/shared/ipfsService";
 import {
     usePublishedAssemblies,
     fetchHydratedAssembly, getAssemblyLoadError } from "@/lib/protocol/useAssemblyRegistry";
+import { mapRead, type NetworkRead } from "@/lib/shared/networkRead";
 
 /**
  * Synthesize a `networkTargets` value for an on-chain-registered assembly
@@ -88,7 +89,9 @@ export function formatAssemblyClauseList(clauses: readonly string[]): string {
  * `state === "loading"`, `name` falls back to `slug` so the UI can
  * render the row immediately. When `state === "loaded"`, all
  * assembly-derived fields are populated. An assembly whose assembly or any
- * agreement's agreement is absent stays in `"error"` — not offered.
+ * agreement's agreement is absent stays in `"error"` — not offered, and not
+ * listed: `useAssemblyChoices` surfaces a row only while it loads or once it
+ * has loaded, never a row whose document failed.
  */
 /** Per-assembly read state: requested, succeeded, or failed. */
 type AssemblyFetchState = "loading" | "loaded" | "error";
@@ -135,8 +138,9 @@ export interface AssemblyChoice {
 export function useAssemblyChoices(
     registeredBy?: `0x${string}` | undefined,
     opts?: { includeWithdrawn?: boolean },
-): { data: AssemblyChoice[] | null; isLoading: boolean; failed: boolean; error: string | null; refetch: () => void } {
-    const { data: events, isLoading, failed, error, refetch } = usePublishedAssemblies(registeredBy, opts);
+): { read: NetworkRead<AssemblyChoice[]>; refetch: () => void } {
+    const { read: eventsRead, refetch } = usePublishedAssemblies(registeredBy, opts);
+    const events = eventsRead.status === "present" ? eventsRead.value : null;
     // `activeChain` is env-determined; the read uses the standalone public
     // client bound to it. Wagmi's `useChainId` would reflect the connected
     // wallet's chain, which is irrelevant for a read against a fixed chain
@@ -219,15 +223,16 @@ export function useAssemblyChoices(
     // notably the OnboardingAssembliesForm's autosave effect, which would
     // refire on every render, call update(), trigger another render, and
     // freeze the UI in an infinite loop.
-    const data = useMemo<AssemblyChoice[] | null>(() => {
-        if (!events) return null;
+    const read = useMemo<NetworkRead<AssemblyChoice[]>>(() => mapRead(eventsRead, (events) => {
         const networkTarget = chainIdToNetworkTarget(chainId);
-        return events.map((event) => {
+        return events.flatMap((event): AssemblyChoice[] => {
             const entry = hydratedState.get(event.assemblyHash);
             const state = entry?.state ?? "loading";
+            // A row whose document failed to read is not surfaced.
+            if (state === "error") return [];
             const hydratedAssembly = entry?.hydratedAssembly ?? null;
             const assembly = hydratedAssembly?.assembly ?? null;
-            return {
+            return [{
                 slug: event.slug,
                 registeredBy: event.registeredBy,
                 assemblyHash: event.assemblyHash,
@@ -237,14 +242,14 @@ export function useAssemblyChoices(
                 networkTargets: [networkTarget],
                 state,
                 // The editorial name from the pinned assembly once it loads;
-                // the content-derived slug is the fallback (and the identity).
+                // the content-derived slug (the identity) while it loads.
                 name: assembly?.name ?? event.slug,
                 summary: assembly?.summary ?? assembly?.description ?? null,
                 agreementCount: assembly ? assembly.agreements.length : null,
                 clauses: hydratedAssembly ? assemblyComposedClauseKeys(hydratedAssembly.assembly, hydratedAssembly.agreements) : null,
                 hydratedAssembly,
-            };
+            }];
         });
-    }, [events, hydratedState, chainId]);
-    return { data, isLoading, failed, error, refetch };
+    }), [eventsRead, hydratedState, chainId]);
+    return { read, refetch };
 }

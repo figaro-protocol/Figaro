@@ -8,12 +8,11 @@
  * AssemblyRegistry (the registry is the authority — only members with
  * ≥1 anchored binding surface, and only their anchored bindings render),
  * and projects them into the generic `Listing` shape consumed by
- * `MemberDiscovery`. Returns an empty list when the registry isn't
- * configured or no members are registered — the consumer renders
- * the "no members yet" CTA. A read that THREW — the MembersRegistry
- * read or the AssemblyRegistry read the bindings are checked against —
- * is `failed`, with the provider's own answer in `error`: unknown chain
- * state, never reported as resolved-empty.
+ * `MemberDiscovery`. The listings are a `NetworkRead`: `present([])` when no
+ * member is registered (the consumer renders its plain empty state);
+ * `absent` when the MembersRegistry read, or the AssemblyRegistry read the
+ * bindings are checked against, failed, or no registry is configured — the
+ * consumer renders nothing for it.
  */
 "use client";
 
@@ -28,23 +27,7 @@ import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import type { PublicClient } from "viem";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
-import { rpcErrorText } from "@/lib/shared/errors";
-
-export interface UseSellerListingsResult {
-    listings: Listing[];
-    isLoading: boolean;
-    /** True when a registry read threw — distinct from resolved-empty. */
-    failed: boolean;
-    /** The provider's own answer to the failed read (`rpcErrorText`). */
-    error: string | null;
-}
-
-const EMPTY_RESULT: UseSellerListingsResult = {
-    listings: [],
-    isLoading: false,
-    failed: false,
-    error: null,
-};
+import { ABSENT, PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
 function isRegistryConfigured(): boolean {
     return !!CONTRACTS.membersRegistry
@@ -82,55 +65,36 @@ async function listFromRegistry(
     return results.filter((l): l is Listing => l !== null);
 }
 
-export function useMemberListings(): UseSellerListingsResult {
-    const [state, setState] = useState<UseSellerListingsResult>(EMPTY_RESULT);
+export function useMemberListings(): { read: NetworkRead<Listing[]> } {
+    const [read, setRead] = useState<NetworkRead<Listing[]>>(PENDING);
     const client = usePublicClient();
     const chainId = useChainId();
     // The AssemblyRegistry read the profile bindings are cross-checked
-    // against. `null` = the registry is still being read — that is LOADING,
-    // not absence: the unchecked member list is never rendered (NO FALLBACKS).
-    // A FAILED assembly read resolves to `data: []`: checked against it, every
-    // binding would be rejected and the page would say nothing is registered.
-    const { data: publishedAssemblies, failed: assembliesFailed, error: assembliesError } = usePublishedAssemblies(undefined);
+    // against. Pending is pending and absent is absent: the unchecked member
+    // list is never rendered, and a failed assembly read never rejects every
+    // binding into "nothing is registered".
+    const { read: publishedAssemblies } = usePublishedAssemblies(undefined);
 
     useEffect(() => {
         if (!client || !isRegistryConfigured()) {
-            setState(EMPTY_RESULT);
+            setRead(ABSENT);
             return;
         }
-        if (assembliesFailed) {
-            setState({ listings: [], isLoading: false, failed: true, error: assembliesError ?? null });
+        if (publishedAssemblies.status !== "present") {
+            setRead(publishedAssemblies);
             return;
         }
-        if (publishedAssemblies === null) {
-            setState((prev) => ({ ...prev, isLoading: true }));
-            return;
-        }
-        const publishedHashes = new Set(publishedAssemblies.map((a) => a.assemblyHash.toLowerCase()));
+        const publishedHashes = new Set(publishedAssemblies.value.map((a) => a.assemblyHash.toLowerCase()));
 
         let canceled = false;
-        setState((prev) => ({ ...prev, isLoading: true }));
-
-        listFromRegistry(client, chainId, publishedHashes)
-            .then((fromRegistry) => {
-                if (canceled) return;
-                setState({
-                    listings: fromRegistry,
-                    isLoading: false,
-                    failed: false,
-                    error: null,
-                });
-            })
-            .catch((err) => {
-                if (canceled) return;
-                console.warn("[useMemberListings] registry read failed:", err);
-                setState({ listings: [], isLoading: false, failed: true, error: rpcErrorText(err, { maxLength: 300 }) });
-            });
+        void readNetwork("useMemberListings", () => listFromRegistry(client, chainId, publishedHashes)).then((next) => {
+            if (!canceled) setRead(next);
+        });
 
         return () => {
             canceled = true;
         };
-    }, [client, chainId, publishedAssemblies, assembliesFailed, assembliesError]);
+    }, [client, chainId, publishedAssemblies]);
 
-    return state;
+    return { read };
 }

@@ -65,7 +65,7 @@ describe("DataExplorer — layers name their truth boundary", () => {
 
     it("renders the active layer's boundary label from the doc's vocabulary", () => {
         searchParams = "view=market";
-        corpusMock.mockReturnValue({ corpus: corpus(), isLoading: false, failed: false });
+        corpusMock.mockReturnValue({ status: "present", value: corpus() });
         render(<DataExplorer />);
         expect(screen.getByTestId("layer-boundary").textContent).toContain("protocol-derived");
 
@@ -74,11 +74,12 @@ describe("DataExplorer — layers name their truth boundary", () => {
         expect(screen.getAllByTestId("layer-boundary").at(-1)!.textContent).toContain("composition-derived");
     });
 
-    it("a failed read is UNKNOWN chain state, never an empty record", () => {
+    it("a failed read renders nothing — no failure text, never an empty record", () => {
         searchParams = "view=market";
-        corpusMock.mockReturnValue({ corpus: null, isLoading: false, failed: true });
+        corpusMock.mockReturnValue({ status: "absent" });
         render(<DataExplorer />);
-        expect(screen.getByTestId("corpus-failed").textContent).toMatch(/not empty data/i);
+        expect(screen.queryByTestId("corpus-failed")).toBeNull();
+        expect(screen.queryByTestId("corpus-loading")).toBeNull();
         expect(screen.queryByTestId("market-empty")).toBeNull();
     });
 });
@@ -92,11 +93,10 @@ describe("DataExplorer — absence is stated, never fabricated", () => {
     it("counts unattributed processes and says why they are unattributed", () => {
         searchParams = "view=market";
         corpusMock.mockReturnValue({
-            corpus: corpus({
+            status: "present",
+            value: corpus({
                 market: { boundary: "protocol-derived", groups: new Map(), unattributedProcessCount: 3 },
             }),
-            isLoading: false,
-            failed: false,
         });
         render(<DataExplorer />);
         expect(screen.getByTestId("market-count").textContent).toContain("3 processes unattributed");
@@ -107,7 +107,8 @@ describe("DataExplorer — absence is stated, never fabricated", () => {
     it("an overlay family whose spec never resolved is a ROW carrying its key alone", () => {
         searchParams = "view=overlays";
         corpusMock.mockReturnValue({
-            corpus: corpus({
+            status: "present",
+            value: corpus({
                 overlays: [
                     {
                         boundary: "protocol-derived",
@@ -129,8 +130,6 @@ describe("DataExplorer — absence is stated, never fabricated", () => {
                     },
                 ],
             } as Partial<GraphCorpus>),
-            isLoading: false,
-            failed: false,
         });
         render(<DataExplorer />);
         expect(screen.getByTestId("overlay-count").textContent).toContain("1 overlay");
@@ -141,7 +140,7 @@ describe("DataExplorer — absence is stated, never fabricated", () => {
 
     it("no composed venue reads as 'no reader here', not as 'no corridors exist'", () => {
         searchParams = "view=value-flow";
-        corpusMock.mockReturnValue({ corpus: corpus(), isLoading: false, failed: false });
+        corpusMock.mockReturnValue({ status: "present", value: corpus() });
         render(<DataExplorer />);
         expect(screen.getByTestId("venue-posture").textContent).toMatch(/absence of a reader, never the absence of trade/i);
         expect(screen.getByTestId("denomination-empty")).toBeInTheDocument();
@@ -149,7 +148,7 @@ describe("DataExplorer — absence is stated, never fabricated", () => {
 
     it("the wallet layer asks for any address and needs no connected wallet", () => {
         searchParams = "view=wallet";
-        corpusMock.mockReturnValue({ corpus: corpus(), isLoading: false, failed: false });
+        corpusMock.mockReturnValue({ status: "present", value: corpus() });
         render(<DataExplorer />);
         expect(screen.getByTestId("wallet-prompt").textContent).toMatch(/no wallet needs to be connected/i);
         expect(screen.getByTestId("wallet-input")).toBeInTheDocument();
@@ -264,7 +263,8 @@ describe("DataExplorer — a listed process can be carried into the audit view",
         // a reader who has only just arrived actually stands.
         searchParams = "view=market";
         corpusMock.mockReturnValue({
-            corpus: corpus({
+            status: "present",
+            value: corpus({
                 process: { boundary: "protocol-enforced", processes: new Map([[PROCESS, process(PROCESS)]]) },
                 market: {
                     boundary: "protocol-derived",
@@ -273,8 +273,6 @@ describe("DataExplorer — a listed process can be carried into the audit view",
                 },
                 attributionByProcess: new Map([[PROCESS.toLowerCase(), MARKET.toLowerCase()]]),
             } as Partial<GraphCorpus>),
-            isLoading: false,
-            failed: false,
         });
         render(<DataExplorer />);
 
@@ -288,13 +286,12 @@ describe("DataExplorer — a listed process can be carried into the audit view",
     it("an UNATTRIBUTED process is openable too — the posture hides no id", () => {
         searchParams = "view=market";
         corpusMock.mockReturnValue({
-            corpus: corpus({
+            status: "present",
+            value: corpus({
                 process: { boundary: "protocol-enforced", processes: new Map([[PROCESS, process(PROCESS)]]) },
                 market: { boundary: "protocol-derived", groups: new Map(), unattributedProcessCount: 1 },
                 attributionByProcess: new Map(),
             } as Partial<GraphCorpus>),
-            isLoading: false,
-            failed: false,
         });
         render(<DataExplorer />);
 
@@ -307,7 +304,7 @@ describe("DataExplorer — a listed process can be carried into the audit view",
 
     it("an empty record lists no process rows at all — absence, never a fabricated id", () => {
         searchParams = "view=market";
-        corpusMock.mockReturnValue({ corpus: corpus(), isLoading: false, failed: false });
+        corpusMock.mockReturnValue({ status: "present", value: corpus() });
         render(<DataExplorer />);
         expect(screen.queryByTestId("market-processes-unattributed")).toBeNull();
         expect(screen.queryByTestId(`process-audit-link-${PROCESS.toLowerCase()}`)).toBeNull();
@@ -319,7 +316,7 @@ describe("DataExplorer — the layer tabs are a WAI-ARIA tab set with 44px targe
         analystUrlMock.mockReturnValue(null);
         statusMock.mockReturnValue(null);
         searchParams = "view=market";
-        corpusMock.mockReturnValue({ corpus: corpus(), isLoading: false, failed: false });
+        corpusMock.mockReturnValue({ status: "present", value: corpus() });
     });
 
     it("each tab controls the one tabpanel, which is labeled by the selected tab", () => {

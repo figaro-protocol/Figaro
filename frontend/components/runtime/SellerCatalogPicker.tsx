@@ -59,11 +59,13 @@ export function SellerCatalogPicker({ tokenSymbol, assemblyHash, onSelect }: Pro
     const [selectedItemId, setSelectedItemId] = useState("");
 
     const validSeller = isAddress(selectedSellerAddress) ? (selectedSellerAddress as `0x${string}`) : undefined;
-    const { catalogs: memberCatalogs, isLoading } = useRegisteredCatalogs();
+    const { read: catalogsRead } = useRegisteredCatalogs();
 
     const memberCatalog = useMemo(
-        () => (validSeller ? memberCatalogs.find((c) => hexEqual(c.address, validSeller)) : undefined),
-        [validSeller, memberCatalogs],
+        () => (validSeller && catalogsRead.status === "present"
+            ? catalogsRead.value.find((c) => hexEqual(c.address, validSeller))
+            : undefined),
+        [validSeller, catalogsRead],
     );
     // The seller's published catalog is the selectable set — `category` is a
     // free-form seller label, never a closed tag the picker may branch on (the
@@ -114,7 +116,7 @@ export function SellerCatalogPicker({ tokenSymbol, assemblyHash, onSelect }: Pro
             />
 
             {/* Catalog step — the seller's published price list. */}
-            {validSeller && isLoading && catalogItems.length === 0 && (
+            {validSeller && catalogsRead.status === "pending" && (
                 <p className="text-xs text-ink-muted">Loading the seller&apos;s catalog…</p>
             )}
             {sellerHasNotBound && (
@@ -123,7 +125,8 @@ export function SellerCatalogPicker({ tokenSymbol, assemblyHash, onSelect }: Pro
                     refuse the order. Pick a seller that has.
                 </p>
             )}
-            {validSeller && !isLoading && !sellerHasNotBound && catalogItems.length === 0 && (
+            {/* Only on the registry's answer — a failed read says nothing. */}
+            {validSeller && catalogsRead.status === "present" && !sellerHasNotBound && catalogItems.length === 0 && (
                 <p className="text-xs text-ink-muted" data-testid="seller-no-items">
                     This seller publishes no catalog items.
                 </p>

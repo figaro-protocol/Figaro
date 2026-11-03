@@ -17,7 +17,7 @@ vi.mock("@/lib/protocol/useClauseRegistry", () => ({ useAllRegisteredClauses: ()
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loaded: true, loadedCount: 0, total: 0, errors: [], version: 1 }) }));
 const assembliesMock = vi.fn();
 vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => assembliesMock() }));
-vi.mock("@/lib/member/useRegisteredMembers", () => ({ useRegisteredMembers: () => ({ data: [], failed: false }) }));
+vi.mock("@/lib/member/useRegisteredMembers", () => ({ useRegisteredMembers: () => ({ read: { status: "present", value: [] } }) }));
 vi.mock("@/components/assemblies/AssemblyShapeLine", () => ({ AssemblyShapeLine: () => null }));
 
 import { RegistryExplorer } from "@/components/registries/RegistryExplorer";
@@ -28,13 +28,14 @@ const ev = (clauseKey: string) => ({
     registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", blockNumber: 1n, stakeWithdrawn: false,
 });
 
-describe("RegistryExplorer — the state of the content behind a pointer is shown, never mistaken for its absence", () => {
-    beforeEach(() => { _resetClauseSpecCache_TESTING_ONLY(); assembliesMock.mockReturnValue({ data: [] }); });
+const present = (value: unknown) => ({ read: { status: "present", value } });
+
+describe("RegistryExplorer — a row only once its content resolves; a failed read renders nothing", () => {
+    beforeEach(() => { _resetClauseSpecCache_TESTING_ONLY(); assembliesMock.mockReturnValue(present([])); });
     afterEach(() => { _resetClauseSpecCache_TESTING_ONLY(); });
 
-    it("a clause whose spec has not resolved is grouped as unserved — NOT as (unclassified); a resolved spec with no article IS (unclassified)", async () => {
-        searchParams = "family=clauses";
-        // figaro-noarticle: resolved, declares no article. figaro-fresh: never served. figaro-bad: served but wrong (verification failure).
+    it("a clause whose spec has not resolved, or failed verification, is no row — no hash as its name, no placeholder article", async () => {
+        searchParams = "family=clauses&sort=article";
         const noArticle = pinSpec({ clauseId: "figaro-noarticle", version: 1, title: "No article", description: "d", fields: [{ name: "x", type: "string", required: true }] });
         const other = pinSpec({ clauseId: "figaro-other", version: 1, title: "Other", description: "d", fields: [{ name: "x", type: "string", required: true }] });
         const FRESH = `0x${"f1".repeat(32)}` as const;
@@ -46,24 +47,25 @@ describe("RegistryExplorer — the state of the content behind a pointer is show
         });
         await loadClauseSpec(noArticle.clauseKey, `ipfs://${noArticle.clauseKey}`);
         await loadClauseSpec(BAD, `ipfs://${BAD}`).catch(() => undefined);
-        clauseEventsMock.mockReturnValue({ data: [ev(noArticle.clauseKey), ev(FRESH), ev(BAD)], failed: false });
+        clauseEventsMock.mockReturnValue(present([ev(noArticle.clauseKey), ev(FRESH), ev(BAD)]));
 
         render(<RegistryExplorer />);
 
-        const headings = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
-        expect(headings).toContain("(unclassified)");
-        expect(headings).toContain("(content not served by the gateway yet — re-reading)");
-        expect(headings).toContain("(content unavailable — the pinned document failed verification)");
-        // The unresolved rows still show their on-chain identity.
-        expect(screen.getByText(FRESH)).toBeInTheDocument();
-        expect(screen.getByText(BAD)).toBeInTheDocument();
-        // (unclassified) holds ONLY the resolved-no-article clause.
-        const unclassified = screen.getByRole("heading", { level: 3, name: "(unclassified)" }).parentElement!;
-        expect(unclassified.textContent).toContain(noArticle.clauseKey);
-        expect(unclassified.textContent).toContain("No article · figaro-noarticle v1");
-        expect(unclassified.textContent).not.toContain(FRESH);
-        expect(screen.getAllByTestId("content-resolving")).toHaveLength(1);
-        expect(screen.getAllByTestId("content-unavailable")).toHaveLength(1);
+        expect(screen.getByText(noArticle.clauseKey)).toBeInTheDocument();
+        expect(document.body.textContent).toContain("No article · figaro-noarticle v1");
+        expect(screen.queryByText(FRESH)).toBeNull();
+        expect(screen.queryByText(BAD)).toBeNull();
+        expect(document.body.textContent).not.toMatch(/unclassified|content unavailable|not served by the gateway/);
+    });
+
+    it("a FAILED registry read renders nothing for the family — no failure text, no count, no empty state", () => {
+        searchParams = "family=clauses";
+        clauseEventsMock.mockReturnValue({ read: { status: "absent" } });
+        render(<RegistryExplorer />);
+        expect(screen.queryByTestId("registry-count")).toBeNull();
+        expect(screen.queryByTestId("registry-empty")).toBeNull();
+        expect(screen.queryByTestId("registry-loading")).toBeNull();
+        expect(document.body.textContent).not.toMatch(/read failed|RPC endpoint/);
     });
 
     it("\"assemblies composing it\" carries the clause facet INTO the assemblies family — the family change resets only what the click did not set", async () => {
@@ -71,7 +73,7 @@ describe("RegistryExplorer — the state of the content behind a pointer is show
         const cargo = pinSpec({ clauseId: "figaro-cargo", version: 1, title: "Cargo", description: "d", fields: [{ name: "x", type: "string", required: true }], block: { design: { article: "logistics" } } });
         setClauseSpecFetcher(async () => cargo.bytes);
         await loadClauseSpec(cargo.clauseKey, `ipfs://${cargo.clauseKey}`);
-        clauseEventsMock.mockReturnValue({ data: [ev(cargo.clauseKey)], failed: false });
+        clauseEventsMock.mockReturnValue(present([ev(cargo.clauseKey)]));
         replaceMock.mockClear();
 
         render(<RegistryExplorer />);
@@ -85,30 +87,27 @@ describe("RegistryExplorer — the state of the content behind a pointer is show
         expect(url).not.toContain("article=");
     });
 
-    it("an assembly whose assembly has not resolved shows its slug with the unserved note; a resolved one shows its name, no note", () => {
+    it("an assembly still loading is no row; a loaded one shows its name and summary", () => {
         searchParams = "family=assemblies";
-        clauseEventsMock.mockReturnValue({ data: [], failed: false });
-        assembliesMock.mockReturnValue({ data: [
-            { slug: "asm-fresh", registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", assemblyHash: "0x1", contentURI: "ipfs://a", blockNumber: 2n, networkTargets: [], state: "error", name: "asm-fresh", agreementCount: null, clauses: null, hydratedAssembly: null },
+        clauseEventsMock.mockReturnValue(present([]));
+        assembliesMock.mockReturnValue(present([
+            { slug: "asm-fresh", registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", assemblyHash: "0x1", contentURI: "ipfs://a", blockNumber: 2n, networkTargets: [], state: "loading", name: "asm-fresh", agreementCount: null, clauses: null, hydratedAssembly: null },
             { slug: "asm-named", registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", assemblyHash: "0x2", contentURI: "ipfs://b", blockNumber: 3n, networkTargets: [], state: "loaded", name: "Containerized import chain", agreementCount: 3, clauses: [], hydratedAssembly: { assembly: { name: "Containerized import chain", summary: "Six bonded parties move a container.", agreements: [] }, agreements: {} } },
-        ] });
+        ]));
 
         render(<RegistryExplorer />);
 
-        expect(screen.getByTestId("assembly-view-asm-fresh").textContent).toBe("asm-fresh");
+        expect(screen.queryByTestId("assembly-view-asm-fresh")).toBeNull();
         expect(screen.getByTestId("assembly-view-asm-named").textContent).toBe("Containerized import chain");
-        // The row's prose is the hydrated assembly's own summary.
         expect(screen.getByText("Six bonded parties move a container.")).toBeTruthy();
-        expect(screen.getAllByTestId("content-resolving")).toHaveLength(1);
-        expect(screen.getByTestId("content-resolving").textContent).toMatch(/not served by the gateway yet/);
     });
 });
 
 describe("RegistryExplorer — the family tabs are a WAI-ARIA tab set with 44px targets", () => {
     beforeEach(() => {
         searchParams = "family=clauses";
-        clauseEventsMock.mockReturnValue({ data: [], failed: false });
-        assembliesMock.mockReturnValue({ data: [] });
+        clauseEventsMock.mockReturnValue(present([]));
+        assembliesMock.mockReturnValue(present([]));
     });
 
     it("each tab controls the one tabpanel, which is labeled by the selected tab and holds the results", () => {
@@ -160,7 +159,7 @@ describe("RegistryExplorer — the family tabs are a WAI-ARIA tab set with 44px 
 });
 
 describe("RegistryExplorer — the search field and the facet selects are the §7 form controls", () => {
-    beforeEach(() => { _resetClauseSpecCache_TESTING_ONLY(); assembliesMock.mockReturnValue({ data: [] }); });
+    beforeEach(() => { _resetClauseSpecCache_TESTING_ONLY(); assembliesMock.mockReturnValue(present([])); });
     afterEach(() => { _resetClauseSpecCache_TESTING_ONLY(); });
 
     it("each is a 44px target (WCAG 2.5.5) on the tile radius, with the focus token's ring", async () => {
@@ -168,7 +167,7 @@ describe("RegistryExplorer — the search field and the facet selects are the §
         const cargo = pinSpec({ clauseId: "figaro-cargo", version: 1, title: "Cargo", description: "d", fields: [{ name: "x", type: "string", required: true }], block: { design: { article: "logistics" } } });
         setClauseSpecFetcher(async () => cargo.bytes);
         await loadClauseSpec(cargo.clauseKey, `ipfs://${cargo.clauseKey}`);
-        clauseEventsMock.mockReturnValue({ data: [ev(cargo.clauseKey)], failed: false });
+        clauseEventsMock.mockReturnValue(present([ev(cargo.clauseKey)]));
 
         render(<RegistryExplorer />);
 

@@ -14,15 +14,16 @@ const fetchCappedContentMock = vi.hoisted(() => vi.fn());
 const reads = vi.hoisted(() => ({
     published: {
         // The slug is derived from the assembly hash (`deriveAssemblySlug`).
-        data: [{ slug: "asm-0101010101010101", contentURI: "ipfs://QmAssembly", assemblyHash: "0x0101010101010101010101010101010101010101010101010101010101010101" }],
-        isLoading: false,
+        read: { status: "present", value: [{ slug: "asm-0101010101010101", contentURI: "ipfs://QmAssembly", assemblyHash: "0x0101010101010101010101010101010101010101010101010101010101010101" }] },
     },
-    profile: { data: [""] as [string], isLoading: false },
+    profile: { read: { status: "present", value: { registered: true, metadataURI: "", registeredBlock: 1n } } },
 }));
 
 vi.mock("@/lib/member/useMembersRegistry", () => ({
     useMemberProfile: () => {
-        if (reads.profile.data[0] !== memberProfile.uri) reads.profile = { data: [memberProfile.uri], isLoading: false };
+        if (reads.profile.read.value.metadataURI !== memberProfile.uri) {
+            reads.profile = { read: { status: "present", value: { registered: true, metadataURI: memberProfile.uri, registeredBlock: 1n } } };
+        }
         return reads.profile;
     },
 }));
@@ -52,17 +53,17 @@ describe("useMemberBoundAssemblies", () => {
     it("reads an http(s) metadataURI as absent and sends no request", async () => {
         memberProfile.uri = "https://member-chosen.example/profile.json";
         const { result } = renderHook(() => useMemberBoundAssemblies(SELLER));
-        await waitFor(() => expect(result.current.isLoading).toBe(false));
-        expect(result.current).toEqual({ assemblies: [], isLoading: false, hasOnChainBinding: false });
+        await waitFor(() => expect(result.current.status).toBe("absent"));
         expect(fetchCappedContentMock).not.toHaveBeenCalled();
     });
 
     it("reads an ipfs:// metadataURI through the gateway and matches its bindings", async () => {
         memberProfile.uri = "ipfs://QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
         const { result } = renderHook(() => useMemberBoundAssemblies(SELLER));
-        await waitFor(() => expect(result.current.hasOnChainBinding).toBe(true));
+        await waitFor(() => expect(result.current.status).toBe("present"));
         expect(fetchCappedContentMock).toHaveBeenCalledTimes(1);
         expect(String(fetchCappedContentMock.mock.calls[0][0])).toMatch(/\/ipfs\/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG$/);
-        expect(result.current.assemblies.map((a) => a.slug)).toEqual(["asm-0101010101010101"]);
+        const r = result.current;
+        expect(r.status === "present" && r.value.map((a) => a.slug)).toEqual(["asm-0101010101010101"]);
     });
 });

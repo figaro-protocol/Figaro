@@ -51,7 +51,8 @@ export interface ClauseSpecsState {
 }
 
 export function useClauseSpecs(): ClauseSpecsState {
-    const { data: events, failed: readFailed } = useAllRegisteredClauses();
+    const { read } = useAllRegisteredClauses();
+    const events = read.status === "present" ? read.value : null;
     const [version, setVersion] = useState(0);
     const [errors, setErrors] = useState<string[]>([]);
     /** True once the load pass for the current `events` set has completed — every
@@ -97,7 +98,7 @@ export function useClauseSpecs(): ClauseSpecsState {
         // (a genuinely empty registry) completes immediately and counts as loaded:
         // absence is a real state. Partial spec failure DEGRADES — the pass still
         // completes, `loadedCount` reflects what cached, consumers skip the rest.
-        const loaded = !readFailed && total !== null && settled;
+        const loaded = total !== null && settled;
         return {
             loaded,
             loadedCount,
@@ -108,5 +109,5 @@ export function useClauseSpecs(): ClauseSpecsState {
         // `version` is intentionally a dep: it bumps after loads resolve so
         // `loadedCount` is recounted from the now-warm cache.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [events, readFailed, errors, version, settled]);
+    }, [events, errors, version, settled]);
 }

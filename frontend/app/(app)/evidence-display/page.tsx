@@ -29,7 +29,6 @@ import { createPublicClient, isAddress } from "viem";
 import { mockAwareHttp } from "@/lib/shared/mockTransport";
 import { buildProcessTimeline, type ProcessTimeline, type TimelineEvent } from "@/lib/audit/processTimeline";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { extractErrorMessage } from "@/lib/shared/errors";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { activeChain } from "@/lib/shared/chains";
@@ -191,6 +190,7 @@ function EvidenceDisplayContent() {
     const [timeline, setTimeline] = useState<ProcessTimeline | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [readFailed, setReadFailed] = useState(false);
     const clientError = useMemo(() => {
         if (!rpcUrl) return null;
         return isAllowedRpcUrl(rpcUrl)
@@ -247,7 +247,9 @@ function EvidenceDisplayContent() {
             }
             setTimeline(tl);
         } catch (cause: unknown) {
-            setError(extractErrorMessage(cause, "Failed to fetch process timeline."));
+            // A failed read renders nothing — no error card.
+            console.warn("[evidence-display] timeline read failed:", cause);
+            setReadFailed(true);
         } finally {
             setLoading(false);
         }
@@ -268,7 +270,9 @@ function EvidenceDisplayContent() {
         );
     }
 
-    // ── Error state ─────────────────────────────────────────────────
+    if (readFailed) return null;
+
+    // ── Error state (the link's own parameters) ─────────────────────
     if (error) {
         return (
             <div className="min-h-screen bg-canvas flex items-center justify-center p-4">

@@ -59,6 +59,7 @@ import { useMounted } from "@/hooks/useMounted";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
+import { ABSENT, PENDING, present, type NetworkRead } from "@/lib/shared/networkRead";
 
 
 
@@ -353,22 +354,26 @@ export function OrdersList() {
     const viewed = useViewedWallet(address);
     const buyer = useWalletProcessRows("buyer", viewed);
     const seller = useWalletProcessRows("seller", viewed);
-    const { listings } = useMemberListings();
+    const { read: listingsRead } = useMemberListings();
+    // Names come only from listings the registry returned; an absent read
+    // names no one (the address itself is shown).
+    const listings = useMemo(() => (listingsRead.status === "present" ? listingsRead.value : []), [listingsRead]);
     const isMock = isE2EMockSession();
 
     // Merge buyer + seller rows — the wallet sees every order it's on, deduped
     // by the committed order hash, newest first.
-    const rows = useMemo(() => {
+    // A failed read on either side is absent: no rows, no empty state.
+    const ordersRead = useMemo<NetworkRead<ProcessRow[]>>(() => {
+        if (buyer.read.status === "absent" || seller.read.status === "absent") return ABSENT;
+        if (buyer.read.status === "pending" || seller.read.status === "pending") return PENDING;
         const byHash = new Map<string, ProcessRow>();
-        for (const r of [...buyer.rows, ...seller.rows]) {
+        for (const r of [...buyer.read.value, ...seller.read.value]) {
             const key = r.rootOrderHash.toLowerCase();
             if (!byHash.has(key)) byHash.set(key, r);
         }
-        return [...byHash.values()].sort((a, b) => b.blockNumber - a.blockNumber);
-    }, [buyer.rows, seller.rows]);
-    const isLoading = buyer.isLoading || seller.isLoading;
-    // A failed row read is unknown chain state: no rows and no "none" either.
-    const rowsFailed = buyer.failed || seller.failed;
+        return present([...byHash.values()].sort((a, b) => b.blockNumber - a.blockNumber));
+    }, [buyer.read, seller.read]);
+    const rows = ordersRead.status === "present" ? ordersRead.value : [];
 
     // YOUR TURN — relayed commitments awaiting my counter-signature (accept).
     const { pending: incoming, dismiss: dismissIncoming } = usePendingSellerSignature(awaitsMyCounterSign);
@@ -464,7 +469,7 @@ export function OrdersList() {
 
     const activeRows = rows.filter((r) => !r.isResolved);
     const completedRows = rows.filter((r) => r.isResolved);
-    const nothing = !isLoading && !rowsFailed && rows.length === 0 && incoming.length === 0 && outbound.length === 0 && readyToSubmit.length === 0 && visibleUnsent.length === 0;
+const nothing = ordersRead.status === "present" && rows.length === 0 && incoming.length === 0 && outbound.length === 0 && readyToSubmit.length === 0 && visibleUnsent.length === 0;
 
     return (
         <div data-testid="orders-list" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
@@ -574,11 +579,11 @@ export function OrdersList() {
                                 Browse sellers →
                             </Link>
                         </div>
-                    ) : (
+                    ) : ordersRead.status === "absent" ? null : (
                         <>
-                            {!rowsFailed && <section className="space-y-3" data-testid="orders-active-section">
+                            <section className="space-y-3" data-testid="orders-active-section">
                                 <p className="text-xs font-semibold text-ink-muted">In progress</p>
-                                {isLoading ? (
+                                {ordersRead.status === "pending" ? (
                                     <p className="text-sm text-ink-muted" data-testid="orders-loading">Loading…</p>
                                 ) : activeRows.length === 0 ? (
                                     <div className="rounded-lg border border-default bg-paper p-5 text-sm text-ink-muted" data-testid="orders-active-empty">
@@ -591,7 +596,7 @@ export function OrdersList() {
                                         ))}
                                     </ul>
                                 )}
-                            </section>}
+                            </section>
 
                             {completedRows.length > 0 && (
                                 <section className="space-y-3" data-testid="orders-completed-section">

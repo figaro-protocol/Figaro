@@ -28,7 +28,6 @@ import { OnboardingAgentsForm } from "@/components/members/OnboardingAgentsForm"
 
 export function MemberEditAgents() {
     const editor = useMemberProfileEditor({
-        errorNoun: "the agent endpoints",
         seed: (existingProfile, update) => {
             update({ services: existingProfile.services });
         },

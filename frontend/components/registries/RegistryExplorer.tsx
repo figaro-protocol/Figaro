@@ -19,17 +19,15 @@ import { useCallback, useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { getClauseSpec, getClauseSpecLoadError, isLiveRegistration } from "@/lib/shared/clauseSpecSource";
-import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
+import { getClauseSpec, isLiveRegistration } from "@/lib/shared/clauseSpecSource";
+import { useAssemblyChoices, type AssemblyChoice } from "@/lib/protocol/assemblyChoices";
 import {
     fetchRegisteredAgreement,
     getRegisteredAgreement,
     useRegisteredAgreementsVersion,
-    usePublishedAgreements, getRegisteredAgreementLoadError } from "@/lib/protocol/useAgreementRegistry";
-import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
+    usePublishedAgreements } from "@/lib/protocol/useAgreementRegistry";
+import { useRegisteredMembers, type RegisteredMemberRow } from "@/lib/member/useRegisteredMembers";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
-import { getAssemblyLoadError } from "@/lib/protocol/useAssemblyRegistry";
-import { RegistryReadFailed } from "@/components/registries/RegistryReadFailed";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -77,11 +75,16 @@ export function RegistryExplorer() {
     }, [state, router, pathname]);
 
     // ── The four registries, each through its own walletless reader ──
-    const { data: clauseEvents, failed: clausesFailed, error: clausesError } = useAllRegisteredClauses();
+    // Each family is a `NetworkRead`: a failed read renders nothing for it.
+    const { read: clausesRead } = useAllRegisteredClauses();
     const { version: specVersion } = useClauseSpecs();
-    const { data: assemblies, failed: assembliesFailed, error: assembliesError } = useAssemblyChoices(undefined, { includeWithdrawn: true });
-    const { data: members, failed: membersFailed, error: membersError } = useRegisteredMembers();
-    const { data: agreements, failed: agreementsFailed, error: agreementsError } = usePublishedAgreements(undefined, { includeWithdrawn: true });
+    const { read: assembliesRead } = useAssemblyChoices(undefined, { includeWithdrawn: true });
+    const { read: membersRead } = useRegisteredMembers();
+    const { read: agreementsRead } = usePublishedAgreements(undefined, { includeWithdrawn: true });
+    const clauseEvents = clausesRead.status === "present" ? clausesRead.value : null;
+    const assemblies = assembliesRead.status === "present" ? assembliesRead.value : null;
+    const members = membersRead.status === "present" ? membersRead.value : null;
+    const agreements = agreementsRead.status === "present" ? agreementsRead.value : null;
     // Each registered agreement's pinned document, read by its binding and
     // verified against its key; the rows re-derive as documents verify.
     const agreementsVersion = useRegisteredAgreementsVersion();
@@ -89,6 +92,9 @@ export function RegistryExplorer() {
         for (const a of agreements ?? []) void fetchRegisteredAgreement(a.agreementHash, a.contentURI);
     }, [agreements]);
 
+    // A row exists only once its pinned content has resolved: a registration
+    // whose document is unserved or failed verification is not shown, never
+    // a hash standing in for its name.
     const rows = useMemo<Array<ExplorerRow & RowText>>(() => {
         const out: Array<ExplorerRow & RowText> = [];
         for (const e of clauseEvents ?? []) {
@@ -96,27 +102,27 @@ export function RegistryExplorer() {
             // the spec's own name and version are its label. Two specs that
             // share a name are two rows with two anchors.
             const spec = getClauseSpec(e.clauseKey);
-            const article = spec?.block?.design?.article ?? "";
-            const name = spec ? `${spec.title} · ${spec.clauseId} v${spec.version}` : truncateHex(e.clauseKey, { head: 10, tail: 4 });
-            const description = spec?.description ?? "";
-            const content = spec ? "resolved" : getClauseSpecLoadError(e.clauseKey) ? "unavailable" : "resolving";
+            if (!spec) continue;
+            const article = spec.block?.design?.article ?? "";
+            const name = `${spec.title} · ${spec.clauseId} v${spec.version}`;
+            const description = spec.description ?? "";
             out.push({
-                family: "clauses", key: `clause-${e.clauseKey}`, id: e.clauseKey, name, article, description, content,
+                family: "clauses", key: `clause-${e.clauseKey}`, id: e.clauseKey, name, article, description,
                 registeredBy: e.registeredBy, blockNumber: e.blockNumber, stakeWithdrawn: e.stakeWithdrawn, clauses: [],
                 contentURI: e.contentURI, anchoredHash: e.clauseKey,
-                text: [e.clauseKey, spec?.clauseId ?? "", name, description, article, e.registeredBy].join(" "),
+                text: [e.clauseKey, spec.clauseId, name, description, article, e.registeredBy].join(" "),
             });
         }
         for (const a of agreements ?? []) {
             // A row is one registration, keyed and anchored by its agreement
             // hash; its pinned document's name is its label.
             const doc = getRegisteredAgreement(a.agreementHash);
-            const clauses = doc ? Object.keys(doc.clauses) : [];
-            const name = doc?.name ?? truncateHex(a.agreementHash, { head: 10, tail: 4 });
-            const description = doc?.summary ?? doc?.description ?? "";
+            if (!doc) continue;
+            const clauses = Object.keys(doc.clauses);
+            const name = doc.name ?? "";
+            const description = doc.summary ?? doc.description ?? "";
             out.push({
                 family: "agreements", key: `agreement-${a.agreementHash}`, id: a.agreementHash, name, article: "", description,
-                content: doc ? "resolved" : getRegisteredAgreementLoadError(a.agreementHash) ? "unavailable" : "resolving",
                 registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: a.stakeWithdrawn, clauses,
                 contentURI: a.contentURI, anchoredHash: a.agreementHash,
                 text: [a.agreementHash, name, description, a.registeredBy, ...clauses,
@@ -124,10 +130,10 @@ export function RegistryExplorer() {
             });
         }
         for (const a of assemblies ?? []) {
-            const description = a.hydratedAssembly?.assembly.summary ?? a.hydratedAssembly?.assembly.description ?? "";
+            if (a.state !== "loaded" || !a.hydratedAssembly) continue;
+            const description = a.hydratedAssembly.assembly.summary ?? a.hydratedAssembly.assembly.description ?? "";
             out.push({
                 family: "assemblies", key: `assembly-${a.slug}`, id: a.slug, name: a.name, article: "", description,
-                content: a.state === "loaded" ? "resolved" : getAssemblyLoadError(a.assemblyHash) ? "unavailable" : "resolving",
                 registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: a.stakeWithdrawn, clauses: a.clauses ?? [],
                 contentURI: a.contentURI, anchoredHash: a.assemblyHash,
                 text: [a.slug, a.name, description, a.registeredBy, ...(a.clauses ?? []),
@@ -135,13 +141,13 @@ export function RegistryExplorer() {
             });
         }
         for (const m of members ?? []) {
-            const name = m.profile?.name ?? truncateHex(m.address);
+            if (!m.profile) continue;
+            const name = m.profile.name ?? "";
             out.push({
-                family: "members", key: `member-${m.address.toLowerCase()}`, id: m.address, name, article: "", description: m.profile?.description ?? "",
-                content: m.profile ? "resolved" : "resolving",
+                family: "members", key: `member-${m.address.toLowerCase()}`, id: m.address, name, article: "", description: m.profile.description ?? "",
                 registeredBy: m.address, blockNumber: m.blockNumber, stakeWithdrawn: m.stakeWithdrawn, clauses: [],
                 contentURI: "", anchoredHash: "",
-                text: [m.address, name, m.profile?.description ?? "", m.profile?.specialty ?? ""].join(" "),
+                text: [m.address, name, m.profile.description ?? "", m.profile.specialty ?? ""].join(" "),
             });
         }
         return out;
@@ -152,16 +158,9 @@ export function RegistryExplorer() {
 
     const selected = useMemo(() => selectRows(rows, state), [rows, state]);
     const articles = useMemo(() => facetValues(rows, "clauses", "article"), [rows]);
-    const familyLoading = state.family === "clauses" ? clauseEvents === null
-        : state.family === "agreements" ? agreements === null
-        : state.family === "assemblies" ? assemblies === null : members === null;
-    const familyFailed = state.family === "clauses" ? clausesFailed
-        : state.family === "agreements" ? agreementsFailed
-        : state.family === "members" ? membersFailed : assembliesFailed;
-    // The provider's own answer to the failed read — the page says why it shows nothing.
-    const familyError = state.family === "clauses" ? clausesError
-        : state.family === "agreements" ? agreementsError
-        : state.family === "members" ? membersError : assembliesError;
+    const familyStatus = (state.family === "clauses" ? clausesRead
+        : state.family === "agreements" ? agreementsRead
+        : state.family === "assemblies" ? assembliesRead : membersRead).status;
     const familyTotal = rows.filter((r) => r.family === state.family && isLiveRegistration(r)).length;
 
     return (
@@ -244,11 +243,9 @@ export function RegistryExplorer() {
                 ) : null}
 
                 {/* ── Results ─────────────────────────────────────────────── */}
-                {familyLoading ? (
+                {familyStatus === "pending" ? (
                     <p className="text-sm text-ink-muted" data-testid="registry-loading">Reading the registry&hellip;</p>
-                ) : familyFailed ? (
-                    <RegistryReadFailed error={familyError} />
-                ) : (
+                ) : familyStatus === "absent" ? null : (
                     <>
                         <p className="text-sm text-ink-body" data-testid="registry-count">
                             {selected.length} of {familyTotal} {FAMILY_LABEL[state.family].toLowerCase()}
@@ -257,8 +254,8 @@ export function RegistryExplorer() {
                         </p>
                         {state.family === "clauses" ? <ClauseRows rows={selected} state={state} onFacet={setState} /> : null}
                         {state.family === "agreements" ? <AgreementRows rows={selected} onFacet={setState} /> : null}
-                        {state.family === "assemblies" ? <AssemblyRows rows={selected} assemblies={assemblies ?? []} onFacet={setState} /> : null}
-                        {state.family === "members" ? <MemberRows rows={selected} members={members ?? []} /> : null}
+                        {state.family === "assemblies" && assemblies ? <AssemblyRows rows={selected} assemblies={assemblies} onFacet={setState} /> : null}
+                        {state.family === "members" && members ? <MemberRows rows={selected} members={members} /> : null}
                     </>
                 )}
             </Tabs>
@@ -277,10 +274,9 @@ function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowTex
     const groups: Array<{ label: string; items: Array<ExplorerRow & RowText> }> = [];
     if (state.sort === "article") {
         for (const r of rows) {
-            // "(unclassified)" is a RESOLVED spec that declares no article. A
-            // spec not resolved yet is not unclassified — its article is
-            // simply not known here yet — so it groups by that state instead.
-            const label = r.content === "resolved" ? r.article || "(unclassified)" : contentStateLabel(r.content);
+            // A spec that declares no article groups with no heading — never a
+            // placeholder label the designer did not write.
+            const label = r.article;
             const g = groups[groups.length - 1];
             if (g && g.label === label) g.items.push(r); else groups.push({ label, items: [r] });
         }
@@ -290,7 +286,7 @@ function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowTex
     return (
         <div className="space-y-8">
             {groups.map((g) => (
-                <section key={g.label || "all"}>
+                <section key={g.label || "none"}>
                     {g.label ? <h3 className="text-base font-semibold text-ink-heading mb-3">{g.label}</h3> : null}
                     <ul className="space-y-3">
                         {g.items.map((r) => (
@@ -307,7 +303,6 @@ function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowTex
                                             registered by {truncateHex(r.registeredBy)}
                                         </button>
                                         {r.stakeWithdrawn ? <span className="ml-2">(stake withdrawn)</span> : null}
-                                        <ContentStateNote content={r.content} />
                                         <a href={`#${r.key}`} className="underline ml-2" data-testid={`permalink-${r.key}`} title="This clause's own URL">
                                             permalink
                                         </a>
@@ -334,13 +329,13 @@ function AgreementRows({ rows, onFacet }: { rows: Array<ExplorerRow & RowText>; 
             {rows.map((r) => (
                 <li key={r.key} id={r.key} className="flex flex-col gap-1 scroll-mt-24" data-testid={`agreement-row-${r.id.toLowerCase()}`}>
                     <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">
-                        <span className="text-sm font-semibold text-ink-heading">{r.name}</span>
+                        {r.name ? <span className="text-sm font-semibold text-ink-heading">{r.name}</span> : null}
                         <code className="font-mono text-xs text-ink-muted break-all" data-testid={`agreement-hash-${r.id.toLowerCase()}`}>{r.id}</code>
                     </div>
                     {r.description ? <p className="text-sm text-ink-body">{r.description}</p> : null}
                     {r.clauses.length > 0 ? (
                         <p className="text-xs text-ink-muted">
-                            Composes {r.clauses.map((k) => getClauseSpec(k)?.title ?? truncateHex(k, { head: 10, tail: 0 })).join(", ")}
+                            Composes {r.clauses.flatMap((k) => getClauseSpec(k)?.title ?? []).join(", ")}
                         </p>
                     ) : null}
                     <p className="text-xs text-ink-muted">
@@ -351,7 +346,6 @@ function AgreementRows({ rows, onFacet }: { rows: Array<ExplorerRow & RowText>; 
                         <span className="ml-2" data-testid={`agreement-stake-${r.id.toLowerCase()}`}>
                             {r.stakeWithdrawn ? "(stake withdrawn)" : "(live stake)"}
                         </span>
-                        <ContentStateNote content={r.content} />
                     </p>
                     <StoredRow row={r} />
                 </li>
@@ -360,9 +354,9 @@ function AgreementRows({ rows, onFacet }: { rows: Array<ExplorerRow & RowText>; 
     );
 }
 
-function AssemblyRows({ rows, assemblies, onFacet }: { rows: Array<ExplorerRow & RowText>; assemblies: ReturnType<typeof useAssemblyChoices>["data"] & object; onFacet: (p: Partial<ExplorerQuery>) => void }) {
+function AssemblyRows({ rows, assemblies, onFacet }: { rows: Array<ExplorerRow & RowText>; assemblies: readonly AssemblyChoice[]; onFacet: (p: Partial<ExplorerQuery>) => void }) {
     if (rows.length === 0) return <Empty family="assemblies" />;
-    const bySlug = new Map((assemblies ?? []).map((a) => [a.slug, a]));
+    const bySlug = new Map(assemblies.map((a) => [a.slug, a]));
     return (
         <ul className="space-y-5">
             {rows.map((r) => {
@@ -386,7 +380,6 @@ function AssemblyRows({ rows, assemblies, onFacet }: { rows: Array<ExplorerRow &
                             <button type="button" className="font-mono underline" onClick={() => onFacet({ registeredBy: r.registeredBy })}>
                                 {truncateHex(r.registeredBy)}
                             </button>
-                            <ContentStateNote content={r.content} />
                         </p>
                         <StoredRow row={r} />
                     </li>
@@ -399,9 +392,9 @@ function AssemblyRows({ rows, assemblies, onFacet }: { rows: Array<ExplorerRow &
 /** Every registered member — the registry, not the buyer's discover list.
  *  A member offering assemblies links to its catalog (`/s/view`); one
  *  without renders its own declaration inline (no hollow catalog page). */
-function MemberRows({ rows, members }: { rows: Array<ExplorerRow & RowText>; members: ReturnType<typeof useRegisteredMembers>["data"] & object }) {
+function MemberRows({ rows, members }: { rows: Array<ExplorerRow & RowText>; members: readonly RegisteredMemberRow[] }) {
     if (rows.length === 0) return <Empty family="members" />;
-    const byAddress = new Map((members ?? []).map((m) => [m.address.toLowerCase(), m]));
+    const byAddress = new Map(members.map((m) => [m.address.toLowerCase(), m]));
     return (
         <ul className="space-y-5">
             {rows.map((r) => {
@@ -410,11 +403,11 @@ function MemberRows({ rows, members }: { rows: Array<ExplorerRow & RowText>; mem
                 return (
                     <li key={r.key} id={r.key} className="flex flex-col gap-1 scroll-mt-24" data-testid={`member-row-${r.id.toLowerCase()}`}>
                         <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">
-                            {offers ? (
+                            {r.name && offers ? (
                                 <Link href={`/s/view?seller=${r.id}`} className="text-sm font-semibold text-ink-heading hover:underline">{r.name}</Link>
-                            ) : (
+                            ) : r.name ? (
                                 <span className="text-sm font-semibold text-ink-heading">{r.name}</span>
-                            )}
+                            ) : null}
                             <code className="font-mono text-xs text-ink-muted">{r.id}</code>
                         </div>
                         {m?.profile?.description ? <p className="text-sm text-ink-body">{m.profile.description}</p> : null}
@@ -422,7 +415,6 @@ function MemberRows({ rows, members }: { rows: Array<ExplorerRow & RowText>; mem
                             {m?.profile?.specialty ? <>{m.profile.specialty} · </> : null}
                             {offers ? "offers assemblies — orderable on /discover" : "registered; not offering assemblies"}
                             {r.stakeWithdrawn ? " · stake withdrawn" : ""}
-                            <ContentStateNote content={r.content} />
                         </p>
                     </li>
                 );
@@ -446,18 +438,6 @@ function StoredRow({ row }: { row: ExplorerRow }) {
             anchor={anchor}
         />
     );
-}
-
-/** The state of a row whose pinned content has not resolved, in words. */
-function contentStateLabel(content: ExplorerRow["content"]): string {
-    return content === "unavailable" ? "(content unavailable — the pinned document failed verification)" : "(content not served by the gateway yet — re-reading)";
-}
-
-/** Inline note on any row whose name/description are not to be trusted
- *  yet: the on-chain identity is real, the content behind it is not here. */
-function ContentStateNote({ content }: { content: ExplorerRow["content"] }) {
-    if (content === "resolved") return null;
-    return <span className="ml-2" data-testid={`content-${content}`}>{contentStateLabel(content)}</span>;
 }
 
 function Empty({ family }: { family: RegistryFamily }) {

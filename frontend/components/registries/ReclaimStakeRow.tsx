@@ -22,6 +22,7 @@ import { useState, type ReactNode } from "react";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import {
     useWithdrawGate,
+    withdrawGateOpen,
     withdrawBlockedReason,
     withdrawUnverifiedCaveat,
     type WithdrawClauseOrAssembly,
@@ -93,15 +94,16 @@ export function ReclaimStakeRow({
                         </span>
                     </p>
                 </div>
-                <button
+                {/* A gate that could not be read offers no reclaim at all. */}
+                {(withdrawn || gate.status !== "absent") && <button
                     type="button"
                     onClick={handleWithdraw}
                     // RegisteredBy-only reclaim, gated by the advisory commits==resolves
                     // gate: disabled while any VERIFIED in-flight trade composes this
-                    // registration, while the gate is unknown (loading / chain-read
-                    // failure), or once already reclaimed. Unverified trades never
-                    // disable — they render as the caveat strip below.
-                    disabled={withdrawing || withdrawn || gate === null || gate.inFlightCount > 0}
+                    // registration, while the gate is still being read, or once
+                    // already reclaimed. Unverified trades never disable — they
+                    // render as the caveat strip below.
+                    disabled={withdrawing || withdrawn || !withdrawGateOpen(gate)}
                     className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:bg-subtle text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                     data-testid={`${family}-withdraw-button`}
                     title={
@@ -112,7 +114,7 @@ export function ReclaimStakeRow({
                     }
                 >
                     {withdrawn ? "Stake reclaimed" : withdrawing ? "Reclaiming…" : "Reclaim stake"}
-                </button>
+                </button>}
             </div>
             {caveat && (
                 <p className="text-xs text-ink-muted" role="status" data-testid={`${family}-withdraw-caveat`}>

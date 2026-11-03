@@ -34,8 +34,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 
 export function RegisteredClausesReclaim() {
     const { address } = useAccount();
-    const read = useRegisteredClausesByWallet(address);
-    const { refetch } = read;
+    const { read, refetch } = useRegisteredClausesByWallet(address);
     const { withdraw } = useWithdrawClause();
     // A registration confirmed by the form above is a write this scan ran
     // before: read the events again when the write signal changes.
@@ -89,17 +88,17 @@ function ReclaimClauseRow({
     withdraw: (key: `0x${string}`) => Promise<unknown>;
     onReclaimed: () => void;
 }) {
-    // "(unclassified)" is a RESOLVED spec declaring no article; a spec the
-    // gateway has not served yet is not unclassified — its article is unknown here.
+    // The row's labels are the spec's own: a spec that declares no article
+    // shows none, and a spec not resolved names nothing — never a placeholder.
     const spec = getClauseSpec(clause.clauseKey);
-    const article = spec ? spec.block?.design.article ?? "(unclassified)" : "(spec not resolved yet)";
+    const article = spec?.block?.design.article;
     return (
         <ReclaimStakeRow
             family="clause"
             registrationKey={clause.clauseKey}
             target={{ kind: "clause", clauseKey: clause.clauseKey }}
             title={spec?.clauseId ?? truncateHex(clause.clauseKey, { head: 10, tail: 6 })}
-            meta={<>article {article}{spec && <>{" · version "}{spec.version}</>}</>}
+            meta={<>{article && <>article {article}</>}{article && spec && " · "}{spec && <>version {spec.version}</>}</>}
             stakeWithdrawn={clause.stakeWithdrawn}
             withdraw={withdraw}
             onReclaimed={onReclaimed}

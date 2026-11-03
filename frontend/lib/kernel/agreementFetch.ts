@@ -11,8 +11,13 @@
  * each load. The ONLY local state here is the witnessed-URI pointer — FigaroCore
  * never puts the URI on-chain, so "which URI for this hash" is event-driven
  * local knowledge of orders this wallet saw (like a draft: data not on the
- * network). A wallet that didn't witness an order has no URI and gets null —
- * correct: you can't fetch a body you were never pointed at.
+ * network). A wallet that didn't witness an order has no URI
+ * (`witnessedAgreementUri` is null) and makes no read.
+ *
+ * `fetchAgreement` answers with a `NetworkRead`: `present` with the verified
+ * body, `absent` when there is nothing to read or the read failed (a gateway
+ * failure, a parse failure, bytes that do not hash to `checkoutHash`) — never
+ * null standing in for both.
  */
 import type { Hex } from "viem";
 import { anchorAgreement, computeCheckoutHash, parseClauseRegistryLogs, publicForm, type Agreement, type Anchored } from "@figaro-protocol/sdk";
@@ -24,6 +29,7 @@ import { activeChain, publicClient } from "@/lib/shared/wagmi";
 import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { readStorage, removeStorage, writeStorage } from "@/lib/shared/storage";
 import { hexEqual } from "@/lib/shared/evm";
+import { ABSENT, present, type NetworkRead } from "@/lib/shared/networkRead";
 
 const URI_PREFIX = "figaro:agreement-uri:";
 const uriKey = (h: Hex | string) => URI_PREFIX + h;
@@ -42,7 +48,9 @@ function saveAgreementUri(checkoutHash: Hex | string, uri: string): void {
     writeStorage(uriKey(checkoutHash), uri);
 }
 
-function loadAgreementUri(checkoutHash: Hex | string | undefined | null): string | null {
+/** The IPFS URI this wallet witnessed for an order's checkoutHash, or null
+ *  when it never saw the order (its body is party-private to it). */
+export function witnessedAgreementUri(checkoutHash: Hex | string | undefined | null): string | null {
     if (!checkoutHash) return null;
     return readStorage(uriKey(checkoutHash));
 }
@@ -52,40 +60,42 @@ function forgetAgreementUri(checkoutHash: Hex | string): void {
     removeStorage(uriKey(checkoutHash));
 }
 
-const inflight = new Map<string, Promise<Anchored<Agreement> | null>>();
+const inflight = new Map<string, Promise<NetworkRead<Anchored<Agreement>>>>();
 
 /**
  * Fetch a committed agreement from IPFS and verify it against `checkoutHash`.
- * `uri` defaults to the witnessed URI for the hash. Returns null when there is
- * no URI (un-witnessed) or the fetched bytes don't hash to `checkoutHash`.
- * Concurrent calls for the same target share one in-flight fetch.
+ * `uri` defaults to the witnessed URI for the hash. `absent` when there is no
+ * URI (un-witnessed), the fetch fails, or the fetched bytes don't hash to
+ * `checkoutHash`. Concurrent calls for the same target share one in-flight
+ * fetch.
  */
 export async function fetchAgreement(
     checkoutHash: Hex | string | undefined | null,
     uri?: string | null,
     options: AgreementFetchOptions = {},
-): Promise<Anchored<Agreement> | null> {
-    if (!checkoutHash) return null;
-    const resolvedUri = uri ?? loadAgreementUri(checkoutHash);
+): Promise<NetworkRead<Anchored<Agreement>>> {
+    if (!checkoutHash) return ABSENT;
+    const resolvedUri = uri ?? witnessedAgreementUri(checkoutHash);
     const fetchUrl = resolvedUri ? transport(options).resolveFetchUrl(resolvedUri) : null;
-    if (!fetchUrl) return null;
+    if (!fetchUrl) return ABSENT;
 
     const cacheKey = `${checkoutHash}:${fetchUrl}`;
     const pending = inflight.get(cacheKey);
     if (pending) return pending;
 
-    const run = (async () => {
+    const run = (async (): Promise<NetworkRead<Anchored<Agreement>>> => {
         try {
             // Size-capped: an attacker-pinned multi-GB body aborts mid-stream
-            // (throws → the catch below → null) before the hash check buffers it.
+            // (throws → the catch below → absent) before the hash check buffers it.
             const res = await fetchCappedContent(fetchUrl);
             const agreement = anchorAgreement(await safeJsonFromResponse<unknown>(res), checkoutHash);
-            if (agreement === null) return null;
+            if (agreement === null) return ABSENT;
             // Remember the URI we just proved good (witnessed-pointer only).
             if (resolvedUri) saveAgreementUri(checkoutHash, resolvedUri);
-            return agreement;
-        } catch {
-            return null;
+            return present(agreement);
+        } catch (err) {
+            console.warn("[fetchAgreement] network read failed:", err);
+            return ABSENT;
         } finally {
             inflight.delete(cacheKey);
         }
@@ -123,7 +133,7 @@ export async function unpinAgreement(
     checkoutHash: Hex | string,
     ipfs: Pick<IpfsService, "unpin"> = DEFAULT_IPFS_SERVICE,
 ): Promise<void> {
-    const uri = loadAgreementUri(checkoutHash);
+    const uri = witnessedAgreementUri(checkoutHash);
     const cid = uri ? extractIpfsCid(uri) : null;
     if (cid) await ipfs.unpin(cid);
     forgetAgreementUri(checkoutHash);

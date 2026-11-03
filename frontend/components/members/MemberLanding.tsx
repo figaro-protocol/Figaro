@@ -36,6 +36,7 @@ import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
+import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 import { formatEther } from "viem";
 
 
@@ -43,46 +44,37 @@ export function MemberLanding() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { data: profileData, isLoading: profileLoading, refetch } = useMemberProfile(address);
-    const { data: deposit } = useRegistrationDeposit();
-    const { pending, isLoading: withdrawalLoading, refetch: refetchWithdrawal } = useWithdrawalStatus(address);
+    const { read: registration, refetch } = useMemberProfile(address);
+    const deposit = useRegistrationDeposit();
+    const { pending, refetch: refetchWithdrawal } = useWithdrawalStatus(address);
 
-    // NO doorway page: the reader arrives from
-    // /join already sold — an unregistered wallet goes STRAIGHT to Identity.
-    // The one exception is a wallet that LEFT but is still owed its deposit:
+    // NO doorway page: the reader arrives from /join already sold — a wallet
+    // the chain says is unregistered goes STRAIGHT to Identity. The one
+    // exception is a wallet that LEFT but is still owed its deposit:
     // redirecting it would strand the ETH behind a screen it can't reach, so
-    // the claim surface renders here instead.
-    const owedDeposit = Boolean(pending && pending > 0n);
-    const unregistered = mounted && !profileLoading && (!isConnected || !profileData);
-    // The redirect decision NEEDS the withdrawal status loaded: while it is
-    // in flight, owedDeposit reads false and the race bounces a wallet that
-    // IS owed its deposit into the wizard — the exact stranded-ETH case the
-    // owedDeposit exception exists to prevent.
-    const depositKnown = !isConnected || !withdrawalLoading;
+    // the claim surface renders here instead. The redirect is taken only on
+    // the chain's ANSWERS — registration and pending stake both read; a
+    // failed read of either renders nothing and redirects nowhere.
+    const unregistered = registration.status === "present" && !registration.value.registered;
+    const owedDeposit = pending.status === "present" && pending.value > 0n;
+    const redirect = mounted && (!isConnected || (unregistered && pending.status === "present" && !owedDeposit));
     useEffect(() => {
-        if (unregistered && depositKnown && !owedDeposit) {
-            router.replace("/members/identity");
-        }
-    }, [unregistered, depositKnown, owedDeposit, router]);
+        if (redirect) router.replace("/members/identity");
+    }, [redirect, router]);
 
-    if (!mounted || (unregistered && (!depositKnown || !owedDeposit))) {
-        return (
-            <>
-                <ManageHeader />
-                <Card className="p-8 text-sm text-ink-muted">Loading…</Card>
-            </>
-        );
-    }
-    if (profileLoading && isConnected) {
-        return (
-            <>
-                <ManageHeader />
-                <Card className="p-8 text-sm text-ink-muted">Loading…</Card>
-            </>
-        );
-    }
+    const loading = (
+        <>
+            <ManageHeader />
+            <Card className="p-8 text-sm text-ink-muted">Loading…</Card>
+        </>
+    );
+    if (!mounted || redirect) return loading;
+    if (registration.status === "pending") return loading;
+    if (registration.status === "absent") return <ManageHeader />;
 
-    if (unregistered && owedDeposit) {
+    if (!registration.value.registered) {
+        if (pending.status === "pending") return loading;
+        if (pending.status === "absent") return <ManageHeader />;
         return (
             <>
                 <ManageHeader />
@@ -97,23 +89,12 @@ export function MemberLanding() {
         );
     }
 
-    // TS can't derive it from the composed guards above: past them, the
-    // wallet is connected and registered.
-    if (!profileData) {
-        return (
-            <>
-                <ManageHeader />
-                <Card className="p-8 text-sm text-ink-muted">Loading…</Card>
-            </>
-        );
-    }
-    const [metadataURI, registeredBlock] = profileData;
     return (
         <RegisteredCard
             address={address!}
-            metadataURI={metadataURI}
-            registeredBlock={registeredBlock}
-            deposit={deposit}
+            metadataURI={registration.value.metadataURI}
+            registeredBlock={registration.value.registeredBlock}
+            deposit={deposit.status === "present" ? deposit.value : undefined}
             onWithdrawn={() => { refetchWithdrawal(); void refetch(); }}
         />
     );
@@ -157,26 +138,24 @@ function RegisteredCard({
     deposit,
     onWithdrawn,
 }: RegisteredCardProps) {
-    const [profile, setProfile] = useState<MemberProfileMetadata | null>(null);
-    const [profileError, setProfileError] = useState<string | null>(null);
+    const [profileRead, setProfileRead] = useState<NetworkRead<MemberProfileMetadata>>(PENDING);
+    const profile = profileRead.status === "present" ? profileRead.value : null;
 
     useEffect(() => {
         let canceled = false;
-        setProfile(null);
-        setProfileError(null);
+        setProfileRead(PENDING);
         // The shared reviver-backed, size-capped, cached fetcher — NOT a
         // hand-rolled fetch+JSON.parse: a member profile is
         // permissionless untrusted network JSON, so it routes through the same
         // prototype-pollution-stripping path every other profile read uses.
-        fetchMemberProfile(metadataURI)
-            .then((parsed) => {
-                if (canceled) return;
-                if (parsed) setProfile(parsed);
-                else setProfileError("Couldn't load a member profile from that URI.");
-            })
-            .catch(() => {
-                if (!canceled) setProfileError("Couldn't fetch profile from IPFS.");
-            });
+        // A profile that cannot be read is absent: no heading, no error text.
+        void readNetwork("MemberLanding.profile", async () => {
+            const parsed = await fetchMemberProfile(metadataURI);
+            if (!parsed) throw new Error("member profile unreadable");
+            return parsed;
+        }).then((read) => {
+            if (!canceled) setProfileRead(read);
+        });
         return () => {
             canceled = true;
         };
@@ -185,9 +164,12 @@ function RegisteredCard({
     return (
         <div className="space-y-8">
             <header className="space-y-2">
-                <h1 className="text-heading-h1 text-ink-heading">
-                    {profile?.name ?? "Loading profile…"}
-                </h1>
+                {profileRead.status === "pending" && (
+                    <p className="text-sm text-ink-muted">Loading profile…</p>
+                )}
+                {profile?.name && (
+                    <h1 className="text-heading-h1 text-ink-heading">{profile.name}</h1>
+                )}
                 {profile?.specialty && (
                     <p className="text-sm text-ink-body">{profile.specialty}</p>
                 )}
@@ -197,9 +179,6 @@ function RegisteredCard({
                 >
                     View public profile →
                 </Link>
-                {profileError && (
-                    <p className="text-sm text-error-fg mt-2" role="alert">{profileError}</p>
-                )}
             </header>
 
             <PendingDepositNotice address={address} />
@@ -348,21 +327,25 @@ function PendingDepositNotice({ address }: { address: `0x${string}` | undefined 
         );
     }
 
-    if (claimed || !pending || pending === 0n) return null;
+    if (claimed || pending.status !== "present" || pending.value === 0n) return null;
+    const owed = pending.value;
+    // A failed `withdrawable` read offers no claim; a failed `releaseAt` read
+    // says no date.
+    if (withdrawable.status === "absent") return null;
 
     // `withdrawable` is the CHAIN's answer. Do not reintroduce a
     // `Date.now() >= releaseAt` comparison here: `releaseAt` is a block
     // timestamp, the two clocks drift, and the comparison disabled a
     // legitimate claim outright. `releaseAt` is still shown,
     // as human-readable context only.
-    const unlockAt = releaseAt ? Number(releaseAt) * 1000 : 0;
+    const canClaim = withdrawable.status === "present" && withdrawable.value;
     const busy = isPending || isConfirming;
 
     async function handleClaim() {
         setClaimError(null);
         // The amount is read before the claim: after it, the chain's pending
         // stake reads zero.
-        const amount = pending ?? 0n;
+        const amount = owed;
         try {
             const hash = await withdraw();
             setReceipt({ hash, amount });
@@ -375,13 +358,15 @@ function PendingDepositNotice({ address }: { address: `0x${string}` | undefined 
         <Card className="p-4 mb-4 text-sm space-y-2">
             <p className="text-ink-body">
                 <span className="font-semibold text-ink-heading">
-                    {formatEther(pending)} ETH held for you.
+                    {formatEther(owed)} ETH held for you.
                 </span>{" "}
-                {withdrawable
+                {canClaim
                     ? "The cooldown has passed — you can take it back now."
-                    : `Released ${new Date(unlockAt).toLocaleString()}. You are already de-listed; only the ETH is still waiting.`}
+                    : releaseAt.status === "present"
+                        ? `Released ${new Date(Number(releaseAt.value) * 1000).toLocaleString()}. You are already de-listed; only the ETH is still waiting.`
+                        : null}
             </p>
-            <Button variant="outline" size="sm" onClick={handleClaim} disabled={!withdrawable || busy}>
+            <Button variant="outline" size="sm" onClick={handleClaim} disabled={!canClaim || busy}>
                 {busy ? "Reclaiming…" : "Reclaim stake"}
             </Button>
             {(claimError || error) && (

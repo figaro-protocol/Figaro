@@ -52,7 +52,7 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
     });
 
     it("re-reads a network miss on the retry schedule and bumps `version` when it lands", async () => {
-        useAllRegisteredClausesMock.mockReturnValue({ data: [event("figaro-fresh"), event("figaro-old")], failed: false });
+        useAllRegisteredClausesMock.mockReturnValue({ read: { status: "present", value: [event("figaro-fresh"), event("figaro-old")] } });
         let freshServed = false;
         const reads: string[] = [];
         setClauseSpecFetcher(async (uri) => {
@@ -87,7 +87,7 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
     });
 
     it("keeps re-reading on the schedule while the content stays unserved (10 s, 20 s, 40 s, 60 s…)", async () => {
-        useAllRegisteredClausesMock.mockReturnValue({ data: [event("figaro-slow")], failed: false });
+        useAllRegisteredClausesMock.mockReturnValue({ read: { status: "present", value: [event("figaro-slow")] } });
         let reads = 0;
         setClauseSpecFetcher(async () => { reads += 1; throw new Error("504"); });
         renderHook(() => useClauseSpecs());
@@ -101,7 +101,7 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
     });
 
     it("leaves a PERMANENT failure alone — a spec that fails verification is never re-read", async () => {
-        useAllRegisteredClausesMock.mockReturnValue({ data: [event("figaro-bad")], failed: false });
+        useAllRegisteredClausesMock.mockReturnValue({ read: { status: "present", value: [event("figaro-bad")] } });
         let reads = 0;
         // The gateway serves other bytes than the key's: wrong content, not a slow gateway.
         setClauseSpecFetcher(async () => { reads += 1; return canonicalize(validSpec("figaro-other")); });
@@ -115,7 +115,7 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
     });
 
     it("unmount cancels the pending re-read", async () => {
-        useAllRegisteredClausesMock.mockReturnValue({ data: [event("figaro-slow")], failed: false });
+        useAllRegisteredClausesMock.mockReturnValue({ read: { status: "present", value: [event("figaro-slow")] } });
         let reads = 0;
         setClauseSpecFetcher(async () => { reads += 1; throw new Error("504"); });
         const { unmount } = renderHook(() => useClauseSpecs());

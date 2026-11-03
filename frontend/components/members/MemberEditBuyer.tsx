@@ -21,7 +21,6 @@ import { OnboardingBuyerForm } from "@/components/members/OnboardingBuyerForm";
 
 export function MemberEditBuyer() {
     const editor = useMemberProfileEditor({
-        errorNoun: "the buyer side",
         seed: (existingProfile, update) => {
             update({
                 buyerAssemblies: existingProfile.buyerAssemblies ?? [],

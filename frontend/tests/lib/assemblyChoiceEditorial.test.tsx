@@ -37,6 +37,9 @@ const flush = () =>
         await Promise.resolve();
     });
 
+/** One stable read reference: the hook keys its effects on its identity. */
+const PUBLISHED_READ = { status: "present", value: [EVENT] };
+
 /** The hydrated read of a assembly whose agreements each bind the agreement
  *  their clauses key to. */
 function hydrated(assembly: Record<string, unknown> & { agreements: { id: string; clauses: Record<string, Record<string, unknown>> }[] }) {
@@ -54,12 +57,14 @@ async function choiceFor(assembly: (Record<string, unknown> & { agreements: { id
     fetchHydratedAssemblyMock.mockResolvedValue(assembly ? hydrated(assembly) : null);
     const { result } = renderHook(() => useAssemblyChoices());
     await flush();
-    return result.current.data![0];
+    const r = result.current.read;
+    if (r.status !== "present") throw new Error("choices not present");
+    return r.value[0];
 }
 
 describe("useAssemblyChoices — the designer's words reach the reader", () => {
     beforeEach(() => {
-        publishedMock.mockReturnValue({ data: [EVENT], isLoading: false, failed: false, refetch: vi.fn() });
+        publishedMock.mockReturnValue({ read: PUBLISHED_READ, refetch: vi.fn() });
         fetchHydratedAssemblyMock.mockReset();
     });
 
@@ -97,9 +102,7 @@ describe("useAssemblyChoices — the designer's words reach the reader", () => {
         expect(choice.summary).toBe("Six bonded parties move a container.");
     });
 
-    it("shows the slug and no summary while the assembly is unresolved", async () => {
-        const choice = await choiceFor(null);
-        expect(choice.name).toBe("asm-9ffb1eb79755a9ab");
-        expect(choice.summary).toBeNull();
+    it("an assembly whose document did not resolve is no choice at all", async () => {
+        await expect(choiceFor(null)).resolves.toBeUndefined();
     });
 });

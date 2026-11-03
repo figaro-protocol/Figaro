@@ -33,7 +33,7 @@ vi.mock("@/app/(app)/audit/_components/ProcessClauseEvidence", () => ({ ProcessC
 vi.mock("@/app/(app)/audit/_components/HashVerifier", () => ({ HashVerifier: () => null }));
 vi.mock("@/components/runtime/RecoursePanel", () => ({ RecoursePanel: () => null }));
 vi.mock("@/components/runtime/AgreementPinErasure", () => ({ AgreementPinErasure: () => null }));
-vi.mock("@/hooks/useProcessOrders", () => ({ useProcessOrders: () => [] }));
+vi.mock("@/hooks/useProcessOrders", () => ({ useProcessOrders: () => ({ status: "present", value: [] }) }));
 vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => [] }));
 vi.mock("@/app/(tools)/assemblies/designer/view/ViewAssemblyClient", () => ({
     ViewAssemblyClient: ({ slug }: { slug: string }) => <div data-testid="record">{slug}</div>,

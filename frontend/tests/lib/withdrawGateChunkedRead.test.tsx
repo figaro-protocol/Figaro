@@ -45,9 +45,11 @@ vi.mock("@/lib/kernel/contracts", async (importOriginal) => ({
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
 }));
 // An un-witnessed order resolves to no agreement: the SDK gate counts it unverified.
-vi.mock("@/lib/kernel/agreementFetch", () => ({ fetchAgreement: async () => null }));
+// No order here was witnessed by this wallet, so no body is read.
+vi.mock("@/lib/kernel/agreementFetch", () => ({ witnessedAgreementUri: () => null, fetchAgreement: async () => null }));
 
 import { useWithdrawGate } from "@/lib/protocol/withdrawGate";
+import { mapRead, present } from "@/lib/shared/networkRead";
 
 provider.selector = selectorOf;
 
@@ -61,9 +63,8 @@ describe("useWithdrawGate reads through the chunked reader", () => {
 
         const { result } = renderHook(() => useWithdrawGate({ kind: "clause", clauseKey: `0x${"ab".repeat(32)}` }));
 
-        await waitFor(() => expect(result.current.gate).not.toBeNull());
-        expect(result.current.isLoading).toBe(false);
+        await waitFor(() => expect(result.current.gate.status).toBe("present"));
         // Both in-flight orders are read; neither is witnessed, so both are unverified.
-        expect(result.current.gate?.unverifiedCount).toBe(2);
+        expect(mapRead(result.current.gate, (gate) => gate.unverifiedCount)).toEqual(present(2));
     });
 });

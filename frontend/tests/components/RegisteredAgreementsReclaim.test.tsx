@@ -30,9 +30,9 @@ const OPEN_GATE: WithdrawGate = { canWithdraw: true, inFlightCount: 0, unverifie
 
 const mocks = vi.hoisted(() => ({
     address: undefined as `0x${string}` | undefined,
-    scan: { data: null as Row[] | null, isLoading: false, failed: false, error: null as string | null, refetch: () => {} },
+    scan: { read: { status: "pending" } as { status: string; value?: Row[] }, refetch: () => {} },
     docs: new Map<string, { name?: string; clauses: Record<string, unknown> }>(),
-    gate: null as WithdrawGate | null,
+    gate: null as unknown,
     withdraw: vi.fn(),
     scopedTo: [] as (string | undefined)[],
 }));
@@ -60,7 +60,7 @@ vi.mock("@/lib/protocol/useAgreementRegistry", () => ({
 }));
 vi.mock("@/lib/protocol/withdrawGate", async () => {
     const actual = await vi.importActual<typeof import("@/lib/protocol/withdrawGate")>("@/lib/protocol/withdrawGate");
-    return { ...actual, useWithdrawGate: () => ({ gate: mocks.gate, isLoading: false }) };
+    return { ...actual, useWithdrawGate: () => ({ gate: mocks.gate }) };
 });
 
 import { RegisteredAgreementsReclaim } from "@/app/(tools)/assemblies/designer/_components/RegisteredAgreementsReclaim";
@@ -79,9 +79,9 @@ function row(agreementHash: `0x${string}`, registeredBy: `0x${string}`, stakeWit
 describe("RegisteredAgreementsReclaim", () => {
     beforeEach(() => {
         mocks.address = DESIGNER;
-        mocks.scan = { data: null, isLoading: false, failed: false, error: null, refetch: () => {} };
+        mocks.scan = { read: { status: "pending" }, refetch: () => {} };
         mocks.docs.clear();
-        mocks.gate = OPEN_GATE;
+        mocks.gate = { status: "present", value: OPEN_GATE };
         mocks.withdraw.mockReset();
         mocks.withdraw.mockResolvedValue(TX);
         mocks.scopedTo = [];
@@ -95,41 +95,42 @@ describe("RegisteredAgreementsReclaim", () => {
     });
 
     it("reads the registry scoped to the connected wallet", () => {
-        mocks.scan = { ...mocks.scan, data: [] };
+        mocks.scan = { ...mocks.scan, read: { status: "present", value: [] } };
         render(<RegisteredAgreementsReclaim />);
         expect(mocks.scopedTo.every((s) => s === DESIGNER)).toBe(true);
         expect(screen.getByTestId("agreements-reclaim-empty")).toBeTruthy();
     });
 
     it("renders nothing for a failed registry read, never an empty list or error text", () => {
-        mocks.scan = { ...mocks.scan, data: [], failed: true, error: "rpc down" };
+        mocks.scan = { ...mocks.scan, read: { status: "absent" } };
         const { container } = render(<RegisteredAgreementsReclaim />);
         expect(container.textContent).toBe("");
         expect(screen.queryByTestId("agreements-reclaim-empty")).toBeNull();
     });
 
     it("offers the reclaim only on the designer of record's own registrations", () => {
-        mocks.scan = { ...mocks.scan, data: [row(KEY_A, DESIGNER), row(KEY_B, STRANGER)] };
+        mocks.scan = { ...mocks.scan, read: { status: "present", value: [row(KEY_A, DESIGNER), row(KEY_B, STRANGER)] } };
         render(<RegisteredAgreementsReclaim />);
         expect(screen.getByTestId(`agreement-reclaim-row-${KEY_A}`)).toBeTruthy();
         expect(screen.queryByTestId(`agreement-reclaim-row-${KEY_B}`)).toBeNull();
         expect(screen.getAllByTestId("agreement-withdraw-button")).toHaveLength(1);
     });
 
-    it("labels a row by its pinned document's name and clause count; an unread document by its key", () => {
+    it("labels a row by its pinned document's name and clause count; an unread document gets no stand-in title", () => {
         mocks.docs.set(KEY_A.toLowerCase(), { name: "Courier leg", clauses: { [KEY_C]: {}, [KEY_B]: {} } });
-        mocks.scan = { ...mocks.scan, data: [row(KEY_A, DESIGNER), row(KEY_C, DESIGNER)] };
+        mocks.scan = { ...mocks.scan, read: { status: "present", value: [row(KEY_A, DESIGNER), row(KEY_C, DESIGNER)] } };
         render(<RegisteredAgreementsReclaim />);
         const named = screen.getByTestId(`agreement-reclaim-row-${KEY_A}`);
         expect(named.textContent).toMatch(/Courier leg/);
         expect(named.textContent).toMatch(/2 clauses/);
         const unread = screen.getByTestId(`agreement-reclaim-row-${KEY_C}`);
-        expect(unread.textContent).toMatch(/document not read yet/);
-        expect(unread.textContent).toMatch(/0xc3c3c3c3/);
+        expect(unread.textContent).not.toMatch(/document not read yet/);
+        // The registration key stays the row's identity line, never its title.
+        expect(unread.querySelector("p.text-base")?.textContent ?? "").toBe("");
     });
 
     it("reclaims the stake with the row's agreement key and flips the row to reclaimed", async () => {
-        mocks.scan = { ...mocks.scan, data: [row(KEY_A, DESIGNER)] };
+        mocks.scan = { ...mocks.scan, read: { status: "present", value: [row(KEY_A, DESIGNER)] } };
         render(<RegisteredAgreementsReclaim />);
         const button = screen.getByTestId("agreement-withdraw-button") as HTMLButtonElement;
         expect(button.disabled).toBe(false);
@@ -143,35 +144,39 @@ describe("RegisteredAgreementsReclaim", () => {
 
     it("shows the registry's refusal on the row", async () => {
         mocks.withdraw.mockRejectedValue(new Error("Only the wallet that registered this agreement can reclaim its registration stake."));
-        mocks.scan = { ...mocks.scan, data: [row(KEY_A, DESIGNER)] };
+        mocks.scan = { ...mocks.scan, read: { status: "present", value: [row(KEY_A, DESIGNER)] } };
         render(<RegisteredAgreementsReclaim />);
         fireEvent.click(screen.getByTestId("agreement-withdraw-button"));
         expect((await screen.findByTestId("agreement-withdraw-error")).textContent).toMatch(/Only the wallet that registered/);
     });
 
     it("keeps an already-reclaimed registration listed, its reclaim disabled", () => {
-        mocks.scan = { ...mocks.scan, data: [row(KEY_A, DESIGNER, true)] };
+        mocks.scan = { ...mocks.scan, read: { status: "present", value: [row(KEY_A, DESIGNER, true)] } };
         render(<RegisteredAgreementsReclaim />);
         expect(screen.getByTestId(`agreement-reclaim-state-${KEY_A}`).textContent).toBe("stake reclaimed");
         expect((screen.getByTestId("agreement-withdraw-button") as HTMLButtonElement).disabled).toBe(true);
     });
 
-    it("disables the reclaim while a verified in-flight trade composes the agreement, or while the gate is unknown", () => {
-        mocks.scan = { ...mocks.scan, data: [row(KEY_A, DESIGNER)] };
-        mocks.gate = { canWithdraw: false, inFlightCount: 1, unverifiedCount: 0 } as WithdrawGate;
+    it("disables the reclaim while a verified in-flight trade composes the agreement or while the gate is read; offers none for a gate that could not be read", () => {
+        mocks.scan = { ...mocks.scan, read: { status: "present", value: [row(KEY_A, DESIGNER)] } };
+        mocks.gate = { status: "present", value: { canWithdraw: false, inFlightCount: 1, unverifiedCount: 0 } as WithdrawGate };
         const { unmount } = render(<RegisteredAgreementsReclaim />);
         const blocked = screen.getByTestId("agreement-withdraw-button") as HTMLButtonElement;
         expect(blocked.disabled).toBe(true);
         expect(blocked.title).toMatch(/1 in-flight trade still composes/);
         unmount();
-        mocks.gate = null;
-        render(<RegisteredAgreementsReclaim />);
+        mocks.gate = { status: "pending" };
+        const pending = render(<RegisteredAgreementsReclaim />);
         expect((screen.getByTestId("agreement-withdraw-button") as HTMLButtonElement).disabled).toBe(true);
+        pending.unmount();
+        mocks.gate = { status: "absent" };
+        render(<RegisteredAgreementsReclaim />);
+        expect(screen.queryByTestId("agreement-withdraw-button")).toBeNull();
     });
 
     it("surfaces unverifiable in-flight trades as a caveat beside an enabled reclaim", () => {
-        mocks.scan = { ...mocks.scan, data: [row(KEY_A, DESIGNER)] };
-        mocks.gate = { canWithdraw: true, inFlightCount: 0, unverifiedCount: 2 } as WithdrawGate;
+        mocks.scan = { ...mocks.scan, read: { status: "present", value: [row(KEY_A, DESIGNER)] } };
+        mocks.gate = { status: "present", value: { canWithdraw: true, inFlightCount: 0, unverifiedCount: 2 } as WithdrawGate };
         render(<RegisteredAgreementsReclaim />);
         expect((screen.getByTestId("agreement-withdraw-button") as HTMLButtonElement).disabled).toBe(false);
         expect(screen.getByTestId("agreement-withdraw-caveat").textContent).toMatch(/2 in-flight trades could not be checked/);

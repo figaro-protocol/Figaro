@@ -53,7 +53,7 @@ vi.mock("@figaro-protocol/sdk", async (importOriginal) => ({
 vi.mock("@/lib/kernel/agreementFetch", () => ({ publishAgreement: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
-vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => ({ listings: [] }) }));
+vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => ({ read: { status: "present", value: [] } }) }));
 vi.mock("@/lib/checkout/orderCommitmentFlow", () => ({
     useOrderCommitmentFlow: () => ({ acceptOrder: vi.fn(), commitOrder: vi.fn(), error: null, reset: vi.fn(), step: "idle" }),
 }));

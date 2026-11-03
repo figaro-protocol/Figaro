@@ -14,8 +14,9 @@
  *      against it (absent ⇒ the assembly is not shown).
  *
  * If the slug exists in both places, the draft wins (it's more current
- * by definition; the on-chain one is the prior snapshot). If neither,
- * the error UI surfaces a clear message.
+ * by definition; the on-chain one is the prior snapshot). If the chain
+ * answers that no registration derives the slug, the page says so; a read
+ * that FAILS renders nothing (docs/OPEN_WORLD.md § 1 "No fallbacks").
  *
  * Renders the same `TopologyCanvas` as /new and /edit/[slug] in
  * designerMode (so per-node clauses/values surface via the lens
@@ -58,7 +59,8 @@ import {
     getAssemblyRegistry,
     useWithdrawAssembly,
 } from "@/lib/protocol/useAssemblyRegistry";
-import { useWithdrawGate, withdrawBlockedReason, withdrawUnverifiedCaveat } from "@/lib/protocol/withdrawGate";
+import { readNetwork } from "@/lib/shared/networkRead";
+import { useWithdrawGate, withdrawBlockedReason, withdrawGateOpen, withdrawUnverifiedCaveat } from "@/lib/protocol/withdrawGate";
 import { usePublishAssembly } from "@/lib/designer/publishAssembly";
 import { assemblyToOrders } from "@/lib/designer/assemblyToDraft";
 import {
@@ -82,18 +84,20 @@ type ResolvedSource =
     | { kind: "draft"; name: string; orders: Order[]; snapshot: DesignSnapshot }
     | {
         kind: "published";
-        name: string;
+        /** The designer's editorial name, when the pinned assembly carries one. */
+        name: string | undefined;
         orders: Order[];
         hydratedAssembly: HydratedAssembly;
-        /** The on-chain binding — needed to gate the registeredBy-only reclaim. */
-        registeredBy: `0x${string}`;
         assemblyHash: `0x${string}`;
-        /** Whether the registration stake has already been reclaimed. */
-        stakeWithdrawn: boolean;
+        /** The on-chain binding — who registered it (gates the registeredBy-only
+         *  reclaim) and whether the stake was reclaimed. Only a read binding
+         *  surfaces: a failed read renders nothing. */
+        binding: { registeredBy: `0x${string}`; stakeWithdrawn: boolean };
     }
-    | { kind: "error"; message: string }
-    /** The stake could not be read: nothing is surfaced. Only a registration with a stake read live surfaces. */
-    | { kind: "unsurfaced" };
+    /** The slug resolved to nothing on chain (a read that answered). */
+    | { kind: "notFound"; slug: string }
+    /** A read failed: the page renders nothing. */
+    | { kind: "absent" };
 
 export function ViewAssemblyClient({ slug }: { slug: string }) {
     const router = useRouter();
@@ -152,11 +156,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         // Fall through to on-chain lookup.
         const registry = getAssemblyRegistry();
         if (!client || !registry) {
-            setResolved({
-                kind: "error",
-                message:
-                    "Assembly not found in this browser's drafts and no chain client is available to look up published assemblies.",
-            });
+            setResolved({ kind: "absent" });
             return;
         }
         // Spec gate — hold the on-chain resolution (it ends in assemblyToOrders)
@@ -197,10 +197,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         // Last attempt — surface not-found. Earlier attempts
                         // fall through to the next backoff window.
                         if (attempt === backoffsMs.length - 1) {
-                            setResolved({
-                                kind: "error",
-                                message: `Slug "${slug}" not found in localStorage drafts or on-chain.`,
-                            });
+                            setResolved({ kind: "notFound", slug });
                         }
                         continue;
                     }
@@ -213,53 +210,43 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     );
                     if (canceled) return;
                     if (!hydratedAssembly) {
-                        setResolved({
-                            kind: "error",
-                            message:
-                                "Assembly content could not be read — the assembly or one of its agreements' registered agreements could not be fetched from IPFS, or failed verification against the key the chain anchors. The on-chain identity is anchored regardless.",
-                        });
+                        setResolved({ kind: "absent" });
                         return;
                     }
-                    // The binding is authoritative for registeredBy and the stake's state.
-                    // Only a registration whose stake is read surfaces: a failed read
-                    // surfaces nothing.
-                    let binding: readonly [`0x${string}`, bigint, boolean, string];
-                    try {
-                        binding = (await client.readContract({
+                    // The binding is authoritative for registeredBy + withdrawn
+                    // state. A failed read is absent — never the event's
+                    // registeredBy with a not-withdrawn assumption.
+                    const binding = await readNetwork("ViewAssemblyClient.bindings", async () => {
+                        const b = (await client.readContract({
                             address: registry,
                             abi: ASSEMBLY_REGISTRY_ABI,
                             functionName: "bindings",
                             args: [assemblyHash],
                         })) as readonly [`0x${string}`, bigint, boolean, string];
-                    } catch {
-                        if (canceled) return;
-                        setResolved({ kind: "unsurfaced" });
+                        return { registeredBy: b[0], stakeWithdrawn: b[2] };
+                    });
+                    if (canceled) return;
+                    // Only a registration whose stake is read surfaces.
+                    if (binding.status !== "present") {
+                        setResolved({ kind: "absent" });
                         return;
                     }
-                    const registeredBy = binding[0];
-                    const stakeWithdrawn = binding[2];
-                    if (canceled) return;
                     const orders = assemblyToOrders(hydratedAssembly);
-                    // The editorial name the designer published; the
-                    // content-derived slug is the fallback (and the identity).
                     setResolved({
                         kind: "published",
-                        name: hydratedAssembly.assembly.name ?? slug,
+                        name: hydratedAssembly.assembly.name,
                         orders,
                         hydratedAssembly,
-                        registeredBy,
                         assemblyHash,
-                        stakeWithdrawn,
+                        binding: binding.value,
                     });
                     return;
                 } catch (err) {
                     if (canceled) return;
-                    // Treat a thrown error as terminal — don't retry through
-                    // a 500 from the provider, that's a different failure.
-                    setResolved({
-                        kind: "error",
-                        message: extractErrorMessage(err, "Loading the assembly failed."),
-                    });
+                    // A thrown read is terminal and renders nothing — don't
+                    // retry through a 500 from the provider.
+                    console.warn("[ViewAssemblyClient] assembly read failed:", err);
+                    setResolved({ kind: "absent" });
                     return;
                 }
             }
@@ -418,7 +405,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         try {
             await withdraw(resolved.assemblyHash);
             // Reflect the reclaim locally — the binding stays; only the stake moved.
-            setResolved((prev) => (prev.kind === "published" ? { ...prev, stakeWithdrawn: true } : prev));
+            setResolved((prev) => (prev.kind === "published"
+                ? { ...prev, binding: { ...prev.binding, stakeWithdrawn: true } }
+                : prev));
         } catch (err) {
             setWithdrawError(extractErrorMessage(err, "Withdrawing the deposit failed."));
         } finally {
@@ -439,8 +428,6 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         }
     }, [slug, resolved, router]);
 
-    if (resolved.kind === "unsurfaced") return null;
-
     if (resolved.kind === "loading") {
         return (
             <div className="min-h-screen bg-canvas p-8" data-testid="assembly-view-loading">
@@ -449,14 +436,16 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         );
     }
 
-    if (resolved.kind === "error") {
+    if (resolved.kind === "absent") return null;
+
+    if (resolved.kind === "notFound") {
         return (
             <div
                 className="min-h-screen bg-canvas p-8 flex flex-col items-start gap-4"
                 data-testid="assembly-view-error"
             >
                 <h1 className="text-heading-h2 text-ink-heading">Assembly not found</h1>
-                <p className="text-sm text-ink-body max-w-2xl">{resolved.message}</p>
+                <p className="text-sm text-ink-body max-w-2xl">No draft in this browser and no on-chain registration derives the slug &ldquo;{resolved.slug}&rdquo;.</p>
                 <Link
                     href="/assemblies/designer"
                     className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong"
@@ -527,12 +516,13 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const orders = resolved.orders;
     // The connected wallet designed this published assembly — the reclaim
     // affordance (and its caveat strip) renders only for them.
-    const isAuthor =
-        resolved.kind === "published" && !!address && hexEqual(resolved.registeredBy, address);
+    const binding = resolved.kind === "published" ? resolved.binding : null;
+    const isAuthor = !!binding && !!address && hexEqual(binding.registeredBy, address);
+    const stakeWithdrawn = binding?.stakeWithdrawn === true;
     // Unverifiable in-flight trades: informational only (party-private terms),
     // never disabling. Shown visibly while the reclaim is still available.
     const withdrawCaveat =
-        isAuthor && !resolved.stakeWithdrawn ? withdrawUnverifiedCaveat(withdrawGate) : null;
+        isAuthor && !stakeWithdrawn ? withdrawUnverifiedCaveat(withdrawGate) : null;
     // Editorial prose the designer attached — read from the pinned assembly
     // (published) or the local snapshot (draft). Both optional.
     const editorial =
@@ -604,7 +594,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         </Link>
     ) : (
         <div className="ml-auto flex items-center gap-2">
-            {isAuthor && (
+            {isAuthor && (stakeWithdrawn || withdrawGate.status !== "absent") && (
                 <Button
                     type="button"
                     variant="outline"
@@ -612,21 +602,22 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     onClick={handleWithdraw}
                     // Author-only reclaim, gated by the advisory commits==resolves
                     // gate: disabled while any VERIFIED in-flight trade composes
-                    // this assembly, while the gate is unknown (loading /
-                    // chain-read failure), or once already reclaimed. Unverified
-                    // trades never disable — they render as the caveat strip
-                    // below the toolbar. The title names why.
-                    disabled={withdrawing || resolved.stakeWithdrawn || withdrawGate === null || withdrawGate.inFlightCount > 0}
+                    // this assembly, while the gate is still being read, or once
+                    // already reclaimed; a gate that could not be read offers no
+                    // reclaim at all. Unverified trades never disable — they
+                    // render as the caveat strip below the toolbar. The title
+                    // names why.
+                    disabled={withdrawing || stakeWithdrawn || !withdrawGateOpen(withdrawGate)}
                     className="border-default text-ink-heading font-semibold"
                     data-testid="view-withdraw-button"
                     title={
-                        resolved.stakeWithdrawn
+                        stakeWithdrawn
                             ? "This assembly's registration stake has already been reclaimed."
                             : (withdrawBlockedReason(withdrawGate)
                                 ?? "Reclaim your registration stake. The binding stays anchored; the assembly de-surfaces for new orders.")
                     }
                 >
-                    {resolved.stakeWithdrawn ? "Stake reclaimed" : withdrawing ? "Reclaiming…" : "Reclaim stake"}
+                    {stakeWithdrawn ? "Stake reclaimed" : withdrawing ? "Reclaiming…" : "Reclaim stake"}
                 </Button>
             )}
             <Button
@@ -880,7 +871,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         <TopologyCanvas
                             orders={orders}
                             clauseValuesByOrderId={composedByOrderId}
-                            title={`${resolved.name} (read-only)`}
+                            title={resolved.name ? `${resolved.name} (read-only)` : "(read-only)"}
                             designerMode
                             onSelectNode={setSelectedOrderId}
                         />

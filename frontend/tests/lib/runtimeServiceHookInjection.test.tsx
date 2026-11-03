@@ -49,9 +49,11 @@ vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({
 // The surfacing rule's AssemblyRegistry cross-check gate — resolved (empty)
 // so useRegisteredCatalogs proceeds; the filtering itself lives in the
 // (injected) discovery service.
+// One stable reference: the hook keys its effect on the read's identity.
+const PUBLISHED = vi.hoisted(() => ({ read: { status: "present", value: [] as unknown[] } }));
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
     getAssemblyLoadError: () => undefined,
-    usePublishedAssemblies: () => ({ data: [], isLoading: false }),
+    usePublishedAssemblies: () => PUBLISHED,
 }));
 
 vi.mock("@/lib/member/catalogService", () => ({
@@ -209,7 +211,7 @@ describe("runtime service hook injection", () => {
         const { result } = renderHook(() => useRegisteredCatalogs({ service }));
 
         await waitFor(() => {
-            expect(result.current.catalogs).toEqual([injectedRestaurant]);
+            expect(result.current.read).toEqual({ status: "present", value: [injectedRestaurant] });
         });
 
         expect(listCatalogs).toHaveBeenCalledWith(publicClient, 31337, new Set());

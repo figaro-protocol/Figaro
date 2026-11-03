@@ -90,7 +90,7 @@ vi.mock("@/lib/kernel/indexer", () => ({
 }));
 vi.mock("@/lib/kernel/signedCommitment", () => ({ restoreSignedProcessId: (c: unknown) => c }));
 vi.mock("@/lib/kernel/agreementFetch", () => ({
-    fetchAgreement: async () => ({ clauses: [], provenance: { agreementHash: w.key, assemblyHash: w.key } }),
+    fetchAgreement: async () => ({ status: "present", value: { clauses: [], provenance: { agreementHash: w.key, assemblyHash: w.key } } }),
 }));
 vi.mock("@/lib/composition/witnessContent", () => ({ publishWitnessContent: async () => undefined }));
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({

@@ -101,13 +101,6 @@ export interface ExplorerRow {
     stakeWithdrawn: boolean;
     /** Agreements and assemblies: composed clause keys. Clauses/members: empty. */
     clauses: readonly string[];
-    /** Whether the pinned content behind the on-chain pointer (the clause's
-     *  spec, the assembly's assembly, the member's profile) has resolved.
-     *  `resolving` — not served yet, being re-read; `unavailable` — served
-     *  but wrong (integrity or parse failure), never going to resolve. Only
-     *  a `resolved` row's name/article/description mean anything; the rest
-     *  show the on-chain identity alone. */
-    content: "resolved" | "resolving" | "unavailable";
     /** The IPFS locator the registration event carries — where the pinned
      *  document actually IS. Empty for members, whose profile document is the
      *  member's own and not anchored by a registration hash. */

@@ -83,9 +83,9 @@ export function useProcessAgreements(checkoutHashes: string[]): Map<string, Agre
             for (const [hash] of results) store.inflight.delete(hash);
             if (canceled) return;
             let changed = false;
-            for (const [hash, agreement] of results) {
-                if (agreement && !store.cache.has(hash)) {
-                    store.cache.set(hash, agreement);
+            for (const [hash, read] of results) {
+                if (read.status === "present" && !store.cache.has(hash)) {
+                    store.cache.set(hash, read.value);
                     changed = true;
                 }
             }

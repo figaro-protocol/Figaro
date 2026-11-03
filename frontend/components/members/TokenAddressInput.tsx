@@ -4,54 +4,6 @@ import { isValidAddress } from "@/lib/shared/evm";
 import { Input } from "@/components/ui/Input";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 
-/**
- * Classify a `useTokenSymbol` failure so callers can show an
- * actionable message instead of the catch-all
- * "Address is not an ERC-20 (no symbol())".
- *
- * - `no-rpc`       — the RPC transport itself failed (no chain in
- *                    wallet, devnet not running, network error,
- *                    timeout, chain not configured). The address
- *                    is unverifiable, but the cause is the chain,
- *                    not the input.
- * - `no-symbol`    — the request reached the chain but the address
- *                    didn't return a string (no contract at the
- *                    address, no `symbol()` selector, or revert).
- *                    The address is genuinely not an ERC-20 on
- *                    this chain.
- *
- * Returns null when the input error is null/undefined.
- */
-export function classifyTokenError(error: unknown): "no-rpc" | "no-symbol" | null {
-    if (!error) return null;
-    const err = error as { name?: string; message?: string; cause?: unknown };
-    const name = err.name ?? "";
-    const message = (err.message ?? "").toLowerCase();
-    const causeName = (err.cause as { name?: string } | undefined)?.name ?? "";
-    const causeMessage = ((err.cause as { message?: string } | undefined)?.message ?? "").toLowerCase();
-    const allNames = `${name} ${causeName}`;
-    const allMessages = `${message} ${causeMessage}`;
-
-    if (
-        allNames.includes("HttpRequestError") ||
-        allNames.includes("TimeoutError") ||
-        allNames.includes("RpcRequestError") ||
-        allNames.includes("ChainMismatchError") ||
-        allNames.includes("ChainNotConfiguredError") ||
-        allMessages.includes("connection refused") ||
-        allMessages.includes("econnrefused") ||
-        allMessages.includes("failed to fetch") ||
-        allMessages.includes("networkerror") ||
-        allMessages.includes("network request failed") ||
-        allMessages.includes("chain not configured") ||
-        allMessages.includes("no chain")
-    ) {
-        return "no-rpc";
-    }
-
-    return "no-symbol";
-}
-
 export function TokenAddressInput({
     value,
     onChange,
@@ -68,6 +20,8 @@ export function TokenAddressInput({
      */
     hasError?: boolean;
 }) {
+    // The chain's `symbol()` answer, or nothing: a failed read is never a
+    // checkmark telling the user the token is valid.
     const { data: symbol, isLoading } = useTokenSymbol(value);
     const valid = isValidAddress(value);
     const invalid = value.length > 0 && !valid;
@@ -84,9 +38,9 @@ export function TokenAddressInput({
                     hasError={showError}
                     className="font-mono"
                 />
-                {valid && (
+                {valid && (isLoading || symbol) && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted pointer-events-none">
-                        {isLoading ? "…" : (symbol ?? "✓")}
+                        {isLoading ? "…" : symbol}
                     </span>
                 )}
             </div>

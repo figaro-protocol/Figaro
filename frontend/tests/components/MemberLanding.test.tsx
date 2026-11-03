@@ -13,9 +13,18 @@ const TX = `0x${"ab".repeat(32)}` as const;
 const mocks = vi.hoisted(() => ({
     unpin: vi.fn(),
     // Stable references: the component's effects key on these reads' identity.
-    profile: { data: ["ipfs://QmPriorProfile", 1n] as const, isLoading: false, refetch: () => Promise.resolve() },
-    withdrawal: { pending: 0n, releaseAt: undefined, withdrawable: false, isLoading: false, refetch: () => {} },
-    router: { push: () => {}, replace: () => {} },
+    profile: {
+        read: { status: "present", value: { registered: true, metadataURI: "ipfs://QmPriorProfile", registeredBlock: 1n } },
+        refetch: () => Promise.resolve(),
+    } as { read: unknown; refetch: () => Promise<void> },
+    withdrawal: {
+        pending: { status: "present", value: 0n },
+        releaseAt: { status: "pending" },
+        withdrawable: { status: "present", value: false },
+        refetch: () => {},
+    } as Record<string, unknown>,
+    router: { push: () => {}, replace: vi.fn() },
+    fetchProfile: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => mocks.router }));
@@ -35,7 +44,7 @@ vi.mock("@/lib/member/useMembersRegistry", async () => {
     const React = await import("react");
     return {
         useMemberProfile: () => mocks.profile,
-        useRegistrationDeposit: () => ({ data: 10n ** 16n }),
+        useRegistrationDeposit: () => ({ status: "present", value: 10n ** 16n }),
         useWithdrawalStatus: () => mocks.withdrawal,
         useWithdrawalCooldown: () => ({ data: 60n }),
         useWithdrawDeposit: () => ({ withdraw: async () => TX, isPending: false, isConfirming: false, error: null }),
@@ -56,7 +65,7 @@ vi.mock("@/lib/member/useMembersRegistry", async () => {
     };
 });
 vi.mock("@/lib/member/profileFetcher", () => ({
-    fetchMemberProfile: async () => ({ name: "Seller", subjectAddress: ADDRESS }),
+    fetchMemberProfile: () => mocks.fetchProfile(),
 }));
 vi.mock("@/lib/member/profileErasure", () => ({
     unpinSupersededProfileArtifacts: (...args: unknown[]) => mocks.unpin(...args),
@@ -71,6 +80,70 @@ async function leave() {
     fireEvent.click(screen.getByRole("button", { name: "Confirm and leave" }));
     await screen.findByText("You have left the registry.");
 }
+
+const REGISTERED = {
+    read: { status: "present", value: { registered: true, metadataURI: "ipfs://QmPriorProfile", registeredBlock: 1n } },
+    refetch: () => Promise.resolve(),
+};
+
+beforeEach(() => {
+    mocks.profile = REGISTERED;
+    mocks.withdrawal = {
+        pending: { status: "present", value: 0n },
+        releaseAt: { status: "pending" },
+        withdrawable: { status: "present", value: false },
+        refetch: () => {},
+    };
+    mocks.router.replace.mockReset();
+    mocks.fetchProfile.mockReset();
+    mocks.fetchProfile.mockResolvedValue({ name: "Seller", subjectAddress: ADDRESS });
+});
+
+describe("MemberLanding — a failed read renders nothing and takes no action", () => {
+    it("a failed registration read never redirects to register again and shows no record", async () => {
+        mocks.profile = { read: { status: "absent" }, refetch: () => Promise.resolve() };
+        render(<MemberLanding />);
+        await new Promise((r) => setTimeout(r, 20));
+        expect(mocks.router.replace).not.toHaveBeenCalled();
+        expect(screen.queryByText("Loading…")).toBeNull();
+        expect(screen.queryByRole("button")).toBeNull();
+    });
+
+    it("the chain's answer 'not registered', with nothing owed, redirects to Identity", async () => {
+        mocks.profile = { read: { status: "present", value: { registered: false } }, refetch: () => Promise.resolve() };
+        render(<MemberLanding />);
+        await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith("/members/identity"));
+    });
+
+    it("unregistered with a FAILED pending-deposit read: no redirect (owed ETH is never hidden behind it)", async () => {
+        mocks.profile = { read: { status: "present", value: { registered: false } }, refetch: () => Promise.resolve() };
+        mocks.withdrawal = { ...mocks.withdrawal, pending: { status: "absent" } };
+        render(<MemberLanding />);
+        await new Promise((r) => setTimeout(r, 20));
+        expect(mocks.router.replace).not.toHaveBeenCalled();
+    });
+
+    it("a failed releaseAt read never says 'Released 1/1/1970'", async () => {
+        mocks.withdrawal = {
+            pending: { status: "present", value: 10n ** 16n },
+            releaseAt: { status: "absent" },
+            withdrawable: { status: "present", value: false },
+            refetch: () => {},
+        };
+        render(<MemberLanding />);
+        await screen.findByText(/ETH held for you/);
+        expect(document.body.textContent).not.toMatch(/Released/);
+        expect(document.body.textContent).not.toMatch(/1970/);
+    });
+
+    it("a profile document that fails to read shows no error text and no endless 'Loading profile…' heading", async () => {
+        mocks.fetchProfile.mockRejectedValue(new Error("gateway timeout"));
+        render(<MemberLanding />);
+        await new Promise((r) => setTimeout(r, 20));
+        expect(screen.queryByRole("alert")).toBeNull();
+        expect(document.body.textContent).not.toMatch(/Loading profile|Couldn't/);
+    });
+});
 
 describe("MemberLanding — leaving the registry", () => {
     beforeEach(() => {

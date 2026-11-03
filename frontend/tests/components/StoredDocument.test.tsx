@@ -173,28 +173,26 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         expect(screen.getByTestId("stored-parsed-clause-figaro-applicable-law").textContent).not.toContain("admin");
     });
 
-    it("an unserved document is stated as the absence of a copy, not as a bad registration", async () => {
+    it("an unserved document renders nothing — no error text, no verdict", async () => {
         fetchCappedContentMock.mockResolvedValue({ ok: false, status: 504, statusText: "Gateway Timeout", bytes: null });
         mount();
         screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
 
-        await waitFor(() =>
-            expect(screen.getByTestId("stored-unreachable-clause-figaro-applicable-law").textContent).toMatch(
-                /never evidence that the registration is wrong/i,
-            ),
-        );
+        await waitFor(() => expect(screen.queryByTestId("stored-reading-clause-figaro-applicable-law")).toBeNull());
+        expect(screen.queryByTestId("stored-unreachable-clause-figaro-applicable-law")).toBeNull();
+        expect(document.body.textContent).not.toMatch(/Gateway Timeout|No gateway served/);
         expect(screen.queryByTestId("stored-json-clause-figaro-applicable-law")).toBeNull();
     });
 
-    it("a read that throws surfaces nothing of the thrown error, only the absence of a copy", async () => {
+    it("a read that throws renders nothing, and nothing of the thrown error", async () => {
         fetchCappedContentMock.mockRejectedValue(new Error("TypeError: fetch failed at internal-gateway:5001"));
         mount();
         screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
 
-        const unreachable = await screen.findByTestId("stored-unreachable-clause-figaro-applicable-law");
-        expect(unreachable.textContent).toMatch(/never evidence that the registration is wrong/i);
-        expect(unreachable.textContent).not.toContain("internal-gateway");
-        expect(unreachable.textContent).not.toContain("()");
+        await waitFor(() => expect(screen.queryByTestId("stored-reading-clause-figaro-applicable-law")).toBeNull());
+        expect(screen.queryByTestId("stored-unreachable-clause-figaro-applicable-law")).toBeNull();
+        expect(document.body.textContent).not.toContain("internal-gateway");
+        expect(screen.queryByTestId("stored-json-clause-figaro-applicable-law")).toBeNull();
     });
 
     it("an assembly's note names the ASSEMBLY ROOT its anchor covers, not the whole document", async () => {

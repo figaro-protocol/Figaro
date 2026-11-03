@@ -12,7 +12,7 @@ import { word } from "./__fixtures__/coreLogs";
 
 const { BUYER, SELLER, PROCESS, CLIENT, NO_ASSEMBLIES, SPECS, getCoreEventsMock } = vi.hoisted(() => ({
     CLIENT: { chain: { id: 31337 } },
-    NO_ASSEMBLIES: { data: [], failed: false },
+    NO_ASSEMBLIES: { read: { status: "present" as const, value: [] }, refetch: () => undefined },
     SPECS: { version: 0, loaded: true },
     BUYER: "0x00000000000000000000000000000000000000b1" as const,
     SELLER: "0x00000000000000000000000000000000000000a1" as const,
@@ -57,6 +57,7 @@ import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { useWalletProcessIds } from "@/hooks/useWalletProcessIds";
 import { useWalletProcessRows } from "@/lib/kernel/walletProcessQueries";
 import { useGraphCorpus } from "@/lib/data/graphCorpus";
+import { mapRead, present } from "@/lib/shared/networkRead";
 
 const COMMITTED: OrderCommittedEvent = {
     orderHash: word(0x50),
@@ -82,7 +83,7 @@ describe("the order consumers read through getCoreEvents", () => {
 
     it("useProcessOrders", async () => {
         const { result } = renderHook(() => useProcessOrders(PROCESS));
-        await waitFor(() => expect(result.current.map((o) => o.processId)).toEqual([PROCESS]));
+        await waitFor(() => expect(mapRead(result.current, (orders) => orders.map((o) => o.processId))).toEqual(present([PROCESS])));
         expect(getCoreEventsMock).toHaveBeenCalled();
     });
 
@@ -94,14 +95,14 @@ describe("the order consumers read through getCoreEvents", () => {
 
     it("useWalletProcessRows", async () => {
         const { result } = renderHook(() => useWalletProcessRows("buyer"));
-        await waitFor(() => expect(result.current.rows.map((r) => r.processId)).toEqual([PROCESS]));
+        await waitFor(() => expect(mapRead(result.current.read, (rows) => rows.map((r) => r.processId))).toEqual(present([PROCESS])));
         expect(getCoreEventsMock).toHaveBeenCalled();
     });
 
     it("useGraphCorpus", async () => {
         const { result } = renderHook(() => useGraphCorpus());
-        await waitFor(() => expect(result.current.corpus).not.toBeNull());
-        expect([...result.current.corpus!.process.processes.keys()]).toEqual([PROCESS]);
+        await waitFor(() => expect(result.current.status).toBe("present"));
+        expect(mapRead(result.current, (corpus) => [...corpus.process.processes.keys()])).toEqual(present([PROCESS]));
         expect(getCoreEventsMock).toHaveBeenCalled();
     });
 });

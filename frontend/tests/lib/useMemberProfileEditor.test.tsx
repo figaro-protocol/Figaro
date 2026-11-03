@@ -15,8 +15,9 @@ const mocks = vi.hoisted(() => ({
     replace: vi.fn(),
     unpin: vi.fn(),
     // Stable references: the hook's effects key on these reads' identity.
-    registry: { data: ["ipfs://QmPriorProfile", 1n] as const, isLoading: false },
+    registry: { read: { status: "present", value: { registered: true, metadataURI: "ipfs://QmPriorProfile", registeredBlock: 1n } } } as { read: unknown },
     onboarding: { update: () => {}, loaded: true },
+    profile: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => {
@@ -51,7 +52,7 @@ vi.mock("@/lib/member/onboardingState", () => ({
     useOnboardingState: () => mocks.onboarding,
 }));
 vi.mock("@/lib/member/profileFetcher", () => ({
-    fetchMemberProfile: async () => PROFILE,
+    fetchMemberProfile: async () => mocks.profile(),
 }));
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/shared/ipfsService")>()),
@@ -74,6 +75,9 @@ describe("useMemberProfileEditor — redirect after save", () => {
         mocks.push.mockReset();
         mocks.replace.mockReset();
         mocks.unpin.mockReset();
+        mocks.profile.mockReset();
+        mocks.profile.mockResolvedValue(PROFILE);
+        mocks.registry = { read: { status: "present", value: { registered: true, metadataURI: "ipfs://QmPriorProfile", registeredBlock: 1n } } };
     });
 
     it("redirects to /members/manage once the update and the unpin have completed", async () => {
@@ -102,5 +106,34 @@ describe("useMemberProfileEditor — redirect after save", () => {
         expect(mocks.push).not.toHaveBeenCalled();
         expect(result.current.externalError).toContain("The unpin of QmPriorProfile was refused.");
         expect(result.current.externalError).toMatch(/profile is updated/i);
+    });
+});
+
+describe("useMemberProfileEditor — a failed read renders nothing and takes no action", () => {
+    beforeEach(() => {
+        mocks.replace.mockReset();
+        mocks.profile.mockReset();
+        mocks.profile.mockResolvedValue(PROFILE);
+    });
+
+    it("a failed registry read never redirects to onboarding, and the gate is absent", async () => {
+        mocks.registry = { read: { status: "absent" } };
+        const { result } = renderEditor();
+        await waitFor(() => expect(result.current.gate).toEqual({ kind: "absent" }));
+        expect(mocks.replace).not.toHaveBeenCalled();
+    });
+
+    it("the chain's answer 'not registered' does redirect", async () => {
+        mocks.registry = { read: { status: "present", value: { registered: false } } };
+        renderEditor();
+        await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/members/manage"));
+    });
+
+    it("a profile document that fails to read is absent: no error text and no form", async () => {
+        mocks.registry = { read: { status: "present", value: { registered: true, metadataURI: "ipfs://QmPriorProfile", registeredBlock: 1n } } };
+        mocks.profile.mockRejectedValue(new Error("gateway timeout"));
+        const { result } = renderEditor();
+        await waitFor(() => expect(result.current.gate).toEqual({ kind: "absent" }));
+        expect(JSON.stringify(result.current.gate)).not.toMatch(/Couldn't|isn't safe/);
     });
 });

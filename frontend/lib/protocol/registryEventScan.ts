@@ -13,18 +13,17 @@
  * `createUseWithdrawStake` beside it; each registry supplies its own address
  * getter, ABI, event names, and row projection.
  *
- * The `failed` flag is part of the shared contract: true when the last
- * registry read THREW — distinct from resolved-empty (an empty registry is
- * absence: render it; a failed read is unknown chain state: never report it
- * as loaded). `error` is the provider's own answer to that read
- * (`rpcErrorText`), so a page can say why it shows nothing.
+ * The read is a `NetworkRead<Row[]>` (`@/lib/shared/networkRead`): `pending`
+ * while the scan is in flight, `present` with the rows the chain returned (an
+ * empty registry is `present([])`), `absent` when the scan failed or no
+ * registry is configured — never `[]` for a failure.
  */
 
 import { useEffect, useMemo, useState } from "react";
 import type { Abi, Log } from "viem";
 import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
-import { rpcErrorText } from "@/lib/shared/errors";
+import { ABSENT, PENDING, mapRead, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
 import { hexEqual } from "@/lib/shared/evm";
 
@@ -61,68 +60,48 @@ export interface RegistryEventScanOptions {
 export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row>) {
     const { getRegistry, abi, registeredEventName, withdrawnEventName, label, toRows } = config;
 
-    return function useRegistryEventScan(options: RegistryEventScanOptions = {}) {
+    return function useRegistryEventScan(options: RegistryEventScanOptions = {}): {
+        read: NetworkRead<Row[]>;
+        refetch: () => void;
+    } {
         const { registeredBy, enabled = true, client } = options;
-        const [data, setData] = useState<Row[] | null>(null);
-        const [isLoading, setIsLoading] = useState(false);
-        const [failed, setFailed] = useState(false);
-        const [error, setError] = useState<string | null>(null);
+        const [read, setRead] = useState<NetworkRead<Row[]>>(PENDING);
         const { generation, refetch } = useRefetchGeneration();
 
         useEffect(() => {
             if (!enabled) {
-                setData(null);
+                setRead(PENDING);
                 return;
             }
             const registry = getRegistry();
             if (!registry) {
-                setData([]);
+                setRead(ABSENT);
                 return;
             }
             let canceled = false;
-            setIsLoading(true);
-            setFailed(false);
-            setError(null);
-
             const reader = client ?? publicClient;
             const chainId = reader.chain?.id ?? activeChain.id;
-            Promise.all([
-                cachedGetContractEvents(reader, chainId, {
-                    address: registry,
-                    abi,
-                    eventName: registeredEventName,
-                }),
-                cachedGetContractEvents(reader, chainId, {
-                    address: registry,
-                    abi,
-                    eventName: withdrawnEventName,
-                }),
-            ])
-                .then(([registeredRaw, withdrawnRaw]) => {
-                    if (canceled) return;
-                    const registeredLogs = (registeredBy
-                        ? registeredRaw.filter(
-                            (l) => hexEqual((l as { args?: { registeredBy?: string } }).args?.registeredBy, registeredBy),
-                        )
-                        : registeredRaw) as Log[];
-                    setData(toRows(registeredLogs, withdrawnRaw as Log[], registeredBy));
-                    setIsLoading(false);
-                })
-                .catch((err) => {
-                    if (canceled) return;
-                    console.warn(`[${label}] event read failed:`, err);
-                    setFailed(true);
-                    setError(rpcErrorText(err, { maxLength: 300 }));
-                    setData([]);
-                    setIsLoading(false);
-                });
+            void readNetwork(label, async () => {
+                const [registeredRaw, withdrawnRaw] = await Promise.all([
+                    cachedGetContractEvents(reader, chainId, { address: registry, abi, eventName: registeredEventName }),
+                    cachedGetContractEvents(reader, chainId, { address: registry, abi, eventName: withdrawnEventName }),
+                ]);
+                const registeredLogs = (registeredBy
+                    ? registeredRaw.filter(
+                        (l) => hexEqual((l as { args?: { registeredBy?: string } }).args?.registeredBy, registeredBy),
+                    )
+                    : registeredRaw) as Log[];
+                return toRows(registeredLogs, withdrawnRaw as Log[], registeredBy);
+            }).then((next) => {
+                if (!canceled) setRead(next);
+            });
 
             return () => {
                 canceled = true;
             };
         }, [registeredBy, enabled, client, generation]);
 
-        return useMemo(() => ({ data, isLoading, failed, error, refetch }), [data, isLoading, failed, error, refetch]);
+        return useMemo(() => ({ read, refetch }), [read, refetch]);
     };
 }
 
@@ -133,15 +112,15 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
  * set (the registry explorer). Memoized: downstream hooks key on this array's identity (e.g.
  * the assembly-choices fold), so the filtered view stays referentially stable across renders.
  */
-export function useDesurfaced<Row extends { stakeWithdrawn: boolean }, Scan extends { data: Row[] | null }>(
-    scan: Scan,
+export function useDesurfaced<Row extends { stakeWithdrawn: boolean }>(
+    scan: { read: NetworkRead<Row[]>; refetch: () => void },
     registeredBy: `0x${string}` | undefined,
     opts?: { includeWithdrawn?: boolean },
-) {
+): { read: NetworkRead<Row[]>; refetch: () => void } {
     const keep = !!registeredBy || !!opts?.includeWithdrawn;
-    const data = useMemo(
-        () => (scan.data && !keep ? scan.data.filter((i) => !i.stakeWithdrawn) : scan.data),
-        [scan.data, keep],
+    const read = useMemo(
+        () => (keep ? scan.read : mapRead(scan.read, (rows) => rows.filter((i) => !i.stakeWithdrawn))),
+        [scan.read, keep],
     );
-    return { ...scan, data };
+    return useMemo(() => ({ read, refetch: scan.refetch }), [read, scan.refetch]);
 }
