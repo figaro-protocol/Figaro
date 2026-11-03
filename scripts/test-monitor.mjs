@@ -22,6 +22,7 @@
 //                  a relay holding work past its stated wait, on the chain's
 //                  clock                                   → relay-stalled-…
 //                  a relay that does not answer            → relay-unreachable-…
+//                  a relay whose status omits its queue    → relay-unreachable-…
 //
 // `BatchAccrualSkipped` is the one alert not produced here: it needs a batch
 // whose accrual the counter refuses between prove and submit. The relay is a
@@ -91,7 +92,8 @@ function watch(name, record, relays = []) {
     });
 }
 
-/** A relay's `GET /status`, in `StatusResponse`'s shape, holding `pending` operations. */
+/** A relay's `GET /status`, in `StatusResponse`'s shape, holding `pending`
+ *  operations; `undefined` leaves the count out of the answer. */
 async function serveRelay(pending) {
     const server = createServer((req, res) => {
         if (req.url !== "/status") { res.writeHead(404).end(); return; }
@@ -182,6 +184,7 @@ async function main() {
     console.log("\nRelays: queued work against the chain's clock");
     const idle = await serveRelay(0);
     const busy = await serveRelay(2);
+    const mute = await serveRelay(undefined);
     // A minute of chain time passes with no batch: past a 30-second wait.
     await pub.request({ method: "evm_increaseTime", params: [60] });
     await pub.request({ method: "evm_mine", params: [] });
@@ -191,9 +194,12 @@ async function main() {
     check("relay-stalled-… raised", keysOf(stalled).some((k) => k.startsWith("relay-stalled-")), stalled.failed ?? JSON.stringify(keysOf(stalled)));
     const patient = await watch("relay-patient", base, [{ url: busy.url, maxWaitSeconds: 86_400 }]);
     check("no relay alert within the relay's stated wait", patient.alerts !== undefined && !keysOf(patient).some((k) => k.startsWith("relay-")), patient.failed ?? JSON.stringify(keysOf(patient)));
+    const unread = await watch("relay-mute", base, [{ url: mute.url, maxWaitSeconds: 30 }]);
+    check("a status without its queue raises relay-unreachable-…", keysOf(unread).some((k) => k.startsWith("relay-unreachable-")), unread.failed ?? JSON.stringify(keysOf(unread)));
     const closedUrl = idle.url;
     await idle.close();
     await busy.close();
+    await mute.close();
     const gone = await watch("relay-gone", base, [{ url: closedUrl, maxWaitSeconds: 30 }]);
     check("relay-unreachable-… raised", keysOf(gone).some((k) => k.startsWith("relay-unreachable-")), gone.failed ?? JSON.stringify(keysOf(gone)));
 

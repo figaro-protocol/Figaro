@@ -76,7 +76,7 @@ echo "🔎 Using: $(command -v certoraRun)"
 certoraRun --version 2>&1 | head -1
 echo ""
 
-# Token-ops inventory gate: every ERC20 transfer call site in src/ must be
+# Token-ops inventory gate: every ERC20 transfer call site and Permit2 pull in src/ must be
 # tracked. Runs before any cloud dispatch so a stale inventory fails fast.
 if [ -x "./scripts/lint-token-ops.sh" ]; then
     ./scripts/lint-token-ops.sh || exit $?

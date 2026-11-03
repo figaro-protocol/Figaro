@@ -161,9 +161,15 @@ jobs:
     # High results (arbitrary-send-erc20 in `_pullExact`, FigaroCore and verifier —
     # docs/AUDITOR_HANDOVER.md § "Static analysis"), so no level passes today.
     # The gate holds the effective level at Medium: the High and Medium results
-    # must be exactly the six the handover triages, by detector — a new one at
-    # either level fails, and so does one vanishing, since the triage table
-    # would then be stale. Low and Informational are printed, not gated.
+    # must be exactly the eight the handover triages, each by its identity (the
+    # detector, the function it names and the source text of the statements it
+    # points at, never a line number, so moving a line keeps the identity) — a
+    # new one at either level fails, even when it replaces a fixed one of the
+    # same detector, and so does one vanishing, since the triage table would
+    # then be stale. Low and Informational are printed, not gated. To
+    # regenerate after a triage: build and run Slither as the two steps below
+    # do, then print each High/Medium result's identity with the gate's
+    # `identity` function and paste the list into `triaged`.
     static-analysis:
         name: Static Analysis
         runs-on: ubuntu-latest
@@ -197,19 +203,35 @@ jobs:
                   python3 - <<'PY'
                   import collections, json, sys
                   results = json.load(open("slither.json"))["results"].get("detectors", [])
-                  found = collections.Counter(
-                      (r["impact"], r["check"]) for r in results if r["impact"] in ("High", "Medium")
-                  )
-                  triaged = collections.Counter({
-                      ("High", "arbitrary-send-erc20"): 2,
-                      ("Medium", "incorrect-equality"): 1,
-                      ("Medium", "reentrancy-no-eth"): 1,
-                      ("Medium", "unused-return"): 4,
-                  })
+
+                  def identity(r):
+                      # The detector, the function it names, and the source text of each
+                      # statement it points at, never a line number: an edit that moves a line
+                      # keeps a finding's identity, and a new finding of a triaged detector is a
+                      # new identity.
+                      head, *rest = r["elements"]
+                      parent = head.get("type_specific_fields", {}).get("parent", {}).get("name")
+                      where = head["source_mapping"]["filename_relative"] + ":" + (parent + "." if parent else "") + head["name"]
+                      nodes = " ; ".join(e["name"] for e in rest if e["type"] == "node")
+                      return f'{r["impact"]} {r["check"]} {where} :: {nodes}'
+
+                  found = collections.Counter(identity(r) for r in results if r["impact"] in ("High", "Medium"))
+                  triaged = collections.Counter([
+                      "High arbitrary-send-erc20 src/core/kernel/FigaroCore.sol:FigaroCore._pullExact :: token.safeTransferFrom(from,address(this),amount)",
+                      "High arbitrary-send-erc20 src/core/verifier/FigaroBatchVerifier.sol:FigaroBatchVerifier._pullExact :: token.safeTransferFrom(from,address(this),amount)",
+                      "Medium incorrect-equality src/app/MembersRegistry.sol:MembersRegistry.withdraw :: unlockAt == 0",
+                      "Medium reentrancy-no-eth src/core/verifier/FigaroBatchVerifier.sol:FigaroBatchVerifier.settleBatch :: usageCounter.applyBatchAccrual(usage.period,usage.provenanceLeaf,usage.uses) ; stateRoot = pv.newRoot",
+                      "Medium unused-return src/build/rewards/RpgfMinter.sol:RpgfMinter._isAuthor :: (agreementRegisteredBy,None,agreementWithdrawn,None) = agreements.bindings(clauseOrAssembly)",
+                      "Medium unused-return src/build/rewards/RpgfMinter.sol:RpgfMinter._isAuthor :: (assemblyRegisteredBy,None,depositWithdrawn,None) = assemblies.bindings(clauseOrAssembly)",
+                      "Medium unused-return src/build/rewards/UsageCounter.sol:UsageCounter._agreementLive :: (registeredBy,registeredAt,depositWithdrawn,None) = agreements.bindings(agreementHash)",
+                      "Medium unused-return src/build/rewards/UsageCounter.sol:UsageCounter._assemblyLive :: (registeredBy,registeredAt,depositWithdrawn,None) = assemblies.bindings(clauseOrAssembly)",
+                  ])
                   if found != triaged:
                       print("Slither High/Medium results differ from docs/AUDITOR_HANDOVER.md § Static analysis:")
-                      for key in sorted(set(found) | set(triaged)):
-                          print(f"  {key[0]:7} {key[1]:24} triaged={triaged[key]} found={found[key]}")
+                      for key in sorted((found - triaged).elements()):
+                          print(f"  new:     {key}")
+                      for key in sorted((triaged - found).elements()):
+                          print(f"  missing: {key}")
                       sys.exit(1)
                   print(f"Slither: {len(results)} results; the {sum(triaged.values())} High/Medium results are the triaged set")
                   PY

@@ -13,16 +13,16 @@
 //      formula-shaped hole) and never missing.
 //   3. No ". :"-style gap (punctuation, a space, punctuation) anywhere.
 //
-// The text layer is read with pypdf (`python3 -I`). Text is compared in a
+// The text layer is read with pypdf (`python3 -I`, scripts/pdf-text.mjs). Text is compared in a
 // canonical form: NFKC (math italic 𝑃 → P), whitespace and hyphens removed
 // (line breaks and hyphenation), the running header and page numbers dropped.
 //
 // Usage: node scripts/check-paper-pdfs.mjs   (cwd = frontend/, after a build)
 
-import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { JSDOM } from "jsdom";
+import { pdfPages } from "../../scripts/pdf-text.mjs";
 import { katexSource, paperExportDir } from "./paper-latex.mjs";
 
 const papersDir = join(paperExportDir(), "papers");
@@ -37,20 +37,13 @@ if (missingPdf.length > 0) {
 }
 
 // ── The text layer, one pypdf pass over every PDF ───────────────────────────
-const PY = `
-import json, sys, pypdf
-out = {}
-for path in sys.argv[1:]:
-    out[path] = [p.extract_text() or "" for p in pypdf.PdfReader(path).pages]
-print(json.dumps(out))
-`;
-const pdfPaths = slugs.map((s) => join(papersDir, s, `${s}.pdf`));
-const py = spawnSync("python3", ["-I", "-c", PY, ...pdfPaths], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
-if (py.status !== 0) {
-    console.error(`[check-paper-pdfs] FAILED: pypdf could not read the PDFs (python3 -I with pypdf installed is required)\n${py.stderr}`);
+let pages;
+try {
+    pages = pdfPages(slugs.map((s) => join(papersDir, s, `${s}.pdf`)));
+} catch (e) {
+    console.error(`[check-paper-pdfs] FAILED: ${e.message}`);
     process.exit(1);
 }
-const pages = JSON.parse(py.stdout);
 
 const canon = (s) => s.normalize("NFKC").replace(/[\s­\-‐‑]/g, "");
 

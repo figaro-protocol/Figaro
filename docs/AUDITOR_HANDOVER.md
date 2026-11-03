@@ -374,7 +374,8 @@ these rows summarize.
 ### Static analysis
 
 `foundry-ci`'s `static-analysis` job fails when Slither's High and Medium
-results differ from this triage, by detector, in either direction:
+results differ from this triage, finding by finding (the detector, the function
+and the statement text, never a line number), in either direction:
 
 | Severity | Detector | Where | Verdict |
 |---|---|---|---|

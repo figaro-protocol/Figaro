@@ -6,7 +6,8 @@
 // before every upload (work/deploy/site-build.sh) and over the documents the repository pins
 // (clauses/, agreements/, assemblies/, members/).
 //
-// What it reads, in every text file under the given directories:
+// What it reads, in every text file under the given directories and in the text layer of
+// every PDF (read with pypdf, scripts/pdf-text.mjs; a PDF it cannot read fails the check):
 //   - every email-shaped string in the plain text;
 //   - every JWT-shaped string, decoded (header and payload), for an email-shaped value or a
 //     personal field name anywhere in its JSON;
@@ -22,9 +23,11 @@
 //        node scripts/check-export-no-personal-info.mjs --self-test
 
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pdfPages } from './pdf-text.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -112,8 +115,43 @@ function* walk(dir) {
         const p = join(dir, name);
         const st = statSync(p);
         if (st.isDirectory()) yield* walk(p);
-        else if (TEXT_EXT.has(extname(name).toLowerCase())) yield p;
+        else if (TEXT_EXT.has(extname(name).toLowerCase()) || extname(name).toLowerCase() === '.pdf') yield p;
     }
+}
+
+// Every finding under `dir`, as `<file>: <finding>` lines.
+function scanDir(dir, tokens) {
+    const preFlip = preFlipOf(dir);
+    const files = [...walk(dir)];
+    const pdfs = pdfPages(files.filter((f) => extname(f).toLowerCase() === '.pdf'));
+    const out = [];
+    for (const file of files) {
+        const text = pdfs[file] ? pdfs[file].join('\n') : readFileSync(file, 'utf8');
+        for (const f of scanText(text, { tokens, preFlip })) out.push(`${file}: ${f}`);
+    }
+    return out;
+}
+
+// A one-page PDF whose text layer is `text`, with a correct cross-reference table.
+function minimalPdf(text) {
+    const content = `BT /F1 12 Tf 72 720 Td (${text}) Tj ET`;
+    const objects = [
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+        `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    ];
+    let pdf = '%PDF-1.4\n';
+    const offsets = objects.map((o, i) => {
+        const at = pdf.length;
+        pdf += `${i + 1} 0 obj\n${o}\nendobj\n`;
+        return at;
+    });
+    const xref = pdf.length;
+    pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}`;
+    pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+    return pdf;
 }
 
 function preFlipOf(dir) {
@@ -148,7 +186,24 @@ function selfTest() {
             console.log(`  FAIL ${label}`);
         } else console.log(`  ok   ${label}`);
     }
-    console.log(failed ? `[personal-info] self-test: ${failed} case(s) failed` : `[personal-info] self-test: ${cases.length} cases pass`);
+    // A published PDF is read through its text layer: an email in it fires,
+    // and a PDF without one is quiet.
+    const dir = mkdtempSync(join(tmpdir(), 'personal-info-'));
+    const pdfCases = [
+        ['fires: an email in a PDF', 'contact someone@example.org now', true],
+        ['quiet: a PDF without personal information', 'the wallet signs', false],
+    ];
+    for (const [label, text, fires] of pdfCases) {
+        writeFileSync(join(dir, 'paper.pdf'), minimalPdf(text));
+        const got = scanDir(dir, []).length > 0;
+        if (got !== fires) {
+            failed++;
+            console.log(`  FAIL ${label}`);
+        } else console.log(`  ok   ${label}`);
+    }
+    rmSync(dir, { recursive: true, force: true });
+    const total = cases.length + pdfCases.length;
+    console.log(failed ? `[personal-info] self-test: ${failed} case(s) failed` : `[personal-info] self-test: ${total} cases pass`);
     return failed ? 1 : 0;
 }
 
@@ -166,13 +221,9 @@ function main(args) {
             hits++;
             continue;
         }
-        const preFlip = preFlipOf(dir);
-        for (const file of walk(dir)) {
-            const findings = scanText(readFileSync(file, 'utf8'), { tokens, preFlip });
-            for (const f of findings) {
-                hits++;
-                console.log(`[personal-info] ${file}: ${f}`);
-            }
+        for (const f of scanDir(dir, tokens)) {
+            hits++;
+            console.log(`[personal-info] ${f}`);
         }
     }
     if (hits) {

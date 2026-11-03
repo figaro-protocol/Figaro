@@ -334,9 +334,10 @@ invariants and 2 action properties:
 | A takeover overwrites a kept file only with the verifier's state | NOT relay-enforced: writing `GET /state` over a state file is safe only when its `x-figaro-state-root` header is the verifier's `stateRoot`; the relay refuses to start on a wrong state, but a file it overwrites is lost | carried by **`TakeoverChecksRoot`** — FALSE: a stale served state written over the only copy of the verifier's state |
 | A relay never re-sends a batch a revocation refusal already showed it cannot pull — it drops the revoker and rebuilds with everyone else | the deterministic-revert arm re-reads funding, dead-letters only the named revoker's operations and re-queues the rest (`main.rs`, `submitter.rs`); a revoker who re-approves before the re-read is not named, and the whole batch dead-letters as before (the handover's limitation 3) | `SendsExcludeKnownRevoked` — the model assumes the refusal names the revoker and checks the relay's discipline given that knowledge, never the funding read itself; `sdk/tests/batch-revoke-e2e.test.ts` checks the funding read and the arm end to end on Anvil (the revoker named, its op dead-lettered alone, the rest landing next batch) |
 
-Mutation-checked: `OpsOnChain` FALSE (today's verifier, with `ForeignSubmitters`
-TRUE) fails `Recoverable` in 2 states — the defect the batch review found,
-reachable in the model before the code that closes it; and, with `OpsOnChain`
+Mutation-checked: `OpsOnChain` FALSE (a verifier that does not check the
+operation stream, with `ForeignSubmitters` TRUE) fails `Recoverable` in 2
+states — the defect the batch review found, which the verifier's stream check
+(`OperationsHashMismatch`) closes; and, with `OpsOnChain`
 and `ForeignSubmitters` FALSE, each of the four lifecycle switches FALSE
 (`HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`,
 `TakeoverChecksRoot`) fails `Recoverable`, and `RebatchDropsRevoker` FALSE fails
