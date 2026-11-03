@@ -24,6 +24,7 @@ import { getAttestationCoordinator } from "@/lib/composition/contracts";
 import { cachedGetContractEvents, deploymentBlock, getLogsAdaptive, type LogScanClient } from "@/lib/kernel/eventCache";
 import { activeChain } from "@/lib/shared/chains";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
+import { hexEqual } from "@/lib/shared/evm";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -137,7 +138,7 @@ export async function buildProcessTimeline(
     // own coordinator; any other core is read from the block the link names
     // (else genesis) with the coordinator the link names (else none) — the
     // site's coordinator address means nothing on another deployment.
-    const ownDeployment = chainId === activeChain.id && coreAddress.toLowerCase() === CONTRACTS.core?.toLowerCase();
+    const ownDeployment = chainId === activeChain.id && hexEqual(coreAddress, CONTRACTS.core);
     const scannedFromBlock = options.fromBlock ?? (ownDeployment ? deploymentBlock() : 0n);
     const coordinatorAddr: `0x${string}` | null = options.coordinatorAddress !== undefined
         ? options.coordinatorAddress
@@ -171,7 +172,7 @@ export async function buildProcessTimeline(
     type ScanLog = { args?: Record<string, unknown>; blockNumber?: number | bigint | null; transactionHash?: `0x${string}` | null };
     const byProcess = (logs: ScanLog[]) =>
         logs
-            .filter((l) => String(l.args?.processId ?? "").toLowerCase() === processId.toLowerCase())
+            .filter((l) => hexEqual(String(l.args?.processId ?? ""), processId))
             .map((l) => ({ ...l, blockNumber: BigInt(l.blockNumber ?? 0), transactionHash: l.transactionHash ?? undefined }));
 
     // ── OrderCommitted ─────────────────────────────────────────────

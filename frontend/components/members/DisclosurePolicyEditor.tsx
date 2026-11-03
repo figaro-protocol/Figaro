@@ -7,6 +7,7 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { DisclosurePolicyEntry } from "@/lib/member/memberProfileMetadata";
 import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
+import { hexEqual } from "@/lib/shared/evm";
 
 /**
  * DisclosurePolicyEditor — the member's data-disclosure declaration,
@@ -38,7 +39,7 @@ function findEntry(
     return entries.find(
         (e) =>
             e.assemblyHash === assemblyHash &&
-            e.clauseKey.toLowerCase() === clauseKey.toLowerCase() &&
+            hexEqual(e.clauseKey, clauseKey) &&
             e.posture === posture,
     );
 }
@@ -64,7 +65,7 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
         const rest = entries.filter(
             (e) =>
                 !(e.assemblyHash === entry.assemblyHash &&
-                    e.clauseKey.toLowerCase() === entry.clauseKey.toLowerCase() &&
+                    hexEqual(e.clauseKey, entry.clauseKey) &&
                     e.posture === entry.posture),
         );
         onChange([...rest, entry]);
@@ -74,7 +75,7 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
         onChange(entries.filter(
             (e) =>
                 !(e.assemblyHash === assemblyHash &&
-                    e.clauseKey.toLowerCase() === clauseKey.toLowerCase() &&
+                    hexEqual(e.clauseKey, clauseKey) &&
                     e.posture === posture),
         ));
     }

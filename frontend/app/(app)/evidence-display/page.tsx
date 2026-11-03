@@ -34,6 +34,7 @@ import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { activeChain } from "@/lib/shared/chains";
 import { siteRpcUrl } from "@/lib/shared/wagmi";
+import { hexEqual } from "@/lib/shared/evm";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -305,7 +306,7 @@ function EvidenceDisplayContent() {
                         <span>generated: {formatTimestamp(timeline.generatedAt)}</span>
                     </div>
                     {(timeline.chainId !== activeChain.id ||
-                        timeline.coreAddress.toLowerCase() !== CONTRACTS.core?.toLowerCase() ||
+                        !hexEqual(timeline.coreAddress, CONTRACTS.core) ||
                         rpcOrigin(rpcUrl) !== rpcOrigin(siteRpcUrl)) && (
                         <p
                             className="mt-3 text-xs text-warning-fg bg-warning/10 border border-warning/30 rounded px-3 py-2"

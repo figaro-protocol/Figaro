@@ -18,6 +18,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { readJsonStorage, removeStorage, writeJsonStorage } from "@/lib/shared/storage";
 import type {
     AssemblyBindingRecord,
     BuyerAssemblySubscription,
@@ -106,40 +107,21 @@ function isEmptyState(state: OnboardingState): boolean {
 }
 
 function readState(wallet: string | undefined): OnboardingState {
-    if (typeof window === "undefined") return EMPTY_STATE;
-    const key = storageKeyFor(wallet);
-    try {
-        const raw = window.localStorage.getItem(key);
-        if (!raw) return EMPTY_STATE;
-        return JSON.parse(raw) as OnboardingState;
-    } catch {
-        return EMPTY_STATE;
-    }
+    return readJsonStorage<OnboardingState>(storageKeyFor(wallet), EMPTY_STATE);
 }
 
 function writeState(wallet: string | undefined, state: OnboardingState): void {
-    if (typeof window === "undefined") return;
-    const key = storageKeyFor(wallet);
-    try {
-        const stamped: OnboardingState = {
-            ...state,
-            ...(wallet ? { walletAddress: wallet as `0x${string}` } : {}),
-            updatedAt: new Date().toISOString(),
-        };
-        window.localStorage.setItem(key, JSON.stringify(stamped));
-    } catch {
-        // localStorage may be disabled / full; silently drop the write.
-    }
+    const stamped: OnboardingState = {
+        ...state,
+        ...(wallet ? { walletAddress: wallet as `0x${string}` } : {}),
+        updatedAt: new Date().toISOString(),
+    };
+    // localStorage may be disabled / full; a refused write is dropped.
+    writeJsonStorage(storageKeyFor(wallet), stamped);
 }
 
 function removeState(wallet: string | undefined): void {
-    if (typeof window === "undefined") return;
-    const key = storageKeyFor(wallet);
-    try {
-        window.localStorage.removeItem(key);
-    } catch {
-        // ignore
-    }
+    removeStorage(storageKeyFor(wallet));
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────

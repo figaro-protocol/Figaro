@@ -11,17 +11,15 @@
  * from the network via `lib/kernel/agreementFetch`, never read from here.
  */
 import { computeCheckoutHash, type Agreement } from "@figaro-protocol/sdk";
+import { writeJsonStorage } from "@/lib/shared/storage";
 
 const PREFIX = "figaro:agreement:";
 const key = (h: string) => PREFIX + h;
-const canUseStorage = () => typeof window !== "undefined";
 
-/** Persist a synthetic agreement; returns its hash (the order's anchor). */
+/** Persist a synthetic agreement; returns its hash (the order's anchor). A
+ *  refused write is non-fatal during authoring. */
 export function saveAgreement(agreement: Agreement): `0x${string}` {
     const hash = computeCheckoutHash(agreement);
-    if (!canUseStorage()) return hash;
-    try {
-        localStorage.setItem(key(hash), JSON.stringify(agreement));
-    } catch { /* localStorage failure is non-fatal during authoring */ }
+    writeJsonStorage(key(hash), agreement);
     return hash;
 }

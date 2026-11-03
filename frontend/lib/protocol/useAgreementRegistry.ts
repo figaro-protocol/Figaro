@@ -16,7 +16,7 @@
  * absence, never a fallback to another copy.
  */
 
-import { useSyncExternalStore } from "react";
+import { createVersionStore } from "@/lib/shared/versionStore";
 import {
     AGREEMENT_REGISTRY_ABI,
     agreementHashOf,
@@ -138,8 +138,7 @@ export async function readAgreementBinding(
 
 const verified = new Map<string, Anchored<RegisteredAgreement>>();
 const inflight = new Map<string, Promise<Anchored<RegisteredAgreement> | null>>();
-let verifiedVersion = 0;
-const listeners = new Set<() => void>();
+const verifiedVersion = createVersionStore();
 /** PERMANENT failures, by key: the bytes the binding points at were fetched
  *  and are not the agreement the key names (not JSON, or keying elsewhere).
  *  A gateway miss keeps nothing and is read again; this is never re-read. */
@@ -152,8 +151,7 @@ export function getRegisteredAgreementLoadError(agreementHash: string): string |
 }
 
 function noteVerified(): void {
-    verifiedVersion += 1;
-    for (const l of listeners) l();
+    verifiedVersion.bump();
 }
 
 /** The registered agreement for a key, when this tab has read and verified it
@@ -178,16 +176,7 @@ export function _primeRegisteredAgreement_TESTING_ONLY(doc: RegisteredAgreement)
 /** Bumps each time a registered agreement is read and verified in this tab —
  *  a surface that reads `getRegisteredAgreement` re-derives on it. */
 export function useRegisteredAgreementsVersion(): number {
-    return useSyncExternalStore(
-        (l) => {
-            listeners.add(l);
-            return () => {
-                listeners.delete(l);
-            };
-        },
-        () => verifiedVersion,
-        () => verifiedVersion,
-    );
+    return verifiedVersion.useVersion();
 }
 
 /** The pinned document at `contentURI`, verified against `agreementHash`, or

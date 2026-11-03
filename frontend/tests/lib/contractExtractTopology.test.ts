@@ -43,4 +43,9 @@ describe("extractContract — the order's place in its process", () => {
         const c = extractContract(order(30n, 130n), agreement([{ clause: keyOf("figaro-topology"), data: { follows: [PARENT] } }]));
         expect(c.topology).toEqual({ position: "sub-order", composed: true, follows: [PARENT] });
     });
+
+    it("drops empty and blank parent links, as the canvas reading of the same clause does", () => {
+        const c = extractContract(order(30n, 130n), agreement([{ clause: keyOf("figaro-topology"), data: { follows: [PARENT, "", "   "] } }]));
+        expect(c.topology).toEqual({ position: "sub-order", composed: true, follows: [PARENT] });
+    });
 });

@@ -36,6 +36,7 @@ import { keccak256, toHex } from "viem";
 import { getDeviceLocation } from "@/lib/shared/deviceLocation";
 import { encodeGeohash } from "@figaro-protocol/sdk/derive";
 import { PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
+import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 export type DeviceEvidenceKind = "geolocation-cross-check" | "nfc-tap" | "ble-sighting";
 
@@ -107,23 +108,14 @@ export interface RetainedRawCapture {
 }
 
 function readRetained(): RetainedRawCapture[] {
-    if (typeof window === "undefined") return [];
-    try {
-        const parsed = JSON.parse(window.localStorage.getItem(RAW_CAPTURE_STORE_KEY) ?? "[]");
-        return Array.isArray(parsed) ? (parsed as RetainedRawCapture[]) : [];
-    } catch {
-        return [];
-    }
+    const parsed = readJsonStorage<unknown>(RAW_CAPTURE_STORE_KEY, []);
+    return Array.isArray(parsed) ? (parsed as RetainedRawCapture[]) : [];
 }
 
 function writeRetained(entries: RetainedRawCapture[]): void {
-    if (typeof window === "undefined") return;
-    try {
-        window.localStorage.setItem(RAW_CAPTURE_STORE_KEY, JSON.stringify(entries));
-    } catch {
-        // Storage can fail in restricted contexts; the capture still works —
-        // the party just holds no revealable raw.
-    }
+    // Storage can fail in restricted contexts; the capture still works —
+    // the party just holds no revealable raw.
+    writeJsonStorage(RAW_CAPTURE_STORE_KEY, entries);
 }
 
 /** Retain a raw capture against its pinned public artifact. */

@@ -23,9 +23,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-
-const FOCUSABLE_SELECTOR =
-    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+import { focusablesIn, trapTabFocus } from "@/lib/shared/focusTrap";
 
 export interface ModalChromeProps {
     /** Dismiss handler — wired to ESC + backdrop click (each configurable). */
@@ -75,7 +73,7 @@ export function ModalChrome({
 
         const dialog = dialogRef.current;
         if (dialog) {
-            dialog.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
+            focusablesIn(dialog)[0]?.focus();
         }
 
         return () => {
@@ -95,19 +93,7 @@ export function ModalChrome({
                 onClose();
                 return;
             }
-            if (e.key === "Tab" && dialog) {
-                const focusables = dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-                if (focusables.length === 0) return;
-                const first = focusables[0];
-                const last = focusables[focusables.length - 1];
-                if (e.shiftKey && document.activeElement === first) {
-                    e.preventDefault();
-                    last.focus();
-                } else if (!e.shiftKey && document.activeElement === last) {
-                    e.preventDefault();
-                    first.focus();
-                }
-            }
+            if (dialog) trapTabFocus(e, dialog);
         };
         document.addEventListener("keydown", handleKeyDown);
         return () => {

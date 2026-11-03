@@ -176,7 +176,7 @@ export function OnboardingAssembliesForm({
         (key: string, clauseKey: `0x${string}`, addresses: `0x${string}`[]) => {
             setCoSellersByAssembly((prev) => {
                 const next = new Map(prev);
-                const existing = (next.get(key) ?? []).filter((cb) => cb.clauseKey.toLowerCase() !== clauseKey.toLowerCase());
+                const existing = (next.get(key) ?? []).filter((cb) => !hexEqual(cb.clauseKey, clauseKey));
                 if (addresses.length > 0) {
                     existing.push({ clauseKey, addresses });
                 }
@@ -265,7 +265,7 @@ export function OnboardingAssembliesForm({
                                     data-testid={`seller-assembly-co-sellers-${choice.slug}`}
                                 >
                                     {requiredClauses.map((clauseKey) => {
-                                        const entry = coSellers.find((cb) => cb.clauseKey.toLowerCase() === clauseKey.toLowerCase());
+                                        const entry = coSellers.find((cb) => hexEqual(cb.clauseKey, clauseKey));
                                         const addresses = entry?.addresses ?? [];
                                         return (
                                             <CoSellerClauseEditor

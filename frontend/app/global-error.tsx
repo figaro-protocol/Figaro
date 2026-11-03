@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Copy, Check } from 'lucide-react'
+import { copyToClipboard } from '@/lib/shared/clipboard'
 
 export default function GlobalError({
     error,
@@ -19,7 +20,8 @@ export default function GlobalError({
 
     const copyError = () => {
         const text = `Error: ${error.message}${error.digest ? `\nDigest: ${error.digest}` : ''}\n${error.stack ?? ''}`;
-        navigator.clipboard.writeText(text).then(() => {
+        void copyToClipboard(text).then((ok) => {
+            if (!ok) return;
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         });

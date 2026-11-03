@@ -8,6 +8,7 @@ import { useOrderStore } from "@/lib/kernel/store";
 import { calculateBonds } from "@figaro-protocol/sdk";
 import { textToBytes32 } from "@/lib/shared/evm";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
+import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 type MockStoredOrder = {
     id: string;
@@ -164,9 +165,7 @@ export default function ClientInit() {
                         toStore.state.processes[processId].ipfs = ipfsHash;
                     }
 
-                    try {
-                        localStorage.setItem('figaro-storage', JSON.stringify(toStore));
-                    } catch (e) { }
+                    writeJsonStorage('figaro-storage', toStore);
 
                     // Keep mock behavior limited to writing `figaro-storage` (no in-memory mutations)
 
@@ -180,17 +179,14 @@ export default function ClientInit() {
                     const orderId = Date.now();
 
                     let current: MockStoreState | null = null;
-                    try {
-                        const raw = localStorage.getItem('figaro-storage');
-                        if (raw) {
-                            const parsed = JSON.parse(raw) as MockStoreState | { state?: unknown };
-                            current = isMockStoreState(parsed)
-                                ? parsed
-                                : isMockStoreState(parsed.state)
-                                    ? parsed.state
-                                    : null;
-                        }
-                    } catch (e) { /* ignore */ }
+                    const parsed = readJsonStorage<MockStoreState | { state?: unknown } | null>('figaro-storage', null);
+                    if (parsed) {
+                        current = isMockStoreState(parsed)
+                            ? parsed
+                            : isMockStoreState(parsed.state)
+                                ? parsed.state
+                                : null;
+                    }
 
                     const processId = opts?.processId || textToBytes32(`proc-${Date.now()}`);
 
@@ -238,9 +234,7 @@ export default function ClientInit() {
                         toStore.state.processes[processId].ipfs = ipfsHash;
                     }
 
-                    try {
-                        localStorage.setItem('figaro-storage', JSON.stringify(toStore));
-                    } catch (e) { }
+                    writeJsonStorage('figaro-storage', toStore);
 
                     return { processId, orderId, ipfsHash };
                 }

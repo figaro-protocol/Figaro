@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-    createDiscoveryService,
-} from '@/lib/member/discoveryService';
+import type { createDiscoveryService } from '@/lib/member/discoveryService';
 
 const getActiveMembersMock = vi.fn();
 const fetchDocumentMock = vi.fn();
@@ -9,6 +7,18 @@ const fetchDocumentMock = vi.fn();
 vi.mock('@/lib/protocol/membersRegistryIndexer', () => ({
     getActiveMembers: (...args: unknown[]) => getActiveMembersMock(...args),
 }));
+
+// The member documents are read through the shared cached fetchers
+// (`fetchMemberProfile` / `fetchMemberCatalog`); the transport under them is
+// the mock, size-capped by the real reader.
+vi.mock('@/lib/shared/ipfsService', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/lib/shared/ipfsService')>();
+    return {
+        ...actual,
+        fetchCappedContent: (url: string, options?: Parameters<typeof actual.fetchCappedContent>[1]) =>
+            actual.fetchCappedContent(url, { ...options, fetch: (u: string) => fetchDocumentMock(u) }),
+    };
+});
 
 vi.mock('@/lib/kernel/contracts', () => ({
     CONTRACTS: {
@@ -41,10 +51,13 @@ function anchoredBinding(subjectAddress: string) {
 describe('discoveryService', () => {
     let discoveryService: ReturnType<typeof createDiscoveryService>;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         getActiveMembersMock.mockReset();
         fetchDocumentMock.mockReset();
-        discoveryService = createDiscoveryService({ fetchDocument: fetchDocumentMock });
+        // Fresh modules per test: the fetchers' URI caches start empty.
+        vi.resetModules();
+        const { createDiscoveryService } = await import('@/lib/member/discoveryService');
+        discoveryService = createDiscoveryService();
     });
 
     it('returns an empty result when the registry has no members', async () => {
@@ -114,6 +127,7 @@ describe('discoveryService', () => {
         }));
         // Second fetch: catalog document
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
+            subjectAddress: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
             version: '1',
             items: [
                 { id: 'taco-1', name: 'Al Pastor', price: '0.05', category: 'Tacos', available: true },
@@ -126,6 +140,46 @@ describe('discoveryService', () => {
         }));
         expect(result.catalogs[0].items).toHaveLength(1);
         expect(result.catalogs[0].items[0].name).toBe('Al Pastor');
+    });
+
+    it('surfaces nothing of a catalog document that does not parse: the member lists with no items', async () => {
+        getActiveMembersMock.mockResolvedValueOnce([
+            {
+                address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
+                role: 1,
+                metadataURI: 'ipfs://Qmopprofike11111111111111111111111111111111111',
+            },
+        ]);
+        fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
+            name: 'Street Tacos',
+            assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
+            catalogURI: 'ipfs://Qmopcatakogue111111111111111111111111111111111',
+        }));
+        // No subjectAddress or version, and an item with no price: not a member catalog.
+        fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
+            items: [{ id: 'taco-1', name: 'Al Pastor', available: true }],
+        }));
+
+        const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
+        expect(result.catalogs).toHaveLength(1);
+        expect(result.catalogs[0].items).toHaveLength(0);
+    });
+
+    it('surfaces nothing of a profile document that does not parse', async () => {
+        getActiveMembersMock.mockResolvedValueOnce([
+            {
+                address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
+                role: 1,
+                metadataURI: 'ipfs://Qmopprofike11111111111111111111111111111111111',
+            },
+        ]);
+        // No name: not a member profile.
+        fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
+            assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
+        }));
+
+        const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
+        expect(result.catalogs).toHaveLength(0);
     });
 
     it('reads an http(s) metadataURI as absent: no request leaves for the member-chosen host', async () => {

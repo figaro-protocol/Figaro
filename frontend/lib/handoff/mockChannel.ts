@@ -7,6 +7,7 @@
  */
 
 import type { HandoffChannel, HandoffKeyMessage, EcdhPubkeyMessage, EcdhWrappedKeyMessage, CommitmentSignatureMessage } from "@figaro-protocol/sdk/handoff";
+import { readStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 type StoredHandoffKeyMessage = HandoffKeyMessage & { senderIdentity: string };
 type StoredEcdhPubkeyMessage = EcdhPubkeyMessage & { senderIdentity: string };
@@ -68,30 +69,14 @@ function isStoredCommitmentSignatureMessage(message: StoredMockMessage): message
 }
 
 function readPersistedMessages(): StoredMockMessage[] {
-    if (typeof window === "undefined") {
-        return [];
-    }
-
-    try {
-        return parseStoredMessages(window.localStorage.getItem(MOCK_STORAGE_KEY));
-    } catch {
-        return [];
-    }
+    return parseStoredMessages(readStorage(MOCK_STORAGE_KEY));
 }
 
 function persistMessage(message: StoredMockMessage) {
-    if (typeof window === "undefined") {
-        return;
-    }
-
-    try {
-        const existing = readPersistedMessages();
-        const next = [...existing, message].slice(-MAX_STORED_MESSAGES);
-        window.localStorage.setItem(MOCK_STORAGE_KEY, JSON.stringify(next));
-        window.localStorage.setItem(MOCK_BROADCAST_KEY, JSON.stringify(message));
-    } catch {
-        // Storage can fail in restricted contexts. Tests can still use same-page delivery.
-    }
+    // Storage can fail in restricted contexts. Tests can still use same-page delivery.
+    const next = [...readPersistedMessages(), message].slice(-MAX_STORED_MESSAGES);
+    if (!writeJsonStorage(MOCK_STORAGE_KEY, next)) return;
+    writeJsonStorage(MOCK_BROADCAST_KEY, message);
 }
 
 function notifyMessage(

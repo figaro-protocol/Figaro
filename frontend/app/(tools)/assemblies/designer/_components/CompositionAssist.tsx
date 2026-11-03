@@ -29,6 +29,7 @@ import { useCallback, useMemo, useState } from "react";
 import { canonicalize, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { snapshotToAssembly } from "@/lib/designer/draftToAssembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { copyToClipboard } from "@/lib/shared/clipboard";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { hydrateImportedAssembly, parseAssemblyJson } from "@/lib/designer/assemblyToDraft";
 import { ModalChrome } from "@/components/ui/ModalChrome";
@@ -78,7 +79,8 @@ export function CompositionAssist({ getSnapshot, onImportAssembly }: Composition
 
     const handleCopy = useCallback(() => {
         if (!draft.json) return;
-        void navigator.clipboard.writeText(draft.json).then(() => {
+        void copyToClipboard(draft.json).then((ok) => {
+            if (!ok) return;
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         });

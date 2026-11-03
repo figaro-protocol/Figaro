@@ -53,7 +53,7 @@ interface StoredDocumentProps {
 type ReadState =
     | { state: "idle" }
     | { state: "reading" }
-    | { state: "unreachable"; detail: string }
+    | { state: "unreachable"; detail?: string }
     | { state: "read"; text: string; verdict: StoredDocumentVerdict };
 
 export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredDocumentProps) {
@@ -86,8 +86,10 @@ export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredD
                 }
                 const text = new TextDecoder().decode(response.bytes);
                 setRead({ state: "read", text, verdict: storedDocument(response.bytes, anchoredHash, anchor) });
-            } catch (err) {
-                if (!canceled) setRead({ state: "unreachable", detail: err instanceof Error ? err.message : String(err) });
+            } catch {
+                // A failed network read surfaces nothing of the thrown error:
+                // the panel states only that no copy was served.
+                if (!canceled) setRead({ state: "unreachable" });
             }
         })();
         return () => {
@@ -132,7 +134,7 @@ export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredD
 
                 {read.state === "unreachable" ? (
                     <p className="text-xs text-ink-muted" data-testid={`stored-unreachable-${id}`}>
-                        No gateway served this document on this read ({read.detail}). That is the
+                        No gateway served this document on this read{read.detail ? ` (${read.detail})` : ""}. That is the
                         absence of a copy here, never evidence that the registration is wrong &mdash;
                         the anchor below is on chain either way.
                     </p>

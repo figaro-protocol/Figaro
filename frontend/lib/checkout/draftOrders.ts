@@ -12,7 +12,7 @@
  * the draft id used as the key.
  */
 import type { ClauseFields } from "@/lib/shared/clauseFields";
-import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
+import { listStorageKeys, readJsonStorage, removeStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 const STORE_PREFIX = "figaro:draft-order:";
 
@@ -84,15 +84,10 @@ export function loadDraftOrder(draftId: string): DraftOrder | null {
 
 /** @public — The ids of every draft order currently held. */
 export function listDraftOrders(): string[] {
-    const ids: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key?.startsWith(STORE_PREFIX)) ids.push(key.slice(STORE_PREFIX.length));
-    }
-    return ids;
+    return listStorageKeys(STORE_PREFIX).map((key) => key.slice(STORE_PREFIX.length));
 }
 
 /** @public — Drop a draft (e.g. once it has been finalized + shared). */
 export function deleteDraftOrder(draftId: string): void {
-    localStorage.removeItem(STORE_PREFIX + draftId);
+    removeStorage(STORE_PREFIX + draftId);
 }

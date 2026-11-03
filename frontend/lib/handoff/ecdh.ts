@@ -11,7 +11,7 @@
  */
 
 import { generateOrderKeypair, type EphemeralKeypair } from "@figaro-protocol/sdk/handoff";
-import { readSessionStorage, writeSessionStorage } from "@/lib/shared/storage";
+import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 const ECDH_KEYS_STORAGE_KEY = "figaro-ecdh-keys";
 
@@ -44,13 +44,13 @@ export function getOrCreateOrderEcdhKeypair(
     address: string,
     orderId: string,
 ): EphemeralKeypair {
-    const store = readSessionStorage<EcdhKeyStore>(ECDH_KEYS_STORAGE_KEY, {});
+    const store = readJsonStorage<EcdhKeyStore>(ECDH_KEYS_STORAGE_KEY, {}, "session");
     const key = ecdhStoreKey(address, orderId);
     if (store[key]) return store[key];
 
     const kp = generateOrderKeypair();
     store[key] = { ...kp, createdAt: Date.now() };
-    writeSessionStorage(ECDH_KEYS_STORAGE_KEY, store);
+    writeJsonStorage(ECDH_KEYS_STORAGE_KEY, store, "session");
     return kp;
 }
 
@@ -62,7 +62,7 @@ export function getOrCreateOrderEcdhKeypair(
  * `createdAt` (pre-upgrade) are NOT swept — only definitely-stale keys go.
  */
 export function sweepStaleEcdhKeypairs(now: number, maxAgeMs: number): void {
-    const store = readSessionStorage<EcdhKeyStore>(ECDH_KEYS_STORAGE_KEY, {});
+    const store = readJsonStorage<EcdhKeyStore>(ECDH_KEYS_STORAGE_KEY, {}, "session");
     let changed = false;
     for (const [key, kp] of Object.entries(store)) {
         if (typeof kp.createdAt === "number" && now - kp.createdAt > maxAgeMs) {
@@ -70,7 +70,7 @@ export function sweepStaleEcdhKeypairs(now: number, maxAgeMs: number): void {
             changed = true;
         }
     }
-    if (changed) writeSessionStorage(ECDH_KEYS_STORAGE_KEY, store);
+    if (changed) writeJsonStorage(ECDH_KEYS_STORAGE_KEY, store, "session");
 }
 
 /** Retrieve a previously stored ECDH keypair (null if missing). */
@@ -78,7 +78,7 @@ export function getOrderEcdhKeypair(
     address: string,
     orderId: string,
 ): EphemeralKeypair | null {
-    const store = readSessionStorage<EcdhKeyStore>(ECDH_KEYS_STORAGE_KEY, {});
+    const store = readJsonStorage<EcdhKeyStore>(ECDH_KEYS_STORAGE_KEY, {}, "session");
     return store[ecdhStoreKey(address, orderId)] ?? null;
 }
 
@@ -87,7 +87,7 @@ export function removeOrderEcdhKeypair(
     address: string,
     orderId: string,
 ): void {
-    const store = readSessionStorage<EcdhKeyStore>(ECDH_KEYS_STORAGE_KEY, {});
+    const store = readJsonStorage<EcdhKeyStore>(ECDH_KEYS_STORAGE_KEY, {}, "session");
     delete store[ecdhStoreKey(address, orderId)];
-    writeSessionStorage(ECDH_KEYS_STORAGE_KEY, store);
+    writeJsonStorage(ECDH_KEYS_STORAGE_KEY, store, "session");
 }

@@ -18,8 +18,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicCl
 import { getMembersRegistry } from "@/lib/kernel/contracts";
 import { MEMBERS_REGISTRY_ABI } from "@figaro-protocol/sdk";
 import { getMemberState } from "@/lib/protocol/membersRegistryIndexer";
-import { safeJsonFromResponse } from "@/lib/shared/safeJson";
-import { fetchCappedContent, resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
+import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import { useAsyncMemberResource } from "@/lib/member/useAsyncMemberResource";
 import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
 import {
@@ -46,7 +45,7 @@ export type { AgentServiceInfo };
  * Delegates to the canonical projection in `memberProfileMetadata`;
  * retained as a thin wrapper so existing call-sites keep working.
  */
-export function parseAgentServices(metadata: Record<string, unknown>): AgentServiceInfo {
+export function parseAgentServices(metadata: object): AgentServiceInfo {
     return projectAgentServices(metadata);
 }
 
@@ -312,21 +311,11 @@ const NO_AGENT_SERVICES: AgentServiceInfo = { services: {}, capabilities: [], re
 export function useAgentServices(address: `0x${string}` | undefined) {
     const { data, isLoading } = useAsyncMemberResource<AgentServiceInfo>(address, {
         fetcher: async (metadataURI) => {
-            // The member-chosen metadataURI reads IPFS-only through the
-            // viewer's gateway: an http(s) locator or an unrecognized scheme
-            // resolves to null, handled like a missing URI.
-            const url = resolveMemberDocumentUri(metadataURI);
-            if (!url) return NO_AGENT_SERVICES;
-            try {
-                // Size-capped fetch (F4): the member-pinned metadata document
-                // is external-party-controlled — oversize throws → absence.
-                const json = await fetchCappedContent(url).then((r) => safeJsonFromResponse(r));
-                return json && typeof json === "object"
-                    ? parseAgentServices(json as Record<string, unknown>)
-                    : NO_AGENT_SERVICES;
-            } catch {
-                return NO_AGENT_SERVICES;
-            }
+            // The ONE cached profile read (IPFS-only, size-capped, parsed):
+            // a document that fails to read or parse as a member profile
+            // surfaces nothing.
+            const profile = await fetchMemberProfile(metadataURI);
+            return profile ? parseAgentServices(profile) : NO_AGENT_SERVICES;
         },
         failureMessage: "Agent services unavailable",
     });
