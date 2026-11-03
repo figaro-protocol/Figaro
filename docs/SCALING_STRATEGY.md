@@ -728,4 +728,4 @@ resolved process, cannot reorder or modify payouts, cannot drain `FigaroCore`
 (the verifier is a separate contract), and cannot forge proofs. The worst
 outcome of a compromised or stopped sequencer is delayed batch resolution:
 any relay, started on the state rebuilt from the verifier's logs
-(`REBUILD_FROM_CHAIN=1`), resumes (`AUDITOR_HANDOVER.md` Known limitation 6).
+(`REBUILD_FROM_CHAIN=1`), resumes (`AUDITOR_HANDOVER.md` § "Accepted risks and known limitations", row 6).
