@@ -2,7 +2,7 @@
 
 import { Handle, Position } from "@xyflow/react";
 import { Order, OrderState } from "@/lib/kernel/store";
-import { formatToken } from "@/lib/shared/utils";
+import { tokenFigure } from "@/lib/shared/utils";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { describeClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { colorTokens } from "@/lib/shared/designTokenValues";
@@ -35,7 +35,7 @@ const STATE_DOT: Record<OrderState, string> = {
 };
 
 export type OrderNodeData = Order & {
-    decimals: number;
+    decimals: number | undefined;
     isBuyer: boolean;
     isSeller: boolean;
     /** 1-based position in the design's order list — the single human-facing
@@ -180,11 +180,11 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                     <>
                         <div className="flex justify-between font-semibold">
                             <span className="text-ink-body">Pay</span>
-                            <span className="text-ink-primary">{formatToken(data.payment ?? 0n, data.decimals)}</span>
+                            <span className="text-ink-primary">{tokenFigure(data.payment ?? 0n, data.decimals)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-ink-body">Total</span>
-                            <span className="text-ink-primary">{formatToken(data.cumulativeValue ?? 0n, data.decimals)}</span>
+                            <span className="text-ink-primary">{tokenFigure(data.cumulativeValue ?? 0n, data.decimals)}</span>
                         </div>
                         <div className="flex justify-between font-mono text-[10px] text-ink-muted pt-1 border-t border-default">
                             <span title={data.buyer}>{buyerShort}</span>

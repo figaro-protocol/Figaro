@@ -295,7 +295,8 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
     // ── Constructor ───────────────────────────────────────────────
 
-    /// @param _verifier       Address of the SP1 verifier gateway (or mock).
+    /// @param _verifier       The SP1 verifier contract for one proof form, pinned by its
+    ///                        `VERIFIER_HASH()`; a gateway, which has none, is refused.
     /// @param _programVKey    The verification key of the Figaro guest program.
     /// @param _clauseRegistry The live ClauseRegistry — the witness-spec anchor.
     /// @param _usageCounter   The counter this verifier hands each batch's uses to.

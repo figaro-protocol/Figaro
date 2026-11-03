@@ -94,6 +94,8 @@ const ABI = parseAbi([
     "function usageCounter() view returns (address)",
     "function clauseRegistry() view returns (address)",
     "function verifier() view returns (address)",
+    "function verifierHash() view returns (bytes32)",
+    "function routes(bytes4) view returns (address verifier, bool frozen)",
     "function programVKey() view returns (bytes32)",
     "function figaroCore() view returns (address)",
     "function permit2() view returns (address)",
@@ -294,7 +296,18 @@ async function main() {
     const e = expected;
     console.log("\nThe batch verifier");
     await expectValue("batchVerifier.programVKey()", e.batchVerifier?.programVKey, await read(record.batchVerifier, "programVKey"));
-    await expectValue("batchVerifier.verifier() (the SP1 gateway)", e.batchVerifier?.verifier, await read(record.batchVerifier, "verifier"));
+    if (e.batchVerifier?.gateway) {
+        // The verifier binds the ROUTED verifier, never the gateway (the constructor refuses a
+        // gateway). What must hold: the gateway the expectations name routes this verifier's
+        // selector — the first four bytes of its verifierHash() — to exactly the address bound.
+        const bound = await read(record.batchVerifier, "verifier");
+        const selector = (await read(record.batchVerifier, "verifierHash")).slice(0, 10);
+        const [routed, frozen] = await read(e.batchVerifier.gateway, "routes", [selector]);
+        if (same(bound, routed)) ok(`batchVerifier.verifier() is the verifier gateway ${e.batchVerifier.gateway} routes for selector ${selector}${frozen ? " (route frozen)" : ""}`);
+        else bad("batchVerifier.verifier()", `binds ${bound}, but gateway ${e.batchVerifier.gateway} routes selector ${selector} to ${routed}`);
+    } else {
+        await expectValue("batchVerifier.verifier()", e.batchVerifier?.verifier, await read(record.batchVerifier, "verifier"));
+    }
 
     console.log("\nThe registries' fixed parameters");
     await expectValue("membersRegistry.registrationDeposit()", e.registries?.membersRegistrationDeposit, String(await read(record.membersRegistry, "registrationDeposit")));

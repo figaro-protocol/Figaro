@@ -9,7 +9,7 @@
     },
     "batchVerifier": {
         "programVKey": "0x00d74a88d7c774fb211bc2ade8ed502fbd33c42b64d081b1bb4bea66d9c31e39",
-        "verifier": "0x397A5f7f3dBd538f23DE225B51f532c34448dA9B"
+        "gateway": "0x397A5f7f3dBd538f23DE225B51f532c34448dA9B"
     },
     "registries": {
         "membersRegistrationDeposit": "50000000000000000",

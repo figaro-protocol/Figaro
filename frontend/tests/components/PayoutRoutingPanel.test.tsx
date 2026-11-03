@@ -8,7 +8,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
  * exact-total approve would mine before the simulate refuses the batch.
  */
 
-const decimalsState = { decimals: 18, ready: false };
+const decimalsState: { decimals: number | undefined; ready: boolean } = { decimals: undefined, ready: false };
 const routeTokenPayout = vi.fn(async () => `0x${"ab".repeat(32)}` as `0x${string}`);
 
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ ...decimalsState, loading: !decimalsState.ready }) }));
@@ -33,7 +33,7 @@ describe("PayoutRoutingPanel", () => {
     });
 
     it("waits while the token's decimals are unread — a complete leg cannot route", () => {
-        Object.assign(decimalsState, { decimals: 18, ready: false });
+        Object.assign(decimalsState, { decimals: undefined, ready: false });
         render(<PayoutRoutingPanel currency={TOKEN} />);
         fillOneLeg("1.5");
         const execute = screen.getByTestId("payout-routing-execute");

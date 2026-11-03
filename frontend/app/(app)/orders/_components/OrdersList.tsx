@@ -29,7 +29,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useAccount, useChainId, useWalletClient } from "wagmi";
 import { useViewedWallet } from "@/lib/shared/viewedWallet";
 import { calculateBonds } from "@figaro-protocol/sdk";
-import { formatToken } from "@/lib/shared/utils";
+import { tokenFigure } from "@/lib/shared/utils";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
@@ -60,11 +60,6 @@ import useTokenApproval from "@/hooks/useTokenApproval";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 
 
-/** A token figure only once the token's `decimals()` is READ; the raw integer
- *  until then — never a magnitude formatted on a default. */
-function tokenFigure(amount: bigint, decimals: number, ready: boolean): string {
-    return ready ? formatToken(amount, decimals) : `${amount.toString()} (raw — token decimals loading)`;
-}
 
 // ── Your-turn card: an incoming order awaiting my counter-signature ──
 export function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
@@ -78,7 +73,7 @@ export function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listin
 }) {
     const { commitment } = payload;
     const { address } = useAccount();
-    const { decimals, ready: decimalsReady } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const sellerBond = calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
 
     // The seller locks 2× cumulative value as bond, so the Core must be allowed
@@ -107,13 +102,13 @@ export function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listin
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-ink-muted">Order value</p>
-                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals, decimalsReady)}</p>
+                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals)}</p>
                 </div>
             </div>
             <div className="rounded border border-default bg-subtle p-3 text-xs text-ink-body space-y-1">
                 <p>
                     <span className="font-medium text-ink-body">Your seller bond:</span>{" "}
-                    {tokenFigure(sellerBond, decimals, decimalsReady)}
+                    {tokenFigure(sellerBond, decimals)}
                     <span className="text-ink-muted ml-1">(returned at resolution)</span>
                 </p>
             </div>
@@ -151,7 +146,7 @@ export function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, 
 }) {
     const { commitment } = payload;
     const { address } = useAccount();
-    const { decimals, ready: decimalsReady } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const sellerBond = calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
     const core = CONTRACTS.core as `0x${string}` | undefined;
     const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess, isApproveError } = useTokenApproval({
@@ -174,13 +169,13 @@ export function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, 
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-ink-muted">Order value</p>
-                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals, decimalsReady)}</p>
+                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals)}</p>
                 </div>
             </div>
             <div className="rounded border border-default bg-subtle p-3 text-xs text-ink-body space-y-1">
                 <p>
                     <span className="font-medium text-ink-body">Your seller bond:</span>{" "}
-                    {tokenFigure(sellerBond, decimals, decimalsReady)}
+                    {tokenFigure(sellerBond, decimals)}
                     <span className="text-ink-muted ml-1">(locked at submit, returned at resolution)</span>
                 </p>
             </div>
@@ -222,7 +217,7 @@ export function SignedUnsentRow({
     error: string | null;
 }) {
     const { commitment } = entry.payload;
-    const { decimals, ready: decimalsReady } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const counterpartyName = displayNameForAddress(listings, outboundCounterparty(commitment, address));
     return (
         <div className="block rounded-lg border border-default bg-paper p-4" data-testid="order-unsent-row">
@@ -250,7 +245,7 @@ export function SignedUnsentRow({
                 </div>
                 <div className="text-right shrink-0 space-y-2">
                     <p className="text-xs text-ink-muted">Order value</p>
-                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals, decimalsReady)}</p>
+                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals)}</p>
                     <div className="flex gap-2 justify-end">
                         <Button variant="secondary" size="sm" onClick={onDiscard} disabled={sending} data-testid="btn-discard-unsent">
                             Discard
@@ -268,7 +263,7 @@ export function SignedUnsentRow({
 // ── Outbound pending row: I signed and relayed, awaiting the counterparty ──
 export function AwaitingAcceptanceRow({ payload, address, listings, onDismiss }: { payload: CommitmentPayload; address: string | undefined; listings: ReadonlyArray<Listing>; onDismiss: () => void }) {
     const { commitment } = payload;
-    const { decimals, ready: decimalsReady } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const counterpartyName = displayNameForAddress(listings, outboundCounterparty(commitment, address));
     return (
         <div className="block rounded-lg border border-default bg-paper p-4" data-testid="order-pending-row">
@@ -292,7 +287,7 @@ export function AwaitingAcceptanceRow({ payload, address, listings, onDismiss }:
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-ink-muted">Order value</p>
-                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals, decimalsReady)}</p>
+                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals)}</p>
                 </div>
             </div>
             <div className="mt-3 flex justify-end">
@@ -311,7 +306,7 @@ export function AwaitingAcceptanceRow({ payload, address, listings, onDismiss }:
 
 // ── On-chain process row (the wallet is buyer or seller on it) ──
 function OrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<Listing> }) {
-    const { decimals, ready: decimalsReady } = useTokenDecimals(row.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(row.currency as `0x${string}` | undefined);
     return (
         <Link
             href={`/orders/view?process=${row.processId}`}
@@ -341,7 +336,7 @@ function OrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-ink-muted">Order value</p>
-                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(row.payment, decimals, decimalsReady)}</p>
+                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(row.payment, decimals)}</p>
                 </div>
             </div>
         </Link>

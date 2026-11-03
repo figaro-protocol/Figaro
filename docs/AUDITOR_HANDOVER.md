@@ -15,7 +15,7 @@ the review's is its own.
 | Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | set when an audit is engaged; the line counts are the tree's at the latest commit, the results the commits their rows name (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 14 contract files, 1,595 lines of code (3,843 physical); 3 deploy scripts, 398 lines of code (842 physical) |
+| Solidity in scope | 14 contract files, 1,595 lines of code (3,841 physical); 3 deploy scripts, 398 lines of code (842 physical) |
 | Rust in scope | 4 crates, 22 files under `src/`, 7,128 lines of code (10,143 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
@@ -215,7 +215,7 @@ review SP1.
 | In scope: the project's use of SP1 | Where |
 |---|---|
 | The interface the verifier calls | `src/core/verifier/ISP1Verifier.sol` |
-| The one proof check, and everything `settleBatch` does with the public values after it | `FigaroBatchVerifier.sol:381` |
+| The one proof check, and everything `settleBatch` does with the public values after it | `FigaroBatchVerifier.sol:386` |
 | The guest's three SP1 calls: entry point, input read, public-values commit | `prover/program/src/main.rs` |
 | The verification key: derived from the guest, pinned at construction, immutable | `FigaroBatchVerifier` constructor; `sequencer --vkey` |
 | The choice of the patched `k256` for signature recovery inside the zkVM | `prover/Cargo.toml` `[patch.crates-io]` |
@@ -664,8 +664,8 @@ The constants and constructor arguments the mainnet deploy fixes
 | Parameter | Value | Where |
 |---|---|---|
 | Bond multiple | 2× payment (buyer), 2× cumulative value (seller) | `FigaroCore.sol:208-209` |
-| `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:127` |
-| `PUBLIC_VALUES_LENGTH` | 320 bytes, ten words; any other length is refused by name | `FigaroBatchVerifier.sol:132` |
+| `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:129` |
+| `PUBLIC_VALUES_LENGTH` | 320 bytes, ten words; any other length is refused by name | `FigaroBatchVerifier.sol:134` |
 | `MAX_BATCH_OPS` | the relay's bound on what the prover finishes in one sitting, 100 operations by default; an operator's environment variable | `prover/sequencer/src/main.rs:121` |
 | The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order `settleBatch` call's 1,178,439 — planned in the dearer of the resolve's two forms, the wallet-code one with 500,000 for the wallet's own code and 2,048 bytes of authorization, the relay's plan and never the protocol's — or at or past 95 percent of the block limit read at startup, the relay refuses to start); the call's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
 | Re-queue bound | an operation re-queued after a transient submission failure is re-queued at most three times, then dead-lettered; a deferral at batch formation spends nothing of it | `prover/sequencer/README.md`; `mempool.rs`, `requeue` |
@@ -850,12 +850,12 @@ read it first.
   at least four times the value). The mirror reports the same window as `Overflow`.
 - Token authority is a class, not one case. A token that reverts transfers to a
   party's address bricks `resolveProcess` for the whole process — the seller at
-  `FigaroCore.sol:294`, the buyer at `:295`; a token that blocklists or freezes
+  `FigaroCore.sol:291`, the buyer at `:292`; a token that blocklists or freezes
   the Core's own address, pauses, or is upgraded to do any of these has the same
   effect. Accepted (the buyer chose the token and the seller), a token-choice
   concern, not a Core escape hatch. On the batch path the same class reverts one
   batch, not the protocol: a payout the token refuses reverts `settleBatch` in
-  `_executePositions` (`FigaroBatchVerifier.sol:666`), and the batch's
+  `_executePositions` (`FigaroBatchVerifier.sol:657`), and the batch's
   operations are dead-lettered and re-submittable; a process open on the batch
   path resolves on the batch path only. The relay reads each party's balance and
   allowance before it submits (`prover/sequencer/src/submitter.rs`), and a batch
@@ -938,7 +938,7 @@ read it first.
   and commits the binding with both words; `_checkSpecBindings` requires
   `specHash == clauseId` (`SpecBindingMismatch`) and
   `clauseRegistry.registered(clauseId)` (`ClauseNotRegistered`)
-  (`FigaroBatchVerifier.sol:623-631`). Tests:
+  (`FigaroBatchVerifier.sol:636-638`). Tests:
   `test_settleBatch_revertsOnSpecBindingMismatch`,
   `test_settleBatch_revertsOnUnregisteredClauseBinding`,
   `test_permissionless_newClause_settlesWithZeroVerifierChanges`
@@ -963,7 +963,7 @@ read it first.
   kind, and `_isAuthor(kind, key, account)` reads the one registry the kind
   names (`RpgfMinter.sol:329-343`). The verifier's `_hashUsage` packs
   `key(32) ‖ kind(1) ‖ processId(32) ‖ seller(20)` per use, span `41 + 85n`
-  (`FigaroBatchVerifier.sol:579-614`), and the guest's
+  (`FigaroBatchVerifier.sol:588-623`), and the guest's
   `compute_usage_accrual_hash` mirrors it. `DESIGN_DECISIONS.md` § 23 states
   the pattern. Tests:
   `test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt`,
@@ -1359,7 +1359,7 @@ Current design realities accepted by the protocol surface, not accidental defect
 1. buyer key loss is terminal for an active process because the Core has no timeout or admin recovery path, unless code the buyer's wallet installed while it held the key resolves for it — `msg.sender` on the direct path, an ERC-1271 authorization the verifier checks on the batch path (`DESIGN_DECISIONS.md` #4)
 2. very large processes are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
 3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the Core; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #9 states the consequence); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
-4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:127`, checked at `:401`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the Core refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
+4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:129`, checked at `:406`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the Core refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
 5. a batched attestation's witness form is not signed (the typed data covers `orderHash`, `clauseId`, `stage`, `contentRef`), so a relay holding a plaintext operation can submit it hash-only and the `Attestation` event is identical for both forms: the in-proof content check assures the attesting party's own submission and is not evidence to a reader, whose evidence (signer, open order, inclusion, `contentRef`) is identical on every path (`DESIGN_DECISIONS.md` #26)
 
 ## Known limitations
@@ -1609,7 +1609,7 @@ The eight survivors, each read against the source:
 | Contract, line | Mutation | Why no test can tell |
 |---|---|---|
 | `FigaroCore.sol:204`, two mutants | Remove or disable the `DuplicateCommitment` guard | Every replay is refused earlier: a repeated root by `ProcessAlreadyExists`, a repeated extension by `CumulativeValueMismatch`, since the accumulator has moved. `FigaroCoreRevertBranchTest` pins each preempting error |
-| `FigaroCore.sol:288` | Disable the `CumulativeValueOverflow` guard | An order with such a value cannot be committed while the token keeps the Core's balance: the process's bonds already in it total at least four times the value (§ "Behaviors to surface") |
+| `FigaroCore.sol:285` | Disable the `CumulativeValueOverflow` guard | An order with such a value cannot be committed while the token keeps the Core's balance: the process's bonds already in it total at least four times the value (§ "Behaviors to surface") |
 | `UsageCounter.sol:664` at `f62b71cf` (`:801` at the baseline) | Write the seller-seen flag unconditionally | When the seller was seen before the flag is already true; the breadth count two lines below keeps its own condition |
 | `RpgfMinter.sol:228` at `f62b71cf` (`:278` at the baseline), two mutants | Remove or disable `if (score == 0) return (0, 0)` | The next line computes `amount × 0 / total`, which is 0; the return only saves the arithmetic |
 | `FlorinToken.sol:72`, two mutants | Remove or disable the `MAX_SUPPLY` check in `mint` | Tokens are created in `mint` alone, each minter is held to its cap on the line above, and `registerMinter` refuses a cap that would take the sum of caps past `MAX_SUPPLY` |

@@ -239,13 +239,10 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     ///         as does code its wallet installed while it held the key (DESIGN_DECISIONS
     ///         § 4). A key lost with no such code leaves the bonds unresolvable: no other path.
     ///
-    ///         GAS CEILING: Each order costs ~30k gas to resolve
-    ///         (struct hash, cold SLOAD, two ERC-20 transfers, SSTORE,
-    ///         LOG + the order's calldata — measured all-in on real
-    ///         post-Glamsterdam receipts; resolve cost ~= 73,000 + 29,800*N).
-    ///         The maximum number of orders per process therefore varies with the
-    ///         smaller of the chain's cap on one transaction's gas and its block gas
-    ///         limit: clients read the live block limit and take the cap, never a
+    ///         GAS CEILING: a resolve iterates every order of the process in one
+    ///         transaction, so the maximum number of orders per process is set by
+    ///         the network: the smaller of its cap on one transaction's gas and its
+    ///         block gas limit, which clients read live and take as the cap, never a
     ///         fixed order count. The ceiling is a property of the resolveProcess path;
     ///         it cannot be enforced on-chain at assembly registration because assembly
     ///         documents live off-chain (AssemblyRegistry only stores their
