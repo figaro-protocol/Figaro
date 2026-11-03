@@ -44,4 +44,21 @@ describe("useAgentServices — the metadata document is read IPFS-only", () => {
         expect(fetchCappedContentMock).toHaveBeenCalledOnce();
         expect(String(fetchCappedContentMock.mock.calls[0][0])).toMatch(new RegExp(`/ipfs/${CID}$`));
     });
+
+    it("reads a document that does not parse as a member profile as absent, whatever services it names", async () => {
+        // No `name`: not a member profile, so nothing in it surfaces.
+        fetchCappedContentMock.mockResolvedValue({
+            ok: true, text: async () => JSON.stringify({ services: { mcp: "https://agent.example/mcp" } }),
+        });
+        const result = await captured.fetcher!("ipfs://QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdA");
+        expect(result).toMatchObject({ reachable: false, services: {} });
+    });
+
+    it("reads the services a well-formed profile declares", async () => {
+        fetchCappedContentMock.mockResolvedValue({
+            ok: true, text: async () => JSON.stringify({ name: "Agent", services: { mcp: "https://agent.example/mcp" } }),
+        });
+        const result = await captured.fetcher!("ipfs://QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdB");
+        expect(result).toMatchObject({ reachable: true, services: { mcp: "https://agent.example/mcp" } });
+    });
 });

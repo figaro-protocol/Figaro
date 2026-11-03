@@ -11,20 +11,17 @@
  */
 
 import { useEffect, useState } from "react";
-import { fetchCappedContent, resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
-import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { HydratedAssembly } from "@figaro-protocol/sdk";
 import { useMemberProfile } from "@/lib/member/useMembersRegistry";
-import {
-    tryParseMemberProfileDocument,
-    type CoSellerBinding,
-} from "@/lib/member/memberProfileMetadata";
+import { fetchMemberProfile } from "@/lib/member/profileFetcher";
+import type { CoSellerBinding } from "@/lib/member/memberProfileMetadata";
 import { assemblyHashOf } from "@figaro-protocol/sdk";
 import { bindsAssembly, findListingByAddress } from "@/lib/member/memberListing";
 import {
     useAllPublishedAssemblies,
     fetchHydratedAssembly,
 } from "@/lib/protocol/useAssemblyRegistry";
+import { hexEqual } from "@/lib/shared/evm";
 
 /** A member's on-chain bound assembly, hydrated. */
 export interface BoundAssembly {
@@ -90,27 +87,16 @@ export function useMemberBoundAssemblies(
         }
 
         const [metadataURI] = registryData;
-        // IPFS-only: an http(s) metadataURI reads as absent (`uriFetcher`).
-        const url = resolveMemberDocumentUri(metadataURI);
-        if (!url) {
-            setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
-            return;
-        }
 
         let canceled = false;
         setResult((r) => ({ ...r, isLoading: true }));
 
         (async () => {
             try {
-                // Size-capped fetch (F4): the member-pinned profile document is
-                // external-party-controlled — oversize throws → the catch below.
-                const response = await fetchCappedContent(url);
-                if (!response.ok) throw new Error("member profile fetch failed");
-                // Prototype-pollution-safe parse (finding 7): the profile is an
-                // external-party-pinned document; the stripping reviver drops
-                // __proto__/constructor keys before any downstream object copy.
-                const doc = safeJsonParse(await response.text());
-                const profile = tryParseMemberProfileDocument(doc);
+                // The ONE cached profile read (`fetchMemberProfile`): IPFS-only
+                // (an http(s) metadataURI reads as absent), size-capped and
+                // parsed; a profile that fails to read or parse is null.
+                const profile = await fetchMemberProfile(metadataURI);
                 if (canceled) return;
                 if (!profile?.assemblyBindings || profile.assemblyBindings.length === 0) {
                     setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
@@ -137,7 +123,7 @@ export function useMemberBoundAssemblies(
                     if (!m) return;
                     const { slug, assemblyHash } = matchedEvents[i];
                     const binding = (profile.assemblyBindings ?? []).find(
-                        (b) => b.assemblyHash.toLowerCase() === assemblyHash.toLowerCase(),
+                        (b) => hexEqual(b.assemblyHash, assemblyHash),
                     );
                     assemblies.push({
                         slug,

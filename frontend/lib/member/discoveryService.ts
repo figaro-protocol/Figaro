@@ -2,14 +2,11 @@ import type { PublicClient } from 'viem';
 import { getActiveMembers } from '@/lib/protocol/membersRegistryIndexer';
 import type { MemberCatalog } from '@/lib/member/types';
 import { CONTRACTS } from "@/lib/kernel/contracts";
-import { fetchCappedContent, resolveMemberDocumentUri, type CappedContentResponse } from "@/lib/shared/ipfsService";
+import { resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
 import type { MemberCatalogMetadata } from '@/lib/member/memberCatalogMetadata';
-import {
-    MemberProfileMetadata,
-    tryParseMemberProfileDocument,
-} from '@/lib/member/memberProfileMetadata';
-import { tryParseCatalogItems } from '@/lib/member/memberProfileAdapter';
-import { safeJsonFromResponse } from '@/lib/shared/safeJson';
+import type { MemberProfileMetadata } from '@/lib/member/memberProfileMetadata';
+import { fetchMemberProfile } from '@/lib/member/profileFetcher';
+import { fetchMemberCatalog } from '@/lib/member/catalogFetcher';
 
 interface DiscoveryResult {
     catalogs: MemberCatalog[];
@@ -51,23 +48,15 @@ function profileToCatalog(
 async function fetchSellerAsCatalog(
     address: string,
     metadataURI: string,
-    fetchFn: (url: string) => Promise<CappedContentResponse>,
     publishedHashes: ReadonlySet<string>,
 ): Promise<MemberCatalog | null> {
-    // IPFS-only: the profile and its catalog are member-chosen URIs, and an
-    // http(s) one reads as absent (`uriFetcher`).
-    const url = resolveMemberDocumentUri(metadataURI);
-    if (!url) return null;
-
-    const res = await fetchFn(url);
-    const doc = await safeJsonFromResponse<unknown>(res);
-    if (!doc) return null;
-
     // The on-chain metadataURI points to the member profile document.
     // The profile carries identity / branding / accepted tokens, plus a
     // catalogURI pointing to the (separately-pinned) volatile items
-    // list.
-    const profile = tryParseMemberProfileDocument(doc);
+    // list. Both are read through the ONE cached member-document path
+    // (IPFS-only: an http(s) URI reads as absent; size-capped; parsed), and
+    // a document that fails to read or parse surfaces nothing.
+    const profile = await fetchMemberProfile(metadataURI);
     if (!profile) return null;
 
     // The frontend's surfacing rule, applied EVENLY across every projection
@@ -88,33 +77,11 @@ async function fetchSellerAsCatalog(
         subjectAddress: profile.subjectAddress ?? (address as `0x${string}`),
     };
 
-    let items: ReturnType<typeof tryParseCatalogItems> = null;
+    // First-class items live in the catalog document at profile.catalogURI;
+    // an absent or unreadable catalog lists the member with no items.
+    const catalog = profile.catalogURI ? await fetchMemberCatalog(profile.catalogURI) : null;
 
-    // First-class items live in the catalog document at profile.catalogURI.
-    if (profile.catalogURI) {
-        try {
-            const catUrl = resolveMemberDocumentUri(profile.catalogURI);
-            if (catUrl) {
-                const catRes = await fetchFn(catUrl);
-                const catDoc = await safeJsonFromResponse<unknown>(catRes);
-                if (catDoc) {
-                    items = tryParseCatalogItems(catDoc);
-                }
-            }
-        } catch {
-            // proceed with empty items
-        }
-    }
-
-    const catalog: MemberCatalogMetadata | undefined = items && items.length > 0
-        ? {
-            subjectAddress: stamped.subjectAddress!,
-            items: items,
-            version: '1.0.0',
-        }
-        : undefined;
-
-    return profileToCatalog(stamped, catalog);
+    return profileToCatalog(stamped, catalog ?? undefined);
 }
 
 export interface DiscoveryService {
@@ -125,21 +92,9 @@ export interface DiscoveryService {
     listCatalogs(client: PublicClient, chainId: number, publishedHashes: ReadonlySet<string>): Promise<DiscoveryResult>;
 }
 
-export interface DiscoveryServiceOptions {
-    fetchDocument?: (url: string) => Promise<Response>;
-}
-
 const EMPTY_RESULT: DiscoveryResult = { catalogs: [] };
 
-export function createDiscoveryService(
-    options: DiscoveryServiceOptions = {},
-): DiscoveryService {
-    // Size-capped fetch (F4): member-pinned profile/catalog documents are
-    // external-party-controlled — an oversized body aborts mid-stream (throws →
-    // the per-member catch → that member drops). An injected `fetchDocument`
-    // transport is capped the same way.
-    const fetchFn = (url: string) => fetchCappedContent(url, { fetch: options.fetchDocument });
-
+export function createDiscoveryService(): DiscoveryService {
     const service: DiscoveryService = {
         isRegistryConfigured() {
             return !!CONTRACTS.membersRegistry && CONTRACTS.membersRegistry.length === 42;
@@ -165,7 +120,6 @@ export function createDiscoveryService(
                             return await fetchSellerAsCatalog(
                                 seller.address,
                                 seller.metadataURI,
-                                fetchFn,
                                 publishedHashes,
                             );
                         } catch {

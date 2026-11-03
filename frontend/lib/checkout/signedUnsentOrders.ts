@@ -23,7 +23,8 @@ import {
     type CommitmentPayload,
 } from "@figaro-protocol/sdk/agent";
 import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
-import { readSessionStorage, writeSessionStorage } from "@/lib/shared/storage";
+import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
+import { createVersionStore } from "@/lib/shared/versionStore";
 
 export const SIGNED_UNSENT_STORAGE_KEY = "figaro-signed-unsent-orders";
 
@@ -39,13 +40,10 @@ function scopeKey(address: string, chainId: number): string {
     return `${chainId}:${address.toLowerCase()}`;
 }
 
-const listeners = new Set<() => void>();
-function notify() {
-    for (const l of listeners) l();
-}
+const changes = createVersionStore();
 
 function readStore(): Store {
-    return readSessionStorage<Store>(SIGNED_UNSENT_STORAGE_KEY, {});
+    return readJsonStorage<Store>(SIGNED_UNSENT_STORAGE_KEY, {}, "session");
 }
 
 /** Keep a signed, not-yet-relayed payload for this tab. Idempotent per order. */
@@ -55,8 +53,8 @@ export function rememberSignedUnsent(params: { address: string; chainId: number;
     const store = readStore();
     const scope = scopeKey(address, chainId);
     store[scope] = { ...(store[scope] ?? {}), [orderId]: serializeCommitmentPayload(payload) };
-    writeSessionStorage(SIGNED_UNSENT_STORAGE_KEY, store);
-    notify();
+    writeJsonStorage(SIGNED_UNSENT_STORAGE_KEY, store, "session");
+    changes.bump();
     return orderId;
 }
 
@@ -69,16 +67,16 @@ export function forgetSignedUnsent(params: { address: string; chainId: number; o
     const { [orderId]: _dropped, ...rest } = store[scope];
     if (Object.keys(rest).length > 0) store[scope] = rest;
     else delete store[scope];
-    writeSessionStorage(SIGNED_UNSENT_STORAGE_KEY, store);
-    notify();
+    writeJsonStorage(SIGNED_UNSENT_STORAGE_KEY, store, "session");
+    changes.bump();
 }
 
 function subscribe(listener: () => void): () => void {
-    listeners.add(listener);
+    const unsubscribe = changes.subscribe(listener);
     const onStorage = (e: StorageEvent) => { if (e.key === SIGNED_UNSENT_STORAGE_KEY) listener(); };
     if (typeof window !== "undefined") window.addEventListener("storage", onStorage);
     return () => {
-        listeners.delete(listener);
+        unsubscribe();
         if (typeof window !== "undefined") window.removeEventListener("storage", onStorage);
     };
 }

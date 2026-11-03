@@ -42,6 +42,8 @@ import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/proto
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsCanvasMandatory, clauseIsAssemblyScoped, clauseDesignFills, isLiveRegistration, mandatoryClauseRegistrant, mandatoryClausesForCanvas, mandatoryClausesPending, specSource } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { extractErrorMessage } from "@/lib/shared/errors";
+import { hexEqual } from "@/lib/shared/evm";
 import { ClausesByArticle } from "@/components/runtime/ClausesByArticle";
 import { FieldControl } from "@/components/runtime/FieldControl";
 
@@ -457,7 +459,7 @@ function RegisteredAgreementsPanel({
                                         // registration just made is offered at once.
                                         .then(() => refetchAgreements())
                                         .catch((err: unknown) => {
-                                            setRegisterError(err instanceof Error ? err.message : String(err));
+                                            setRegisterError(extractErrorMessage(err, "The agreement was not registered."));
                                         })
                                         .finally(() => setRegistering(false));
                                 }}
@@ -492,7 +494,7 @@ function RegisteredAgreementsPanel({
                     ) : (
                         <ul className="space-y-1" data-testid="drawer-agreements-list">
                             {liveAgreements.map((row) => {
-                                const bound = !!boundAgreementHash && boundAgreementHash.toLowerCase() === row.agreementHash.toLowerCase();
+                                const bound = hexEqual(boundAgreementHash, row.agreementHash);
                                 return (
                                     <li key={row.agreementHash}>
                                         <button

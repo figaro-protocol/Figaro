@@ -9,27 +9,16 @@
  * refetches when it changes. Nothing is stored — the chain stays the source;
  * this only says "read it again".
  */
-import { useSyncExternalStore } from "react";
+import { createVersionStore } from "@/lib/shared/versionStore";
 
-let version = 0;
-const listeners = new Set<() => void>();
+const writes = createVersionStore();
 
 /** Call once after a registry write is confirmed. */
 export function noteRegistryWrite(): void {
-    version += 1;
-    for (const l of listeners) l();
+    writes.bump();
 }
-
-function subscribe(listener: () => void): () => void {
-    listeners.add(listener);
-    return () => {
-        listeners.delete(listener);
-    };
-}
-
-const getVersion = () => version;
 
 /** Changes every time a registry write is confirmed in this tab. */
 export function useRegistryWriteVersion(): number {
-    return useSyncExternalStore(subscribe, getVersion, getVersion);
+    return writes.useVersion();
 }

@@ -22,10 +22,11 @@ import { getClauseSpec, loadClauseSpec, specSource } from "@/lib/shared/clauseSp
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
 import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
+import { readStorage, removeStorage, writeStorage } from "@/lib/shared/storage";
+import { hexEqual } from "@/lib/shared/evm";
 
 const URI_PREFIX = "figaro:agreement-uri:";
 const uriKey = (h: Hex | string) => URI_PREFIX + h;
-const canUseStorage = () => typeof window !== "undefined";
 
 export interface AgreementFetchOptions {
     evidenceTransport?: Pick<IpfsService, "pinJSON" | "buildURI" | "resolveFetchUrl">;
@@ -37,27 +38,18 @@ const transport = (o?: AgreementFetchOptions) => o?.evidenceTransport ?? DEFAULT
  *  Internal: the witnessed-URI pointer is written via `publishAgreement` and read
  *  via `fetchAgreement` — both in this file. */
 function saveAgreementUri(checkoutHash: Hex | string, uri: string): void {
-    if (!canUseStorage() || !uri) return;
-    try {
-        localStorage.setItem(uriKey(checkoutHash), uri);
-    } catch { /* non-fatal */ }
+    if (!uri) return;
+    writeStorage(uriKey(checkoutHash), uri);
 }
 
 function loadAgreementUri(checkoutHash: Hex | string | undefined | null): string | null {
-    if (!canUseStorage() || !checkoutHash) return null;
-    try {
-        return localStorage.getItem(uriKey(checkoutHash));
-    } catch {
-        return null;
-    }
+    if (!checkoutHash) return null;
+    return readStorage(uriKey(checkoutHash));
 }
 
 /** Drop the witnessed-URI pointer for a hash (the "forget" half of erasure). */
 function forgetAgreementUri(checkoutHash: Hex | string): void {
-    if (!canUseStorage()) return;
-    try {
-        localStorage.removeItem(uriKey(checkoutHash));
-    } catch { /* non-fatal */ }
+    removeStorage(uriKey(checkoutHash));
 }
 
 const inflight = new Map<string, Promise<Anchored<Agreement> | null>>();
@@ -174,7 +166,7 @@ async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
     }
     await Promise.allSettled(
         missing.map((s) => {
-            const event = registered.find((r) => r.clauseKey.toLowerCase() === s.clause.toLowerCase());
+            const event = registered.find((r) => hexEqual(r.clauseKey, s.clause));
             return event ? loadClauseSpec(event.clauseKey, event.contentURI) : Promise.resolve(undefined);
         }),
     );

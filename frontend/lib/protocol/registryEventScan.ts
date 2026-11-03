@@ -26,6 +26,7 @@ import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
 import { rpcErrorText } from "@/lib/shared/errors";
 import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
+import { hexEqual } from "@/lib/shared/evm";
 
 export interface RegistryEventScanConfig<Row> {
     /** The registry address if configured and well-formed, else null. */
@@ -101,8 +102,7 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
                     if (canceled) return;
                     const registeredLogs = (registeredBy
                         ? registeredRaw.filter(
-                            (l) => String((l as { args?: { registeredBy?: string } }).args?.registeredBy ?? "").toLowerCase()
-                                === registeredBy.toLowerCase(),
+                            (l) => hexEqual((l as { args?: { registeredBy?: string } }).args?.registeredBy, registeredBy),
                         )
                         : registeredRaw) as Log[];
                     setData(toRows(registeredLogs, withdrawnRaw as Log[], registeredBy));

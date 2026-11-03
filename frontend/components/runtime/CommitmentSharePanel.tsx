@@ -27,6 +27,7 @@ import {
 import type { OrderFlowStep } from "@/lib/checkout/orderCommitmentFlow";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { copyToClipboard } from "@/lib/shared/clipboard";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { truncateHex } from "@/lib/shared/formatHex";
 
@@ -138,12 +139,10 @@ export function CommitmentSharePanel({
 
     const handleCopy = useCallback(async () => {
         if (!serialized) return;
-        try {
-            await navigator.clipboard.writeText(serialized);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-            onCopyLink?.();
-        } catch { /* clipboard not available */ }
+        if (!(await copyToClipboard(serialized))) return;
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        onCopyLink?.();
     }, [serialized, onCopyLink]);
 
     const handleSendViaXmtp = useCallback(async () => {

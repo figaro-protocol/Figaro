@@ -138,9 +138,7 @@ export function RewardsView() {
                 {rewards.available && rewards.readState === "error" && (
                     <p className="text-base text-ink-body" data-testid="rewards-read-error">
                         The chain read failed &mdash; this page could not reach the network your
-                        wallet is connected to. Check your RPC endpoint and network, then reload.
-                        <span className="block mt-2 text-sm text-ink-muted font-mono break-all">{rewards.readError}</span>
-                    </p>
+                        wallet is connected to. Check your RPC endpoint and network, then reload.                    </p>
                 )}
                 {rewards.available && rewards.readState === "ready" && rewards.periods.length === 0 && (
                     <p className="text-base text-ink-muted" data-testid="rewards-no-periods">

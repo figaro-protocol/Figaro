@@ -20,6 +20,7 @@ import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
 import { safeJsonParse, strippingReviver } from "@/lib/shared/safeJson";
 import { pick, queryParam } from "@/lib/shared/urlQuery";
 import { isLiveRegistration } from "@/lib/shared/clauseSpecSource";
+import { hexEqual } from "@/lib/shared/evm";
 
 export const REGISTRY_FAMILIES = ["clauses", "agreements", "assemblies", "members"] as const;
 export type RegistryFamily = (typeof REGISTRY_FAMILIES)[number];
@@ -125,7 +126,7 @@ function matchesQuery(row: ExplorerRow, state: ExplorerQuery): boolean {
     if (state.stake === "live" && !isLiveRegistration(row)) return false;
     if (state.stake === "withdrawn" && isLiveRegistration(row)) return false;
     if (state.article && row.article !== state.article) return false;
-    if (state.registeredBy && row.registeredBy.toLowerCase() !== state.registeredBy.toLowerCase()) return false;
+    if (state.registeredBy && !hexEqual(row.registeredBy, state.registeredBy)) return false;
     if (state.clause && !row.clauses.includes(state.clause)) return false;
     if (state.q) {
         const needle = state.q.toLowerCase();
@@ -295,7 +296,7 @@ export function storedDocument(fetched: Uint8Array | string, anchored: string, a
         anchor,
         anchored,
         recomputed,
-        matches: recomputed.toLowerCase() === anchored.toLowerCase(),
+        matches: hexEqual(recomputed, anchored),
         ...read,
     };
 }

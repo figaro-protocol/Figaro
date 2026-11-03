@@ -19,6 +19,7 @@ import { clauseByField } from "@figaro-protocol/sdk";
 import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { topologyFollows } from "@/lib/semantic/processTopology";
 import type { ExtractedDocument } from "./types";
 
 /** Human-readable display label for a clause — the registered spec's title
@@ -113,15 +114,11 @@ function extractJurisdictionSummary(agreement: Agreement) {
 }
 
 function extractTopology(order: Order, agreement: Agreement): ContractDocument["topology"] {
-    const topology = clauseByField(agreement, "follows", specSource());
-    const data = topology?.data as { follows?: unknown } | undefined;
-    const follows = Array.isArray(data?.follows)
-        ? (data.follows.filter((p) => typeof p === "string") as string[])
-        : [];
+    const follows = topologyFollows(agreement);
     return {
         position: order.cumulativeValue === order.payment ? "root" : "sub-order",
-        composed: topology !== undefined,
-        follows,
+        composed: follows !== null,
+        follows: follows ?? [],
     };
 }
 

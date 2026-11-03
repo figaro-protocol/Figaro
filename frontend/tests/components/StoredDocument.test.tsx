@@ -186,6 +186,17 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         expect(screen.queryByTestId("stored-json-clause-figaro-applicable-law")).toBeNull();
     });
 
+    it("a read that throws surfaces nothing of the thrown error, only the absence of a copy", async () => {
+        fetchCappedContentMock.mockRejectedValue(new Error("TypeError: fetch failed at internal-gateway:5001"));
+        mount();
+        screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
+
+        const unreachable = await screen.findByTestId("stored-unreachable-clause-figaro-applicable-law");
+        expect(unreachable.textContent).toMatch(/never evidence that the registration is wrong/i);
+        expect(unreachable.textContent).not.toContain("internal-gateway");
+        expect(unreachable.textContent).not.toContain("()");
+    });
+
     it("an assembly's note names the ASSEMBLY ROOT its anchor covers, not the whole document", async () => {
         const assembly = {
             name: "Equipment hire",

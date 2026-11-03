@@ -1,4 +1,5 @@
 import { TEST_HELPERS_ENABLED } from "@/lib/shared/testHelpers";
+import { readStorage, writeStorage } from "@/lib/shared/storage";
 
 export type E2EMode = "mock" | "devnet" | null;
 
@@ -41,21 +42,14 @@ export function getE2EModeSession(): E2EMode {
 
     const urlMode = getE2EModeFromSearchParams(window.location.search);
     if (urlMode) {
-        try {
-            window.sessionStorage.setItem(E2E_MODE_STORAGE_KEY, urlMode);
-        } catch {
-            // sessionStorage unavailable (e.g. private mode) — URL detection
-            // alone still works for any page that carries the query param.
-        }
+        // sessionStorage unavailable (e.g. private mode) — URL detection
+        // alone still works for any page that carries the query param.
+        writeStorage(E2E_MODE_STORAGE_KEY, urlMode, "session");
         return urlMode;
     }
 
-    try {
-        const stored = window.sessionStorage.getItem(E2E_MODE_STORAGE_KEY);
-        return stored === "mock" || stored === "devnet" ? stored : null;
-    } catch {
-        return null;
-    }
+    const stored = readStorage(E2E_MODE_STORAGE_KEY, "session");
+    return stored === "mock" || stored === "devnet" ? stored : null;
 }
 
 export function isE2EMockSession(): boolean {

@@ -152,7 +152,7 @@ async function readSigningSpecs(agreement: Agreement, client: { getBlockNumber?:
         return;
     }
     for (const key of missing) {
-        const row = rows.find((r) => String(r.args?.clauseKey ?? "").toLowerCase() === key.toLowerCase());
+        const row = rows.find((r) => hexEqual(String(r.args?.clauseKey ?? ""), key));
         if (!row?.args?.contentURI) continue;
         try { await loadClauseSpec(key as `0x${string}`, row.args.contentURI); } catch { /* the gate refuses an unloaded spec */ }
     }

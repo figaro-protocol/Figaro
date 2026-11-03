@@ -17,6 +17,7 @@
 
 import { logReadRetry, type LogReadRetryKind } from "@figaro-protocol/sdk";
 import { getAbiItem, type Abi, type Hex, type PublicClient } from "viem";
+import { hexEqual } from "@/lib/shared/evm";
 
 type PublicGetLogsParams = NonNullable<Parameters<PublicClient["getLogs"]>[0]>;
 
@@ -443,7 +444,7 @@ export async function cachedGetReceiptLogs(
 ): Promise<CachedLog[]> {
     const key = receiptKey(chainId, params.transactionHash);
     const fresh = (entry: ReceiptEntry | null | undefined): entry is ReceiptEntry =>
-        !!entry && (params.blockHash === null || entry.blockHash?.toLowerCase() === params.blockHash.toLowerCase());
+        !!entry && (params.blockHash === null || hexEqual(entry.blockHash, params.blockHash));
 
     const held = receiptMem.get(key);
     if (fresh(held)) return held.logs;

@@ -21,7 +21,10 @@ import { specSource } from "@/lib/shared/clauseSpecSource";
 
 // ── By-field reads of the topology clause (no clause id named) ────────────────
 
-function topologyFollows(agreement: Agreement | null | undefined): string[] | null {
+/** The parent order ids an agreement's topology clause names, read by field:
+ *  null when the agreement composes no topology clause, [] when its data is
+ *  withheld; empty and blank ids are dropped. */
+export function topologyFollows(agreement: Agreement | null | undefined): string[] | null {
     if (!agreement) return null;
     const clauseEntry = clauseByField(agreement, "follows", specSource());
     if (!clauseEntry) return null;

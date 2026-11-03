@@ -28,6 +28,7 @@ import { PROVENANCE_LEAF_KEY, anchorClauseSpec, deriveAnchored, specIsMandatory,
 import { keccak256 } from "viem";
 import { DEFAULT_IPFS_SERVICE, fetchCappedBinary } from "@/lib/shared/ipfsService";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { hexEqual } from "@/lib/shared/evm";
 
 /** A loaded clause spec: the SDK `ClauseSpec` (content-only — `fields`/`stages`),
  *  its frontend-parsed `block` slice (pure presentation the frontend owns —
@@ -206,7 +207,7 @@ export function mandatoryClausesPending(): boolean {
     if (!registrant) return false;
     for (const [key, registration] of REGISTRATIONS) {
         if (registration.stakeWithdrawn) continue;
-        if (registration.registeredBy.toLowerCase() !== registrant.toLowerCase()) continue;
+        if (!hexEqual(registration.registeredBy, registrant)) continue;
         if (SPEC_CACHE.has(key) || SPEC_LOAD_ERRORS.has(key)) continue;
         return true;
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { focusablesIn, trapTabFocus } from "@/lib/shared/focusTrap";
 import { createPortal } from "react-dom";
 import Menu from "@/components/icons/Menu";
 import X from "@/components/icons/X";
@@ -105,10 +106,7 @@ export function MobileNav({ links }: MobileNavProps) {
         if (!panel) return;
 
         // Focus the first focusable element on open.
-        const focusables = panel.querySelectorAll<HTMLElement>(
-            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        );
-        focusables[0]?.focus();
+        focusablesIn(panel)[0]?.focus();
 
         const handleKey = (e: KeyboardEvent) => {
             if (e.key === "Escape") {
@@ -117,22 +115,7 @@ export function MobileNav({ links }: MobileNavProps) {
                 triggerRef.current?.focus();
                 return;
             }
-            if (e.key === "Tab") {
-                // Re-queried per keypress: expanding a section adds focusables.
-                const list = panel.querySelectorAll<HTMLElement>(
-                    'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-                );
-                if (list.length === 0) return;
-                const first = list[0];
-                const last = list[list.length - 1];
-                if (e.shiftKey && document.activeElement === first) {
-                    e.preventDefault();
-                    last.focus();
-                } else if (!e.shiftKey && document.activeElement === last) {
-                    e.preventDefault();
-                    first.focus();
-                }
-            }
+            trapTabFocus(e, panel);
         };
 
         document.addEventListener("keydown", handleKey);

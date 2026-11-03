@@ -11,7 +11,7 @@
  */
 
 import type { Order } from "@/lib/kernel/store";
-import { isBrowserStorageAvailable, readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
+import { readJsonStorage, removeStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 const CURRENT_KEY = "figaro:designer:current";
 const DRAFT_PREFIX = "figaro:designer:drafts:";
@@ -38,8 +38,8 @@ interface SerializedOrder {
 function serializeOrder(o: Order): SerializedOrder {
     // Drafts are value-free: cumulativeValue/sellerBond/buyerBond are always
     // 0n on a synthetic Order and are NOT persisted. Destructured OUT (not
-    // spread through) so no raw bigint reaches JSON.stringify — writeJson
-    // swallows the throw and the draft would silently never persist.
+    // spread through) so the persisted draft carries no value field at all —
+    // writeJsonStorage would otherwise write each bigint as its decimal string.
     const { cumulativeValue: _cv, sellerBond: _sb, buyerBond: _bb, ...rest } = o;
     return {
         ...rest,
@@ -146,50 +146,33 @@ function deserializeSnapshot(s: SerializedSnapshot): DesignSnapshot {
     return { ...s, orders: s.orders.map(deserializeOrder) };
 }
 
-function readJson<T>(key: string): T | null {
-    return readJsonStorage<T | null>(key, null);
-}
-
-function writeJson(key: string, value: unknown): void {
-    writeJsonStorage(key, value);
-}
-
-function removeKey(key: string): void {
-    if (!isBrowserStorageAvailable()) return;
-    try {
-        window.localStorage.removeItem(key);
-    } catch {
-        // ignore
-    }
-}
-
 // ── Current-session API ─────────────────────────────────────────────────────
 
 export function saveCurrentSession(snap: DesignSnapshot): void {
-    writeJson(CURRENT_KEY, serializeSnapshot(snap));
+    writeJsonStorage(CURRENT_KEY, serializeSnapshot(snap));
 }
 
 export function loadCurrentSession(): DesignSnapshot | null {
-    const data = readJson<SerializedSnapshot>(CURRENT_KEY);
+    const data = readJsonStorage<SerializedSnapshot | null>(CURRENT_KEY, null);
     return data ? deserializeSnapshot(data) : null;
 }
 
 export function clearCurrentSession(): void {
-    removeKey(CURRENT_KEY);
+    removeStorage(CURRENT_KEY);
 }
 
 // ── Named drafts API ────────────────────────────────────────────────────────
 
 function readIndex(): DraftIndexEntry[] {
-    return readJson<DraftIndexEntry[]>(DRAFT_INDEX_KEY) ?? [];
+    return readJsonStorage<DraftIndexEntry[] | null>(DRAFT_INDEX_KEY, null) ?? [];
 }
 
 function writeIndex(entries: DraftIndexEntry[]): void {
-    writeJson(DRAFT_INDEX_KEY, entries);
+    writeJsonStorage(DRAFT_INDEX_KEY, entries);
 }
 
 export function saveNamedDraft(snap: DesignSnapshot): void {
-    writeJson(`${DRAFT_PREFIX}${snap.slug}`, serializeSnapshot(snap));
+    writeJsonStorage(`${DRAFT_PREFIX}${snap.slug}`, serializeSnapshot(snap));
     const index = readIndex().filter((e) => e.slug !== snap.slug);
     index.push({
         slug: snap.slug,
@@ -202,7 +185,7 @@ export function saveNamedDraft(snap: DesignSnapshot): void {
 }
 
 export function loadNamedDraft(slug: string): DesignSnapshot | null {
-    const data = readJson<SerializedSnapshot>(`${DRAFT_PREFIX}${slug}`);
+    const data = readJsonStorage<SerializedSnapshot | null>(`${DRAFT_PREFIX}${slug}`, null);
     return data ? deserializeSnapshot(data) : null;
 }
 
@@ -211,7 +194,7 @@ export function listNamedDrafts(): DraftIndexEntry[] {
 }
 
 export function deleteNamedDraft(slug: string): void {
-    removeKey(`${DRAFT_PREFIX}${slug}`);
+    removeStorage(`${DRAFT_PREFIX}${slug}`);
     writeIndex(readIndex().filter((e) => e.slug !== slug));
 }
 

@@ -36,7 +36,7 @@ import {
     type IpfsService,
 } from "@/lib/shared/ipfsService";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
+import { hexEqual, isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
 
 export interface PublishWitnessContentParams {
     /** The clause attested — its clause key, the hash of the pinned spec
@@ -59,7 +59,7 @@ export interface PublishWitnessContentParams {
 export async function publishWitnessContent(params: PublishWitnessContentParams): Promise<void> {
     const { stage, content } = params;
     if (isEmptyHex(content)) return; // nothing to learn from empty content
-    if (params.clauseId.toLowerCase() === PROVENANCE_LEAF_KEY.toLowerCase()) {
+    if (hexEqual(params.clauseId, PROVENANCE_LEAF_KEY)) {
         // The agreement FORMAT's provenance leaf has no spec: its bytes are
         // the format's own (`{"agreementHash":…,"assemblyHash":…}`,
         // reproducible from a registered — public — agreement hash and
