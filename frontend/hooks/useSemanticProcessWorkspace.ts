@@ -26,6 +26,11 @@ import { getAttestationsByProcess, type RuntimeAttestation } from "@/lib/composi
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { CapabilityActionDescriptor, CapabilityExecutionInput, CapabilityModel } from "@/lib/semantic/models";
 import { executeTransactionCapabilityAction } from "@/lib/semantic/executeTransactionCapability";
+import { ABSENT, PENDING, present, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+
+/** The orders an absent or pending read stands for in the executors' inputs —
+ *  no model and no capability is derived from it (`processModel` is null). */
+const NO_ORDERS: Order[] = [];
 
 function collectRuntimeCapabilities(capabilities: CapabilityModel[]): CapabilityModel[] {
     const seen = new Set<string>();
@@ -74,7 +79,10 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const bumpProcessReload = useOrderStore((state) => state.bumpProcessReload);
     const walletProcesses = useWalletProcessIds(address);
     const effectiveProcessId = processId ?? walletProcesses[0]?.processId ?? null;
-    const processOrders = useProcessOrders(effectiveProcessId);
+    const ordersRead = useProcessOrders(effectiveProcessId);
+    // The orders the model is derived from — read only through `ordersRead`;
+    // no model exists until the read is present (see `processModel`).
+    const processOrders = ordersRead.status === "present" ? ordersRead.value : NO_ORDERS;
     const checkoutHashes = useMemo(
         () => processOrders.map((order) => order.checkoutHash).filter((hash): hash is string => Boolean(hash)),
         [processOrders],
@@ -143,7 +151,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     // the summary it receives (lines 532-556 of that file), so a minimal
     // synthetic ProcessSummary suffices; the participant-specific role
     // discrimination happens downstream against `address`.
-    const fallbackSummary: ProcessSummary | null = (!selectedSummary && effectiveProcessId && processOrders.length > 0)
+    const fallbackSummary: ProcessSummary | null = (!selectedSummary && effectiveProcessId && ordersRead.status === "present" && processOrders.length > 0)
         ? {
             processId: effectiveProcessId,
             orderCount: processOrders.length,
@@ -157,26 +165,30 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     // The process's attestation log, read clause-agnostically (one read; the
     // builder buckets it by clause to gate lifecycle/handoff capabilities, and
     // the order page renders it as a generic timeline). Re-fetched whenever an
-    // action lands (processReloadKey bumps).
-    const [processAttestations, setProcessAttestations] = useState<RuntimeAttestation[]>([]);
+    // action lands (processReloadKey bumps). A failed read is absent: never
+    // `[]`, which would show every stage unattested and offer attest/resolve.
+    const [attestationsRead, setAttestationsRead] = useState<NetworkRead<RuntimeAttestation[]>>(PENDING);
     useEffect(() => {
         if (!publicClient || !effectiveProcessId) {
-            setProcessAttestations([]);
+            setAttestationsRead(PENDING);
             return;
         }
         let canceled = false;
         const chainId = publicClient.chain?.id ?? 0;
-        getAttestationsByProcess(publicClient, chainId, effectiveProcessId)
-            .then((logs) => { if (!canceled) setProcessAttestations(logs); })
-            .catch(() => { if (!canceled) setProcessAttestations([]); });
+        void readNetwork("useSemanticProcessWorkspace.attestations", () =>
+            getAttestationsByProcess(publicClient, chainId, effectiveProcessId),
+        ).then((next) => { if (!canceled) setAttestationsRead(next); });
         return () => { canceled = true; };
     }, [publicClient, effectiveProcessId, processReloadKey]);
+    const processAttestations = attestationsRead.status === "present" ? attestationsRead.value : null;
 
     // `clauseSpecsVersion` is read so this inline derivation re-runs once a
     // late-loading clause spec resolves (the generic deriver needs each clause's
     // spec to surface its capability).
     void clauseSpecsVersion;
-    const processModel = effectiveSummary
+    // No model — and so no capability — until both the orders and the
+    // attestation log are present.
+    const processModel = effectiveSummary && ordersRead.status === "present" && processAttestations
         ? deriveProcessModelFromRuntime(
             effectiveSummary,
             processOrders,
@@ -186,6 +198,18 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
             processAttestations,
         )
         : null;
+
+    // The model as a read: pending while either read is in flight, absent
+    // when either failed, present(null) when the chain holds no order under
+    // this process id.
+    const processModelRead: NetworkRead<typeof processModel> =
+        ordersRead.status === "absent" || attestationsRead.status === "absent"
+            ? ABSENT
+            : processModel
+                ? present(processModel)
+                : ordersRead.status === "present" && !effectiveSummary
+                    ? present(null)
+                    : PENDING;
 
     const runtimeCapabilities = processModel
         ? collectRuntimeCapabilities([...processModel.capabilities, ...processModel.orders.flatMap((order) => order.capabilities)])
@@ -281,6 +305,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     return {
         effectiveProcessId,
         processModel,
+        processModelRead,
         processAgreements,
         processAttestations,
         runtimeCapabilities,

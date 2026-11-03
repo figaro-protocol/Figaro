@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "@/components/shared/Link";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
@@ -46,7 +46,7 @@ import { finishStep, type OnboardingStepChromeProps, toggledSet, useSubjectHydra
 
 function buildBinding(
     wallet: `0x${string}`,
-    choice: AssemblyChoice,
+    choice: Pick<AssemblyChoice, "assemblyHash">,
     coSellerBindings: CoSellerBinding[],
 ): AssemblyBindingRecord {
     return {
@@ -69,12 +69,12 @@ const DRAFT_SUBJECT = ZERO_ADDRESS;
 function buildBindings(
     wallet: `0x${string}`,
     selected: Set<string>,
-    choices: AssemblyChoice[],
     coSellersByAssembly: Map<string, CoSellerBinding[]>,
 ): AssemblyBindingRecord[] {
-    return choices
-        .filter((c) => selected.has(assemblyKey(c)))
-        .map((c) => buildBinding(wallet, c, coSellersByAssembly.get(assemblyKey(c)) ?? []));
+    // Built from the selection itself — the key IS the assembly hash — so a
+    // binding never depends on whether its assembly's document was read.
+    return Array.from(selected).map((key) =>
+        buildBinding(wallet, { assemblyHash: key as `0x${string}` }, coSellersByAssembly.get(key) ?? []));
 }
 
 /** The key the selection is held under: the assembly's full assembly hash. */
@@ -103,11 +103,15 @@ export function OnboardingAssembliesForm({
     const { address, isConnected } = useAccount();
     const { state, loaded, subject, update } = useOnboardingState(address);
 
-    const { data: choicesData } = useAssemblyChoices();
-    // `null` while the registry read is in flight; the persist effect below
-    // must not run against an empty list, or it drops every derived entry.
-    const choicesLoaded = choicesData !== null;
-    const choices: AssemblyChoice[] = choicesData ?? [];
+    // The published assemblies as a read: no choices and no autosave until
+    // it is present — a failed read never stands for "nothing to bind" and
+    // never writes `assemblies: []` over the draft.
+    const { read: choicesRead } = useAssemblyChoices();
+    const choicesLoaded = choicesRead.status === "present";
+    const choices: AssemblyChoice[] = useMemo(
+        () => (choicesRead.status === "present" ? choicesRead.value : []),
+        [choicesRead],
+    );
 
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [coSellersByAssembly, setCoSellersByAssembly] = useState<
@@ -133,9 +137,9 @@ export function OnboardingAssembliesForm({
     useEffect(() => {
         if (!hydrated || !choicesLoaded) return;
         update({
-            assemblies: buildBindings(address ?? DRAFT_SUBJECT, selected, choices, coSellersByAssembly),
+            assemblies: buildBindings(address ?? DRAFT_SUBJECT, selected, coSellersByAssembly),
         });
-    }, [selected, coSellersByAssembly, hydrated, address, choices, choicesLoaded, update]);
+    }, [selected, coSellersByAssembly, hydrated, address, choicesLoaded, update]);
 
     function toggle(key: string) {
         setSelected((prev) => toggledSet(prev, key));
@@ -168,7 +172,7 @@ export function OnboardingAssembliesForm({
         }
         setSubmitError(null);
         finishStep(
-            onSave && (() => onSave(buildBindings(address ?? DRAFT_SUBJECT, selected, choices, coSellersByAssembly))),
+            onSave && (() => onSave(buildBindings(address ?? DRAFT_SUBJECT, selected, coSellersByAssembly))),
             () => router.push(onboardingNextHref("assemblies")),
         );
     }

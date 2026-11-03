@@ -257,7 +257,10 @@ interface HashHit {
 
 function SearchMode() {
     const [hash, setHash] = useState("");
-    const orders = useWalletOrders(); // every order the connected wallet is a party to
+    // Every order the connected wallet is a party to. A failed read searches
+    // nothing and says no "no match" (see below).
+    const ordersRead = useWalletOrders();
+    const orders = useMemo(() => (ordersRead.status === "present" ? ordersRead.value : []), [ordersRead]);
     const checkoutHashes = useMemo(
         () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
         [orders],
@@ -338,7 +341,7 @@ function SearchMode() {
                     className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
                 />
             </label>
-            {hash.trim() && hits.length === 0 && (
+            {hash.trim() && ordersRead.status === "present" && hits.length === 0 && (
                 <div className="rounded border border-default bg-subtle p-4 text-xs text-ink-body" data-testid="verify-search-no-hits">
                     No match in locally-loaded orders + agreements. Try modes A or B
                     with the hash&apos;s source content, or open the relevant process

@@ -26,6 +26,7 @@ import { usePublishedAgreements } from "@/lib/protocol/useAgreementRegistry";
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import type { RegistryFamily } from "@/lib/registries/explorer";
 import { isLiveRegistration } from "@/lib/shared/clauseSpecSource";
+import { mapRead, type NetworkRead } from "@/lib/shared/networkRead";
 
 const NOUN: Record<RegistryFamily, [string, string]> = {
     clauses: ["clause", "clauses"],
@@ -51,17 +52,19 @@ const SCAFFOLDING: Record<
     members: null,
 };
 
-function useFamilyCount(family: RegistryFamily): number | null {
+/** The family's live count as a read: a failed registry read is absent —
+ *  never a count of zero. */
+function useFamilyCount(family: RegistryFamily): NetworkRead<number> {
     const clauses = useAllRegisteredClauses();
     const assemblies = usePublishedAssemblies(undefined);
     const agreements = usePublishedAgreements(undefined);
     const members = useRegisteredMembers();
     return useMemo(() => {
-        if (family === "clauses") return clauses.data === null ? null : clauses.data.filter(isLiveRegistration).length;
-        if (family === "agreements") return agreements.data === null ? null : agreements.data.length;
-        if (family === "assemblies") return assemblies.data === null ? null : assemblies.data.length;
-        return members.data === null ? null : members.data.filter(isLiveRegistration).length;
-    }, [family, clauses.data, assemblies.data, agreements.data, members.data]);
+        if (family === "clauses") return mapRead(clauses.read, (rows) => rows.filter(isLiveRegistration).length);
+        if (family === "agreements") return mapRead(agreements.read, (rows) => rows.length);
+        if (family === "assemblies") return mapRead(assemblies.read, (rows) => rows.length);
+        return mapRead(members.read, (rows) => rows.filter(isLiveRegistration).length);
+    }, [family, clauses.read, assemblies.read, agreements.read, members.read]);
 }
 
 export function RegistryCountLink({ family }: { family: RegistryFamily }) {
@@ -104,14 +107,13 @@ export function RegistryCountLink({ family }: { family: RegistryFamily }) {
                 </>
             )}
             <p className="text-sm text-ink-body leading-relaxed" data-testid={`registry-count-${family}`}>
-                {count === null ? (
-                    <>Reading the registry&hellip;</>
-                ) : (
+                {count.status === "pending" && <>Reading the registry&hellip;{" "}</>}
+                {count.status === "present" && (
                     <>
-                        {count} {count === 1 ? `${one} is` : `${many} are`} registered with a live stake on the
-                        network this site reads.
+                        {count.value} {count.value === 1 ? `${one} is` : `${many} are`} registered with a live stake on the
+                        network this site reads.{" "}
                     </>
-                )}{" "}
+                )}
                 <Link href={`/registries?family=${family}`} className="text-ink-heading hover:underline">
                     Search the registry &rarr;
                 </Link>

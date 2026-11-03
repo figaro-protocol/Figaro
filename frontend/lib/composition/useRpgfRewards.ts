@@ -304,8 +304,8 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             setReadState("ready");
         })().catch(() => {
             if (canceled) return;
-            // A failed READ is never resolved-empty: the view states that the
-            // chain read failed, and surfaces nothing of the thrown error.
+            // A failed READ is never resolved-empty: readState "error", and
+            // the surface renders nothing for it.
             setPeriods([]);
             setReadState("error");
         });

@@ -24,7 +24,7 @@ import { RegistryListState } from "@/components/shared/RegistryListState";
 
 export function ClausesList() {
     const { address } = useAccount();
-    const read = useRegisteredClausesByWallet(address);
+    const { read } = useRegisteredClausesByWallet(address);
     // The chain row carries only the key; the spec's own name and version —
     // its label — are read from the verified spec once it loads.
     useClauseSpecs();

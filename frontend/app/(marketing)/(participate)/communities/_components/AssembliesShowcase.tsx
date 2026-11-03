@@ -21,29 +21,54 @@ import { profileToListing } from "@/lib/member/memberListing";
  */
 type Seller = { address: `0x${string}`; name: string };
 
-function useSellersByAssembly(): Map<string, Seller[]> {
-    const { data } = useRegisteredMembers();
+/** Who is bound to each assembly, or null while that is not known: the
+ *  members read is not present, or a live member's profile is still unread
+ *  (an unread profile may bind it — "no seller" would be a guess). */
+interface SellersByAssembly {
+    bySlug: Map<string, Seller[]>;
+    /** Every live member's profile is read: a zero count is the network's. */
+    complete: boolean;
+}
+
+function useSellersByAssembly(): SellersByAssembly | null {
+    const { read } = useRegisteredMembers();
     return useMemo(() => {
+        if (read.status !== "present") return null;
         const bySlug = new Map<string, Seller[]>();
-        for (const row of data ?? []) {
-            if (row.stakeWithdrawn || !row.profile) continue;
+        let complete = true;
+        for (const row of read.value) {
+            if (row.stakeWithdrawn) continue;
+            if (!row.profile) {
+                complete = false;
+                continue;
+            }
             const listing = profileToListing(row.profile, row.address);
             for (const slug of new Set(listing.bindings.map((b) => deriveAssemblySlug(b.assemblyHash)))) {
                 const sellers = bySlug.get(slug) ?? [];
-                sellers.push({ address: row.address, name: listing.name || row.address });
+                sellers.push({ address: row.address, name: listing.name });
                 bySlug.set(slug, sellers);
             }
         }
-        return bySlug;
-    }, [data]);
+        return { bySlug, complete };
+    }, [read]);
+}
+
+/** The sellers line, only where the count is known: a positive count from
+ *  any read profile, a zero only once every live profile is read. */
+function sellersLine(sellers: SellersByAssembly | null, slug: string): string | null {
+    const n = sellers?.bySlug.get(slug)?.length ?? 0;
+    if (n === 1) return "One seller offers it.";
+    if (n > 1) return `${n} sellers offer it.`;
+    return sellers?.complete ? "No seller is bound to it yet." : null;
 }
 
 /** One card per published assembly: the designer's name and summary from its
  *  document, its shape, who offers it, and the one button — that assembly's own
  *  questions. An assembly whose designer wrote none says so in the muted color;
  *  nothing is ordered from an assembly, so no other button. */
-function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: Seller[] }) {
+function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: SellersByAssembly | null }) {
     const faqCount = choice.hydratedAssembly?.assembly.faq?.length ?? 0;
+    const line = sellersLine(sellers, choice.slug);
     return (
         <li className="flex flex-col" data-testid="showcase-assembly">
             <h3 className="text-heading-h3 text-ink-heading mb-1">
@@ -53,17 +78,11 @@ function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: Se
             </h3>
             {choice.summary && <p className="text-base text-ink-body leading-relaxed mb-2">{choice.summary}</p>}
             <AssemblyShapeLine choice={choice} className="text-xs" />
-            <p className="text-sm text-ink-muted mt-2 grow">
-                {sellers.length === 0
-                    ? "No seller is bound to it yet."
-                    : sellers.length === 1
-                      ? "One seller offers it."
-                      : `${sellers.length} sellers offer it.`}
-            </p>
+            <p className="text-sm text-ink-muted mt-2 grow">{line}</p>
             <div className="mt-4">
                 {faqCount > 0 ? (
                     <CtaLink href={`/communities?slug=${encodeURIComponent(choice.slug)}#faq`}>FAQ</CtaLink>
-                ) : (
+                ) : choice.state !== "loaded" ? null : (
                     <span className="inline-flex min-w-[200px] justify-center items-center px-9 py-sm text-sm text-ink-muted rounded-tile border border-default" data-testid="showcase-no-faq">
                         No FAQ yet
                     </span>
@@ -73,8 +92,9 @@ function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: Se
     );
 }
 
-function AssemblyDetail({ choice, sellers }: { choice: AssemblyChoice; sellers: Seller[] }) {
+function AssemblyDetail({ choice, sellers }: { choice: AssemblyChoice; sellers: SellersByAssembly | null }) {
     const assembly = choice.hydratedAssembly?.assembly ?? null;
+    const bound = sellers?.bySlug.get(choice.slug) ?? [];
     return (
         <>
             <MarketingSection title={`${choice.name}.`} sectionId="assembly">
@@ -93,14 +113,16 @@ function AssemblyDetail({ choice, sellers }: { choice: AssemblyChoice; sellers: 
             </MarketingSection>
 
             <MarketingSection title="Who to order from." sectionId="sellers">
-                {sellers.length === 0 ? (
-                    <p className="text-base text-ink-body leading-relaxed">No seller is bound to this assembly yet.</p>
+                {bound.length === 0 ? (
+                    sellers?.complete ? (
+                        <p className="text-base text-ink-body leading-relaxed">No seller is bound to this assembly yet.</p>
+                    ) : null
                 ) : (
                     <ul className="[&>li]:border-b [&>li]:border-default text-base">
-                        {sellers.map((s) => (
+                        {bound.map((s) => (
                             <li key={s.address} className="py-2.5">
                                 <Link href={`/s/view?seller=${s.address.toLowerCase()}`} className="text-ink-heading font-medium hover:underline">
-                                    {s.name}
+                                    {s.name || <code className="font-mono text-sm">{s.address}</code>}
                                 </Link>
                             </li>
                         ))}
@@ -127,23 +149,29 @@ function AssemblyDetail({ choice, sellers }: { choice: AssemblyChoice; sellers: 
 export function AssembliesShowcase() {
     const params = useSearchParams();
     const slug = params?.get("slug") ?? null;
-    const { data, isLoading } = useAssemblyChoices();
+    const { read } = useAssemblyChoices();
     const sellersByAssembly = useSellersByAssembly();
-    const choices = useMemo(() => (data ?? []).filter((c) => !c.stakeWithdrawn), [data]);
+    const choices = useMemo(
+        () => (read.status === "present" ? read.value.filter((c) => !c.stakeWithdrawn) : []),
+        [read],
+    );
+    // A failed registry read renders nothing: never "nothing is published".
+    if (read.status === "absent") return null;
+    const isLoading = read.status === "pending";
 
     if (slug) {
         const choice = choices.find((c) => c.slug === slug);
         if (!choice) {
             return (
-                <MarketingSection title="Not published." sectionId="assembly">
+                <MarketingSection title={isLoading ? "Reading the registry…" : "Not published."} sectionId="assembly">
                     <p className="text-base text-ink-body leading-relaxed">
-                        {isLoading ? "Reading the registry…" : "No published assembly has this address."}{" "}
+                        {isLoading ? null : "No published assembly has this address."}{" "}
                         <Link href="/communities" className="text-ink-heading font-medium hover:underline">Every assembly</Link>
                     </p>
                 </MarketingSection>
             );
         }
-        return <AssemblyDetail choice={choice} sellers={sellersByAssembly.get(choice.slug) ?? []} />;
+        return <AssemblyDetail choice={choice} sellers={sellersByAssembly} />;
     }
 
     return (
@@ -155,7 +183,7 @@ export function AssembliesShowcase() {
             ) : (
                 <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10">
                     {choices.map((c) => (
-                        <AssemblyCard key={c.slug} choice={c} sellers={sellersByAssembly.get(c.slug) ?? []} />
+                        <AssemblyCard key={c.slug} choice={c} sellers={sellersByAssembly} />
                     ))}
                 </ul>
             )}

@@ -83,7 +83,8 @@ export function AssemblyTermsPanel({
      *  assembly order — shown by the read-only surfaces. */
     composition?: { assemblyHash: `0x${string}`; agreementHashes: readonly `0x${string}`[] };
 }) {
-    const { data: registered } = useAllRegisteredClauses();
+    const { read: registeredRead } = useAllRegisteredClauses();
+    const registered = registeredRead.status === "present" ? registeredRead.value : null;
     const { version: specsVersion } = useClauseSpecs();
 
     // Live registry ∩ loaded specs, filtered to assembly scope — derived,

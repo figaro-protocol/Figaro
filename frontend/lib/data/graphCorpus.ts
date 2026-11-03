@@ -75,6 +75,7 @@ import { specSource } from "@/lib/shared/clauseSpecSource";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
 /**
  * How many attestation payloads one pass tries to recover, most recent first.
@@ -385,16 +386,16 @@ export function corpusInputsLoaded(
  * re-read pass turns a fingerprint-only overlay into a decoded one, and can
  * turn an unattributed process into an attributed one).
  *
- * `corpus` is null while the first read is in flight. `failed` is DISTINCT
- * from a resolved-empty corpus: empty data is absence and renders as
- * such; a failed read is unknown chain state and says so.
+ * The corpus is a `NetworkRead`: pending while the first read is in flight,
+ * absent when the event read failed (a surface renders nothing for it),
+ * present once projected — an empty corpus is the network's own answer.
  */
-export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boolean; failed: boolean } {
+export function useGraphCorpus(): NetworkRead<GraphCorpus> {
     const { version: specVersion, loaded: specsLoaded } = useClauseSpecs();
-    const { data: choices, failed: assembliesFailed } = useAssemblyChoices();
-    const [corpus, setCorpus] = useState<GraphCorpus | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [failed, setFailed] = useState(false);
+    const { read: choicesRead } = useAssemblyChoices();
+    const choices = choicesRead.status === "present" ? choicesRead.value : null;
+    const assembliesFailed = choicesRead.status === "absent";
+    const [corpus, setCorpus] = useState<NetworkRead<GraphCorpus>>(PENDING);
 
     // The loaded assemblies, in the minimal shape the read needs: the
     // registered identity + name, and each agreement's composed clause values
@@ -427,20 +428,9 @@ export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boole
     useEffect(() => {
         if (!inputsLoaded) return;
         let canceled = false;
-        setIsLoading(true);
-        setFailed(false);
-        readGraphCorpus({ assemblies })
-            .then((next) => {
-                if (canceled) return;
-                setCorpus(next);
-                setIsLoading(false);
-            })
-            .catch((err) => {
-                if (canceled) return;
-                console.warn("[useGraphCorpus] read failed:", err);
-                setFailed(true);
-                setIsLoading(false);
-            });
+        void readNetwork("useGraphCorpus", () => readGraphCorpus({ assemblies })).then((next) => {
+            if (!canceled) setCorpus(next);
+        });
         return () => {
             canceled = true;
         };
@@ -449,5 +439,5 @@ export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boole
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [inputsLoaded, assemblies, specVersion]);
 
-    return { corpus, isLoading, failed };
+    return corpus;
 }

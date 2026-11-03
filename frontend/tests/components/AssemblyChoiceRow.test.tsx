@@ -67,7 +67,7 @@ describe("AssemblyChoiceRow", () => {
             .toHaveTextContent("1 agreement · 2 clauses");
     });
 
-    it("says the content is unresolved rather than describing an assembly it cannot read", () => {
+    it("says nothing of an assembly it cannot read — no 'Document unavailable', no summary", () => {
         renderRow({
             ...CHOICE,
             state: "error",
@@ -76,7 +76,7 @@ describe("AssemblyChoiceRow", () => {
             agreementCount: null,
             clauses: null,
         });
-        expect(screen.getByText(/Document unavailable/)).toBeInTheDocument();
+        expect(screen.queryByText(/Document unavailable/)).toBeNull();
         expect(screen.queryByTestId(`seller-assembly-summary-${CHOICE.slug}`)).toBeNull();
     });
 

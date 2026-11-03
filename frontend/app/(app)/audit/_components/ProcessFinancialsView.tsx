@@ -19,13 +19,23 @@ import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { projectAllFinancialStatements } from "@/lib/audit/documentProjection";
 import { DownloadAuditBundleButton } from "@/components/runtime/DownloadAuditBundleButton";
 import { DocumentView } from "./DocumentView";
+import type { Order } from "@/lib/kernel/store";
 
 interface Props {
     processId: string;
 }
 
 export function ProcessFinancialsView({ processId }: Props) {
-    const orders = useProcessOrders(processId);
+    const read = useProcessOrders(processId);
+    // A failed order read renders nothing.
+    if (read.status === "absent") return null;
+    if (read.status === "pending") {
+        return <p className="text-sm text-ink-muted" data-testid="financials-loading">Loading…</p>;
+    }
+    return <ProcessFinancials processId={processId} orders={read.value} />;
+}
+
+function ProcessFinancials({ processId, orders }: { processId: string; orders: Order[] }) {
     const statements = projectAllFinancialStatements(orders, processId);
     const buyer = orders[0]?.buyer;
 

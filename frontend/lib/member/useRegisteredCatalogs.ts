@@ -7,9 +7,10 @@
  * discovery module. Plural-of-wallets — each wallet has at most one
  * catalog.
  *
- * Returns an empty list when the registry isn't configured or no
- * members have registered. Empty-state copy is the caller's
- * responsibility (e.g. `/discover` renders a "no members yet" CTA).
+ * The result is a `NetworkRead<MemberCatalog[]>`: `present([])` only when
+ * the registry really holds no catalog; a failed registry read, a failed
+ * catalog read, or a failed AssemblyRegistry cross-check is `absent` — the
+ * caller renders nothing for it, never "no members".
  */
 "use client";
 
@@ -22,63 +23,43 @@ import {
 } from "@/lib/member/discoveryService";
 import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
 import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
-
-export interface UseRegisteredCatalogsResult {
-    catalogs: MemberCatalog[];
-    isLoading: boolean;
-}
+import { ABSENT, PENDING, mapRead, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
 export interface UseRegisteredCatalogsOptions {
     service?: DiscoveryService;
 }
 
-const EMPTY_RESULT: UseRegisteredCatalogsResult = {
-    catalogs: [],
-    isLoading: false,
-};
-
 export function useRegisteredCatalogs(
     options: UseRegisteredCatalogsOptions = {},
-): UseRegisteredCatalogsResult {
+): { read: NetworkRead<MemberCatalog[]> } {
     const service = options.service ?? DEFAULT_DISCOVERY_SERVICE;
-    const [discoveryResult, setDiscoveryResult] =
-        useState<UseRegisteredCatalogsResult>(EMPTY_RESULT);
-    const [isLoading, setIsLoading] = useState(false);
+    const [read, setRead] = useState<NetworkRead<MemberCatalog[]>>(PENDING);
     // Re-read generation — bumped when the tab regains focus so a long-open
     // discovery surface refreshes from the chain instead of going stale.
     const { generation, refetch: bump } = useRefetchGeneration();
     const client = usePublicClient();
     const chainId = useChainId();
     // The AssemblyRegistry read the surfacing rule cross-checks against —
-    // the SAME gate useMemberListings applies (rule applied evenly).
-    // `null` = still reading — that is LOADING, not absence: the
-    // unchecked member list is never rendered (NO FALLBACKS).
-    const { data: publishedAssemblies } = usePublishedAssemblies(undefined);
+    // the SAME gate useMemberListings applies (rule applied evenly). Pending
+    // is pending and absent is absent: the unchecked member list is never
+    // rendered, and a failed assembly read never rejects every member.
+    const { read: publishedAssemblies } = usePublishedAssemblies(undefined);
 
     useEffect(() => {
         if (!client || !service.isRegistryConfigured()) {
-            setDiscoveryResult(EMPTY_RESULT);
+            setRead(ABSENT);
             return;
         }
-        if (publishedAssemblies === null) {
-            setIsLoading(true);
+        if (publishedAssemblies.status !== "present") {
+            setRead(publishedAssemblies);
             return;
         }
-        const publishedHashes = new Set(publishedAssemblies.map((a) => a.assemblyHash.toLowerCase()));
+        const publishedHashes = new Set(publishedAssemblies.value.map((a) => a.assemblyHash.toLowerCase()));
 
         let canceled = false;
-        setIsLoading(true);
-
-        service.listCatalogs(client, chainId, publishedHashes)
+        void readNetwork("useRegisteredCatalogs", () => service.listCatalogs(client, chainId, publishedHashes))
             .then((result) => {
-                if (canceled) return;
-                setDiscoveryResult({ ...result, isLoading: false });
-                setIsLoading(false);
-            })
-            .catch(() => {
-                if (canceled) return;
-                setDiscoveryResult(EMPTY_RESULT);
-                setIsLoading(false);
+                if (!canceled) setRead(mapRead(result, (r) => r.catalogs));
             });
 
         return () => {
@@ -101,8 +82,5 @@ export function useRegisteredCatalogs(
         };
     }, []);
 
-    return {
-        catalogs: discoveryResult.catalogs,
-        isLoading,
-    };
+    return { read };
 }

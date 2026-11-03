@@ -4,7 +4,7 @@
  * The agreement body is the highest-PII IPFS artifact. unpinAgreement
  * best-effort unpins THIS wallet's
  * copy and forgets the witnessed-URI pointer (unpin + forget), never throwing
- * on a node hiccup; a forgotten pointer means a later fetch returns null. A
+ * on a node hiccup; a forgotten pointer means a later fetch is absent. A
  * refused unpin keeps the pointer, so a retry reaches the same CID.
  */
 import { describe, expect, it, vi } from "vitest";
@@ -27,7 +27,7 @@ function seedTransport(cid: string) {
 }
 
 describe("unpinAgreement", () => {
-    it("unpins the pinned CID and forgets the pointer (a later fetch is null)", async () => {
+    it("unpins the pinned CID and forgets the pointer (a later fetch is absent)", async () => {
         const transport = seedTransport("QmAgreementBody");
         const { checkoutHash } = await publishAgreement(AGREEMENT, { evidenceTransport: transport });
 
@@ -36,7 +36,7 @@ describe("unpinAgreement", () => {
 
         expect(unpin).toHaveBeenCalledExactlyOnceWith("QmAgreementBody");
         // Pointer forgotten: with no URI, fetch can no longer resolve a body.
-        expect(await fetchAgreement(checkoutHash, undefined, { evidenceTransport: transport })).toBeNull();
+        expect(await fetchAgreement(checkoutHash, undefined, { evidenceTransport: transport })).toEqual({ status: "absent" });
     });
 
     it("rejects a refused unpin with the service's answer and keeps the pointer, so a retry unpins the same CID", async () => {
@@ -53,7 +53,7 @@ describe("unpinAgreement", () => {
         const retry = vi.fn().mockResolvedValue(undefined);
         await unpinAgreement(checkoutHash, { unpin: retry });
         expect(retry).toHaveBeenCalledExactlyOnceWith("QmRefusedBody");
-        expect(await fetchAgreement(checkoutHash, undefined, { evidenceTransport: transport })).toBeNull();
+        expect(await fetchAgreement(checkoutHash, undefined, { evidenceTransport: transport })).toEqual({ status: "absent" });
 
         // Forgotten after the successful unpin: a third erase has nothing to unpin.
         const third = vi.fn().mockResolvedValue(undefined);

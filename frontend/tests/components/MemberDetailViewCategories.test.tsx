@@ -19,9 +19,11 @@ const CATALOG: MemberCatalog = {
     acceptedTokens: [],
 };
 
+const catalogs = vi.hoisted(() => ({ read: undefined as unknown }));
 vi.mock("@/lib/member/useRegisteredCatalogs", () => ({
-    useRegisteredCatalogs: () => ({ catalogs: [CATALOG], isLoading: false }),
+    useRegisteredCatalogs: () => ({ read: catalogs.read }),
 }));
+vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
 vi.mock("@/lib/checkout", () => ({
     useCommerce: () => ({ address: undefined }),
 }));
@@ -53,18 +55,19 @@ describe("MemberDetailView catalog categories", () => {
     let errorSpy: ReturnType<typeof vi.spyOn>;
     beforeEach(() => {
         errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+        catalogs.read = { status: "present", value: [CATALOG] };
     });
     afterEach(() => {
         errorSpy.mockRestore();
     });
 
-    it("renders an uncategorized item under an explicit fallback heading, not a blank group", () => {
+    it("renders an uncategorized item in a group with no heading — never a placeholder label", () => {
         render(<MemberDetailView sellerAddress={SELLER} />);
 
         // The categorized group renders as before.
         expect(screen.getByRole("heading", { name: "Mains" })).toBeInTheDocument();
-        // The uncategorized item gets a real, visible fallback heading.
-        expect(screen.getByRole("heading", { name: "(unclassified)" })).toBeInTheDocument();
+        // The uncategorized item gets no invented heading.
+        expect(screen.queryByText("(unclassified)")).toBeNull();
         // Both items are present.
         expect(screen.getByText("Pizza")).toBeInTheDocument();
         expect(screen.getByText("Mystery")).toBeInTheDocument();
@@ -74,5 +77,31 @@ describe("MemberDetailView catalog categories", () => {
             args.some((a) => typeof a === "string" && a.includes("unique") && a.includes("key")),
         );
         expect(keyWarning).toBe(false);
+    });
+
+    it("a failed catalog read renders nothing — no 'Member not found', no 'Register as a member'", () => {
+        catalogs.read = { status: "absent" };
+        const { container } = render(<MemberDetailView sellerAddress={SELLER} />);
+        expect(container.textContent).toBe("");
+        expect(screen.queryByText(/Member not found/)).toBeNull();
+        expect(screen.queryByText(/Register as a member/)).toBeNull();
+    });
+
+    it("no unit system the seller never declared: mass shows in the unit it was declared in", () => {
+        catalogs.read = {
+            status: "present",
+            value: [{ ...CATALOG, items: [{ id: "m", name: "Flour", description: "", price: "1", available: true, massGrams: 1000 }] }],
+        };
+        render(<MemberDetailView sellerAddress={SELLER} />);
+        expect(screen.getByTestId("catalog-item-logistics-m").textContent).toContain("1000 g");
+    });
+
+    it("a declared imperial system converts", () => {
+        catalogs.read = {
+            status: "present",
+            value: [{ ...CATALOG, unitSystem: "imperial", items: [{ id: "m", name: "Flour", description: "", price: "1", available: true, massGrams: 1000 }] }],
+        };
+        render(<MemberDetailView sellerAddress={SELLER} />);
+        expect(screen.getByTestId("catalog-item-logistics-m").textContent).toContain("oz");
     });
 });

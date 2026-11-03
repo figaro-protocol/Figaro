@@ -53,7 +53,7 @@ interface StoredDocumentProps {
 type ReadState =
     | { state: "idle" }
     | { state: "reading" }
-    | { state: "unreachable"; detail?: string }
+    | { state: "unreachable" }
     | { state: "read"; text: string; verdict: StoredDocumentVerdict };
 
 export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredDocumentProps) {
@@ -72,7 +72,7 @@ export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredD
         (async () => {
             const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(contentURI);
             if (!url) {
-                if (!canceled) setRead({ state: "unreachable", detail: `no gateway resolves ${contentURI}` });
+                if (!canceled) setRead({ state: "unreachable" });
                 return;
             }
             try {
@@ -81,14 +81,12 @@ export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredD
                 const response = await fetchCappedBinary(url);
                 if (canceled) return;
                 if (!response.ok || response.bytes === null) {
-                    setRead({ state: "unreachable", detail: `${response.status} ${response.statusText}` });
+                    setRead({ state: "unreachable" });
                     return;
                 }
                 const text = new TextDecoder().decode(response.bytes);
                 setRead({ state: "read", text, verdict: storedDocument(response.bytes, anchoredHash, anchor) });
             } catch {
-                // A failed network read surfaces nothing of the thrown error:
-                // the panel states only that no copy was served.
                 if (!canceled) setRead({ state: "unreachable" });
             }
         })();
@@ -132,14 +130,7 @@ export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredD
                     </p>
                 ) : null}
 
-                {read.state === "unreachable" ? (
-                    <p className="text-xs text-ink-muted" data-testid={`stored-unreachable-${id}`}>
-                        No gateway served this document on this read{read.detail ? ` (${read.detail})` : ""}. That is the
-                        absence of a copy here, never evidence that the registration is wrong &mdash;
-                        the anchor below is on chain either way.
-                    </p>
-                ) : null}
-
+                {/* A document no gateway served renders nothing. */}
                 {read.state === "read" ? (
                     <>
                         <pre

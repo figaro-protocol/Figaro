@@ -230,7 +230,8 @@ export function OnboardingCatalogForm({
     // binds an assembly that composes none of them and is asked for none. A
     // newly registered product-property clause surfaces with zero change here.
     const { version: clauseSpecsVersion } = useClauseSpecs();
-    const { data: assemblyChoices } = useAssemblyChoices();
+    const { read: choicesRead } = useAssemblyChoices();
+    const assemblyChoices = choicesRead.status === "present" ? choicesRead.value : null;
     const catalogClauses = useMemo(
         () => catalogClausesForBindings(state.assemblies ?? [], assemblyChoices ?? []),
         // eslint-disable-next-line react-hooks/exhaustive-deps

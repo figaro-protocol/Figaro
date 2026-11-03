@@ -25,7 +25,7 @@ import { getActiveMembers, getAllMemberRegistered } from "@/lib/protocol/members
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import { scheduleContentRetry } from "@/lib/shared/ipfsService";
 import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
-import { rpcErrorText } from "@/lib/shared/errors";
+import { ABSENT, PENDING, present, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 
 export interface RegisteredMemberRow {
@@ -39,69 +39,68 @@ export interface RegisteredMemberRow {
     profile: MemberProfileMetadata | null;
 }
 
-export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; failed: boolean; error: string | null; refetch: () => void } {
-    const [data, setData] = useState<RegisteredMemberRow[] | null>(null);
-    const [failed, setFailed] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+/** Every registered member as a `NetworkRead`: `absent` when the registry
+ *  read failed (or no registry is configured), never `[]`. */
+export function useRegisteredMembers(): { read: NetworkRead<RegisteredMemberRow[]>; refetch: () => void } {
+    const [read, setRead] = useState<NetworkRead<RegisteredMemberRow[]>>(PENDING);
     const { generation, refetch } = useRefetchGeneration();
 
     useEffect(() => {
         const registry = CONTRACTS.membersRegistry;
         if (!registry || registry.length !== 42) {
-            setData([]);
+            setRead(ABSENT);
             return;
         }
         let canceled = false;
         const timers = new Set<ReturnType<typeof setTimeout>>();
-        setFailed(false);
-        setError(null);
         const chainId = publicClient.chain?.id ?? activeChain.id;
-        Promise.all([getAllMemberRegistered(publicClient, chainId), getActiveMembers(publicClient, chainId)])
-            .then(async ([registered, active]) => {
-                if (canceled) return;
-                const activeUri = new Map(active.map((m) => [m.address.toLowerCase(), m.metadataURI]));
-                // Latest registration per address (re-registration after a
-                // withdrawal is allowed; the newest event is the live one).
-                const latest = new Map<string, { address: `0x${string}`; metadataURI: string; blockNumber: bigint }>();
-                for (const r of registered) {
-                    const key = r.member.toLowerCase();
-                    const prev = latest.get(key);
-                    if (!prev || BigInt(r.blockNumber) > prev.blockNumber) {
-                        latest.set(key, { address: r.member as `0x${string}`, metadataURI: r.metadataURI, blockNumber: BigInt(r.blockNumber) });
-                    }
+        void readNetwork("useRegisteredMembers", () =>
+            Promise.all([getAllMemberRegistered(publicClient, chainId), getActiveMembers(publicClient, chainId)]),
+        ).then(async (scan) => {
+            if (canceled) return;
+            if (scan.status !== "present") {
+                setRead(scan);
+                return;
+            }
+            const [registered, active] = scan.value;
+            const activeUri = new Map(active.map((m) => [m.address.toLowerCase(), m.metadataURI]));
+            // Latest registration per address (re-registration after a
+            // withdrawal is allowed; the newest event is the live one).
+            const latest = new Map<string, { address: `0x${string}`; metadataURI: string; blockNumber: bigint }>();
+            for (const r of registered) {
+                const key = r.member.toLowerCase();
+                const prev = latest.get(key);
+                if (!prev || BigInt(r.blockNumber) > prev.blockNumber) {
+                    latest.set(key, { address: r.member as `0x${string}`, metadataURI: r.metadataURI, blockNumber: BigInt(r.blockNumber) });
                 }
-                const rows: RegisteredMemberRow[] = Array.from(latest.entries()).map(([key, r]) => ({
-                    address: r.address,
-                    // An active member's URI may have moved via updateProfile.
-                    metadataURI: activeUri.get(key) ?? r.metadataURI,
-                    blockNumber: r.blockNumber,
-                    stakeWithdrawn: !activeUri.has(key),
-                    profile: null,
-                }));
-                setData(rows);
-                // Profiles resolve lazily and independently — one slow gateway
-                // read never blocks the list. A profile no gateway has served
-                // yet (a public gateway finds a fresh pin minutes after the
-                // wizard pinned it) is re-read on `contentRetryDelayMs`'s
-                // schedule, so the member names itself without a reload.
-                const read = async (row: RegisteredMemberRow, attempt: number) => {
-                    const profile = await fetchMemberProfile(row.metadataURI).catch(() => null);
-                    if (canceled) return;
-                    if (!profile) {
-                        scheduleContentRetry(timers, attempt, () => void read(row, attempt + 1));
-                        return;
-                    }
-                    setData((prev) => prev?.map((p) => (p.address === row.address ? { ...p, profile } : p)) ?? prev);
-                };
-                await Promise.all(rows.map((row) => read(row, 0)));
-            })
-            .catch((err) => {
+            }
+            const rows: RegisteredMemberRow[] = Array.from(latest.entries()).map(([key, r]) => ({
+                address: r.address,
+                // An active member's URI may have moved via updateProfile.
+                metadataURI: activeUri.get(key) ?? r.metadataURI,
+                blockNumber: r.blockNumber,
+                stakeWithdrawn: !activeUri.has(key),
+                profile: null,
+            }));
+            setRead(present(rows));
+            // Profiles resolve lazily and independently — one slow gateway
+            // read never blocks the list. A profile no gateway has served
+            // yet (a public gateway finds a fresh pin minutes after the
+            // wizard pinned it) is re-read on `contentRetryDelayMs`'s
+            // schedule, so the member names itself without a reload.
+            const readProfile = async (row: RegisteredMemberRow, attempt: number) => {
+                const profile = await fetchMemberProfile(row.metadataURI).catch(() => null);
                 if (canceled) return;
-                console.warn("[useRegisteredMembers] registry read failed:", err);
-                setFailed(true);
-                setError(rpcErrorText(err, { maxLength: 300 }));
-                setData([]);
-            });
+                if (!profile) {
+                    scheduleContentRetry(timers, attempt, () => void readProfile(row, attempt + 1));
+                    return;
+                }
+                setRead((prev) => (prev.status === "present"
+                    ? present(prev.value.map((p) => (p.address === row.address ? { ...p, profile } : p)))
+                    : prev));
+            };
+            await Promise.all(rows.map((row) => readProfile(row, 0)));
+        });
         return () => {
             canceled = true;
             for (const timer of timers) clearTimeout(timer);
@@ -109,5 +108,5 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
         };
     }, [generation]);
 
-    return useMemo(() => ({ data, failed, error, refetch }), [data, failed, error, refetch]);
+    return useMemo(() => ({ read, refetch }), [read, refetch]);
 }

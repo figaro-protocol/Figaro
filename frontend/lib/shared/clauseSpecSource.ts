@@ -658,13 +658,14 @@ export interface ClauseArticleGroup {
  *  (chain/registration order); there is NO imposed sequence — no hardcoded
  *  article list, no alphabetical sort. Both the /clauses inventory and the
  *  designer drawer read this one function, so the two surfaces group clauses
- *  identically. Clauses with no block fall to "(unclassified)". Sub-clause
+ *  identically. Clauses that declare no article form one group with an empty
+ *  article and label — rendered with no heading, never a placeholder. Sub-clause
  *  nesting is layered on top from `block.design.nestsUnder` (see
  *  `clauseNestsUnder`). */
 export function groupClausesByArticle(): readonly ClauseArticleGroup[] {
     const byArticle = new Map<string, ClauseArticleEntry[]>();
     for (const spec of SPEC_CACHE.values()) {
-        const article = spec.block?.design.article ?? "(unclassified)";
+        const article = spec.block?.design.article ?? "";
         const entry = { clauseKey: spec.clauseKey, clauseId: spec.clauseId, version: spec.version, title: spec.title, description: spec.description };
         const bucket = byArticle.get(article);
         if (bucket) bucket.push(entry);

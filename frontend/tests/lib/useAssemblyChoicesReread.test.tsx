@@ -20,27 +20,31 @@ const ASSEMBLY = { assembly: { name: "Containerized import chain", agreements: [
 
 const flush = () => act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
 
-describe("useAssemblyChoices — a assembly the gateway has not served yet is re-read, not abandoned", () => {
+/** One stable read reference: the hook keys its effects on its identity. */
+const PUBLISHED_READ = { status: "present", value: [EVENT] };
+const rows = (r: { read: { status: string; value?: unknown[] } }) => (r.read.status === "present" ? r.read.value! : null);
+
+describe("useAssemblyChoices — a assembly the gateway has not served yet is re-read, not abandoned, and is no row until it loads", () => {
     beforeEach(() => {
         vi.useFakeTimers();
-        publishedMock.mockReturnValue({ data: [EVENT], isLoading: false, refetch: vi.fn() });
+        publishedMock.mockReturnValue({ read: PUBLISHED_READ, refetch: vi.fn() });
         fetchHydratedAssemblyMock.mockReset();
         loadErrorMock.mockReset();
         loadErrorMock.mockReturnValue(undefined);
     });
     afterEach(() => { vi.useRealTimers(); });
 
-    it("shows the slug while unserved, then names itself from the re-read without a reload", async () => {
+    it("is no row while unserved, then appears named from the re-read without a reload", async () => {
         fetchHydratedAssemblyMock.mockResolvedValueOnce(null).mockResolvedValueOnce(ASSEMBLY);
         const { result } = renderHook(() => useAssemblyChoices());
         await flush();
-        expect(result.current.data?.[0]).toMatchObject({ state: "error", name: "asm-fresh" });
+        expect(rows(result.current)).toEqual([]);
         expect(fetchHydratedAssemblyMock).toHaveBeenCalledTimes(1);
 
         await act(async () => { vi.advanceTimersByTime(contentRetryDelayMs(0)); });
         await flush();
         expect(fetchHydratedAssemblyMock).toHaveBeenCalledTimes(2);
-        expect(result.current.data?.[0]).toMatchObject({ state: "loaded", name: "Containerized import chain" });
+        expect(rows(result.current)?.[0]).toMatchObject({ state: "loaded", name: "Containerized import chain" });
 
         // Loaded: no further re-reads.
         await act(async () => { vi.advanceTimersByTime(10 * 60_000); });
@@ -48,12 +52,12 @@ describe("useAssemblyChoices — a assembly the gateway has not served yet is re
         expect(fetchHydratedAssemblyMock).toHaveBeenCalledTimes(2);
     });
 
-    it("a assembly that was served and is not the one its root anchors is never re-read — the row stays in error", async () => {
+    it("a assembly that was served and is not the one its root anchors is never re-read — and is never a row", async () => {
         fetchHydratedAssemblyMock.mockResolvedValue(null);
         loadErrorMock.mockReturnValue("integrity failure at ipfs://fresh: the document is not the assembly the root anchors");
         const { result } = renderHook(() => useAssemblyChoices());
         await flush();
-        expect(result.current.data?.[0]).toMatchObject({ state: "error", name: "asm-fresh" });
+        expect(rows(result.current)).toEqual([]);
         expect(fetchHydratedAssemblyMock).toHaveBeenCalledTimes(1);
         await act(async () => { vi.advanceTimersByTime(10 * 60_000); });
         await flush();

@@ -23,7 +23,6 @@ import { OnboardingAssembliesForm } from "@/components/members/OnboardingAssembl
 
 export function MemberEditAssemblies() {
     const editor = useMemberProfileEditor({
-        errorNoun: "the assemblies",
         seed: (existingProfile, update) => {
             update({
                 assemblies: existingProfile.assemblyBindings ?? [],

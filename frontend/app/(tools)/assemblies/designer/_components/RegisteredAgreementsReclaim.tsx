@@ -31,17 +31,16 @@ import {
 } from "@/lib/protocol/useAgreementRegistry";
 import { ReclaimStakeRow } from "@/components/registries/ReclaimStakeRow";
 import { hexEqual } from "@/lib/shared/evm";
-import { truncateHex } from "@/lib/shared/formatHex";
 
 export function RegisteredAgreementsReclaim() {
     const { address } = useAccount();
-    const read = usePublishedAgreements(address);
-    const { data, refetch } = read;
+    const { read, refetch } = usePublishedAgreements(address);
+    const data = read.status === "present" ? read.value : null;
     const { withdraw } = useWithdrawAgreement();
     // Re-renders as each document is read and verified (the labels read the
     // session cache).
     useRegisteredAgreementsVersion();
-    const own = (data ?? []).filter((row) => hexEqual(row.registeredBy, address));
+    const own = data?.filter((row) => hexEqual(row.registeredBy, address));
     useEffect(() => {
         for (const row of data ?? []) void fetchRegisteredAgreement(row.agreementHash, row.contentURI);
     }, [data]);
@@ -87,11 +86,13 @@ function ReclaimAgreementRow({
             family="agreement"
             registrationKey={row.agreementHash}
             target={{ kind: "agreement", agreementHash: row.agreementHash }}
-            title={doc?.name || truncateHex(row.agreementHash, { head: 10, tail: 6 })}
+            // The document's own name, or nothing while it is unread — the
+            // registration key below is the row's identity, never a stand-in title.
+            title={doc?.name ?? null}
             meta={
                 doc
                     ? <>{clauseCount} clause{clauseCount === 1 ? "" : "s"}{" · block "}{row.blockNumber.toString()}</>
-                    : <>document not read yet{" · block "}{row.blockNumber.toString()}</>
+                    : <>block {row.blockNumber.toString()}</>
             }
             stakeWithdrawn={row.stakeWithdrawn}
             withdraw={withdraw}

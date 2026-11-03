@@ -393,7 +393,8 @@ function RegisteredAgreementsPanel({
 }) {
     const [registering, setRegistering] = useState(false);
     const [registerError, setRegisterError] = useState<string | null>(null);
-    const { data: liveAgreements, refetch: refetchAgreements } = usePublishedAgreements(undefined);
+    const { read: agreementsRead, refetch: refetchAgreements } = usePublishedAgreements(undefined);
+    const liveAgreements = agreementsRead.status === "present" ? agreementsRead.value : null;
     // Re-renders as each document is read and verified (the labels read the
     // session cache).
     useRegisteredAgreementsVersion();
@@ -483,7 +484,7 @@ function RegisteredAgreementsPanel({
                         Or bind a registered agreement as is &mdash; read live from the on-chain{" "}
                         <code className="font-mono">AgreementRegistry</code>.
                     </p>
-                    {liveAgreements === null ? (
+                    {agreementsRead.status === "absent" ? null : liveAgreements === null ? (
                         <p className="text-xs text-ink-muted" data-testid="drawer-agreements-loading">
                             Reading the registry&hellip;
                         </p>
@@ -493,7 +494,9 @@ function RegisteredAgreementsPanel({
                         </p>
                     ) : (
                         <ul className="space-y-1" data-testid="drawer-agreements-list">
-                            {liveAgreements.map((row) => {
+                            {/* Offered only once its document is read and
+                                verified — never a raw hash standing in for it. */}
+                            {liveAgreements.filter((row) => !!getRegisteredAgreement(row.agreementHash)).map((row) => {
                                 const bound = hexEqual(boundAgreementHash, row.agreementHash);
                                 return (
                                     <li key={row.agreementHash}>
@@ -616,10 +619,10 @@ function ClauseRegistryPanel({
     // for new compositions, so withdrawn-stake clauses drop here — while
     // orders already committed elsewhere still resolve under them (spec-loading is
     // unfiltered by design).
-    const { data: allRegisteredClauses } = useAllRegisteredClauses();
+    const { read: clausesRead } = useAllRegisteredClauses();
     const registeredClauses = useMemo(
-        () => allRegisteredClauses?.filter(isLiveRegistration) ?? null,
-        [allRegisteredClauses],
+        () => (clausesRead.status === "present" ? clausesRead.value.filter(isLiveRegistration) : null),
+        [clausesRead],
     );
     const { version: clauseSpecsVersion } = useClauseSpecs();
 
@@ -660,7 +663,7 @@ function ClauseRegistryPanel({
                                 (like, Merchant, Courier) activate as a whole; their events are
                                 attested at runtime as the work happens for coordination.
                             </p>
-                            {registeredClauses === null ? (
+                            {clausesRead.status === "absent" ? null : registeredClauses === null ? (
                                 <p
                                     className="text-xs text-ink-muted"
                                     data-testid="drawer-registry-loading"

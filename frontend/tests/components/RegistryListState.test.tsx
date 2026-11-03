@@ -10,11 +10,11 @@ import { render, screen } from "@testing-library/react";
 
 const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as const;
 
-type Scan = { data: unknown[] | null; isLoading: boolean; failed: boolean; error: string | null; refetch: () => void };
+type Scan = { read: { status: "pending" } | { status: "absent" } | { status: "present"; value: unknown[] }; refetch: () => void };
 
 const mocks = vi.hoisted(() => ({
     address: undefined as `0x${string}` | undefined,
-    scan: { data: null, isLoading: false, failed: false, error: null, refetch: () => {} } as Scan,
+    scan: { read: { status: "pending" }, refetch: () => {} } as Scan,
 }));
 
 vi.mock("next/link", async () => {
@@ -59,11 +59,11 @@ const LISTS = [
 describe("registration lists through RegistryListState", () => {
     beforeEach(() => {
         mocks.address = WALLET;
-        mocks.scan = { data: null, isLoading: false, failed: false, error: null, refetch: () => {} };
+        mocks.scan = { read: { status: "pending" }, refetch: () => {} };
     });
 
     it.each(LISTS)("%s renders nothing for a failed registry read: no empty-state sentence, no error text", (_name, List) => {
-        mocks.scan = { ...mocks.scan, data: [], failed: true, error: "rpc down" };
+        mocks.scan = { ...mocks.scan, read: { status: "absent" } };
         const { container } = render(<List />);
         expect(container.textContent ?? "").not.toMatch(/haven.t (registered|published)/);
         expect(container.textContent ?? "").not.toMatch(/rpc down|failed/i);
@@ -71,13 +71,13 @@ describe("registration lists through RegistryListState", () => {
     });
 
     it.each(LISTS)("%s shows its empty state for a resolved-empty read", (_name, List) => {
-        mocks.scan = { ...mocks.scan, data: [] };
+        mocks.scan = { ...mocks.scan, read: { status: "present", value: [] } };
         const { container } = render(<List />);
         expect(container.textContent ?? "").toMatch(/haven.t (registered|published)/);
     });
 
     it.each(LISTS)("%s shows a loading line only while the read is in flight", (_name, List) => {
-        mocks.scan = { ...mocks.scan, isLoading: true };
+        mocks.scan = { ...mocks.scan, read: { status: "pending" } };
         const { container } = render(<List />);
         expect(container.textContent ?? "").toMatch(/Loading/);
     });

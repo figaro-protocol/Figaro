@@ -36,13 +36,6 @@ export function AssemblyShapeLine({
     if (choice.state === "loading") {
         return <p className={`${className} text-ink-muted`}>Loading assembly content&hellip;</p>;
     }
-    if (choice.state === "error") {
-        return (
-            <p className={`${className} text-warning-fg`}>
-                Document unavailable (IPFS gateway?). On-chain identity is recorded regardless.
-            </p>
-        );
-    }
     if (choice.state === "loaded" && choice.agreementCount !== null && choice.clauses !== null) {
         return (
             <p className={`${className} text-ink-body`} data-testid={testId} title={choice.clauses.join(", ")}>

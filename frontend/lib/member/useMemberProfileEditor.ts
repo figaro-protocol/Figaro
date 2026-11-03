@@ -44,10 +44,13 @@ import {
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 
-/** What `MemberEditGate` renders while the editor isn't ready. */
+/** What `MemberEditGate` renders while the editor isn't ready: a wait while
+ *  a read is in flight, or nothing at all when a read the form depends on
+ *  failed (no error text, and no form — a blind save would clobber what the
+ *  read would have shown). */
 export type MemberEditGateState =
     | { kind: "waiting"; message: string }
-    | { kind: "error"; message: string; explainer: string };
+    | { kind: "absent" };
 
 export interface UseMemberProfileEditorOptions {
     /**
@@ -61,12 +64,6 @@ export interface UseMemberProfileEditorOptions {
         profile: MemberProfileMetadata,
         update: UseOnboardingStateResult["update"],
     ) => void;
-    /** Completes "editing ___ isn't safe" in the fetch-error explainer. */
-    errorNoun?: string;
-    /** What failed to load, in the fetch-error explainer. */
-    sourceNoun?: string;
-    /** What a blind save would clobber, in the fetch-error explainer. */
-    clobberNoun?: string;
     /**
      * Extra in-flight state (e.g. a catalog pin) that must also hold
      * off the redirect guard and be reflected in `saveInFlight`.
@@ -90,8 +87,9 @@ export interface UseMemberProfileEditorResult {
     saveInFlight: boolean;
     /** `updater.error` rendered for the form's `externalError` prop. */
     externalError: string | null;
-    /** Report a fetch failure from a caller-owned fetch (e.g. catalog). */
-    setFetchError: (message: string) => void;
+    /** Report a failed caller-owned read (e.g. the catalog): the gate is
+     *  then `absent` and the form never renders. */
+    markReadAbsent: () => void;
     /** Non-null while the form must not render; give it to `MemberEditGate`. */
     gate: MemberEditGateState | null;
 }
@@ -101,9 +99,6 @@ export function useMemberProfileEditor(
 ): UseMemberProfileEditorResult {
     const {
         seed,
-        errorNoun = "it",
-        sourceNoun = "profile",
-        clobberNoun = "fields",
         extraSaveInFlight = false,
         extraFetch,
     } = options;
@@ -111,20 +106,23 @@ export function useMemberProfileEditor(
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { data: registryData, isLoading: registryLoading } = useMemberProfile(address);
+    const { read: registration } = useMemberProfile(address);
+    const metadataURI = registration.status === "present" && registration.value.registered
+        ? registration.value.metadataURI
+        : null;
     const { update, loaded } = useOnboardingState(address);
 
     const [existingProfile, setExistingProfile] = useState<MemberProfileMetadata | null>(null);
-    const [fetchError, setFetchErrorState] = useState<string | null>(null);
+    const [readAbsent, setReadAbsent] = useState(false);
     const [seeded, setSeeded] = useState(false);
 
-    const updater = useUpdateMemberProfile(existingProfile, registryData?.[0] ?? null);
+    const updater = useUpdateMemberProfile(existingProfile, metadataURI);
     const saveInFlight = updater.isPending || updater.isConfirming || extraSaveInFlight;
 
     // Redirect unregistered wallets to onboarding — but only for a wallet
-    // that is CONNECTED and only on COMPLETED state: `!registryLoading &&
-    // !registryData` is a completed scan that found nothing (isLoading starts
-    // true in useMemberProfile), never a still-hydrating window. A wallet
+    // that is CONNECTED and only on the chain's ANSWER that it is not
+    // registered: a pending read (still hydrating) and an absent one (the
+    // read failed) never redirect. A wallet
     // that has not connected yet is never sent away — it may connect a
     // moment after mount, and the gate below waits for it. And never
     // navigate away mid-save — the redirect unmounts the form and kills the
@@ -132,30 +130,29 @@ export function useMemberProfileEditor(
     useEffect(() => {
         if (!mounted || saveInFlight) return;
         if (!isConnected || !address) return;
-        if (!registryLoading && !registryData) {
+        if (registration.status === "present" && !registration.value.registered) {
             router.replace("/members/manage");
         }
-    }, [mounted, saveInFlight, isConnected, address, registryLoading, registryData, router]);
+    }, [mounted, saveInFlight, isConnected, address, registration, router]);
 
     // Fetch the on-chain profile JSON.
     useEffect(() => {
-        if (!registryData) return;
-        const [metadataURI] = registryData;
+        if (!metadataURI) return;
         let canceled = false;
         // The ONE cached profile read path (lib/member/profileFetcher).
         fetchMemberProfile(metadataURI)
             .then((parsed) => {
                 if (canceled) return;
                 if (parsed) setExistingProfile(parsed);
-                else setFetchErrorState("Couldn't fetch or parse the member profile.");
+                else setReadAbsent(true);
             })
             .catch(() => {
-                if (!canceled) setFetchErrorState("Couldn't fetch profile from IPFS.");
+                if (!canceled) setReadAbsent(true);
             });
         return () => {
             canceled = true;
         };
-    }, [registryData]);
+    }, [metadataURI]);
 
     // Seed the wizard state once everything the caller's form reads is
     // fetched. The `seeded` flag makes the seed run exactly once even
@@ -184,8 +181,8 @@ export function useMemberProfileEditor(
         }
     }, [updater.isSaved, router]);
 
-    const setFetchError = useCallback((message: string) => {
-        setFetchErrorState(message);
+    const markReadAbsent = useCallback(() => {
+        setReadAbsent(true);
     }, []);
 
     let gate: MemberEditGateState | null = null;
@@ -193,14 +190,10 @@ export function useMemberProfileEditor(
         gate = { kind: "waiting", message: "Loading…" };
     } else if (!isConnected) {
         gate = { kind: "waiting", message: "Connect your wallet to edit." };
-    } else if (registryLoading || !registryData) {
+    } else if (registration.status === "absent" || readAbsent) {
+        gate = { kind: "absent" };
+    } else if (!metadataURI) {
         gate = { kind: "waiting", message: "Reading registry…" };
-    } else if (fetchError) {
-        gate = {
-            kind: "error",
-            message: fetchError,
-            explainer: `Couldn't load the existing ${sourceNoun}, so editing ${errorNoun} isn't safe — saving without the existing ${clobberNoun} would clobber them.`,
-        };
     } else if (!existingProfile) {
         gate = { kind: "waiting", message: "Fetching profile from IPFS…" };
     } else if (extraFetch?.pending) {
@@ -217,7 +210,7 @@ export function useMemberProfileEditor(
         externalError: updater.error
             ? (updater.error.message ?? String(updater.error))
             : null,
-        setFetchError,
+        markReadAbsent,
         gate,
     };
 }

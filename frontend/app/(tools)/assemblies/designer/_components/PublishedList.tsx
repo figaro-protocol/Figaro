@@ -31,7 +31,7 @@ import { RegistryListState } from "@/components/shared/RegistryListState";
 export function PublishedList() {
     const router = useRouter();
     const { address } = useAccount();
-    const read = useAssemblyChoices(address);
+    const { read } = useAssemblyChoices(address);
     const [forking, setForking] = useState<string | null>(null);
 
     const handleFork = useCallback(

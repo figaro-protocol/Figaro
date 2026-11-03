@@ -99,11 +99,15 @@ export function OnboardingReview() {
     const { address, isConnected } = useAccount();
     const { state, clear } = useOnboardingState(address);
 
-    const { data: profileData } = useMemberProfile(address);
-    const isRegistered = !!profileData;
+    // The register-or-update choice rests on the chain's answer: until the
+    // registration read is present, neither is offered (a failed read is
+    // never "unregistered").
+    const { read: registration } = useMemberProfile(address);
+    const registrationKnown = registration.status === "present";
+    const isRegistered = registration.status === "present" && registration.value.registered;
 
-    const { data: depositRaw } = useRegistrationDeposit();
-    const deposit = depositRaw as bigint | undefined;
+    const depositRead = useRegistrationDeposit();
+    const deposit = depositRead.status === "present" ? depositRead.value : undefined;
     const { data: cooldownRaw } = useWithdrawalCooldown();
     const cooldown = cooldownPhrase(cooldownRaw as bigint | undefined);
 
@@ -394,8 +398,8 @@ export function OnboardingReview() {
                 </p>
             </Card>
 
-            {/* Publish */}
-            <Card className="p-6 space-y-3">
+            {/* Publish — only once the registry has answered. */}
+            {registrationKnown && <Card className="p-6 space-y-3">
                 <h2 className="text-heading-h2 text-ink-heading">
                     {isRegistered ? "Update your registered profile" : "Publish"}
                 </h2>
@@ -428,7 +432,7 @@ export function OnboardingReview() {
                         keeps you surfaced.
                     </p>
                 )}
-            </Card>
+            </Card>}
 
             {(pinError || onChainError) && (
                 <p className="text-sm text-error-fg" role="alert">
@@ -455,14 +459,16 @@ export function OnboardingReview() {
                 >
                     ← Back to wizard
                 </Link>
-                <Button
-                    type="button"
-                    onClick={handlePublish}
-                    disabled={busy || !!error}
-                    data-testid="review-confirm-publish"
-                >
-                    {isRegistered ? "Update profile" : "Publish & register"}
-                </Button>
+                {registrationKnown && (
+                    <Button
+                        type="button"
+                        onClick={handlePublish}
+                        disabled={busy || !!error}
+                        data-testid="review-confirm-publish"
+                    >
+                        {isRegistered ? "Update profile" : "Publish & register"}
+                    </Button>
+                )}
             </div>
         </div>
     );

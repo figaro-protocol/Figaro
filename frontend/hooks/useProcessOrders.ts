@@ -14,6 +14,10 @@
  * folded process into the UI `Order` shape.
  * Agreement bodies are NOT hydrated here; useProcessAgreements owns that.
  *
+ * Both hooks answer with a `NetworkRead<Order[]>`: `pending` until the
+ * history read lands, `present` with the folded orders (an empty process or
+ * wallet is `present([])`), `absent` when the read failed — never `[]`.
+ *
  * FigaroCore uses a unified `commit()` (no separate offer/accept), and
  * OrderCommitted events carry salt + deadline rather than bond + timestamp;
  * bonds are derived from payment and cumulativeValue at read time.
@@ -25,13 +29,14 @@ import { CONTRACTS } from "@/lib/kernel/contracts";
 import { Order, orderFromSdk, useOrderStore } from "@/lib/kernel/store";
 import { getCoreEvents, useWatchOrderEvents, walletOrders } from "@/lib/kernel/indexer";
 import { Topology, type CoreEvents, type Hex } from "@figaro-protocol/sdk";
+import { PENDING, present, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
-export function useProcessOrders(processId: string | null): Order[] {
-    const [orders, setOrders] = useState<Order[]>([]);
+export function useProcessOrders(processId: string | null): NetworkRead<Order[]> {
+    const [orders, setOrders] = useState<NetworkRead<Order[]>>(PENDING);
     const publicClient = usePublicClient();
     const contractAddr = CONTRACTS.core || undefined;
     const processReloadKey = useOrderStore((s) => s.processReloadKey);
@@ -49,12 +54,17 @@ export function useProcessOrders(processId: string | null): Order[] {
     // so an event landing mid-fetch unions with the history instead of racing
     // it.
     const topologyRef = useRef<Topology | null>(null);
+    // Whether the history read for the current topology landed: a live batch
+    // projected over a FAILED history would present a partial process as the
+    // whole one, so the watchers project only once the history is in.
+    const historyLoadedRef = useRef(false);
 
     const shouldLoad = !!processId;
 
     const projectOrders = useCallback((pid: string | null) => {
+        if (!historyLoadedRef.current) return;
         const process = pid ? topologyRef.current?.getProcess(pid as Hex) : undefined;
-        setOrders(process ? [...process.orders.values()].map(orderFromSdk) : []);
+        setOrders(present(process ? [...process.orders.values()].map(orderFromSdk) : []));
     }, []);
 
     // ------------------------------------------------------------------
@@ -63,26 +73,26 @@ export function useProcessOrders(processId: string | null): Order[] {
     useEffect(() => {
         if (ordersForProcessRef.current !== processId) {
             ordersForProcessRef.current = processId;
-            setOrders([]);
+            setOrders(PENDING);
         }
         topologyRef.current = new Topology();
         const chainId = publicClient?.chain?.id;
+        historyLoadedRef.current = false;
         if (!publicClient || !chainId || !contractAddr || !shouldLoad) return;
 
         let canceled = false;
         const topology = topologyRef.current;
 
-        (async () => {
-            try {
-                const { events } = await getCoreEvents(publicClient, chainId);
-                if (canceled) return;
-
-                topology.applyEvents(events);
-                projectOrders(processId);
-            } catch (err) {
-                if (!canceled) console.error("useProcessOrders indexer error:", err);
+        void readNetwork("useProcessOrders", () => getCoreEvents(publicClient, chainId)).then((history) => {
+            if (canceled) return;
+            if (history.status !== "present") {
+                setOrders(history);
+                return;
             }
-        })();
+            topology.applyEvents(history.value.events);
+            historyLoadedRef.current = true;
+            projectOrders(processId);
+        });
 
         return () => {
             canceled = true;
@@ -116,8 +126,8 @@ export function useProcessOrders(processId: string | null): Order[] {
  * bounded (`walletOrders`, the SDK's `walletRecord` filter, never the whole
  * chain), full Orders (checkoutHash + parties), reload-key aware.
  */
-export function useWalletOrders(): Order[] {
-    const [orders, setOrders] = useState<Order[]>([]);
+export function useWalletOrders(): NetworkRead<Order[]> {
+    const [orders, setOrders] = useState<NetworkRead<Order[]>>(PENDING);
     const publicClient = usePublicClient();
     const { address } = useAccount();
     const contractAddr = CONTRACTS.core || undefined;
@@ -126,22 +136,19 @@ export function useWalletOrders(): Order[] {
     useEffect(() => {
         const chainId = publicClient?.chain?.id;
         if (!publicClient || !chainId || !contractAddr || !address) {
-            setOrders([]);
+            setOrders(PENDING);
             return;
         }
         let canceled = false;
 
-        (async () => {
-            try {
-                const { events } = await getCoreEvents(publicClient, chainId);
-                if (canceled) return;
-                // An order where the wallet is BOTH parties appears once here
-                // (this is a loader, not the two-sided order table).
-                setOrders(walletOrders(events, address).map(orderFromSdk));
-            } catch (err) {
-                if (!canceled) console.error("useWalletOrders indexer error:", err);
-            }
-        })();
+        void readNetwork("useWalletOrders", async () => {
+            const { events } = await getCoreEvents(publicClient, chainId);
+            // An order where the wallet is BOTH parties appears once here
+            // (this is a loader, not the two-sided order table).
+            return walletOrders(events, address).map(orderFromSdk);
+        }).then((next) => {
+            if (!canceled) setOrders(next);
+        });
 
         return () => { canceled = true; };
     }, [publicClient, contractAddr, address, processReloadKey]);

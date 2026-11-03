@@ -43,6 +43,7 @@ vi.mock("@/lib/kernel/eventCache", () => ({
 import { useWalletProcessIds } from "@/hooks/useWalletProcessIds";
 import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { useWalletProcessRows } from "@/lib/kernel/walletProcessQueries";
+import { mapRead, present } from "@/lib/shared/networkRead";
 
 /** A log reaches every watcher a node would report it to: the watcher's
  *  address set names the emitter, and its event filter (if any) matches. */
@@ -81,13 +82,13 @@ describe("a batch-path order event reaches the live watchers", () => {
         const { result } = renderHook(() => useProcessOrders(PROCESS));
         await waitFor(() => expect(watchers.size).toBeGreaterThan(0));
         act(() => land(batchCommit()));
-        await waitFor(() => expect(result.current.map((o) => o.processId)).toEqual([PROCESS]));
+        await waitFor(() => expect(mapRead(result.current, (orders) => orders.map((o) => o.processId))).toEqual(present([PROCESS])));
     });
 
     it("useWalletProcessRows", async () => {
         const { result } = renderHook(() => useWalletProcessRows("buyer"));
-        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        await waitFor(() => expect(result.current.read.status).toBe("present"));
         act(() => land(batchCommit()));
-        await waitFor(() => expect(result.current.rows.map((r) => r.processId)).toEqual([PROCESS]));
+        await waitFor(() => expect(mapRead(result.current.read, (rows) => rows.map((r) => r.processId))).toEqual(present([PROCESS])));
     });
 });
