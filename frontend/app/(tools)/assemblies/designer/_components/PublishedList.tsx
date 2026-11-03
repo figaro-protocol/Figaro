@@ -10,11 +10,11 @@
  * about an assembly.
  *
  * Each row has a Fork button (re-uses the hydrated assembly the hook already
- * fetched) and an Inspect link to /view/[slug]. No-wallet, empty, and
- * loading states each render their own message.
+ * fetched) and an Inspect link to /view/[slug]. States are
+ * `RegistryListState`'s: wallet, loading, failed (nothing), empty, list.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "@/components/shared/Link";
 import { useRouter } from "next/navigation";
@@ -26,14 +26,13 @@ import {
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { RegistryListState } from "@/components/shared/RegistryListState";
 
 export function PublishedList() {
     const router = useRouter();
     const { address } = useAccount();
-    const { data, isLoading } = useAssemblyChoices(address);
-    const [mounted, setMounted] = useState(false);
+    const read = useAssemblyChoices(address);
     const [forking, setForking] = useState<string | null>(null);
-    useEffect(() => setMounted(true), []);
 
     const handleFork = useCallback(
         async (choice: AssemblyChoice) => {
@@ -57,33 +56,15 @@ export function PublishedList() {
         [router],
     );
 
-    if (!mounted) return null;
-
-    if (!address) {
-        return (
-            <p className="text-sm text-ink-muted" data-testid="published-no-wallet">
-                Connect a wallet to see your published assemblies.
-            </p>
-        );
-    }
-
-    if (isLoading || data === null) {
-        return (
-            <p className="text-sm text-ink-muted" data-testid="published-loading">
-                Loading registered assemblies…
-            </p>
-        );
-    }
-
-    if (data.length === 0) {
-        return (
-            <p className="text-sm text-ink-muted" data-testid="published-empty">
-                You haven&apos;t published any assemblies yet. Publish a draft from the designer to see it here.
-            </p>
-        );
-    }
-
     return (
+        <RegistryListState
+            read={read}
+            testId="published"
+            walletHint="Connect a wallet to see your published assemblies."
+            loading="Loading registered assemblies…"
+            empty="You haven't published any assemblies yet. Publish a draft from the designer to see it here."
+        >
+            {(data) => (
         <ul className="space-y-3" data-testid="published-list">
             {data.map((choice) => (
                 <li
@@ -131,6 +112,8 @@ export function PublishedList() {
                 </li>
             ))}
         </ul>
+            )}
+        </RegistryListState>
     );
 }
 

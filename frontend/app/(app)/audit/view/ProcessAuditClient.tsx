@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { QueryParamPage, processIdParam } from "@/components/shared/QueryParamPage";
 import { ProcessFinancialsView } from "../_components/ProcessFinancialsView";
 import { ProcessClauseEvidence } from "../_components/ProcessClauseEvidence";
 import { HashVerifier } from "../_components/HashVerifier";
@@ -43,18 +43,17 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
     );
 }
 
+/** The page body: the `process` query parameter through `QueryParamPage`, which
+ *  renders nothing for a missing or malformed process id. */
 export function ProcessAuditClient() {
-    const searchParams = useSearchParams();
-    const processId = searchParams.get("process");
+    return (
+        <QueryParamPage param="process" validate={processIdParam}>
+            {(processId) => <ProcessAudit processId={processId} />}
+        </QueryParamPage>
+    );
+}
 
-    if (!processId) {
-        return (
-            <div className="container mx-auto px-6 py-12">
-                <p className="text-sm text-ink-muted">No process id in URL.</p>
-            </div>
-        );
-    }
-
+function ProcessAudit({ processId }: { processId: `0x${string}` }) {
     return (
         <div className="container mx-auto px-6 py-10 max-w-5xl space-y-12" data-testid="audit-page">
             <header className="space-y-2">

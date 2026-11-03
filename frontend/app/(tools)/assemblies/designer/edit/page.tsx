@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { QueryParamPage, slugParam } from "@/components/shared/QueryParamPage";
 import { EditAssemblyClient } from "./EditAssemblyClient";
 
 /**
@@ -13,27 +12,13 @@ import { EditAssemblyClient } from "./EditAssemblyClient";
  * on-chain assembly is the separate Fork action on `PublishedList`,
  * which spawns a new local draft under a fresh slug before routing here.
  *
- * The slug is an open-world id, so it rides in a query param read
- * client-side; the page prerenders to a static shell. See
- * `docs/FRONTEND.md` § "Static export".
+ * The slug is an open-world id, so it rides in a query param
+ * (`QueryParamPage`); a missing slug renders nothing.
  */
-function EditAssemblyContent() {
-    const searchParams = useSearchParams();
-    const slug = searchParams.get("slug") ?? "";
-
-    return <EditAssemblyClient slug={slug} />;
-}
-
 export default function Page() {
     return (
-        <Suspense
-            fallback={
-                <div className="container mx-auto px-6 py-12">
-                    <p className="text-sm text-ink-muted">Loading…</p>
-                </div>
-            }
-        >
-            <EditAssemblyContent />
-        </Suspense>
+        <QueryParamPage param="slug" validate={slugParam}>
+            {(slug) => <EditAssemblyClient slug={slug} />}
+        </QueryParamPage>
     );
 }

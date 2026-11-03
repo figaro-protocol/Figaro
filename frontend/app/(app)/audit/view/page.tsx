@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { withOg } from "@/lib/shared/pageMetadata";
 import { ProcessAuditClient } from "./ProcessAuditClient";
 
@@ -31,19 +30,10 @@ export const metadata: Metadata = withOg({
  * are the connected wallet's own.
  *
  * The processId is an open-world id, so it rides in a query param read
- * client-side (`ProcessAuditClient` via `useSearchParams`); the page
- * prerenders to a static shell. See `docs/FRONTEND.md` § "Static export".
+ * client-side (`ProcessAuditClient` through `QueryParamPage`, which holds
+ * the Suspense boundary); the page prerenders to a static shell. See
+ * `docs/FRONTEND.md` § "Static export".
  */
 export default function Page() {
-    return (
-        <Suspense
-            fallback={
-                <div className="container mx-auto px-6 py-12">
-                    <p className="text-sm text-ink-muted">Loading…</p>
-                </div>
-            }
-        >
-            <ProcessAuditClient />
-        </Suspense>
-    );
+    return <ProcessAuditClient />;
 }
