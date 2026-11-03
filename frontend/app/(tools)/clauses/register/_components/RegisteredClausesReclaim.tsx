@@ -14,13 +14,13 @@
  * VERIFIED in-flight trades compose the clause and surfaces the party-private
  * caveat otherwise — the same pattern as ViewAssemblyClient's reclaim.
  *
- * Mirrors `ClausesList`'s states: no-wallet, loading, empty, list.
+ * States are `RegistryListState`'s: wallet, loading, failed (nothing), empty, list.
  */
 
 import { useEffect, useRef } from "react";
 import Link from "@/components/shared/Link";
 import { useAccount } from "wagmi";
-import { useMounted } from "@/hooks/useMounted";
+import { RegistryListState } from "@/components/shared/RegistryListState";
 import { useRegistryWriteVersion } from "@/lib/protocol/registryWrites";
 import {
     useRegisteredClausesByWallet,
@@ -33,9 +33,9 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export function RegisteredClausesReclaim() {
-    const mounted = useMounted();
     const { address } = useAccount();
-    const { data, isLoading, refetch } = useRegisteredClausesByWallet(address);
+    const read = useRegisteredClausesByWallet(address);
+    const { refetch } = read;
     const { withdraw } = useWithdrawClause();
     // A registration confirmed by the form above is a write this scan ran
     // before: read the events again when the write signal changes.
@@ -50,45 +50,33 @@ export function RegisteredClausesReclaim() {
     // state changes as specs resolve, re-rendering the rows against the cache.
     useClauseSpecs();
 
-    if (!mounted) return null;
-
-    if (!address) {
-        return (
-            <p className="text-sm text-ink-muted" data-testid="clauses-reclaim-no-wallet">
-                Connect a wallet to see the clauses you registered.
-            </p>
-        );
-    }
-
-    if (isLoading || data === null) {
-        return (
-            <p className="text-sm text-ink-muted" data-testid="clauses-reclaim-loading">
-                Loading your registered clauses…
-            </p>
-        );
-    }
-
-    if (data.length === 0) {
-        return (
-            <p className="text-sm text-ink-muted" data-testid="clauses-reclaim-empty">
-                You haven&apos;t registered any clauses yet. Paste a spec above, or browse the{" "}
-                <Link href="/clauses" className="underline">protocol-tier clauses</Link>{" "}
-                to see what&apos;s in force.
-            </p>
-        );
-    }
-
     return (
-        <ul className="space-y-3" data-testid="clauses-reclaim-list">
-            {data.map((clause) => (
-                <ReclaimClauseRow
-                    key={`${clause.clauseKey}-${clause.blockNumber.toString()}`}
-                    clause={clause}
-                    withdraw={withdraw}
-                    onReclaimed={refetch}
-                />
-            ))}
-        </ul>
+        <RegistryListState
+            read={read}
+            testId="clauses-reclaim"
+            walletHint="Connect a wallet to see the clauses you registered."
+            loading="Loading your registered clauses…"
+            empty={
+                <>
+                    You haven&apos;t registered any clauses yet. Paste a spec above, or browse the{" "}
+                    <Link href="/clauses" className="underline">protocol-tier clauses</Link>{" "}
+                    to see what&apos;s in force.
+                </>
+            }
+        >
+            {(data) => (
+                <ul className="space-y-3" data-testid="clauses-reclaim-list">
+                    {data.map((clause) => (
+                        <ReclaimClauseRow
+                            key={`${clause.clauseKey}-${clause.blockNumber.toString()}`}
+                            clause={clause}
+                            withdraw={withdraw}
+                            onReclaimed={refetch}
+                        />
+                    ))}
+                </ul>
+            )}
+        </RegistryListState>
     );
 }
 

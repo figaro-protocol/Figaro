@@ -8,11 +8,6 @@
  *      with a name. Listed on the designer landing page; can be loaded back
  *      via the canvas. Keyed by slug under figaro:designer:drafts:<slug>;
  *      an index lives at figaro:designer:drafts.
- *
- * Synthetic agreements (saved by syntheticProcess via saveAgreement) live
- * separately under figaro:agreement:<hash> and are NOT garbage-collected
- * here — they're keyed by content-hash so duplication is cheap, and the
- * topology / lens lookups assume they're available.
  */
 
 import type { Order } from "@/lib/kernel/store";

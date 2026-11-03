@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useAccount, useChainId, useWalletClient } from "wagmi";
-import { formatToken } from "@/lib/shared/utils";
+import { tokenFigure } from "@/lib/shared/utils";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import {
@@ -87,7 +87,7 @@ interface CommitmentSharePanelProps {
 export function CommitmentSharePanel({
     payload,
     step,
-    tokenDecimals = 18,
+    tokenDecimals,
     onCopyLink,
     qrSize = 200,
 }: CommitmentSharePanelProps) {
@@ -199,7 +199,7 @@ export function CommitmentSharePanel({
                 </div>
                 <div className="flex justify-between">
                     <span>Payment</span>
-                    <span>{formatToken(commitment.payment, tokenDecimals)} tokens</span>
+                    <span>{tokenFigure(commitment.payment, tokenDecimals)} tokens</span>
                 </div>
                 {!isRoot && (
                     <div className="flex justify-between">

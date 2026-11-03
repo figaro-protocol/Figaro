@@ -100,13 +100,3 @@ export async function getHandoffChannel(
         return createXmtpChannel(address, signMessage);
     });
 }
-
-/** Remove a cached channel (e.g. on wallet disconnect). */
-function destroyCoordinationChannel(address: string): void {
-    const key = address.toLowerCase();
-    const ch = channelCache.get(key);
-    if (ch) {
-        ch.destroy();
-        channelCache.delete(key);
-    }
-}

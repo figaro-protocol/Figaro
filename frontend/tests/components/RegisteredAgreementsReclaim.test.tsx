@@ -101,10 +101,10 @@ describe("RegisteredAgreementsReclaim", () => {
         expect(screen.getByTestId("agreements-reclaim-empty")).toBeTruthy();
     });
 
-    it("shows a failed registry read as a failure, never as an empty list", () => {
+    it("renders nothing for a failed registry read, never an empty list or error text", () => {
         mocks.scan = { ...mocks.scan, data: [], failed: true, error: "rpc down" };
-        render(<RegisteredAgreementsReclaim />);
-        expect(screen.getByTestId("agreements-reclaim-failed").textContent).toMatch(/rpc down/);
+        const { container } = render(<RegisteredAgreementsReclaim />);
+        expect(container.textContent).toBe("");
         expect(screen.queryByTestId("agreements-reclaim-empty")).toBeNull();
     });
 

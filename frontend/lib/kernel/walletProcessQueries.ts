@@ -19,20 +19,11 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { useAccount, useChainId, usePublicClient, useWatchContractEvent } from "wagmi";
-import {
-    OrderState,
-    parseOrderCommittedLogs,
-    parseOrderResolvedLogs,
-    type Address,
-    type Order,
-} from "@figaro-protocol/sdk";
+import { useAccount, useChainId, usePublicClient } from "wagmi";
+import { OrderState, type Address, type Order } from "@figaro-protocol/sdk";
 import { projectProcessGraph, walletRecord } from "@figaro-protocol/sdk/derive";
-import {
-    getAllOrderCommitted,
-    getAllOrderResolved,
-} from "@/lib/kernel/indexer";
-import { CONTRACTS, CORE_ABI } from "@/lib/kernel/contracts";
+import { getCoreEvents, useWatchOrderEvents } from "@/lib/kernel/indexer";
+import { CONTRACTS } from "@/lib/kernel/contracts";
 
 /** The two roles in a Figaro order commitment. */
 export type PartyRole = "buyer" | "seller";
@@ -63,19 +54,17 @@ export interface ProcessRow {
     isResolved: boolean;
 }
 
-/** The raw-log shape the SDK parsers take — cached rows carry data/topics, so
- *  the one decoder runs over them directly. */
-type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
-
 /**
  * Reads the connected wallet's commitments filtered by role. For
  * `role: "buyer"` returns one row per process where the wallet is the
  * rootBuyer (the root commit). For `role: "seller"` returns one row per
- * committed order the wallet sells — root or sub-order alike.
+ * committed order the wallet sells — root or sub-order alike. `failed` is a
+ * read that did not complete: the rows are then unknown, never empty.
  */
 export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): {
     rows: ProcessRow[];
     isLoading: boolean;
+    failed: boolean;
 } {
     // The rows of an address. The connected wallet's by default; any address
     // when a reader names one — every order is public, and reading needs no wallet.
@@ -85,6 +74,7 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
     const chainId = useChainId();
     const [rows, setRows] = useState<ProcessRow[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [failed, setFailed] = useState(false);
     const [tick, setTick] = useState(0);
 
     useEffect(() => {
@@ -94,22 +84,16 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
         }
         let canceled = false;
         setIsLoading(true);
+        setFailed(false);
 
         (async () => {
             try {
                 // The SDK fold — the same one `/data/explore` answers wallet
                 // history with — fed from the cached logs; only the row
                 // mapping below is this hook's own.
-                const [committed, resolved] = await Promise.all([
-                    getAllOrderCommitted(publicClient, chainId),
-                    getAllOrderResolved(publicClient, chainId),
-                ]);
+                const { events } = await getCoreEvents(publicClient, chainId);
                 if (canceled) return;
-                const graph = projectProcessGraph({
-                    orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
-                    orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
-                    processResolved: [],
-                });
+                const graph = projectProcessGraph(events);
                 const record = walletRecord(graph, address as Address);
 
                 const toRow = (order: Order, counterpartyOf: (o: Order) => string): ProcessRow => ({
@@ -143,7 +127,10 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
                 if (!canceled) setRows(built);
             } catch (cause) {
                 console.warn("[useWalletProcessRows] fetch failed", cause);
-                if (!canceled) setRows([]);
+                if (!canceled) {
+                    setRows([]);
+                    setFailed(true);
+                }
             } finally {
                 if (!canceled) setIsLoading(false);
             }
@@ -152,29 +139,12 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
         return () => { canceled = true; };
     }, [address, publicClient, chainId, role, tick]);
 
-    // Re-fetch on new commits / resolutions for the connected wallet.
-    // `onLogs` MUST be reference-stable: wagmi's useWatchContractEvent keys its
-    // effect on it, so an inline arrow tears down and recreates the event
-    // filter on every render — a filter created after the block that carried
-    // the event never reports it, and an instance torn down before its first
-    // poll reports nothing. That gap is exactly a commit performed on this
-    // page (accept on /orders): the row never appeared without a reload.
+    // Re-fetch on new commits / resolutions, from every order emitter.
+    // `onEvents` is reference-stable so the watcher is created once: a
+    // filter created after the block that carried the event never reports
+    // it — exactly a commit performed on this page (accept on /orders).
     const bump = useCallback(() => setTick((t) => t + 1), []);
-    const realEnabled = !!address && !!CONTRACTS.core;
-    useWatchContractEvent({
-        address: (CONTRACTS.core as `0x${string}` | undefined),
-        abi: CORE_ABI,
-        eventName: "OrderCommitted",
-        onLogs: bump,
-        enabled: realEnabled,
-    });
-    useWatchContractEvent({
-        address: (CONTRACTS.core as `0x${string}` | undefined),
-        abi: CORE_ABI,
-        eventName: "OrderResolved",
-        onLogs: bump,
-        enabled: realEnabled,
-    });
+    useWatchOrderEvents(bump, !!address && !!CONTRACTS.core);
 
-    return { rows, isLoading };
+    return { rows, isLoading, failed };
 }

@@ -10,7 +10,7 @@
  * IPFS pin or evidence submission.
  */
 
-import type { PublicClient } from "viem";
+import { erc20Abi, type PublicClient } from "viem";
 import type { Order } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 import { getAllMemberRegistered, getActiveMembers } from "@/lib/protocol/membersRegistryIndexer";
@@ -142,6 +142,17 @@ export async function buildAuditBundlePdfBlob(
         }
     }
 
+    // The process token's decimals(), read from the chain; absent when unreadable.
+    let tokenDecimals: number | undefined;
+    const processCurrency = orders[0]?.currency as `0x${string}` | undefined;
+    if (publicClient && processCurrency) {
+        try {
+            tokenDecimals = Number(await publicClient.readContract({ address: processCurrency, abi: erc20Abi, functionName: "decimals" }));
+        } catch {
+            tokenDecimals = undefined;
+        }
+    }
+
     const { pdf, AuditBundlePdf } = await loadPdfModule();
     const doc = AuditBundlePdf({
         data: {
@@ -150,6 +161,7 @@ export async function buildAuditBundlePdfBlob(
             perOrderBundles,
             documents,
             timeline,
+            tokenDecimals,
             generatedAt: new Date(),
         },
     });

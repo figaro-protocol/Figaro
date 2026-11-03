@@ -71,21 +71,6 @@ export function forgetSignedUnsent(params: { address: string; chainId: number; o
     changes.bump();
 }
 
-/** Every signed, not-yet-relayed payload this wallet holds on this chain, in
- *  storage order. An entry that fails to deserialize is skipped, never thrown. */
-export function listSignedUnsent(params: { address: string; chainId: number }): SignedUnsentOrder[] {
-    const scope = readStore()[scopeKey(params.address, params.chainId)] ?? {};
-    const out: SignedUnsentOrder[] = [];
-    for (const [orderId, serialized] of Object.entries(scope)) {
-        try {
-            out.push({ orderId, payload: deserializeCommitmentPayload(serialized) });
-        } catch {
-            // an unreadable entry is absence
-        }
-    }
-    return out;
-}
-
 function subscribe(listener: () => void): () => void {
     const unsubscribe = changes.subscribe(listener);
     const onStorage = (e: StorageEvent) => { if (e.key === SIGNED_UNSENT_STORAGE_KEY) listener(); };

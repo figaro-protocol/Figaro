@@ -104,7 +104,9 @@ Three legitimately bundled categories (do NOT flag):
 **No fallbacks — absence is the representation.** A fallback *fabricates* network
 state: no `?? SOME_DEFAULT` on a network-derived render path, no coined stand-in
 pill/badge for an empty result. A resolved-empty read renders as absence; a
-*pending* fetch may show a loading state — loading is not absence.
+*pending* fetch may show a loading state — loading is not absence. A *failed* read
+is absence too: what it would have shown is not surfaced — no error text, no
+stand-in value, no assumed state.
 
 ---
 

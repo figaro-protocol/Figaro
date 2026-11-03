@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 /** A line in the buyer's cart — items selected from a seller's catalog.
  *  Internal to the store; consumers receive it structurally via `useCartStore`
@@ -28,16 +27,6 @@ interface CartItem {
      *  the checkout fold lands them on the matching clause leaves. Keyed by
      *  clause key → field values. */
     clauseValues?: Record<string, Record<string, unknown>>;
-    /** Data-market context: the data this item sells
-     *  (assembly assemblyHash × clause key × the posture the seller
-     *  co-produced on), copied from the catalog item so checkout can
-     *  show what is being licensed. The license TERMS ride `clauseValues`
-     *  like any catalog-filled clause. */
-    dataSold?: {
-        assemblyHash: `0x${string}`;
-        clauseKey: `0x${string}`;
-        posture: PartyRole;
-    };
 }
 
 interface CartStore {
@@ -55,13 +44,11 @@ interface CartStore {
      */
     removeLine: (catalogItemId: string, sellerId: string) => void;
     clearCart: () => void;
-    getTotalPrice: () => string;
-    getItemCount: () => number;
 }
 
 export const useCartStore = create<CartStore>()(
     persist(
-        (set, get) => ({
+        (set) => ({
             items: [],
 
             addItem: (newItem) =>
@@ -111,17 +98,6 @@ export const useCartStore = create<CartStore>()(
                 })),
 
             clearCart: () => set({ items: [] }),
-
-            getTotalPrice: () => {
-                const items = get().items;
-                const total = items.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
-                return total.toFixed(4);
-            },
-
-            getItemCount: () => {
-                const items = get().items;
-                return items.reduce((sum, item) => sum + item.quantity, 0);
-            },
         }),
         { name: "figaro-seller-cart" }
     )

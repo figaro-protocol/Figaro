@@ -16,8 +16,6 @@ import { MemberEditGate } from "@/components/members/MemberEditGate";
 import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
 import type {
     BuyerAssemblySubscription,
-    DisclosurePolicyEntry,
-    MemberProfileMetadata,
 } from "@/lib/member/memberProfileMetadata";
 import { OnboardingBuyerForm } from "@/components/members/OnboardingBuyerForm";
 
@@ -27,7 +25,6 @@ export function MemberEditBuyer() {
         seed: (existingProfile, update) => {
             update({
                 buyerAssemblies: existingProfile.buyerAssemblies ?? [],
-                disclosurePolicy: existingProfile.disclosurePolicy ?? [],
             });
         },
     });
@@ -36,20 +33,11 @@ export function MemberEditBuyer() {
         return <MemberEditGate gate={editor.gate} />;
     }
 
-    async function handleSave(
-        subscriptions: BuyerAssemblySubscription[],
-        disclosurePolicy: DisclosurePolicyEntry[],
-    ): Promise<void> {
-        // Absence is each field's no-declaration state — an emptied list
-        // CLEARS the field instead of pinning `[]`, so a member who never
-        // declared round-trips unchanged.
-        const patch: Partial<MemberProfileMetadata> = {};
-        const clear: ("buyerAssemblies" | "disclosurePolicy")[] = [];
-        if (subscriptions.length > 0) patch.buyerAssemblies = subscriptions;
-        else clear.push("buyerAssemblies");
-        if (disclosurePolicy.length > 0) patch.disclosurePolicy = disclosurePolicy;
-        else clear.push("disclosurePolicy");
-        await editor.updater.save(patch, clear.length > 0 ? { clear } : undefined);
+    async function handleSave(subscriptions: BuyerAssemblySubscription[]): Promise<void> {
+        // Absence is the field's no-declaration state: an emptied list CLEARS the field
+        // instead of pinning `[]`, so a member who never declared round-trips unchanged.
+        if (subscriptions.length > 0) await editor.updater.save({ buyerAssemblies: subscriptions });
+        else await editor.updater.save({}, { clear: ["buyerAssemblies"] });
     }
 
     return (

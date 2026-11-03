@@ -13,7 +13,8 @@
  */
 import { useState, useEffect } from "react";
 import type { Abi } from "viem";
-import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
+import { simulateWriteVerify } from "@/lib/shared/contractWrite";
+import type { RevertMessage } from "@/lib/shared/errors";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
 import { getMembersRegistry } from "@/lib/kernel/contracts";
 import { MEMBERS_REGISTRY_ABI } from "@figaro-protocol/sdk";
@@ -114,28 +115,73 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
 
 // ── Write hooks ───────────────────────────────────────────────────────────────
 
-// Each write hook below follows the canonical 4-step pattern:
-//   simulate → write → wait → status-check
-// Simulate runs before the wallet opens so the user sees a typed revert
-// (FigaroCore error name, decoded via the merged extractErrorMessage) instead
-// of a silent on-chain revert after submission. The returned `isSuccess`
-// is gated on `receipt.status === "success"` — `useWaitForTransactionReceipt`'s
-// own `isSuccess` flag fires on receipt-fetched, which is true even when
-// the transaction reverted.
+// Each write hook below sends through the shared simulate → send → verify
+// (`simulateWriteVerify`): a revert surfaces before the wallet opens,
+// translated by the registry's error name (`membersRegistryRevertMessage`).
+// The returned `isSuccess` is gated on `receipt.status === "success"` —
+// `useWaitForTransactionReceipt`'s own `isSuccess` flag fires on
+// receipt-fetched, which is true even when the transaction reverted.
+
+/** The `MembersRegistry` revert table, by error name — shared by these hooks
+ *  and the onboarding publish (`usePublishMemberProfile`). */
+export const membersRegistryRevertMessage: RevertMessage = (errorName) => {
+    switch (errorName) {
+        case "AlreadyRegistered":
+            return "This wallet is already registered. Update its profile instead, or switch to a fresh wallet.";
+        case "NotRegistered":
+            return "This wallet is not registered. Register it before updating its profile or leaving.";
+        case "InsufficientDeposit":
+            return "Registration stake mismatch — the value sent differs from the registry's `registrationDeposit`. Reload and try again.";
+        case "NothingPending":
+            return "No withdrawal is pending for this wallet.";
+        case "CooldownActive":
+            return "The stake is still locked: the withdrawal cooldown has not elapsed.";
+        case "TransferFailed":
+            return "The stake refund transfer failed. No state changed — retry.";
+        default:
+            return null;
+    }
+};
+
+/** The registry's `registrationDeposit`, read from the chain at the moment
+ *  of the write. A read that fails or returns no amount throws — the caller
+ *  sends nothing; there is no default stake. */
+export async function readRegistrationDeposit(
+    client: { readContract(args: { address: `0x${string}`; abi: Abi; functionName: string }): Promise<unknown> },
+    registry: `0x${string}`,
+): Promise<bigint> {
+    let deposit: unknown;
+    try {
+        deposit = await client.readContract({
+            address: registry,
+            abi: MEMBERS_REGISTRY_ABI as Abi,
+            functionName: "registrationDeposit",
+        });
+    } catch (err) {
+        throw new Error(
+            `The registration stake could not be read from MembersRegistry, so nothing was sent: ${err instanceof Error ? err.message : String(err)}`,
+        );
+    }
+    if (typeof deposit !== "bigint") {
+        throw new Error("MembersRegistry returned no registration stake, so nothing was sent.");
+    }
+    return deposit;
+}
 
 interface MembersRegistryWriteConfig {
     functionName: "register" | "updateProfile" | "requestWithdrawal" | "withdraw";
     args?: readonly unknown[];
-    value?: bigint;
+    /** `register` only: the stake is read from the chain inside `run`. */
+    payable?: true;
     failureMessage: string;
 }
 
 /**
- * Internal — the wagmi scaffold + guard-triple + simulate → write → verify
- * sequence shared by the four MembersRegistry write hooks below. Each public
- * hook wraps `run` with its own argument shape and failure message; the
- * reactive `isPending`/`isConfirming`/`isSuccess`/`error`/`hash` state and the
- * simulate-before-write discipline live here once.
+ * Internal — the wagmi scaffold + guard-triple shared by the four
+ * MembersRegistry write hooks below, sending through `simulateWriteVerify`.
+ * Each public hook wraps `run` with its own argument shape and failure
+ * message; the reactive `isPending`/`isConfirming`/`isSuccess`/`error`/`hash`
+ * state lives here once.
  */
 function useMembersRegistryWrite() {
     const client = usePublicClient();
@@ -152,25 +198,20 @@ function useMembersRegistryWrite() {
         if (!registry) throw new Error("MembersRegistry address not configured");
         if (!client) throw new Error("No public client available");
         if (!account) throw new Error("Wallet not connected");
-        const abi = MEMBERS_REGISTRY_ABI as Abi;
-        const { functionName, args = [], value, failureMessage } = config;
-        await client.simulateContract({
+        const { functionName, args = [], payable, failureMessage } = config;
+        const value = payable ? await readRegistrationDeposit(client, registry) : undefined;
+        return simulateWriteVerify({
+            client,
+            writeContractAsync,
             address: registry,
-            abi,
+            abi: MEMBERS_REGISTRY_ABI as Abi,
             functionName,
             args,
             value,
             account,
+            revertMessage: membersRegistryRevertMessage,
+            failureMessage,
         });
-        const txHash = await writeContractAsync({
-            address: registry,
-            abi,
-            functionName,
-            args,
-            value,
-        });
-        await verifyTxSuccess(client, txHash, failureMessage);
-        return txHash;
     }
 
     return { isPending, isConfirming, isSuccess, error, hash, run };
@@ -179,11 +220,13 @@ function useMembersRegistryWrite() {
 export function useRegisterMember() {
     const { isPending, isConfirming, isSuccess, error, hash, run } = useMembersRegistryWrite();
 
-    async function register(metadataURI: string, value?: bigint) {
+    /** Register with the stake the registry asks for, read from the chain
+     *  inside the write; an unread stake sends nothing. */
+    async function register(metadataURI: string) {
         return run({
             functionName: "register",
             args: [metadataURI],
-            value: value ?? 0n,
+            payable: true,
             failureMessage: "The member was not registered.",
         });
     }

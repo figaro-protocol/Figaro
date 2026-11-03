@@ -59,7 +59,7 @@ import { calculateBonds } from "@figaro-protocol/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual, normalizeAddressParam, ZERO_ADDRESS } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { formatToken, parseToken } from "@/lib/shared/utils";
+import { parseToken, tokenFigure } from "@/lib/shared/utils";
 import { useMemberBoundAssemblies, withBoundCoSellers } from "@/lib/member/useMemberBoundAssemblies";
 import { displayNameForAddress } from "@/lib/member/memberListing";
 import { formatMass, formatVolume } from "@/lib/member/unitConversion";
@@ -204,7 +204,6 @@ export function CheckoutView({ sellerAddress }: Props) {
         ?? "";
     const {
         decimals: tokenDecimals,
-        decimalsReady,
         balance: tokenBalance,
         needsAuthorization: needsApproval,
         authorize: approve,
@@ -213,6 +212,8 @@ export function CheckoutView({ sellerAddress }: Props) {
         signAndShare,
         order: { step: commitStep, error: commitError, payload },
     } = useCheckout(currency);
+    // Nothing is priced, parsed or shown as a magnitude until the chain has answered decimals().
+    const decimalsReady = tokenDecimals !== undefined;
     // Runtime inputs for any order that composes an on-network contract — the
     // clause's `block.runtime.fields`, filled at checkout (like the cart line items),
     // keyed by assembly node id then field name. Interface-agnostic: the form
@@ -336,7 +337,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // derivation the commit walk makes), the buyer's pick for the unbound
     // sub-orders. A race winner's price is already in the denomination, so
     // its node lists nothing here.
-    const listedKit = memberCatalog
+    const listedKit = memberCatalog && tokenDecimals !== undefined
         ? deriveKitBreakdown({
             pickedAssembly,
             leadAddress: memberCatalog.address as `0x${string}`,
@@ -423,7 +424,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // the venue quote; null while neither stands (the order is held).
     const editedAmount = (key: string): bigint | null => {
         const typed = translationEdits[key];
-        if (typed === undefined) return null;
+        if (typed === undefined || tokenDecimals === undefined) return null;
         try {
             const amount = parseToken(typed.trim(), tokenDecimals);
             return amount > 0n ? amount : null;
@@ -436,7 +437,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // One listed price as the amount per unit the buyer signs, in the
     // denomination: listed in the denomination, it is the price itself.
     const unitAmountFor = (key: string, listedPrice: string): bigint | null =>
-        translated.some((l) => l.key === key) ? translatedAmount(key) : parseToken(listedPrice || "0", tokenDecimals);
+        translated.some((l) => l.key === key) ? translatedAmount(key) : tokenDecimals === undefined ? null : parseToken(listedPrice || "0", tokenDecimals);
     const translationHeld = translated.some((l) => translatedAmount(l.key) === null);
     // The sub-orders whose amount per unit the buyer translated — the commit
     // walk and the breakdown read the SAME map, so shown = committed.
@@ -531,7 +532,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // The buyer's pick for an unbound sub-order, at the amount the buyer
     // signs for it (translated when its seller lists in another token).
     const pickedSelection = sellerSelection
-        ? { ...sellerSelection, price: formatToken(unitAmountFor("pick", sellerSelection.price) ?? 0n, tokenDecimals) }
+        ? { ...sellerSelection, price: tokenFigure(unitAmountFor("pick", sellerSelection.price) ?? 0n, tokenDecimals) }
         : null;
 
     // Multi-order price transparency — derived in lib/checkout/checkoutDerivations
@@ -539,7 +540,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Plain call (not useMemo): this section sits below the page's early
     // returns, where hooks can't run — and the pre-extraction code
     // recomputed per render too. The win is the PURITY, in lib.
-    const kitBreakdown = deriveKitBreakdown({
+    const kitBreakdown = tokenDecimals === undefined ? null : deriveKitBreakdown({
         pickedAssembly,
         leadAddress: memberCatalog.address as `0x${string}`,
         sellerCatalogs,
@@ -604,7 +605,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // assertion refuses a drift), so both read this single builder. Null until
     // the prerequisites the checkout guards on are present.
     const buildWalkParams = (): AssemblyCheckoutParams | null => {
-        if (!buyer || !pickedAssembly || !currency) return null;
+        if (!buyer || !pickedAssembly || !currency || tokenDecimals === undefined) return null;
         const manualSelections = buyerChoosesCoSeller && sellerSelection
             ? Object.fromEntries(buyerPickSubOrders.map(({ node }) => [
                 node.nodeId,
@@ -671,7 +672,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             racedNodeId: racedNode.nodeId,
             windowMs: policy.windowMs,
             maxCandidates: policy.maxCandidates,
-            quote: policy.ceiling ? { ceiling: parseToken(policy.ceiling, tokenDecimals) } : undefined,
+            quote: policy.ceiling && tokenDecimals !== undefined ? { ceiling: parseToken(policy.ceiling, tokenDecimals) } : undefined,
         });
     };
 
@@ -762,7 +763,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         if (cartItems.length === 0) return;
         if (hasInsufficientBalance && !fundingToken) {
             setCheckoutError(
-                `Insufficient balance. Required: ${formatToken(lockedTotal, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`
+                `Insufficient balance. Required: ${tokenFigure(lockedTotal, tokenDecimals)}, available: ${tokenFigure(balance, tokenDecimals)}`
                 + (fundingCandidates.length > 0 ? " — or fund your bond from another accepted token below." : ""),
             );
             return;
@@ -875,7 +876,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                         ?.find((t) => !!l.listedToken && hexEqual(t.address, l.listedToken))?.symbol ?? "";
                                     const quote = currentTranslations?.[l.key];
                                     const typed = translationEdits[l.key];
-                                    const shown = typed ?? (quote?.result ? formatToken(quote.result.amount, tokenDecimals) : "");
+                                    const shown = typed ?? (quote?.result ? tokenFigure(quote.result.amount, tokenDecimals) : "");
                                     return (
                                         <div key={l.key} className="space-y-1" data-testid={`payment-translation-${l.key}`}>
                                             <div className="flex items-center justify-between gap-2">
@@ -909,7 +910,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                 <p className="text-ink-muted" data-testid={`payment-translation-source-${l.key}`}>
                                                     Quote: {l.listedPrice} {listedSymbol} ={" "}
                                                     <span className="tabular-nums" data-testid={`payment-translation-quote-${l.key}`}>
-                                                        {formatToken(quote.result.amount, tokenDecimals)}
+                                                        {tokenFigure(quote.result.amount, tokenDecimals)}
                                                     </span>{" "}
                                                     {tokenSymbol}, from the {quote.result.source.venue} venue at{" "}
                                                     <span className="font-mono">{truncateHex(quote.result.source.router)}</span>.
@@ -936,7 +937,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             <div className="flex justify-between">
                                                 <span className="text-ink-body">{row.name}</span>
                                                 <span className="text-ink-primary tabular-nums">
-                                                    {formatToken(row.payment, tokenDecimals)}
+                                                    {tokenFigure(row.payment, tokenDecimals)}
                                                 </span>
                                             </div>
                                             {/* Rate derivation — the P&L shows HOW the figure was
@@ -952,7 +953,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                             ? `${row.pricing.resolvedUnits.toFixed(2)} ${row.pricing.item.rateUnit ?? "unit"} → billed ${row.pricing.billedQuantity}`
                                                             : `billed ${row.pricing.billedQuantity} ${row.pricing.item.rateUnit ?? "unit"}`}
                                                         {" × "}
-                                                        {formatToken(row.pricing.unitPrice, tokenDecimals)}
+                                                        {tokenFigure(row.pricing.unitPrice, tokenDecimals)}
                                                         {tokenSymbol ? ` ${tokenSymbol}` : ""}/{row.pricing.item.rateUnit ?? "unit"}
                                                     </span>
                                                 </div>
@@ -990,7 +991,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     <div className="flex justify-between border-t border-default pt-1.5 font-medium">
                                         <span className="text-ink-body">Total to all sellers</span>
                                         <span className="text-ink-primary tabular-nums" data-testid="cart-kit-total">
-                                            {formatToken(kitBreakdown.total, tokenDecimals)}
+                                            {tokenFigure(kitBreakdown.total, tokenDecimals)}
                                         </span>
                                     </div>
                                 </div>
@@ -998,7 +999,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 <div className="flex justify-between">
                                     <span className="text-ink-body">Payment to seller</span>
                                     <span className="text-ink-primary tabular-nums">
-                                        {formatToken(cartTotal, tokenDecimals)}
+                                        {tokenFigure(cartTotal, tokenDecimals)}
                                     </span>
                                 </div>
                             )}
@@ -1013,14 +1014,14 @@ export function CheckoutView({ sellerAddress }: Props) {
                             <div className="flex justify-between border-t border-default pt-1.5 font-semibold">
                                 <span className="text-ink-primary">Locked at commit</span>
                                 <span className="text-ink-primary tabular-nums" data-testid="checkout-locked-total">
-                                    {formatToken(lockedTotal, tokenDecimals)}
+                                    {tokenFigure(lockedTotal, tokenDecimals)}
                                 </span>
                             </div>
                             <p className="text-xs text-ink-body leading-relaxed" data-testid="checkout-bond-arithmetic">
-                                {formatToken(lockedTotal, tokenDecimals)}{tokenSymbol ? ` ${tokenSymbol}` : ""} = twice the
-                                {kitBreakdown ? " total" : " payment"}: {formatToken(planTotal, tokenDecimals)} transfers to
+                                {tokenFigure(lockedTotal, tokenDecimals)}{tokenSymbol ? ` ${tokenSymbol}` : ""} = twice the
+                                {kitBreakdown ? " total" : " payment"}: {tokenFigure(planTotal, tokenDecimals)} transfers to
                                 {kitBreakdown ? " the sellers" : " the seller"} when you resolve, and{" "}
-                                {formatToken(planTotal, tokenDecimals)} is your bond, refunded to you in the same
+                                {tokenFigure(planTotal, tokenDecimals)} is your bond, refunded to you in the same
                                 transaction.
                             </p>
                             <p className="text-[11px] text-ink-muted pt-1.5 leading-relaxed" data-testid="checkout-bond-rationale">
@@ -1203,7 +1204,6 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 candidates={fundingCandidates}
                                 party={buyer}
                                 currencySymbol={tokenSymbol}
-                                decimals={tokenDecimals}
                                 fundingToken={fundingToken}
                                 onSelect={setFundingToken}
                                 authorization={buyerFunding}

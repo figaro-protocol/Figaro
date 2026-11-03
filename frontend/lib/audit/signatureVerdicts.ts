@@ -93,10 +93,7 @@ import { hexEqual } from "@/lib/shared/evm";
 type SignatureVerdict = "valid" | "invalid" | "unavailable" | "proved" | "indirect";
 
 /** What a reader needs to check the proof themselves, plus how tightly the
- *  order could be bound to a batch.
- *  @public — names the type of `OrderSignatureVerdicts.batch`, so any consumer
- *  reading batch provenance needs it even though nothing imports it by name
- *  today. */
+ *  order could be bound to a batch. */
 export interface BatchProvenance {
     /** The batch whose resolution re-emitted this order's attestation. null when
      *  the order could not be bound to a specific batch — the weaker but still

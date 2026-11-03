@@ -47,22 +47,6 @@ export function removeStorage(key: string, area: StorageArea = "local"): void {
     }
 }
 
-/** Every key held that starts with `prefix`. */
-export function listStorageKeys(prefix: string, area: StorageArea = "local"): string[] {
-    const storage = storageArea(area);
-    if (!storage) return [];
-    const keys: string[] = [];
-    try {
-        for (let i = 0; i < storage.length; i++) {
-            const key = storage.key(i);
-            if (key?.startsWith(prefix)) keys.push(key);
-        }
-    } catch {
-        return [];
-    }
-    return keys;
-}
-
 export function readJsonStorage<T>(key: string, fallback: T, area: StorageArea = "local"): T {
     const stored = readStorage(key, area);
     if (!stored) return fallback;

@@ -35,9 +35,9 @@ import { publicClient } from "@/lib/shared/wagmi";
 import {
     createUseWithdrawStake,
     sharedRegisterRevertMessage,
-    translateContractRevert,
     withdrawRevertMessage,
 } from "@/lib/protocol/useWithdrawStake";
+import type { RevertMessage } from "@/lib/shared/errors";
 import { createRegistryEventScan, useDesurfaced } from "@/lib/protocol/registryEventScan";
 import { fetchPinnedDocument, readRegistryBinding } from "@/lib/protocol/registryDocument";
 
@@ -57,9 +57,9 @@ export interface PublishedAgreement {
     stakeWithdrawn: boolean;
 }
 
-/** Map an `AgreementRegistry.registerAgreement` revert into a readable Error. */
-export function translateAgreementRegisterRevert(err: unknown, agreementHash: string): Error {
-    return translateContractRevert(err, (name, args) => {
+/** The `AgreementRegistry.registerAgreement` revert table, by error name. */
+export function agreementRegisterRevertMessage(agreementHash: string): RevertMessage {
+    return (name, args) => {
         switch (name) {
             case "AgreementAlreadyRegistered":
                 return `Agreement ${agreementHash} is already registered — the same clauses always key to one registration; bind the existing one.`;
@@ -70,7 +70,7 @@ export function translateAgreementRegisterRevert(err: unknown, agreementHash: st
             default:
                 return sharedRegisterRevertMessage(name, args);
         }
-    });
+    };
 }
 
 /** Reclaim an agreement's registration stake (`AgreementRegistry.withdrawDeposit`).
@@ -163,7 +163,8 @@ export function getRegisteredAgreement(agreementHash: string): Anchored<Register
 
 /** Test-only — put a registered agreement into this tab's verified cache, as
  *  a read of its binding and pinned document would: verified against its own
- *  key (`anchorRegisteredAgreement` over its canonical bytes). Returns the key. */
+ *  key (`anchorRegisteredAgreement` over its canonical bytes). Returns the key.
+ *  @internal */
 export function _primeRegisteredAgreement_TESTING_ONLY(doc: RegisteredAgreement): `0x${string}` {
     const agreementHash = agreementHashOf(doc);
     const anchored = anchorRegisteredAgreement(canonicalize(doc), agreementHash);

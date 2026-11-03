@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderHook } from "@testing-library/react";
 import {
     SIGNED_UNSENT_STORAGE_KEY,
     forgetSignedUnsent,
-    listSignedUnsent,
     rememberSignedUnsent,
+    useSignedUnsentOrders,
 } from "@/lib/checkout/signedUnsentOrders";
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 
@@ -39,6 +40,10 @@ const payload = (salt: bigint): CommitmentPayload => ({
     buyerSig: "0xdeadbeef",
 } as unknown as CommitmentPayload);
 
+/** What the orders surface reads: the hook's current value. */
+const readSignedUnsent = ({ address, chainId }: { address: string; chainId: number }) =>
+    renderHook(() => useSignedUnsentOrders(address, chainId)).result.current;
+
 beforeEach(() => {
     sessionStorage.removeItem(SIGNED_UNSENT_STORAGE_KEY);
 });
@@ -46,7 +51,7 @@ beforeEach(() => {
 describe("signedUnsentOrders", () => {
     it("remembers a signed payload and lists it back, bigints intact", () => {
         const orderId = rememberSignedUnsent({ address: BUYER, chainId: CHAIN, payload: payload(1n) });
-        const listed = listSignedUnsent({ address: BUYER, chainId: CHAIN });
+        const listed = readSignedUnsent({ address: BUYER, chainId: CHAIN });
         expect(listed.map((o) => o.orderId)).toEqual([orderId]);
         expect(listed[0]!.payload.commitment.payment).toBe(3n);
         expect(listed[0]!.payload.buyerSig).toBe("0xdeadbeef");
@@ -56,20 +61,20 @@ describe("signedUnsentOrders", () => {
         rememberSignedUnsent({ address: BUYER, chainId: CHAIN, payload: payload(1n) });
         rememberSignedUnsent({ address: BUYER, chainId: CHAIN, payload: payload(1n) });
         rememberSignedUnsent({ address: BUYER, chainId: CHAIN, payload: payload(2n) });
-        expect(listSignedUnsent({ address: BUYER, chainId: CHAIN })).toHaveLength(2);
+        expect(readSignedUnsent({ address: BUYER, chainId: CHAIN })).toHaveLength(2);
     });
 
     it("scopes by wallet and by chain", () => {
         rememberSignedUnsent({ address: BUYER, chainId: CHAIN, payload: payload(1n) });
-        expect(listSignedUnsent({ address: OTHER, chainId: CHAIN })).toEqual([]);
-        expect(listSignedUnsent({ address: BUYER, chainId: 11155111 })).toEqual([]);
-        expect(listSignedUnsent({ address: BUYER.toUpperCase(), chainId: CHAIN })).toHaveLength(1);
+        expect(readSignedUnsent({ address: OTHER, chainId: CHAIN })).toEqual([]);
+        expect(readSignedUnsent({ address: BUYER, chainId: 11155111 })).toEqual([]);
+        expect(readSignedUnsent({ address: BUYER.toUpperCase(), chainId: CHAIN })).toHaveLength(1);
     });
 
     it("forgets an order once it is sent or discarded", () => {
         const orderId = rememberSignedUnsent({ address: BUYER, chainId: CHAIN, payload: payload(1n) });
         forgetSignedUnsent({ address: BUYER, chainId: CHAIN, orderId });
-        expect(listSignedUnsent({ address: BUYER, chainId: CHAIN })).toEqual([]);
+        expect(readSignedUnsent({ address: BUYER, chainId: CHAIN })).toEqual([]);
         expect(sessionStorage.getItem(SIGNED_UNSENT_STORAGE_KEY)).toBe("{}");
     });
 

@@ -3620,6 +3620,7 @@ async fn admission_refuses_a_commit_whose_bonds_it_cannot_read() {
         funding: Some(figaro_sequencer::submitter::FundingGate {
             rpc_url: "http://127.0.0.1:1/v2/secret-key".to_string(),
             verifier: CORE,
+            chain_id: CHAIN_ID,
         }),
         ..test_app_state()
     };

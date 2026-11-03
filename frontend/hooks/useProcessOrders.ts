@@ -7,11 +7,11 @@
  * NOTHING (the hook is per-process) — for every order the connected wallet
  * is a party to, use `useWalletOrders` below.
  *
- * Loads history via getLogs on mount, then streams live updates via
- * watchContractEvent — reads come from the indexer only, no mock source.
- * The OrderCommitted→Order fold is the SDK's (`Topology`, the one owner of
- * that projection); this hook fetches cached logs, parses them with the SDK
- * parsers, and projects the folded process into the UI `Order` shape.
+ * Loads history through the indexer's one reader (`getCoreEvents`) on mount,
+ * then applies live updates from `useWatchOrderEvents` — both over every
+ * order emitter, no mock source. The OrderCommitted→Order fold is the SDK's
+ * (`Topology`, the one owner of that projection); this hook projects the
+ * folded process into the UI `Order` shape.
  * Agreement bodies are NOT hydrated here; useProcessAgreements owns that.
  *
  * FigaroCore uses a unified `commit()` (no separate offer/accept), and
@@ -20,26 +20,11 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAccount, usePublicClient, useWatchContractEvent } from "wagmi";
-import type { WatchContractEventOnLogsParameter } from "viem";
-import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
+import { useAccount, usePublicClient } from "wagmi";
+import { CONTRACTS } from "@/lib/kernel/contracts";
 import { Order, orderFromSdk, useOrderStore } from "@/lib/kernel/store";
-import {
-    getAllOrderCommitted,
-    getAllOrderResolved,
-} from "@/lib/kernel/indexer";
-import {
-    parseOrderCommittedLogs,
-    parseOrderResolvedLogs,
-    Topology,
-    type Hex,
-    type Address,
-} from "@figaro-protocol/sdk";
-import { projectProcessGraph, walletRecord } from "@figaro-protocol/sdk/derive";
-
-/** The raw-log shape the SDK parsers take — cached rows and watcher logs both
- *  carry data/topics, so the one decoder runs over either. */
-type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
+import { getCoreEvents, useWatchOrderEvents, walletOrders } from "@/lib/kernel/indexer";
+import { Topology, type CoreEvents, type Hex } from "@figaro-protocol/sdk";
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -81,25 +66,18 @@ export function useProcessOrders(processId: string | null): Order[] {
             setOrders([]);
         }
         topologyRef.current = new Topology();
-        if (!publicClient || !contractAddr || !shouldLoad) return;
+        const chainId = publicClient?.chain?.id;
+        if (!publicClient || !chainId || !contractAddr || !shouldLoad) return;
 
         let canceled = false;
-        const chainId = publicClient.chain?.id ?? 31337;
         const topology = topologyRef.current;
 
         (async () => {
             try {
-                const [committed, resolved] = await Promise.all([
-                    getAllOrderCommitted(publicClient, chainId),
-                    getAllOrderResolved(publicClient, chainId),
-                ]);
+                const { events } = await getCoreEvents(publicClient, chainId);
                 if (canceled) return;
 
-                topology.applyEvents({
-                    orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
-                    orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
-                    processResolved: [],
-                });
+                topology.applyEvents(events);
                 projectOrders(processId);
             } catch (err) {
                 if (!canceled) console.error("useProcessOrders indexer error:", err);
@@ -113,50 +91,16 @@ export function useProcessOrders(processId: string | null): Order[] {
     }, [publicClient, contractAddr, processId, processReloadKey]);
 
     // ------------------------------------------------------------------
-    // Live event watchers
+    // Live order events, from every emitter
     // ------------------------------------------------------------------
-    const realEnabled = !!contractAddr && !!processId;
-    const realAddr = realEnabled ? (contractAddr as `0x${string}`) : undefined;
-
-    // Reference-stable onLogs: wagmi keys its watcher effect on the callback,
-    // so an inline arrow recreates the event filter every render and drops
-    // events that land between recreations (see walletProcessQueries.ts).
-    const onCommittedLogs = useCallback(
-        (logs: WatchContractEventOnLogsParameter<typeof CORE_ABI, "OrderCommitted">) => {
-            topologyRef.current?.applyEvents({
-                orderCommitted: parseOrderCommittedLogs(logs as unknown as SdkLogs),
-                orderResolved: [],
-                processResolved: [],
-            });
+    const onEvents = useCallback(
+        (events: CoreEvents) => {
+            topologyRef.current?.applyEvents(events);
             projectOrders(processId);
         },
         [projectOrders, processId],
     );
-    const onResolvedLogs = useCallback(
-        (logs: WatchContractEventOnLogsParameter<typeof CORE_ABI, "OrderResolved">) => {
-            topologyRef.current?.applyEvents({
-                orderCommitted: [],
-                orderResolved: parseOrderResolvedLogs(logs as unknown as SdkLogs),
-                processResolved: [],
-            });
-            projectOrders(processId);
-        },
-        [projectOrders, processId],
-    );
-    useWatchContractEvent({
-        address: realAddr,
-        abi: CORE_ABI,
-        eventName: "OrderCommitted",
-        onLogs: onCommittedLogs,
-        enabled: realEnabled,
-    });
-    useWatchContractEvent({
-        address: realAddr,
-        abi: CORE_ABI,
-        eventName: "OrderResolved",
-        onLogs: onResolvedLogs,
-        enabled: realEnabled,
-    });
+    useWatchOrderEvents(onEvents, !!contractAddr && !!processId);
 
     return orders;
 }
@@ -169,9 +113,8 @@ export function useProcessOrders(processId: string | null): Order[] {
  * "all orders when null" — but it hard-gates loading on a truthy processId
  * and returns [] for null, so the hash-search verifier that relied on it
  * had nothing to search. This hook is that missing wallet-wide loader:
- * bounded (the SDK's `walletRecord` filter, never the whole chain), full
- * Orders (checkoutHash + parties), reload-key aware — the SAME fold and
- * wallet query `/data/explore` answers wallet history with.
+ * bounded (`walletOrders`, the SDK's `walletRecord` filter, never the whole
+ * chain), full Orders (checkoutHash + parties), reload-key aware.
  */
 export function useWalletOrders(): Order[] {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -181,38 +124,20 @@ export function useWalletOrders(): Order[] {
     const processReloadKey = useOrderStore((s) => s.processReloadKey);
 
     useEffect(() => {
-        if (!publicClient || !contractAddr || !address) {
+        const chainId = publicClient?.chain?.id;
+        if (!publicClient || !chainId || !contractAddr || !address) {
             setOrders([]);
             return;
         }
         let canceled = false;
-        const chainId = publicClient.chain?.id ?? 31337;
 
         (async () => {
             try {
-                const [committed, resolved] = await Promise.all([
-                    getAllOrderCommitted(publicClient, chainId),
-                    getAllOrderResolved(publicClient, chainId),
-                ]);
+                const { events } = await getCoreEvents(publicClient, chainId);
                 if (canceled) return;
-
-                const graph = projectProcessGraph({
-                    orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
-                    orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
-                    processResolved: [],
-                });
-                const record = walletRecord(graph, address as Address);
                 // An order where the wallet is BOTH parties appears once here
                 // (this is a loader, not the two-sided order table).
-                const seen = new Set<string>();
-                const result: Order[] = [];
-                for (const o of [...record.ordersAsBuyer, ...record.ordersAsSeller]) {
-                    if (seen.has(o.orderHash)) continue;
-                    seen.add(o.orderHash);
-                    result.push(orderFromSdk(o));
-                }
-                result.sort((a, b) => (a.blockNumber ?? 0) - (b.blockNumber ?? 0));
-                if (!canceled) setOrders(result);
+                setOrders(walletOrders(events, address).map(orderFromSdk));
             } catch (err) {
                 if (!canceled) console.error("useWalletOrders indexer error:", err);
             }

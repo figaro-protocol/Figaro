@@ -32,7 +32,7 @@ import {
     Text,
     StyleSheet,
 } from "@react-pdf/renderer";
-import { formatToken } from "@/lib/shared/utils";
+import { tokenFigure } from "@/lib/shared/utils";
 import type { AuditBundle } from "./auditBundle";
 import type { RenderedDocument } from "./documentProjection";
 import type { ProcessTimeline, TimelineEvent } from "@/lib/audit/processTimeline";
@@ -180,8 +180,8 @@ const styles = StyleSheet.create({
 
 // ── Display helpers ─────────────────────────────────────────────────────────
 
-function fmt(amount: bigint): string {
-    return formatToken(amount); // formatToken defaults to 18 decimals
+function fmt(amount: bigint, decimals: number | undefined): string {
+    return tokenFigure(amount, decimals);
 }
 
 function shortHex(hex: string | undefined, head = 10, tail = 6): string {
@@ -292,7 +292,7 @@ function CoverPage({ processId, buyer, generatedAt }: {
 
 // ── Contract page ───────────────────────────────────────────────────────────
 
-function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
+function ContractPage({ contract, decimals }: { contract: AuditBundle["contract"]; decimals: number | undefined }) {
     return (
         <AuditPage
             label="Contract"
@@ -304,8 +304,8 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
                 <MetaRow k="buyer" v={contract.parties.buyer} mono />
                 <MetaRow k="seller" v={contract.parties.seller} mono />
                 <MetaRow k="currency" v={contract.currency} mono />
-                <MetaRow k="payment (P)" v={fmt(contract.payment)} />
-                <MetaRow k="cumulativeValue (G)" v={fmt(contract.cumulativeValue)} />
+                <MetaRow k="payment (P)" v={fmt(contract.payment, decimals)} />
+                <MetaRow k="cumulativeValue (G)" v={fmt(contract.cumulativeValue, decimals)} />
                 {contract.committedAtBlock !== undefined && (
                     <MetaRow k="committedAtBlock" v={contract.committedAtBlock} />
                 )}
@@ -678,6 +678,8 @@ interface AuditBundlePdfData {
      * (e.g. RPC unavailable), the bundle still renders without it.
      */
     timeline?: ProcessTimeline | null;
+    /** The process token's decimals(), read from the chain; absent when unreadable. */
+    tokenDecimals?: number;
     /** Generation timestamp (UTC). */
     generatedAt: Date;
 }
@@ -757,7 +759,7 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
             <CoverPage processId={data.processId} buyer={data.buyer} generatedAt={data.generatedAt} />
             {data.timeline ? <TimelinePage timeline={data.timeline} /> : null}
             {data.perOrderBundles.map((bundle) => (
-                <ContractPage key={`contract-${bundle.contract.orderHash}`} contract={bundle.contract} />
+                <ContractPage key={`contract-${bundle.contract.orderHash}`} contract={bundle.contract} decimals={data.tokenDecimals} />
             ))}
             {data.perOrderBundles.map((bundle) => (
                 <ClauseDataPage key={`clausedata-${bundle.clauseData.orderHash}`} doc={bundle.clauseData} />

@@ -9,7 +9,7 @@ import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { calculateResolution } from "@figaro-protocol/sdk";
-import { formatToken } from "@/lib/shared/utils";
+import { tokenFigure } from "@/lib/shared/utils";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { OrderState, useOrderStore, type Order } from "@/lib/kernel/store";
 import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
@@ -18,7 +18,7 @@ import { fetchAssemblyByHash } from "@/lib/protocol/useAssemblyRegistry";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
-import { useRegisterMember, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit, useWithdrawalCooldown } from "@/lib/member/useMembersRegistry";
+import { useRegisterMember, useUpdateProfile, useWithdrawDeposit, useWithdrawalCooldown } from "@/lib/member/useMembersRegistry";
 import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { createCapabilityExecutors } from "@/lib/semantic/createCapabilityExecutors";
@@ -84,9 +84,8 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     // The active order's on-chain currency, or undefined — never a coined default.
     const approvalTokenAddress = selectedCurrency;
     // A token figure only once `decimals()` is read; the raw integer until then.
-    const { decimals, ready: decimalsReady } = useTokenDecimals(selectedCurrency);
-    const tokenFigure = (amount: bigint) =>
-        decimalsReady ? formatToken(amount, decimals) : `${amount.toString()} (raw — token decimals loading)`;
+    const { decimals } = useTokenDecimals(selectedCurrency);
+    const figure = (amount: bigint) => tokenFigure(amount, decimals);
     const [executingCapabilityId, setExecutingCapabilityId] = useState<string | null>(null);
     const [activeActionLabel, setActiveActionLabel] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
@@ -103,7 +102,6 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const registerMember = useRegisterMember();
     const updateMemberProfile = useUpdateProfile();
     const withdrawMemberDeposit = useWithdrawDeposit();
-    const registrationDeposit = useRegistrationDeposit();
     const { data: withdrawalCooldown } = useWithdrawalCooldown();
     const {
         needsApproval,
@@ -222,12 +220,12 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         simulateUsage: usageRecorder.simulateUsage,
         recordUsage: usageRecorder.recordUsage,
         submitAttestation: attestationActions.submitAttestation,
-        registerMember: (metadataURI) => registerMember.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
+        registerMember: (metadataURI) => registerMember.register(metadataURI),
         updateMemberProfile: (metadataURI) => updateMemberProfile.updateProfile(metadataURI),
         withdrawMemberDeposit: () => withdrawMemberDeposit.withdraw(),
         confirmResolve: (plannedUsageWrites) => window.confirm([
             "This resolves the whole process: every seller is paid and every bond is refunded at once, and it cannot be undone.",
-            ...resolvePayoutLines(processOrders, tokenFigure),
+            ...resolvePayoutLines(processOrders, figure),
             ...(plannedUsageWrites > 0
                 ? [`Your wallet then signs up to ${plannedUsageWrites} more ${plannedUsageWrites === 1 ? "transaction" : "transactions"} that count which clauses and which assembly this trade used, so their designers are rewarded.`]
                 : []),

@@ -293,10 +293,9 @@ What the wallet co-produced inside resolved processes — as buyer or as seller,
 postures on the same terms structure — is tradeable value: it licenses onward as an
 ordinary bonded order whose value added IS access to that data. Mechanically nothing
 is new (same 2× bonds, same bilateral signature, same atomic resolve, same gate before
-every signature). What is specific is a pair of declarations the owner writes (the
-profile's `disclosurePolicy` — offered or explicitly withheld, to whom, from when; a
-catalog item's `dataSold` plus its `clauseValues` — the price and the license terms),
-an encrypted per-order delivery, and the property the owner is actually selling: every
+every signature). What is specific is a catalog item the owner writes (its price, and
+its `clauseValues` carrying the license terms, sold through an assembly that composes
+the data clauses), an encrypted per-order delivery, and the property the owner is actually selling: every
 disclosed leaf verifies by merkle inclusion against the source process's ON-CHAIN
 `checkoutHash`, so the buyer checks provenance against the chain instead of the owner's
 word. **The recipe is the SDK README, "Data products — sell, deliver, verify,

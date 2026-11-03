@@ -15,12 +15,12 @@
  * row `/clauses/register` lists clauses with, owning its own
  * `useWithdrawGate({ kind: "agreement", agreementHash })`.
  *
- * States: no-wallet, loading, failed read, empty, list.
+ * States are `RegistryListState`'s: wallet, loading, failed (nothing), empty, list.
  */
 
 import { useEffect } from "react";
 import { useAccount } from "wagmi";
-import { useMounted } from "@/hooks/useMounted";
+import { RegistryListState } from "@/components/shared/RegistryListState";
 import {
     fetchRegisteredAgreement,
     getRegisteredAgreement,
@@ -34,9 +34,9 @@ import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export function RegisteredAgreementsReclaim() {
-    const mounted = useMounted();
     const { address } = useAccount();
-    const { data, isLoading, failed, error, refetch } = usePublishedAgreements(address);
+    const read = usePublishedAgreements(address);
+    const { data, refetch } = read;
     const { withdraw } = useWithdrawAgreement();
     // Re-renders as each document is read and verified (the labels read the
     // session cache).
@@ -46,51 +46,28 @@ export function RegisteredAgreementsReclaim() {
         for (const row of data ?? []) void fetchRegisteredAgreement(row.agreementHash, row.contentURI);
     }, [data]);
 
-    if (!mounted) return null;
-
-    if (!address) {
-        return (
-            <p className="text-sm text-ink-muted" data-testid="agreements-reclaim-no-wallet">
-                Connect a wallet to see the agreements you registered.
-            </p>
-        );
-    }
-
-    if (isLoading || data === null) {
-        return (
-            <p className="text-sm text-ink-muted" data-testid="agreements-reclaim-loading">
-                Loading your registered agreements…
-            </p>
-        );
-    }
-
-    if (failed) {
-        return (
-            <p className="text-sm text-error-fg" role="alert" data-testid="agreements-reclaim-failed">
-                Reading the <code>AgreementRegistry</code> failed{error ? `: ${error}` : "."}
-            </p>
-        );
-    }
-
-    if (own.length === 0) {
-        return (
-            <p className="text-sm text-ink-muted" data-testid="agreements-reclaim-empty">
-                You haven&apos;t registered any agreements yet. Register one from an order&apos;s drawer on the composition canvas, or publish an assembly, which registers each of its agreements first.
-            </p>
-        );
-    }
-
     return (
-        <ul className="space-y-3" data-testid="agreements-reclaim-list">
-            {own.map((row) => (
-                <ReclaimAgreementRow
-                    key={`${row.agreementHash}-${row.blockNumber.toString()}`}
-                    row={row}
-                    withdraw={withdraw}
-                    onReclaimed={refetch}
-                />
-            ))}
-        </ul>
+        <RegistryListState<PublishedAgreement>
+            read={read}
+            rows={own}
+            testId="agreements-reclaim"
+            walletHint="Connect a wallet to see the agreements you registered."
+            loading="Loading your registered agreements…"
+            empty="You haven't registered any agreements yet. Register one from an order's drawer on the composition canvas, or publish an assembly, which registers each of its agreements first."
+        >
+            {(rows) => (
+                <ul className="space-y-3" data-testid="agreements-reclaim-list">
+                    {rows.map((row) => (
+                        <ReclaimAgreementRow
+                            key={`${row.agreementHash}-${row.blockNumber.toString()}`}
+                            row={row}
+                            withdraw={withdraw}
+                            onReclaimed={refetch}
+                        />
+                    ))}
+                </ul>
+            )}
+        </RegistryListState>
     );
 }
 

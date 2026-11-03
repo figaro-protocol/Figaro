@@ -29,7 +29,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useAccount, useChainId, useWalletClient } from "wagmi";
 import { useViewedWallet } from "@/lib/shared/viewedWallet";
 import { calculateBonds } from "@figaro-protocol/sdk";
-import { formatToken } from "@/lib/shared/utils";
+import { tokenFigure } from "@/lib/shared/utils";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
@@ -46,6 +46,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import {
     usePendingSellerSignature,
+    useIsUncommitted,
     awaitsMyCounterSign,
     awaitsCounterpartySignature,
     awaitsMyBroadcast,
@@ -60,11 +61,6 @@ import useTokenApproval from "@/hooks/useTokenApproval";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 
 
-/** A token figure only once the token's `decimals()` is READ; the raw integer
- *  until then — never a magnitude formatted on a default. */
-function tokenFigure(amount: bigint, decimals: number, ready: boolean): string {
-    return ready ? formatToken(amount, decimals) : `${amount.toString()} (raw — token decimals loading)`;
-}
 
 // ── Your-turn card: an incoming order awaiting my counter-signature ──
 export function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
@@ -78,7 +74,7 @@ export function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listin
 }) {
     const { commitment } = payload;
     const { address } = useAccount();
-    const { decimals, ready: decimalsReady } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const sellerBond = calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
 
     // The seller locks 2× cumulative value as bond, so the Core must be allowed
@@ -107,13 +103,13 @@ export function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listin
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-ink-muted">Order value</p>
-                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals, decimalsReady)}</p>
+                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals)}</p>
                 </div>
             </div>
             <div className="rounded border border-default bg-subtle p-3 text-xs text-ink-body space-y-1">
                 <p>
                     <span className="font-medium text-ink-body">Your seller bond:</span>{" "}
-                    {tokenFigure(sellerBond, decimals, decimalsReady)}
+                    {tokenFigure(sellerBond, decimals)}
                     <span className="text-ink-muted ml-1">(returned at resolution)</span>
                 </p>
             </div>
@@ -151,7 +147,7 @@ export function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, 
 }) {
     const { commitment } = payload;
     const { address } = useAccount();
-    const { decimals, ready: decimalsReady } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const sellerBond = calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
     const core = CONTRACTS.core as `0x${string}` | undefined;
     const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess, isApproveError } = useTokenApproval({
@@ -174,13 +170,13 @@ export function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, 
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-ink-muted">Order value</p>
-                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals, decimalsReady)}</p>
+                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals)}</p>
                 </div>
             </div>
             <div className="rounded border border-default bg-subtle p-3 text-xs text-ink-body space-y-1">
                 <p>
                     <span className="font-medium text-ink-body">Your seller bond:</span>{" "}
-                    {tokenFigure(sellerBond, decimals, decimalsReady)}
+                    {tokenFigure(sellerBond, decimals)}
                     <span className="text-ink-muted ml-1">(locked at submit, returned at resolution)</span>
                 </p>
             </div>
@@ -222,7 +218,7 @@ export function SignedUnsentRow({
     error: string | null;
 }) {
     const { commitment } = entry.payload;
-    const { decimals, ready: decimalsReady } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const counterpartyName = displayNameForAddress(listings, outboundCounterparty(commitment, address));
     return (
         <div className="block rounded-lg border border-default bg-paper p-4" data-testid="order-unsent-row">
@@ -250,7 +246,7 @@ export function SignedUnsentRow({
                 </div>
                 <div className="text-right shrink-0 space-y-2">
                     <p className="text-xs text-ink-muted">Order value</p>
-                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals, decimalsReady)}</p>
+                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals)}</p>
                     <div className="flex gap-2 justify-end">
                         <Button variant="secondary" size="sm" onClick={onDiscard} disabled={sending} data-testid="btn-discard-unsent">
                             Discard
@@ -268,7 +264,7 @@ export function SignedUnsentRow({
 // ── Outbound pending row: I signed and relayed, awaiting the counterparty ──
 export function AwaitingAcceptanceRow({ payload, address, listings, onDismiss }: { payload: CommitmentPayload; address: string | undefined; listings: ReadonlyArray<Listing>; onDismiss: () => void }) {
     const { commitment } = payload;
-    const { decimals, ready: decimalsReady } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const counterpartyName = displayNameForAddress(listings, outboundCounterparty(commitment, address));
     return (
         <div className="block rounded-lg border border-default bg-paper p-4" data-testid="order-pending-row">
@@ -292,7 +288,7 @@ export function AwaitingAcceptanceRow({ payload, address, listings, onDismiss }:
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-ink-muted">Order value</p>
-                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals, decimalsReady)}</p>
+                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals)}</p>
                 </div>
             </div>
             <div className="mt-3 flex justify-end">
@@ -311,7 +307,7 @@ export function AwaitingAcceptanceRow({ payload, address, listings, onDismiss }:
 
 // ── On-chain process row (the wallet is buyer or seller on it) ──
 function OrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<Listing> }) {
-    const { decimals, ready: decimalsReady } = useTokenDecimals(row.currency as `0x${string}` | undefined);
+    const { decimals } = useTokenDecimals(row.currency as `0x${string}` | undefined);
     return (
         <Link
             href={`/orders/view?process=${row.processId}`}
@@ -341,7 +337,7 @@ function OrderRow({ row, listings }: { row: ProcessRow; listings: ReadonlyArray<
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-ink-muted">Order value</p>
-                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(row.payment, decimals, decimalsReady)}</p>
+                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(row.payment, decimals)}</p>
                 </div>
             </div>
         </Link>
@@ -371,6 +367,8 @@ export function OrdersList() {
         return [...byHash.values()].sort((a, b) => b.blockNumber - a.blockNumber);
     }, [buyer.rows, seller.rows]);
     const isLoading = buyer.isLoading || seller.isLoading;
+    // A failed row read is unknown chain state: no rows and no "none" either.
+    const rowsFailed = buyer.failed || seller.failed;
 
     // YOUR TURN — relayed commitments awaiting my counter-signature (accept).
     const { pending: incoming, dismiss: dismissIncoming } = usePendingSellerSignature(awaitsMyCounterSign);
@@ -452,40 +450,21 @@ export function OrdersList() {
         }
     }, [address, chainId, walletClient, handoffMessaging, evidenceTransport]);
 
-    // A relayed payload still reads single-sig after commit; hide any pending
-    // (either direction) whose order is already on-chain in `rows`.
+    // The pending lists above already drop every payload whose order is on-chain
+    // (`usePendingSellerSignature`); the tab's unsent copies go through the
+    // same predicate, and drop once their order is relayed.
+    const isUncommitted = useIsUncommitted();
     const core = CONTRACTS.core as `0x${string}` | undefined;
-    const committedHashes = new Set(rows.map((r) => r.rootOrderHash.toLowerCase()));
-    const notCommitted = (payload: CommitmentPayload) => {
-        if (!chainId || !core) return true;
-        try {
-            return !committedHashes.has(computeOrderHash(payload.commitment, chainId, core).toLowerCase());
-        } catch {
-            return true;
-        }
-    };
-    const visibleIncoming = incoming
-        .map((payload, index) => ({ payload, index }))
-        .filter(({ payload }) => notCommitted(payload));
-    // Preserve the original index into `outbound` (what `dismissOutbound`
-    // indexes), the same shape as visibleIncoming/visibleReady — a plain
-    // .filter() would misalign the dismiss index once notCommitted drops a row.
-    const visibleOutbound = outbound
-        .map((payload, index) => ({ payload, index }))
-        .filter(({ payload }) => (address && core ? notCommitted(payload) : true));
     const relayedIds = new Set(
         chainId && core
             ? outbound.map((p) => { try { return computeOrderHash(p.commitment, chainId, core).toLowerCase(); } catch { return ""; } })
             : [],
     );
-    const visibleUnsent = unsent.filter((e) => notCommitted(e.payload) && !relayedIds.has(e.orderId.toLowerCase()));
-    const visibleReady = readyToSubmit
-        .map((payload, index) => ({ payload, index }))
-        .filter(({ payload }) => notCommitted(payload));
+    const visibleUnsent = unsent.filter((e) => isUncommitted(e.payload) && !relayedIds.has(e.orderId.toLowerCase()));
 
     const activeRows = rows.filter((r) => !r.isResolved);
     const completedRows = rows.filter((r) => r.isResolved);
-    const nothing = !isLoading && rows.length === 0 && visibleIncoming.length === 0 && visibleOutbound.length === 0 && visibleReady.length === 0 && visibleUnsent.length === 0;
+    const nothing = !isLoading && !rowsFailed && rows.length === 0 && incoming.length === 0 && outbound.length === 0 && readyToSubmit.length === 0 && visibleUnsent.length === 0;
 
     return (
         <div data-testid="orders-list" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
@@ -508,11 +487,11 @@ export function OrdersList() {
                 </WalletGate>
             ) : (
                 <>
-                    {!isMock && visibleIncoming.length > 0 && (
+                    {!isMock && incoming.length > 0 && (
                         <section className="space-y-3" data-testid="orders-your-turn-section">
                             <p className="text-xs font-semibold text-ink-muted">Your turn</p>
                             <div className="space-y-3">
-                                {visibleIncoming.map(({ payload, index }) => (
+                                {incoming.map((payload, index) => (
                                     <YourTurnCard
                                         key={index}
                                         payload={payload}
@@ -529,11 +508,11 @@ export function OrdersList() {
                         </section>
                     )}
 
-                    {!isMock && visibleReady.length > 0 && (
+                    {!isMock && readyToSubmit.length > 0 && (
                         <section className="space-y-3" data-testid="orders-ready-section">
                             <p className="text-xs font-semibold text-ink-muted">Ready to submit</p>
                             <div className="space-y-3">
-                                {visibleReady.map(({ payload, index }) => (
+                                {readyToSubmit.map((payload, index) => (
                                     <ReadyToSubmitCard
                                         key={`ready-${index}`}
                                         payload={payload}
@@ -571,11 +550,11 @@ export function OrdersList() {
                         </section>
                     )}
 
-                    {visibleOutbound.length > 0 && (
+                    {outbound.length > 0 && (
                         <section className="space-y-3" data-testid="orders-pending-section">
                             <p className="text-xs font-semibold text-ink-muted">Awaiting acceptance</p>
                             <ul className="space-y-3" data-testid="orders-pending">
-                                {visibleOutbound.map(({ payload, index }) => (
+                                {outbound.map((payload, index) => (
                                     <li key={`pending-${index}`}>
                                         <AwaitingAcceptanceRow payload={payload} address={address} listings={listings} onDismiss={() => dismissOutbound(index)} />
                                     </li>
@@ -597,7 +576,7 @@ export function OrdersList() {
                         </div>
                     ) : (
                         <>
-                            <section className="space-y-3" data-testid="orders-active-section">
+                            {!rowsFailed && <section className="space-y-3" data-testid="orders-active-section">
                                 <p className="text-xs font-semibold text-ink-muted">In progress</p>
                                 {isLoading ? (
                                     <p className="text-sm text-ink-muted" data-testid="orders-loading">Loading…</p>
@@ -612,7 +591,7 @@ export function OrdersList() {
                                         ))}
                                     </ul>
                                 )}
-                            </section>
+                            </section>}
 
                             {completedRows.length > 0 && (
                                 <section className="space-y-3" data-testid="orders-completed-section">
