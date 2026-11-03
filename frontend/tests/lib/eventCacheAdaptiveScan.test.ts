@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getLogsAdaptive, isLogRangeCapError } from "@/lib/kernel/eventCache";
+import { getLogsAdaptive } from "@/lib/kernel/eventCache";
 
 /** A provider that refuses any range wider than `cap` blocks the way public
  *  gateways do, and otherwise returns one synthetic log per block that
@@ -47,12 +47,38 @@ describe("getLogsAdaptive", () => {
         for (let i = 1; i < ok.length; i++) expect(ok[i][0]).toBe(ok[i - 1][1] + 1n);
     });
 
-    it("propagates a non-range error unchanged", async () => {
+    // 1rpc's keyless gateway caps eth_getLogs at 50 blocks. The scan reads
+    // every range from it, whatever words the refusal uses: the window halves
+    // on any refusal the SDK's retry rule does not claim, down to one block.
+    it.each([
+        "eth_getLogs is limited to 0 - 50 blocks range",
+        "invalid params", // a gateway whose refusal names no range at all
+    ])("reads every block from a provider capped at 50 blocks (%s)", async (message) => {
+        const latest = 12_000_123n;
+        const from = 11_998_000n; // ~2 100 blocks: forty-odd 50-block reads
+        const logBlocks = [from, from + 49n, from + 50n, 11_999_999n, latest];
+        const p = cappingProvider(50n, latest, logBlocks, message);
+        const logs = await getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: from });
+        expect(logs.map((l) => l.blockNumber)).toEqual(logBlocks);
+        const ok = p.calls.filter(([a, b]) => b - a + 1n <= 50n);
+        expect(ok[0][0]).toBe(from);
+        expect(ok[ok.length - 1][1]).toBe(latest);
+        for (let i = 1; i < ok.length; i++) expect(ok[i][0]).toBe(ok[i - 1][1] + 1n);
+    });
+
+    it("propagates an error that persists down to a one-block range, unchanged", async () => {
+        const calls: Array<[bigint, bigint]> = [];
         const p = {
             getBlockNumber: async () => 100n,
-            getLogs: async (): Promise<unknown[]> => { throw new Error("execution reverted"); },
+            getLogs: async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint }): Promise<unknown[]> => {
+                calls.push([fromBlock, toBlock]);
+                throw new Error("execution reverted");
+            },
         };
         await expect(getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 0n })).rejects.toThrow(/execution reverted/);
+        // The last ask is one block wide: nothing narrower could have answered.
+        const [a, b] = calls[calls.length - 1];
+        expect(b - a + 1n).toBe(1n);
     });
 
     // The keyless node under three concurrent readers (probe usp-r7): viem's
@@ -149,20 +175,5 @@ describe("getLogsAdaptive", () => {
         const p = cappingProvider(10n, 5n, [1n], "unused");
         expect(await getLogsAdaptive(p, { address: ADDRESS, event: undefined, fromBlock: 6n })).toEqual([]);
         expect(p.calls).toEqual([]);
-    });
-});
-
-describe("isLogRangeCapError", () => {
-    it.each([
-        "Log response size exceeded. Maximum allowed number of requested blocks is 1000",
-        "ranges over 10000 blocks are not supported on free plan",
-        "exceed maximum block range: 50000",
-        "eth_getLogs is limited to 0 - 50 blocks range",
-        "query returned more than 10000 results",
-    ])("recognizes %s", (msg) => {
-        expect(isLogRangeCapError(new Error(msg))).toBe(true);
-    });
-    it("does not mistake other failures for a range cap", () => {
-        expect(isLogRangeCapError(new Error("HTTP request failed. Status: 429"))).toBe(false);
     });
 });

@@ -204,9 +204,10 @@ export async function executeAssemblyCheckout(
     const resolveCap = await deps.readResolveCap();
     if (orderCount > resolveCap) {
         throw new Error(
-            `This assembly composes ${orderCount} orders; this chain resolves at most ` +
-                `${resolveCap} in one atomic resolveProcess. It can never resolve as one ` +
-                `process — the designer must compose multiple processes instead.`,
+            `This assembly composes ${orderCount} orders; ${resolveCap} is the most the SDK ` +
+                `plans to fit in one atomic resolveProcess on this chain (its own estimate from ` +
+                `the block's gas limit, not a limit the chain enforces). The designer must ` +
+                `compose multiple processes instead.`,
         );
     }
 

@@ -45,6 +45,7 @@ import { CONTRACTS, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/ker
 import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
 /** One clause, agreement or assembly the connected wallet is designer of record for, with
  *  the accrual it carried in a given period. `c` = distinct resolved processes,
@@ -93,6 +94,15 @@ export interface RpgfPeriodState {
     claimed: boolean;
 }
 
+/** What one read of the minter and the counter says for a wallet. */
+export interface RpgfRewardsState {
+    periods: RpgfPeriodState[];
+    /** Whether the wallet holds a live member stake — the designer-side
+     *  membership gate the minter reads at the claim; `null` with no wallet
+     *  named or no members registry configured. */
+    memberLive: boolean | null;
+}
+
 export function useRpgfRewards(subject?: `0x${string}`) {
     const minter = getRpgfMinter();
     const counter = getUsageCounter();
@@ -104,12 +114,9 @@ export function useRpgfRewards(subject?: `0x${string}`) {
     const account = subject ?? connected;
     const { writeContractAsync } = useWriteContract();
 
-    const [periods, setPeriods] = useState<RpgfPeriodState[]>([]);
-    /** Whether the wallet holds a live member stake — the designer-side
-     *  membership gate the minter reads at the claim. `null` until read, or
-     *  with no wallet named. */
-    const [memberLive, setMemberLive] = useState<boolean | null>(null);
-    const [readState, setReadState] = useState<"loading" | "ready" | "error">("loading");
+    /** The periods and the member gate, read together: pending in flight,
+     *  absent when any of the reads failed, present with what the chain said. */
+    const [read, setRead] = useState<NetworkRead<RpgfRewardsState>>(PENDING);
     const [refreshNonce, setRefreshNonce] = useState(0);
 
     const refresh = useCallback(() => setRefreshNonce((n) => n + 1), []);
@@ -186,8 +193,8 @@ export function useRpgfRewards(subject?: `0x${string}`) {
     useEffect(() => {
         if (!minter || !counter || !publicClient) return;
         let canceled = false;
-        setReadState("loading");
-        (async () => {
+        setRead(PENDING);
+        void readNetwork("useRpgfRewards", async (): Promise<RpgfRewardsState> => {
             const minterBase = { address: minter, abi: RPGF_MINTER_ABI } as const;
             const counterBase = { address: counter, abi: USAGE_COUNTER_ABI } as const;
             // Which of the wallet's clauses, agreements and assemblies carried
@@ -298,16 +305,9 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                     } satisfies RpgfPeriodState;
                 }),
             );
-            if (canceled) return;
-            setPeriods(rows);
-            setMemberLive(live);
-            setReadState("ready");
-        })().catch(() => {
-            if (canceled) return;
-            // A failed READ is never resolved-empty: readState "error", and
-            // the surface renders nothing for it.
-            setPeriods([]);
-            setReadState("error");
+            return { periods: rows, memberLive: live };
+        }).then((result) => {
+            if (!canceled) setRead(result);
         });
         return () => {
             canceled = true;
@@ -322,7 +322,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
         async (periodId: number) => {
             if (!minter) throw new Error("Designer-rewards minter unconfigured.");
             if (!account) throw new Error("Connect a wallet to claim.");
-            const row = periods.find((t) => t.periodId === periodId);
+            const row = read.status === "present" ? read.value.periods.find((t) => t.periodId === periodId) : undefined;
             const clausesOrAssemblies: UsageKey[] = row?.accruals.map((a) => ({ kind: a.kind, key: a.clauseOrAssembly })) ?? [];
             if (clausesOrAssemblies.length === 0) throw new Error("This wallet designed nothing that accrued in this period.");
             if (!publicClient) throw new Error("No public client available to send the claim.");
@@ -339,15 +339,13 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             refresh();
             return hash;
         },
-        [minter, account, periods, publicClient, writeContractAsync, refresh],
+        [minter, account, read, publicClient, writeContractAsync, refresh],
     );
 
     return {
         available: !!minter && !!counter,
         account,
-        readState,
-        periods,
-        memberLive,
+        read,
         claim,
         refresh,
     };

@@ -916,7 +916,7 @@ supplied by the caller reads like trust handed to the caller.
 `AgreementRegistry` at assembly registration, is an edge between two
 registry families, and the families are parallel (CLAUDE.md § "Separation of
 Concerns"): assemblies use agreements, agreements use clauses, and neither
-knows what uses it. The root carries the membership instead: a agreement leaf
+knows what uses it. The root carries the membership instead: an agreement leaf
 either hashes up to the registered `assemblyHash` or it does not, so the
 caller can supply nothing the root did not already commit, and a wrong
 `agreementHash` or agreement content derives a leaf that is not in the tree. An

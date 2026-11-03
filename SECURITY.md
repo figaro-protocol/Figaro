@@ -31,9 +31,10 @@ report is read.
 In scope:
 
 - `src/**/*.sol` — the Core (`FigaroCore.sol`, `CommitmentTypes.sol`,
-  `AttestationCoordinator.sol`, `FigaroBatchVerifier.sol`), the three
-  registries, the swap-and-commit coordinator, the florin token, the usage
-  counter and the designer-rewards minter (`RpgfMinter.sol`). (Per-clause
+  `AttestationCoordinator.sol`, `FigaroBatchVerifier.sol`), the four
+  registries (clauses, agreements, assemblies, members), the
+  swap-and-commit coordinator, the florin token, the usage counter and the
+  designer-rewards minter (`RpgfMinter.sol`). (Per-clause
   validator contracts do not exist, permanently — clause content validation
   is off-chain, plus the batch path's generic proof engine.)
 - `prover/program/`, `prover/lib/`, `prover/clause/` — the guest: the Rust
@@ -123,7 +124,7 @@ the expected.
 | `FlorinToken`: any `Transfer` from the zero address | mints only from `RpgfMinter.claim`; no minter is registered after genesis, which is proved, not watched: `registerMinter` reverts once `deployerMintRenounced` is set, the renounce is one-way (`certora/FlorinToken.spec`, rule `deployerMintRenouncedIsOneWayLatch`), and `scripts/check-deployment.mjs` asserts the renounce on the deployed token | a mint arrives from any other address |
 | `FigaroCore`: `OrderCommitted`, each order's `orderStatus`, and the contract's token balance | the balance equals the bonds of every order it reports open (invariant A-8 in `docs/VERIFICATION_MAP.md`) | the balance is below those bonds by any amount; a surplus is noted, not alerted |
 | `FigaroBatchVerifier`: `BatchSettled`, `BatchAccrualSkipped`; each relay the watcher is given: `GET /status` | accrual applies; a relay's queued work resolves within the wait its operator states | `BatchAccrualSkipped` (read the reason); a relay holding work with no batch resolved for longer than its stated wait, on the chain's clock; a relay that does not answer or does not report its queue |
-| Registries: `ClauseRegistered`, `AssemblyRegistered`, `MemberRegistered`, `DepositWithdrawn`, `MemberWithdrawalRequested`, `MemberWithdrawn` | steady registration and the occasional withdrawal | a burst of withdrawals, which is what a scare looks like from the chain |
+| Registries: `ClauseRegistered`, `AgreementRegistered`, `AssemblyRegistered`, `MemberRegistered`, `DepositWithdrawn`, `MemberWithdrawalRequested`, `MemberWithdrawn` | steady registration and the occasional withdrawal | a burst of withdrawals, which is what a scare looks like from the chain |
 | `AttestationCoordinator`, `FigaroBatchVerifier`: `Attestation` | attestations on open orders | none; kept in the log |
 
 A state the contracts refuse is proved unreachable, not watched: a reward

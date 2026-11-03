@@ -73,30 +73,39 @@ describe("icbrt", () => {
     });
 });
 
+// The floor a test passes as the deployment's UsageCounter.minSellers().
+const FLOOR = 3n;
+
 describe("usageScore", () => {
     it("is zero without both a process and a seller", () => {
-        expect(usageScore(0n, 3n)).toBe(0n);
+        expect(usageScore(0n, 3n, FLOOR)).toBe(0n);
         expect(usageScore(3n, 0n, 1n)).toBe(0n);
     });
 
     it("weights breadth twice as heavily as volume", () => {
         // c^(1/3) * d^(2/3): doubling d must beat doubling c.
-        const moreProcesses = usageScore(6n, 3n);
-        const moreSellers = usageScore(3n, 6n);
+        const moreProcesses = usageScore(6n, 3n, FLOOR);
+        const moreSellers = usageScore(3n, 6n, FLOOR);
         expect(moreSellers).toBeGreaterThan(moreProcesses);
     });
 
     it("is uniform — equal (c, d) gives equal score for any clause or assembly (no weight)", () => {
-        expect(usageScore(5n, 3n)).toBe(usageScore(5n, 3n));
+        expect(usageScore(5n, 3n, FLOOR)).toBe(usageScore(5n, 3n, FLOOR));
         expect(usageScore(1n, 1n, 1n)).toBe(10n ** 6n); // icbrt(1e18), floor disabled
     });
 
+    it("takes the floor from the caller (the chain's UsageCounter.minSellers), never a bundled default", () => {
+        const noFloor = undefined as unknown as bigint;
+        expect(() => usageScore(10n, 2n, noFloor)).toThrow(/minSellers/);
+        expect(() => computeUsageAccruals([record(CLAUSE_A, "p1", sellerOf("seller1"))], noFloor)).toThrow(/minSellers/);
+    });
+
     it("floors below minSellers — the minimum-support floor", () => {
-        // Default is the formula reference (3): below it nothing scores,
-        // at it the FULL score springs — deferred, never lost.
+        // Below the floor nothing scores; at it the FULL score springs —
+        // deferred, never lost. The formula's reference floor is 3.
         expect(RPGF_MIN_SELLERS).toBe(3n);
-        expect(usageScore(10n, 2n)).toBe(0n);
-        expect(usageScore(10n, 3n)).toBe(icbrt(90n * RPGF_SCORE_SCALE));
+        expect(usageScore(10n, 2n, FLOOR)).toBe(0n);
+        expect(usageScore(10n, 3n, FLOOR)).toBe(icbrt(90n * RPGF_SCORE_SCALE));
         // A deployment with the floor disabled mirrors via the parameter.
         expect(usageScore(10n, 2n, 1n)).toBeGreaterThan(0n);
     });
@@ -299,7 +308,7 @@ describe("computeUsageAccruals", () => {
         const below = computeUsageAccruals([
             record(CLAUSE_A, "pf-a", sellerOf("s1")),
             record(CLAUSE_A, "pf-b", sellerOf("s2")),
-        ]); // default minSellers = 3 (the formula reference)
+        ], FLOOR);
         expect(below.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!).toMatchObject({ c: 2n, d: 2n, score: 0n });
         expect(below.get(0)!.totalScore).toBe(0n);
 
@@ -307,9 +316,9 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-a", sellerOf("s1")),
             record(CLAUSE_A, "pf-b", sellerOf("s2")),
             record(CLAUSE_A, "pf-c", sellerOf("s3")),
-        ]);
-        expect(crossed.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.score).toBe(usageScore(3n, 3n));
-        expect(crossed.get(0)!.totalScore).toBe(usageScore(3n, 3n));
+        ], FLOOR);
+        expect(crossed.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.score).toBe(usageScore(3n, 3n, FLOOR));
+        expect(crossed.get(0)!.totalScore).toBe(usageScore(3n, 3n, FLOOR));
     });
 
     it("meets the floor with sellers from either route — one tally, one seller set", () => {
@@ -317,9 +326,9 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pp-a", sellerOf("s1")),
             record(CLAUSE_A, "pp-b", sellerOf("s2")),
             record(CLAUSE_A, "pp-c", sellerOf("s3"), { blockNumber: 200n }),
-        ]).get(0)!;
-        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!.score).toBe(usageScore(3n, 3n));
-        expect(period.totalScore).toBe(usageScore(3n, 3n));
+        ], FLOOR).get(0)!;
+        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!.score).toBe(usageScore(3n, 3n, FLOOR));
+        expect(period.totalScore).toBe(usageScore(3n, 3n, FLOOR));
     });
 });
 

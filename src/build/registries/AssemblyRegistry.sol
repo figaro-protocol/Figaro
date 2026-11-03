@@ -55,8 +55,8 @@ pragma solidity 0.8.26;
 ///         withdraw while processes composed from the assembly are in
 ///         flight. The in-flight count lives in the indexer (commits without
 ///         resolution, attributed by each order's decoded provenance), so
-///         the gate is enforced at the protocol surface (SDK/frontend refuse
-///         while commits > resolves). `FigaroCore` never calls the registries
+///         the gate is advisory: the SDK derives it and the frontend offers no
+///         reclaim while commits > resolves; `withdrawDeposit` checks none of it. `FigaroCore` never calls the registries
 ///         and carries no usage, so no contract can learn the count and there
 ///         is no on-chain hardening of this gate.
 ///
@@ -169,9 +169,9 @@ contract AssemblyRegistry {
     ///         is NOT cleared — only the deposit moves, and readers
     ///         de-surface the assembly for new orders. Callable only by
     ///         the recorded `registeredBy`, and only once per binding.
-    /// @dev The commits == resolves gate is protocol-surface (indexer
-    ///      count; see the contract notice) — the chain carries no
-    ///      composition provenance to enforce it here.
+    /// @dev The commits == resolves gate is advisory and off-chain (indexer
+    ///      count; see the contract notice): this function does not check it,
+    ///      since the chain carries no composition provenance to check.
     /// @param assemblyHash The composition whose deposit to withdraw.
     function withdrawDeposit(bytes32 assemblyHash) external {
         AssemblyBinding storage binding = bindings[assemblyHash];

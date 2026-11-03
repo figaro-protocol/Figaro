@@ -239,6 +239,22 @@ describe("createCapabilityExecutors — resolve with usage writes", () => {
     });
 });
 
+describe("createCapabilityExecutors — the chain id comes from the connected chain", () => {
+    it("with no connected chain, nothing is restored, asked or sent", async () => {
+        const { deps: d, sent } = deps({ publicClient: { waitForTransactionReceipt: async () => ({ status: "success" }) } });
+        await expect(createCapabilityExecutors(d).executorCallbacks.resolveProcess(PROCESS)).rejects.toThrow(/chain/i);
+        expect(d.confirmResolve).not.toHaveBeenCalled();
+        expect(d.resolveProcess).not.toHaveBeenCalled();
+        expect(sent).toHaveLength(0);
+    });
+
+    it("with no public client at all, nothing is restored either", async () => {
+        const { deps: d } = deps({ publicClient: undefined });
+        await expect(createCapabilityExecutors(d).executorCallbacks.resolveProcess(PROCESS)).rejects.toThrow(/chain/i);
+        expect(d.resolveProcess).not.toHaveBeenCalled();
+    });
+});
+
 describe("createCapabilityExecutors — the provenance leaf attestation", () => {
     it("files the buyer's attestation under the reserved key, the leaf's bytes as content", async () => {
         const { deps: d } = deps();

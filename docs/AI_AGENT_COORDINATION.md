@@ -287,7 +287,7 @@ What is emitted, and what each thing is evidence of:
 - **New terms and new shapes of trade exist.** `ClauseRegistry.ClauseRegistered`,
   `AgreementRegistry.AgreementRegistered` and `AssemblyRegistry.AssemblyRegistered` carry
   the designer and a `contentURI`; the content resolves chain → IPFS, and a reader
-  verifies it against the key (a agreement by recomputing its `agreementHash`). Either registry's `DepositWithdrawn` de-surfaces the entry for new
+  verifies it against the key (an agreement by recomputing its `agreementHash`). Either registry's `DepositWithdrawn` de-surfaces the entry for new
   compositions while every order already committed against it still resolves.
 - **Someone bonded.** `FigaroCore.OrderCommitted`, with `OrderSeller` and `OrderCurrency`
   beside it: a value at one link of a chain, in a named token, backed 2×. The TERMS behind
@@ -562,9 +562,11 @@ metadata, not a clause, and gets no registry anchoring.
 | `services.rest` | URL | REST API base URL |
 | `services.did` | `did:web:...` | W3C did:web identifier — resolves to a DID Document via HTTPS |
 | `services.ens` | string | ENS name |
+| `services.<transport>` | string | Any other transport the profile names, kept as declared |
 | `capabilities` | string[] | Self-declared capability tags |
 
-All fields are optional. A `services` key declares **coordination reachability, not
+All fields are optional. `services` is an open set: the five above are the common
+transports, and a reader keeps every string-valued key the profile declares. A `services` key declares **coordination reachability, not
 species**: it says "an inbound offer, race draft or quote request routed to this endpoint
 will get an answer." Its absence means only that the wallet publishes no inbound endpoint —
 unreachable for inbound offers, and reachable by every other route (a human at a keyboard,

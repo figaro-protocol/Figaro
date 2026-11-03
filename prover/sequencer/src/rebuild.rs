@@ -9,7 +9,7 @@
 //! stream is applied in chain order under this chain's id and the verifier's
 //! address, and the root the replay reaches must be the one the batch's
 //! `BatchSettled` names. A relay holding nothing starts this way
-//! (`REBUILD_FROM_CHAIN=1`); no other relay, file, archive or call trace is
+//! (`REBUILD_FROM_CHAIN=1`); no other relay, file or call trace is
 //! read, however the batch's call reached the verifier.
 
 use alloy::providers::{Provider, ProviderBuilder};

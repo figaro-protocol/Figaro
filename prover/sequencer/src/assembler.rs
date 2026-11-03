@@ -371,7 +371,7 @@ pub fn filter_commits_within_resolve_capacity(
                     dropped.push((
                         op,
                         format!(
-                            "would grow the process to {count} orders, past the {max_orders} one settle can resolve under the chain's cap; its resolve would fit no batch and its bonds would stay where they are"
+                            "would grow the process to {count} orders, past the {max_orders} this relay plans one settle to resolve under its SETTLE_GAS_CAP (this relay's own limit, not one the chain enforces); its resolve would fit no batch this relay forms"
                         ),
                     ));
                     continue;

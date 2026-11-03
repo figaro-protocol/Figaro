@@ -180,7 +180,15 @@ describe("didWebEndpointResolver", () => {
     });
 
     it("returns null when no DID is known for the seller", async () => {
-        const resolve = didWebEndpointResolver(() => null, { fetchFn });
+        const resolve = didWebEndpointResolver(() => null, { serviceType: "MCPEndpoint", fetchFn });
+        expect(await resolve(SELLER.address)).toBeNull();
+    });
+
+    it("routes only to the transport the caller names — no transport is assumed", async () => {
+        // A caller (a plain-JS one) that names no serviceType gets no endpoint,
+        // even from a document that publishes one.
+        const opts = { chainId: CHAIN_ID, fetchFn } as unknown as Parameters<typeof didWebEndpointResolver>[1];
+        const resolve = didWebEndpointResolver(() => "did:web:seller.example.com", opts);
         expect(await resolve(SELLER.address)).toBeNull();
     });
 });

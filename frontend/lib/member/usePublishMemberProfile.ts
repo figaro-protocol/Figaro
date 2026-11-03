@@ -4,10 +4,12 @@
  * usePublishMemberProfile — atomic publish flow for the member
  * wizard's final step. Mirrors `usePublishAssembly` in shape:
  *
- *   1. Pin the catalog document to IPFS (content-addressed: the same
- *      items always pin to the same URI, so a retry costs nothing and a
- *      changed item always yields a new one).
- *   2. Build the profile document with the catalog URI embedded.
+ *   1. Pin the catalog document to IPFS when the member lists items
+ *      (content-addressed: the same items always pin to the same URI, so a
+ *      retry costs nothing and a changed item always yields a new one). A
+ *      member need not sell anything: with no item, no catalog is pinned.
+ *   2. Build the profile document, with the catalog URI embedded when one
+ *      was pinned.
  *   3. Pin the profile document to IPFS.
  *   4. Read the on-chain `registrationDeposit` AND the wallet's
  *      registration status (`registered(wallet)`) ON DEMAND (NOT via a
@@ -56,9 +58,8 @@ export interface PublishMemberInput {
     /** Profile fields collected by the wizard, MINUS the catalogURI
      *  (which the hook fills in after pinning the catalog). */
     profileMetadata: Omit<MemberProfileMetadata, "catalogURI">;
-    /** Catalog items to pin. Must be non-empty — FigaroCore doesn't
-     *  enforce this but the onboarding UX expects it (the catalog step's
-     *  own gate refuses an empty list). */
+    /** Catalog items to pin. Empty for a member that sells nothing: no
+     *  catalog is pinned and the profile links none. */
     items: CatalogItemMetadata[];
     /** The member's preferred unit system; goes onto the catalog doc. */
     unitSystem?: UnitSystem;
@@ -69,7 +70,8 @@ export interface PublishMemberInput {
 export interface PublishMemberOutcome {
     hash: `0x${string}`;
     profileURI: string;
-    catalogURI: string;
+    /** The pinned catalog's URI; absent when the member lists no item. */
+    catalogURI?: string;
 }
 
 export function usePublishMemberProfile() {
@@ -88,23 +90,24 @@ export function usePublishMemberProfile() {
         if (!client) {
             throw new Error("No public client available to read the registration stake.");
         }
-        if (input.items.length === 0) {
-            throw new Error("Catalog is empty — add at least one item before publishing.");
+        // (a) Pin the catalog document from the items in hand — none for a
+        //     member that lists no item.
+        let catalogURI: string | undefined;
+        if (input.items.length > 0) {
+            const catalog: MemberCatalogMetadata = {
+                subjectAddress: input.wallet,
+                items: input.items,
+                version: "1.0.0",
+                unitSystem: input.unitSystem,
+            };
+            catalogURI = (await publishMemberCatalog(catalog)).uri;
         }
 
-        // (a) Pin the catalog document — always from the items in hand.
-        const catalog: MemberCatalogMetadata = {
-            subjectAddress: input.wallet,
-            items: input.items,
-            version: "1.0.0",
-            unitSystem: input.unitSystem,
-        };
-        const catalogURI = (await publishMemberCatalog(catalog)).uri;
-
-        // (b) Build + validate the profile document with the catalogURI embedded.
+        // (b) Build + validate the profile document, the catalogURI embedded
+        //     when a catalog was pinned.
         const profile: MemberProfileMetadata = {
             ...input.profileMetadata,
-            catalogURI,
+            ...(catalogURI !== undefined && { catalogURI }),
         };
         parseMemberProfileDocument(profile, "onboarding-publish");
 

@@ -56,8 +56,6 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
     // ordered from — the register is refused, not just the step navigation
     // (deep links and stale drafts land here too).
     if ((state.assemblies ?? []).length === 0) return { error: `${onboardingStepLabel("assemblies")} is incomplete: bind at least one published assembly — a member profile without one cannot be ordered from.` };
-    const items = state.catalog?.items ?? [];
-    if (items.length === 0) return { error: `${onboardingStepLabel("catalog")} is incomplete: add at least one item before publishing.` };
 
     const profileMetadata: Omit<MemberProfileMetadata, "catalogURI"> = {
         subjectAddress: wallet,
@@ -129,7 +127,7 @@ export function OnboardingReview() {
     const [receipt, setReceipt] = useState<{
         hash: `0x${string}`;
         profileURI: string;
-        catalogURI: string;
+        catalogURI?: string;
     } | null>(null);
 
     const draft = useMemo(() => {
@@ -219,7 +217,7 @@ export function OnboardingReview() {
                         rows={[
                             { label: "Transaction", value: receipt.hash },
                             { label: "Profile URI", value: receipt.profileURI },
-                            { label: "Catalog URI", value: receipt.catalogURI },
+                            ...(receipt.catalogURI ? [{ label: "Catalog URI", value: receipt.catalogURI }] : []),
                         ]}
                     />
                 </Card>

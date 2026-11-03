@@ -636,8 +636,9 @@ function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] 
                 leaves and the provenance leaf. Each clause leaf =
                 computeClauseLeaf(clause); the provenance leaf =
                 computeProvenanceLeaf(agreementHash, assemblyHash). Each
-                attestation contentRef = keccak256(content) where content sits
-                in the transaction calldata.
+                attestation contentRef = keccak256(content); the chain holds
+                only this hash, and the content is held off chain by the
+                parties.
             </Text>
             <View style={styles.table}>
                 <View style={[styles.tableRow, styles.tableHeader]}>

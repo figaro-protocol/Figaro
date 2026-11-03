@@ -216,6 +216,24 @@ describe("resolveSubOrderPricing — rate items", () => {
         expect(p.payment).toBe(10000000000000000n);
     });
 
+    it.each([
+        ["absent", {}],
+        ["empty", { geocodeStandard: "" }],
+    ])("order-geodistance with an %s geocodeStandard prices nothing, never reads the codes as geohash", (_label, standard) => {
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({ [GEO]: { ...standard, origin: SF, destination: LA } }),
+            seller: SWIFT,
+            sellerCatalogs: rateCatalog({
+                id: "haul", name: "Haul", price: "0.01", available: true,
+                pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
+            }),
+            tokenDecimals: 18,
+            specs: GEO_SPECS,
+        });
+        expect(p.payment).toBe(0n);
+        expect(p.issue).toBe("unresolvable-quantity");
+    });
+
     it("order-geodistance on an order without committed endpoints is unresolvable", () => {
         const p = resolveSubOrderPricing({
             node: nodeWithClauses({}),

@@ -153,33 +153,19 @@ async function idbWrite(key: string, logs: CachedLog[], cursor: bigint): Promise
 // Adaptive range scan
 // ---------------------------------------------------------------------------
 
-/** The smallest sub-range worth asking for; below it the provider's cap is
- *  not a range cap and the error is real. */
-const MIN_LOG_CHUNK = 500n;
-
-/** A provider refusing a range for its size, in the wording each gateway
- *  uses today (thirdweb: "Maximum allowed number of requested blocks";
- *  drpc: "ranges over N blocks are not supported"; publicnode: "exceed
- *  maximum block range"; 1rpc: "limited to 0 - 50 blocks range"; Alchemy /
- *  Infura: "block range" / "query returned more than"). Matched on the full
- *  error text so viem's wrapping never hides it. */
-export function isLogRangeCapError(err: unknown): boolean {
-    const text = err instanceof Error
-        ? `${err.message} ${(err as { details?: string }).details ?? ""} ${(err as { shortMessage?: string }).shortMessage ?? ""}`
-        : String(err);
-    return /block range|requested blocks|blocks range|ranges? over \d+ blocks|range too large|response size exceeded|query returned more than|too many results|exceed maximum/i.test(text);
-}
-
 /**
  * `client.getLogs` over `[fromBlock, latest]`, in ONE call when the provider
- * allows it and in sequential sub-ranges when it does not: on a range-cap
- * error the current window halves (down to `MIN_LOG_CHUNK`) and the scan
- * continues from where it stopped; on an answer that is the node's state
- * rather than the request's (pruned history, a rate limit) the same
- * sub-range is asked again under the SDK's one rule (`logReadRetry`); every
- * other error propagates, the last retried answer included. `latest`
- * is resolved once so the sub-ranges chunk against one snapshot. Exported
- * for the cache and its test — the cache is the ONE place logs are read.
+ * allows it and in sequential sub-ranges when it does not. On an answer that
+ * is the node's state rather than the request's (pruned history, a rate
+ * limit) the same sub-range is asked again under the SDK's one rule
+ * (`logReadRetry`). Every other refusal halves the current window and the
+ * scan continues from where it stopped: a provider's block-range cap is read
+ * from what it answers, never from the words of its error, which no two
+ * gateways share — so a 50-block cap is walked in reads within 50 blocks. An error
+ * that persists down to a one-block range is the node's real answer and
+ * propagates unchanged, the last retried answer included. `latest` is
+ * resolved once so the sub-ranges chunk against one snapshot. Exported for
+ * the cache and its test — the cache is the ONE place logs are read.
  */
 /** The two calls the scan needs — structural, so a viem `PublicClient` and
  *  a test double both fit. */
@@ -230,8 +216,8 @@ export async function getLogsAdaptive(
                 await new Promise((resolve) => setTimeout(resolve, delayMs));
                 continue;
             }
-            if (!isLogRangeCapError(err) || window <= MIN_LOG_CHUNK) throw err;
-            window = window / 2n < MIN_LOG_CHUNK ? MIN_LOG_CHUNK : window / 2n;
+            if (window <= 1n) throw err;
+            window = window / 2n;
         }
     }
     return logs;

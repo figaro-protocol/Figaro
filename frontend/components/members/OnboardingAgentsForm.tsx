@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { FormField } from "@/components/ui/FormField";
+import { Input } from "@/components/ui/Input";
 import { HintedFieldList, type HintedFieldDef } from "@/components/ui/HintedFieldList";
 import { useMounted } from "@/hooks/useMounted";
 import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
@@ -26,9 +28,10 @@ import { finishStep, type OnboardingStepChromeProps } from "@/components/members
  * explicit.
  */
 
-type ServiceKey = keyof MemberAgentServices;
-
-const FIELDS: HintedFieldDef<ServiceKey>[] = [
+// Hints for the transports most profiles declare. The set of transports is
+// open: any other the profile declares renders as its own field, and the
+// member can add one by name.
+const HINTED_FIELDS: HintedFieldDef[] = [
     {
         key: "mcp",
         label: "MCP endpoint",
@@ -109,9 +112,26 @@ export function OnboardingAgentsForm({
         update({ services: nonEmptyServices(services) });
     }, [services, hydrated, update]);
 
-    function setField(key: ServiceKey, value: string) {
+    const [newTransport, setNewTransport] = useState("");
+
+    function setField(key: string, value: string) {
         setServices((prev) => ({ ...prev, [key]: value }));
     }
+
+    function addTransport() {
+        const transport = newTransport.trim();
+        if (!transport) return;
+        setServices((prev) => (transport in prev ? prev : { ...prev, [transport]: "" }));
+        setNewTransport("");
+    }
+
+    const hinted = new Set(HINTED_FIELDS.map((f) => f.key));
+    const fields: HintedFieldDef[] = [
+        ...HINTED_FIELDS,
+        ...Object.keys(services)
+            .filter((transport) => !hinted.has(transport))
+            .map((transport) => ({ key: transport, label: transport, placeholder: "", hint: "A transport this profile declares." })),
+    ];
 
     function handleNext(e: React.FormEvent) {
         e.preventDefault();
@@ -147,11 +167,22 @@ export function OnboardingAgentsForm({
 
             <div className="space-y-6">
                 <HintedFieldList
-                    fields={FIELDS}
+                    fields={fields}
                     idPrefix="agent"
                     value={(key) => services[key] ?? ""}
                     onChange={setField}
                 />
+                <div className="flex items-end gap-2">
+                    <FormField label="Another transport" inputId="add-agent-transport" className="flex-1">
+                        <Input
+                            id="add-agent-transport"
+                            placeholder="nostr, xmtp, …"
+                            value={newTransport}
+                            onChange={(e) => setNewTransport(e.target.value)}
+                        />
+                    </FormField>
+                    <Button type="button" variant="outline" onClick={addTransport}>Add transport</Button>
+                </div>
             </div>
 
             {externalError && (

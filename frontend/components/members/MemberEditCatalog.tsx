@@ -13,11 +13,9 @@
  *      then dispatch `MembersRegistry.updateProfile(newProfileURI)`.
  *
  * Per-item delete is handled inside the form (each item row has a
- * Remove control). Whole-catalog clearing isn't currently a
- * separate affordance — saving with zero items is blocked by the
- * form's existing validation ("Add at least one item with a name
- * and a price.") since a registered member with an empty
- * catalog is a degenerate state.
+ * Remove control). A member need not sell anything: saving with zero
+ * items clears `catalogURI` from the profile, as the delete footer does,
+ * rather than pinning an empty catalog.
  *
  * On top of the shared editor scaffold, this surface fetches a
  * SECOND document (the catalog JSON behind `profile.catalogURI`)
@@ -123,6 +121,13 @@ export function MemberEditCatalog() {
             const e = new Error("Wallet disconnected mid-save.");
             setSaveError(e.message);
             throw e;
+        }
+
+        // No item: the member sells nothing, so the profile links no
+        // catalog — the same act as the delete footer below.
+        if (items.length === 0) {
+            await editor.updater.save({}, { clear: ["catalogURI"] });
+            return;
         }
 
         // Step 1: pin the new catalog JSON.

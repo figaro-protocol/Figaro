@@ -362,6 +362,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `deriveAssemblyWithdrawGate` | `/derive` | Whether an assembly's stake is withdrawable: in-flight processes whose provenance names its assembly hash. |
 | `deriveClauseWithdrawGate` | `/derive` | Whether a clause's stake is withdrawable, and what still blocks it. |
 | `deriveInFlightOrders` | `/derive` | Every committed order whose process has not resolved. |
+| `derivePricedFields` | root | The fields a quote prices, read from the composed clauses' specs: the commercial clause's `payment` and each line's `unitPrice`; empty when no commercial clause is composed or the specs are not cached. |
 | `deriveSharedSecretAsReceiver` | `/handoff` | ECDH shared secret from the sender's public key and your private key. |
 | `deriveSharedSecretAsSender` | `/handoff` | ECDH shared secret from your private key and the receiver's public key. |
 | `deserializeCommitmentPayload` | `/agent` | Parse a wire envelope back into a `CommitmentPayload`. |
@@ -490,7 +491,8 @@ a second route: `buildUsageClaims` turns a batch-resolved order plus its
 agreement into the claims a sequencer proves, and the counter counts each use
 the batch carries into the same tally a direct call feeds. A use is a use
 whichever way its process reached the chain: both routes emit `UsageRecorded`,
-so `fetchUsageRecords` reads one stream and `computeUsageAccruals` folds it into
+so `fetchUsageRecords` reads one stream and `computeUsageAccruals` folds it, under
+the deployment's floor the caller reads from `UsageCounter.minSellers()`, into
 one tally per `(kind, key, period)`, as `accrualOf` holds it. The two families stay apart: every count,
 accrual and claim is keyed by `(kind, key)` — `kind` is `USAGE_KIND_CLAUSE`
 (0), `USAGE_KIND_ASSEMBLY` (1) or `USAGE_KIND_AGREEMENT` (2), because a registry accepts any bytes32 and
@@ -853,7 +855,7 @@ const hash = await walletClient.writeContract({
 ```
 
 Measured on a local chain against the mirrored devnet interface: three token
-legs land in one transaction at ~117k gas, each recipient's balance equal to
+legs land in one transaction, each recipient's balance equal to
 its leg, and an over-balance batch reverts in simulation with nothing partially
 routed. **The trail is the point.** Which address received which share of which
 receipt is a chain fact anyone the wallet chooses can be shown — a
@@ -1157,16 +1159,22 @@ const race = await requestCounterSignatures(channel, drafts, { chainId, core });
 // reproduce the reply hash-for-hash — a quote can change the price and
 // nothing else. Cheapest verified quote wins; the buyer signs exactly one.
 import { buildQuoteRequest, requestQuotes, makeSellerQuoteHandler } from "@figaro-protocol/sdk/agent";
+import { computeClauseKey } from "@figaro-protocol/sdk";
 channel.register(courierAddr, makeSellerQuoteHandler(courierWallet, { chainId, core }, {
     chainClient: publicClient,                     // required, as for the race handler
     quote: (draft) => myPriceFor(draft),           // null declines; > ceiling declines
     policy: { requireRootShape: true, currencyAllowlist: [myToken], maxValue: myMaxBond },
     specs, readDesign, readProfile,                // the same gate as every seller handler
 }));
+// A priced field names its clause by KEY — the keccak256 of the spec's pinned
+// bytes, the same key the agreement's clause entry carries — never by name.
+// `derivePricedFields(clauseEntries, specs)` derives the list from the clause
+// declaring `lineItems`.
+const commerceKey = computeClauseKey(commerceSpec); // the spec you fetched and verified
 const drafts = candidates.map((seller) => buildQuoteRequest({
     assembly, buyer, seller, currency, ceiling, chainId, core,
-    pricedFields: [{ clause: "figaro-commerce", path: "payment" },
-                   { clause: "figaro-commerce", path: "lineItems.0.unitPrice" }],
+    pricedFields: [{ clause: commerceKey, path: "payment" },
+                   { clause: commerceKey, path: "lineItems.0.unitPrice" }],
     overrides,
 }));
 const { winner: quoted } = await requestQuotes(channel, drafts, { chainId, core });
@@ -1208,9 +1216,11 @@ const assembly = assembly && await hydrateAssembly(assembly, async (agreementHas
 //
 // A RELAY, NOT AN AUTHORITY: it holds no key of yours, its admission checks
 // call the same FigaroCore functions the proof runs (so it rejects earlier than
-// the proof, never accepts more), and its powers are censor, delay, and
-// withhold the state behind the verifier's root — never forge. A process open
-// on the batch path resolves only through a relay holding that state. Batch
+// the proof, never accepts more), and its powers are censor and delay — never
+// forge, and never withhold the state behind the verifier's root: every landed
+// batch logs its operation stream, and any relay rebuilds the state from the
+// chain (REBUILD_FROM_CHAIN=1). A process open on the batch path resolves only
+// through a relay holding that state. Batch
 // signatures name FigaroBatchVerifier as verifyingContract and do not verify
 // on FigaroCore: going direct is a NEW process, signed again for FigaroCore's
 // domain. There is no hosted public endpoint today; the URL is deployment
@@ -1250,7 +1260,8 @@ await seq.submitResolve(processId, cumulativeValue, commitments, buyerSig);
 // The wallet's code produces them, never signTypedData; the proof publishes
 // them and FigaroBatchVerifier asks the buyer's code at resolution, reverting
 // the batch on any answer but the magic value. The relay asks the same code at
-// its door (a 400 with the reason) and plans 500,000 gas and 2,048 bytes for it.
+// its door (a 400 with the reason) and plans WALLET_CODE_EXECUTION_GAS and
+// MAX_WALLET_AUTHORIZATION_BYTES for it (prover/sequencer/src/gas.rs).
 const digest = hashResolveProcess(processId, cumulativeValue, { chainId, core: verifier }); // the wallet's code validates walletCodeBytes for it
 await seq.submitResolveByWalletCode(processId, cumulativeValue, commitments, walletCodeBytes);
 // An attestation sends, by default, exactly what AttestationCoordinator takes on
@@ -1659,14 +1670,18 @@ shapes, the `HandoffChannel` transport seam, and the key agreement — the
 links-only null channel), so a second frontend implements one channel and
 reproduces the exact key-exchange bytes from this entry point alone.
 
-Four `ChannelMessage` shapes cross the channel (all safe on a PUBLIC transport):
+Four `ChannelMessage` shapes cross the channel:
 `HandoffKeyMessage` (`HANDOFF_KEY`, a bare AES key — only when the transport is
 itself confidential), `EcdhPubkeyMessage` (`ECDH_PUBKEY`, the receiver's
-per-order ephemeral public key), `EcdhWrappedKeyMessage` (`ECDH_WRAPPED_KEY`,
-the AES key wrapped under the ECDH secret), and `CommitmentSignatureMessage`
-(`COMMITMENT_PAYLOAD`, a **bare IPFS CID** — no `ipfs://` prefix — of a pinned,
-JSON-serialized `CommitmentPayload` from `@figaro-protocol/sdk/agent`; the envelope stays
-small and late subscribers get a durable retrieval path). This is a DIFFERENT
+per-order ephemeral public key, safe on a public transport),
+`EcdhWrappedKeyMessage` (`ECDH_WRAPPED_KEY`, the AES key wrapped under the ECDH
+secret, safe on a public transport), and `CommitmentSignatureMessage`
+(`COMMITMENT_PAYLOAD`, the JSON-serialized `CommitmentPayload` from
+`@figaro-protocol/sdk/agent` carried **inline**, as plaintext, capped at
+`MAX_COMMITMENT_PAYLOAD_BYTES` — never a public IPFS pin, since the payload can
+carry a `private`-disposition clause's plaintext). The SDK does not encrypt the
+payload: it stays between the parties only over an end-to-end encrypted
+transport, such as an XMTP DM, never a public one. This is a DIFFERENT
 exchange from `@figaro-protocol/sdk/agent`'s `CoordinationChannel`, which carries the
 bilateral OFFER between agents — different vocabulary, different seam.
 
@@ -1835,14 +1850,22 @@ import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 // the assembly keeps those values and strips every other clause's to `{}`.
 //
 // `block.design.article` is normally your clause's own group name (free text:
-// "coordination", "logistics", …). TWO values are RESERVED and change
-// agreement semantics:
-//   "mandatory"    — never selected on its own: the DAO's live ones are
-//                    written into every agreement (specIsMandatory,
-//                    mandatoryClauses)
-//   "attestations" — an empty anchor at commit, content attested later
-//                    (specIsProcessLog)
-// Pick either by accident — say you group an attestation clause under
+// "coordination", "logistics", …). FOUR values are routed on by code. Two
+// change agreement semantics:
+//   "mandatory"          — never selected on its own: the DAO's live ones are
+//                          written into every agreement (specIsMandatory,
+//                          mandatoryClauses)
+//   "attestations"       — an empty anchor at commit, content attested later
+//                          (specIsProcessLog)
+// and two are read by name:
+//   "denomination"       — on an assembly-scoped clause, its unfilled
+//                          designer-filled address-hex fields take the
+//                          deployment's token at seeding
+//                          (fillDeployTimeCurrency)
+//   "dispute-resolution" — the frontend's audit view reads the clause as the
+//                          process's named forum (frontend/lib/semantic/
+//                          processRecourse.ts)
+// Pick the first two by accident — say you group an attestation clause under
 // "attestations" — and your clause behaves differently with no error raised.
 // Registration is permanent and first-write-wins, so choose before you register.
 //
@@ -1952,8 +1975,8 @@ const commerce = clauseByField(agreement, "lineItems", specs);
 
 Three design-time objects are kept apart, each in its own registry family. A
 **clause** is its spec (`ClauseRegistry`, keyed by the hash of the pinned
-bytes). A **registered agreement** is the clauses composed for ONE agreement,
-value-free, with the designer's fills — the topology clause composed with
+bytes). A **registered agreement** is the design of an agreement: a merkle
+tree of clauses, value-free, with the designer's fills — the topology clause composed with
 `{}`, since who follows whom is the assembly's fact — keyed by
 `agreementHashOf(composed)` = the merkle root over one leaf per composed clause
 (`buildRegisteredClauseInclusionProof` proves a clause's membership)

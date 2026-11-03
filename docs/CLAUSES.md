@@ -65,10 +65,11 @@ assemblyHash }` or `null`.
 ## The registered agreement and the assembly — units above the clause
 
 Three design-time objects, three registries, parallel: a clause is its spec
-(`ClauseRegistry`), a registered agreement is a agreement — the
-clauses composed for one agreement (`AgreementRegistry`), and an assembly is
-a sequence of agreements holding registered agreements plus the assembly-scoped terms
-(`AssemblyRegistry`). Assemblies use agreements, agreements use clauses, and
+(`ClauseRegistry`), a registered agreement is the design of an agreement — a
+merkle tree of clauses, one leaf per composed clause with the designer's fills,
+value-free, keyed by its root, the `agreementHash` (`AgreementRegistry`), and an
+assembly is a merkle tree of agreements, each binding a registered agreement by
+its `agreementHash`, plus the assembly-scoped terms (`AssemblyRegistry`). Assemblies use agreements, agreements use clauses, and
 neither knows what uses it; every arrow is off-chain, in the pinned documents.
 `AssemblyRegistry` checks nothing about an assembly's agreements, and each kind of
 designer reward is gated by its own registry alone. Each document's published
@@ -341,6 +342,15 @@ field shape:
 - **`coordination`** — committed declarations of which scenario everyone runs.
   Committed content, not a runtime lifecycle; a coordination clause never
   surfaces an attestation capability.
+- **`denomination`** — an assembly-scoped clause of this article has each
+  unfilled designer-filled `address-hex` field set to the deployment's token
+  at seeding (`fillDeployTimeCurrency`, `sdk/src/projection.ts`).
+- **`dispute-resolution`** — the forum a process names: the audit view's
+  recourse reader keeps the clauses of this article
+  (`frontend/lib/semantic/processRecourse.ts`).
+
+Code routes on four of these: `mandatory`, `attestations`, `denomination` and
+`dispute-resolution`.
 
 Other articles are whatever the registered clauses declare; they group the
 drawer and the inventory.

@@ -117,7 +117,7 @@ export function buildHashAppendix(
             kind: "attestation-content-ref",
             label: `Attestation contentRef — ${att.clauseId} stage ${att.stage}`,
             hash: att.contentRef,
-            sourceLocation: `Attestation(orderHash=${truncateHex(att.orderHash, { head: 8 })}, clauseId=${att.clauseId}, stage=${att.stage}).contentRef = keccak256(content). Original content recoverable from the transaction calldata.`,
+            sourceLocation: `Attestation(orderHash=${truncateHex(att.orderHash, { head: 8 })}, clauseId=${att.clauseId}, stage=${att.stage}).contentRef = keccak256(content). The coordinator takes and emits only this hash, never the content: the content is held off chain by the parties, and a copy is verified by recomputing keccak256(content) against it (anchorAttestationContent).`,
             transactionHash: att.transactionHash ?? undefined,
         });
     }

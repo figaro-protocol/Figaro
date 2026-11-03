@@ -183,6 +183,36 @@ describe("member profile metadata parser", () => {
         });
     });
 
+    describe("legacy location strings", () => {
+        it("a legacy string that is not a geohash yields no location", () => {
+            const result = parseMemberProfileDocument({ name: "Bob", location: "Manhattan, NY" });
+            expect(result.location).toBeUndefined();
+        });
+
+        it("a legacy string that is a geohash yields that geohash, never an empty one", () => {
+            const result = parseMemberProfileDocument({ name: "Bob", location: "dr5reg" });
+            expect(result.location).toEqual({ geohash: "dr5reg" });
+        });
+    });
+
+    describe("agent services are an open set of transports", () => {
+        it("the strict parse keeps every transport the profile declares", () => {
+            const result = parseMemberProfileDocument({
+                name: "Bob",
+                services: { mcp: "https://example.com/mcp", nostr: "wss://relay.example.com" },
+            });
+            expect(result.services).toEqual({ mcp: "https://example.com/mcp", nostr: "wss://relay.example.com" });
+        });
+
+        it("the projection keeps every transport the profile declares and drops only non-strings", () => {
+            const result = projectAgentServices({
+                services: { a2a: "https://example.com/a2a", xmtp: "0xabc", broken: 42 },
+            });
+            expect(result.services).toEqual({ a2a: "https://example.com/a2a", xmtp: "0xabc" });
+            expect(Object.keys(result.services)).toEqual(["a2a", "xmtp"]);
+        });
+    });
+
     describe("tryParseMemberProfileDocument (lenient)", () => {
         it("returns null on a missing name", () => {
             expect(tryParseMemberProfileDocument({})).toBeNull();

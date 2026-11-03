@@ -48,6 +48,10 @@ export function RewardsView() {
     // Reading accrual is walletless (?wallet=0x… names any address); claiming needs the wallet.
     const account = useViewedWallet(connected);
     const rewards = useRpgfRewards(account);
+    // The periods and the member gate once the chain has answered; a failed
+    // read renders nothing below, a read in flight the loading line.
+    const periods = rewards.read.status === "present" ? rewards.read.value.periods : [];
+    const memberLive = rewards.read.status === "present" ? rewards.read.value.memberLive : null;
     // Re-renders as clause specs load from the registry, so a clause row
     // names its spec once the spec is here.
     useClauseSpecs();
@@ -74,7 +78,7 @@ export function RewardsView() {
         return () => {
             canceled = true;
         };
-    }, [publicClient, account, rewards.periods]);
+    }, [publicClient, account, rewards.read]);
 
     // No whole-view mounted gate: everything above the WalletGate children is
     // hydration-stable (config-derived `available`, static prose), and
@@ -130,13 +134,13 @@ export function RewardsView() {
                     </p>
                 )}
 
-                {rewards.available && rewards.readState === "loading" && (
+                {rewards.available && rewards.read.status === "pending" && (
                     <p className="text-base text-ink-muted" data-testid="rewards-loading">
                         Reading periods and your accrual from the chain&hellip;
                     </p>
                 )}
-                {/* A failed read renders nothing (readState "error"). */}
-                {rewards.available && rewards.readState === "ready" && rewards.periods.length === 0 && (
+                {/* A failed read renders nothing (the read is absent). */}
+                {rewards.available && rewards.read.status === "present" && periods.length === 0 && (
                     <p className="text-base text-ink-muted" data-testid="rewards-no-periods">
                         No reward periods exist on this network yet. Usage starts counting the
                         moment a period opens; design a clause, an agreement or an assembly and the trades that
@@ -144,8 +148,8 @@ export function RewardsView() {
                     </p>
                 )}
                 <div className="space-y-6">
-                    {rewards.periods.map((t) => {
-                        const currentId = rewards.periods.find((p) => !p.periodClosed)?.periodId ?? -1;
+                    {periods.map((t) => {
+                        const currentId = periods.find((p) => !p.periodClosed)?.periodId ?? -1;
                         const status = periodStatus(t, currentId);
                         return (
                             <div
@@ -213,13 +217,13 @@ export function RewardsView() {
                                     {t.periodClosed && !t.claimed && (
                                         <Button
                                             data-testid={`claim-${t.periodId}`}
-                                            disabled={busy !== null || t.claimable === 0n || rewards.memberLive === false}
+                                            disabled={busy !== null || t.claimable === 0n || memberLive === false}
                                             onClick={() => act("claim", () => rewards.claim(t.periodId))}
                                         >
                                             {busy === "claim" ? "Claiming…" : "Claim my share"}
                                         </Button>
                                     )}
-                                    {account && rewards.memberLive === false && !t.claimed && status !== "upcoming" && (
+                                    {account && memberLive === false && !t.claimed && status !== "upcoming" && (
                                         <p className="text-sm text-ink-muted" data-testid={`member-stake-note-${t.periodId}`}>
                                             A claim needs a live member stake: the minter rewards a designer only while it is a member.{" "}
                                             <Link href="/members" className="underline">Register as a member</Link>, then claim.

@@ -119,6 +119,14 @@ describe("assertOrderFitsResolveCap", () => {
             /permanently unresolvable/,
         );
     });
+
+    it("names the ceiling as the SDK's own estimate, never as a limit the chain enforces", async () => {
+        const client = stubClient(546n, MAINNET_GAS_LIMIT);
+        const error = await assertOrderFitsResolveCap(client, CORE, PROCESS_ID).catch((e: Error) => e);
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).not.toMatch(/this chain resolves/);
+        expect((error as Error).message).toMatch(/the SDK's own estimate/);
+    });
 });
 
 // The resolve model's memory term lives in two copies: the SDK's ceiling and the Foundry test that

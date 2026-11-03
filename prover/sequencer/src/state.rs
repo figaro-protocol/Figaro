@@ -274,8 +274,8 @@ pub enum Takeover {
     /// relay does not hold it: the served state becomes the kept state.
     Adopt,
     /// This relay already holds the state behind the verifier's root — in
-    /// the kept file, or in the journal as a batch of its own that landed,
-    /// whose record is still to be published: nothing is written, whatever
+    /// the kept file, or in the journal as a batch of its own that landed
+    /// without this relay reading the receipt: nothing is written, whatever
     /// was served, and the relay starts on what it holds.
     KeptStands,
     /// The header names a root other than the body's: the serving relay is

@@ -59,9 +59,11 @@ export async function readCappedResponseText(
 export type EndpointResolver = (seller: Hex) => Promise<string | null>;
 
 export interface DidWebResolverOptions {
-    /** The `service.type` to route to (the transport the caller speaks). The doc
-     *  convention uses `MCPEndpoint` / `A2AEndpoint` / `RESTEndpoint`. */
-    serviceType?: string;
+    /** The `service.type` to route to: the transport the caller speaks, named
+     *  by the caller (the doc convention uses `MCPEndpoint` / `A2AEndpoint` /
+     *  `RESTEndpoint`; any type a document publishes is valid). No transport
+     *  is assumed: a resolver without one routes nowhere. */
+    serviceType: string;
     /** Require the DID's wallet binding to match on this chain (recommended). */
     chainId?: number;
     /** Injectable fetch (testing / non-global-fetch environments). */
@@ -79,10 +81,11 @@ export interface DidWebResolverOptions {
  */
 export function didWebEndpointResolver(
     sellerToDid: (seller: Hex) => string | null | Promise<string | null>,
-    opts: DidWebResolverOptions = {},
+    opts: DidWebResolverOptions,
 ): EndpointResolver {
-    const serviceType = opts.serviceType ?? "MCPEndpoint";
+    const { serviceType } = opts;
     return async (seller) => {
+        if (!serviceType) return null;
         const did = await sellerToDid(seller);
         if (!did) return null;
         const { document } = await resolveDidWeb(did, opts.fetchFn);

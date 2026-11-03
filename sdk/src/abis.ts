@@ -322,7 +322,8 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
 
 // ── AgreementRegistry ABI ─────────────────────────────────────────────────
 // AssemblyRegistry's shape, keyed by `agreementHash` (`agreementHashOf`, the
-// merkle root over the clauses composed for one agreement). Parallel to the
+// merkle root over one leaf per clause the agreement composes, with the
+// designer's fills). Parallel to the
 // clause and assembly registries: no edge to either.
 
 export const AGREEMENT_REGISTRY_ABI = parseAbi([

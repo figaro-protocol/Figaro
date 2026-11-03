@@ -286,8 +286,8 @@ metadata — not through bespoke app forks.)
 
 ### Composition units
 
-- **Registered agreement** — the clauses composed for one agreement with the designer's
-  fills, value-free: the reusable unit an assembly is composed from, anchored on-chain via
+- **Registered agreement** — the design of an agreement: a merkle tree of clauses, one
+  leaf per composed clause with the designer's fills, value-free: the reusable unit an assembly is composed from, anchored on-chain via
   `src/build/registries/AgreementRegistry.sol` under its `agreementHash`.
 - **Assembly** — the structural declaration (roles, mechanisms, view definitions, module
   placement, narrative defaults): ordered agreements of registered agreements plus the

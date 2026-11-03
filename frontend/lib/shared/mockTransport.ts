@@ -1,12 +1,4 @@
-import {
-    BaseError,
-    ExecutionRevertedError,
-    HttpRequestError,
-    RpcRequestError,
-    http,
-    type HttpTransportConfig,
-    type Transport,
-} from "viem";
+import { http, type HttpTransportConfig, type Transport } from "viem";
 import { unstable_connector } from "wagmi";
 // Scoped subpath — see lib/shared/connectors.ts for why the "wagmi/connectors"
 // barrel breaks the production build.
@@ -93,70 +85,19 @@ function mockResponse(
     }
 }
 
-// Read-only JSON-RPC methods that can be safely mocked with empty/zero
-// defaults when the live RPC endpoint is unreachable. Returning a safe default
-// (instead of throwing) prevents uncaught promise rejections from wagmi's
-// internal block-number watcher and similar polling callers when the node is
-// down. The RpcBanner informs the user; the transport handles the plumbing.
-const READ_ONLY_METHODS = new Set([
-    "eth_chainId",
-    "net_version",
-    "web3_clientVersion",
-    "eth_blockNumber",
-    "eth_gasPrice",
-    "eth_maxPriorityFeePerGas",
-    "eth_estimateGas",
-    "eth_getBalance",
-    "eth_getTransactionCount",
-    "eth_getCode",
-    "eth_call",
-    "eth_getLogs",
-    "eth_accounts",
-    "eth_getBlockByNumber",
-    "eth_getBlockByHash",
-    "eth_getTransactionByHash",
-    "eth_getTransactionReceipt",
-    "eth_getBlockTransactionCountByNumber",
-    "eth_feeHistory",
-]);
-
-/** Classify an error thrown by viem's HTTP transport. We only want to fall
- *  back to the mock response when the RPC endpoint is genuinely unreachable
- *  — fetch failure, non-2xx HTTP, timeout. RPC-level errors (the node
- *  responded, but the response contained `error` — e.g. a contract revert
- *  on `eth_call`) must propagate, because callers like `simulateContract`
- *  use them to detect pre-wallet failure modes (slug collision, wrong
- *  deposit, etc.). Confusing the two silently broke publish validation. */
-function isTransportUnreachable(err: unknown): boolean {
-    if (!(err instanceof BaseError)) return false;
-    // A revert ANYWHERE in the cause chain means the chain ran the call and
-    // rejected it. That's not "RPC down" — it's the answer we want.
-    if (
-        err.walk(
-            (e) =>
-                e instanceof ExecutionRevertedError || e instanceof RpcRequestError,
-        )
-    ) {
-        return false;
-    }
-    return err.walk((e) => e instanceof HttpRequestError) !== null;
-}
-
 /**
  * HTTP transport that short-circuits to mock responses when `?e2e=mock` is
- * present on the current page, and falls back to the same safe defaults for
- * read-only methods when the live RPC is unreachable. RPC-level errors
- * (contract reverts, invalid params, etc.) are NOT swallowed — they
- * propagate so callers can react to them. Write / signing methods still
- * throw in the live-but-unreachable case so callers detect the failure
- * instead of silently proceeding.
+ * present on the current page, and is the live transport otherwise. Every
+ * live error propagates — an unreachable node as much as a revert: empty
+ * logs, a zero balance or a zero gas limit are answers a chain gives, and
+ * standing them in for a node that gave none would turn a failed read into
+ * a fabricated one. The reader sees the error, and its read is `absent`
+ * (`lib/shared/networkRead.ts`).
  *
- * Why: `?e2e=mock` is a per-navigation URL flag, not a build-time signal, so
- * the mock-vs-live decision must be made at request time — this is the one
- * chokepoint that can enforce "mock tests never reach Anvil" regardless of
- * whether individual hooks remember to gate themselves. The same chokepoint
- * is the right place to absorb transport-level unreachability so the user
- * sees one banner, not a cascade of console errors.
+ * Why here: `?e2e=mock` is a per-navigation URL flag, not a build-time
+ * signal, so the mock-vs-live decision must be made at request time — this is
+ * the one chokepoint that can enforce "mock tests never reach Anvil"
+ * regardless of whether individual hooks remember to gate themselves.
  */
 export function mockAwareHttp(
     url: string,
@@ -172,22 +113,7 @@ export function mockAwareHttp(
                 if (isE2EMockSession()) {
                     return mockResponse(args.method, args.params, chainId) as never;
                 }
-                try {
-                    return await liveInstance.request(args);
-                } catch (err) {
-                    // Only fall back to mock when the failure is a
-                    // transport-level unreachability (HTTP error / network).
-                    // RPC-level errors (chain reverts, invalid params, etc.)
-                    // MUST propagate — callers like `simulateContract` rely
-                    // on the revert payload to detect things like slug
-                    // collisions and wrong deposit values. Swallowing those
-                    // returns a fake-success `"0x"` and silently breaks the
-                    // pre-wallet validation in publish flows.
-                    if (READ_ONLY_METHODS.has(args.method) && isTransportUnreachable(err)) {
-                        return mockResponse(args.method, args.params, chainId) as never;
-                    }
-                    throw err;
-                }
+                return liveInstance.request(args);
             },
         };
     };

@@ -299,3 +299,62 @@ describe("witness-stage cards — several orders in one process", () => {
         expect(cards[0].orderLabel).toBe(`Order 2 of 2 · seller ${truncateHex(SELLER_B)}`);
     });
 });
+
+// A process-log ladder (a clause under the `attestations` article) is each
+// party's own log: the spec declares the ladder and no attester, so every
+// party to the order advances its own — never the seller alone.
+describe("process-log ladders — every party advances its own log", () => {
+    const LADDER_SPEC = {
+        clauseId: "test-ladder-log",
+        version: 1,
+        title: "Ladder log",
+        description: "Declares a process-log ladder and no attester.",
+        fields: [{ name: "event", type: "enum", values: ["started", "done"], required: true }],
+        stages: {},
+        block: {
+            design: { article: "attestations", scope: "agreement", nestsUnder: null, fills: [], composes: null },
+            checkout: { catalogueFills: [], profileFills: [] },
+            runtime: { interaction: null, fields: [] },
+        },
+    };
+    const pinned = pinSpec(LADDER_SPEC);
+    const agreements = new Map<string, Agreement>([
+        [CHECKOUT_HASH, { ...agreement, clauses: [{ clause: pinned.clauseKey, data: {} }] }],
+    ]);
+
+    beforeAll(async () => {
+        setClauseSpecFetcher(async () => pinned.bytes);
+        await loadClauseSpec(pinned.clauseKey, "mem://test-ladder-log");
+    });
+
+    const ladderCards = (address: string, attestations: RuntimeAttestation[] = []) =>
+        deriveProcessModelFromRuntime(summary, [order], agreements, address, undefined, attestations)
+            .orders.flatMap((o) => o.capabilities)
+            .filter((c) => c.action.executionType === "transaction" && c.action.kind === "submit-clause-attestation"
+                && c.action.clauseKey === pinned.clauseKey);
+    const stepBy = (attester: string, stage: number): RuntimeAttestation => ({
+        clauseId: pinned.clauseKey, orderHash: ORDER_HASH, stage, attester,
+        contentRef: `0x${"00".repeat(32)}`, blockNumber: 1,
+    });
+
+    for (const [party, address] of [["seller", SELLER], ["buyer", BUYER]] as const) {
+        it(`${party}: offered the ladder's first step`, () => {
+            const cards = ladderCards(address);
+            expect(cards).toHaveLength(1);
+            expect(cards[0].eventCode).toBe("started");
+            expect(cards[0].action).toMatchObject({ party, stage: 0 });
+        });
+
+        it(`${party}: its own step advances its own ladder`, () => {
+            expect(ladderCards(address, [stepBy(address, 0)]).map((c) => c.eventCode)).toEqual(["done"]);
+        });
+    }
+
+    it("the other party's step does not advance this party's ladder", () => {
+        expect(ladderCards(BUYER, [stepBy(SELLER, 0)]).map((c) => c.eventCode)).toEqual(["started"]);
+    });
+
+    it("a wallet that is neither party is offered nothing", () => {
+        expect(ladderCards("0x9999999999999999999999999999999999999999")).toHaveLength(0);
+    });
+});

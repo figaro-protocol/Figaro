@@ -70,9 +70,10 @@ export interface SubmitClauseAttestationCapabilityAction {
      *  clauseData` default applies (the exact committed bytes; contentRef =
      *  keccak of them). No form, no ladder. */
     reasserts?: boolean;
-    /** WHICH party attests. Ladders surface seller-side; witness stages
-     *  surface to BOTH parties — who must witness is never engine policy
-     *  (sufficiency is derived at read time against the committed policy). */
+    /** WHICH party attests. Ladders and witness stages surface to BOTH
+     *  parties — each party's ladder is its own log, and who must witness is
+     *  never engine policy (sufficiency is derived at read time against the
+     *  committed policy). */
     party: PartyRole;
 }
 

@@ -50,6 +50,7 @@ import {
 } from "@/lib/composition/swapFunding";
 import { SwapFundingPanel, fundingAuthorization, fundingBlocksTheAct } from "./SwapFundingPanel";
 import useTokenApproval from "@/hooks/useTokenApproval";
+import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 import { maxUint256 } from "viem";
 import { FieldControl } from "@/components/runtime/FieldControl";
@@ -208,6 +209,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     const basisSymbol = basisResolvedSymbol
         ?? (sellerDefault ? memberCatalog?.acceptedTokens?.find((t) => hexEqual(t.address, sellerDefault))?.symbol : undefined)
         ?? "";
+    // The basis token's decimals: the cart echo shows each line as listed.
+    const { decimals: basisDecimals } = useTokenDecimals(sellerDefault);
     const { data: resolvedSymbol } = useTokenSymbol(currency ?? "");
     const tokenSymbol = resolvedSymbol
         ?? (currency ? memberCatalog?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
@@ -838,7 +841,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 ) : (
                     <>
                         {/* Read-only line items — the buyer's selection, edited on browse. */}
-                        <CartLineList items={cartItems} tokenSymbol={basisSymbol} emphasizePrice />
+                        <CartLineList items={cartItems} decimals={basisDecimals} tokenSymbol={basisSymbol} emphasizePrice />
 
                         {/* THE PAYMENT TOKEN — the buyer's pick from the seller's
                             accepted array (the social layer). The pick IS the
@@ -1043,9 +1046,10 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 transaction.
                             </p>
                             <p className="text-[11px] text-ink-muted pt-1.5 leading-relaxed" data-testid="checkout-bond-rationale">
-                                Both you and the seller lock a bond against this trade, so cooperation is the
-                                seller&apos;s only profitable move — no arbitrator, no timeout. You
-                                alone resolve it; your bond returns when you do, and you pay only the price above.
+                                Both you and the seller lock a bond against this trade, so performing is the
+                                seller&apos;s best move as long as you resolve once it has performed and not
+                                before — no arbitrator, no timeout. You alone resolve it; your bond is refunded
+                                when you do, and you pay only the price above.
                             </p>
                             {(cartMassGrams > 0 || cartVolumeMl > 0) && (
                                 <div
