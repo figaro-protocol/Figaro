@@ -105,7 +105,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
     it("every anchor has the one-line note that says what it covers", () => {
         expect(STORED_DOCUMENT_NOTE["content-hash"]).toMatch(/keccak256/);
         expect(STORED_DOCUMENT_NOTE["content-hash"]).toMatch(/exactly these bytes/i);
-        expect(STORED_DOCUMENT_NOTE["agreement-hash"]).toMatch(/keccak256/);
+        expect(STORED_DOCUMENT_NOTE["agreement-hash"]).toMatch(/merkle root/);
         expect(STORED_DOCUMENT_NOTE["assembly-hash"]).toMatch(/merkle root/);
     });
 

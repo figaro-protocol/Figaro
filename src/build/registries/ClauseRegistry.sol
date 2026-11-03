@@ -32,9 +32,9 @@ pragma solidity 0.8.26;
 ///         WITHDRAW GATE (commits == resolves): the registering wallet should not
 ///         withdraw while processes composed from the clause are in
 ///         flight. The usage count lives in the indexer — the same count
-///         the RPGF program pays on — so the gate is enforced at the
-///         protocol surface (SDK/frontend refuse while commits > resolves).
-///         The contract itself cannot hold the count: FigaroCore is frozen
+///         the designer rewards pay on — so the gate is advisory: the SDK derives
+///         it and the frontend offers no reclaim while commits > resolves.
+///         `withdrawDeposit` checks none of it; the contract cannot hold the count: FigaroCore is frozen
 ///         and carries no composition provenance, so there is no on-chain
 ///         hardening of this gate.
 ///
@@ -166,9 +166,9 @@ contract ClauseRegistry {
     ///         clause for new compositions. Callable only by the recorded
     ///         `registeredBy`, once. A designer moves its stake to a new spec
     ///         by withdrawing from the old key and registering the new one.
-    /// @dev The commits == resolves gate is protocol-surface (indexer
-    ///      count; see the contract notice) — the chain carries no
-    ///      composition provenance to enforce it here.
+    /// @dev The commits == resolves gate is advisory and off-chain (indexer
+    ///      count; see the contract notice): this function does not check it,
+    ///      since the chain carries no composition provenance to check.
     /// @param clauseKey The clause key.
     function withdrawDeposit(bytes32 clauseKey) external {
         DepositState storage state = depositOf[clauseKey];

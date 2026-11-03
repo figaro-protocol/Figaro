@@ -381,7 +381,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         (parentOrderId: string) => {
             if (atOrderCapacity) {
                 setMergeNotice(
-                    `This chain resolves at most ${maxOrders} orders in one atomic resolveProcess — remove a node to add another, or compose multiple processes.`,
+                    `${maxOrders} orders is the most the SDK plans to fit in one atomic resolveProcess on this chain (its own estimate, not a limit the chain enforces). Remove a node to add another, or compose multiple processes.`,
                 );
                 setTimeout(() => setMergeNotice(null), 5000);
                 return;

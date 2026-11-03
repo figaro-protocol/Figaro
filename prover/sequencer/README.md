@@ -2,21 +2,24 @@
 
 The batch universe's public entry point: an HTTP relay that collects signed
 protocol operations, assembles them into batches, proves each batch with SP1,
-resolves it against `FigaroBatchVerifier` — and **publishes what it resolved**.
+resolves it against `FigaroBatchVerifier`, whose logs **publish what it resolved**.
 
 ## Trust model — relay, not authority
 
 `FigaroBatchVerifier.settleBatch` is **permissionless**: anyone can prove and
 resolve a batch, so this sequencer is one relay among any number — run your
-own. Its powers are to delay, to censor, and to withhold the state its
-batches are built on (§ "The state behind the root"), never to forge: the SP1 proof binds
+own. Its powers are to delay and to censor, never to withhold the state its
+batches are built on (every landed batch logs its operation stream, and the
+state behind the verifier's root is rebuilt from those logs, § "The state
+behind the root") and never to forge: the SP1 proof binds
 resolution to the EIP-712 structs both parties signed, and every admission
 pre-check here (signature recovery, the mirror's witness gates) is the same
 code the proof enforces — the mempool can only reject earlier, never accept
 more. The endpoint holds one key — the account that signs `settleBatch` and pays its gas (`SEQUENCER_PRIVATE_KEY`) — and grants no privilege. A new process can
 always go to `FigaroCore` directly; a process opened on the batch path
 resolves on the batch path, through any relay that holds the state behind the
-verifier's root (§ "The state behind the root").
+verifier's root, and any relay can rebuild that state from the chain
+(§ "The state behind the root").
 
 ### The chain carries what a batch resolved
 
@@ -159,7 +162,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `LISTEN_ADDR` | `0.0.0.0:3001` | HTTP listen address |
 | `BATCH_INTERVAL_SECS` | `10` | Batch assembly tick |
 | `MAX_BATCH_OPS` | `100` | Most operations one batch takes, oldest first — the operator's bound on what the prover finishes in one sitting; the rest wait for the next tick. The chain's bound is derived, never set (see The batch's bound) |
-| `SETTLE_GAS_CAP` | `16777216` | The chain's cap on one transaction's gas (EIP-7825's 2^24, which mainnet enforces); a chain without it is told so here (Sepolia carries larger transactions), set below 95 percent of its block limit. It is the bound a batch-path process is admitted under, stable across ticks, and the tick's budget never plans past it; a value below the gas of resolving a one-order process (590,096), or at or past 95 percent of the block limit read at startup, is a refusal to start |
+| `SETTLE_GAS_CAP` | `16777216` | The chain's cap on one transaction's gas (EIP-7825's 2^24, which mainnet enforces); a chain without it is told so here (Sepolia carries larger transactions), set below 95 percent of its block limit. It is the bound a batch-path process is admitted under, stable across ticks, and the tick's budget never plans past it; a value below what this relay plans for a `settleBatch` call resolving a one-order process (`gas::MIN_SETTLE_GAS_CAP`), or at or past 95 percent of the block limit read at startup, is a refusal to start |
 | `MEMPOOL_MAX_OPS` | `10000` | Pending-op queue cap |
 | `MEMPOOL_MAX_USAGE_CLAIMS` | `10000` | Pending usage-claim queue cap |
 | `DEFER_WINDOW_SECS` | `600` | How long an operation deferred at batch formation waits, from its own first deferral, before it is dead-lettered with what was filtered behind it (see Mempool bounds) |
@@ -169,7 +172,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `SUBMITS_PER_MINUTE_PER_IP` | `60` | Submissions one client address (an IPv6 address by its /64) may make a minute before `429`; `0` disables |
 | `RUST_LOG` | `figaro_sequencer=info,sequencer=info` | Log filter. Two targets: the library's modules log as `figaro_sequencer`, the binary's own lines (startup, every refusal to start, the batch loop) as `sequencer` — name both |
 | `STATE_PATH` | `sequencer-state-<chain id>-<verifier>.json` | The relay's state, the preimage of the verifier's root (see The state behind the root); empty = in-memory only |
-| `REBUILD_FROM_CHAIN` | unset | `1`: at startup this relay rebuilds the state behind the verifier's root from the chain alone, replaying every landed batch's operation stream from `REBUILD_FROM_BLOCK` (default `0`; the verifier's deployment block saves the scan), holding each root to its `BatchSettled`, and keeps the result as its state file before starting. Refuses, writing nothing, on a batch landed through another contract's call. |
+| `REBUILD_FROM_CHAIN` | unset | `1`: at startup this relay rebuilds the state behind the verifier's root from the chain alone, replaying every landed batch's operation stream from `REBUILD_FROM_BLOCK` (default `0`; the verifier's deployment block saves the scan), holding each root to its `BatchSettled`, and keeps the result as its state file before starting. Refuses, writing nothing, on the first batch whose two logs do not pair up in one transaction, whose stream does not decode or apply, or whose replay does not reach the root its `BatchSettled` names, and when the replay's last root is not the verifier's `stateRoot()`. |
 | `STATE_FROM` | unset | Another relay's base URL: at startup this relay fetches its `GET /state`, recomputes the root, and adopts it into `STATE_PATH` only when that root is the verifier's and this relay does not already hold the state behind it (kept file or journal); holding it, it starts on its own and writes nothing; any other served state is a refusal to start that writes nothing (see The state behind the root) |
 
 ## HTTP API
@@ -302,9 +305,12 @@ the host — the reproducible build is the prover box's docker recipe.
 ## The state behind the root
 
 The verifier holds a state ROOT. The state itself — every open process and
-order, and the usage already counted — is held off chain by whoever built the
-last batch, and a bond committed on the batch path is refunded only by a
-batch built on that state. This relay keeps it on disk:
+order, and the usage already counted — is held off chain, and a bond
+committed on the batch path is refunded only by a batch built on that state.
+Every landed batch logs its whole operation stream (`BatchOperations`, its
+hash checked against the proof's public value 9), so anyone can rebuild the
+state from the verifier's logs (`REBUILD_FROM_CHAIN=1`, `src/rebuild.rs`).
+This relay also keeps it on disk:
 
 - **`STATE_PATH`** holds the kept state: the state of the last batch this
   relay saw land. Before the first, the file is absent and the state is
@@ -324,10 +330,7 @@ The relay builds only on a held state whose root is the verifier's. It reads
 
 - the root is the mirror's own: it builds;
 - the root is a held next state's: that batch landed without this relay
-  reading the receipt. Its state becomes the mirror's and the kept one. The
-  transaction is read from the verifier's `BatchSettled` log and the entry
-  is published under it; when the log is not found in the blocks read, the
-  state is adopted and the entry is NOT published (the log names the root);
+  reading the receipt. Its state becomes the mirror's and the kept one;
 - the root is neither: another submitter's batch landed, the state file is
   not this verifier's, or it is older than the verifier's last batch (a
   stale backup, or a reorg past a kept batch). At startup that is a refusal
@@ -350,8 +353,9 @@ adopted root. A second relay beside the first takes its own `STATE_PATH`: the
 default is relative to the working directory and names only the chain and
 the verifier, so two relays started from one directory with the default
 would share one file. Back up the state file and its journal after every
-batch that lands, or keep a copy of `/state`: losing every copy leaves the
-open batch-path processes without anyone who can build their resolve. A state file or a journal that is there and does not
+batch that lands, or keep a copy of `/state`: losing every copy costs a
+rebuild from the chain (`REBUILD_FROM_CHAIN=1`), which replays every landed
+batch. A state file or a journal that is there and does not
 parse is a refusal to start, never a silent start from less than this host
 held. With `STATE_PATH=` (empty) the state lives in memory and a restart
 holds nothing. The journal carries one full state per held batch and is
@@ -398,7 +402,7 @@ of losing the batch:
   authorization)` from the verifier's address, the digest `ResolveProcess`
   under the verifier's domain over the process and the listed payments, the
   buyer the listed orders' — at the door and again here, against the latest
-  block, under `WALLET_CODE_EXECUTION_GAS` (500,000), the gas this relay plans
+  block, under `WALLET_CODE_EXECUTION_GAS`, the gas this relay plans
   for the wallet's own code (`prover/sequencer/src/gas.rs`). A resolve whose
   buyer has no code, or whose code does not answer with the magic value, is
   dropped with the reason and is re-submittable; a read failure drops it

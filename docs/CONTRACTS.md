@@ -232,8 +232,9 @@ designer composes an assembly from.
   under the agreement format's leaf convention (the SDK's `agreementHashOf(doc)`;
   a clause's membership is proved by `buildRegisteredClauseInclusionProof`), where
   `clauses` maps each clause key to
-  the designer's fills for ONE agreement — value-free, the topology clause
-  composed with `{}` because who follows whom belongs to the agreement. The
+  the designer's fills for that clause — value-free, the topology clause
+  composed with `{}` because who follows whom is set by each assembly that
+  places the agreement (`AssemblyAgreement.clauses`, `sdk/src/assembly.ts`). The
   pinned document is the agreement (`RegisteredAgreement { name?,
   summary?, description?, clauses }`); the editorial fields are excluded from
   the key. A reader fetches the document from `contentURI`, parses it, and

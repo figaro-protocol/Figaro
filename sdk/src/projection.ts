@@ -1137,7 +1137,7 @@ export function buildAssembly(args: {
 
 /**
  * An authored agreement (`agreements/<name>.json`): the clauses a
- * designer selected for one agreement, written by clause NAME with the
+ * designer composes into it, written by clause NAME with the
  * designer's fills, beside the designer's own words. The two mandatory
  * clauses are named like any other: an authored agreement states what the
  * canvas would write in. Seed time only.

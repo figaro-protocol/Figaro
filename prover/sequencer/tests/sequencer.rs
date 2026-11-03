@@ -2052,6 +2052,10 @@ fn a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation() 
     assert_eq!(dropped.len(), 1);
     assert_eq!(dropped[0].0.id, 3);
     assert!(dropped[0].1.contains("would grow the process to 5 orders, past the 4"), "{}", dropped[0].1);
+    // The bound is the relay's own admission limit, from its SETTLE_GAS_CAP
+    // and its own planning model, never a limit the chain enforces.
+    assert!(dropped[0].1.contains("this relay's own limit"), "{}", dropped[0].1);
+    assert!(!dropped[0].1.contains("chain's cap"), "{}", dropped[0].1);
     // A cap of zero keeps no commit at all; the resolve still passes.
     let (kept, dropped) = assembler::filter_commits_within_resolve_capacity(CHAIN_ID, CORE, &prev, vec![commit(1), ], 0);
     assert!(kept.is_empty());

@@ -595,18 +595,12 @@ export function OnboardingProfileForm({
             >
                 <h3 id="profile-heading-accepted-tokens" className="text-heading-h3 text-ink-heading">Accepted tokens</h3>
                 <p className="text-sm text-ink-body">
-                    Accepting a token is an identity declaration, not just a
-                    payment choice. Each token you list says which value system
-                    you coordinate with: a stablecoin signals legal-system
-                    alignment, a DAO governance token signals community
-                    membership in that DAO, ETH signals chain-native
-                    alignment, a commodity-backed token signals value
-                    anchoring. The accepted-token list is your brand — buyers
-                    searching for aligned counterparties read it before they
-                    read your catalog.
+                    The ERC-20 tokens you accept, each by its contract
+                    address. The list is part of your public profile, so
+                    buyers read it before they read your catalog.
                 </p>
                 <p className="text-sm text-ink-body">
-                    Operationally: a buyer pays in any one of the tokens listed
+                    A buyer pays in any one of the tokens listed
                     here. Your catalog is priced in your default pricing token
                     only; when the buyer pays in another, its checkout states
                     the amount in that token and you sign it or decline. Add

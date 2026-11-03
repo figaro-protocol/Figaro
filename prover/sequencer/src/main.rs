@@ -893,7 +893,7 @@ async fn batch_loop(
             if let Some((_, planned_gas)) = planned.unfit {
                 let unfit = valid.remove(0);
                 let why = format!(
-                    "fits no settle under the chain's cap on its own: planned at {planned_gas} gas against the cap's {cap_budget}; a resolve this large means the process outgrew what one settle carries"
+                    "fits no settle under this relay's SETTLE_GAS_CAP on its own (this relay's own limit, not one the chain enforces): planned at {planned_gas} gas against the cap's {cap_budget}; a resolve this large means the process outgrew what one settle of this relay carries"
                 );
                 error!(id = unfit.id, %why, "Dead-lettered");
                 failures.record(1, why).await;
@@ -1172,9 +1172,7 @@ async fn requeue_or_dead_letter(mempool: &Mempool, failures: &FailureLog, ops: V
 ///
 /// A held next state arrives here when its batch landed without this relay
 /// reading the receipt: its own transaction, or the same proof sent by
-/// someone else. The transaction is read from the verifier's `BatchSettled`
-/// log; the record is published under it, once, and not at all when the log
-/// is not found. The record's `block_timestamp` is the held batch's own.
+/// someone else.
 async fn step_to(
     root: B256,
     state_mirror: &StateMirror,
@@ -1192,8 +1190,7 @@ async fn step_to(
 }
 
 /// A batch landed (or, in a dry run, proved): its state becomes the mirror's
-/// and the kept one, and with `publish` its record goes out under the next
-/// batch number. A kept file that cannot be written leaves the state held in
+/// and the kept one, and the batch count moves by one. A kept file that cannot be written leaves the state held in
 /// the journal, where the next start finds it.
 async fn adopt(
     next: NextState,

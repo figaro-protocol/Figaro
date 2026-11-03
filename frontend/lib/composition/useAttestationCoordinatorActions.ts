@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from "react";
 import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
-import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import type { Abi, Hex } from "viem";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { ATTESTATION_COORDINATOR_ABI } from "@figaro-protocol/sdk";
@@ -71,7 +70,14 @@ export function useAttestationCoordinatorActions() {
         }
         // Reconstruct the target Commitment from its OrderCommitted event — the
         // indexer is the source, no commitment store.
-        const chainId = publicClient.chain?.id ?? DEVNET_CHAIN_ID;
+        // The connected chain's id — the domain the commitment was signed
+        // in. With no connected chain, nothing is restored.
+        const chainId = publicClient.chain?.id;
+        if (chainId === undefined) {
+            const message = "No connected chain: connect a wallet to the order's chain to attest.";
+            setError(message);
+            throw new Error(message);
+        }
         const log = (await getAllOrderCommitted(publicClient, chainId))
             .find((l) => getStringArg(l, "orderHash") === orderHash);
         if (!log) {

@@ -56,7 +56,8 @@ pragma solidity 0.8.26;
 ///         flight. `UsageCounter` counts only resolved, recorded uses, never a
 ///         commit, so the in-flight count lives in the indexer (commits without
 ///         resolution, attributed by each order's decoded provenance) and the
-///         gate is enforced at the protocol surface (SDK and frontend refuse).
+///         gate is advisory: the SDK derives it, the frontend offers no
+///         reclaim, and `withdrawDeposit` checks none of it.
 ///
 ///         The designer of record is first-write-wins on the agreementHash:
 ///         whoever anchors a composition first is its designer of record.
@@ -182,8 +183,8 @@ contract AgreementRegistry {
     ///         only the stake moves; readers stop offering the agreement for new
     ///         compositions (assemblies composed from it still hydrate). Callable only by the stored
     ///         `registeredBy`, and only once per binding.
-    /// @dev The commits == resolves gate is protocol-surface (indexer count;
-    ///      see the contract notice).
+    /// @dev The commits == resolves gate is advisory and off-chain (indexer
+    ///      count; see the contract notice): this function does not check it.
     /// @param agreementHash The agreement whose stake to withdraw.
     function withdrawDeposit(bytes32 agreementHash) external {
         AgreementBinding storage binding = bindings[agreementHash];

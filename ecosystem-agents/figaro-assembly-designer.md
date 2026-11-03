@@ -157,7 +157,7 @@ derive identity.
   `{}` = the clause is composed with no fields set (seller fills at first-use, buyer at
   checkout). Per-node clause choices AND the per-edge mechanism both live in this map. Its
   key is `agreementHashOf({ clauses })`.
-- **Topology is a clause like any other — filled by the agreement.** A agreement
+- **Topology is a clause like any other — filled by the agreement.** An agreement
   carries `figaro-topology` as `{}`, so one registered agreement fits any position; the order
   agreement's own `clauses` carry `{ follows: [...] }` — the root order is `[]`; a child
   names its parent's local `"agreement-<i>"` label. There are **no** `nodes`/`edges` arrays —
@@ -219,7 +219,7 @@ catalog values, not assembly fields.
 }
 ```
 
-Each `agreementHash` names a agreement registered on `AgreementRegistry`, pinned as
+Each `agreementHash` names an agreement registered on `AgreementRegistry`, pinned as
 `{ "name": "<optional>", "clauses": { "0x<commerce clause key>": {}, "0x<handoff clause key>": {},
 "0x<topology clause key>": {} } }`.
 

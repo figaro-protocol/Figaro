@@ -65,7 +65,7 @@ export default async function Image() {
                         marginTop: 36,
                     }}
                 >
-                    Agreements between strangers, made good before the trade — on Ethereum.
+                    Agreements between strangers, made good before the trade — on a public blockchain.
                 </div>
             </div>
         ),

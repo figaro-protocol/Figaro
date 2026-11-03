@@ -2,7 +2,7 @@ import { Order, OrderState } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 import { clauseByField } from "@figaro-protocol/sdk";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
-import type { PartyRole, ProcessSummary } from "@/lib/kernel/walletProcessQueries";
+import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue, specSource } from "@/lib/shared/clauseSpecSource";
 import { PROVENANCE_LEAF_KEY } from "@figaro-protocol/sdk";
@@ -105,8 +105,11 @@ function roleCapabilities(
     const agreement = order.checkoutHash ? agreements.get(order.checkoutHash) : undefined;
 
     // GENERIC runtime attestation: any PROCESS-LOG clause (attestations
-    // article — the clause's own declared kind) advances its transfer ladder,
-    // seller-side. No clause names — a permissionlessly-registered process-log
+    // article — the clause's own declared kind) advances its transfer ladder.
+    // A ladder event is one party's own log, and the spec declares the ladder
+    // but no attester, so who may attest is never engine policy: every party
+    // to the order advances its own ladder, counted from its own attestations
+    // alone (docs/CLAUSES.md § runtime evidence). No clause names — a permissionlessly-registered process-log
     // clause flows through this loop unchanged. Committed-choice enum clauses
     // (coordination article, e.g. modalities) are content, not lifecycles —
     // classifying by "has an enum" fabricated seller capabilities for them.
@@ -117,9 +120,7 @@ function roleCapabilities(
             if (!clauseIsProcessLog(clauseKey)) continue; // only attestations-article ladders are lifecycles
             const ladder = clauseLadderField(clauseKey);
             if (!ladder) continue;                                     // process-log clause without a declared ladder yet → nothing to advance
-            const parties: Array<PartyRole> = ["seller"];
-
-            for (const party of parties) {
+            for (const party of ["seller", "buyer"] as const) {
                 if (party === "seller" ? !isSeller : !isBuyer) continue;
                 const mine = orderAttestations.filter(
                     (a) => hexEqual(a.clauseId, clauseKey)

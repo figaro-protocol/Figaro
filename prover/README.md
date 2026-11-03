@@ -15,7 +15,7 @@ tests.
 | `lib/` | `figaro-kernel` | The off-chain mirror of `FigaroCore`'s commit/resolve logic plus the witness gates (spec-identity substitution, content-hash mismatch, inclusion failure, attest-after-resolve) and the RPGF usage bridge. Depends on `figaro-clause` for Layer B content validation. |
 | `program/` | `figaro-prover` | The SP1 guest program — `figaro-kernel` compiled to the RISC-V zkVM target. Its compiled ELF's hash IS the verification key `FigaroBatchVerifier` pins as `programVKey`, so this crate's toolchain determines whether a proof verifies at all. |
 | `script/` | `figaro-prove-test` | Host-side proving harness (binary `prove`): SP1 mock-executor guest tests, in-VM gate-rejection tests, and (`SP1_REAL_PROOF=1`) a real local SP1 Core proof of the canonical batch. |
-| `sequencer/` | `figaro-sequencer` | The public relay binary (`sequencer`) — mempool, batch assembler, prover driver, submitter, and publication archive. One relay among any number; `docs/SCALING_STRATEGY.md` + `sequencer/README.md` own the trust model. |
+| `sequencer/` | `figaro-sequencer` | The public relay binary (`sequencer`) — mempool, batch assembler, prover driver, submitter, and the read routes (`/health`, `/status`, `/state`). One relay among any number; `docs/SCALING_STRATEGY.md` + `sequencer/README.md` own the trust model. |
 
 ## Prerequisites
 

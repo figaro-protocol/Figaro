@@ -1,3 +1,5 @@
+import { parseToken, tokenFigure } from "@/lib/shared/utils";
+
 /**
  * CartLineList — the read-only cart-line rendering shared by the browse
  * page's order summary (`/s/view`) and the checkout page's read-only cart
@@ -11,20 +13,30 @@ export interface CartLineItemLike {
     quantity: number;
 }
 
-/** A single cart line's total: price × quantity, price parsed as a decimal
- *  string (display-precision only — checkout's bond math uses the SDK's
- *  token-decimal-aware path instead, never this helper). */
-function cartLineTotal(item: CartLineItemLike): number {
-    return parseFloat(item.price || "0") * item.quantity;
+/** A line's total in the token's base units — price × quantity at the
+ *  token's `decimals()`, the same arithmetic the order commits. Null until
+ *  decimals are read, or for a price that is not a decimal figure. */
+function cartLineAmount(item: CartLineItemLike, decimals: number | undefined): bigint | null {
+    if (decimals === undefined) return null;
+    try {
+        return parseToken(item.price || "0", decimals) * BigInt(item.quantity);
+    } catch {
+        return null;
+    }
 }
 
-/** Sum of every line's `cartLineTotal`, for a plain display subtotal. */
-function sumCartValue(items: CartLineItemLike[]): number {
-    return items.reduce((sum, item) => sum + cartLineTotal(item), 0);
+/** A figure with its token symbol, or nothing for an unknown amount. */
+function figure(amount: bigint | null, decimals: number | undefined, tokenSymbol: string | undefined): string {
+    if (amount === null) return "";
+    const shown = tokenFigure(amount, decimals);
+    return shown && tokenSymbol ? `${shown} ${tokenSymbol}` : shown;
 }
 
 interface CartLineListProps {
     items: CartLineItemLike[];
+    /** The listing token's `decimals()`, read from the chain; undefined until
+     *  then, and no figure is shown. */
+    decimals: number | undefined;
     /** Appended after each line total when present (e.g. "USDC"). */
     tokenSymbol?: string;
     /** Bold the line-total column. Checkout's cart echo does; the browse
@@ -37,11 +49,13 @@ interface CartLineListProps {
     showSubtotal?: boolean;
 }
 
-export function CartLineList({ items, tokenSymbol, emphasizePrice = false, showSubtotal = false }: CartLineListProps) {
+export function CartLineList({ items, decimals, tokenSymbol, emphasizePrice = false, showSubtotal = false }: CartLineListProps) {
+    const amounts = items.map((item) => cartLineAmount(item, decimals));
+    const subtotal = amounts.reduce<bigint | null>((sum, a) => (sum === null || a === null ? null : sum + a), 0n);
     return (
         <>
             <ul className="space-y-2 text-sm">
-                {items.map((item) => (
+                {items.map((item, i) => (
                     <li
                         key={item.catalogItemId}
                         className="flex items-baseline justify-between gap-2"
@@ -51,7 +65,7 @@ export function CartLineList({ items, tokenSymbol, emphasizePrice = false, showS
                             {item.name} <span className="text-ink-muted">× {item.quantity}</span>
                         </span>
                         <span className={`text-ink-primary ${emphasizePrice ? "font-semibold " : ""}tabular-nums shrink-0`}>
-                            {cartLineTotal(item).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
+                            {figure(amounts[i], decimals, tokenSymbol)}
                         </span>
                     </li>
                 ))}
@@ -60,7 +74,7 @@ export function CartLineList({ items, tokenSymbol, emphasizePrice = false, showS
                 <div className="flex justify-between border-t border-default pt-3 text-sm font-semibold">
                     <span className="text-ink-primary">Subtotal</span>
                     <span className="text-ink-primary tabular-nums" data-testid="cart-subtotal">
-                        {sumCartValue(items).toFixed(4)}{tokenSymbol ? ` ${tokenSymbol}` : ""}
+                        {figure(subtotal, decimals, tokenSymbol)}
                     </span>
                 </div>
             )}

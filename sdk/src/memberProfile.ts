@@ -37,6 +37,7 @@ import {
     type UnknownRecord,
 } from "./documentParse.js";
 import { isBytes32Hex } from "./types.js";
+import { isGeohash } from "./derive/geo.js";
 import type { Address } from "./types.js";
 import type { Agreement } from "./agreement.js";
 import { deriveAssemblySlug } from "./assembly.js";
@@ -69,14 +70,10 @@ export interface MemberBrandingMetadata {
 
 // ── Profile sub-types ─────────────────────────────────────────────────────────
 
-/** Service endpoints an autonomous agent declares (ERC-8004 interop). */
-export interface MemberAgentServices {
-    mcp?: string;
-    a2a?: string;
-    rest?: string;
-    did?: string;
-    ens?: string;
-}
+/** Service endpoints a member declares (ERC-8004 interop), keyed by
+ *  transport: an open set — `mcp`, `a2a`, `rest`, `did`, `ens` or any other
+ *  transport the profile names — each mapped to its endpoint or identifier. */
+export type MemberAgentServices = Record<string, string>;
 
 /** Asset URIs associated with the member's branding. */
 export interface MemberAssetReferences {
@@ -212,7 +209,7 @@ export interface MemberProfileMetadata {
      * of `assemblyBindings` (the seller's list).
      */
     buyerAssemblies?: BuyerAssemblySubscription[];
-    /** ERC-8004 agent service endpoints (mcp, a2a, rest, did, ens). */
+    /** ERC-8004 agent service endpoints, keyed by transport (an open set). */
     services?: MemberAgentServices;
     /** IPFS URI of the wallet's catalog document. */
     catalogURI?: string;
@@ -307,9 +304,10 @@ function parseAcceptedTokens(value: unknown, path: string): AcceptedTokenMetadat
 
 function parseLocation(value: unknown, path: string): MemberLocation | undefined {
     if (value === undefined) return undefined;
-    // Tolerate legacy free-form string by wrapping into a stub geohash entry.
+    // A legacy profile wrote its location as a bare string: a geohash is kept
+    // as one; any other string carries no location.
     if (typeof value === "string") {
-        return value.trim() ? { geohash: "", addressText: value } : undefined;
+        return isGeohash(value) ? { geohash: value } : undefined;
     }
     const record = asRecord(value, path);
     return {
@@ -321,13 +319,12 @@ function parseLocation(value: unknown, path: string): MemberLocation | undefined
 function parseAgentServicesField(value: unknown, path: string): MemberAgentServices | undefined {
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
-    return {
-        mcp: asOptionalString(record.mcp, `${path}.mcp`),
-        a2a: asOptionalString(record.a2a, `${path}.a2a`),
-        rest: asOptionalString(record.rest, `${path}.rest`),
-        did: asOptionalString(record.did, `${path}.did`),
-        ens: asOptionalString(record.ens, `${path}.ens`),
-    };
+    const services: MemberAgentServices = {};
+    for (const [transport, endpoint] of Object.entries(record)) {
+        const parsed = asOptionalString(endpoint, `${path}.${transport}`);
+        if (parsed !== undefined) services[transport] = parsed;
+    }
+    return services;
 }
 
 function parseBrandingField(value: unknown, path: string): MemberBrandingMetadata | undefined {
@@ -459,14 +456,9 @@ export function projectAgentServices(value: unknown): AgentServiceInfo {
         return { services: {}, capabilities: [], reachable: false };
     }
 
-    const s = rawServices as UnknownRecord;
-    const services: MemberAgentServices = {
-        mcp: typeof s.mcp === "string" ? s.mcp : undefined,
-        a2a: typeof s.a2a === "string" ? s.a2a : undefined,
-        rest: typeof s.rest === "string" ? s.rest : undefined,
-        did: typeof s.did === "string" ? s.did : undefined,
-        ens: typeof s.ens === "string" ? s.ens : undefined,
-    };
+    const services: MemberAgentServices = Object.fromEntries(
+        Object.entries(rawServices).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+    );
     const capabilities = Array.isArray(record.capabilities)
         ? (record.capabilities as unknown[]).filter((c): c is string => typeof c === "string")
         : [];

@@ -316,8 +316,12 @@ export function OnboardingCatalogForm({
     function validateAndContinue(e: React.FormEvent) {
         e.preventDefault();
         const completeItems = items.filter(isItemComplete);
-        if (completeItems.length === 0) {
-            setSubmitError("Add at least one item with a name and a price.");
+        // A member need not sell anything: a step left blank continues with
+        // no items. A row started and left without a name or a price is
+        // refused, never dropped silently.
+        const startedRow = items.some((it) => !!it.name.trim() || !!it.price.trim());
+        if (completeItems.length === 0 && startedRow) {
+            setSubmitError("Give the item a name and a price, or remove it.");
             return;
         }
         const savedItems = completeItems.map((it) => toItem(it, unitSystem));

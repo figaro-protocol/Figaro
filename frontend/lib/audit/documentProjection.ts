@@ -20,8 +20,9 @@ import { calculateResolution } from "@figaro-protocol/sdk";
 import type { Agreement } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/kernel/store";
 import { OrderState } from "@/lib/kernel/store";
-import { clauseDeclaresField, clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
-import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
+import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
+import { topologyFollows } from "@/lib/semantic/processTopology";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 // ── Layout DSL (declared data) ───────────────────────────────────────────────
@@ -33,6 +34,7 @@ export type ValueRef =
     | { const: string }
     | { orderHash: true }
     | { party: PartyRole }
+    | { followedSellers: true }                           // the sellers of the orders this order follows (topology)
     | { payment: true }                                   // smallest-unit amount (exact + verifiable)
     | { resolvedDate: true }                              // ISO date of resolution, or "—"
     | { leafField: { byField: string; field: string } }  // leaf declaring `byField` → its `field`
@@ -42,8 +44,9 @@ export type ValueRef =
 /** When a document applies — a declarative predicate over the committed data. */
 export type Predicate =
     | { always: true }
-    | { hasLeafField: string }   // some committed leaf declares this field
-    | { isCarriageLeg: true };   // committed topology declares parents + a process-log leaf
+    | { hasLeafField: string }          // some committed leaf declares this field
+    | { followsAnOrder: true }          // the committed topology names a parent order
+    | { all: readonly Predicate[] };    // every one of these holds
 
 /** A header/line row: label → value reference. */
 export interface DocumentRow { label: string; ref: ValueRef }
@@ -91,7 +94,14 @@ function leafByField(agreement: Agreement | undefined, fieldName: string): Recor
 
 /** A "unit" a document is scoped to: its primary order/agreement (for header +
  *  leaf sections) and the full order list (for lines + totals). */
-interface Unit { primary: Order; agreement: Agreement | undefined; orders: readonly Order[]; agreements: ReadonlyMap<string, Agreement>; }
+interface Unit {
+    primary: Order;
+    agreement: Agreement | undefined;
+    orders: readonly Order[];
+    /** Every order of the process — what a topology edge resolves against. */
+    processOrders: readonly Order[];
+    agreements: ReadonlyMap<string, Agreement>;
+}
 
 function agreementOf(order: Order, agreements: ReadonlyMap<string, Agreement>): Agreement | undefined {
     return order.checkoutHash ? agreements.get(order.checkoutHash) : undefined;
@@ -101,6 +111,15 @@ function resolve(ref: ValueRef, order: Order, unit: Unit): string {
     if ("const" in ref) return ref.const;
     if ("orderHash" in ref) return order.orderHash;
     if ("party" in ref) return ref.party === "seller" ? order.seller : order.buyer;
+    if ("followedSellers" in ref) {
+        // The parent orders the committed topology names, found among the
+        // process's orders; an edge to an order not read resolves to nothing.
+        const parents = topologyFollows(agreementOf(order, unit.agreements)) ?? [];
+        const sellers = parents
+            .map((parent) => unit.processOrders.find((o) => hexEqual(o.orderHash, parent))?.seller)
+            .filter((s): s is string => !!s);
+        return [...new Set(sellers)].join(", ");
+    }
     if ("payment" in ref) return order.payment.toString();
     if ("resolvedDate" in ref) {
         return order.state === OrderState.Resolved && order.resolvedAt !== undefined
@@ -126,10 +145,8 @@ function appliesTo(pred: Predicate, agreement: Agreement | undefined): boolean {
     if (!agreement) return false;
     if ("always" in pred) return true;
     if ("hasLeafField" in pred) return agreement.clauses.some((s) => clauseDeclaresField(s.clause, pred.hasLeafField));
-    // isCarriageLeg: topology declares parents AND a process-log ladder is composed.
-    const parents = leafByField(agreement, "follows")?.follows;
-    const hasParents = Array.isArray(parents) && parents.length > 0;
-    return hasParents && agreement.clauses.some((s) => clauseIsProcessLog(s.clause));
+    if ("followsAnOrder" in pred) return (topologyFollows(agreement) ?? []).length > 0;
+    return pred.all.every((p) => appliesTo(p, agreement));
 }
 
 function render(layout: DocumentLayout, unit: Unit): RenderedDocument {
@@ -171,7 +188,7 @@ export function projectDocuments(
             for (const order of orders) {
                 const agreement = agreementOf(order, agreements);
                 if (appliesTo(layout.appliesWhen, agreement)) {
-                    out.push(render(layout, { primary: order, agreement, orders: [order], agreements }));
+                    out.push(render(layout, { primary: order, agreement, orders: [order], processOrders: orders, agreements }));
                 }
             }
         } else {
@@ -184,7 +201,7 @@ export function projectDocuments(
                 const primary = group[0];
                 const agreement = agreementOf(primary, agreements);
                 if (appliesTo(layout.appliesWhen, agreement)) {
-                    out.push(render(layout, { primary, agreement, orders: group, agreements }));
+                    out.push(render(layout, { primary, agreement, orders: group, processOrders: orders, agreements }));
                 }
             }
         }

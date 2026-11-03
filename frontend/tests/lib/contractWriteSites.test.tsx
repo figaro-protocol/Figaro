@@ -241,7 +241,7 @@ const SITES: Array<{
         site: "useRpgfRewards.claim",
         prepare: async () => {
             const h = rendered(() => useRpgfRewards());
-            await waitFor(() => expect(h.current.periods).toHaveLength(1));
+            await waitFor(() => expect(h.current.read).toMatchObject({ status: "present", value: { periods: [expect.anything()] } }));
             return () => h.current.claim(0);
         },
         errorName: "AlreadyClaimed",

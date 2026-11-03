@@ -18,7 +18,7 @@ vi.mock("next/link", () => ({
 const STATE = {
     profile: { name: "Seller", defaultTokenAddress: "0x0000000000000000000000000000000000000001" },
     assemblies: [{ bindingId: "b", subjectAddress: ADDRESS, assemblyHash: `0x${"ab".repeat(32)}` }],
-    catalog: { items: [{ id: "i", name: "Item", description: "", price: "1", available: true }] },
+    catalog: { items: [{ id: "i", name: "Item", description: "", price: "1", available: true }] } as { items: unknown[] },
 };
 vi.mock("@/lib/member/onboardingState", () => ({
     useOnboardingState: () => ({ state: STATE, clear: vi.fn() }),
@@ -51,5 +51,20 @@ describe("OnboardingReview — a failed registration read offers no register/upd
         render(<OnboardingReview />);
         expect(screen.getByText("Publish & register")).toBeInTheDocument();
         expect(screen.getByText(/Stake:/)).toBeInTheDocument();
+    });
+});
+
+describe("OnboardingReview — a member need not sell anything", () => {
+    it("no catalog item: publishing is offered, with no 'add at least one item'", () => {
+        reads.registration = { status: "present", value: { registered: false } };
+        const items = STATE.catalog.items;
+        STATE.catalog.items = [];
+        try {
+            render(<OnboardingReview />);
+            expect(screen.getByText("Publish & register")).toBeInTheDocument();
+            expect(screen.queryByText(/at least one item/i)).toBeNull();
+        } finally {
+            STATE.catalog.items = items;
+        }
     });
 });

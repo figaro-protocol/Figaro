@@ -14,8 +14,8 @@ the patterns that look like vulnerabilities and are intended: read it first.
 | Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | none: no audit is engaged (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 14 contract files, 1,595 lines of code (3,841 physical); 3 deploy scripts, 398 lines of code (842 physical) |
-| Rust in scope | 4 crates, 22 files under `src/`, 7,128 lines of code (10,143 physical) net of their inline test modules |
+| Solidity in scope | 14 contract files, 1,595 lines of code (3,842 physical); 3 deploy scripts, 398 lines of code (842 physical) |
+| Rust in scope | 4 crates, 22 files under `src/`, 7,128 lines of code (10,140 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, the routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the testnet scripts, `frontend/`, `sdk/` |
@@ -59,7 +59,7 @@ processes under one SP1 proof, in four parts:
 | `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` | 164 (306), 36 (67) |
 | `src/core/attestation/` | `AttestationCoordinator.sol` | 77 (197) |
 | `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 494 (895), 7 (23) |
-| `src/build/registries/` | `ClauseRegistry.sol`, `AgreementRegistry.sol`, `AssemblyRegistry.sol` | 49 (196), 53 (201), 47 (189) |
+| `src/build/registries/` | `ClauseRegistry.sol`, `AgreementRegistry.sol`, `AssemblyRegistry.sol` | 49 (196), 53 (202), 47 (189) |
 | `src/build/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol` | 296 (884), 147 (344) |
 | `src/build/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` | 51 (83), 4 (9) |
 | `src/app/` | `MembersRegistry.sol`, `WitnessSwapAndCommitCoordinator.sol` | 60 (210), 110 (239) |
@@ -77,7 +77,7 @@ in scope.
 | `prover/program/` | `figaro-prover` | 1, 9 (13) | The guest's entry point: reads the batch input, runs the mirror, commits the public values | A batch the chain resolves wrongly |
 | `prover/lib/` | `figaro-kernel` | 7, 1,558 (2,472) | The mirror of `FigaroCore`'s commit and resolve, the witness gates, the operation stream, the public values, the state root, the usage claims | A batch the chain resolves wrongly |
 | `prover/clause/` | `figaro-clause` | 4, 1,588 (1,939) | The generic clause engine: parses any clause spec supplied as witness input, validates content against it, encodes it | An attestation the batch path reads differently from the party who signed it |
-| `prover/sequencer/` | `figaro-sequencer` | 10, 3,968 (5,708) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, serves its state | Liveness and griefing; a reader misled by what it serves |
+| `prover/sequencer/` | `figaro-sequencer` | 10, 3,968 (5,705) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, serves its state | Liveness and griefing; a reader misled by what it serves |
 
 The figures count the files under each crate's `src/`, net of their inline
 test modules.

@@ -188,7 +188,7 @@ export const STORED_DOCUMENT_NOTE: Record<StoredDocumentAnchor, string> = {
     "content-hash":
         "The hash on chain is the clause key: the keccak256 of exactly these bytes, as pinned. The designer pins the spec's canonical form — object keys sorted at every depth, no whitespace — so anyone can hash the bytes the gateway serves and reproduce the key; the same document in any other byte form is another key.",
     "agreement-hash":
-        "The hash on chain is the agreement hash: the keccak256 of the canonical form of this document's clauses — the clauses composed for one agreement. The designer's editorial wording rides in the same document and is deliberately outside the key.",
+        "The hash on chain is the agreement hash: the merkle root over this document's clauses, one leaf per clause with the designer's fills. The designer's editorial wording rides in the same document and is deliberately outside the key.",
     "assembly-hash":
         "The hash on chain is the assembly root: the merkle root over this document's agreements — each one the key of the registered agreement it binds and its own fills — and the assembly-scoped clauses where it composes any. The designer's editorial wording rides in the same document and is deliberately outside the anchor.",
 };

@@ -58,12 +58,11 @@ export interface ResolveCapReader extends BlockGasReader {
  * Per-order cost of resolving one order during `resolveProcess`, measured on
  * REAL post-Glamsterdam transaction receipts against the deployed `FigaroCore`
  * on live Sepolia (not estimated, not a pre-fork local EVM): resolveProcess
- * over N orders costs `~73,000 + ~29,800·N` gas at those receipts, plus the
- * memory term below. A resolve is its own
- * transaction, so each order's distinct `orderStatus`/balance entries pay COLD
- * access (two ERC-20 transfers + struct keccaks + SSTORE + LOG + the order's
- * calldata). Receipt points: N=1→102,689, N=2→132,465 (marginal 29,776).
- * The fork's repricing (EIP-8037 state creation, EIP-7778 refund accounting)
+ * over N orders costs `RESOLVE_FIXED_OVERHEAD + RESOLVE_GAS_PER_ORDER·N` at
+ * those receipts, read at N=1 and N=2, plus the memory term below. A resolve
+ * is its own transaction, so each order's distinct `orderStatus`/balance
+ * entries pay COLD access (two ERC-20 transfers + struct keccaks + SSTORE +
+ * LOG + the order's calldata). The fork's repricing (EIP-8037 state creation, EIP-7778 refund accounting)
  * is why these sit above any pre-fork local measurement.
  *
  * Linted against the matching `RESOLVE_GAS_PER_ORDER` constant in
@@ -73,11 +72,11 @@ const RESOLVE_GAS_PER_ORDER = 30_000n;
 
 /**
  * Per-order cost of one `commit()` call, measured on live post-Glamsterdam
- * Sepolia receipts: a sub-order commit is 382,032 (the per-order marginal —
- * warm process state); the FIRST commit in a process (root) is ~794k because
+ * Sepolia receipts at a sub-order commit (the per-order marginal — warm
+ * process state); the FIRST commit in a process (root) costs more because
  * it creates the cold `ProcessState` (EIP-8037 prices fresh entries steeply).
- * 383k is the marginal used here; the root's one-time premium is amortized
- * away over a multi-order process.
+ * The marginal is used here; the root's one-time premium is amortized away
+ * over a multi-order process.
  *
  * Linted against the matching `COMMIT_GAS_PER_ORDER` constant in the
  * Foundry test.
@@ -88,7 +87,7 @@ const COMMIT_GAS_PER_ORDER = 383_000n;
  * Fixed per-call overhead of `resolveProcess` independent of order count
  * (function dispatch, processId/process-state reads, activeOrderCount check,
  * ProcessResolved emission, tx base). Measured on live post-fork Sepolia
- * receipts as ~73,000 (the intercept of `~73,000 + ~29,800·N`).
+ * receipts as the intercept of the receipt line above.
  */
 const RESOLVE_FIXED_OVERHEAD = 73_000n;
 
@@ -97,8 +96,7 @@ const RESOLVE_FIXED_OVERHEAD = 73_000n;
  * calldata for its hash (9 words), that hash's `abi.encode` buffer (11) and
  * the order-hash buffer (3), none of them reused across the loop. The EVM
  * charges memory as words²/512, so a resolve over N orders carries
- * `(23·N)²/512` above the receipt line — about 319,000 at 556 orders, and
- * nothing at the N=1 and N=2 receipts the line was read from. Measured by
+ * `(23·N)²/512` above the receipt line, and nothing at the N=1 and N=2 receipts the line was read from. Measured by
  * `test_Gas_resolveAtPublishedCapFitsTransactionCap`.
  *
  * Linted against the matching constants in the Foundry test.
@@ -253,9 +251,10 @@ export async function assertOrderFitsResolveCap(
     const { activeOrderCount, cap } = await readProcessResolveCapacity(client, core, processId);
     if (activeOrderCount + 1 > cap) {
         throw new Error(
-            `Process has ${activeOrderCount} active orders; this chain resolves at most ${cap} ` +
-                `in one atomic resolveProcess. Committing another order would make the process ` +
-                `permanently unresolvable — open a new process instead.`,
+            `Process has ${activeOrderCount} active orders; ${cap} is the most the SDK plans to fit ` +
+                `in one atomic resolveProcess on this chain (the SDK's own estimate from the block's ` +
+                `gas limit, not a limit the chain enforces). Committing another order risks making ` +
+                `the process permanently unresolvable — open a new process instead.`,
         );
     }
 }

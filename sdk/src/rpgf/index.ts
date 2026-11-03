@@ -81,9 +81,13 @@ export function icbrt(n: bigint): bigint {
  *  heavily as volume; below `minSellers` distinct sellers nothing scores
  *  (counting still accrues — the score springs whole at the floor). UNIFORM:
  *  no weight multiplier — every clause or assembly's score is its real usage alone.
- *  `minSellers` defaults to the formula reference; pass the chain's
- *  `UsageCounter.minSellers()` to mirror a specific deployment. */
-export function usageScore(c: bigint, d: bigint, minSellers: bigint = RPGF_MIN_SELLERS): bigint {
+ *  `minSellers` is the deployment's floor, `UsageCounter.minSellers()` read
+ *  from the chain: an immutable each deployment sets, so no default stands
+ *  in for it. */
+export function usageScore(c: bigint, d: bigint, minSellers: bigint): bigint {
+    if (typeof minSellers !== "bigint") {
+        throw new Error("usageScore: minSellers is required; read UsageCounter.minSellers() from the chain");
+    }
     if (c === 0n || d < minSellers || d === 0n) return 0n;
     return icbrt(c * d * d * RPGF_SCORE_SCALE);
 }
@@ -184,13 +188,12 @@ function emptyEntry(kind: UsageKind, clauseOrAssembly: Hex): ClauseOrAssemblyAcc
  *  distinct-STAKED-SELLER count PER PERIOD (breadth counts
  *  only what a stake has priced; pairs were free to mint on the buyer side)
  *  and the uniform floored score. Records are replayed in (blockNumber,
- *  logIndex) order, the order the chain applied them in. `minSellers`
- *  defaults to the formula reference; pass the chain's value to mirror a
- *  specific deployment. */
+ *  logIndex) order, the order the chain applied them in. `minSellers` is
+ *  the deployment's `UsageCounter.minSellers()`, read from the chain. */
 export function computeUsageAccruals(
     records: readonly UsageRecord[],
-    minSellers: bigint = RPGF_MIN_SELLERS,
-): Map<number, UsagePeriodAccrual> {
+    minSellers: bigint,
+):Map<number, UsagePeriodAccrual> {
     const sorted = [...records].sort((a, b) =>
         a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1,
     );

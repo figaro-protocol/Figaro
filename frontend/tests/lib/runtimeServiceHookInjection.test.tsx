@@ -1,272 +1,132 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+/**
+ * Runtime services are injected, never reached for: a hook handed a service
+ * (by option or through `RuntimeServicesProvider`) uses that one, and the
+ * default is never called. Every stub here is typed against the real service
+ * interface (`satisfies`), so a stub naming a method the service does not have,
+ * or missing one it does, fails to compile; every assertion is one the default
+ * path would fail.
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import type { PublicClient } from "viem";
 import { useHandoffCleanup } from "@/lib/handoff/useHandoffCleanup";
 import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
-import {
-    RuntimeServicesProvider,
-    useRuntimeServices,
-} from "@/lib/shared/runtimeServicesContext";
+import { RuntimeServicesProvider, useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
+import { DEFAULT_RUNTIME_SERVICES, type RuntimeServices } from "@/lib/shared/runtimeServices";
 import type { MemberCatalog } from "@/lib/member/types";
 import type { DiscoveryService } from "@/lib/member/discoveryService";
+import type { HandoffPersistenceService } from "@/lib/handoff/handoffPersistenceService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
-import type { RuntimeServices } from "@/lib/shared/runtimeServices";
 
-const usePublicClientMock = vi.fn();
-const useChainIdMock = vi.fn();
-const useAccountMock = vi.fn();
-const useWalletClientMock = vi.fn();
-const getMemberMetadataURIMock = vi.fn();
-const getBlockNumberMock = vi.fn();
+const WALLET = "0x1234567890123456789012345678901234567890";
 const watchContractEventMock = vi.fn();
-const defaultFetchSellerCatalogMock = vi.fn();
-const defaultListFallbackRestaurantsMock = vi.fn();
-const defaultIsRegistryConfiguredMock = vi.fn();
-const defaultListRestaurantsMock = vi.fn();
-const defaultIpfsPinJSONMock = vi.fn();
-const defaultIpfsBuildPathMock = vi.fn();
-const defaultSendHandoffKeyMock = vi.fn();
-const defaultSubscribeHandoffKeyMock = vi.fn();
-const defaultSubscribeEcdhPubkeyMock = vi.fn();
-const defaultSendWrappedKeyMock = vi.fn();
-const defaultSendEcdhPubkeyMock = vi.fn();
-const defaultSubscribeWrappedKeyMock = vi.fn();
-const defaultSchedulePurgeMock = vi.fn();
-const defaultSweepDuePurgesMock = vi.fn();
-const walletClientMock = { signMessage: vi.fn() };
-
-vi.mock("wagmi", () => ({
-    usePublicClient: () => usePublicClientMock(),
-    useChainId: () => useChainIdMock(),
-    useAccount: () => useAccountMock(),
-    useWalletClient: () => useWalletClientMock(),
-}));
-
-vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({
-    getMemberMetadataURI: (...args: unknown[]) => getMemberMetadataURIMock(...args),
-}));
-
-// The surfacing rule's AssemblyRegistry cross-check gate — resolved (empty)
-// so useRegisteredCatalogs proceeds; the filtering itself lives in the
-// (injected) discovery service.
-// One stable reference: the hook keys its effect on the read's identity.
-const PUBLISHED = vi.hoisted(() => ({ read: { status: "present", value: [] as unknown[] } }));
-vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
-    getAssemblyLoadError: () => undefined,
-    usePublishedAssemblies: () => PUBLISHED,
-}));
-
-vi.mock("@/lib/member/catalogService", () => ({
-    DEFAULT_CATALOG_SERVICE: {
-        fetchMemberCatalog: (...args: unknown[]) => defaultFetchSellerCatalogMock(...args),
-    },
-}));
-
-vi.mock("@/lib/member/discoveryService", () => ({
-    DEFAULT_DISCOVERY_SERVICE: {
-        listFallbackRestaurants: (...args: unknown[]) => defaultListFallbackRestaurantsMock(...args),
-        isRegistryConfigured: (...args: unknown[]) => defaultIsRegistryConfiguredMock(...args),
-        listRestaurants: (...args: unknown[]) => defaultListRestaurantsMock(...args),
-    },
-}));
-
-vi.mock("@/lib/shared/ipfsService", () => ({
-    DEFAULT_IPFS_SERVICE: {
-        pinJSON: (...args: unknown[]) => defaultIpfsPinJSONMock(...args),
-        buildPath: (...args: unknown[]) => defaultIpfsBuildPathMock(...args),
-        uploadFile: vi.fn(),
-        buildURI: vi.fn(),
-        resolveFetchUrl: vi.fn(),
-        buildGatewayUrl: vi.fn(),
-    },
-}));
-
-vi.mock("@/lib/handoff/handoffMessagingService", () => ({
-    DEFAULT_HANDOFF_MESSAGING_SERVICE: {
-        sendHandoffKey: (...args: unknown[]) => defaultSendHandoffKeyMock(...args),
-        subscribeHandoffKey: (...args: unknown[]) => defaultSubscribeHandoffKeyMock(...args),
-        subscribeEcdhPubkey: (...args: unknown[]) => defaultSubscribeEcdhPubkeyMock(...args),
-        sendWrappedKey: (...args: unknown[]) => defaultSendWrappedKeyMock(...args),
-        sendEcdhPubkey: (...args: unknown[]) => defaultSendEcdhPubkeyMock(...args),
-        subscribeWrappedKey: (...args: unknown[]) => defaultSubscribeWrappedKeyMock(...args),
-    },
-}));
-
-vi.mock("@/lib/handoff/handoffPersistenceService", () => ({
-    HANDOFF_PURGE_QUEUE_KEY: "figaro-handoff-purge-queue",
-    DEFAULT_HANDOFF_PERSISTENCE_SERVICE: {
-        schedulePurge: (...args: unknown[]) => defaultSchedulePurgeMock(...args),
-        sweepDuePurges: (...args: unknown[]) => defaultSweepDuePurgesMock(...args),
-        purgeHandoffArtifacts: vi.fn(),
-    },
-}));
-
-vi.mock("@/lib/shared/e2e", () => ({
-    isE2EMockSession: () => false,
-}));
-
 const publicClient = {
-    transport: { type: "http" },
-    getBlockNumber: (...args: unknown[]) => getBlockNumberMock(...args),
+    getBlockNumber: vi.fn(async () => 100n),
     watchContractEvent: (...args: unknown[]) => watchContractEventMock(...args),
 };
-const fallbackRestaurant: MemberCatalog = {
-    name: "Fallback Merchant",
-    description: "Fallback catalog",
-    specialty: "Test",
-    image: "🍽️",
-    address: "0x0000000000000000000000000000000000000001",
-    items: [],
-    acceptedTokens: [],
-};
 
-const injectedRestaurant: MemberCatalog = {
-    name: "Injected Merchant",
+vi.mock("wagmi", () => ({
+    usePublicClient: () => publicClient,
+    useChainId: () => 31337,
+    useAccount: () => ({ address: WALLET }),
+}));
+
+// The surfacing rule's AssemblyRegistry cross-check — resolved (empty) so the
+// catalog read proceeds. One stable reference: the hook keys on its identity.
+const PUBLISHED = vi.hoisted(() => ({ read: { status: "present", value: [] as unknown[] } }));
+vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({ usePublishedAssemblies: () => PUBLISHED }));
+vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
+
+const injectedMember: MemberCatalog = {
+    name: "Injected Member",
     description: "Injected discovery result",
-    specialty: "Italian",
-    image: "🍕",
+    specialty: "Ceramics",
+    image: "",
     address: "0x0000000000000000000000000000000000000011",
     items: [],
     acceptedTokens: [],
 };
 
-function createRuntimeServices(overrides: Partial<RuntimeServices> = {}): RuntimeServices {
-    return {
-        catalog: {} as RuntimeServices["catalog"],
-        discovery: {} as RuntimeServices["discovery"],
-        evidenceTransport: {
-            pinJSON: vi.fn(),
-            buildPath: vi.fn(),
-            uploadFile: vi.fn(),
-            buildURI: vi.fn(),
-            resolveFetchUrl: vi.fn(),
-            buildGatewayUrl: vi.fn(),
-        } as unknown as RuntimeServices["evidenceTransport"],
-        handoffMessaging: {} as RuntimeServices["handoffMessaging"],
-        handoffPersistence: {} as RuntimeServices["handoffPersistence"],
-        ...overrides,
-    };
-}
-
-function createWrapper(services: RuntimeServices) {
-    return function Wrapper({ children }: { children: ReactNode }) {
+const wrapperFor = (services: RuntimeServices) =>
+    function Wrapper({ children }: { children: ReactNode }) {
         return <RuntimeServicesProvider services={services}>{children}</RuntimeServicesProvider>;
     };
-}
 
-describe("runtime service hook injection", () => {
-    beforeEach(() => {
-        usePublicClientMock.mockReset();
-        useChainIdMock.mockReset();
-        useAccountMock.mockReset();
-        useWalletClientMock.mockReset();
-        getMemberMetadataURIMock.mockReset();
-        getBlockNumberMock.mockReset();
-        watchContractEventMock.mockReset();
-        defaultFetchSellerCatalogMock.mockReset();
-        defaultListFallbackRestaurantsMock.mockReset();
-        defaultIsRegistryConfiguredMock.mockReset();
-        defaultListRestaurantsMock.mockReset();
-        defaultIpfsPinJSONMock.mockReset();
-        defaultIpfsBuildPathMock.mockReset();
-        defaultSendHandoffKeyMock.mockReset();
-        defaultSubscribeHandoffKeyMock.mockReset();
-        defaultSubscribeEcdhPubkeyMock.mockReset();
-        defaultSendWrappedKeyMock.mockReset();
-        defaultSendEcdhPubkeyMock.mockReset();
-        defaultSubscribeWrappedKeyMock.mockReset();
-        defaultSchedulePurgeMock.mockReset();
-        defaultSweepDuePurgesMock.mockReset();
-        walletClientMock.signMessage.mockReset();
+beforeEach(() => {
+    watchContractEventMock.mockReset();
+    watchContractEventMock.mockReturnValue(() => undefined);
+});
+afterEach(() => {
+    vi.restoreAllMocks();
+});
 
-        usePublicClientMock.mockReturnValue(publicClient);
-        useChainIdMock.mockReturnValue(31337);
-        useAccountMock.mockReturnValue({ address: "0x1234567890123456789012345678901234567890" });
-        useWalletClientMock.mockReturnValue({ data: walletClientMock });
-        getBlockNumberMock.mockResolvedValue(100n);
-        watchContractEventMock.mockReturnValue(() => undefined);
-        defaultListFallbackRestaurantsMock.mockReturnValue({
-            restaurants: [fallbackRestaurant],
-            source: { ipfs: 0, mock: 1 },
-        });
-        defaultIsRegistryConfiguredMock.mockReturnValue(false);
-    });
-
-    it("uses an injected discovery service instead of the default provider", async () => {
-        const listFallbackCatalogs = vi.fn().mockReturnValue({
-            catalogs: [fallbackRestaurant],
-            source: { ipfs: 0, mock: 1 },
-        });
-        const isRegistryConfigured = vi.fn().mockReturnValue(true);
-        const listCatalogs = vi.fn().mockResolvedValue({
-            catalogs: [injectedRestaurant],
-            source: { ipfs: 1, mock: 0 },
-        });
+describe("runtime service injection", () => {
+    it("useRegisteredCatalogs reads through the injected discovery service, never the default", async () => {
+        const defaultList = vi.spyOn(DEFAULT_RUNTIME_SERVICES.discovery, "listCatalogs");
+        const defaultConfigured = vi.spyOn(DEFAULT_RUNTIME_SERVICES.discovery, "isRegistryConfigured");
         const service = {
-            listFallbackCatalogs,
-            isRegistryConfigured,
-            listCatalogs,
-        } as unknown as DiscoveryService;
+            isRegistryConfigured: vi.fn(() => true),
+            listCatalogs: vi.fn(async () => ({ catalogs: [injectedMember] })),
+        } satisfies DiscoveryService;
 
         const { result } = renderHook(() => useRegisteredCatalogs({ service }));
 
-        await waitFor(() => {
-            expect(result.current.read).toEqual({ status: "present", value: [injectedRestaurant] });
-        });
-
-        expect(listCatalogs).toHaveBeenCalledWith(publicClient, 31337, new Set());
-        expect(defaultListRestaurantsMock).not.toHaveBeenCalled();
+        await waitFor(() => expect(result.current.read).toEqual({ status: "present", value: [injectedMember] }));
+        expect(service.listCatalogs).toHaveBeenCalledWith(publicClient as unknown as PublicClient, 31337, new Set());
+        expect(defaultList).not.toHaveBeenCalled();
+        expect(defaultConfigured).not.toHaveBeenCalled();
     });
 
-    it("provides injected runtime services through context for evidence transport consumers", () => {
-        const evidenceTransport = {
-            pinJSON: vi.fn(),
-            buildPath: vi.fn(),
-            uploadFile: vi.fn(),
-            buildURI: vi.fn(),
-            resolveFetchUrl: vi.fn(),
-            buildGatewayUrl: vi.fn(),
-        } as unknown as IpfsService;
-        const services = {
-            catalog: {} as RuntimeServices["catalog"],
-            discovery: {} as RuntimeServices["discovery"],
-            evidenceTransport,
-            handoffMessaging: {} as RuntimeServices["handoffMessaging"],
-            handoffPersistence: {} as RuntimeServices["handoffPersistence"],
-        } satisfies RuntimeServices;
+    it("an injected discovery service that says the registry is unconfigured is not read", async () => {
+        const service = {
+            isRegistryConfigured: vi.fn(() => false),
+            listCatalogs: vi.fn(async () => ({ catalogs: [injectedMember] })),
+        } satisfies DiscoveryService;
+        const { result } = renderHook(() => useRegisteredCatalogs({ service }));
+        await waitFor(() => expect(result.current.read).toEqual({ status: "absent" }));
+        expect(service.isRegistryConfigured).toHaveBeenCalled();
+        expect(service.listCatalogs).not.toHaveBeenCalled();
+    });
 
-        const wrapper = createWrapper(services);
+    it("the provider hands its consumers the injected evidence transport, not the default", () => {
+        // A distinct object with the real IpfsService's methods.
+        const evidenceTransport: IpfsService = Object.create(DEFAULT_RUNTIME_SERVICES.evidenceTransport);
+        const services = { ...DEFAULT_RUNTIME_SERVICES, evidenceTransport } satisfies RuntimeServices;
 
-        const { result } = renderHook(() => useRuntimeServices(), { wrapper });
+        const { result } = renderHook(() => useRuntimeServices(), { wrapper: wrapperFor(services) });
 
         expect(result.current.evidenceTransport).toBe(evidenceTransport);
+        expect(result.current.evidenceTransport).not.toBe(DEFAULT_RUNTIME_SERVICES.evidenceTransport);
     });
 
-    it("uses injected handoff persistence from runtime context in useHandoffCleanup", async () => {
-        const sweepDuePurges = vi.fn();
-        const schedulePurge = vi.fn();
-        const services = createRuntimeServices({
-            handoffPersistence: {
-                sweepDuePurges,
-                schedulePurge,
-            } as unknown as RuntimeServices["handoffPersistence"],
-        });
-        const wrapper = createWrapper(services);
+    it("useHandoffCleanup sweeps and purges through the injected persistence service, never the default", async () => {
+        const defaultSweep = vi.spyOn(DEFAULT_RUNTIME_SERVICES.handoffPersistence, "sweepDuePurges");
+        const defaultSchedule = vi.spyOn(DEFAULT_RUNTIME_SERVICES.handoffPersistence, "schedulePurge");
+        const handoffPersistence = {
+            purgeHandoffArtifacts: vi.fn(),
+            schedulePurge: vi.fn(),
+            sweepDuePurges: vi.fn(),
+        } satisfies HandoffPersistenceService;
+        const services = { ...DEFAULT_RUNTIME_SERVICES, handoffPersistence } satisfies RuntimeServices;
 
-        renderHook(() => useHandoffCleanup(), { wrapper });
+        renderHook(() => useHandoffCleanup(), { wrapper: wrapperFor(services) });
 
-        await waitFor(() => {
-            expect(sweepDuePurges).toHaveBeenCalledWith("0x1234567890123456789012345678901234567890");
-        });
+        await waitFor(() => expect(handoffPersistence.sweepDuePurges).toHaveBeenCalledWith(WALLET));
+        // ONE watcher, on OrderResolved: resolveProcess emits it per order.
+        await waitFor(() => expect(watchContractEventMock).toHaveBeenCalledTimes(1));
+        const [{ eventName, onLogs }] = watchContractEventMock.mock.calls[0] as [{ eventName: string; onLogs: (logs: unknown[]) => void }];
+        expect(eventName).toBe("OrderResolved");
 
-        // ONE watcher: OrderResolved only — resolveProcess emits it per order,
-        // so a single per-order watcher covers every resolve.
-        await waitFor(() => {
-            expect(watchContractEventMock).toHaveBeenCalledTimes(1);
-        });
+        // The chain resolves an order: its key material is purged through the injected service.
+        act(() => onLogs([{ args: { orderHash: `0x${"0d".repeat(32)}`, processId: `0x${"ab".repeat(32)}` } }]));
+        expect(handoffPersistence.schedulePurge).toHaveBeenCalledWith(WALLET, `0x${"ab".repeat(32)}`, `0x${"0d".repeat(32)}`, 0);
 
-        expect(defaultSweepDuePurgesMock).not.toHaveBeenCalled();
-        expect(defaultSchedulePurgeMock).not.toHaveBeenCalled();
-        expect(schedulePurge).not.toHaveBeenCalled();
+        // The same resolution delivered again is purged once.
+        act(() => onLogs([{ args: { orderHash: `0x${"0d".repeat(32)}`, processId: `0x${"ab".repeat(32)}` } }]));
+        expect(handoffPersistence.schedulePurge).toHaveBeenCalledTimes(1);
+
+        expect(defaultSweep).not.toHaveBeenCalled();
+        expect(defaultSchedule).not.toHaveBeenCalled();
     });
 });

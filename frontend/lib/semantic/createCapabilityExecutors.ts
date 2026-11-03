@@ -26,7 +26,6 @@ import { encodeContentFromSpec, validateContent } from "@figaro-protocol/sdk/cla
 import { OrderState, type Order } from "@/lib/kernel/store";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { isBytes32Hex } from "@/lib/shared/evm";
 import type { UsageWrite } from "@/lib/protocol/useUsageRecorder";
@@ -93,7 +92,10 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         // resolveProcess recomputes each order's hash from hashStruct(commitment),
         // so the SIGNED commitment is required — restore the root's processId 0
         // (the event/store carries the derived processId).
-        const chainId = deps.publicClient?.chain?.id ?? DEVNET_CHAIN_ID;
+        // Under the connected chain's id, the domain the commitments were
+        // signed in; with no connected chain, nothing is restored.
+        const chainId = deps.publicClient?.chain?.id;
+        if (chainId === undefined) throw new Error("No connected chain: connect a wallet to the order's chain to resolve.");
         const commitments = activeOrders.map((order) => restoreSignedProcessId({
             processId: order.processId as Hex,
             buyer: order.buyer as Hex,

@@ -29,6 +29,7 @@ import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import { MemberResolutionHistory } from "@/components/runtime/MemberResolutionHistory";
 import { useMemberResolutionHistory } from "@/lib/member/useMemberResolutionHistory";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
+import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatMass, formatVolume } from "@/lib/member/unitConversion";
@@ -60,6 +61,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
     // default (resolved-empty = absence).
     const currency = memberCatalog?.defaultTokenAddress as `0x${string}` | undefined;
     const { data: resolvedSymbol } = useTokenSymbol(currency ?? "");
+    const { decimals: currencyDecimals } = useTokenDecimals(currency);
     const tokenSymbol = resolvedSymbol
         ?? (currency ? memberCatalog?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
         ?? "";
@@ -318,7 +320,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                             </p>
                         ) : (
                             <>
-                                <CartLineList items={cartItems} tokenSymbol={tokenSymbol} showSubtotal />
+                                <CartLineList items={cartItems} decimals={currencyDecimals} tokenSymbol={tokenSymbol} showSubtotal />
                                 <Link href={`/s/checkout?seller=${sellerAddressLower}`} className="block">
                                     <Button className="w-full" data-testid="btn-review-order">
                                         Review order ({cartCount})

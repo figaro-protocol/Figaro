@@ -51,16 +51,32 @@ const COMMERCIAL_INVOICE: DocumentLayout = {
 
 /** Non-negotiable Bill of Lading — one per carriage-leg ORDER. Never a document of
  *  title: FigaroCore forbids substituting a bonded order's parties mid-flight, so
- *  the consignee is fixed at signing (/papers/after-tradelens §7). */
+ *  the consignee is fixed at signing (/papers/after-tradelens §7).
+ *
+ *  A carriage leg is what its composed clauses make it: an order that follows
+ *  another (the goods come from somewhere in the process), over a route (a leaf
+ *  declaring `origin` and `destination`), with a physical hand-over of the
+ *  goods (a leaf declaring `handoff`). A process log alone (an inspection, a
+ *  customs filing), a route without a hand-over (a forwarder) or a hand-over
+ *  of content is not one. The parties come from the topology: the carrier is
+ *  this order's seller, the shipper the seller of the order it follows (who
+ *  tenders the goods), the consignee the buyer the process delivers to. */
 const BILL_OF_LADING: DocumentLayout = {
     genre: "bill-of-lading",
     title: "Bill of Lading (non-negotiable)",
     scope: "order",
-    appliesWhen: { isCarriageLeg: true },
+    appliesWhen: {
+        all: [
+            { followsAnOrder: true },
+            { hasLeafField: "origin" },
+            { hasLeafField: "destination" },
+            { hasLeafField: "handoff" },
+        ],
+    },
     header: [
         { label: "BoL no.", ref: { orderHash: true } },
         { label: "Carrier", ref: { party: "seller" } },
-        { label: "Shipper / consignor", ref: { party: "buyer" } },
+        { label: "Shipper / consignor", ref: { followedSellers: true } },
         { label: "Consignee", ref: { party: "buyer" } },
         { label: "Origin (geohash)", ref: { leafField: { byField: "origin", field: "origin" } } },
         { label: "Destination (geohash)", ref: { leafField: { byField: "origin", field: "destination" } } },

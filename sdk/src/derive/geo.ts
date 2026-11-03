@@ -65,6 +65,12 @@ export function haversineDistance(
 
 const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
 
+/** Whether `value` is written as a geohash: one or more characters, every one
+ *  from the geohash base32 alphabet, in its lowercase canonical form. */
+export function isGeohash(value: string): boolean {
+    return value.length > 0 && [...value].every((char) => BASE32.includes(char));
+}
+
 /**
  * Encode a lat/lng to a geohash of the given precision — the standard base32
  * interleaved encoding (the inverse of `decodeGeohash`).

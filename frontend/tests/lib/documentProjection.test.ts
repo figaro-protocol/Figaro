@@ -81,6 +81,56 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
         expect(doc(docs, "commercial-invoice")).toHaveLength(1);
     });
 
+    it("bill-of-lading parties come from the topology: shipper = the followed order's seller, consignee = the buyer", async () => {
+        await primeClauseSpecs(ALL);
+        const PARENT = `0x${"0a".repeat(32)}`;
+        const leg = agreement([
+            { clause: "figaro-topology", data: { follows: [PARENT] } },
+            { clause: "figaro-courier-process", data: {} },
+            { clause: "figaro-geolocation", data: { origin: "9q8yy", destination: "9q8yyk8yu" } },
+            { clause: "figaro-handoff", data: { handoff: "face-to-face" } },
+        ]);
+        const root = agreement([{ clause: "figaro-topology", data: { follows: [] } }, commerce([{ name: "Pizza", quantity: 1 }])]);
+        const docs = projectDocuments(
+            DOCUMENT_LAYOUTS,
+            [
+                mkOrder({ orderHash: PARENT, seller: "0xMERCHANT", checkoutHash: "0xhRoot" }),
+                mkOrder({ orderHash: "0xLEG", seller: "0xCOURIER", checkoutHash: "0xhLeg" }),
+            ],
+            new Map([["0xhRoot", root], ["0xhLeg", leg]]),
+        );
+        const bols = doc(docs, "bill-of-lading");
+        expect(bols).toHaveLength(1);
+        const value = (label: string) => bols[0].header.find((h) => h.label === label)!.value;
+        expect(value("Carrier")).toBe("0xCOURIER");
+        expect(value("Shipper / consignor")).toBe("0xMERCHANT");
+        expect(value("Consignee")).toBe("0xBUYER");
+        expect(value("Shipper / consignor")).not.toBe(value("Consignee"));
+    });
+
+    it("emits NO bill-of-lading for a sub-order whose clauses do not make it a shipment", async () => {
+        await primeClauseSpecs([...ALL, "figaro-merchant-process", "figaro-content-handoff"]);
+        const subOrder = (clauses: { clause: string; data: Record<string, unknown> }[]) => agreement([
+            { clause: "figaro-topology", data: { follows: ["0xPARENT"] } },
+            ...clauses,
+        ]);
+        for (const shape of [
+            // a merchant's process log (an inspection, a customs filing): no route, no hand-off of goods
+            [{ clause: "figaro-merchant-process", data: {} }],
+            // a forwarder's leg: a route and a log, but nobody carries the goods
+            [{ clause: "figaro-merchant-process", data: {} }, { clause: "figaro-geolocation", data: { origin: "a", destination: "b" } }],
+            // a digital deliverable: a hand-off of content, not of goods
+            [{ clause: "figaro-content-handoff", data: { contentHandoff: "ipfs" } }, { clause: "figaro-geolocation", data: { origin: "a", destination: "b" } }],
+        ]) {
+            const docs = projectDocuments(
+                DOCUMENT_LAYOUTS,
+                [mkOrder({ orderHash: "0xS", seller: "0xS", checkoutHash: "0xh" })],
+                new Map([["0xh", subOrder(shape)]]),
+            );
+            expect(doc(docs, "bill-of-lading")).toHaveLength(0);
+        }
+    });
+
     it("emits NO bill-of-lading for a non-carriage order", async () => {
         await primeClauseSpecs(ALL);
         const docs = projectDocuments(

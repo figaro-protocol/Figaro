@@ -15,7 +15,8 @@
  * The content shape is `(uint8 eventType, string evidenceUri)`; eventType
  * indexes the clause's spec-declared enum ladder. The audit document
  * carries the receipt; recovering the eventType label and evidenceUri
- * requires decoding the transaction calldata.
+ * requires the content itself, which the chain never holds (the coordinator
+ * takes only its hash, `contentRef`).
  */
 
 import type { Order } from "@/lib/kernel/store";

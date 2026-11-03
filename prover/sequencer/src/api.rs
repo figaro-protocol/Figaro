@@ -1,10 +1,10 @@
-/// HTTP API — axum routes for operation submission, publication reads, and
+/// HTTP API — axum routes for operation submission, the state read, and
 /// status queries.
 ///
 /// This is a PUBLIC, unauthenticated surface. It holds no keys and grants
 /// no privilege: it only relays signed submissions into the mempool, where
 /// admission runs the same EIP-712 recovery and witness gates the proof
-/// enforces, and republishes what it resolved. Every failure is a structured
+/// enforces, and serves the state behind the verifier's root. Every failure is a structured
 /// `{ "error": … }` JSON body — never a panic, never a plaintext rejection.
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};

@@ -196,7 +196,7 @@ export function usePublishAssembly() {
         const perProcessCap = await maxOrdersResolvablePerProcess(client);
         if (snapshot.orders.length > perProcessCap) {
             throw new Error(
-                `Assembly has ${snapshot.orders.length} orders; this chain resolves at most ${perProcessCap} in one atomic resolveProcess. Compose multiple processes instead.`,
+                `Assembly has ${snapshot.orders.length} orders; ${perProcessCap} is the most the SDK plans to fit in one atomic resolveProcess on this chain (its own estimate from the block's gas limit, not a limit the chain enforces). Compose multiple processes instead.`,
             );
         }
         const deposit = await client.readContract({

@@ -624,7 +624,8 @@ function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
     // derivable only for standards this resolver knows — geohash today
     // (the geolocation clause is standards-agnostic; the
     // standard is committed content, so the gate reads the CLAUSE_DATA, not the
-    // spec). An unknown standard is unresolvable, never junk-priced.
+    // spec). An unknown, absent or empty standard is unresolvable, never
+    // junk-priced: the codes are read as geohash only when the order says so.
     const geoClauseId = composedClauseWhere(
         ctx.clauses,
         ctx.specs,
@@ -634,7 +635,7 @@ function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
     if (!geoClauseId) return null;
     const clauseEntry = ctx.clauses[geoClauseId];
     const standard = clauseEntry?.geocodeStandard;
-    if (typeof standard === "string" && standard !== "" && standard !== "geohash") return null;
+    if (standard !== "geohash") return null;
     const origin = clauseEntry?.origin;
     const destination = clauseEntry?.destination;
     if (typeof origin !== "string" || typeof destination !== "string" || !origin || !destination) {
