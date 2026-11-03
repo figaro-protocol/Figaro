@@ -10,20 +10,21 @@ import {
     type Listing,
 } from "@/lib/member/memberListing";
 import { useMemberListings } from "@/lib/member/useMemberListings";
-import { RegistryReadFailed } from "@/components/registries/RegistryReadFailed";
 
 function listingAssemblies(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => deriveAssemblySlug(b.assemblyHash))));
 }
 
 export function MemberDiscovery() {
-    const { listings: allListings, isLoading: listingsLoading, failed, error } = useMemberListings();
+    const { read } = useMemberListings();
     // Until this page has mounted and read the registry, nothing has been
     // resolved — so the static shell (what a crawler or a curl reader gets) and
     // the first paint say "loading", never "0 members": resolved-empty is
-    // absence, unresolved is not.
+    // absence, unresolved is not. A failed read renders nothing.
     const mounted = useMounted();
-    const isLoading = !mounted || listingsLoading;
+    const isLoading = !mounted || read.status === "pending";
+    const failed = read.status === "absent";
+    const allListings = useMemo(() => (read.status === "present" ? read.value : []), [read]);
 
     const [searchQuery, setSearchQuery] = useState("");
     const [assemblyFilter, setAssemblyFilter] = useState<string | null>(null);
@@ -152,11 +153,9 @@ export function MemberDiscovery() {
                 ))}
             </section>
 
-            {/* A failed read is unknown chain state: the page says the read failed,
-                in the provider's words, never a count or "no members registered". */}
-            {!isLoading && failed ? (
-                <RegistryReadFailed error={error} />
-            ) : (
+            {/* A failed read is unknown chain state: nothing renders for it —
+                no count, no "no members registered", no error text. */}
+            {failed ? null : (
                 <p className="text-xs text-ink-muted">
                     {isLoading
                         ? "Loading members…"

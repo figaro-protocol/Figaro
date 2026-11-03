@@ -31,7 +31,7 @@ vi.mock("wagmi", () => ({ useAccount: () => accountMock() }));
 const workspaceMock = vi.fn();
 vi.mock("@/hooks/useSemanticProcessWorkspace", () => ({ useSemanticProcessWorkspace: () => workspaceMock() }));
 vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
-vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => ({ listings: [] }) }));
+vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => ({ read: { status: "present", value: [] } }) }));
 vi.mock("@/lib/shared/clauseSpecSource", () => ({
     describeAttestation: () => ({ clauseTitle: "A clause", eventLabel: "an event", eventCode: "event" }),
 }));
@@ -219,14 +219,16 @@ describe("/orders/view — §2 H1, §4 radius, §7 target size", () => {
     const PROCESS = `0x${"ab".repeat(32)}`;
 
     function workspace(state: "Active" | "Resolved", withModel = true) {
+        const model = withModel
+            ? {
+                  rootOrderId: "o1",
+                  rootModality: null,
+                  orders: [{ orderId: "o1", buyer: BUYER, seller: SELLER, state, checkoutHash: `0x${"cd".repeat(32)}` }],
+              }
+            : null;
         return {
-            processModel: withModel
-                ? {
-                      rootOrderId: "o1",
-                      rootModality: null,
-                      orders: [{ orderId: "o1", buyer: BUYER, seller: SELLER, state, checkoutHash: `0x${"cd".repeat(32)}` }],
-                  }
-                : null,
+            processModel: model,
+            processModelRead: model ? { status: "present", value: model } : { status: "pending" },
             runtimeCapabilities: [],
             executableCapabilityIds: new Set(),
             executingCapabilityId: null,

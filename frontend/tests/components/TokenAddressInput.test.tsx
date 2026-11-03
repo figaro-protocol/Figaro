@@ -51,11 +51,12 @@ describe('TokenAddressInput', () => {
         expect(screen.getByText('…')).toBeInTheDocument();
     });
 
-    it('shows "✓" when address is valid but symbol is undefined', () => {
-        useReadContractMock.mockReturnValue({ data: undefined, isLoading: false });
+    it('a failed symbol() read shows nothing — never a "✓" that says the token is valid', () => {
+        useReadContractMock.mockReturnValue({ data: undefined, isLoading: false, isError: true, error: new Error('rpc down') });
         render(<TokenAddressInput value={VALID_ADDR} onChange={vi.fn()} />);
 
-        expect(screen.getByText('✓')).toBeInTheDocument();
+        expect(screen.queryByText('✓')).not.toBeInTheDocument();
+        expect(screen.queryByText('…')).not.toBeInTheDocument();
     });
 
     it('does not show symbol indicator for an invalid address', () => {

@@ -105,7 +105,13 @@ export function CheckoutView({ sellerAddress }: Props) {
     // no canonical deployment record to check against.
     const deploymentFp = useMemo(() => deploymentFingerprint(), []);
     const { compose } = useCompositionActions();
-    const { catalogs: sellerCatalogs, isLoading: catalogsLoading } = useRegisteredCatalogs();
+    const { read: catalogsRead } = useRegisteredCatalogs();
+    // The discovered catalogs, read only once present: the page renders
+    // nothing below until then (see the early returns).
+    const sellerCatalogs = useMemo(
+        () => (catalogsRead.status === "present" ? catalogsRead.value : []),
+        [catalogsRead],
+    );
 
     const memberCatalog = useMemo(
         () => sellerCatalogs.find((r) => hexEqual(r.address, sellerAddressLower)) ?? null,
@@ -116,7 +122,11 @@ export function CheckoutView({ sellerAddress }: Props) {
     const { items } = useCartStore();
     const connectInjected = useConnectInjected();
 
-    const { assemblies: sellerBoundAssemblies } = useMemberBoundAssemblies(sellerAddressTyped);
+    const boundRead = useMemberBoundAssemblies(sellerAddressTyped);
+    const sellerBoundAssemblies = useMemo(
+        () => (boundRead.status === "present" ? boundRead.value : []),
+        [boundRead],
+    );
     // Every seller in a process must have bound the order's assembly: a
     // co-seller the lead seller designates is used only when its own
     // profile binds the assembly too — otherwise its sub-order falls to the
@@ -186,7 +196,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // translation lives only in the signed amount.
     const swapFundingContracts = resolveSwapFundingContracts();
     const [translationQuotes, setTranslationQuotes] = useState<
-        { key: string; byPrice: Record<string, { result: ListedPriceTranslation | null; error: string | null }> } | null
+        { key: string; byPrice: Record<string, { result: ListedPriceTranslation | null; failed: boolean }> } | null
     >(null);
     // The buyer's own amounts, per listed price, in the denomination — a
     // decimal string as typed; absent = the venue quote stands.
@@ -409,9 +419,11 @@ export function CheckoutView({ sellerAddress }: Props) {
                     listedToken: l.listedToken!,
                     listedPrice: l.listedPrice,
                 });
-                return [l.key, { result, error: null }] as const;
+                return [l.key, { result, failed: false }] as const;
             } catch (e) {
-                return [l.key, { result: null, error: extractErrorMessage(e, "The venue could not quote it.") }] as const;
+                // A failed quote shows nothing; the buyer may state the amount.
+                console.warn("[CheckoutView] venue quote failed:", e);
+                return [l.key, { result: null, failed: true }] as const;
             }
         })).then((entries) => { if (!canceled) setTranslationQuotes({ key: translationKey, byPrice: Object.fromEntries(entries) }); });
         return () => { canceled = true; };
@@ -450,7 +462,10 @@ export function CheckoutView({ sellerAddress }: Props) {
     // then stays on the share panel; each order commits when its seller
     // counter-signs in their /orders list. The buyer is never the broadcaster here.
 
-    if (catalogsLoading) {
+    // A failed read of the catalogs or of the seller's bound assemblies
+    // renders nothing: never "Member not found", never an empty choice set.
+    if (catalogsRead.status === "absent" || boundRead.status === "absent") return null;
+    if (catalogsRead.status === "pending") {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
                 <p className="text-xs font-semibold text-ink-muted mb-3">Checkout</p>
@@ -522,16 +537,20 @@ export function CheckoutView({ sellerAddress }: Props) {
         ? (pickedAssembly.hydratedAssembly.assembly.agreements.find((o) => assemblyFollows(o).length === 0)
             ?? pickedAssembly.hydratedAssembly.assembly.agreements[0])
         : undefined;
-    const cartUnitAmount = (item: (typeof cartItems)[number]) =>
-        unitAmountFor(`line:${item.catalogItemId}`, item.price) ?? 0n;
-    const cartTotal = cartItems.reduce(
-        (sum, item) => sum + cartUnitAmount(item) * BigInt(item.quantity),
-        0n,
-    );
+    // A line's amount, or null while its translated price is unknown (no
+    // quote, nothing typed) — never 0: the price summary and the commit are
+    // both held until every amount stands.
+    const cartUnitAmount = (item: (typeof cartItems)[number]): bigint | null =>
+        unitAmountFor(`line:${item.catalogItemId}`, item.price);
+    const cartTotal = cartItems.reduce<bigint | null>((sum, item) => {
+        const amount = cartUnitAmount(item);
+        return sum === null || amount === null ? null : sum + amount * BigInt(item.quantity);
+    }, 0n);
     // The buyer's pick for an unbound sub-order, at the amount the buyer
     // signs for it (translated when its seller lists in another token).
-    const pickedSelection = sellerSelection
-        ? { ...sellerSelection, price: formatToken(unitAmountFor("pick", sellerSelection.price) ?? 0n, tokenDecimals) }
+    const pickedUnitAmount = sellerSelection ? unitAmountFor("pick", sellerSelection.price) : null;
+    const pickedSelection = sellerSelection && pickedUnitAmount !== null
+        ? { ...sellerSelection, price: formatToken(pickedUnitAmount, tokenDecimals) }
         : null;
 
     // Multi-order price transparency — derived in lib/checkout/checkoutDerivations
@@ -539,7 +558,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Plain call (not useMemo): this section sits below the page's early
     // returns, where hooks can't run — and the pre-extraction code
     // recomputed per render too. The win is the PURITY, in lib.
-    const kitBreakdown = deriveKitBreakdown({
+    const kitBreakdown = cartTotal === null ? null : deriveKitBreakdown({
         pickedAssembly,
         leadAddress: memberCatalog.address as `0x${string}`,
         sellerCatalogs,
@@ -556,15 +575,18 @@ export function CheckoutView({ sellerAddress }: Props) {
     // — the star shape): 2× payment locked per order, payment to that
     // order's seller + an equal refundable bond. Aggregate over the WHOLE
     // plan — a root-only figure under-reports every multi-order checkout.
-    const planTotal = kitBreakdown ? kitBreakdown.total : cartTotal;
-    const lockedTotal = planTotal > 0n ? calculateBonds(planTotal, planTotal).buyerBond : 0n;
-    const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < lockedTotal;
+    // Null while any amount is unknown: nothing is shown or locked on it.
+    const planTotal: bigint | null = kitBreakdown ? kitBreakdown.total : cartTotal;
+    const lockedTotal: bigint | null = planTotal === null
+        ? null
+        : planTotal > 0n ? calculateBonds(planTotal, planTotal).buyerBond : 0n;
+    const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && lockedTotal !== null && balance < lockedTotal;
     // Where the chosen funding token stands with Permit2 — the one derived
     // state the funding panel shows and the place-order button obeys.
     const buyerFunding = fundingAuthorization({
         fundingToken,
         allowanceKnown: permit2Funding.allowanceKnown && !permit2Funding.isAllowanceRefetching,
-        needsApproval: permit2Funding.needsApproval(lockedTotal),
+        needsApproval: lockedTotal !== null && permit2Funding.needsApproval(lockedTotal),
         isAuthorizing: permit2Funding.isApprovePending || permit2Funding.isApproveConfirming,
     });
 
@@ -625,7 +647,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             buyer,
             leadSellerAddress: memberCatalog.address as `0x${string}`,
             currency,
-            payment: cartTotal,
+            payment: cartTotal!,
             lineItems: cartItems.map((item) => ({
                 itemId: item.catalogItemId,
                 name: item.name,
@@ -633,7 +655,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 // Cart prices were snapshotted in the seller's default;
                 // the committed unit price is the buyer's amount in the
                 // process denomination.
-                unitPrice: cartUnitAmount(item).toString(),
+                unitPrice: cartUnitAmount(item)!.toString(),
                 massGrams: item.massGrams,
                 volumeMl: item.volumeMl,
                 lengthMm: item.lengthMm,
@@ -759,7 +781,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             connectInjected();
             return;
         }
-        if (cartItems.length === 0) return;
+        if (cartItems.length === 0 || lockedTotal === null) return;
         if (hasInsufficientBalance && !fundingToken) {
             setCheckoutError(
                 `Insufficient balance. Required: ${formatToken(lockedTotal, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`
@@ -901,11 +923,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                 <p className="text-ink-muted" data-testid={`payment-translation-source-${l.key}`}>
                                                     No venue is configured to quote it; state the amount yourself.
                                                 </p>
-                                            ) : quote?.error ? (
-                                                <p className="text-error-fg" data-testid={`payment-translation-source-${l.key}`}>
-                                                    The venue could not quote it ({quote.error}); state the amount yourself.
-                                                </p>
-                                            ) : quote?.result ? (
+                                            ) : quote?.failed ? null : quote?.result ? (
                                                 <p className="text-ink-muted" data-testid={`payment-translation-source-${l.key}`}>
                                                     Quote: {l.listedPrice} {listedSymbol} ={" "}
                                                     <span className="tabular-nums" data-testid={`payment-translation-quote-${l.key}`}>
@@ -928,7 +946,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                             </div>
                         )}
 
-                        <div className="border-t border-default pt-3 space-y-1.5 text-sm">
+                        {planTotal !== null && lockedTotal !== null && <div className="border-t border-default pt-3 space-y-1.5 text-sm">
                             {kitBreakdown ? (
                                 <div className="space-y-1" data-testid="cart-contributor-breakdown">
                                     {kitBreakdown.rows.map((row, i) => (
@@ -998,7 +1016,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 <div className="flex justify-between">
                                     <span className="text-ink-body">Payment to seller</span>
                                     <span className="text-ink-primary tabular-nums">
-                                        {formatToken(cartTotal, tokenDecimals)}
+                                        {formatToken(planTotal, tokenDecimals)}
                                     </span>
                                 </div>
                             )}
@@ -1041,7 +1059,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     </span>
                                 </div>
                             )}
-                        </div>
+                        </div>}
 
                         {/* Inline agreement terms — the clauses the buyer is
                             bonding to, read straight from the assembly. A pre-sign

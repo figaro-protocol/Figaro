@@ -15,7 +15,7 @@ vi.mock("wagmi", () => ({
 // The surfacing-rule cross-check gate — resolved (empty) so the discovery
 // effect proceeds; the discovery service is injected below. Stable reference
 // so it does not itself re-trigger the effect on every render.
-const PUBLISHED = { data: [] as unknown[], isLoading: false };
+const PUBLISHED = { read: { status: "present", value: [] as unknown[] } };
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
     getAssemblyLoadError: () => undefined,
     usePublishedAssemblies: () => PUBLISHED,
@@ -54,7 +54,7 @@ describe("useRegisteredCatalogs focus refresh", () => {
 
         const { result } = renderHook(() => useRegisteredCatalogs({ service }));
 
-        await waitFor(() => expect(result.current.catalogs).toHaveLength(1));
+        await waitFor(() => expect(result.current.read).toMatchObject({ status: "present", value: [expect.anything()] }));
         expect(listCatalogs).toHaveBeenCalledTimes(1);
 
         // Returning to a long-open tab: the window regains focus and the
@@ -63,7 +63,7 @@ describe("useRegisteredCatalogs focus refresh", () => {
             window.dispatchEvent(new Event("focus"));
         });
 
-        await waitFor(() => expect(result.current.catalogs).toHaveLength(2));
+        await waitFor(() => expect(result.current.read).toMatchObject({ status: "present", value: [expect.anything(), expect.anything()] }));
         expect(listCatalogs).toHaveBeenCalledTimes(2);
     });
 });

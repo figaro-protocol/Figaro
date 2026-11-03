@@ -253,18 +253,20 @@ function SignPageContent() {
     // minus the denomination itself; available only where the swap
     // composition is configured. The witness-signed leg is built at accept.
     const swapContracts = resolveSwapFundingContracts();
-    const { data: memberProfileData } = useMemberProfile(isSeller ? address : undefined);
+    const { read: registration } = useMemberProfile(isSeller ? address : undefined);
+    const ownMetadataURI = registration.status === "present" && registration.value.registered
+        ? registration.value.metadataURI
+        : null;
     const [ownProfile, setOwnProfile] = useState<MemberProfileMetadata | null>(null);
     useEffect(() => {
         let canceled = false;
         setOwnProfile(null);
-        const metadataURI = memberProfileData?.[0];
-        if (!metadataURI) return;
-        fetchMemberProfile(metadataURI)
+        if (!ownMetadataURI) return;
+        fetchMemberProfile(ownMetadataURI)
             .then((parsed_) => { if (!canceled && parsed_) setOwnProfile(parsed_); })
             .catch(() => { /* absence — the funding panel simply doesn't render */ });
         return () => { canceled = true; };
-    }, [memberProfileData]);
+    }, [ownMetadataURI]);
     const sellerFundingCandidates = useMemo(
         () => (swapContracts && approvalCurrency && isSeller
             ? (ownProfile?.acceptedTokens ?? []).filter((t) => !hexEqual(t.address, approvalCurrency))
@@ -328,6 +330,10 @@ function SignPageContent() {
     const agreementCheck = useMemo(() => {
         if (!parsed?.agreement || !commitment) return null;
         if (designRead?.agreement !== parsed.agreement) return null;
+        // The design the agreement names could not be read: no verdict is
+        // shown (a failed read is not a tampering finding); the sign gate
+        // still refuses what it cannot verify.
+        if (parsed.agreement.provenance && !designRead.design) return null;
         return validateCommitmentAgreement(parsed.agreement, commitment.checkoutHash, specSource(), commitment, designRead.design);
     }, [parsed, commitment, designRead]);
 
@@ -336,9 +342,9 @@ function SignPageContent() {
     // catalog read from IPFS (the same discovery read checkout prices from),
     // each signed line item matched to its listed item by id. The seller
     // signs the amount or declines; nothing here changes it.
-    const { catalogs: registeredCatalogs } = useRegisteredCatalogs();
-    const sellerCatalog = isSeller && commitment
-        ? registeredCatalogs.find((c) => hexEqual(c.address, commitment.seller)) ?? null
+    const { read: catalogsRead } = useRegisteredCatalogs();
+    const sellerCatalog = isSeller && commitment && catalogsRead.status === "present"
+        ? catalogsRead.value.find((c) => hexEqual(c.address, commitment.seller)) ?? null
         : null;
     const listedToken = sellerCatalog?.defaultTokenAddress as `0x${string}` | undefined;
     const listedInAnotherToken = !!listedToken && !!approvalCurrency && !hexEqual(listedToken, approvalCurrency);
@@ -436,17 +442,24 @@ function SignPageContent() {
 
                     {listedInAnotherToken && (
                         <div className="text-xs space-y-1.5 text-ink-body border-t border-default pt-3" data-testid="sign-listed-prices">
-                            <p className="text-ink-muted">
-                                Your catalog lists in {listedSymbol ?? "your default token"}; the buyer pays in{" "}
-                                {currencySymbol ?? "another token"} and asks you to sign these amounts. Sign them or decline.
-                            </p>
+                            {listedSymbol && currencySymbol && (
+                                <p className="text-ink-muted">
+                                    Your catalog lists in {listedSymbol}; the buyer pays in{" "}
+                                    {currencySymbol} and asks you to sign these amounts. Sign them or decline.
+                                </p>
+                            )}
                             {listedBeside.map((line, i) => (
                                 <div key={i} className="flex justify-between gap-2" data-testid={`sign-listed-price-${line.itemId ?? i}`}>
                                     <span>{line.name} × {line.quantity}</span>
                                     <span className="tabular-nums">
-                                        listed{" "}
-                                        <span data-testid={`sign-listed-price-listed-${line.itemId ?? i}`}>{line.listedPrice ?? "—"}</span>{" "}
-                                        {listedSymbol ?? ""} · signed{" "}
+                                        {line.listedPrice !== undefined && (
+                                            <>
+                                                listed{" "}
+                                                <span data-testid={`sign-listed-price-listed-${line.itemId ?? i}`}>{line.listedPrice}</span>{" "}
+                                                {listedSymbol ?? ""} ·{" "}
+                                            </>
+                                        )}
+                                        signed{" "}
                                         <span data-testid={`sign-listed-price-signed-${line.itemId ?? i}`}>
                                             {/^\d+$/.test(line.unitPrice) ? formatToken(BigInt(line.unitPrice), tokenDecimals) : line.unitPrice}
                                         </span>{" "}

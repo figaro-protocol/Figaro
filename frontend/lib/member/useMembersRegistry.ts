@@ -22,6 +22,7 @@ import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { fetchCappedContent, resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
 import { useAsyncMemberResource } from "@/lib/member/useAsyncMemberResource";
 import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
+import { PENDING, present, queryRead, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 import {
     AgentServiceInfo,
     MemberAgentServices,
@@ -52,65 +53,68 @@ export function parseAgentServices(metadata: Record<string, unknown>): AgentServ
 
 // ── Read hooks (indexer-backed) ──────────────────────────────────────────────
 
-/** [metadataURI, registeredBlock] — derived from members-registry events. */
-export type MemberProfileData = readonly [string, bigint | null];
+/** What the MembersRegistry events say of one wallet: registered (with its
+ *  current metadataURI and registration block), or not registered — a
+ *  resolved answer, never the stand-in for a failed read. */
+export type MemberRegistration =
+    | { readonly registered: false }
+    | { readonly registered: true; readonly metadataURI: string; readonly registeredBlock: bigint | null };
+
+const NOT_REGISTERED: MemberRegistration = Object.freeze({ registered: false as const });
 
 /**
- * Returns the member's current metadataURI and registration block from
- * indexed events. Returns undefined if the address has never registered or
- * has left since (requestWithdrawal clears the dedup guard).
+ * The wallet's registration, read from indexed events as a `NetworkRead`:
+ * `pending` until the scan completes (including while the wallet or client
+ * is still hydrating — an unscanned wallet never reads as unregistered),
+ * `present` with the chain's answer, `absent` when the read failed — which a
+ * consumer never takes for "unregistered" (no redirect, no register button).
  */
-export function useMemberProfile(address: `0x${string}` | undefined) {
+export function useMemberProfile(address: `0x${string}` | undefined): {
+    read: NetworkRead<MemberRegistration>;
+    refetch: () => void;
+} {
     const client = usePublicClient();
     const chainId = useChainId();
-    const [data, setData] = useState<MemberProfileData | undefined>(undefined);
-    // "Not scanned yet" must not read as "scanned and absent": isLoading
-    // starts TRUE and becomes false only when a scan completes. The prior
-    // false start left commit windows (wagmi client/address still hydrating
-    // → the effect's early return) where consumers saw
-    // {data: undefined, isLoading: false} and treated an unscanned wallet
-    // as unregistered — the /members/edit/* guards redirected mid-session
-    // on exactly that window, killing in-flight saves.
-    const [isLoading, setIsLoading] = useState(true);
+    const [read, setRead] = useState<NetworkRead<MemberRegistration>>(PENDING);
     const { generation, refetch } = useRefetchGeneration();
 
     useEffect(() => {
         if (!client || !address) {
-            setData(undefined);
+            setRead(PENDING);
             return;
         }
 
         let canceled = false;
-        setIsLoading(true);
 
-        getMemberState(client, chainId, address).then((state) => {
+        void readNetwork("useMemberProfile", () => getMemberState(client, chainId, address)).then((next) => {
             if (canceled) return;
-            if (state) {
-                // Only emit a fresh tuple ref when the underlying values
-                // actually changed — otherwise consumers' `useEffect`s
-                // keyed on `data` re-fire on every poll for nothing,
-                // which compounds into update-depth thrash on routes
-                // that chain `refetch() + router.push(...)` in a
-                // success-useEffect (see /members/edit/* family).
-                setData((prev) => {
-                    const same = prev
-                        && prev[0] === state.metadataURI
-                        && prev[1] === state.registeredBlock;
-                    return same ? prev : [state.metadataURI, state.registeredBlock] as const;
-                });
-            } else {
-                setData(undefined);
+            if (next.status !== "present") {
+                setRead(next);
+                return;
             }
-            setIsLoading(false);
-        }).catch(() => {
-            if (!canceled) setIsLoading(false);
+            const state = next.value;
+            // Only emit a fresh value when the underlying registration
+            // actually changed — otherwise consumers' `useEffect`s keyed on
+            // it re-fire on every poll for nothing, which compounds into
+            // update-depth thrash on routes that chain
+            // `refetch() + router.push(...)` in a success-useEffect (see
+            // /members/edit/* family).
+            setRead((prev) => {
+                const was = prev.status === "present" ? prev.value : null;
+                if (!state) return was && !was.registered ? prev : present(NOT_REGISTERED);
+                const same = was?.registered
+                    && was.metadataURI === state.metadataURI
+                    && was.registeredBlock === state.registeredBlock;
+                return same
+                    ? prev
+                    : present({ registered: true, metadataURI: state.metadataURI, registeredBlock: state.registeredBlock });
+            });
         });
 
         return () => { canceled = true; };
     }, [client, chainId, address, generation]);
 
-
-    return { data, isLoading, refetch };
+    return { read, refetch };
 }
 
 // ── Write hooks ───────────────────────────────────────────────────────────────
@@ -227,8 +231,10 @@ export function useRequestWithdrawal() {
 
 /**
  * The pending-withdrawal schedule for an address: how much is owed and when it
- * unlocks. `pending === 0n` means nothing is in flight. Callers compare
- * `releaseAt` against chain time, not wall-clock, when it matters.
+ * unlocks, each a `NetworkRead` — a failed read is `absent`, never `0n` or
+ * "not withdrawable". `pending` present at `0n` means nothing is in flight.
+ * Callers compare `releaseAt` against chain time, not wall-clock, when it
+ * matters.
  */
 export function useWithdrawalStatus(address: `0x${string}` | undefined) {
     const pending = useReadContract({
@@ -257,10 +263,9 @@ export function useWithdrawalStatus(address: `0x${string}` | undefined) {
         query: { enabled: Boolean(registry && address), refetchInterval: 5_000 },
     });
     return {
-        pending: pending.data,
-        releaseAt: releaseAt.data,
-        withdrawable: withdrawable.data === true,
-        isLoading: pending.isLoading || releaseAt.isLoading,
+        pending: queryRead<bigint>(pending),
+        releaseAt: queryRead<bigint>(releaseAt),
+        withdrawable: queryRead<boolean>(withdrawable),
         refetch: () => { void pending.refetch(); void releaseAt.refetch(); void withdrawable.refetch(); },
     };
 }
@@ -288,12 +293,14 @@ export function useWithdrawDeposit() {
     return { withdraw, isPending, isConfirming, isSuccess, error, hash };
 }
 
-export function useRegistrationDeposit() {
-    return useReadContract({
+/** The registration stake the MembersRegistry asks for, as a `NetworkRead`:
+ *  a failed read is `absent` — never `0n`, which a register call would send. */
+export function useRegistrationDeposit(): NetworkRead<bigint> {
+    return queryRead<bigint>(useReadContract({
         address: registry ?? undefined,
         abi: MEMBERS_REGISTRY_ABI,
         functionName: "registrationDeposit",
-    });
+    }));
 }
 
 // ── Agent service discovery hook ─────────────────────────────────────────────

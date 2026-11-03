@@ -10,6 +10,7 @@ import { AgreementPinErasure } from "@/components/runtime/AgreementPinErasure";
 import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
+import type { Order } from "@/lib/kernel/store";
 
 /**
  * Dispute escalation for the process. In the layered dispute model
@@ -20,7 +21,13 @@ import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
  * process — not one per order.
  */
 function ProcessDisputeSection({ processId }: { processId: string }) {
-    const orders = useProcessOrders(processId);
+    const read = useProcessOrders(processId);
+    // Recourse is offered only over orders the chain returned.
+    if (read.status !== "present") return null;
+    return <ProcessDispute processId={processId} orders={read.value} />;
+}
+
+function ProcessDispute({ processId, orders }: { processId: string; orders: Order[] }) {
     const checkoutHashes = useMemo(
         () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
         [orders],

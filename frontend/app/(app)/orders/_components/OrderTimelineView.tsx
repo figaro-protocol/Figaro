@@ -56,7 +56,10 @@ interface Props {
 export function OrderTimelineView({ processId }: Props) {
     const { address } = useAccount();
     const workspace = useSemanticProcessWorkspace({ processId });
-    const { listings } = useMemberListings();
+    const { read: listingsRead } = useMemberListings();
+    // Names come only from listings the registry returned; an absent read
+    // names no one (the address itself is shown).
+    const listings = listingsRead.status === "present" ? listingsRead.value : [];
     const resolveCapacity = useProcessResolveCapacity(processId as `0x${string}`);
 
     const processModel = workspace.processModel;
@@ -85,15 +88,23 @@ export function OrderTimelineView({ processId }: Props) {
     const buyerListing = rootOrder ? findListingByAddress(listings, rootOrder.buyer) : undefined;
     const buyerDisplayName = buyerListing?.name ?? (rootOrder ? truncateHex(rootOrder.buyer) : "the buyer");
 
+    // A failed read renders nothing; only a read in flight shows loading.
+    if (workspace.processModelRead.status === "absent") return null;
+    if (workspace.processModelRead.status === "present" && !processModel) {
+        return (
+            <div className="container mx-auto px-6 py-16 max-w-3xl">
+                <p className="text-xs font-semibold text-ink-muted mb-3">Order</p>
+                <p className="text-sm text-ink-body">
+                    No order is committed under process <code className="font-mono text-xs">{truncateHex(processId, { head: 10, tail: 0 })}</code>.
+                </p>
+            </div>
+        );
+    }
     if (!processModel) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
                 <p className="text-xs font-semibold text-ink-muted mb-3">Order</p>
                 <h1 className="text-heading-h1 text-ink-heading mb-4">Loading…</h1>
-                <p className="text-sm text-ink-body">
-                    Reading process <code className="font-mono text-xs">{truncateHex(processId, { head: 10, tail: 0 })}</code> from
-                    chain. If this persists, the process ID may be wrong or the indexer may be unreachable.
-                </p>
             </div>
         );
     }
@@ -226,7 +237,7 @@ export function OrderTimelineView({ processId }: Props) {
                             </p>
                         </div>
                     </li>
-                    {workspace.processAttestations.map((att) => {
+                    {(workspace.processAttestations ?? []).map((att) => {
                         const { clauseTitle, eventLabel, eventCode } = describeAttestation(att.clauseId, att.stage);
                         return (
                             <li
@@ -261,7 +272,7 @@ export function OrderTimelineView({ processId }: Props) {
                 declared stage more than one party attested, whether their
                 filings agree, field by field. Derived from the same log and
                 the content its fingerprints resolve to; read-only, ungated. */}
-            <StageAttestationComparison attestations={workspace.processAttestations} />
+            {workspace.processAttestations && <StageAttestationComparison attestations={workspace.processAttestations} />}
 
             {/* Secondary affordances */}
             <section className="flex flex-wrap gap-3 text-sm">

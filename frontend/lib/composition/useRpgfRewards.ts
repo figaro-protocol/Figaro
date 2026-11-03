@@ -109,7 +109,6 @@ export function useRpgfRewards(subject?: `0x${string}`) {
      *  with no wallet named. */
     const [memberLive, setMemberLive] = useState<boolean | null>(null);
     const [readState, setReadState] = useState<"loading" | "ready" | "error">("loading");
-    const [readError, setReadError] = useState("");
     const [refreshNonce, setRefreshNonce] = useState(0);
 
     const refresh = useCallback(() => setRefreshNonce((n) => n + 1), []);
@@ -304,11 +303,11 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             setReadState("ready");
         })().catch((e) => {
             if (canceled) return;
-            // A failed READ is never resolved-empty: silence here left a
-            // connected wallet staring at a blank page. Say what broke.
+            // A failed READ is never resolved-empty: readState "error", and
+            // the surface renders nothing for it.
+            console.warn("[useRpgfRewards] read failed:", e);
             setPeriods([]);
             setReadState("error");
-            setReadError(e instanceof Error ? e.message : String(e));
         });
         return () => {
             canceled = true;
@@ -345,7 +344,6 @@ export function useRpgfRewards(subject?: `0x${string}`) {
         available: !!minter && !!counter,
         account,
         readState,
-        readError,
         periods,
         memberLive,
         claim,

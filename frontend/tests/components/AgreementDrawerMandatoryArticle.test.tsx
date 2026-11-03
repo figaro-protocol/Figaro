@@ -18,7 +18,7 @@ vi.mock("@/lib/protocol/useAgreementRegistry", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/protocol/useAgreementRegistry")>();
     return {
         ...actual,
-        usePublishedAgreements: () => ({ data: [], refetch: async () => undefined }),
+        usePublishedAgreements: () => ({ read: { status: "present", value: [] }, refetch: async () => undefined }),
         fetchRegisteredAgreement: async (key: `0x${string}`) => actual.getRegisteredAgreement(key) ?? null,
     };
 });
@@ -26,7 +26,10 @@ vi.mock("@/lib/protocol/useClauseRegistry", async () => {
     const { listKnownClauses } = await import("@/lib/shared/clauseSpecSource");
     return {
         useAllRegisteredClauses: () => ({
-            data: listKnownClauses().map((c) => ({ clauseKey: c.clauseKey, contentURI: "", stakeWithdrawn: false })),
+            read: {
+                status: "present",
+                value: listKnownClauses().map((c) => ({ clauseKey: c.clauseKey, contentURI: "", stakeWithdrawn: false })),
+            },
         }),
     };
 });

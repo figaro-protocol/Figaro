@@ -14,6 +14,10 @@
  * parsers, and projects the folded process into the UI `Order` shape.
  * Agreement bodies are NOT hydrated here; useProcessAgreements owns that.
  *
+ * Both hooks answer with a `NetworkRead<Order[]>`: `pending` until the
+ * history read lands, `present` with the folded orders (an empty process or
+ * wallet is `present([])`), `absent` when the read failed — never `[]`.
+ *
  * FigaroCore uses a unified `commit()` (no separate offer/accept), and
  * OrderCommitted events carry salt + deadline rather than bond + timestamp;
  * bonds are derived from payment and cumulativeValue at read time.
@@ -36,6 +40,7 @@ import {
     type Address,
 } from "@figaro-protocol/sdk";
 import { projectProcessGraph, walletRecord } from "@figaro-protocol/sdk/derive";
+import { PENDING, present, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
 /** The raw-log shape the SDK parsers take — cached rows and watcher logs both
  *  carry data/topics, so the one decoder runs over either. */
@@ -45,8 +50,8 @@ type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
 // Hook
 // ---------------------------------------------------------------------------
 
-export function useProcessOrders(processId: string | null): Order[] {
-    const [orders, setOrders] = useState<Order[]>([]);
+export function useProcessOrders(processId: string | null): NetworkRead<Order[]> {
+    const [orders, setOrders] = useState<NetworkRead<Order[]>>(PENDING);
     const publicClient = usePublicClient();
     const contractAddr = CONTRACTS.core || undefined;
     const processReloadKey = useOrderStore((s) => s.processReloadKey);
@@ -64,12 +69,17 @@ export function useProcessOrders(processId: string | null): Order[] {
     // so an event landing mid-fetch unions with the history instead of racing
     // it.
     const topologyRef = useRef<Topology | null>(null);
+    // Whether the history read for the current topology landed: a live batch
+    // projected over a FAILED history would present a partial process as the
+    // whole one, so the watchers project only once the history is in.
+    const historyLoadedRef = useRef(false);
 
     const shouldLoad = !!processId;
 
     const projectOrders = useCallback((pid: string | null) => {
+        if (!historyLoadedRef.current) return;
         const process = pid ? topologyRef.current?.getProcess(pid as Hex) : undefined;
-        setOrders(process ? [...process.orders.values()].map(orderFromSdk) : []);
+        setOrders(present(process ? [...process.orders.values()].map(orderFromSdk) : []));
     }, []);
 
     // ------------------------------------------------------------------
@@ -78,33 +88,34 @@ export function useProcessOrders(processId: string | null): Order[] {
     useEffect(() => {
         if (ordersForProcessRef.current !== processId) {
             ordersForProcessRef.current = processId;
-            setOrders([]);
+            setOrders(PENDING);
         }
         topologyRef.current = new Topology();
+        historyLoadedRef.current = false;
         if (!publicClient || !contractAddr || !shouldLoad) return;
 
         let canceled = false;
         const chainId = publicClient.chain?.id ?? 31337;
         const topology = topologyRef.current;
 
-        (async () => {
-            try {
-                const [committed, resolved] = await Promise.all([
-                    getAllOrderCommitted(publicClient, chainId),
-                    getAllOrderResolved(publicClient, chainId),
-                ]);
-                if (canceled) return;
-
-                topology.applyEvents({
-                    orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
-                    orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
-                    processResolved: [],
-                });
-                projectOrders(processId);
-            } catch (err) {
-                if (!canceled) console.error("useProcessOrders indexer error:", err);
+        void readNetwork("useProcessOrders", () => Promise.all([
+            getAllOrderCommitted(publicClient, chainId),
+            getAllOrderResolved(publicClient, chainId),
+        ])).then((history) => {
+            if (canceled) return;
+            if (history.status !== "present") {
+                setOrders(history);
+                return;
             }
-        })();
+            const [committed, resolved] = history.value;
+            topology.applyEvents({
+                orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
+                orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
+                processResolved: [],
+            });
+            historyLoadedRef.current = true;
+            projectOrders(processId);
+        });
 
         return () => {
             canceled = true;
@@ -173,8 +184,8 @@ export function useProcessOrders(processId: string | null): Order[] {
  * Orders (checkoutHash + parties), reload-key aware — the SAME fold and
  * wallet query `/data/explore` answers wallet history with.
  */
-export function useWalletOrders(): Order[] {
-    const [orders, setOrders] = useState<Order[]>([]);
+export function useWalletOrders(): NetworkRead<Order[]> {
+    const [orders, setOrders] = useState<NetworkRead<Order[]>>(PENDING);
     const publicClient = usePublicClient();
     const { address } = useAccount();
     const contractAddr = CONTRACTS.core || undefined;
@@ -182,41 +193,38 @@ export function useWalletOrders(): Order[] {
 
     useEffect(() => {
         if (!publicClient || !contractAddr || !address) {
-            setOrders([]);
+            setOrders(PENDING);
             return;
         }
         let canceled = false;
         const chainId = publicClient.chain?.id ?? 31337;
 
-        (async () => {
-            try {
-                const [committed, resolved] = await Promise.all([
-                    getAllOrderCommitted(publicClient, chainId),
-                    getAllOrderResolved(publicClient, chainId),
-                ]);
-                if (canceled) return;
+        void readNetwork("useWalletOrders", async () => {
+            const [committed, resolved] = await Promise.all([
+                getAllOrderCommitted(publicClient, chainId),
+                getAllOrderResolved(publicClient, chainId),
+            ]);
 
-                const graph = projectProcessGraph({
-                    orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
-                    orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
-                    processResolved: [],
-                });
-                const record = walletRecord(graph, address as Address);
-                // An order where the wallet is BOTH parties appears once here
-                // (this is a loader, not the two-sided order table).
-                const seen = new Set<string>();
-                const result: Order[] = [];
-                for (const o of [...record.ordersAsBuyer, ...record.ordersAsSeller]) {
-                    if (seen.has(o.orderHash)) continue;
-                    seen.add(o.orderHash);
-                    result.push(orderFromSdk(o));
-                }
-                result.sort((a, b) => (a.blockNumber ?? 0) - (b.blockNumber ?? 0));
-                if (!canceled) setOrders(result);
-            } catch (err) {
-                if (!canceled) console.error("useWalletOrders indexer error:", err);
+            const graph = projectProcessGraph({
+                orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
+                orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
+                processResolved: [],
+            });
+            const record = walletRecord(graph, address as Address);
+            // An order where the wallet is BOTH parties appears once here
+            // (this is a loader, not the two-sided order table).
+            const seen = new Set<string>();
+            const result: Order[] = [];
+            for (const o of [...record.ordersAsBuyer, ...record.ordersAsSeller]) {
+                if (seen.has(o.orderHash)) continue;
+                seen.add(o.orderHash);
+                result.push(orderFromSdk(o));
             }
-        })();
+            result.sort((a, b) => (a.blockNumber ?? 0) - (b.blockNumber ?? 0));
+            return result;
+        }).then((next) => {
+            if (!canceled) setOrders(next);
+        });
 
         return () => { canceled = true; };
     }, [publicClient, contractAddr, address, processReloadKey]);

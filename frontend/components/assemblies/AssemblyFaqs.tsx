@@ -16,7 +16,8 @@ import type { AssemblyFaqEntry } from "@figaro-protocol/sdk";
 type Group = { slug: string; name: string; faq: readonly AssemblyFaqEntry[] };
 
 export function AssemblyFaqs() {
-    const { data } = useAllPublishedAssemblies();
+    const { read } = useAllPublishedAssemblies();
+    const data = read.status === "present" ? read.value : null;
     const [groups, setGroups] = useState<Group[]>([]);
 
     useEffect(() => {

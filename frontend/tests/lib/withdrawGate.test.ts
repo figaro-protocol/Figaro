@@ -12,46 +12,49 @@
 import { describe, expect, it } from "vitest";
 import { withdrawBlockedReason, withdrawUnverifiedCaveat } from "@/lib/protocol/withdrawGate";
 import type { WithdrawGate } from "@figaro-protocol/sdk/derive";
+import { ABSENT, PENDING, present } from "@/lib/shared/networkRead";
 
 describe("withdrawBlockedReason", () => {
-    it("null gate (loading / chain-read failure) is treated as not-safe-to-reclaim", () => {
-        expect(withdrawBlockedReason(null)).toMatch(/Checking for in-flight trades/i);
+    it("a pending gate says it is checking; an absent gate says nothing (no affordance is offered for it)", () => {
+        expect(withdrawBlockedReason(PENDING)).toMatch(/Checking for in-flight trades/i);
+        expect(withdrawBlockedReason(ABSENT)).toBeNull();
     });
 
     it("zero orders → no reason (withdraw allowed), no caveat", () => {
         const gate: WithdrawGate = { canWithdraw: true, inFlightCount: 0, unverifiedCount: 0 };
-        expect(withdrawBlockedReason(gate)).toBeNull();
-        expect(withdrawUnverifiedCaveat(gate)).toBeNull();
+        expect(withdrawBlockedReason(present(gate))).toBeNull();
+        expect(withdrawUnverifiedCaveat(present(gate))).toBeNull();
     });
 
     it("verified in-flight trades block, naming the count", () => {
         const gate: WithdrawGate = { canWithdraw: false, inFlightCount: 2, unverifiedCount: 0 };
-        const reason = withdrawBlockedReason(gate);
+        const reason = withdrawBlockedReason(present(gate));
         expect(reason).toMatch(/2 in-flight trades/);
         expect(reason).toMatch(/resolved/);
     });
 
     it("unverified-only → withdraw allowed (no reason), caveat present", () => {
         const gate: WithdrawGate = { canWithdraw: true, inFlightCount: 0, unverifiedCount: 1 };
-        expect(withdrawBlockedReason(gate)).toBeNull();
-        expect(withdrawUnverifiedCaveat(gate)).toMatch(/party-private/i);
+        expect(withdrawBlockedReason(present(gate))).toBeNull();
+        expect(withdrawUnverifiedCaveat(present(gate))).toMatch(/party-private/i);
     });
 
     it("mixed → blocked on the verified count, caveat names the unverified count", () => {
         const gate: WithdrawGate = { canWithdraw: false, inFlightCount: 1, unverifiedCount: 3 };
-        expect(withdrawBlockedReason(gate)).toMatch(/1 in-flight trade /);
-        expect(withdrawUnverifiedCaveat(gate)).toMatch(/3 in-flight trades could not be checked/);
+        expect(withdrawBlockedReason(present(gate))).toMatch(/1 in-flight trade /);
+        expect(withdrawUnverifiedCaveat(present(gate))).toMatch(/3 in-flight trades could not be checked/);
     });
 });
 
 describe("withdrawUnverifiedCaveat", () => {
-    it("null gate → no caveat (the affordance is disabled anyway)", () => {
-        expect(withdrawUnverifiedCaveat(null)).toBeNull();
+    it("a pending or absent gate → no caveat", () => {
+        expect(withdrawUnverifiedCaveat(PENDING)).toBeNull();
+        expect(withdrawUnverifiedCaveat(ABSENT)).toBeNull();
     });
 
     it("names that unverified trades never block and that enforcement arrives with the prover", () => {
         const gate: WithdrawGate = { canWithdraw: true, inFlightCount: 0, unverifiedCount: 2 };
-        const caveat = withdrawUnverifiedCaveat(gate);
+        const caveat = withdrawUnverifiedCaveat(present(gate));
         expect(caveat).toMatch(/do not block/i);
         expect(caveat).toMatch(/prover/i);
     });

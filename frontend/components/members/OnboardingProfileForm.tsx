@@ -11,10 +11,7 @@ import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
-import {
-    TokenAddressInput,
-    classifyTokenError,
-} from "@/components/members/TokenAddressInput";
+import { TokenAddressInput } from "@/components/members/TokenAddressInput";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { addressIntegrity, isValidAddress } from "@/lib/shared/evm";
 import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
@@ -765,8 +762,7 @@ function AcceptedTokenRow({ value, onChange, onRemove, hasError = false, isDupli
     const formatOk = integrity === "lowercase" || integrity === "checksum-valid";
     // Only fetch symbol() once the address passes local checks AND
     // isn't a flagged duplicate — saves an RPC call per bad row.
-    const { data: resolvedSymbol, isLoading, error } = useTokenSymbol(formatOk && !isDuplicate ? value.address : "");
-    const errorKind = classifyTokenError(error);
+    const { data: resolvedSymbol, isLoading } = useTokenSymbol(formatOk && !isDuplicate ? value.address : "");
 
     // When the on-chain symbol resolves, persist it. Guard avoids loops.
     useEffect(() => {
@@ -789,15 +785,9 @@ function AcceptedTokenRow({ value, onChange, onRemove, hasError = false, isDupli
             symbolHint = "Reading symbol from contract…";
         } else if (resolvedSymbol) {
             symbolHint = <>Symbol: <span className="font-semibold text-ink-heading">{resolvedSymbol}</span></>;
-        } else if (errorKind === "no-rpc") {
-            symbolHint = (
-                <span className="text-error-fg">
-                    Can&apos;t verify — chain RPC unreachable. Make sure your wallet is connected to a chain that&apos;s running (devnet: <code>./deploy-local.sh</code>).
-                </span>
-            );
-        } else {
-            symbolHint = <span className="text-error-fg">Address is not an ERC-20 (no <code>symbol()</code>) on the connected chain. Remove or correct.</span>;
         }
+        // A failed `symbol()` read shows nothing: it is no verdict on the
+        // address, and never a claim that the chain is unreachable.
     }
 
     const rowHasError =

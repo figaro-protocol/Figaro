@@ -23,12 +23,14 @@
  * withdraw — and nothing on-chain locks the stake on unrevealed trades anyway
  * (FigaroCore holds no composition provenance, so this gate has no on-chain
  * enforcement). Only VERIFIED in-flight
- * trades block (`canWithdraw === (inFlightCount === 0)`). A chain-READ failure
- * is different — the chain state is genuinely unknown — so it yields a null
- * gate and the affordance stays disabled.
+ * trades block (`canWithdraw === (inFlightCount === 0)`). A chain-read
+ * failure, or a failed read of a body this wallet DID witness, is different —
+ * the state is genuinely unknown — so the gate is `absent` and a surface
+ * offers no reclaim affordance at all.
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 import {
     parseOrderCommittedLogs,
     parseOrderResolvedLogs,
@@ -44,7 +46,7 @@ import {
 } from "@figaro-protocol/sdk/derive";
 import { publicClient } from "@/lib/shared/wagmi";
 import { CONTRACTS } from "@/lib/kernel/contracts";
-import { fetchAgreement } from "@/lib/kernel/agreementFetch";
+import { fetchAgreement, witnessedAgreementUri } from "@/lib/kernel/agreementFetch";
 import { isValidAddress } from "@/lib/shared/evm";
 
 export type WithdrawClauseOrAssembly =
@@ -77,28 +79,32 @@ async function resolveInFlightAgreements(coreAddress: `0x${string}`): Promise<In
         processResolved: parseProcessResolvedLogs(logs),
     });
     return Promise.all(
-        refs.map(async (ref) => ({
-            processId: ref.processId,
-            agreement: await fetchAgreement(ref.checkoutHash),
-        })),
+        refs.map(async (ref) => {
+            // An order this wallet never witnessed has no URI and makes no
+            // read: it is unverified (the SDK gate's caveat, never a block).
+            if (!witnessedAgreementUri(ref.checkoutHash)) return { processId: ref.processId, agreement: null };
+            // A witnessed order whose body failed to read is UNKNOWN state —
+            // the whole gate is absent, never "unverified" (which would enable
+            // the reclaim on a failed read).
+            const read = await fetchAgreement(ref.checkoutHash);
+            if (read.status !== "present") throw new Error(`agreement ${ref.checkoutHash} unreadable`);
+            return { processId: ref.processId, agreement: read.value };
+        }),
     );
 }
 
 /**
- * The withdraw gate for one clause or assembly. `null` (or an unconfigured
- * core address) yields `{ gate: null }`. `gate` is `null` while loading or on a
- * chain-read failure (genuinely unknown chain state — affordance stays
- * disabled); once loaded, only VERIFIED in-flight trades block
- * (`gate.canWithdraw === (gate.inFlightCount === 0)`), and
- * `gate.unverifiedCount > 0` is surfaced as a caveat via
- * `withdrawUnverifiedCaveat`, never blocking.
+ * The withdraw gate for one clause, assembly or agreement, as a
+ * `NetworkRead`: `pending` while reading (and for a null target), `absent`
+ * when the chain or a witnessed body could not be read — the surface then
+ * renders no reclaim affordance — and `present` once derived. Only VERIFIED
+ * in-flight trades block (`gate.canWithdraw === (gate.inFlightCount === 0)`);
+ * `gate.unverifiedCount > 0` is a caveat via `withdrawUnverifiedCaveat`.
  */
 export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | null): {
-    gate: WithdrawGate | null;
-    isLoading: boolean;
+    gate: NetworkRead<WithdrawGate>;
 } {
-    const [gate, setGate] = useState<WithdrawGate | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [gate, setGate] = useState<NetworkRead<WithdrawGate>>(PENDING);
 
     // A stable identity for the clause or assembly so the effect re-runs only
     // when the target changes (an assembly is identified by its assembly hash).
@@ -113,32 +119,20 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
 
     useEffect(() => {
         const core = CONTRACTS.core;
-        if (!clauseOrAssembly || !isValidAddress(core)) {
-            setGate(null);
-            return;
-        }
+        setGate(PENDING);
+        if (!clauseOrAssembly || !isValidAddress(core)) return;
         let canceled = false;
-        setIsLoading(true);
-        setGate(null);
 
-        resolveInFlightAgreements(core)
-            .then((agreements) => {
-                if (canceled) return;
-                setGate(
-                    clauseOrAssembly.kind === "clause"
-                        ? deriveClauseWithdrawGate(clauseOrAssembly.clauseKey, agreements)
-                        : clauseOrAssembly.kind === "assembly"
-                            ? deriveAssemblyWithdrawGate(clauseOrAssembly.assemblyHash, agreements)
-                            : deriveAgreementWithdrawGate(clauseOrAssembly.agreementHash, agreements),
-                );
-                setIsLoading(false);
-            })
-            .catch((err) => {
-                if (canceled) return;
-                console.warn("[useWithdrawGate] in-flight read failed:", err);
-                setGate(null); // chain state unknown → the affordance stays disabled
-                setIsLoading(false);
-            });
+        void readNetwork("useWithdrawGate", async () => {
+            const agreements = await resolveInFlightAgreements(core);
+            return clauseOrAssembly.kind === "clause"
+                ? deriveClauseWithdrawGate(clauseOrAssembly.clauseKey, agreements)
+                : clauseOrAssembly.kind === "assembly"
+                    ? deriveAssemblyWithdrawGate(clauseOrAssembly.assemblyHash, agreements)
+                    : deriveAgreementWithdrawGate(clauseOrAssembly.agreementHash, agreements);
+        }).then((next) => {
+            if (!canceled) setGate(next);
+        });
 
         return () => {
             canceled = true;
@@ -148,18 +142,24 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [clauseOrAssemblyKey]);
 
-    return { gate, isLoading };
+    return { gate };
 }
 
-/** Human-readable reason a stake can't be reclaimed yet, or null when it can.
- *  Only VERIFIED in-flight trades block (`inFlightCount > 0`); unverified trades
- *  are a caveat (`withdrawUnverifiedCaveat`), not a reason. `gate === null`
- *  means the gate could not be computed (loading / chain-read failure) — the
- *  chain state is genuinely unknown, so also "not safe to reclaim". */
-export function withdrawBlockedReason(gate: WithdrawGate | null): string | null {
-    if (gate === null) return "Checking for in-flight trades composed from this registration…";
-    if (gate.canWithdraw) return null;
-    return `Cannot reclaim the stake yet: ${gate.inFlightCount} in-flight trade${gate.inFlightCount === 1 ? "" : "s"} still compose${gate.inFlightCount === 1 ? "s" : ""} this registration. The stake frees once every composed trade has resolved.`;
+/** Whether the reclaim affordance may be enabled: the gate is read and no
+ *  VERIFIED in-flight trade composes the registration. */
+export function withdrawGateOpen(gate: NetworkRead<WithdrawGate>): boolean {
+    return gate.status === "present" && gate.value.inFlightCount === 0;
+}
+
+/** Human-readable reason a stake can't be reclaimed yet, or null when it can
+ *  (or when the gate is absent — a surface shows no affordance for it, so no
+ *  reason either). Only VERIFIED in-flight trades block (`inFlightCount > 0`);
+ *  unverified trades are a caveat (`withdrawUnverifiedCaveat`), not a reason. */
+export function withdrawBlockedReason(gate: NetworkRead<WithdrawGate>): string | null {
+    if (gate.status === "pending") return "Checking for in-flight trades composed from this registration…";
+    if (gate.status === "absent" || gate.value.canWithdraw) return null;
+    const n = gate.value.inFlightCount;
+    return `Cannot reclaim the stake yet: ${n} in-flight trade${n === 1 ? "" : "s"} still compose${n === 1 ? "s" : ""} this registration. The stake frees once every composed trade has resolved.`;
 }
 
 /** Informational caveat when unverifiable in-flight trades exist, or null.
@@ -167,7 +167,8 @@ export function withdrawBlockedReason(gate: WithdrawGate | null): string | null 
  *  a stranger's trade — and on-chain enforcement (the inclusion-proof model,
  *  arriving with the prover) doesn't lock the stake on unrevealed trades
  *  either. Rendered alongside an ENABLED reclaim affordance. */
-export function withdrawUnverifiedCaveat(gate: WithdrawGate | null): string | null {
-    if (gate === null || gate.unverifiedCount === 0) return null;
-    return `${gate.unverifiedCount} in-flight trade${gate.unverifiedCount === 1 ? "" : "s"} could not be checked — agreement terms are party-private, so trades this wallet is not a party to are unverifiable here. They do not block the reclaim; on-chain enforcement arrives with the prover (trades lock the stake only by proving composition).`;
+export function withdrawUnverifiedCaveat(gate: NetworkRead<WithdrawGate>): string | null {
+    if (gate.status !== "present" || gate.value.unverifiedCount === 0) return null;
+    const n = gate.value.unverifiedCount;
+    return `${n} in-flight trade${n === 1 ? "" : "s"} could not be checked — agreement terms are party-private, so trades this wallet is not a party to are unverifiable here. They do not block the reclaim; on-chain enforcement arrives with the prover (trades lock the stake only by proving composition).`;
 }

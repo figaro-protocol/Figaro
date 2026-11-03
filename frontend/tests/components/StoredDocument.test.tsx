@@ -173,16 +173,14 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         expect(screen.getByTestId("stored-parsed-clause-figaro-applicable-law").textContent).not.toContain("admin");
     });
 
-    it("an unserved document is stated as the absence of a copy, not as a bad registration", async () => {
+    it("an unserved document renders nothing — no error text, no verdict", async () => {
         fetchCappedContentMock.mockResolvedValue({ ok: false, status: 504, statusText: "Gateway Timeout", bytes: null });
         mount();
         screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
 
-        await waitFor(() =>
-            expect(screen.getByTestId("stored-unreachable-clause-figaro-applicable-law").textContent).toMatch(
-                /never evidence that the registration is wrong/i,
-            ),
-        );
+        await waitFor(() => expect(screen.queryByTestId("stored-reading-clause-figaro-applicable-law")).toBeNull());
+        expect(screen.queryByTestId("stored-unreachable-clause-figaro-applicable-law")).toBeNull();
+        expect(document.body.textContent).not.toMatch(/Gateway Timeout|No gateway served/);
         expect(screen.queryByTestId("stored-json-clause-figaro-applicable-law")).toBeNull();
     });
 

@@ -22,6 +22,8 @@ import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyBut
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
 import { clauseWitnessStages, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import type { Order } from "@/lib/kernel/store";
 
 /**
  * Clause evidence — the on-page rendering of the same `clauseData` +
@@ -120,8 +122,14 @@ function OrderSignatureRows({
 
 export function ProcessClauseEvidence({ processId }: { processId: string }) {
     // Both resolution paths: the order readers fold the verifier's events
-    // beside the Core's, so batched orders reach the verdict below.
-    const orders = useProcessOrders(processId);
+    // beside the Core's, so batched orders reach the verdict below. A failed
+    // order read renders nothing.
+    const read = useProcessOrders(processId);
+    if (read.status !== "present") return null;
+    return <ClauseEvidence orders={read.value} />;
+}
+
+function ClauseEvidence({ orders }: { orders: Order[] }) {
     const publicClient = usePublicClient();
     const chainId = publicClient?.chain?.id ?? 0;
     // Warm the chain→IPFS clause-spec cache at this surface's boundary, so the
@@ -139,30 +147,32 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
     // The process's attestation log, fetched per order and read clause-agnostically
     // (the same indexer read the PDF builder uses). Keyed by order id.
     const ordersKey = useMemo(() => orders.map((o) => o.orderHash).join(","), [orders]);
-    const [attestationsByOrder, setAttestationsByOrder] = useState<Map<string, AttestationRecord[]>>(new Map());
+    // A failed attestation read is absent — never `[]`, which would read as
+    // "no evidence recorded".
+    const [attestationsRead, setAttestationsRead] = useState<NetworkRead<Map<string, AttestationRecord[]>>>(PENDING);
     useEffect(() => {
-        if (!publicClient || !chainId || orders.length === 0) {
-            setAttestationsByOrder(new Map());
+        if (!publicClient || !chainId) {
+            setAttestationsRead(PENDING);
             return;
         }
         let canceled = false;
-        (async () => {
+        void readNetwork("ProcessClauseEvidence.attestations", async () => {
             const next = new Map<string, AttestationRecord[]>();
             await Promise.all(orders.map(async (order) => {
-                try {
-                    const logs = await getAttestationsByOrder(publicClient, chainId, order.orderHash);
-                    next.set(order.orderHash, (logs as IndexedAttestationLog[])
-                        .map(parseAttestationLog)
-                        .filter((r): r is AttestationRecord => r !== null));
-                } catch {
-                    next.set(order.orderHash, []);
-                }
+                const logs = await getAttestationsByOrder(publicClient, chainId, order.orderHash);
+                next.set(order.orderHash, (logs as IndexedAttestationLog[])
+                    .map(parseAttestationLog)
+                    .filter((r): r is AttestationRecord => r !== null));
             }));
-            if (!canceled) setAttestationsByOrder(next);
-        })();
+            return next;
+        }).then((next) => { if (!canceled) setAttestationsRead(next); });
         return () => { canceled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ordersKey, chainId, publicClient]);
+    const attestationsByOrder = useMemo(
+        () => (attestationsRead.status === "present" ? attestationsRead.value : new Map<string, AttestationRecord[]>()),
+        [attestationsRead],
+    );
 
     // Per-order signature verdicts: the commit transaction's calldata is the
     // only on-chain home of the signature bytes, so the reader re-verifies them
@@ -278,7 +288,9 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                 </p>
             </div>
 
-            {perOrder.length === 0 ? (
+            {attestationsRead.status === "absent" ? null : attestationsRead.status === "pending" ? (
+                <p className="text-sm text-ink-muted">Loading…</p>
+            ) : perOrder.length === 0 ? (
                 <p className="text-sm text-ink-muted">No clause evidence recorded for this process yet.</p>
             ) : (
                 <div className="space-y-8">

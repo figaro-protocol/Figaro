@@ -35,6 +35,7 @@ import { formatMass, formatVolume } from "@/lib/member/unitConversion";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
 import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
+import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 
 interface Props {
     sellerAddress: string;
@@ -43,11 +44,15 @@ interface Props {
 export function MemberDetailView({ sellerAddress }: Props) {
     const { lower: sellerAddressLower, typed: sellerAddressTyped } = normalizeAddressParam(sellerAddress);
 
-    const { catalogs: memberCatalogs, isLoading: catalogsLoading } = useRegisteredCatalogs();
+    const { read: catalogsRead } = useRegisteredCatalogs();
+    // Spec titles resolve from the chain→IPFS cache; re-render as they warm.
+    useClauseSpecs();
 
     const memberCatalog = useMemo(
-        () => memberCatalogs.find((r) => hexEqual(r.address, sellerAddressLower)) ?? null,
-        [memberCatalogs, sellerAddressLower],
+        () => (catalogsRead.status === "present"
+            ? catalogsRead.value.find((r) => hexEqual(r.address, sellerAddressLower)) ?? null
+            : null),
+        [catalogsRead, sellerAddressLower],
     );
 
     const { address: buyer } = useCommerce();
@@ -76,7 +81,9 @@ export function MemberDetailView({ sellerAddress }: Props) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sellerAddressLower, buyer]);
 
-    if (catalogsLoading) {
+    // A failed catalog read renders nothing: never "Member not found".
+    if (catalogsRead.status === "absent") return null;
+    if (catalogsRead.status === "pending") {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
                 <p className="text-xs font-semibold text-ink-muted mb-3">Seller</p>
@@ -141,12 +148,17 @@ export function MemberDetailView({ sellerAddress }: Props) {
     // bond math, method choice, and commit all live on the checkout surface.
     const cartItems = items.filter((it) => it.sellerId === sellerAddressLower);
     const cartCount = cartItems.reduce((sum, it) => sum + it.quantity, 0);
-    const cartUnitSystem = memberCatalog.unitSystem ?? "metric";
+    // The item's mass and volume are declared in grams and milliliters
+    // (`massGrams`, `volumeMl`); they are converted only to a display system
+    // the seller declared, and otherwise shown in the unit they were declared in.
+    const declaredUnitSystem = memberCatalog.unitSystem;
+    const showMass = (grams: number) => (declaredUnitSystem ? formatMass(grams, declaredUnitSystem) : `${grams} g`);
+    const showVolume = (ml: number) => (declaredUnitSystem ? formatVolume(ml, declaredUnitSystem) : `${ml} ml`);
 
-    // `category` is optional on a catalog item; items without one group under
-    // an explicit, visible fallback — never an undefined key / heading-less
-    // group. Matches the "(unclassified)" convention groupClausesByArticle uses.
-    const categoryOf = (item: CatalogItemMetadata) => item.category ?? "(unclassified)";
+    // `category` is optional on a catalog item; items without one form one
+    // group with no heading — never a placeholder label the seller did not
+    // write. The empty string keys that group.
+    const categoryOf = (item: CatalogItemMetadata) => item.category ?? "";
     const categories = Array.from(new Set(memberCatalog.items.map(categoryOf)));
 
     return (
@@ -223,7 +235,9 @@ export function MemberDetailView({ sellerAddress }: Props) {
                             <p className="text-xs font-semibold text-ink-muted">Data for sale</p>
                             <ul className="space-y-2 text-sm text-ink-body">
                                 {offered.map((entry) => {
-                                    const title = getClauseSpec(entry.clauseKey)?.title ?? entry.clauseKey;
+                                    // A clause whose spec has not resolved names nothing.
+                                    const title = getClauseSpec(entry.clauseKey)?.title;
+                                    if (!title) return null;
                                     const embargo = entry.calendar?.embargoDaysAfterResolution;
                                     return (
                                         <li
@@ -267,7 +281,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                         <p className="text-xs font-semibold text-ink-muted">Catalog</p>
                         {categories.map((category) => (
                             <div key={category}>
-                                <h2 className="text-lg font-semibold text-ink-primary mb-3">{category}</h2>
+                                {category && <h2 className="text-lg font-semibold text-ink-primary mb-3">{category}</h2>}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {memberCatalog.items
                                         .filter((item) => categoryOf(item) === category)
@@ -297,12 +311,12 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                         <div className="flex-1">
                                                             <h3 className="font-semibold text-ink-primary mb-1">{catalogItem.name}</h3>
                                                             <p className="text-sm text-ink-muted mb-2">{catalogItem.description}</p>
-                                                            {catalogItem.dataSold && (
+                                                            {catalogItem.dataSold && getClauseSpec(catalogItem.dataSold.clauseKey)?.title && (
                                                                 <p
                                                                     className="text-[11px] text-ink-muted mb-2"
                                                                     data-testid={`catalog-item-data-sold-${catalogItem.id}`}
                                                                 >
-                                                                    Data for sale · {getClauseSpec(catalogItem.dataSold.clauseKey)?.title ?? catalogItem.dataSold.clauseKey} · as {catalogItem.dataSold.posture}
+                                                                    Data for sale · {getClauseSpec(catalogItem.dataSold.clauseKey)?.title} · as {catalogItem.dataSold.posture}
                                                                 </p>
                                                             )}
                                                             {(catalogItem.massGrams || catalogItem.volumeMl) && (
@@ -310,8 +324,8 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                                     className="text-[11px] text-ink-muted mb-2 flex flex-wrap gap-x-2"
                                                                     data-testid={`catalog-item-logistics-${catalogItem.id}`}
                                                                 >
-                                                                    {catalogItem.massGrams ? <span>{formatMass(catalogItem.massGrams, cartUnitSystem)}</span> : null}
-                                                                    {catalogItem.volumeMl ? <span>· {formatVolume(catalogItem.volumeMl, cartUnitSystem)}</span> : null}
+                                                                    {catalogItem.massGrams ? <span>{showMass(catalogItem.massGrams)}</span> : null}
+                                                                    {catalogItem.volumeMl ? <span>· {showVolume(catalogItem.volumeMl)}</span> : null}
                                                                 </p>
                                                             )}
                                                             <div className="flex items-center justify-between">

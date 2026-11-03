@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/shared/Link";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
@@ -72,8 +72,11 @@ export function OnboardingBuyerForm({
     const { address, isConnected } = useAccount();
     const { state, loaded, subject, update } = useOnboardingState(address);
 
-    const { data: choicesData } = useAssemblyChoices();
-    const choices: AssemblyChoice[] = choicesData ?? [];
+    const { read: choicesRead } = useAssemblyChoices();
+    const choices: AssemblyChoice[] = useMemo(
+        () => (choicesRead.status === "present" ? choicesRead.value : []),
+        [choicesRead],
+    );
 
     const [subscribed, setSubscribed] = useState<Set<string>>(new Set());
     // This step edits BUYER-posture disclosure entries only (classes

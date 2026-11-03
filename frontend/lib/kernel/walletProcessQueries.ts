@@ -33,6 +33,7 @@ import {
     getAllOrderResolved,
 } from "@/lib/kernel/indexer";
 import { CONTRACTS, CORE_ABI } from "@/lib/kernel/contracts";
+import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
 /** The two roles in a Figaro order commitment. */
 export type PartyRole = "buyer" | "seller";
@@ -71,11 +72,11 @@ type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
  * Reads the connected wallet's commitments filtered by role. For
  * `role: "buyer"` returns one row per process where the wallet is the
  * rootBuyer (the root commit). For `role: "seller"` returns one row per
- * committed order the wallet sells — root or sub-order alike.
+ * committed order the wallet sells — root or sub-order alike. The rows are a
+ * `NetworkRead`: `absent` when the order read failed, never `[]`.
  */
 export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): {
-    rows: ProcessRow[];
-    isLoading: boolean;
+    read: NetworkRead<ProcessRow[]>;
 } {
     // The rows of an address. The connected wallet's by default; any address
     // when a reader names one — every order is public, and reading needs no wallet.
@@ -83,71 +84,63 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
     const address = subject ?? connected;
     const publicClient = usePublicClient();
     const chainId = useChainId();
-    const [rows, setRows] = useState<ProcessRow[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [read, setRead] = useState<NetworkRead<ProcessRow[]>>(PENDING);
     const [tick, setTick] = useState(0);
 
     useEffect(() => {
         if (!address || !publicClient || !chainId) {
-            setRows([]);
+            setRead(PENDING);
             return;
         }
         let canceled = false;
-        setIsLoading(true);
 
-        (async () => {
-            try {
-                // The SDK fold — the same one `/data/explore` answers wallet
-                // history with — fed from the cached logs; only the row
-                // mapping below is this hook's own.
-                const [committed, resolved] = await Promise.all([
-                    getAllOrderCommitted(publicClient, chainId),
-                    getAllOrderResolved(publicClient, chainId),
-                ]);
-                if (canceled) return;
-                const graph = projectProcessGraph({
-                    orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
-                    orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
-                    processResolved: [],
-                });
-                const record = walletRecord(graph, address as Address);
+        void readNetwork("useWalletProcessRows", async () => {
+            // The SDK fold — the same one `/data/explore` answers wallet
+            // history with — fed from the cached logs; only the row
+            // mapping below is this hook's own.
+            const [committed, resolved] = await Promise.all([
+                getAllOrderCommitted(publicClient, chainId),
+                getAllOrderResolved(publicClient, chainId),
+            ]);
+            const graph = projectProcessGraph({
+                orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
+                orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
+                processResolved: [],
+            });
+            const record = walletRecord(graph, address as Address);
 
-                const toRow = (order: Order, counterpartyOf: (o: Order) => string): ProcessRow => ({
-                    processId: order.processId,
-                    rootOrderHash: order.orderHash,
-                    counterparty: counterpartyOf(order),
-                    payment: order.payment,
-                    currency: order.currency,
-                    blockNumber: order.blockNumber,
-                    isResolved: order.state === OrderState.Resolved,
-                });
+            const toRow = (order: Order, counterpartyOf: (o: Order) => string): ProcessRow => ({
+                processId: order.processId,
+                rootOrderHash: order.orderHash,
+                counterparty: counterpartyOf(order),
+                payment: order.payment,
+                currency: order.currency,
+                blockNumber: order.blockNumber,
+                isResolved: order.state === OrderState.Resolved,
+            });
 
-                // BUYER rows dedupe to the root commit — the buyer is buyer
-                // on every order in its process (star shape), so the
-                // fold's per-root-buyer processes give one row each. Root
-                // detection within the process: cumulativeValue == payment
-                // iff this is the root commit (FigaroCore.sol:177; every
-                // sub-order accumulates parent + payment > payment).
-                // SELLER rows are per-order: a seller holds only its own
-                // order(s), and a sub-order seller in someone else's process
-                // must still see what it is fulfilling — no root filter.
-                const built: ProcessRow[] = role === "buyer"
-                    ? record.processesAsRootBuyer.flatMap((process) => {
-                        const root = [...process.orders.values()].find(
-                            (o) => o.cumulativeValue === o.payment,
-                        );
-                        return root ? [toRow(root, (o) => o.seller)] : [];
-                    })
-                    : record.ordersAsSeller.map((o) => toRow(o, (order) => order.buyer));
-                built.sort((a, b) => b.blockNumber - a.blockNumber);
-                if (!canceled) setRows(built);
-            } catch (cause) {
-                console.warn("[useWalletProcessRows] fetch failed", cause);
-                if (!canceled) setRows([]);
-            } finally {
-                if (!canceled) setIsLoading(false);
-            }
-        })();
+            // BUYER rows dedupe to the root commit — the buyer is buyer
+            // on every order in its process (star shape), so the
+            // fold's per-root-buyer processes give one row each. Root
+            // detection within the process: cumulativeValue == payment
+            // iff this is the root commit (FigaroCore.sol:177; every
+            // sub-order accumulates parent + payment > payment).
+            // SELLER rows are per-order: a seller holds only its own
+            // order(s), and a sub-order seller in someone else's process
+            // must still see what it is fulfilling — no root filter.
+            const built: ProcessRow[] = role === "buyer"
+                ? record.processesAsRootBuyer.flatMap((process) => {
+                    const root = [...process.orders.values()].find(
+                        (o) => o.cumulativeValue === o.payment,
+                    );
+                    return root ? [toRow(root, (o) => o.seller)] : [];
+                })
+                : record.ordersAsSeller.map((o) => toRow(o, (order) => order.buyer));
+            built.sort((a, b) => b.blockNumber - a.blockNumber);
+            return built;
+        }).then((next) => {
+            if (!canceled) setRead(next);
+        });
 
         return () => { canceled = true; };
     }, [address, publicClient, chainId, role, tick]);
@@ -176,5 +169,5 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
         enabled: realEnabled,
     });
 
-    return { rows, isLoading };
+    return { read };
 }

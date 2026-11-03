@@ -30,7 +30,7 @@ import { useEffect, useState } from "react";
 import { MemberEditGate } from "@/components/members/MemberEditGate";
 import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
 import { fetchMemberCatalog } from "@/lib/member/catalogFetcher";
-import { extractErrorMessage, toError } from "@/lib/shared/errors";
+import { toError } from "@/lib/shared/errors";
 import type {
     MemberCatalogMetadata,
     UnitSystem,
@@ -45,8 +45,6 @@ export function MemberEditCatalog() {
     const [saveError, setSaveError] = useState<string | null>(null);
 
     const editor = useMemberProfileEditor({
-        sourceNoun: "profile or catalog",
-        clobberNoun: "items",
         extraSaveInFlight: pinningCatalog,
         extraFetch: { pending: !existingCatalog, message: "Fetching catalog from IPFS…" },
         // Seed both halves so the catalog form renders pre-populated.
@@ -80,7 +78,7 @@ export function MemberEditCatalog() {
             });
         },
     });
-    const { existingProfile, setFetchError, address } = editor;
+    const { existingProfile, markReadAbsent, address } = editor;
 
     // Fetch the catalog JSON the profile references via
     // `catalogURI`, once the shared scaffold has the profile.
@@ -103,25 +101,18 @@ export function MemberEditCatalog() {
                 // The ONE cached catalog read path (lib/member/catalogFetcher).
                 const catalog = await fetchMemberCatalog(existingProfile.catalogURI);
                 if (canceled) return;
-                try {
-                    if (!catalog) throw new Error("Couldn't fetch or parse the catalog document.");
-                    setExistingCatalog(catalog);
-                } catch (err) {
-                    const detail = extractErrorMessage(err, "");
-                    setFetchError(
-                        detail
-                            ? `Catalog JSON didn't parse: ${detail}`
-                            : "Catalog JSON didn't parse.",
-                    );
-                }
+                // A catalog that could not be read is absent: no error text,
+                // and no form (a blind save would clobber its items).
+                if (catalog) setExistingCatalog(catalog);
+                else markReadAbsent();
             } catch {
-                if (!canceled) setFetchError("Couldn't fetch profile or catalog from IPFS.");
+                if (!canceled) markReadAbsent();
             }
         })();
         return () => {
             canceled = true;
         };
-    }, [existingProfile, address, setFetchError]);
+    }, [existingProfile, address, markReadAbsent]);
 
     if (editor.gate) {
         return <MemberEditGate gate={editor.gate} />;

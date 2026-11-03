@@ -360,11 +360,12 @@ Y", not as an open-ended build.)
   (`REGISTRY_FAMILIES` in `explorer.ts`) — clauses, agreements, assemblies,
   members; an agreement row shows its key, designer of record, stake state,
   composed clauses, and the pinned document checked against the key (anchor type
-  `agreement-hash`), and `RegistryCountLink` counts the family. Every row carries the state of the pinned content behind
-  its on-chain pointer (`ExplorerRow.content`: resolved / resolving /
-  unavailable) and renders an unresolved row as unresolved — the identity
-  alone, never a name or article it does not have; "(unclassified)" is a
-  RESOLVED spec that declares no article. Content the gateway has not served
+  `agreement-hash`), and `RegistryCountLink` counts the family. A row exists only once the pinned content behind
+  its on-chain pointer has resolved — an unserved or unverifiable document is
+  no row, never a hash standing in for its name — and a resolved spec that
+  declares no article groups with no heading. Every network read is a
+  `NetworkRead` (`frontend/lib/shared/networkRead.ts`: pending / absent /
+  present), and a family whose read is absent renders nothing. Content the gateway has not served
   yet is re-read on `contentRetryDelayMs`'s schedule (10 s, 20 s, 40 s, then
   every 60 s) by the three pointer readers — `useClauseSpecs`,
   `useAssemblyChoices`, `useRegisteredMembers` — so a fresh registration names

@@ -106,13 +106,14 @@ export function useAttestationCoordinatorActions() {
      * plaintext never touches calldata.
      */
     const buildReceipt = useCallback(async (targetCheckoutHash: Hex, clauseId: Hex) => {
-        const agreement = await fetchAgreement(targetCheckoutHash);
-        if (!agreement) {
+        const read = await fetchAgreement(targetCheckoutHash);
+        if (read.status !== "present") {
             const message = `Agreement unavailable for ${truncateHex(targetCheckoutHash, { head: 10, tail: 0 })} — `
                 + `cannot generate inclusion proof`;
             setError(message);
             throw new Error(message);
         }
+        const agreement = read.value;
         // The agreement FORMAT's provenance leaf is keyed by the reserved key,
         // never a clause: its fingerprint and proof are the format's own.
         if (hexEqual(clauseId, PROVENANCE_LEAF_KEY)) {

@@ -18,46 +18,36 @@ vi.mock("@/lib/member/memberListing", () => ({
 import { useMemberListings } from "@/lib/member/useMemberListings";
 
 const ASM = `0x${"aa".repeat(32)}`;
-const assemblies = { data: [{ assemblyHash: ASM }], failed: false, error: null };
+const assemblies = { read: { status: "present", value: [{ assemblyHash: ASM }] } };
 
-describe("useMemberListings — a failed registry read is reported as failed, with the RPC's own text, never as resolved-empty", () => {
+describe("useMemberListings — a failed registry read is absent, never resolved-empty and never error text", () => {
     beforeEach(() => { vi.spyOn(console, "warn").mockImplementation(() => undefined); });
     afterEach(() => { vi.clearAllMocks(); });
 
-    it("well-formed: a member with an anchored binding lists, and the read is not failed", async () => {
+    it("well-formed: a member with an anchored binding lists", async () => {
         assembliesMock.mockReturnValue(assemblies);
         activeMembersMock.mockResolvedValue([{ address: "0xabc", metadataURI: "ipfs://p" }]);
         profileMock.mockResolvedValue({});
         const { result } = renderHook(() => useMemberListings());
-        await waitFor(() => expect(result.current.listings).toHaveLength(1));
-        expect(result.current.failed).toBe(false);
-        expect(result.current.error).toBeNull();
+        await waitFor(() => expect(result.current.read.status).toBe("present"));
+        const r = result.current.read;
+        expect(r.status === "present" && r.value).toHaveLength(1);
     });
 
-    it("the MembersRegistry read throws: failed, and the error is the provider's message", async () => {
+    it("the MembersRegistry read throws: absent", async () => {
         assembliesMock.mockReturnValue(assemblies);
-        activeMembersMock.mockRejectedValue(Object.assign(new Error("wrapped"), { details: "rate limited: 429 Too Many Requests" }));
+        activeMembersMock.mockRejectedValue(new Error("rate limited: 429 Too Many Requests"));
         const { result } = renderHook(() => useMemberListings());
-        await waitFor(() => expect(result.current.failed).toBe(true));
-        expect(result.current.error).toBe("rate limited: 429 Too Many Requests");
-        expect(result.current.listings).toEqual([]);
-        expect(result.current.isLoading).toBe(false);
+        await waitFor(() => expect(result.current.read.status).toBe("absent"));
+        expect(result.current.read).toEqual({ status: "absent" });
     });
 
-    it("the AssemblyRegistry read failed: failed with its error — the binding cross-check never rejects every member against an empty set", async () => {
-        assembliesMock.mockReturnValue({ data: [], failed: true, error: "block range too large" });
+    it("the AssemblyRegistry read failed: absent — the binding cross-check never rejects every member against an empty set", async () => {
+        assembliesMock.mockReturnValue({ read: { status: "absent" } });
         activeMembersMock.mockResolvedValue([{ address: "0xabc", metadataURI: "ipfs://p" }]);
         profileMock.mockResolvedValue({});
         const { result } = renderHook(() => useMemberListings());
-        await waitFor(() => expect(result.current.failed).toBe(true));
-        expect(result.current.error).toBe("block range too large");
-        expect(result.current.isLoading).toBe(false);
-    });
-
-    it("optional: a failed read with no text from the provider is still failed, error null", async () => {
-        assembliesMock.mockReturnValue({ data: [], failed: true, error: null });
-        const { result } = renderHook(() => useMemberListings());
-        await waitFor(() => expect(result.current.failed).toBe(true));
-        expect(result.current.error).toBeNull();
+        await waitFor(() => expect(result.current.read.status).toBe("absent"));
+        expect(activeMembersMock).not.toHaveBeenCalled();
     });
 });

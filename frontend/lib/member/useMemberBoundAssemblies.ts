@@ -25,6 +25,7 @@ import {
     useAllPublishedAssemblies,
     fetchHydratedAssembly,
 } from "@/lib/protocol/useAssemblyRegistry";
+import { ABSENT, PENDING, present, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
 /** A member's on-chain bound assembly, hydrated. */
 export interface BoundAssembly {
@@ -43,126 +44,98 @@ export interface BoundAssembly {
     coSellerBindings: CoSellerBinding[];
 }
 
-export interface MemberBoundAssemblies {
-    /** The member's on-chain bound assemblies, hydrated —
-     *  the buyer-facing choice set at checkout. Each bound assembly is
-     *  one option the member offers; the buyer picks one. */
-    assemblies: BoundAssembly[];
-    /** True while either the member-profile or the assembly reads are in flight. */
-    isLoading: boolean;
-    /** True when at least one of the member's bindings matched a published assembly. */
-    hasOnChainBinding: boolean;
-}
-
 /**
  * Resolves a member's on-chain bound assemblies into the buyer-facing
- * choice set. Reads the member's profile (MembersRegistry →
- * IPFS), intersects the profile's `assemblyBindings[].assemblyHash` with
- * the published assembly events, and reads each matched assembly hydrated.
+ * choice set — the buyer picks one assembly at checkout. Reads the member's
+ * profile (MembersRegistry → IPFS), intersects the profile's
+ * `assemblyBindings[].assemblyHash` with the published assembly events, and
+ * reads each matched assembly hydrated.
  *
- * When `hasOnChainBinding` is true, `assemblies` is the authoritative
- * buyer-facing choice set — the buyer picks one assembly at checkout —
- * When false, the caller falls back to the catalog.
+ * A `NetworkRead`: `present([])` when the chain and the profile say the
+ * member binds nothing published; `absent` when a read failed (the registry,
+ * the assembly scan, the profile document) — never an empty choice set.
  */
 export function useMemberBoundAssemblies(
     sellerAddress: `0x${string}` | undefined,
-): MemberBoundAssemblies {
-    const { data: registryData, isLoading: registryLoading } = useMemberProfile(sellerAddress);
-    const { data: publishedEvents, isLoading: eventsLoading } = useAllPublishedAssemblies();
-    const [result, setResult] = useState<MemberBoundAssemblies>({
-        assemblies: [],
-        isLoading: false,
-        hasOnChainBinding: false,
-    });
+): NetworkRead<BoundAssembly[]> {
+    const { read: registration } = useMemberProfile(sellerAddress);
+    const { read: published } = useAllPublishedAssemblies();
+    const [result, setResult] = useState<NetworkRead<BoundAssembly[]>>(PENDING);
 
     useEffect(() => {
         if (!sellerAddress) {
-            setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
+            setResult(PENDING);
             return;
         }
-        if (registryLoading || eventsLoading) {
-            setResult((r) => ({ ...r, isLoading: true }));
+        if (registration.status !== "present") {
+            setResult(registration);
             return;
         }
-        if (!registryData || !publishedEvents) {
-            setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
+        if (published.status !== "present") {
+            setResult(published);
             return;
         }
-
-        const [metadataURI] = registryData;
-        // IPFS-only: an http(s) metadataURI reads as absent (`uriFetcher`).
-        const url = resolveMemberDocumentUri(metadataURI);
+        if (!registration.value.registered) {
+            setResult(present([]));
+            return;
+        }
+        const publishedEvents = published.value;
+        // IPFS-only: an http(s) metadataURI is no readable document.
+        const url = resolveMemberDocumentUri(registration.value.metadataURI);
         if (!url) {
-            setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
+            setResult(ABSENT);
             return;
         }
 
         let canceled = false;
-        setResult((r) => ({ ...r, isLoading: true }));
 
-        (async () => {
-            try {
-                // Size-capped fetch (F4): the member-pinned profile document is
-                // external-party-controlled — oversize throws → the catch below.
-                const response = await fetchCappedContent(url);
-                if (!response.ok) throw new Error("member profile fetch failed");
-                // Prototype-pollution-safe parse (finding 7): the profile is an
-                // external-party-pinned document; the stripping reviver drops
-                // __proto__/constructor keys before any downstream object copy.
-                const doc = safeJsonParse(await response.text());
-                const profile = tryParseMemberProfileDocument(doc);
-                if (canceled) return;
-                if (!profile?.assemblyBindings || profile.assemblyBindings.length === 0) {
-                    setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
-                    return;
-                }
+        void readNetwork("useMemberBoundAssemblies", async (): Promise<BoundAssembly[]> => {
+            // Size-capped fetch (F4): the member-pinned profile document is
+            // external-party-controlled — oversize throws → absent.
+            const response = await fetchCappedContent(url);
+            if (!response.ok) throw new Error("member profile fetch failed");
+            // Prototype-pollution-safe parse (finding 7): the profile is an
+            // external-party-pinned document; the stripping reviver drops
+            // __proto__/constructor keys before any downstream object copy.
+            const doc = safeJsonParse(await response.text());
+            const profile = tryParseMemberProfileDocument(doc);
+            if (!profile) throw new Error("member profile document unreadable");
+            if (!profile.assemblyBindings || profile.assemblyBindings.length === 0) return [];
 
-                const boundHashes = new Set(profile.assemblyBindings.map((b) => b.assemblyHash.toLowerCase()));
-                const matchedEvents = publishedEvents.filter((e) => boundHashes.has(e.assemblyHash.toLowerCase()));
-                if (matchedEvents.length === 0) {
-                    setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
-                    return;
-                }
+            const boundHashes = new Set(profile.assemblyBindings.map((b) => b.assemblyHash.toLowerCase()));
+            const matchedEvents = publishedEvents.filter((e) => boundHashes.has(e.assemblyHash.toLowerCase()));
+            if (matchedEvents.length === 0) return [];
 
-                const hydratedAssemblies = await Promise.all(
-                    matchedEvents.map((e) => fetchHydratedAssembly(e.contentURI, e.assemblyHash)),
+            const hydratedAssemblies = await Promise.all(
+                matchedEvents.map((e) => fetchHydratedAssembly(e.contentURI, e.assemblyHash)),
+            );
+
+            // matchedEvents and hydratedAssemblies are index-aligned (Promise.all
+            // over a .map preserves order). Pair them into BoundAssembly,
+            // dropping any assembly whose assembly or agreements are absent.
+            const assemblies: BoundAssembly[] = [];
+            hydratedAssemblies.forEach((m, i) => {
+                if (!m) return;
+                const { slug, assemblyHash } = matchedEvents[i];
+                const binding = (profile.assemblyBindings ?? []).find(
+                    (b) => b.assemblyHash.toLowerCase() === assemblyHash.toLowerCase(),
                 );
-                if (canceled) return;
-
-                // matchedEvents and hydratedAssemblies are index-aligned (Promise.all
-                // over a .map preserves order). Pair them into BoundAssembly,
-                // dropping any assembly whose assembly or agreements are absent.
-                const assemblies: BoundAssembly[] = [];
-                hydratedAssemblies.forEach((m, i) => {
-                    if (!m) return;
-                    const { slug, assemblyHash } = matchedEvents[i];
-                    const binding = (profile.assemblyBindings ?? []).find(
-                        (b) => b.assemblyHash.toLowerCase() === assemblyHash.toLowerCase(),
-                    );
-                    assemblies.push({
-                        slug,
-                        name: slug,
-                        hydratedAssembly: m,
-                        coSellerBindings: binding?.coSellerBindings ?? [],
-                    });
+                assemblies.push({
+                    slug,
+                    name: slug,
+                    hydratedAssembly: m,
+                    coSellerBindings: binding?.coSellerBindings ?? [],
                 });
-
-                setResult({
-                    assemblies,
-                    isLoading: false,
-                    hasOnChainBinding: true,
-                });
-            } catch {
-                if (!canceled) {
-                    setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
-                }
-            }
-        })();
+            });
+            return assemblies;
+        }).then((next) => {
+            if (!canceled) setResult(next);
+        });
 
         return () => {
             canceled = true;
         };
-    }, [sellerAddress, registryData, publishedEvents, registryLoading, eventsLoading]);
+    }, [sellerAddress, registration, published]);
 
     return result;
 }

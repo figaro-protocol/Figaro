@@ -230,15 +230,14 @@ describe("verifyOrderCommitSignatures", () => {
         expect(verdicts).toEqual({ buyer: "unavailable", seller: "unavailable", transactionHash: null, batch: null });
     });
 
-    it("reports unavailable when the transaction cannot be fetched", async () => {
+    it("rejects — never 'unavailable' — when the transaction cannot be fetched (a failed read renders no verdict)", async () => {
         getAllOrderCommittedMock.mockResolvedValue([
             { args: { orderHash }, transactionHash: TX_HASH },
         ]);
         const client = clientWith(async () => {
             throw new Error("rpc down");
         });
-        const verdicts = await verifyOrderCommitSignatures(client, CHAIN_ID, orderHash);
-        expect(verdicts).toEqual({ buyer: "unavailable", seller: "unavailable", transactionHash: null, batch: null });
+        await expect(verifyOrderCommitSignatures(client, CHAIN_ID, orderHash)).rejects.toThrow("rpc down");
     });
 
     it("reports unavailable (keeping the tx hash) for undecodable calldata", async () => {

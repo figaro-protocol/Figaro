@@ -9,7 +9,7 @@ import {
 
 const row = (over: Partial<ExplorerRow>): ExplorerRow => ({
     family: "clauses", key: "k", name: "n", id: "i", article: "", registeredBy: "0xA",
-    blockNumber: 1n, stakeWithdrawn: false, clauses: [], content: "resolved",
+    blockNumber: 1n, stakeWithdrawn: false, clauses: [],
     contentURI: "", anchoredHash: "", text: "", ...over,
 });
 

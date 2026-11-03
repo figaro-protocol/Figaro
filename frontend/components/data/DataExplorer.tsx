@@ -106,7 +106,8 @@ export function DataExplorer() {
         [state, router, pathname],
     );
 
-    const { corpus, isLoading, failed } = useGraphCorpus();
+    const corpusRead = useGraphCorpus();
+    const corpus = corpusRead.status === "present" ? corpusRead.value : null;
 
     return (
         <div className="space-y-8">
@@ -130,12 +131,8 @@ export function DataExplorer() {
             >
                 <BoundaryLine view={state.view} />
 
-                {failed ? (
-                    <p className="text-sm text-ink-muted" data-testid="corpus-failed">
-                        The event read failed on this network, so nothing is shown rather than a
-                        stale or partial picture. That is unknown chain state &mdash; not empty data.
-                    </p>
-                ) : isLoading || !corpus ? (
+                {/* A failed read renders nothing for the graphs. */}
+                {corpusRead.status === "absent" ? null : !corpus ? (
                     <p className="text-sm text-ink-muted" data-testid="corpus-loading">
                         Reading the data and projecting the graphs&hellip;
                     </p>

@@ -6,6 +6,7 @@ const clausesMock = vi.fn();
 const assembliesMock = vi.fn();
 const membersMock = vi.fn();
 vi.mock("@/lib/protocol/useClauseRegistry", () => ({ useAllRegisteredClauses: () => clausesMock() }));
+vi.mock("@/lib/protocol/useAgreementRegistry", () => ({ usePublishedAgreements: () => ({ read: { status: "present", value: [] } }) }));
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
     getAssemblyLoadError: () => undefined, usePublishedAssemblies: () => assembliesMock() }));
 vi.mock("@/lib/member/useRegisteredMembers", () => ({ useRegisteredMembers: () => membersMock() }));
@@ -22,9 +23,9 @@ const SDK_README = "https://github.com/figaro-protocol/Figaro/blob/main/sdk/READ
 
 describe("RegistryCountLink — one component owns the registry scaffolding all three families shared", () => {
     beforeEach(() => {
-        clausesMock.mockReturnValue({ data: [clause(), clause(), clause(true)] });
-        assembliesMock.mockReturnValue({ data: [{ assemblyHash: "0x1" }] });
-        membersMock.mockReturnValue({ data: [member(), member(true)] });
+        clausesMock.mockReturnValue({ read: { status: "present", value: [clause(), clause(), clause(true)] } });
+        assembliesMock.mockReturnValue({ read: { status: "present", value: [{ assemblyHash: "0x1" }] } });
+        membersMock.mockReturnValue({ read: { status: "present", value: [member(), member(true)] } });
     });
 
     it("clauses: derives the count off live registrations, and its scaffolding names ClauseRegistry / ClauseRegistered", () => {
@@ -70,8 +71,16 @@ describe("RegistryCountLink — one component owns the registry scaffolding all 
         expect(document.querySelectorAll("a")).toHaveLength(1);
     });
 
+    it("a FAILED registry read renders no count — never '0 clauses are registered'", () => {
+        clausesMock.mockReturnValue({ read: { status: "absent" } });
+        render(<RegistryCountLink family="clauses" />);
+        const line = screen.getByTestId("registry-count-clauses").textContent ?? "";
+        expect(line).not.toMatch(/\d+ clauses? (is|are) registered/);
+        expect(line).not.toContain("Reading the registry");
+    });
+
     it("an unresolved registry read renders the reading state, never a fabricated zero", () => {
-        clausesMock.mockReturnValue({ data: null });
+        clausesMock.mockReturnValue({ read: { status: "pending" } });
         render(<RegistryCountLink family="clauses" />);
         const line = screen.getByTestId("registry-count-clauses").textContent ?? "";
         expect(line).toContain("Reading the registry");

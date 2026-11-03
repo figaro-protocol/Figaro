@@ -256,13 +256,9 @@ export async function verifyOrderCommitSignatures(
     const transactionHash = log?.transactionHash ?? null;
     if (!transactionHash) return provedOrUnavailable(client, chainId, orderHash);
 
-    let input: Hex;
-    let to: `0x${string}` | null;
-    try {
-        ({ input, to } = await client.getTransaction({ hash: transactionHash }));
-    } catch {
-        return UNAVAILABLE;
-    }
+    // A failed transaction read rejects: the reader renders no verdict for
+    // it, never "unavailable" (which is the chain's answer, not a failure).
+    const { input, to } = await client.getTransaction({ hash: transactionHash });
 
     // Only a direct call's calldata is the call FigaroCore verified.
     const coordinator = getWitnessSwapAndCommitCoordinator();
@@ -286,12 +282,9 @@ async function provedOrUnavailable(
     orderHash: string,
     settleTx: string | null = null,
 ): Promise<OrderSignatureVerdicts> {
-    let batch: BatchProvenance | null = null;
-    try {
-        batch = await resolveBatchProvenance(client, chainId, orderHash, settleTx);
-    } catch {
-        batch = null;
-    }
+    // A failed provenance read rejects (no verdict rendered); only the chain's
+    // answer that no batch attested the order is "unavailable".
+    const batch = await resolveBatchProvenance(client, chainId, orderHash, settleTx);
     if (!batch) return UNAVAILABLE;
     return { buyer: "proved", seller: "proved", transactionHash: null, batch };
 }

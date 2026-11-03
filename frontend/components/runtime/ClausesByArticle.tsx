@@ -56,7 +56,7 @@ export function ClausesByArticle<T>({
                 const label = section.label ?? section.article;
                 return (
                     <div key={section.article} data-testid={sectionTestId?.(section.article)}>
-                        {renderHeading ? renderHeading(label) : <p className={headingClassName}>{label}</p>}
+                        {!label ? null : renderHeading ? renderHeading(label) : <p className={headingClassName}>{label}</p>}
                         <ul className={listClassName}>
                             {section.items.map((item, i) => renderClause(item, i))}
                         </ul>

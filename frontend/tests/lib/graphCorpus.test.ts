@@ -135,7 +135,7 @@ describe("corpusInputsLoaded — the read waits for both off-chain inputs to fin
         expect(corpusInputsLoaded([], false, true)).toBe(true);
     });
 
-    it("a failed assembly-registry read counts as loaded — attribution is absent, the corpus still reads", () => {
+    it("an absent assembly-registry read counts as loaded — attribution is absent, the corpus still reads", () => {
         expect(corpusInputsLoaded(null, true, true)).toBe(true);
     });
 });
