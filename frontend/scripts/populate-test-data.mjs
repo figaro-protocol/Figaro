@@ -162,7 +162,7 @@ async function main() {
     await publicClient.getBlockNumber().catch(() => { throw new Error(`Cannot reach the chain at ${RPC_URL}`); });
 
     // ── 1. Clauses (reuse the production path) ──────────────────────────────
-    const registrar = registrarAccount();
+    const registrar = registrarAccount(await publicClient.getChainId());
     const registrarClient = createWalletClient({ account: registrar, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
     console.log('Clauses:');
     await populateClauses({ publicClient, walletClient: registrarClient, account: registrar, registry: clauseRegistry, ipfsApiUrl });

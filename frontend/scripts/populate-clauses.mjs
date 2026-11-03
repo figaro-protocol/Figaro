@@ -34,7 +34,8 @@
  *   NEXT_PUBLIC_CLAUSE_REGISTRY  — the ClauseRegistry address (required)
  *   NEXT_PUBLIC_IPFS_API_URL     — Kubo API (default http://127.0.0.1:5001)
  *   RPC_URL                      — chain RPC (default http://127.0.0.1:8545)
- *   REGISTRAR_PRIVATE_KEY        — signer; defaults to anvil[0] (devnet only)
+ *   REGISTRAR_PRIVATE_KEY        — signer; defaults to anvil[0] on the devnet
+ *                                  (31337), and is required on any other chain
  *   REGISTRAR_LEDGER_HD_PATH     — instead of a key: the registrar is a Ledger
  *                                  account (Ledger Live path `m/44'/60'/N'/0/0`);
  *                                  every registration is signed ON THE DEVICE via
@@ -374,11 +375,15 @@ export async function pinFile(apiUrl, filePath) {
     return pinForm(apiUrl, form);
 }
 
-/** Resolve the signing account: REGISTRAR_PRIVATE_KEY, else anvil[0] (devnet). */
-export function registrarAccount() {
-    return process.env.REGISTRAR_PRIVATE_KEY
-        ? privateKeyToAccount(process.env.REGISTRAR_PRIVATE_KEY)
-        : mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 0 });
+/** Resolve the signing account on chain `chainId`: REGISTRAR_PRIVATE_KEY,
+ *  else anvil[0] on the devnet only. Anvil's keys are world-known, so with no
+ *  key on any other chain this refuses rather than sign for anyone. */
+export function registrarAccount(chainId) {
+    if (process.env.REGISTRAR_PRIVATE_KEY) return privateKeyToAccount(process.env.REGISTRAR_PRIVATE_KEY);
+    if (chainId !== LOCAL_ANVIL.id) {
+        throw new Error(`REGISTRAR_PRIVATE_KEY is not set and chain ${chainId} is not the devnet (${LOCAL_ANVIL.id}) — refusing to sign as anvil[0], a world-known key`);
+    }
+    return mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 0 });
 }
 
 /**
@@ -706,7 +711,7 @@ async function main() {
     }
     const walletClient = process.env.REGISTRAR_LEDGER_HD_PATH
         ? ledgerWalletClient({ hdPath: process.env.REGISTRAR_LEDGER_HD_PATH, rpcUrl: RPC_URL })
-        : createWalletClient({ account: registrarAccount(), chain, transport: http(RPC_URL) });
+        : createWalletClient({ account: registrarAccount(chain.id), chain, transport: http(RPC_URL) });
     const account = walletClient.account;
 
     let ownerClients;

@@ -62,7 +62,7 @@ async function main() {
     }
     const walletClient = process.env.REGISTRAR_LEDGER_HD_PATH
         ? ledgerWalletClient({ hdPath: process.env.REGISTRAR_LEDGER_HD_PATH, rpcUrl: RPC_URL })
-        : createWalletClient({ account: registrarAccount(), chain, transport: http(RPC_URL) });
+        : createWalletClient({ account: registrarAccount(chain.id), chain, transport: http(RPC_URL) });
     let ownerClients;
     if (vault) {
         const keys = (process.env.VAULT_OWNER_KEYS ?? '').split(',').map((s) => s.trim()).filter(Boolean);

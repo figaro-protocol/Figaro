@@ -21,8 +21,8 @@ name: Sequencer Release
 # therefore built in the pinned SP1 DOCKER IMAGE — the canonical,
 # host-independent build (scripts/prover-box/build-guest.sh is the same
 # recipe) — injected where include_elf! resolves, and the computed key must
-# equal the deployment record's programVKey or the release refuses to
-# publish. The pins are printed into the release body so anyone can rebuild
+# equal the programVKey of every deployment record (`deployments/<chainId>.json`)
+# or the release refuses to publish. The pins are printed into the release body so anyone can rebuild
 # and compare.
 
 on:
@@ -184,9 +184,9 @@ jobs:
             # `programVKey` immutable. Derived through the sdk that verifies
             # (the same SP1_VKEY_ONLY path build-guest.sh uses — the CLI's
             # `cargo prove vkey` can disagree with the sdk across releases),
-            # and REQUIRED to equal the deployment record's: a release whose
-            # binary proves against a key no deployed verifier pins is not a
-            # release.
+            # and REQUIRED to equal every deployment record's: a release whose
+            # binary proves against a key a deployed verifier does not pin is
+            # not a release for that verifier.
             - name: Compute guest program vkey and check it against the record
               id: vkey
               working-directory: ./prover
@@ -202,12 +202,28 @@ jobs:
                       echo "unexpected vkey output: '$vkey'"
                       exit 1
                   fi
-                  recorded=$(python3 -c "import json;print(json.load(open('../deployments/11155111.json'))['programVKey'])")
-                  if [ "${vkey,,}" != "${recorded,,}" ]; then
-                      echo "computed vkey $vkey is not the record's programVKey $recorded — refusing to publish"
-                      exit 1
-                  fi
-                  echo "vkey matches deployments/11155111.json"
+                  # Every public deployment record (`deployments/<chainId>.json`;
+                  # the `.expected.json` files state intent, not a deployment)
+                  # is a verifier this binary serves, so each one's
+                  # programVKey must be the computed key, and at least one
+                  # record must exist.
+                  VKEY="$vkey" python3 - <<'PY'
+                  import glob, json, os, re, sys
+                  vkey = os.environ["VKEY"].lower()
+                  records = sorted(p for p in glob.glob("../deployments/*.json")
+                                   if re.fullmatch(r"\d+\.json", os.path.basename(p)))
+                  if not records:
+                      sys.exit("no deployment record under deployments/ — refusing to publish")
+                  bad = 0
+                  for path in records:
+                      recorded = json.load(open(path)).get("programVKey")
+                      if not isinstance(recorded, str) or recorded.lower() != vkey:
+                          print(f"computed vkey {vkey} is not {path}'s programVKey {recorded} — refusing to publish")
+                          bad += 1
+                      else:
+                          print(f"vkey matches {path}")
+                  sys.exit(1 if bad else 0)
+                  PY
                   echo "vkey=$vkey" >> "$GITHUB_OUTPUT"
                   echo "vkey: $vkey"
 

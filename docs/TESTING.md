@@ -161,7 +161,7 @@ it *could* fail.
 | `RpgfMinter.spec` | 10 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor`, the gate on a live registration), the designer-side membership gate (a claimant with no live member stake reverts and mints nothing; `claimable` quotes it zero), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked: conservation, double-claim, eligibility. |
 | `RpgfMinterAuthor.spec` | 2 | `RpgfMinter._isAuthor` as written — the kind selection `RpgfMinter.spec` summarizes to a ghost: for each of the three kinds the answer is the live designer of record in the one registry that kind names, whatever the other two hold at the same key, and a kind past the three reverts. Read through `certora/harness/RpgfMinterAuthorHarness.sol` (the contract plus a view calling `_isAuthor`) against `certora/harness/AuthorRegistryMocks.sol` (one getter contract per registry family, linked to the minter's three registry addresses). Compiled without via-IR: under via-IR the prover's call resolution fails on `_isAuthor`'s decoding of the dynamic `string` that `bindings` returns. Verified, both rules: https://prover.certora.com/output/9512759/f62a013cbdb44692b77bf04219670f75 |
 
-Companion: `certora/token-ops.inventory` — declarative inventory of every ERC20 transfer call site in `src/`; `scripts/lint-token-ops.sh` (lint-staged on any staged `.sol` or on the inventory, and the prelude of `./scripts/test-certora.sh`) fails a commit that adds a transfer call without an inventory entry.
+Companion: `certora/token-ops.inventory` — declarative inventory of every ERC20 transfer call site and every Permit2 pull (`permitTransferFrom` / `permitWitnessTransferFrom`) in `src/`; `scripts/lint-token-ops.sh` (lint-staged on any staged `.sol` or on the inventory, and the prelude of `./scripts/test-certora.sh`) fails a commit that adds a transfer call without an inventory entry.
 
 ## Echidna — 2 harnesses, 15 properties
 
@@ -238,8 +238,9 @@ the world and the design: `ForeignSubmitters` admits the foreign submitter, and
 `OpsOnChain` is the accepted batch design, every batch carrying its signed
 operations in its own transaction so the chain rebuilds the state behind any
 root (`StartFromChain`, the relay's rebuild-from-chain start). Mutation-checked:
-`OpsOnChain` FALSE (today's verifier) fails `Recoverable` in two states, the
-foreign batch's state nowhere a stranger can reach; and five relay switches,
+`OpsOnChain` FALSE (a verifier that does not check the operation stream) fails
+`Recoverable` in two states, the foreign batch's state nowhere a stranger can
+reach; and five relay switches,
 each restoring one defect, checked with `OpsOnChain` and `ForeignSubmitters`
 FALSE (the world where the relays' discipline is the only keeper of the
 state): `HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`,
@@ -1010,8 +1011,9 @@ Per workflow, what it runs and when:
   launcher's RPC relay: a JSON-RPC POST through the proxy's relay path reaches
   the node behind it, and no answer names the endpoint's URL).
 - **`sequencer-release`** — publishes the prebuilt `figaro-sequencer` relay
-  binary as a GitHub Release artifact (pinned toolchains + the computed vkey
-  printed into the release body for rebuild-and-compare, and a Sigstore
+  binary as a GitHub Release artifact (pinned toolchains + the computed vkey,
+  refused unless it is the `programVKey` in every deployment file
+  `deployments/<chainId>.json`, printed into the release body for rebuild-and-compare, and a Sigstore
   build-provenance attestation per archive — `gh attestation verify`);
   build-and-publish only, gates no merge.
 - **`sdk-release`** — on an `sdk-v<version>` tag (refused unless it equals

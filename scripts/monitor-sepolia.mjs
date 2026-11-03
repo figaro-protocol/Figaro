@@ -165,13 +165,20 @@ if (RELAYS.length > 0) {
             const res = await fetch(new URL("/status", url), { signal: AbortSignal.timeout(15_000) });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             status = await res.json();
+            // A count the relay did not report is unknown, never zero: read
+            // as zero, a relay holding work would never raise the stall.
+            for (const field of ["pending_ops", "pending_usage_claims"]) {
+                if (!Number.isSafeInteger(status?.[field]) || status[field] < 0) {
+                    throw new Error(`its \`${field}\` is ${JSON.stringify(status?.[field])}, not a count`);
+                }
+            }
         } catch (e) {
             alert("notice", `relay-unreachable-${url}`,
-                `Monitor: the relay at ${url} did not answer`,
+                `Monitor: the relay at ${url} did not report its queue`,
                 `\`GET /status\` failed: ${e instanceof Error ? e.message : String(e)}. Work it holds cannot be seen, and a relay that is down resolves nothing.`);
             continue;
         }
-        const queued = Number(status.pending_ops ?? 0) + Number(status.pending_usage_claims ?? 0);
+        const queued = status.pending_ops + status.pending_usage_claims;
         notes.push(`relay ${url}: ${queued} queued, ${age}s since ${since}, wait ${maxWaitSeconds}s`);
         if (queued > 0 && age > maxWaitSeconds) {
             alert("high", `relay-stalled-${url}`,

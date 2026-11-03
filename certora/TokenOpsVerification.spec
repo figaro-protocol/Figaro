@@ -348,8 +348,10 @@ rule resolveSingleOrderConservation(
 // entirely. Excluding them by selector empties the filter and Certora
 // errors on an unmatched parametric.
 //
-// The same regression-guard intent — "every ERC20 transfer call site in
-// src/ is accounted for" — is enforced at a *finer* granularity by
+// The same regression-guard intent — "every ERC20 transfer call site and
+// every Permit2 pull (`permitTransferFrom` / `permitWitnessTransferFrom`, as
+// `WitnessSwapAndCommitCoordinator._fund` makes) in src/ is accounted for" —
+// is enforced at a *finer* granularity by
 // `lint-token-ops.sh` (run automatically as the prelude of
 // `./test-certora.sh`), which compares the actual call-site set in src/
 // against `certora/token-ops.inventory` and fails on any mismatch. A new
