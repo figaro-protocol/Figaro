@@ -38,28 +38,28 @@ export default function UngovernedSubstratePaper() {
             }
             references={
                 <>
-                    <li>Buterin, Vitalik. 2017. &ldquo;Notes on Blockchain Governance.&rdquo; December 17, 2017. https://vitalik.eth.limo/general/2017/12/17/voting.html. Accessed October 28, 2026.</li>
-                    <li>Buterin, Vitalik. 2023a. &ldquo;My Techno-Optimism.&rdquo; November 27, 2023. https://vitalik.eth.limo/general/2023/11/27/techno_optimism.html. Accessed October 28, 2026.</li>
-                    <li>Buterin, Vitalik. 2023b. &ldquo;Why I Built Zuzalu.&rdquo; <em>Palladium</em>, October 6, 2023. https://www.palladiummag.com/2023/10/06/why-i-built-zuzalu/. Accessed October 28, 2026.</li>
+                    <li>Buterin, Vitalik. 2017. &ldquo;Notes on Blockchain Governance.&rdquo; December 17, 2017. Accessed October 28, 2026. https://vitalik.eth.limo/general/2017/12/17/voting.html.</li>
+                    <li>Buterin, Vitalik. 2023a. &ldquo;My Techno-Optimism.&rdquo; November 27, 2023. Accessed October 28, 2026. https://vitalik.eth.limo/general/2023/11/27/techno_optimism.html.</li>
+                    <li>Buterin, Vitalik. 2023b. &ldquo;Why I Built Zuzalu.&rdquo; <em>Palladium</em>, October 6, 2023. Accessed October 28, 2026. https://www.palladiummag.com/2023/10/06/why-i-built-zuzalu/.</li>
                     <li>De Filippi, Primavera, and Samer Hassan. 2016. &ldquo;Blockchain Technology as a Regulatory Technology: From Code Is Law to Law Is Code.&rdquo; <em>First Monday</em> 21 (12). https://doi.org/10.5210/fm.v21i12.7113.</li>
                     <li>De Filippi, Primavera, Morshed Mannan, and Wessel Reijers. 2020. &ldquo;Blockchain as a Confidence Machine: The Problem of Trust &amp; Challenges of Governance.&rdquo; <em>Technology in Society</em> 62: 101284. https://doi.org/10.1016/j.techsoc.2020.101284.</li>
-                    <li>De Filippi, Primavera, and Aaron Wright. 2015. &ldquo;Decentralized Blockchain Technology and the Rise of Lex Cryptographia.&rdquo; SSRN Scholarly Paper 2580664, posted March 20, 2015, last revised July 25, 2017. https://ssrn.com/abstract=2580664. Accessed November 4, 2026.</li>
+                    <li>De Filippi, Primavera, and Aaron Wright. 2015. &ldquo;Decentralized Blockchain Technology and the Rise of Lex Cryptographia.&rdquo; SSRN Scholarly Paper 2580664, posted March 20, 2015, last revised July 25, 2017. Accessed November 4, 2026. https://ssrn.com/abstract=2580664.</li>
                     <li>De Filippi, Primavera, and Aaron Wright. 2018. <em>Blockchain and the Law: The Rule of Code</em>. Cambridge, MA: Harvard University Press. https://doi.org/10.4159/9780674985933.</li>
-                    <li>Edge City. n.d. &ldquo;Edge City.&rdquo; https://www.edgecity.live/. Accessed October 28, 2026.</li>
-                    <li>Ethereum Foundation. 2026. &ldquo;EF Mandate.&rdquo; https://ethereum.foundation/ef-mandate.pdf. Accessed October 28, 2026.</li>
-                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 28, 2026.</li>
+                    <li>Edge City. n.d. &ldquo;Edge City.&rdquo; Accessed October 28, 2026. https://www.edgecity.live/.</li>
+                    <li>Ethereum Foundation. 2026. &ldquo;EF Mandate.&rdquo; Accessed October 28, 2026. https://ethereum.foundation/ef-mandate.pdf.</li>
+                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers.&rdquo; Preprint. Accessed October 28, 2026. https://figaroprotocol.com/papers/asymmetric-bonding/.</li>
                     <li>Hirschman, Albert O. 1970. <em>Exit, Voice, and Loyalty: Responses to Decline in Firms, Organizations, and States</em>. Cambridge, MA: Harvard University Press.</li>
-                    <li>HolacracyOne. 2021. &ldquo;Holacracy Constitution,&rdquo; version 5.0. Released June 2, 2021. https://github.com/holacracyone/Holacracy-Constitution/releases/tag/v5.0. Accessed October 28, 2026.</li>
-                    <li>Hughes, Eric. 1993. &ldquo;A Cypherpunk&rsquo;s Manifesto.&rdquo; March 9, 1993. https://www.activism.net/cypherpunk/manifesto.html. Accessed October 28, 2026.</li>
+                    <li>HolacracyOne. 2021. &ldquo;Holacracy Constitution,&rdquo; version 5.0. Released June 2, 2021. Accessed October 28, 2026. https://github.com/holacracyone/Holacracy-Constitution/releases/tag/v5.0.</li>
+                    <li>Hughes, Eric. 1993. &ldquo;A Cypherpunk&rsquo;s Manifesto.&rdquo; March 9, 1993. Accessed October 28, 2026. https://www.activism.net/cypherpunk/manifesto.html.</li>
                     <li>Lessig, Lawrence. 1999. <em>Code and Other Laws of Cyberspace</em>. New York: Basic Books.</li>
                     <li>Lessig, Lawrence. 2006. <em>Code: Version 2.0</em>. New York: Basic Books.</li>
-                    <li>Liquity. n.d. &ldquo;General.&rdquo; <em>Liquity Documentation</em>, the protocol&rsquo;s first version. https://docs.liquity.org/liquity-v1/faq/general. Accessed November 2, 2026.</li>
-                    <li>May, Timothy C. 1992. &ldquo;The Crypto Anarchist Manifesto.&rdquo; Written 1988; posted to the Cypherpunks mailing list, November 22, 1992. https://www.activism.net/cypherpunk/crypto-anarchy.html. Accessed October 28, 2026.</li>
-                    <li>Optimism Collective. 2022. &ldquo;Working Constitution of the Optimism Collective.&rdquo; Optimism Collective governance forum, April 26, 2022. https://gov.optimism.io/t/working-constitution-of-the-optimism-collective/55. Accessed October 28, 2026.</li>
-                    <li>Srinivasan, Balaji. 2022. <em>The Network State: How to Start a New Country</em>. Self-published. https://thenetworkstate.com/. Accessed October 28, 2026.</li>
+                    <li>Liquity. n.d. &ldquo;General.&rdquo; <em>Liquity Documentation</em>, the protocol&rsquo;s first version. Accessed November 2, 2026. https://docs.liquity.org/liquity-v1/faq/general.</li>
+                    <li>May, Timothy C. 1992. &ldquo;The Crypto Anarchist Manifesto.&rdquo; Written 1988; posted to the Cypherpunks mailing list, November 22, 1992. Accessed October 28, 2026. https://www.activism.net/cypherpunk/crypto-anarchy.html.</li>
+                    <li>Optimism Collective. 2022. &ldquo;Working Constitution of the Optimism Collective.&rdquo; Optimism Collective governance forum, April 26, 2022. Accessed October 28, 2026. https://gov.optimism.io/t/working-constitution-of-the-optimism-collective/55.</li>
+                    <li>Srinivasan, Balaji. 2022. <em>The Network State: How to Start a New Country</em>. Self-published. Accessed October 28, 2026. https://thenetworkstate.com/.</li>
                     <li>Szabo, Nick. 1997. &ldquo;Formalizing and Securing Relationships on Public Networks.&rdquo; <em>First Monday</em> 2 (9). https://doi.org/10.5210/fm.v2i9.548.</li>
-                    <li>Tools for the Commons. n.d. &ldquo;New Jurisdictions for Global Businesses.&rdquo; https://toolsforthecommons.com/. Accessed October 28, 2026.</li>
-                    <li>Uniswap Labs. 2020. &ldquo;Uniswap v2 Overview.&rdquo; March 23, 2020. https://blog.uniswap.org/uniswap-v2. Accessed November 2, 2026.</li>
+                    <li>Tools for the Commons. n.d. &ldquo;New Jurisdictions for Global Businesses.&rdquo; Accessed October 28, 2026. https://toolsforthecommons.com/.</li>
+                    <li>Uniswap Labs. 2020. &ldquo;Uniswap v2 Overview.&rdquo; March 23, 2020. Accessed November 2, 2026. https://blog.uniswap.org/uniswap-v2.</li>
                     <li>Walch, Angela. 2017. &ldquo;The Path of the Blockchain Lexicon (and the Law).&rdquo; <em>Review of Banking &amp; Financial Law</em> 36 (2): 713&ndash;764. https://commons.stmarytx.edu/facarticles/553/.</li>
                     <li>Walch, Angela. 2019a. &ldquo;Deconstructing &lsquo;Decentralization&rsquo;: Exploring the Core Claim of Crypto Systems.&rdquo; In <em>Cryptoassets: Legal, Regulatory, and Monetary Perspectives</em>, edited by Chris Brummer, 39&ndash;68. New York: Oxford University Press. https://doi.org/10.1093/oso/9780190077310.003.0003.</li>
                     <li>Walch, Angela. 2019b. &ldquo;In Code(rs) We Trust: Software Developers as Fiduciaries in Public Blockchains.&rdquo; In <em>Regulating Blockchain: Techno-Social and Legal Challenges</em>, edited by Philipp Hacker, Ioannis Lianos, Georgios Dimitropoulos, and Stefan Eich, 58&ndash;82. Oxford: Oxford University Press. https://doi.org/10.1093/oso/9780198842187.003.0004.</li>
