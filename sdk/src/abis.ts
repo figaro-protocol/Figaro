@@ -589,6 +589,7 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "error VerifierNotPinned()",
     "error ZeroClauseRegistry()",
     "error ZeroUsageCounter()",
+    "error UsageCounterNotBoundToThis()",
     // OpenZeppelin library errors the verifier compiles: SafeERC20 on every
     // transfer, nonReentrant on settleBatch, ShortStrings under EIP712.
     "error SafeERC20FailedOperation(address token)",
