@@ -1,12 +1,15 @@
 /**
- * YourTurnCard — the `/orders` card for a relayed order awaiting this wallet's
- * counter-signature. Accepting opens the accept flow, whose first act is the
- * terms confirm; the seller's bond allowance is approved only after that
- * confirm, inside the flow, so a seller who reads the terms and declines has
- * sent no transaction and left no allowance behind. The card hands the flow
- * the approval step (`beforeBroadcast`); clicking Accept approves nothing.
- * ReadyToSubmitCard — a fully signed order relayed back for this wallet's
- * broadcast — hands the commit flow the same step, run after the commit
+ * YourTurnCard — the `/orders` card for a relayed order whose next act is
+ * this wallet's. `act="accept"`: an order awaiting this wallet's
+ * counter-signature, as the seller of a buyer's order or as the buyer of a
+ * seller-initiated one. Accepting opens the accept flow, whose first act is
+ * the terms confirm; the acting party's OWN bond allowance is approved only
+ * after that confirm, inside the flow, so a party who reads the terms and
+ * declines has sent no transaction and left no allowance behind. The card
+ * hands the flow the approval step (`beforeBroadcast`); clicking Accept
+ * approves nothing. The bond is the party's: a seller locks 2 × cumulative
+ * value, a buyer 2 × payment. `act="submit"`: a fully signed order relayed
+ * back for the seller's broadcast — the same step, run after the commit
  * confirm; clicking Submit approves nothing.
  */
 import React from "react";
@@ -16,15 +19,17 @@ import { calculateBonds } from "@figaro-protocol/sdk";
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 
 const SELLER = "0x00000000000000000000000000000000000000a1";
+const BUYER = "0x00000000000000000000000000000000000000b1";
 
 const approval = vi.hoisted(() => ({
     covered: false,
     approve: (() => {}) as (amount: bigint) => void,
 }));
+const wallet = vi.hoisted(() => ({ address: "0x00000000000000000000000000000000000000a1" }));
 
 vi.mock("wagmi", async (importOriginal) => {
     const actual = await importOriginal<typeof import("wagmi")>();
-    return { ...actual, useAccount: () => ({ address: SELLER }) };
+    return { ...actual, useAccount: () => ({ address: wallet.address }) };
 });
 vi.mock("@/hooks/useTokenDecimals", () => ({
     default: () => ({ decimals: 6, ready: true, loading: false }),
@@ -40,15 +45,15 @@ vi.mock("@/hooks/useTokenApproval", () => ({
     }),
 }));
 
-import { ReadyToSubmitCard, YourTurnCard } from "@/app/(app)/orders/_components/OrdersList";
+import { YourTurnCard } from "@/app/(app)/orders/_components/OrdersList";
 
 const PAYMENT = 25_000_000n;
-const CUMULATIVE = 40_000_000n; // a sub-order: the seller bond is 2 × cumulative, not 2 × payment
+const CUMULATIVE = 40_000_000n; // a sub-order: the seller bond is 2 × cumulative, the buyer bond 2 × payment
 
 const PAYLOAD = {
     commitment: {
         processId: `0x${"11".repeat(32)}`,
-        buyer: "0x00000000000000000000000000000000000000b1",
+        buyer: BUYER,
         seller: SELLER,
         currency: "0x00000000000000000000000000000000000000c1",
         payment: PAYMENT,
@@ -61,13 +66,14 @@ const PAYLOAD = {
     buyerSig: "0xabcdef",
 } as unknown as CommitmentPayload;
 
-function renderCard(onAccept = vi.fn()) {
-    render(<YourTurnCard payload={PAYLOAD} onAccept={onAccept} onDismiss={() => {}} isAccepting={false} listings={[]} />);
+function renderCard(onAccept = vi.fn(), payload: CommitmentPayload = PAYLOAD) {
+    render(<YourTurnCard act="accept" payload={payload} onAct={onAccept} onDismiss={() => {}} isActing={false} listings={[]} />);
     return onAccept;
 }
 
-describe("YourTurnCard — the seller's bond is approved after the terms confirm", () => {
+describe("YourTurnCard accept — the seller's bond is approved after the terms confirm", () => {
     beforeEach(() => {
+        wallet.address = SELLER;
         approval.covered = false;
         approval.approve = vi.fn();
     });
@@ -82,6 +88,7 @@ describe("YourTurnCard — the seller's bond is approved after the terms confirm
 
     it("the step handed to the flow approves the seller bond, 2 × cumulative value, with the 10× buffer", () => {
         const onAccept = renderCard();
+        expect(screen.getByText("Your seller bond:")).toBeTruthy();
         fireEvent.click(screen.getByTestId("btn-accept-order"));
         const beforeBroadcast = onAccept.mock.calls[0][0] as () => Promise<void>;
         void beforeBroadcast();
@@ -99,13 +106,37 @@ describe("YourTurnCard — the seller's bond is approved after the terms confirm
     });
 });
 
-describe("ReadyToSubmitCard — the seller's bond is approved after the commit confirm", () => {
+describe("YourTurnCard accept as the buyer — a seller-initiated order pulls the buyer's own bond", () => {
+    // The seller originated and signed; the buyer counter-signs. The Core
+    // pulls 2 × payment from the buyer, never 2 × cumulative value.
+    const SELLER_INITIATED = { ...PAYLOAD, buyerSig: undefined, sellerSig: "0x123456" } as unknown as CommitmentPayload;
+    beforeEach(() => {
+        wallet.address = BUYER;
+        approval.covered = false;
+        approval.approve = vi.fn();
+    });
+
+    it("names the bond as the buyer's and approves 2 × payment with the 10× buffer", () => {
+        const onAccept = renderCard(vi.fn(), SELLER_INITIATED);
+        expect(screen.getByText("Your buyer bond:")).toBeTruthy();
+        expect(screen.queryByText("Your seller bond:")).toBeNull();
+        fireEvent.click(screen.getByTestId("btn-accept-order"));
+        const beforeBroadcast = onAccept.mock.calls[0][0] as () => Promise<void>;
+        void beforeBroadcast();
+        const { buyerBond, sellerBond } = calculateBonds(CUMULATIVE, PAYMENT);
+        expect(buyerBond).not.toBe(sellerBond);
+        expect(approval.approve).toHaveBeenCalledWith(buyerBond * 10n);
+    });
+});
+
+describe("YourTurnCard submit — the seller's bond is approved after the commit confirm", () => {
     const SIGNED = { ...PAYLOAD, sellerSig: "0x123456" } as unknown as CommitmentPayload;
     function renderReady(onSubmit = vi.fn()) {
-        render(<ReadyToSubmitCard payload={SIGNED} onSubmit={onSubmit} onDismiss={() => {}} isSubmitting={false} listings={[]} />);
+        render(<YourTurnCard act="submit" payload={SIGNED} onAct={onSubmit} onDismiss={() => {}} isActing={false} listings={[]} />);
         return onSubmit;
     }
     beforeEach(() => {
+        wallet.address = SELLER;
         approval.covered = false;
         approval.approve = vi.fn();
     });

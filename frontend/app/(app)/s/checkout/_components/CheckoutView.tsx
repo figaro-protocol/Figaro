@@ -44,21 +44,19 @@ import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel"
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
 import {
-    resolveSwapFundingContracts,
     translateListedPrice,
     type ListedPriceTranslation,
 } from "@/lib/composition/swapFunding";
-import { SwapFundingPanel, fundingAuthorization, fundingBlocksTheAct } from "./SwapFundingPanel";
-import useTokenApproval from "@/hooks/useTokenApproval";
+import { SwapFundingPanel } from "./SwapFundingPanel";
+import { useSwapFunding, fundingBlocksTheAct } from "@/lib/composition/useSwapFunding";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
-import { maxUint256 } from "viem";
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { isSiblingFormatSource, resolveInputFormat, type FormatPreset } from "@/components/runtime/fieldFormatInputs";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { calculateBonds } from "@figaro-protocol/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { hexEqual, normalizeAddressParam, ZERO_ADDRESS } from "@/lib/shared/evm";
+import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { parseToken, tokenFigure } from "@/lib/shared/utils";
 import { useMemberBoundAssemblies, withBoundCoSellers } from "@/lib/member/useMemberBoundAssemblies";
@@ -195,7 +193,20 @@ export function CheckoutView({ sellerAddress }: Props) {
     // is what the buyer signs (its bond is twice it) and the seller
     // countersigns at /sign or declines. No rate is stored anywhere; the
     // translation lives only in the signed amount.
-    const swapFundingContracts = resolveSwapFundingContracts();
+    // Swap-funded bond leg (buyer side): the ON-RAMP into the process
+    // denomination — a buyer short of the picked/pinned token draws on
+    // another of the seller's accepted tokens, and the coordinator swaps it
+    // at commit time. Funding is never the order's denomination; the
+    // candidate set IS the seller's acceptedTokens minus the process
+    // denomination; available only where the swap composition (coordinator +
+    // Permit2 + venue) is configured. Resolved-empty = the path is absent.
+    const swapFunding = useSwapFunding({
+        party: buyer ?? undefined,
+        currency: currency ?? undefined,
+        acceptedTokens: memberCatalog?.acceptedTokens,
+    });
+    const swapFundingContracts = swapFunding.contracts;
+    const { candidates: fundingCandidates, fundingToken } = swapFunding;
     const [translationQuotes, setTranslationQuotes] = useState<
         { key: string; byPrice: Record<string, { result: ListedPriceTranslation | null; failed: boolean }> } | null
     >(null);
@@ -269,27 +280,6 @@ export function CheckoutView({ sellerAddress }: Props) {
     const isApproving = isApprovePending || isApproveConfirming;
     const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
-    // Swap-funded bond leg (buyer side): the ON-RAMP into the process
-    // denomination — a buyer short of the picked/pinned token draws on
-    // another of the seller's accepted tokens, and the coordinator swaps it
-    // at commit time. Funding is never the order's denomination; the
-    // candidate set IS the seller's acceptedTokens minus the process
-    // denomination; available only where the swap composition (coordinator +
-    // Permit2 + venue) is configured. Resolved-empty = the path is absent.
-    const fundingCandidates = useMemo(
-        () => (swapFundingContracts && currency
-            ? (memberCatalog?.acceptedTokens ?? []).filter((t) => !hexEqual(t.address, currency))
-            : []),
-        [swapFundingContracts, currency, memberCatalog],
-    );
-    const [fundingToken, setFundingToken] = useState<`0x${string}` | null>(null);
-    // The one-time Permit2 authorization for the chosen funding token (the
-    // standard Permit2 max approval; per-commit amounts are witness-bound).
-    const permit2Funding = useTokenApproval({
-        tokenAddress: fundingToken ?? undefined,
-        owner: buyer ?? undefined,
-        spender: (swapFundingContracts?.permit2 ?? ZERO_ADDRESS) as `0x${string}`,
-    });
     // The buyer's checkout-time co-seller choice for a sub-order the
     // adopting seller's catalog leaves unbound (the buyer assigns it).
     const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
@@ -587,12 +577,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && lockedTotal !== null && balance < lockedTotal;
     // Where the chosen funding token stands with Permit2 — the one derived
     // state the funding panel shows and the place-order button obeys.
-    const buyerFunding = fundingAuthorization({
-        fundingToken,
-        allowanceKnown: permit2Funding.allowanceKnown && !permit2Funding.isAllowanceRefetching,
-        needsApproval: lockedTotal !== null && permit2Funding.needsApproval(lockedTotal),
-        isAuthorizing: permit2Funding.isApprovePending || permit2Funding.isApproveConfirming,
-    });
+    const buyerFunding = swapFunding.authorizationFor(lockedTotal);
 
     // Every order in the assembly — root + sub-orders — surfaced for review:
     // the buyer signs and bonds ALL of them. Each clause renders its COMPOSED
@@ -1227,12 +1212,12 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 party={buyer}
                                 currencySymbol={tokenSymbol}
                                 fundingToken={fundingToken}
-                                onSelect={setFundingToken}
+                                onSelect={swapFunding.setFundingToken}
                                 authorization={buyerFunding}
-                                onAuthorize={() => permit2Funding.approve(maxUint256)}
+                                onAuthorize={swapFunding.authorize}
                             />
                         )}
-                        {permit2Funding.isApproveError && (
+                        {swapFunding.authorizeFailed && (
                             <p className="text-error-fg text-xs" data-testid="funding-authorize-error">
                                 The funding token was not authorized: the wallet refused it or the transaction reverted.
                             </p>

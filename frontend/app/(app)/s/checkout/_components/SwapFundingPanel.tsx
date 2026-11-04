@@ -8,16 +8,16 @@
  * accepted set). The coordinator swaps the chosen token at commit time and
  * the Core pulls the bond as always — the order stays denominated in the
  * one process token; only the funding source changes. Selection + the
- * one-time Permit2 authorization live here; the witness signing itself rides
- * the sign/accept step.
+ * one-time Permit2 authorization are held by `useSwapFunding`; the witness
+ * signing itself rides the sign/accept step.
  */
-import { useReadContract } from "wagmi";
 import { Button } from "@/components/ui/Button";
-import { ERC20_ABI } from "@/lib/kernel/contracts";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 import { tokenFigure } from "@/lib/shared/utils";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
+import useTokenBalance from "@/hooks/useTokenBalance";
 import { hexEqual } from "@/lib/shared/evm";
+import type { FundingAuthorization } from "@/lib/composition/useSwapFunding";
 
 function FundingTokenOption({
     token,
@@ -32,12 +32,7 @@ function FundingTokenOption({
 }) {
     // This candidate's own decimals(), read from the chain — never the process token's.
     const { decimals } = useTokenDecimals(token.address as `0x${string}`);
-    const { data: balance } = useReadContract({
-        address: token.address as `0x${string}`,
-        abi: ERC20_ABI,
-        functionName: "balanceOf",
-        args: [party],
-    });
+    const { read: balance } = useTokenBalance(token.address as `0x${string}`, party);
     return (
         <label
             className="flex items-center justify-between gap-2 rounded border border-default px-3 py-2 text-sm cursor-pointer has-[:checked]:border-ink-heading"
@@ -54,52 +49,10 @@ function FundingTokenOption({
                 <span className="font-medium text-ink-primary">{token.symbol}</span>
             </span>
             <span className="text-ink-muted tabular-nums">
-                {balance !== undefined ? `${tokenFigure(balance as bigint, decimals)} held` : "…"}
+                {balance.status === "present" ? `${tokenFigure(balance.value, decimals)} held` : balance.status === "pending" ? "…" : null}
             </span>
         </label>
     );
-}
-
-/**
- * Where a chosen funding token stands with Permit2 — derived once, read by the
- * panel and by the action beside it (place order, counter-sign):
- *
- *   none        no funding token is chosen
- *   reading     the allowance has not been read yet, or is being read again
- *               (after an approval's receipt the value in hand is stale)
- *   needed      the allowance is known and short of the bond
- *   authorizing the approval is pending or confirming
- *   ready       the allowance is known and covers the bond
- *
- * A commit with a funding leg pulls the token through Permit2, so anything but
- * `none` or `ready` would broadcast a commit that reverts.
- */
-export type FundingAuthorization = "none" | "reading" | "needed" | "authorizing" | "ready";
-
-export function fundingAuthorization({
-    fundingToken,
-    allowanceKnown,
-    needsApproval,
-    isAuthorizing,
-}: {
-    fundingToken: `0x${string}` | null;
-    /** The allowance in hand is current: read, and not being read again. */
-    allowanceKnown: boolean;
-    /** The allowance last read is short of the bond. */
-    needsApproval: boolean;
-    /** The approval transaction is pending or confirming. */
-    isAuthorizing: boolean;
-}): FundingAuthorization {
-    if (!fundingToken) return "none";
-    if (isAuthorizing) return "authorizing";
-    if (!allowanceKnown) return "reading";
-    return needsApproval ? "needed" : "ready";
-}
-
-/** Whether the action beside the panel must wait: a chosen funding token that
- *  is not yet authorized. */
-export function fundingBlocksTheAct(authorization: FundingAuthorization): boolean {
-    return authorization !== "none" && authorization !== "ready";
 }
 
 export function SwapFundingPanel({

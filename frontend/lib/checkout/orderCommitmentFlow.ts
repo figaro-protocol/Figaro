@@ -63,7 +63,7 @@ import { relayCommitmentPayload } from "@/lib/handoff/relayChannel";
 import { buildCounterDraft, validateDraft, type CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
 import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
-import { quoteFundingLeg, signFundingLeg } from "@/lib/composition/swapFunding";
+import { quoteFundingLeg, signFundingLeg, type FundingQuote, type QuoteFundingLegArgs } from "@/lib/composition/swapFunding";
 import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActions";
 import { profileReaderForChain } from "@/lib/member/profileFetcher";
 
@@ -101,6 +101,31 @@ function swapDetails(
 ): SwapConfirmationDetails | null {
     if (!quote) return null;
     return { inputToken: quote.inputToken, currency: quote.currency, maxInput: quote.maxInput };
+}
+
+/** Quote one party's swap-funded bond leg for `commitment`: the venue quote
+ *  and exact route for the party's FigaroCore pull, no signature yet.
+ *  calculateBonds(cumulativeValue, payment) — the buyer bond is 2×payment,
+ *  the seller bond 2×expectedCumulativeValue; on a SUB-ORDER ecv ≠ payment,
+ *  so the arg order is load-bearing (a swap here mis-quotes the FigaroCore's
+ *  pull and swapAndCommit reverts at simulate). */
+function quoteBondFundingLeg(
+    publicClient: QuoteFundingLegArgs["publicClient"] | undefined,
+    chainId: number,
+    inputToken: Hex,
+    commitment: Commitment,
+    party: PartyRole,
+): Promise<FundingQuote> {
+    if (!publicClient) throw new Error("No chain connection — cannot quote the funding swap.");
+    const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
+    return quoteFundingLeg({
+        publicClient,
+        chainId,
+        inputToken,
+        currency: commitment.currency as Hex,
+        bondAmount: party === "buyer" ? bonds.buyerBond : bonds.sellerBond,
+        deadline: commitment.deadline,
+    });
 }
 
 function assertSigningDomain(core: string | undefined, chainId: number): asserts core is `0x${string}` {
@@ -176,6 +201,26 @@ export function useOrderCommitmentFlow() {
         setError(null);
     }, []);
 
+    /** Every act of the flow runs through here: the previous error clears; a
+     *  throw records its message (`fallback` when it carries none), moves the
+     *  flow to "error" and rethrows to the caller. */
+    const runStep = useCallback(async <T,>(fallback: string, act: () => Promise<T>): Promise<T> => {
+        setError(null);
+        try {
+            return await act();
+        } catch (e: unknown) {
+            setError(extractErrorMessage(e, fallback));
+            setStep("error");
+            throw e;
+        }
+    }, []);
+
+    /** Witness-sign a quoted funding leg with the connected wallet. */
+    const signLeg = useCallback(
+        (quote: FundingQuote) => signFundingLeg(quote, (typedData) => signTypedDataAsync(typedData) as Promise<Hex>),
+        [signTypedDataAsync],
+    );
+
     // ── Sign a commitment (gated by the confirm preview) ──
     const signAs = useCallback(async (
         commitment: Commitment,
@@ -231,36 +276,17 @@ export function useOrderCommitmentFlow() {
         funding?: BuyerFundingRequest,
     ): Promise<CommitmentPayload> => {
         if (!address) throw new Error("Connect a wallet first.");
-        setError(null);
-        try {
+        return runStep("Order failed", async () => {
             setStep("signing");
             // The buyer's optional swap-funded bond leg is QUOTED before the
             // sign so its maxInput rides into the SAME confirm as the agreement
             // (one approval, both signatures); it is then witness-signed against
             // that exact quote so the relayer is untrusted by construction.
-            let fundingQuote: Awaited<ReturnType<typeof quoteFundingLeg>> | null = null;
-            if (funding) {
-                if (!publicClient) throw new Error("No chain connection — cannot quote the funding swap.");
-                fundingQuote = await quoteFundingLeg({
-                    publicClient,
-                    chainId,
-                    inputToken: funding.inputToken,
-                    currency: preview.commitment.currency as Hex,
-                    // calculateBonds(cumulativeValue, payment) — the buyer
-                    // bond is 2×payment; on a SUB-ORDER ecv ≠ payment, so the
-                    // arg order is load-bearing (a swap here mis-quotes the
-                    // FigaroCore's pull and swapAndCommit reverts at simulate).
-                    bondAmount: calculateBonds(
-                        preview.commitment.expectedCumulativeValue,
-                        preview.commitment.payment,
-                    ).buyerBond,
-                    deadline: preview.commitment.deadline,
-                });
-            }
+            const fundingQuote = funding
+                ? await quoteBondFundingLeg(publicClient, chainId, funding.inputToken, preview.commitment, "buyer")
+                : null;
             const buyerSig = await signAs(preview.commitment, preview.agreement, swapDetails(fundingQuote));
-            const buyerFunding: CommitmentPayload["buyerFunding"] = fundingQuote
-                ? await signFundingLeg(fundingQuote, (typedData) => signTypedDataAsync(typedData) as Promise<Hex>)
-                : undefined;
+            const buyerFunding: CommitmentPayload["buyerFunding"] = fundingQuote ? await signLeg(fundingQuote) : undefined;
             setStep("awaiting-seller");
             return {
                 commitment: preview.commitment,
@@ -268,12 +294,8 @@ export function useOrderCommitmentFlow() {
                 buyerSig,
                 ...(buyerFunding ? { buyerFunding } : {}),
             };
-        } catch (e: unknown) {
-            setError(extractErrorMessage(e, "Order failed"));
-            setStep("error");
-            throw e;
-        }
-    }, [address, signAs, publicClient, chainId, signTypedDataAsync]);
+        });
+    }, [address, signAs, publicClient, chainId, runStep, signLeg]);
 
     /**
      * BUYER side: sign the previewed order and relay it to the seller — sign +
@@ -291,8 +313,7 @@ export function useOrderCommitmentFlow() {
         if (!address) throw new Error("Connect a wallet first.");
         const signed = await signCommitment(preview, funding);
         const payload = opts?.sellerSig ? { ...signed, sellerSig: opts.sellerSig } : signed;
-        setError(null);
-        try {
+        return runStep("Order failed", async () => {
             setStep("sharing");
             await shareSignedOrder({
                 payload,
@@ -306,12 +327,8 @@ export function useOrderCommitmentFlow() {
 
             setStep("awaiting-seller");
             return payload;
-        } catch (e: unknown) {
-            setError(extractErrorMessage(e, "Order failed"));
-            setStep("error");
-            throw e;
-        }
-    }, [address, chainId, walletClient, services, signCommitment]);
+        });
+    }, [address, chainId, walletClient, services, signCommitment, runStep]);
 
     // Broadcast routing: a payload carrying a witness-signed buyer funding
     // leg — or an accept carrying the seller's — goes through the
@@ -345,96 +362,72 @@ export function useOrderCommitmentFlow() {
         incoming: CommitmentPayload,
         funding?: SellerFundingRequest,
         opts?: { beforeBroadcast?: () => Promise<void> },
-    ): Promise<Hex> => {
-        setError(null);
-        try {
-            // The role is the entry that is still EMPTY. The Core admits
-            // buyer == seller (DESIGN_DECISIONS), so one wallet can hold both
-            // entries; the accepting role is then the one whose signature is
-            // missing, never "buyer" by address alone.
-            const isBuyer = hexEqual(address, incoming.commitment.buyer);
-            const isSeller = hexEqual(address, incoming.commitment.seller);
-            const role: PartyRole =
-                isSeller && !incoming.sellerSig ? "seller"
-                : isBuyer && !incoming.buyerSig ? "buyer"
-                : isBuyer ? "buyer" : "seller";
+    ): Promise<Hex> => runStep("Accept failed", async () => {
+        // The role is the entry that is still EMPTY. The Core admits
+        // buyer == seller (DESIGN_DECISIONS), so one wallet can hold both
+        // entries; the accepting role is then the one whose signature is
+        // missing, never "buyer" by address alone.
+        const isBuyer = hexEqual(address, incoming.commitment.buyer);
+        const isSeller = hexEqual(address, incoming.commitment.seller);
+        const role: PartyRole =
+            isSeller && !incoming.sellerSig ? "seller"
+            : isBuyer && !incoming.buyerSig ? "buyer"
+            : isBuyer ? "buyer" : "seller";
 
-            // Verify the COUNTERPARTY's existing signature before we sign and
-            // broadcast (acceptOrder): a relayed payload
-            // carrying a forged/absent counterparty sig would revert on-chain
-            // after we spent gas — refuse early with a clean error. FigaroCore
-            // re-verifies; this only moves the failure off-chain.
-            assertSigningDomain(CONTRACTS.core, chainId);
-            const counterSig = role === "seller" ? incoming.buyerSig : incoming.sellerSig;
-            const counterparty = role === "seller" ? incoming.commitment.buyer : incoming.commitment.seller;
-            if (!counterSig || !(await verifyCommitmentSignature(
-                incoming.commitment, counterSig as Hex, counterparty as Hex,
-                { chainId, core: CONTRACTS.core },
-            ))) {
-                throw new Error("The relayed order's counterparty signature is missing or invalid — refusing to counter-sign.");
-            }
-            // A seller accepts only an order under an assembly its own
-            // profile binds — read now, from the registry, never from the
-            // payload.
-            if (role === "seller") {
-                const bound = await checkSellerBindsAssembly(
-                    incoming.agreement, incoming.commitment.seller as Hex, profileReaderForChain(publicClient, chainId),
-                );
-                if (!bound.ok) throw new Error(`Refusing this order — ${bound.reason}`);
-            }
-
-            setStep("signing");
-            // The seller's optional on-ramp is quoted before the sign so its
-            // maxInput shows in the same confirm as the agreement.
-            // 2·expectedCumulativeValue is FigaroCore's seller pull.
-            let sellerQuote: Awaited<ReturnType<typeof quoteFundingLeg>> | null = null;
-            if (funding && role === "seller") {
-                if (!publicClient) throw new Error("No chain connection — cannot quote the funding swap.");
-                sellerQuote = await quoteFundingLeg({
-                    publicClient,
-                    chainId,
-                    inputToken: funding.inputToken,
-                    currency: incoming.commitment.currency as Hex,
-                    // calculateBonds(cumulativeValue, payment) — the seller
-                    // bond is 2×expectedCumulativeValue (FigaroCore's seller
-                    // pull); on a SUB-ORDER ecv ≠ payment, so arg order matters.
-                    bondAmount: calculateBonds(
-                        incoming.commitment.expectedCumulativeValue,
-                        incoming.commitment.payment,
-                    ).sellerBond,
-                    deadline: incoming.commitment.deadline,
-                });
-            }
-            const sig = await signAs(incoming.commitment, incoming.agreement, swapDetails(sellerQuote));
-
-            const payload: CommitmentPayload = {
-                ...incoming,
-                buyerSig: role === "buyer" ? sig : incoming.buyerSig,
-                sellerSig: role === "seller" ? sig : incoming.sellerSig,
-            };
-
-            const sellerFunding: SwapFundingLeg | undefined = sellerQuote
-                ? await signFundingLeg(sellerQuote, (typedData) => signTypedDataAsync(typedData) as Promise<Hex>)
-                : undefined;
-
-            await opts?.beforeBroadcast?.();
-
-            setStep("committing");
-            const hash = await commitSignedOrder({
-                payload,
-                commit: broadcasterFor(payload, sellerFunding),
-                publicClient,
-                waitForReceipt: true,
-            });
-
-            setStep("done");
-            return hash;
-        } catch (e: unknown) {
-            setError(extractErrorMessage(e, "Accept failed"));
-            setStep("error");
-            throw e;
+        // Verify the COUNTERPARTY's existing signature before we sign and
+        // broadcast (acceptOrder): a relayed payload
+        // carrying a forged/absent counterparty sig would revert on-chain
+        // after we spent gas — refuse early with a clean error. FigaroCore
+        // re-verifies; this only moves the failure off-chain.
+        assertSigningDomain(CONTRACTS.core, chainId);
+        const counterSig = role === "seller" ? incoming.buyerSig : incoming.sellerSig;
+        const counterparty = role === "seller" ? incoming.commitment.buyer : incoming.commitment.seller;
+        if (!counterSig || !(await verifyCommitmentSignature(
+            incoming.commitment, counterSig as Hex, counterparty as Hex,
+            { chainId, core: CONTRACTS.core },
+        ))) {
+            throw new Error("The relayed order's counterparty signature is missing or invalid — refusing to counter-sign.");
         }
-    }, [address, broadcasterFor, publicClient, signAs, chainId, signTypedDataAsync]);
+        // A seller accepts only an order under an assembly its own
+        // profile binds — read now, from the registry, never from the
+        // payload.
+        if (role === "seller") {
+            const bound = await checkSellerBindsAssembly(
+                incoming.agreement, incoming.commitment.seller as Hex, profileReaderForChain(publicClient, chainId),
+            );
+            if (!bound.ok) throw new Error(`Refusing this order — ${bound.reason}`);
+        }
+
+        setStep("signing");
+        // The seller's optional on-ramp is quoted before the sign so its
+        // maxInput shows in the same confirm as the agreement.
+        // 2·expectedCumulativeValue is FigaroCore's seller pull.
+        const sellerQuote = funding && role === "seller"
+            ? await quoteBondFundingLeg(publicClient, chainId, funding.inputToken, incoming.commitment, "seller")
+            : null;
+        const sig = await signAs(incoming.commitment, incoming.agreement, swapDetails(sellerQuote));
+
+        const payload: CommitmentPayload = {
+            ...incoming,
+            buyerSig: role === "buyer" ? sig : incoming.buyerSig,
+            sellerSig: role === "seller" ? sig : incoming.sellerSig,
+        };
+
+        const sellerFunding: SwapFundingLeg | undefined = sellerQuote ? await signLeg(sellerQuote) : undefined;
+
+        await opts?.beforeBroadcast?.();
+
+        setStep("committing");
+        const hash = await commitSignedOrder({
+            payload,
+            commit: broadcasterFor(payload, sellerFunding),
+            publicClient,
+            waitForReceipt: true,
+        });
+
+        setStep("done");
+        return hash;
+    }), [address, broadcasterFor, publicClient, signAs, chainId, runStep, signLeg]);
 
     /**
      * CANDIDATE side (dispatch race): an inbound UNSIGNED draft → counter-sign
@@ -453,8 +446,7 @@ export function useOrderCommitmentFlow() {
         incoming: CommitmentPayload,
     ): Promise<CommitmentPayload> => {
         if (!address) throw new Error("Connect a wallet first.");
-        setError(null);
-        try {
+        return runStep("Counter-sign failed", async () => {
             // The FULL draft gate — the specs (resolved through the registry
             // first) and the design the agreement names — so a bad request is
             // refused before the person is asked anything.
@@ -475,12 +467,8 @@ export function useOrderCommitmentFlow() {
             });
             setStep("awaiting-buyer");
             return returned;
-        } catch (e: unknown) {
-            setError(extractErrorMessage(e, "Counter-sign failed"));
-            setStep("error");
-            throw e;
-        }
-    }, [address, signAs, chainId, walletClient, services, publicClient]);
+        });
+    }, [address, signAs, chainId, walletClient, services, publicClient, runStep]);
 
     /**
      * CANDIDATE side (RFQ): an inbound QUOTE REQUEST → the person names their
@@ -497,8 +485,7 @@ export function useOrderCommitmentFlow() {
         quotedPayment: bigint,
     ): Promise<CommitmentPayload> => {
         if (!address) throw new Error("Connect a wallet first.");
-        setError(null);
-        try {
+        return runStep("Quote failed", async () => {
             // The FULL draft gate — the specs (resolved through the registry
             // first) and the design the agreement names — so a bad request is
             // refused before the person is asked anything.
@@ -532,12 +519,8 @@ export function useOrderCommitmentFlow() {
             });
             setStep("awaiting-buyer");
             return returned;
-        } catch (e: unknown) {
-            setError(extractErrorMessage(e, "Quote failed"));
-            setStep("error");
-            throw e;
-        }
-    }, [address, signAs, chainId, walletClient, services, publicClient]);
+        });
+    }, [address, signAs, chainId, walletClient, services, publicClient, runStep]);
 
     /**
      * Broadcast an ALREADY fully-signed payload — no signature added. For the
@@ -555,37 +538,30 @@ export function useOrderCommitmentFlow() {
     const commitOrder = useCallback(async (
         payload: CommitmentPayload,
         opts?: { beforeBroadcast?: () => Promise<void> },
-    ): Promise<Hex> => {
-        setError(null);
-        try {
-            assertAgreementSignable(
-                payload.agreement,
-                payload.commitment.checkoutHash,
-                specSource(),
-                payload.commitment,
-                await readSigningDesign(payload.agreement),
-            );
-            const approved = await requestCommitConfirmation(
-                payload.commitment,
-                payload.agreement,
-            );
-            if (!approved) throw new Error("Commit canceled by user.");
-            await opts?.beforeBroadcast?.();
-            setStep("committing");
-            const hash = await commitSignedOrder({
-                payload,
-                commit: broadcasterFor(payload),
-                publicClient,
-                waitForReceipt: true,
-            });
-            setStep("done");
-            return hash;
-        } catch (e: unknown) {
-            setError(extractErrorMessage(e, "Commit failed"));
-            setStep("error");
-            throw e;
-        }
-    }, [broadcasterFor, publicClient]);
+    ): Promise<Hex> => runStep("Commit failed", async () => {
+        assertAgreementSignable(
+            payload.agreement,
+            payload.commitment.checkoutHash,
+            specSource(),
+            payload.commitment,
+            await readSigningDesign(payload.agreement),
+        );
+        const approved = await requestCommitConfirmation(
+            payload.commitment,
+            payload.agreement,
+        );
+        if (!approved) throw new Error("Commit canceled by user.");
+        await opts?.beforeBroadcast?.();
+        setStep("committing");
+        const hash = await commitSignedOrder({
+            payload,
+            commit: broadcasterFor(payload),
+            publicClient,
+            waitForReceipt: true,
+        });
+        setStep("done");
+        return hash;
+    }), [broadcasterFor, publicClient, runStep]);
 
     return {
         step,

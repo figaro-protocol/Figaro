@@ -11,7 +11,7 @@
 
 import { Suspense, useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { useAccount, useReadContract, useWalletClient } from "wagmi";
+import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { deriveSignState } from "@/lib/checkout/signState";
@@ -20,16 +20,15 @@ import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
 } from "@figaro-protocol/sdk/agent";
-import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
+import { hexEqual } from "@/lib/shared/evm";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { validateCommitmentAgreement, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
-import { SwapFundingPanel, fundingAuthorization, fundingBlocksTheAct } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
-import { resolveSwapFundingContracts } from "@/lib/composition/swapFunding";
-import useTokenApproval from "@/hooks/useTokenApproval";
-import { ERC20_ABI } from "@/lib/kernel/contracts";
+import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
+import { useSwapFunding, fundingBlocksTheAct } from "@/lib/composition/useSwapFunding";
+import useTokenBalance from "@/hooks/useTokenBalance";
 import { useMemberProfile } from "@/lib/member/useMembersRegistry";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
@@ -38,18 +37,12 @@ import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
 import { parseToken, tokenFigure } from "@/lib/shared/utils";
-import { maxUint256 } from "viem";
-import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
-import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro-protocol/sdk/agent";
+import { useCommitmentPayloadInbox, type InboxEntry } from "@/lib/checkout/orderPendingSellerSignature";
 import { truncateHex } from "@/lib/shared/formatHex";
-
-type ChannelStatus = "idle" | "listening" | "received" | "error";
 
 function SignPageContent() {
     const { address } = useAccount();
-    const { data: walletClient } = useWalletClient();
     const searchParams = useSearchParams();
-    const { handoffMessaging, evidenceTransport } = useRuntimeServices();
     const { acceptOrder, counterSignAndReturn, quoteAndReturn, commitOrder, step, error: commitError, reset } = useOrderCommitmentFlow();
     const hydratedPayloadRef = useRef<string | null>(null);
     const receivedTransportOrderIdsRef = useRef<Set<string>>(new Set());
@@ -58,8 +51,8 @@ function SignPageContent() {
     const [parsed, setParsed] = useState<CommitmentPayload | null>(null);
     const [parseError, setParseError] = useState<string | null>(null);
     const [approvalDone, setApprovalDone] = useState(false);
-    const [channelStatus, setChannelStatus] = useState<ChannelStatus>("idle");
-    const [channelError, setChannelError] = useState<string | null>(null);
+    // A payload received over the channel that does not parse.
+    const [channelPayloadError, setChannelPayloadError] = useState<string | null>(null);
     const [loadedFromChannel, setLoadedFromChannel] = useState(false);
 
     // Reset approval state when a new commitment is parsed
@@ -105,81 +98,44 @@ function SignPageContent() {
         void parseSerializedPayload(linkedPayload);
     }, [parseSerializedPayload, searchParams]);
 
+    // Listening: a connected wallet with nothing pasted, linked or parsed.
+    // The page reads the wallet's ONE shared coordination-channel inbox
+    // (`useCommitmentPayloadInbox`): every payload this wallet is a party to.
+    // With the dispatch race, k drafts are in flight at once, each naming a
+    // different candidate; every candidate parses THEIR draft, since the inbox
+    // keeps only payloads naming this wallet. Each listening spell reads the
+    // inbox afresh, oldest first, so the newest payload not yet loaded is the
+    // one on screen.
+    const listening = !!address && !parsed && !rawInput.trim() && !searchParams.get("payload");
+    const inbox = useCommitmentPayloadInbox(listening);
+    const readEntriesRef = useRef<WeakSet<InboxEntry>>(new WeakSet());
+    const wasListeningRef = useRef(false);
     useEffect(() => {
-        const linkedPayload = searchParams.get("payload");
-        if (!address || parsed || rawInput.trim() || linkedPayload) {
+        if (!listening) {
+            wasListeningRef.current = false;
             return;
         }
-
-        let canceled = false;
-        let cleanup: (() => void) | null = null;
-        setChannelStatus("listening");
-        setChannelError(null);
-
-        void handoffMessaging.subscribeAnyCommitmentPayload({
-            address,
-            walletClient,
-            callback: async (payloadJson, orderId) => {
-                if (canceled || receivedTransportOrderIdsRef.current.has(orderId)) {
+        if (!wasListeningRef.current) {
+            wasListeningRef.current = true;
+            readEntriesRef.current = new WeakSet();
+            setChannelPayloadError(null);
+        }
+        for (const entry of inbox.entries) {
+            if (readEntriesRef.current.has(entry)) continue;
+            readEntriesRef.current.add(entry);
+            if (receivedTransportOrderIdsRef.current.has(entry.orderId)) continue;
+            void parseSerializedPayload(entry.json).then((nextPayload) => {
+                if (!nextPayload) {
+                    setChannelPayloadError("Received an invalid commitment payload over XMTP.");
                     return;
                 }
-
-                // The payload arrives INLINE over the E2E-encrypted coordination
-                // channel (audit F Arm 2), not IPFS — no fetch. Cap defensively:
-                // an unauthenticated inbox can deliver an oversize message.
-                if (new TextEncoder().encode(payloadJson).length > MAX_COMMITMENT_PAYLOAD_BYTES) return;
-                if (canceled) return;
-
-                // The subscription is wallet-wide and the transport may not be
-                // addressed (the mock bus broadcasts) — surface only payloads
-                // this wallet could ever act on: it must be a party. With the
-                // dispatch race, k drafts are in flight at once, each naming a
-                // different candidate; every candidate must parse THEIR draft,
-                // not the first arrival.
-                try {
-                    const preview = deserializeCommitmentPayload(payloadJson);
-                    const isParty = hexEqual(address, preview.commitment?.buyer)
-                        || hexEqual(address, preview.commitment?.seller);
-                    if (!isParty) return;
-                } catch {
-                    return;
-                }
-
-                const nextPayload = await parseSerializedPayload(payloadJson);
-                if (canceled || !nextPayload) {
-                    if (!canceled && !nextPayload) {
-                        setChannelStatus("error");
-                        setChannelError("Received an invalid commitment payload over XMTP.");
-                    }
-                    return;
-                }
-
-                receivedTransportOrderIdsRef.current.add(orderId);
+                receivedTransportOrderIdsRef.current.add(entry.orderId);
                 setLoadedFromChannel(true);
-                setRawInput(payloadJson);
-                setChannelStatus("received");
-            },
-        }).then((unsubscribe) => {
-            if (canceled) {
-                unsubscribe();
-                return;
-            }
-
-            cleanup = unsubscribe;
-        }).catch((error) => {
-            if (canceled) {
-                return;
-            }
-
-            setChannelStatus("error");
-            setChannelError(extractErrorMessage(error, "Could not open the XMTP channel."));
-        });
-
-        return () => {
-            canceled = true;
-            cleanup?.();
-        };
-    }, [address, handoffMessaging, evidenceTransport, parsed, parseSerializedPayload, rawInput, searchParams, walletClient]);
+                setRawInput(entry.json);
+            });
+        }
+    }, [listening, inbox.entries, parseSerializedPayload]);
+    const channelError = channelPayloadError ?? (inbox.status === "error" ? inbox.error : null);
 
     const handleCounterSign = async () => {
         if (!parsed) return;
@@ -224,8 +180,7 @@ function SignPageContent() {
         setRawInput("");
         setParsed(null);
         setParseError(null);
-        setChannelStatus("idle");
-        setChannelError(null);
+        setChannelPayloadError(null);
         setLoadedFromChannel(false);
         receivedTransportOrderIdsRef.current.clear();
         reset();
@@ -252,7 +207,6 @@ function SignPageContent() {
     // candidate set is the seller's OWN accepted array (their social layer),
     // minus the denomination itself; available only where the swap
     // composition is configured. The witness-signed leg is built at accept.
-    const swapContracts = resolveSwapFundingContracts();
     const { read: registration } = useMemberProfile(isSeller ? address : undefined);
     const ownMetadataURI = registration.status === "present" && registration.value.registered
         ? registration.value.metadataURI
@@ -267,46 +221,29 @@ function SignPageContent() {
             .catch(() => { /* absence — the funding panel simply doesn't render */ });
         return () => { canceled = true; };
     }, [ownMetadataURI]);
-    const sellerFundingCandidates = useMemo(
-        () => (swapContracts && approvalCurrency && isSeller
-            ? (ownProfile?.acceptedTokens ?? []).filter((t) => !hexEqual(t.address, approvalCurrency))
-            : []),
-        [swapContracts, approvalCurrency, isSeller, ownProfile],
-    );
-    const [sellerFundingToken, setSellerFundingToken] = useState<`0x${string}` | null>(null);
+    const swapFunding = useSwapFunding({
+        party: isSeller ? address : undefined,
+        currency: approvalCurrency,
+        acceptedTokens: ownProfile?.acceptedTokens,
+    });
+    const { candidates: sellerFundingCandidates, fundingToken: sellerFundingToken, setFundingToken: setSellerFundingToken } = swapFunding;
     // Progressive disclosure: the on-ramp is a TREASURY choice (which balance
     // gets locked — the denomination arrived chosen by the buyer or the pin),
     // collapsed on the common path so visibility never reads as expectation.
     // A seller SHORT of the denomination has no other way through accept, so
     // insufficiency auto-opens it.
     const [fundingOpen, setFundingOpen] = useState(false);
-    const { data: myDenominationBalance } = useReadContract({
-        address: approvalCurrency ?? undefined,
-        abi: ERC20_ABI,
-        functionName: "balanceOf",
-        args: address ? [address] : undefined,
-        query: { enabled: !!approvalCurrency && !!address && isSeller },
-    });
-    const permit2SellerFunding = useTokenApproval({
-        tokenAddress: sellerFundingToken ?? undefined,
-        owner: isSeller ? address : undefined,
-        spender: (swapContracts?.permit2 ?? ZERO_ADDRESS) as `0x${string}`,
-    });
+    const { read: myDenominationBalance } = useTokenBalance(approvalCurrency, isSeller ? address : undefined);
     // Where the chosen funding token stands with Permit2 — the one derived
     // state the funding panel shows and the counter-sign button obeys. A
     // counter-sign with a funding leg broadcasts swapAndCommit, which pulls
     // the token through Permit2 and reverts on an allowance that is short.
-    const sellerFunding = fundingAuthorization({
-        fundingToken: sellerFundingToken,
-        allowanceKnown: permit2SellerFunding.allowanceKnown && !permit2SellerFunding.isAllowanceRefetching,
-        needsApproval: permit2SellerFunding.needsApproval(myBondAmount),
-        isAuthorizing: permit2SellerFunding.isApprovePending || permit2SellerFunding.isApproveConfirming,
-    });
+    const sellerFunding = swapFunding.authorizationFor(myBondAmount);
     // A seller short of the denomination has no other way through accept —
     // insufficiency auto-opens the collapsed on-ramp.
     const sellerShortOfDenomination = isSeller
-        && myDenominationBalance !== undefined
-        && (myDenominationBalance as bigint) < myBondAmount;
+        && myDenominationBalance.status === "present"
+        && myDenominationBalance.value < myBondAmount;
     useEffect(() => {
         if (sellerShortOfDenomination && sellerFundingCandidates.length > 0) setFundingOpen(true);
     }, [sellerShortOfDenomination, sellerFundingCandidates.length]);
@@ -367,14 +304,14 @@ function SignPageContent() {
             {!parsed && !rawInput.trim() && !searchParams.get("payload") && address && (
                 <Card className="p-4 space-y-2">
                     <h2 className="text-sm font-semibold text-ink-primary">Secure Channel</h2>
-                    {channelStatus === "listening" && (
+                    {!channelError && inbox.status === "listening" && (
                         <p className="text-xs text-info-fg" data-testid="xmtp-commitment-channel-status">
                             Listening for incoming commitment payloads over XMTP…
                         </p>
                     )}
-                    {channelStatus === "error" && (
+                    {channelError && (
                         <p className="text-xs text-warning-fg" data-testid="xmtp-commitment-channel-status">
-                            {channelError ?? "Could not open the XMTP channel."}
+                            {channelError}
                         </p>
                     )}
                     <p className="text-xs text-ink-muted">
@@ -579,10 +516,10 @@ function SignPageContent() {
                                     fundingToken={sellerFundingToken}
                                     onSelect={setSellerFundingToken}
                                     authorization={sellerFunding}
-                                    onAuthorize={() => permit2SellerFunding.approve(maxUint256)}
+                                    onAuthorize={swapFunding.authorize}
                                 />
                             )}
-                            {fundingOpen && permit2SellerFunding.isApproveError && (
+                            {fundingOpen && swapFunding.authorizeFailed && (
                                 <p className="text-error-fg text-xs" data-testid="funding-authorize-error">
                                     The funding token was not authorized: the wallet refused it or the transaction reverted.
                                 </p>

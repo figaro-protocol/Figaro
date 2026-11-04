@@ -106,7 +106,9 @@ describe("the badge and the orders list agree", () => {
         }));
 
         render(<><YourTurnBadge /><OrdersList /></>);
-        await waitFor(() => expect(callbacks.length).toBe(4));
+        // One shared subscription serves the badge and both of the list's
+        // pending views; the channel is opened once for the wallet.
+        await waitFor(() => expect(callbacks.length).toBe(1));
         await act(async () => {
             for (const cb of callbacks) {
                 await cb(serializeCommitmentPayload(submitted), "order-submitted");

@@ -5,6 +5,7 @@ import Link from "@/components/shared/Link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { OnboardingLoadingCard } from "@/components/members/OnboardingStepChrome";
 import { HintedFieldList, type HintedFieldDef } from "@/components/ui/HintedFieldList";
 import { useMounted } from "@/hooks/useMounted";
 import {
@@ -96,7 +97,7 @@ export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
     }
 
     if (!mounted) {
-        return <Card className="p-6 text-sm text-ink-muted">Loading…</Card>;
+        return <OnboardingLoadingCard />;
     }
 
     return (
