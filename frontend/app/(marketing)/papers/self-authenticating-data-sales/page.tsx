@@ -169,7 +169,7 @@ export default function SelfAuthenticatingDataSalesPaper() {
                 </p>
             </PaperSection>
 
-            <PaperSection title="5. A Disclosure Regime Is a Registered Agreement's Fill">
+            <PaperSection title="5. A Disclosure Regime Is a Published Agreement's Fill">
                 <p>
                     The disclosure regime is fixed by the designer, as a fill of the published agreement that composes the disclosure term. An agreement&rsquo;s hash commits to every clause with the designer&rsquo;s fills. Two published agreements that differ only in their regime, one letting each party disclose its own copy and one letting either party publish, therefore have two different hashes. An assembly is identified by the agreements it composes, so an assembly built from one of them differs from the same design built from the other; it differs through the agreement, never as a version of a shared design.
                 </p>
