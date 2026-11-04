@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "@/components/shared/Link";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +11,7 @@ import { HintedFieldList, type HintedFieldDef } from "@/components/ui/HintedFiel
 import { useMounted } from "@/hooks/useMounted";
 import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
 import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
-import { finishStep, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
+import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
 /**
  * The agents step of the onboarding wizard. Collects ERC-8004-compatible
@@ -142,7 +141,7 @@ export function OnboardingAgentsForm({
     }
 
     if (!mounted) {
-        return <Card className="p-6 text-sm text-ink-muted">Loading…</Card>;
+        return <OnboardingLoadingCard />;
     }
 
 
@@ -189,17 +188,13 @@ export function OnboardingAgentsForm({
                 <p className="text-sm text-error-fg" role="alert">{externalError}</p>
             )}
 
-            <div className="flex items-center justify-between pt-4 border-t border-default">
-                <Link
-                    href={backHref ?? onboardingPrevHref("agents")}
-                    className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
-                >
-                    {backLabel ?? "← Back"}
-                </Link>
-                <Button type="submit" disabled={submitInFlight}>
-                    {submitInFlight ? "Saving…" : (submitLabel ?? "Next →")}
-                </Button>
-            </div>
+            <OnboardingStepFooter
+                backHref={backHref}
+                backLabel={backLabel}
+                submitLabel={submitLabel}
+                submitInFlight={submitInFlight}
+                defaultBackHref={onboardingPrevHref("agents")}
+            />
         </form>
     );
 }

@@ -3,6 +3,7 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import {
     usePendingSellerSignature,
+    useCommitmentPayloadInbox,
     awaitsMyCounterSign,
 } from "@/lib/checkout/orderPendingSellerSignature";
 import { RuntimeServicesProvider } from "@/lib/shared/runtimeServicesContext";
@@ -69,7 +70,7 @@ const PAYLOAD = {
 // so the callback receives the serialized body directly — no IPFS fetch.
 const inboundBody = JSON.stringify(PAYLOAD);
 
-// Captured subscription callbacks — one per mounted hook instance.
+// Captured subscription callbacks — one per opened subscription.
 let callbacks: Array<(payload: string, orderId: string) => Promise<void> | void>;
 
 function makeServices(): RuntimeServices {
@@ -180,5 +181,57 @@ describe("usePendingSellerSignature wallet-arrival resubscription", () => {
             for (const cb of callbacks) await cb(inboundBody, "order-2");
         });
         await waitFor(() => expect(h.result.current.pending).toHaveLength(1));
+    });
+});
+
+describe("one coordination-channel subscription shared by every consumer", () => {
+    it("the badge, the /orders sections and /sign open ONE subscription; each reads its own view of it", async () => {
+        const services = makeServices();
+        const w = wrapper(services);
+
+        const badge = renderHook(() => usePendingSellerSignature(awaitsMyCounterSign), { wrapper: w });
+        const orders = renderHook(() => usePendingSellerSignature(awaitsMyCounterSign), { wrapper: w });
+        const sign = renderHook(() => useCommitmentPayloadInbox(), { wrapper: w });
+
+        await waitFor(() => expect(sign.result.current.status).toBe("listening"));
+        expect(callbacks).toHaveLength(1);
+
+        // A signed order and an unsigned race draft arrive once each.
+        const draft = JSON.stringify({ ...PAYLOAD, buyerSig: undefined, commitment: { ...PAYLOAD.commitment, salt: "0x2" } });
+        await act(async () => {
+            await callbacks[0](inboundBody, "order-3");
+            await callbacks[0](draft, "order-4");
+        });
+
+        // /sign reads every party payload, the draft included; the pending
+        // views read the witnessed order.
+        await waitFor(() => {
+            expect(sign.result.current.entries.map((e) => e.orderId)).toEqual(["order-3", "order-4"]);
+            expect(badge.result.current.pending).toHaveLength(1);
+            expect(orders.result.current.pending).toHaveLength(1);
+        });
+    });
+
+    it("the last consumer to unmount closes the subscription", async () => {
+        const services = makeServices();
+        const closed = vi.fn();
+        const subscribe = vi.fn(({ callback }: { callback: (p: string, o: string) => void }) => {
+            callbacks.push(callback);
+            return Promise.resolve(closed);
+        });
+        services.handoffMessaging = { subscribeAnyCommitmentPayload: subscribe } as unknown as RuntimeServices["handoffMessaging"];
+        const w = wrapper(services);
+
+        const a = renderHook(() => usePendingSellerSignature(awaitsMyCounterSign), { wrapper: w });
+        const b = renderHook(() => useCommitmentPayloadInbox(), { wrapper: w });
+        await waitFor(() => expect(subscribe).toHaveBeenCalledTimes(1));
+
+        a.unmount();
+        await act(async () => { await Promise.resolve(); });
+        expect(closed).not.toHaveBeenCalled();
+
+        b.unmount();
+        await waitFor(() => expect(closed).toHaveBeenCalledTimes(1));
+        expect(subscribe).toHaveBeenCalledTimes(1);
     });
 });

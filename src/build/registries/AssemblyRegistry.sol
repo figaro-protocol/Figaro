@@ -56,7 +56,7 @@ pragma solidity 0.8.26;
 ///         flight. The in-flight count lives in the indexer (commits without
 ///         resolution, attributed by each order's decoded provenance), so
 ///         the gate is advisory: the SDK derives it and the frontend offers no
-///         reclaim while commits > resolves; `withdrawDeposit` checks none of it. `FigaroCore` never calls the registries
+///         reclaim while an open trade this wallet witnessed composes it or the gate cannot be read; `withdrawDeposit` checks none of it. `FigaroCore` never calls the registries
 ///         and carries no usage, so no contract can learn the count and there
 ///         is no on-chain hardening of this gate.
 ///

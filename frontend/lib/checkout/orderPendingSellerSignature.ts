@@ -9,12 +9,17 @@
  * read from the coordination channel (the single source of truth) via
  * `subscribeAnyCommitmentPayload`, never reconstructed from local state.
  *
- * Two surfaces consume this — the `/orders` page and the header turn-badge —
- * sharing one subscribe → fetch → deserialize → filter → accumulate path; they
- * diverge only in the `match` predicate the caller passes. A relayed payload
- * still reads single-signed after its order is committed, so the shared path
- * also drops every payload whose order is already on-chain
- * (`useIsUncommitted`): both surfaces count the same orders.
+ * The channel is read through ONE subscription for the connected wallet,
+ * shared by every consumer (`useCommitmentPayloadInbox`): it opens when the
+ * first consumer mounts and closes when the last unmounts. It keeps every
+ * payload this wallet is a party to and witnesses (signature-checks and pins)
+ * the signed ones once. The `/orders` page and the header turn-badge read the
+ * witnessed payloads through `usePendingSellerSignature`, diverging only in
+ * the `match` predicate the caller passes; `/sign` reads every party payload
+ * (an unsigned race draft included) while it listens. A relayed payload still
+ * reads single-signed after its order is committed, so the pending view also
+ * drops every payload whose order is already on-chain (`useIsUncommitted`):
+ * both pending surfaces count the same orders.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { create } from "zustand";
@@ -30,7 +35,10 @@ import { computeOrderHash, verifyCommitmentSignature, type CoreEvents } from "@f
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { getCoreEvents, useWatchOrderEvents } from "@/lib/kernel/indexer";
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
-import { type IpfsService } from "@/lib/shared/ipfsService";
+import { extractErrorMessage } from "@/lib/shared/errors";
+import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
+import type { RuntimeServices } from "@/lib/shared/runtimeServices";
+import type { WalletMessageSigner } from "@/lib/handoff/handoffMessagingService";
 import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro-protocol/sdk/agent";
 import type { Hex } from "viem";
 
@@ -90,38 +98,56 @@ export function awaitsMyBroadcast(p: CommitmentPayload, address: string): boolea
  * failed, and for a payload whose order hash cannot be computed: an order
  * whose chain state is unknown is not surfaced as pending.
  */
-export function useIsUncommitted(): (payload: CommitmentPayload) => boolean {
+export function useIsUncommitted(): { isUncommitted: (payload: CommitmentPayload) => boolean; known: boolean } {
     const publicClient = usePublicClient();
     const chainId = useChainId();
     const core = CONTRACTS.core as `0x${string}` | undefined;
     const enabled = !isE2EMockSession() && !!publicClient && !!chainId && !!core;
     const [committed, setCommitted] = useState<ReadonlySet<string> | null>(null);
+    const committedRef = useRef(committed);
+    committedRef.current = committed;
+    // Until a read lands nothing is known: a failed read is retried on the
+    // content schedule, and again on the next order event, which says the
+    // chain answers now. Neither the predicate nor `known` says "committed"
+    // for a read that failed.
+    const [tick, setTick] = useState(0);
+    const attempts = useRef(0);
 
     useEffect(() => {
         setCommitted(null);
         if (!enabled || !publicClient) return;
         let canceled = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
         getCoreEvents(publicClient, chainId)
             .then(({ events }) => {
-                if (!canceled) setCommitted(new Set(events.orderCommitted.map((e) => e.orderHash.toLowerCase())));
+                if (canceled) return;
+                attempts.current = 0;
+                setCommitted(new Set(events.orderCommitted.map((e) => e.orderHash.toLowerCase())));
             })
             .catch((err) => {
-                if (!canceled) console.warn("[useIsUncommitted] order read failed:", err);
+                if (canceled) return;
+                console.warn("[useIsUncommitted] order read failed:", err);
+                timer = setTimeout(() => setTick((t) => t + 1), contentRetryDelayMs(attempts.current++));
             });
         return () => {
             canceled = true;
+            if (timer !== undefined) clearTimeout(timer);
         };
-    }, [enabled, publicClient, chainId]);
+    }, [enabled, publicClient, chainId, tick]);
 
     const onEvents = useCallback((events: CoreEvents) => {
         if (events.orderCommitted.length === 0) return;
+        if (committedRef.current === null) {
+            setTick((t) => t + 1);
+            return;
+        }
         setCommitted((prev) =>
             prev ? new Set([...prev, ...events.orderCommitted.map((e) => e.orderHash.toLowerCase())]) : prev,
         );
     }, []);
     useWatchOrderEvents(onEvents, enabled);
 
-    return useCallback(
+    const isUncommitted = useCallback(
         (payload: CommitmentPayload) => {
             if (!committed || !core || !chainId) return false;
             try {
@@ -132,6 +158,9 @@ export function useIsUncommitted(): (payload: CommitmentPayload) => boolean {
         },
         [committed, core, chainId],
     );
+    // In a mock session nothing is read and nothing is owed: known.
+    const known = !enabled || committed !== null;
+    return useMemo(() => ({ isUncommitted, known }), [isUncommitted, known]);
 }
 
 /**
@@ -159,144 +188,241 @@ const useDismissedPending = create<DismissedPendingStore>((set) => ({
         }),
 }));
 
-/** A witnessed payload tagged with its coordination-channel order id. */
-interface PendingEntry {
+/** A payload received over the coordination channel for this wallet, which
+ *  is a party to it: the parsed payload, its serialized body, its channel
+ *  order id, and whether it was witnessed — at least one present signature
+ *  recovers to its named party and its agreement is pinned. */
+export interface InboxEntry {
     payload: CommitmentPayload;
+    json: string;
     orderId: string;
+    witnessed: boolean;
+}
+
+interface InboxState {
+    entries: readonly InboxEntry[];
+    /** `listening` once a consumer opened the channel; `error` when it could
+     *  not be opened, with the reason in `error`. */
+    status: "idle" | "listening" | "error";
+    error: string | null;
+}
+
+const IDLE_INBOX: InboxState = { entries: [], status: "idle", error: null };
+const useInboxStore = create<InboxState>(() => IDLE_INBOX);
+
+/** The one open subscription: its identity (wallet, wallet-client presence,
+ *  services) and how many consumers hold it. */
+let active: { key: string; address: string; holders: number; close: () => void } | null = null;
+/** The chain id the witness check reads at callback time, kept current by the
+ *  consumers (a chain switch must not re-subscribe). */
+let liveChainId: number | undefined;
+const servicesIds = new WeakMap<object, number>();
+let nextServicesId = 0;
+function servicesId(services: object): number {
+    let id = servicesIds.get(services);
+    if (id === undefined) {
+        id = nextServicesId++;
+        servicesIds.set(services, id);
+    }
+    return id;
+}
+
+function addEntry(entry: InboxEntry): boolean {
+    const { entries } = useInboxStore.getState();
+    if (entries.some((e) => e.orderId === entry.orderId && e.json === entry.json)) return false;
+    useInboxStore.setState({ entries: [...entries, entry] });
+    return true;
+}
+
+function markWitnessed(entry: InboxEntry): void {
+    useInboxStore.setState((state) => ({
+        entries: state.entries.map((e) => (e === entry ? { ...e, witnessed: true } : e)),
+    }));
+}
+
+/** Witness a party payload: a present signature must recover to its named
+ *  party, then the agreement is pinned. Throws or returns false when not. */
+async function witness(payload: CommitmentPayload, services: RuntimeServices): Promise<boolean> {
+    if (!payload.commitment?.buyer || !payload.commitment?.seller) return false;
+    // `isCommitmentParty` reads the sender-controlled buyer/seller
+    // fields, so it alone lets a TARGETED attacker who simply NAMES
+    // this wallet cause an ≤8 MB pin
+    // (pin-amplification). Require a REAL signature: at least one
+    // present signature must recover to its named party — proving a
+    // genuine counterparty signed, not fabricated JSON. This keeps
+    // both legitimate legs pinning (an outbound order carries this
+    // wallet's OWN signature; an inbound one carries the
+    // counterparty's) while dropping unsigned/forged payloads.
+    const core = CONTRACTS.core;
+    const cid = liveChainId;
+    const recovers = async (sig: string | undefined, party: string) =>
+        !!sig && !!core && !!cid
+        && await verifyCommitmentSignature(
+            payload.commitment, sig as Hex, party as Hex, { chainId: cid, core },
+        ).catch(() => false);
+    const signedByAParty =
+        (await recovers(payload.buyerSig, payload.commitment.buyer))
+        || (await recovers(payload.sellerSig, payload.commitment.seller));
+    if (!signedByAParty) return false;
+    // Persist the witnessed-URI pointer (+ standalone agreement
+    // pin) for every payload where this wallet IS a party — it
+    // witnessed the order, so its order/audit pages must be able to
+    // hydrate the agreement by hash after a fresh navigation. Before
+    // any consumer's filter: a party witnesses inbound AND outbound orders.
+    await publishAgreement(payload.agreement, { evidenceTransport: services.evidenceTransport });
+    return true;
+}
+
+function open(address: string, walletClient: WalletMessageSigner | null, services: RuntimeServices): () => void {
+    let canceled = false;
+    let unsubscribe: (() => void) | null = null;
+    const isMock = isE2EMockSession();
+    useInboxStore.setState({ status: "listening", error: null });
+
+    void services.handoffMessaging
+        .subscribeAnyCommitmentPayload({
+            address,
+            walletClient,
+            callback: async (payloadJson, orderId) => {
+                if (canceled) return;
+                try {
+                    // The payload arrives INLINE over the E2E-encrypted
+                    // coordination channel (audit F Arm 2), not IPFS — no
+                    // fetch. Cap its size defensively: a counterparty's inbox
+                    // can deliver an oversize message; oversize → ignored.
+                    if (new TextEncoder().encode(payloadJson).length > MAX_COMMITMENT_PAYLOAD_BYTES) return;
+                    const payload = deserializeCommitmentPayload(payloadJson);
+                    // The subscription is wallet-wide and the transport may not
+                    // be addressed (the mock bus broadcasts): keep only payloads
+                    // this wallet could ever act on — it must be a party. GATE
+                    // the pin behind it too: `COMMITMENT_PAYLOAD` is
+                    // unauthenticated, so a stranger's inbox can deliver one, and
+                    // pinning it to THIS wallet's own IPFS node before checking
+                    // involvement is a pin-to-stranger's-node +
+                    // storage-amplification primitive (finding 2).
+                    if (!payload.commitment || !isCommitmentParty(payload, address)) return;
+                    const entry: InboxEntry = { payload, json: payloadJson, orderId, witnessed: false };
+                    if (!addEntry(entry)) return;
+                    // `?e2e=mock` sessions commit immediately and bypass the
+                    // channel: nothing is witnessed or pinned there.
+                    if (isMock) return;
+                    if (await witness(payload, services)) markWitnessed(entry);
+                } catch {
+                    // Malformed payload or a failed pin — not witnessed.
+                }
+            },
+        })
+        .then((close) => {
+            if (canceled) close();
+            else unsubscribe = close;
+        })
+        .catch((err) => {
+            if (canceled) return;
+            useInboxStore.setState({ status: "error", error: extractErrorMessage(err, "Could not open the XMTP channel.") });
+        });
+
+    return () => {
+        canceled = true;
+        unsubscribe?.();
+    };
+}
+
+/** Hold the shared subscription for `address`; returns the release. The last
+ *  release closes it after the current commit, so a consumer whose effect
+ *  re-runs (the wallet client arriving) hands it over without a gap. */
+function hold(address: string, walletClient: WalletMessageSigner | null, services: RuntimeServices): () => void {
+    const key = `${address.toLowerCase()}|${walletClient ? "signer" : "none"}|${servicesId(services)}`;
+    if (active?.key === key) {
+        active.holders += 1;
+    } else {
+        if (active) {
+            active.close();
+            if (!hexEqual(active.address, address)) useInboxStore.setState({ entries: [] });
+        }
+        active = { key, address, holders: 1, close: open(address, walletClient, services) };
+    }
+    const held = active;
+    let released = false;
+    return () => {
+        if (released) return;
+        released = true;
+        held.holders -= 1;
+        if (held.holders > 0) return;
+        queueMicrotask(() => {
+            if (active !== held || held.holders > 0) return;
+            held.close();
+            active = null;
+            useInboxStore.setState(IDLE_INBOX);
+        });
+    };
 }
 
 /**
- * Subscribe to relayed payloads for the connected wallet, keeping those that
- * satisfy `match` and whose order is not yet on-chain (`useIsUncommitted`).
- * Returns the accumulated `pending` list plus `dismiss(index)`.
- * Dismissal is shared across every hook instance through a singleton store, so
- * accepting/dismissing on one surface immediately clears it everywhere.
- * Suppressed in `?e2e=mock` sessions (mock orders commit immediately and bypass
- * the channel).
+ * The connected wallet's coordination-channel inbox, read through the ONE
+ * shared subscription: every payload this wallet is a party to, in arrival
+ * order, and the channel's status. `enabled: false` reads the inbox without
+ * holding the subscription open.
+ */
+export function useCommitmentPayloadInbox(enabled = true): InboxState {
+    const { address } = useAccount();
+    const { data: walletClient } = useWalletClient();
+    const chainId = useChainId();
+    const services = useRuntimeServices();
+    useEffect(() => {
+        liveChainId = chainId;
+    }, [chainId]);
+
+    // The real-XMTP channel can only be CREATED with the wallet signer, and
+    // wagmi resolves `walletClient` asynchronously — a subscription opened
+    // before it resolves fails channel creation and would stay silently dead
+    // (the badge-vs-orders-list divergence the relay smoke caught). So the
+    // subscription is re-opened when the wallet arrives, never on every
+    // render in between.
+    const walletClientRef = useRef<WalletMessageSigner | null>(walletClient ?? null);
+    walletClientRef.current = walletClient ?? null;
+    const hasWalletClient = !!walletClient;
+
+    useEffect(() => {
+        if (!enabled || !address) return;
+        return hold(address, walletClientRef.current, services);
+    }, [enabled, address, hasWalletClient, services]);
+
+    return useInboxStore();
+}
+
+/**
+ * The witnessed payloads for the connected wallet that satisfy `match` and
+ * whose order is not yet on-chain (`useIsUncommitted`), one per channel order
+ * id. Returns the `pending` list plus `dismiss(index)`. Dismissal is shared
+ * across every hook instance through a singleton store, so accepting /
+ * dismissing on one surface immediately clears it everywhere. Suppressed in
+ * `?e2e=mock` sessions (mock orders commit immediately and bypass the
+ * channel).
  */
 export function usePendingSellerSignature(
     match: (payload: CommitmentPayload, address: string) => boolean,
 ): { pending: CommitmentPayload[]; dismiss: (index: number) => void } {
     const { address } = useAccount();
-    const { data: walletClient } = useWalletClient();
-    const chainId = useChainId();
-    const services = useRuntimeServices();
-    // Read at callback time without re-subscribing (mirrors walletClientRef).
-    const chainIdRef = useRef(chainId);
-    chainIdRef.current = chainId;
-
-    const [entries, setEntries] = useState<PendingEntry[]>([]);
+    const isMock = isE2EMockSession();
+    const { entries } = useCommitmentPayloadInbox(!isMock);
     const dismissed = useDismissedPending((s) => s.dismissed);
     const dismissOrder = useDismissedPending((s) => s.dismissOrder);
-    const receivedOrderIds = useRef<Set<string>>(new Set());
-    const subscribed = useRef(false);
-    const isMock = isE2EMockSession();
-    const isUncommitted = useIsUncommitted();
-
-    // Keep the latest predicate without re-subscribing — callers pass an inline
-    // closure, but the subscription effect runs only on `address` (and wallet
-    // availability, below).
-    const matchRef = useRef(match);
-    matchRef.current = match;
-
-    // The real-XMTP channel can only be CREATED with the wallet signer, and
-    // wagmi resolves `walletClient` asynchronously — an instance whose effect
-    // runs before it resolves fails channel creation and would stay silently
-    // dead (the badge-vs-orders-list divergence the relay smoke caught). So
-    // the effect also re-runs when the wallet arrives; the ref keeps the
-    // effect from re-subscribing on every render in between.
-    const walletClientRef = useRef(walletClient);
-    walletClientRef.current = walletClient;
-    const hasWalletClient = !!walletClient;
-
-    useEffect(() => {
-        if (isMock || !address || subscribed.current) return;
-        subscribed.current = true;
-        let cleanup: (() => void) | null = null;
-        let canceled = false;
-
-        void services.handoffMessaging
-            .subscribeAnyCommitmentPayload({
-                address,
-                walletClient: walletClientRef.current ?? null,
-                callback: async (payloadJson, orderId) => {
-                    if (canceled || receivedOrderIds.current.has(orderId)) return;
-                    try {
-                        // The payload arrives INLINE over the E2E-encrypted
-                        // coordination channel (audit F Arm 2), not IPFS — no
-                        // fetch. Cap its size defensively: a counterparty's inbox
-                        // can deliver an oversize message; oversize → ignored.
-                        if (new TextEncoder().encode(payloadJson).length > MAX_COMMITMENT_PAYLOAD_BYTES) return;
-                        const payload = deserializeCommitmentPayload(payloadJson);
-                        if (canceled) return;
-                        if (!payload.commitment?.buyer || !payload.commitment?.seller) return;
-                        // GATE the pin behind party membership. `COMMITMENT_PAYLOAD`
-                        // is unauthenticated, so a stranger's inbox can deliver one;
-                        // pinning it to THIS wallet's own IPFS node before checking
-                        // involvement is a pin-to-stranger's-node + storage-amplification
-                        // primitive (finding 2). A NON-party has no witness claim to
-                        // hydrate later, so it has no reason to pin.
-                        if (!isCommitmentParty(payload, address)) return;
-                        // `isCommitmentParty` reads the sender-controlled buyer/seller
-                        // fields, so it alone lets a TARGETED attacker who simply NAMES
-                        // this wallet cause an ≤8 MB pin
-                        // (pin-amplification). Require a REAL signature: at least one
-                        // present signature must recover to its named party — proving a
-                        // genuine counterparty signed, not fabricated JSON. This keeps
-                        // both legitimate legs pinning (an outbound order carries this
-                        // wallet's OWN signature; an inbound one carries the
-                        // counterparty's) while dropping unsigned/forged payloads.
-                        const core = CONTRACTS.core;
-                        const cid = chainIdRef.current;
-                        const recovers = async (sig: string | undefined, party: string) =>
-                            !!sig && !!core && !!cid
-                            && await verifyCommitmentSignature(
-                                payload.commitment, sig as Hex, party as Hex, { chainId: cid, core },
-                            ).catch(() => false);
-                        const signedByAParty =
-                            (await recovers(payload.buyerSig, payload.commitment.buyer))
-                            || (await recovers(payload.sellerSig, payload.commitment.seller));
-                        if (!signedByAParty) return;
-                        // Persist the witnessed-URI pointer (+ standalone agreement
-                        // pin) for every payload where this wallet IS a party — it
-                        // witnessed the order, so its order/audit pages must be able to
-                        // hydrate the agreement by hash after a fresh navigation. Before
-                        // the `match` filter: a party witnesses inbound AND outbound orders.
-                        await publishAgreement(payload.agreement, { evidenceTransport: services.evidenceTransport });
-                        if (!matchRef.current(payload, address)) return;
-                        receivedOrderIds.current.add(orderId);
-                        setEntries((prev) => [...prev, { payload, orderId }]);
-                    } catch {
-                        // Malformed payload or IPFS fetch failure — ignore.
-                    }
-                },
-            })
-            .then((unsubscribe) => {
-                if (canceled) {
-                    unsubscribe();
-                    return;
-                }
-                cleanup = unsubscribe;
-            })
-            .catch(() => {
-                // Coordination messaging unavailable — silent.
-            });
-
-        return () => {
-            canceled = true;
-            cleanup?.();
-            subscribed.current = false;
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [address, hasWalletClient]);
+    const { isUncommitted } = useIsUncommitted();
 
     // Hide entries dismissed (or accepted) on ANY instance — the shared store
     // is the single source of that decision — and entries whose order is
     // already on-chain. `pending`/`dismiss` index into this visible list.
-    const visible = useMemo(
-        () => entries.filter((e) => !dismissed.has(e.orderId) && isUncommitted(e.payload)),
-        [entries, dismissed, isUncommitted],
-    );
+    const visible = useMemo(() => {
+        if (isMock || !address) return [];
+        const kept = new Set<string>();
+        const matched: InboxEntry[] = [];
+        for (const e of entries) {
+            if (!e.witnessed || kept.has(e.orderId) || !match(e.payload, address)) continue;
+            kept.add(e.orderId);
+            matched.push(e);
+        }
+        return matched.filter((e) => !dismissed.has(e.orderId) && isUncommitted(e.payload));
+    }, [isMock, address, entries, match, dismissed, isUncommitted]);
     const pending = useMemo(() => visible.map((e) => e.payload), [visible]);
 
     const dismiss = useCallback(
@@ -309,4 +435,3 @@ export function usePendingSellerSignature(
 
     return { pending, dismiss };
 }
-

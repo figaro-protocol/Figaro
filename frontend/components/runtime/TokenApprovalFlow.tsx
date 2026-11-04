@@ -3,12 +3,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount, useReadContract } from "wagmi";
-import { ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";
+import { useAccount } from "wagmi";
+import { CONTRACTS } from "@/lib/kernel/contracts";
 import { handleOrderSurfaceFailure } from "@/lib/shared/orderSurfaceActions";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
-import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import useTokenBalance from "@/hooks/useTokenBalance";
 import { tokenFigure } from "@/lib/shared/utils";
 import { Button } from "@/components/ui/Button";
 
@@ -32,13 +32,8 @@ export function TokenApprovalFlow({
 }: TokenApprovalProps) {
     const { address } = useAccount();
     const { decimals } = useTokenDecimals(tokenAddress);
-    const { data: tokenBalance } = useReadContract({
-        address: tokenAddress,
-        abi: ERC20_ABI,
-        functionName: "balanceOf",
-        args: [(address ?? ZERO_ADDRESS) as `0x${string}`],
-        query: { enabled: !!address && !!tokenAddress },
-    });
+    const { read: balanceRead } = useTokenBalance(tokenAddress, address);
+    const tokenBalance = balanceRead.status === "present" ? balanceRead.value : undefined;
     const {
         allowance,
         needsApproval,
@@ -55,7 +50,7 @@ export function TokenApprovalFlow({
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [completionSent, setCompletionSent] = useState(false);
 
-    const balance = (tokenBalance as bigint | undefined) ?? 0n;
+    const balance = tokenBalance ?? 0n;
     const currentAllowance = allowance ?? 0n;
     const isChecking = !!address && (tokenBalance === undefined || allowance === undefined);
     const hasInsufficientBalance = !isChecking && !fundedAtCommit && balance < requiredAmount;

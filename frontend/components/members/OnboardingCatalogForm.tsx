@@ -12,7 +12,7 @@ import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
-import { finishStep, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
+import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 import { useMounted } from "@/hooks/useMounted";
 import {
     onboardingNextHref,
@@ -338,7 +338,7 @@ export function OnboardingCatalogForm({
     }
 
     if (!mounted) {
-        return <Card className="p-6 text-sm text-ink-muted">Loading…</Card>;
+        return <OnboardingLoadingCard />;
     }
 
 
@@ -460,17 +460,13 @@ export function OnboardingCatalogForm({
                 <p className="text-sm text-error-fg" role="alert">{externalError}</p>
             )}
 
-            <div className="flex items-center justify-between pt-4 border-t border-default">
-                <Link
-                    href={backHref ?? onboardingPrevHref("catalog")}
-                    className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
-                >
-                    {backLabel ?? "← Back"}
-                </Link>
-                <Button type="submit" disabled={submitInFlight}>
-                    {submitInFlight ? "Saving…" : (submitLabel ?? "Next →")}
-                </Button>
-            </div>
+            <OnboardingStepFooter
+                backHref={backHref}
+                backLabel={backLabel}
+                submitLabel={submitLabel}
+                submitInFlight={submitInFlight}
+                defaultBackHref={onboardingPrevHref("catalog")}
+            />
         </form>
     );
 }

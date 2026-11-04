@@ -9,7 +9,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 
 const ADDRESS = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as const;
 // One client object across renders, as wagmi returns: the readers key their effects on it.
-const mocks = vi.hoisted(() => ({ coreEvents: vi.fn(), client: { chain: { id: 31337 } } }));
+const mocks = vi.hoisted(() => ({ coreEvents: vi.fn(), client: { chain: { id: 31337 } }, uncommittedKnown: true }));
 
 vi.mock("wagmi", () => ({
     useAccount: () => ({ address: ADDRESS, isConnected: true }),
@@ -31,7 +31,7 @@ vi.mock("@/lib/checkout/orderPendingSellerSignature", () => ({
     awaitsMyCounterSign: () => false,
     awaitsCounterpartySignature: () => false,
     awaitsMyBroadcast: () => false,
-    useIsUncommitted: () => () => true,
+    useIsUncommitted: () => ({ isUncommitted: () => true, known: mocks.uncommittedKnown }),
 }));
 vi.mock("@/lib/checkout/orderCommitmentFlow", () => ({
     useOrderCommitmentFlow: () => ({ acceptOrder: vi.fn(), commitOrder: vi.fn(), error: null, reset: vi.fn(), step: "idle" }),
@@ -52,6 +52,20 @@ describe("OrdersList — a failed order read renders nothing for the orders", ()
         expect(screen.queryByTestId("orders-empty")).toBeNull();
         expect(document.body.textContent).not.toMatch(/haven.t placed or received any orders/);
         expect(screen.queryByTestId("orders-active-empty")).toBeNull();
+    });
+
+    it("the pending predicate's own read failed: the orders answered, the pending state did not, so no empty state either", async () => {
+        mocks.uncommittedKnown = false;
+        try {
+            mocks.coreEvents.mockResolvedValue({ events: { orderCommitted: [], orderResolved: [], processResolved: [] }, committedLogs: [] });
+            render(<OrdersList />);
+            await waitFor(() => expect(mocks.coreEvents).toHaveBeenCalled());
+            await new Promise((r) => setTimeout(r, 30));
+            expect(screen.queryByTestId("orders-empty")).toBeNull();
+            expect(document.body.textContent).not.toMatch(/haven.t placed or received any orders/);
+        } finally {
+            mocks.uncommittedKnown = true;
+        }
     });
 
     it("a wallet with no orders the chain returned does get the plain empty state", async () => {

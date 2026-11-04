@@ -133,9 +133,12 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
  * the registry append, which must never unmount a live canvas.
  */
 export function DesignerCanvas({ seed }: { seed: DesignerSeed }) {
-    const { loaded } = useClauseSpecs();
+    const { loaded, failed } = useClauseSpecs();
     const everLoadedRef = useRef(false);
     if (loaded) everLoadedRef.current = true;
+    // A failed registry read renders nothing: no canvas, and no loading line
+    // for a read that is not in flight.
+    if (failed && !everLoadedRef.current) return null;
     if (!everLoadedRef.current) {
         return (
             <p className="text-sm text-ink-muted" data-testid="designer-specs-loading">

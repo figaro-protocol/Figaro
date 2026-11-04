@@ -13,11 +13,11 @@
 
 import Link from "@/components/shared/Link";
 import { useEffect, useState } from "react";
-import { useAccount, usePublicClient } from "wagmi";
+import { useAccount } from "wagmi";
 import { useViewedWallet } from "@/lib/shared/viewedWallet";
 import { tokenFigure } from "@/lib/shared/utils";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
-import { FLORIN_TOKEN_ABI } from "@figaro-protocol/sdk";
+import useTokenBalance from "@/hooks/useTokenBalance";
 import { Button } from "@/components/ui/Button";
 import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
 import { useRpgfRewards, type RpgfPeriodState } from "@/lib/composition/useRpgfRewards";
@@ -55,30 +55,20 @@ export function RewardsView() {
     // Re-renders as clause specs load from the registry, so a clause row
     // names its spec once the spec is here.
     useClauseSpecs();
-    const publicClient = usePublicClient();
     const { decimals: florinDecimals } = useTokenDecimals(CONTRACTS.florinToken as `0x${string}` | undefined);
     const [busy, setBusy] = useState<string | null>(null);
     const [error, setError] = useState("");
-    const [florinBalance, setFlorinBalance] = useState<bigint | null>(null);
-
+    // The florin balance, read again whenever the rewards read is (a claim
+    // moves both).
+    const { read: florinRead, refetch: refetchFlorin } = useTokenBalance(
+        CONTRACTS.florinToken as `0x${string}` | undefined,
+        account,
+    );
+    const florinBalance = florinRead.status === "present" ? florinRead.value : null;
     useEffect(() => {
-        if (!publicClient || !account || !CONTRACTS.florinToken) return;
-        let canceled = false;
-        publicClient
-            .readContract({
-                address: CONTRACTS.florinToken,
-                abi: FLORIN_TOKEN_ABI,
-                functionName: "balanceOf",
-                args: [account],
-            })
-            .then((v) => {
-                if (!canceled) setFlorinBalance(v as bigint);
-            })
-            .catch(() => {});
-        return () => {
-            canceled = true;
-        };
-    }, [publicClient, account, rewards.read]);
+        refetchFlorin();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rewards.read]);
 
     // No whole-view mounted gate: everything above the WalletGate children is
     // hydration-stable (config-derived `available`, static prose), and

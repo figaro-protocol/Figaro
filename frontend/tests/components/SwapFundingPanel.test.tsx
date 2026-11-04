@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import {
-    SwapFundingPanel,
-    fundingAuthorization,
-    fundingBlocksTheAct,
-} from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
+import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
+import { fundingAuthorization, fundingBlocksTheAct } from "@/lib/composition/useSwapFunding";
 
 const TOKEN = "0x1111111111111111111111111111111111111111" as const;
 const PARTY = "0x2222222222222222222222222222222222222222" as const;

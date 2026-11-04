@@ -57,7 +57,7 @@ pragma solidity 0.8.26;
 ///         commit, so the in-flight count lives in the indexer (commits without
 ///         resolution, attributed by each order's decoded provenance) and the
 ///         gate is advisory: the SDK derives it, the frontend offers no
-///         reclaim, and `withdrawDeposit` checks none of it.
+///         reclaim while an open trade this wallet witnessed composes it or the gate cannot be read, and `withdrawDeposit` checks none of it.
 ///
 ///         The designer of record is first-write-wins on the agreementHash:
 ///         whoever anchors a composition first is its designer of record.

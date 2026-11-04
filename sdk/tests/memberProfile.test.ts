@@ -79,6 +79,26 @@ describe("member profile metadata parser", () => {
             })).toThrow(/acceptedTokens\[0\]\.address must be a 20-byte hex address/);
         });
 
+        it("keeps a transport it does not know and skips a value that is not an endpoint string, without failing the profile", () => {
+            // The transport set is open (docs/OPEN_WORLD.md § 1): a key this
+            // runtime never saw is kept when its value is an endpoint; a value
+            // of another shape is skipped, never a reason to drop the member.
+            const result = parseMemberProfileDocument({
+                name: "Bob",
+                services: {
+                    mcp: "https://example.com/mcp",
+                    nostr: { relay: "wss://relay.example", npub: "npub1example" },
+                    xmtp: null,
+                    matrix: "https://matrix.example",
+                },
+            });
+
+            expect(result.services?.mcp).toBe("https://example.com/mcp");
+            expect(result.services?.matrix).toBe("https://matrix.example");
+            expect(result.services?.nostr).toBeUndefined();
+            expect(result.services?.xmtp).toBeUndefined();
+        });
+
         it("throws when services is not an object", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",

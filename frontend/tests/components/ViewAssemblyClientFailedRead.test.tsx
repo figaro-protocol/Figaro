@@ -25,12 +25,12 @@ vi.mock("wagmi", () => ({
     useChainId: () => 31337,
     usePublicClient: () => CLIENT,
 }));
-vi.mock("@/lib/kernel/eventCache", () => ({
-    cachedGetContractEvents: async () => [{ args: { assemblyHash: HASH, contentURI: "ipfs://a", registeredBy: AUTHOR } }],
-}));
+// The one registry reader answers with the registration the slug derives from.
+const PUBLISHED = vi.hoisted(() => ({ value: null as unknown }));
 vi.mock("@/lib/protocol/useAssemblyRegistry", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/protocol/useAssemblyRegistry")>()),
     getAssemblyRegistry: () => "0x3333333333333333333333333333333333333333",
+    usePublishedAssemblies: () => PUBLISHED.value,
     fetchHydratedAssembly: async () => ({ assembly: { name: "Point of sale", agreements: [] }, agreements: {} }),
     useWithdrawAssembly: () => ({ withdraw: vi.fn() }),
 }));
@@ -46,6 +46,11 @@ vi.mock("@/components/runtime/TopologyCanvas", () => ({ TopologyCanvas: () => nu
 vi.mock("@/app/(tools)/assemblies/designer/_components/AgreementDrawer", () => ({ AgreementDrawer: () => null }));
 vi.mock("@/app/(tools)/assemblies/designer/_components/AssemblyTermsPanel", () => ({ AssemblyTermsPanel: () => null }));
 vi.mock("@/app/(tools)/assemblies/designer/_components/AssemblyIdentity", () => ({ AssemblyIdentity: () => null }));
+
+PUBLISHED.value = {
+    read: { status: "present", value: [{ slug: SLUG, assemblyHash: HASH, contentURI: "ipfs://a", registeredBy: AUTHOR, stakeWithdrawn: false }] },
+    refetch: () => undefined,
+};
 
 import { ViewAssemblyClient } from "@/app/(tools)/assemblies/designer/view/ViewAssemblyClient";
 

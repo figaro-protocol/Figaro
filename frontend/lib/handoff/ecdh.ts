@@ -50,7 +50,13 @@ export function getOrCreateOrderEcdhKeypair(
 
     const kp = generateOrderKeypair();
     store[key] = { ...kp, createdAt: Date.now() };
-    writeJsonStorage(ECDH_KEYS_STORAGE_KEY, store, "session");
+    // The key must outlive this call: the counterparty wraps a secret for the
+    // public half, and the private half is read back to unwrap it. A write the
+    // browser refuses (quota, a blocked store) fails the ceremony here, before
+    // any public key is sent, never later as a silent null.
+    if (!writeJsonStorage(ECDH_KEYS_STORAGE_KEY, store, "session")) {
+        throw new Error("The hand-off key could not be kept in this browser's session storage.");
+    }
     return kp;
 }
 

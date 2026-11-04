@@ -1,4 +1,7 @@
 import { useCallback, useState } from "react";
+import Link from "@/components/shared/Link";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 /**
  * The chrome every wizard-step form in `components/members/Onboarding*Form.tsx`
@@ -18,6 +21,45 @@ export interface OnboardingStepChromeProps {
     submitInFlight?: boolean;
     /** External error from `onSave` to render alongside the form's own validation summary. */
     externalError?: string | null;
+}
+
+/** The card a wizard-step form renders before it has mounted (its draft is
+ *  read from this browser's storage only after hydration). */
+export function OnboardingLoadingCard() {
+    return <Card className="p-6 text-sm text-ink-muted">Loading…</Card>;
+}
+
+/**
+ * The footer row every wizard-step form shares: the back link (the caller's
+ * `backHref`, else the step's `defaultBackHref`; label "← Back" unless
+ * overridden) and the submit button ("Next →" unless overridden, "Saving…"
+ * and disabled while the submit is in flight). `divided` draws the rule above
+ * the row; a form that draws the rule over a wider footer passes false.
+ */
+export function OnboardingStepFooter({
+    backHref,
+    backLabel,
+    submitLabel,
+    submitInFlight,
+    defaultBackHref,
+    divided = true,
+}: Pick<OnboardingStepChromeProps, "backHref" | "backLabel" | "submitLabel" | "submitInFlight"> & {
+    defaultBackHref: string;
+    divided?: boolean;
+}) {
+    return (
+        <div className={`flex items-center justify-between${divided ? " pt-4 border-t border-default" : ""}`}>
+            <Link
+                href={backHref ?? defaultBackHref}
+                className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
+            >
+                {backLabel ?? "← Back"}
+            </Link>
+            <Button type="submit" disabled={submitInFlight}>
+                {submitInFlight ? "Saving…" : (submitLabel ?? "Next →")}
+            </Button>
+        </div>
+    );
 }
 
 /**

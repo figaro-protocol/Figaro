@@ -6,8 +6,9 @@
  *
  *   1. localStorage draft (loadNamedDraft) — work-in-progress in this
  *      browser.
- *   2. On-chain published assembly — AssemblyRegistered event filtered
- *      by its derived slug (a pure function of the indexed assemblyHash),
+ *   2. On-chain published assembly — the registry reader's registration
+ *      (`usePublishedAssemblies`, withdrawn stakes included) matched by its
+ *      derived slug (a pure function of the indexed assemblyHash),
  *      then the assembly fetched from IPFS via contentURI and verified
  *      against the anchored assemblyHash, and every agreement's
  *      registered agreement read from AgreementRegistry by key and verified
@@ -38,10 +39,9 @@
 
 import Link from "@/components/shared/Link";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAccount, useChainId, usePublicClient } from "wagmi";
-import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
+import { useAccount, usePublicClient } from "wagmi";
 import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
 import { Button } from "@/components/ui/Button";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
@@ -57,6 +57,7 @@ import { ASSEMBLY_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import {
     fetchHydratedAssembly,
     getAssemblyRegistry,
+    usePublishedAssemblies,
     useWithdrawAssembly,
 } from "@/lib/protocol/useAssemblyRegistry";
 import { readNetwork } from "@/lib/shared/networkRead";
@@ -102,7 +103,6 @@ type ResolvedSource =
 export function ViewAssemblyClient({ slug }: { slug: string }) {
     const router = useRouter();
     const client = usePublicClient();
-    const chainId = useChainId();
     const searchParams = useSearchParams();
     const isPublishReview = searchParams.get("intent") === "publish";
     /** Hint set by the publish-receipt's "Open public read-only view" link.
@@ -144,7 +144,12 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     // clause specs; the on-chain resolution path below waits for the cache
     // (the `useClauseSpecs` contract). Drafts don't build, so they resolve
     // immediately regardless.
-    const { loaded: clauseSpecsLoaded, version: clauseSpecsVersion } = useClauseSpecs();
+    const { loaded: clauseSpecsLoaded, failed: clauseSpecsFailed, version: clauseSpecsVersion } = useClauseSpecs();
+    // Every registration, withdrawn stakes included (this page shows a
+    // withdrawn assembly with its reclaimed stake), through the one registry
+    // reader; `retry` counts the post-publish re-reads for the current slug.
+    const { read: publishedRead, refetch: refetchPublished } = usePublishedAssemblies(undefined, { includeWithdrawn: true });
+    const retry = useRef<{ slug: string; attempt: number }>({ slug, attempt: 0 });
 
     useEffect(() => {
         // Local draft first — more current than any on-chain snapshot.
@@ -162,100 +167,85 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         // Spec gate — hold the on-chain resolution (it ends in assemblyToOrders)
         // until the clause-spec cache is warm; `resolved` stays "loading".
         if (!clauseSpecsLoaded) return;
+        // The registry scan in flight: `resolved` stays "loading". A scan
+        // that FAILED is terminal and renders nothing — no retry through a
+        // 500 from the provider.
+        if (publishedRead.status === "pending") return;
+        if (publishedRead.status === "absent") {
+            setResolved({ kind: "absent" });
+            return;
+        }
+        if (retry.current.slug !== slug) retry.current = { slug, attempt: 0 };
+        // The slug is not on-chain — it is derived from the indexed
+        // assemblyHash, so resolution finds the registration whose derived
+        // slug matches.
+        const row = publishedRead.value.find((r) => r.slug === slug);
+        if (!row) {
+            // Backoff schedule for the post-publish indexer race. Single-shot
+            // for cold loads (justPublished=false) so non-existent slugs 404
+            // fast. Bounded total wait ~3.75s — past that we give up rather
+            // than block the page indefinitely on a misfiring provider.
+            const backoffsMs = justPublished ? [0, 250, 500, 1000, 2000] : [0];
+            const next = retry.current.attempt + 1;
+            if (next >= backoffsMs.length) {
+                setResolved({ kind: "notFound", slug });
+                return;
+            }
+            const timer = setTimeout(() => {
+                retry.current = { slug, attempt: next };
+                refetchPublished();
+            }, backoffsMs[next]);
+            return () => clearTimeout(timer);
+        }
 
         let canceled = false;
-
-        // Backoff schedule for the post-publish indexer race. Single-shot
-        // for cold loads (justPublished=false) so non-existent slugs 404
-        // fast. Bounded total wait ~3.75s — past that we give up rather
-        // than block the page indefinitely on a misfiring provider.
-        const backoffsMs = justPublished ? [0, 250, 500, 1000, 2000] : [0];
-
         (async () => {
-            for (let attempt = 0; attempt < backoffsMs.length; attempt += 1) {
+            try {
+                const hydratedAssembly = await fetchHydratedAssembly(row.contentURI, row.assemblyHash);
                 if (canceled) return;
-                if (backoffsMs[attempt] > 0) {
-                    await new Promise((r) => setTimeout(r, backoffsMs[attempt]));
-                    if (canceled) return;
-                }
-                try {
-                    // The slug is not on-chain — it is derived from the
-                    // indexed assemblyHash, so resolution scans the event
-                    // log for the binding whose derived slug matches.
-                    // Through the event cache (deployment block, adaptive
-                    // chunks — public gateways cap `eth_getLogs` ranges).
-                    const allLogs = await cachedGetContractEvents(client, chainId, {
-                        address: registry,
-                        abi: ASSEMBLY_REGISTRY_ABI,
-                        eventName: "AssemblyRegistered",
-                    });
-                    if (canceled) return;
-                    const logs = allLogs.filter(
-                        (l) => deriveAssemblySlug((l.args as { assemblyHash?: `0x${string}` } | undefined)?.assemblyHash as `0x${string}`) === slug,
-                    );
-                    if (logs.length === 0) {
-                        // Last attempt — surface not-found. Earlier attempts
-                        // fall through to the next backoff window.
-                        if (attempt === backoffsMs.length - 1) {
-                            setResolved({ kind: "notFound", slug });
-                        }
-                        continue;
-                    }
-                    const log = logs[0] as { args: { contentURI?: string; assemblyHash?: `0x${string}`; registeredBy?: `0x${string}` } };
-                    const contentURI = (log.args.contentURI ?? "") as string;
-                    const assemblyHash = log.args.assemblyHash as `0x${string}`;
-                    const hydratedAssembly = await fetchHydratedAssembly(
-                        contentURI,
-                        assemblyHash,
-                    );
-                    if (canceled) return;
-                    if (!hydratedAssembly) {
-                        setResolved({ kind: "absent" });
-                        return;
-                    }
-                    // The binding is authoritative for registeredBy + withdrawn
-                    // state. A failed read is absent — never the event's
-                    // registeredBy with a not-withdrawn assumption.
-                    const binding = await readNetwork("ViewAssemblyClient.bindings", async () => {
-                        const b = (await client.readContract({
-                            address: registry,
-                            abi: ASSEMBLY_REGISTRY_ABI,
-                            functionName: "bindings",
-                            args: [assemblyHash],
-                        })) as readonly [`0x${string}`, bigint, boolean, string];
-                        return { registeredBy: b[0], stakeWithdrawn: b[2] };
-                    });
-                    if (canceled) return;
-                    // Only a registration whose stake is read surfaces.
-                    if (binding.status !== "present") {
-                        setResolved({ kind: "absent" });
-                        return;
-                    }
-                    const orders = assemblyToOrders(hydratedAssembly);
-                    setResolved({
-                        kind: "published",
-                        name: hydratedAssembly.assembly.name,
-                        orders,
-                        hydratedAssembly,
-                        assemblyHash,
-                        binding: binding.value,
-                    });
-                    return;
-                } catch (err) {
-                    if (canceled) return;
-                    // A thrown read is terminal and renders nothing — don't
-                    // retry through a 500 from the provider.
-                    console.warn("[ViewAssemblyClient] assembly read failed:", err);
+                if (!hydratedAssembly) {
                     setResolved({ kind: "absent" });
                     return;
                 }
+                // The binding is authoritative for registeredBy + withdrawn
+                // state. A failed read is absent — never the event's
+                // registeredBy with a not-withdrawn assumption.
+                const binding = await readNetwork("ViewAssemblyClient.bindings", async () => {
+                    const b = (await client.readContract({
+                        address: registry,
+                        abi: ASSEMBLY_REGISTRY_ABI,
+                        functionName: "bindings",
+                        args: [row.assemblyHash],
+                    })) as readonly [`0x${string}`, bigint, boolean, string];
+                    return { registeredBy: b[0], stakeWithdrawn: b[2] };
+                });
+                if (canceled) return;
+                // Only a registration whose stake is read surfaces.
+                if (binding.status !== "present") {
+                    setResolved({ kind: "absent" });
+                    return;
+                }
+                const orders = assemblyToOrders(hydratedAssembly);
+                setResolved({
+                    kind: "published",
+                    name: hydratedAssembly.assembly.name,
+                    orders,
+                    hydratedAssembly,
+                    assemblyHash: row.assemblyHash,
+                    binding: binding.value,
+                });
+            } catch (err) {
+                if (canceled) return;
+                // A thrown read is terminal and renders nothing.
+                console.warn("[ViewAssemblyClient] assembly read failed:", err);
+                setResolved({ kind: "absent" });
             }
         })();
 
         return () => {
             canceled = true;
         };
-    }, [slug, client, chainId, justPublished, clauseSpecsLoaded]);
+    }, [slug, client, publishedRead, refetchPublished, justPublished, clauseSpecsLoaded]);
 
     /**
      * THE composition this screen shows — read out of the very bytes the
@@ -574,7 +564,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 {confirming
                     ? "Publishing…"
                     : !clauseSpecsLoaded
-                        ? "Loading clause specs…"
+                        ? (clauseSpecsFailed ? "Publish" : "Loading clause specs…")
                         : anchoredBinding
                             ? "Already anchored"
                         : review?.ok && missingTerms.length > 0

@@ -1,15 +1,15 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useChainId, useReadContract } from "wagmi";
+import { useChainId } from "wagmi";
 import { useCommerce } from "./CommerceProvider";
 import { useOrderCommitmentFlow, type BuyerFundingRequest } from "@/lib/checkout/orderCommitmentFlow";
 import type { OrderPreview } from "@/lib/checkout/orderPreview";
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
-import { ERC20_ABI, CONTRACTS } from "@/lib/kernel/contracts";
-import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import useTokenBalance from "@/hooks/useTokenBalance";
+import { CONTRACTS } from "@/lib/kernel/contracts";
 import { rememberSignedUnsent } from "@/lib/checkout/signedUnsentOrders";
 import type { CheckoutHandle } from "./types";
 
@@ -34,14 +34,8 @@ export function useCheckout(
     const { decimals } = useTokenDecimals(token);
 
     // ── Balance ─────────────────────────────────────────────────
-    const { data: rawBalance } = useReadContract({
-        address: token,
-        abi: ERC20_ABI,
-        functionName: "balanceOf",
-        args: [(address ?? ZERO_ADDRESS) as `0x${string}`],
-        query: { enabled: !!address && !!token },
-    });
-    const balance = (rawBalance as bigint | undefined) ?? undefined;
+    const { read: balanceRead } = useTokenBalance(token, address);
+    const balance = balanceRead.status === "present" ? balanceRead.value : undefined;
 
     // ── ERC-20 authorization ────────────────────────────────────
     const {

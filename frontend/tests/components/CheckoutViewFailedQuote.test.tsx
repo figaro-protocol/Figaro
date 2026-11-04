@@ -78,8 +78,6 @@ vi.mock("@/components/runtime/SellerCatalogPicker", () => ({ SellerCatalogPicker
 vi.mock("@/components/runtime/CommitmentSharePanel", () => ({ CommitmentSharePanel: () => null }));
 vi.mock("@/app/(app)/s/checkout/_components/SwapFundingPanel", () => ({
     SwapFundingPanel: () => null,
-    fundingAuthorization: () => ({ state: "none" }),
-    fundingBlocksTheAct: () => false,
 }));
 
 import { CheckoutView } from "@/app/(app)/s/checkout/_components/CheckoutView";

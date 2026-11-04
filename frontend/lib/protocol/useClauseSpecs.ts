@@ -43,6 +43,10 @@ export interface ClauseSpecsState {
     loadedCount: number;
     /** Total registered clauses (null while the registry read is in flight). */
     total: number | null;
+    /** True when the registry read FAILED: nothing is known of the clauses, so a
+     *  consumer shows no reading line and no terms (docs/OPEN_WORLD.md § 1).
+     *  False while the read is in flight and once it resolved. */
+    failed: boolean;
     /** Per-spec load failures (unreachable gateway, parse error, id mismatch). */
     errors: string[];
     /** Bumps each time a batch of specs resolves — a dependency handle for
@@ -53,6 +57,7 @@ export interface ClauseSpecsState {
 export function useClauseSpecs(): ClauseSpecsState {
     const { read } = useAllRegisteredClauses();
     const events = read.status === "present" ? read.value : null;
+    const failed = read.status === "absent";
     const [version, setVersion] = useState(0);
     const [errors, setErrors] = useState<string[]>([]);
     /** True once the load pass for the current `events` set has completed — every
@@ -103,11 +108,12 @@ export function useClauseSpecs(): ClauseSpecsState {
             loaded,
             loadedCount,
             total,
+            failed,
             errors,
             version,
         };
         // `version` is intentionally a dep: it bumps after loads resolve so
         // `loadedCount` is recounted from the now-warm cache.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [events, errors, version, settled]);
+    }, [events, failed, errors, version, settled]);
 }

@@ -20,9 +20,11 @@ import { useTokenSymbol } from "@/hooks/useTokenSymbol";
  * renders nothing for an assembly with no pin once the specs are read.
  */
 export function PinnedTokenNote({ assembly, slug }: { assembly: Assembly; slug: string }) {
-    const { loaded } = useClauseSpecs();
+    const { loaded, failed } = useClauseSpecs();
     const pin = loaded ? readUtilityTokenPin(assembly.assemblyClauses ?? {}, specSource()) : undefined;
     const { data: symbol } = useTokenSymbol(pin ?? "");
+    // A failed registry read is not a read in flight: nothing renders for it.
+    if (failed) return null;
     if (!loaded) {
         return (
             <p className="mt-3 text-xs text-ink-muted" data-testid={`seller-assembly-terms-reading-${slug}`}>

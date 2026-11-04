@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "@/components/shared/Link";
 import { useRouter } from "next/navigation";
 import { useAccount, useChainId } from "wagmi";
 import { useConnectInjected } from "@/hooks/useConnectInjected";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -16,7 +14,7 @@ import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { addressIntegrity, isValidAddress } from "@/lib/shared/evm";
 import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
 import type { ProfileClauseValuesMap } from "@/components/members/ProfileClauseValues";
-import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
+import { OnboardingLoadingCard, OnboardingStepFooter, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 import { useMounted } from "@/hooks/useMounted";
 import { onboardingNextHref, useOnboardingState } from "@/lib/member/onboardingState";
 import { sellerPageHref } from "@/lib/member/memberListing";
@@ -408,7 +406,7 @@ export function OnboardingProfileForm({
     }
 
     if (!mounted) {
-        return <Card className="p-6 text-sm text-ink-muted">Loading…</Card>;
+        return <OnboardingLoadingCard />;
     }
 
 
@@ -708,17 +706,14 @@ export function OnboardingProfileForm({
                 {externalError && (
                     <p className="text-sm text-error-fg" role="alert">{externalError}</p>
                 )}
-                <div className="flex items-center justify-between">
-                    <Link
-                        href={backHref ?? "/members"}
-                        className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
-                    >
-                        {backLabel ?? "← Back"}
-                    </Link>
-                    <Button type="submit" disabled={submitInFlight}>
-                        {submitInFlight ? "Saving…" : (submitLabel ?? "Next →")}
-                    </Button>
-                </div>
+                <OnboardingStepFooter
+                    backHref={backHref}
+                    backLabel={backLabel}
+                    submitLabel={submitLabel}
+                    submitInFlight={submitInFlight}
+                    defaultBackHref="/members"
+                    divided={false}
+                />
             </div>
         </form>
     );

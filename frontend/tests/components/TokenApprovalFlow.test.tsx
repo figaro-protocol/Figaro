@@ -20,7 +20,7 @@ vi.mock("wagmi", () => ({
     useAccount: () => ({ address: mocks.address }),
     useReadContract: (options: { functionName?: string }) => {
         if (options.functionName === "balanceOf") {
-            return { data: mocks.balance };
+            return { data: mocks.balance, status: mocks.balance === undefined ? "pending" : "success" };
         }
         return { data: undefined };
     },

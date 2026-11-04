@@ -63,26 +63,58 @@ import { ABSENT, PENDING, present, type NetworkRead } from "@/lib/shared/network
 
 
 
-// ── Your-turn card: an incoming order awaiting my counter-signature ──
-export function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
+// ── Your-turn card: a relayed order whose next act is mine ──
+// Two acts reach this card, and they differ only in their words:
+//   accept — an incoming order awaiting my counter-signature (Your turn): as
+//            the seller of a buyer's order, or as the buyer of an order a
+//            seller originated (`awaitsMyCounterSign` is symmetric);
+//   submit — fully signed and relayed back to me (the dispatch race's last
+//            mile): the buyer signed my countersigned draft, and I broadcast.
+// Either act pulls my own bond, 2 × payment as buyer or 2 × cumulative value
+// as seller, so the Core must be allowed to pull it from this wallet. The approval runs INSIDE the act's flow, after its confirm and
+// before the broadcast: a seller who reads the terms and declines has sent no
+// transaction and left no allowance. A prior max approval just makes
+// needsApproval false → no-op.
+const TURN_WORDS = {
+    accept: {
+        cardTestId: "order-your-turn-card",
+        heading: "New order to accept",
+        bondNote: "(returned at resolution)",
+        actTestId: "btn-accept-order",
+        act: "Accept order",
+        acting: "Signing…",
+        dismissTestId: "btn-dismiss-order",
+    },
+    submit: {
+        cardTestId: "order-ready-to-submit-card",
+        heading: "Fully signed — submit on-chain",
+        bondNote: "(locked at submit, returned at resolution)",
+        actTestId: "btn-submit-ready-order",
+        act: "Submit on-chain",
+        acting: "Submitting…",
+        dismissTestId: "btn-dismiss-ready-order",
+    },
+} as const;
+
+export function YourTurnCard({ act, payload, onAct, onDismiss, isActing, listings }: {
+    act: keyof typeof TURN_WORDS;
     payload: CommitmentPayload;
-    /** Opens the accept flow, handing it the bond-approval step it runs after
-     *  the terms confirm and before the broadcast. */
-    onAccept: (beforeBroadcast: () => Promise<void>) => void;
+    /** Opens the act's flow, handing it the bond-approval step it runs after
+     *  the flow's confirm and before the broadcast. */
+    onAct: (beforeBroadcast: () => Promise<void>) => void;
     onDismiss: () => void;
-    isAccepting: boolean;
+    isActing: boolean;
     listings: ReadonlyArray<Listing>;
 }) {
+    const words = TURN_WORDS[act];
     const { commitment } = payload;
     const { address } = useAccount();
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
-    const sellerBond = calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
-
-    // The seller locks 2× cumulative value as bond, so the Core must be allowed
-    // to pull it from this wallet. The approval runs INSIDE the accept flow,
-    // after the terms confirm and before the broadcast: a seller who reads the
-    // terms and declines has sent no transaction and left no allowance. A
-    // prior max approval just makes needsApproval false → no-op.
+    // The bond is the acting party's own: a buyer counter-signing a
+    // seller-initiated order locks 2 × payment, a seller 2 × cumulative value.
+    const role = hexEqual(address, commitment.buyer) ? "buyer" : "seller";
+    const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
+    const myBond = role === "buyer" ? bonds.buyerBond : bonds.sellerBond;
     const core = CONTRACTS.core as `0x${string}` | undefined;
     const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess, isApproveError } = useTokenApproval({
         tokenAddress: commitment.currency as `0x${string}`,
@@ -91,13 +123,13 @@ export function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listin
     });
     const { ensureApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
     const isApproving = isApprovePending || isApproveConfirming;
-    const handleAccept = () => onAccept(() => ensureApproval(sellerBond));
+    const handleAct = () => onAct(() => ensureApproval(myBond));
 
     return (
-        <div className="rounded-lg border border-default bg-paper p-5 space-y-4" data-testid="order-your-turn-card">
+        <div className="rounded-lg border border-default bg-paper p-5 space-y-4" data-testid={words.cardTestId}>
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <p className="text-xs font-semibold text-ink-muted mb-1">New order to accept</p>
+                    <p className="text-xs font-semibold text-ink-muted mb-1">{words.heading}</p>
                     <p className="text-sm font-mono text-ink-body">
                         From {displayNameForAddress(listings, commitment.buyer)}
                     </p>
@@ -109,88 +141,21 @@ export function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listin
             </div>
             <div className="rounded border border-default bg-subtle p-3 text-xs text-ink-body space-y-1">
                 <p>
-                    <span className="font-medium text-ink-body">Your seller bond:</span>{" "}
-                    {tokenFigure(sellerBond, decimals)}
-                    <span className="text-ink-muted ml-1">(returned at resolution)</span>
+                    <span className="font-medium text-ink-body">{role === "buyer" ? "Your buyer bond:" : "Your seller bond:"}</span>{" "}
+                    {tokenFigure(myBond, decimals)}
+                    <span className="text-ink-muted ml-1">{words.bondNote}</span>
                 </p>
             </div>
             <div className="flex gap-2">
-                <Button type="button" onClick={handleAccept} disabled={isAccepting || isApproving} className="flex-1" data-testid="btn-accept-order">
-                    {isApproving ? "Approving bond…" : isAccepting ? "Signing…" : "Accept order"}
+                <Button type="button" onClick={handleAct} disabled={isActing || isApproving} className="flex-1" data-testid={words.actTestId}>
+                    {isApproving ? "Approving bond…" : isActing ? words.acting : words.act}
                 </Button>
                 <button
                     type="button"
                     onClick={onDismiss}
-                    disabled={isAccepting || isApproving}
+                    disabled={isActing || isApproving}
                     className="rounded border border-default px-3 py-2 text-sm text-ink-muted hover:bg-subtle disabled:opacity-40"
-                    data-testid="btn-dismiss-order"
-                >
-                    Dismiss
-                </button>
-            </div>
-        </div>
-    );
-}
-
-// ── Ready-to-submit card: fully signed, relayed to me as seller — my broadcast ──
-// The dispatch race's last mile: the buyer signed my countersigned draft and
-// relayed it back carrying BOTH signatures. Same shape as the accept card —
-// being committed pulls my seller bond, so the commit flow approves it after
-// the commit confirm and before the broadcast: declining approves nothing.
-export function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, listings }: {
-    payload: CommitmentPayload;
-    /** Opens the commit flow, handing it the bond-approval step it runs after
-     *  the commit confirm and before the broadcast. */
-    onSubmit: (beforeBroadcast: () => Promise<void>) => void;
-    onDismiss: () => void;
-    isSubmitting: boolean;
-    listings: ReadonlyArray<Listing>;
-}) {
-    const { commitment } = payload;
-    const { address } = useAccount();
-    const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
-    const sellerBond = calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
-    const core = CONTRACTS.core as `0x${string}` | undefined;
-    const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess, isApproveError } = useTokenApproval({
-        tokenAddress: commitment.currency as `0x${string}`,
-        owner: address,
-        spender: (core ?? ZERO_ADDRESS) as `0x${string}`,
-    });
-    const { ensureApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
-    const isApproving = isApprovePending || isApproveConfirming;
-    const handleSubmit = () => onSubmit(() => ensureApproval(sellerBond));
-
-    return (
-        <div className="rounded-lg border border-default bg-paper p-5 space-y-4" data-testid="order-ready-to-submit-card">
-            <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                    <p className="text-xs font-semibold text-ink-muted mb-1">Fully signed — submit on-chain</p>
-                    <p className="text-sm font-mono text-ink-body">
-                        From {displayNameForAddress(listings, commitment.buyer)}
-                    </p>
-                </div>
-                <div className="text-right shrink-0">
-                    <p className="text-xs text-ink-muted">Order value</p>
-                    <p className="text-sm font-semibold text-ink-primary">{tokenFigure(commitment.payment, decimals)}</p>
-                </div>
-            </div>
-            <div className="rounded border border-default bg-subtle p-3 text-xs text-ink-body space-y-1">
-                <p>
-                    <span className="font-medium text-ink-body">Your seller bond:</span>{" "}
-                    {tokenFigure(sellerBond, decimals)}
-                    <span className="text-ink-muted ml-1">(locked at submit, returned at resolution)</span>
-                </p>
-            </div>
-            <div className="flex gap-2">
-                <Button type="button" onClick={handleSubmit} disabled={isSubmitting || isApproving} className="flex-1" data-testid="btn-submit-ready-order">
-                    {isApproving ? "Approving bond…" : isSubmitting ? "Submitting…" : "Submit on-chain"}
-                </Button>
-                <button
-                    type="button"
-                    onClick={onDismiss}
-                    disabled={isSubmitting || isApproving}
-                    className="rounded border border-default px-3 py-2 text-sm text-ink-muted hover:bg-subtle disabled:opacity-40"
-                    data-testid="btn-dismiss-ready-order"
+                    data-testid={words.dismissTestId}
                 >
                     Dismiss
                 </button>
@@ -458,7 +423,7 @@ export function OrdersList() {
     // The pending lists above already drop every payload whose order is on-chain
     // (`usePendingSellerSignature`); the tab's unsent copies go through the
     // same predicate, and drop once their order is relayed.
-    const isUncommitted = useIsUncommitted();
+    const { isUncommitted, known: uncommittedKnown } = useIsUncommitted();
     const core = CONTRACTS.core as `0x${string}` | undefined;
     const relayedIds = new Set(
         chainId && core
@@ -469,7 +434,9 @@ export function OrdersList() {
 
     const activeRows = rows.filter((r) => !r.isResolved);
     const completedRows = rows.filter((r) => r.isResolved);
-const nothing = ordersRead.status === "present" && rows.length === 0 && incoming.length === 0 && outbound.length === 0 && readyToSubmit.length === 0 && visibleUnsent.length === 0;
+// The empty state needs every read it rests on to have answered: the orders and the
+    // pending predicate's read of them; a failed read of either shows no sentence.
+    const nothing = ordersRead.status === "present" && uncommittedKnown && rows.length === 0 && incoming.length === 0 && outbound.length === 0 && readyToSubmit.length === 0 && visibleUnsent.length === 0;
 
     return (
         <div data-testid="orders-list" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">
@@ -499,10 +466,11 @@ const nothing = ordersRead.status === "present" && rows.length === 0 && incoming
                                 {incoming.map((payload, index) => (
                                     <YourTurnCard
                                         key={index}
+                                        act="accept"
                                         payload={payload}
-                                        onAccept={(beforeBroadcast) => void handleAccept(index, beforeBroadcast)}
+                                        onAct={(beforeBroadcast) => void handleAccept(index, beforeBroadcast)}
                                         onDismiss={() => dismissIncoming(index)}
-                                        isAccepting={acceptingIndex === index || flowStep === "signing" || flowStep === "committing"}
+                                        isActing={acceptingIndex === index || flowStep === "signing" || flowStep === "committing"}
                                         listings={listings}
                                     />
                                 ))}
@@ -518,12 +486,13 @@ const nothing = ordersRead.status === "present" && rows.length === 0 && incoming
                             <p className="text-xs font-semibold text-ink-muted">Ready to submit</p>
                             <div className="space-y-3">
                                 {readyToSubmit.map((payload, index) => (
-                                    <ReadyToSubmitCard
+                                    <YourTurnCard
                                         key={`ready-${index}`}
+                                        act="submit"
                                         payload={payload}
-                                        onSubmit={(beforeBroadcast) => void handleSubmitReady(index, beforeBroadcast)}
+                                        onAct={(beforeBroadcast) => void handleSubmitReady(index, beforeBroadcast)}
                                         onDismiss={() => dismissReady(index)}
-                                        isSubmitting={submittingIndex === index}
+                                        isActing={submittingIndex === index}
                                         listings={listings}
                                     />
                                 ))}

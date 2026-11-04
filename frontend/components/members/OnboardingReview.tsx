@@ -8,6 +8,7 @@ import { activeChain } from "@/lib/shared/chains";
 import { formatToken } from "@/lib/shared/utils";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { OnboardingLoadingCard } from "@/components/members/OnboardingStepChrome";
 import { ContentImage } from "@/components/shared/ContentImage";
 import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { useMounted } from "@/hooks/useMounted";
@@ -168,7 +169,7 @@ export function OnboardingReview() {
     }
 
     if (!mounted) {
-        return <Card className="p-6 text-sm text-ink-muted">Loading…</Card>;
+        return <OnboardingLoadingCard />;
     }
 
     if (!isConnected) {

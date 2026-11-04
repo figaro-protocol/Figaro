@@ -369,8 +369,8 @@ contract UsageCounter {
     ///                    predicted at deploy time; the deploy scripts compute
     ///                    the verifier's address from the deployer nonce and
     ///                    deploy this contract FIRST. Immutable, so a wrong
-    ///                    prediction is caught by the deploy script's own
-    ///                    assertion, never silently tolerated.
+    ///                    prediction is refused by the verifier's constructor
+    ///                    (UsageCounterNotBoundToThis), never silently tolerated.
     /// @param _minSellers  The minimum-support floor: distinct staked sellers an
     ///                     clause, agreement or assembly needs in a period before it scores. ≥ 1
     ///                     (1 disables the floor; mainnet uses 3).
