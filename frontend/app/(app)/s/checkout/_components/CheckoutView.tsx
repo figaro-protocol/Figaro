@@ -301,7 +301,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // titles with no controls, and the sign gate refuses the fields the form
     // never offered. Subscribing here both re-renders as specs resolve and
     // gives the render a `loaded` flag to hold the terms until they are real.
-    const { loaded: clauseSpecsLoaded } = useClauseSpecs();
+    const { loaded: clauseSpecsLoaded, failed: clauseSpecsFailed } = useClauseSpecs();
 
     // Filter cart to items from THIS merchant only — the buyer's line-item input,
     // read-only here (edited on the browse page).
@@ -1063,7 +1063,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     renders as a bare title with no controls and
                                     the sign gate then refuses the terms the form
                                     never offered. */}
-                                {!clauseSpecsLoaded && (
+                                {!clauseSpecsLoaded && !clauseSpecsFailed && (
                                     <p className="text-xs text-ink-muted" data-testid="checkout-terms-loading">
                                         Reading the clause specs these terms are written in…
                                     </p>
@@ -1288,7 +1288,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             : !orderReady
                                                 ? "Select an option to order"
                                                 : !clauseSpecsLoaded
-                                                    ? "Reading the agreement terms…"
+                                                    ? (clauseSpecsFailed ? "Place order" : "Reading the agreement terms…")
                                                     : missingFills.length > 0
                                                         ? "Fill the required terms above"
                                                         : "Place order"}

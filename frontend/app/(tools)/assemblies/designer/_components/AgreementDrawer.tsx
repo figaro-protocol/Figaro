@@ -537,7 +537,7 @@ function MandatoryArticlePanel() {
     // The mandatory clauses are read from the registry: the DAO's live
     // registrations whose spec declares the mandatory article, one per shape.
     // A spec load or a registry read re-derives them.
-    const { version: clauseSpecsVersion, loaded } = useClauseSpecs();
+    const { version: clauseSpecsVersion, loaded, failed } = useClauseSpecs();
     const registrant = mandatoryClauseRegistrant();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const mandatory = useMemo(() => Object.keys(mandatoryClausesForCanvas()) as `0x${string}`[], [clauseSpecsVersion]);
@@ -553,7 +553,7 @@ function MandatoryArticlePanel() {
                 <code className="font-mono">ClauseRegistry</code>, read by registrant and stake;
                 nothing here is chosen.
             </p>
-            {!loaded ? (
+            {failed ? null : !loaded ? (
                 <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-loading">
                     Reading the registry&hellip;
                 </p>

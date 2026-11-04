@@ -321,8 +321,11 @@ function parseAgentServicesField(value: unknown, path: string): MemberAgentServi
     const record = asRecord(value, path);
     const services: MemberAgentServices = {};
     for (const [transport, endpoint] of Object.entries(record)) {
-        const parsed = asOptionalString(endpoint, `${path}.${transport}`);
-        if (parsed !== undefined) services[transport] = parsed;
+        // The transport set is open: a key this runtime does not know is kept
+        // when its value is an endpoint string, and a value of another shape
+        // (a structured entry for a transport of another kind, a null) is
+        // skipped. A value that cannot be used never fails the profile.
+        if (typeof endpoint === "string") services[transport] = endpoint;
     }
     return services;
 }

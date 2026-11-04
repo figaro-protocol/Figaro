@@ -423,7 +423,7 @@ export function OrdersList() {
     // The pending lists above already drop every payload whose order is on-chain
     // (`usePendingSellerSignature`); the tab's unsent copies go through the
     // same predicate, and drop once their order is relayed.
-    const isUncommitted = useIsUncommitted();
+    const { isUncommitted, known: uncommittedKnown } = useIsUncommitted();
     const core = CONTRACTS.core as `0x${string}` | undefined;
     const relayedIds = new Set(
         chainId && core
@@ -434,7 +434,9 @@ export function OrdersList() {
 
     const activeRows = rows.filter((r) => !r.isResolved);
     const completedRows = rows.filter((r) => r.isResolved);
-const nothing = ordersRead.status === "present" && rows.length === 0 && incoming.length === 0 && outbound.length === 0 && readyToSubmit.length === 0 && visibleUnsent.length === 0;
+// The empty state needs every read it rests on to have answered: the orders and the
+    // pending predicate's read of them; a failed read of either shows no sentence.
+    const nothing = ordersRead.status === "present" && uncommittedKnown && rows.length === 0 && incoming.length === 0 && outbound.length === 0 && readyToSubmit.length === 0 && visibleUnsent.length === 0;
 
     return (
         <div data-testid="orders-list" className="container mx-auto px-6 py-10 max-w-3xl space-y-8">

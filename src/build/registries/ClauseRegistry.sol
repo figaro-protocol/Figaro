@@ -33,7 +33,7 @@ pragma solidity 0.8.26;
 ///         withdraw while processes composed from the clause are in
 ///         flight. The usage count lives in the indexer — the same count
 ///         the designer rewards pay on — so the gate is advisory: the SDK derives
-///         it and the frontend offers no reclaim while commits > resolves.
+///         it and the frontend offers no reclaim while an open trade this wallet witnessed composes it, or while the gate cannot be read.
 ///         `withdrawDeposit` checks none of it; the contract cannot hold the count: FigaroCore is frozen
 ///         and carries no composition provenance, so there is no on-chain
 ///         hardening of this gate.

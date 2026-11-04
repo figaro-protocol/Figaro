@@ -144,7 +144,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     // clause specs; the on-chain resolution path below waits for the cache
     // (the `useClauseSpecs` contract). Drafts don't build, so they resolve
     // immediately regardless.
-    const { loaded: clauseSpecsLoaded, version: clauseSpecsVersion } = useClauseSpecs();
+    const { loaded: clauseSpecsLoaded, failed: clauseSpecsFailed, version: clauseSpecsVersion } = useClauseSpecs();
     // Every registration, withdrawn stakes included (this page shows a
     // withdrawn assembly with its reclaimed stake), through the one registry
     // reader; `retry` counts the post-publish re-reads for the current slug.
@@ -564,7 +564,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 {confirming
                     ? "Publishing…"
                     : !clauseSpecsLoaded
-                        ? "Loading clause specs…"
+                        ? (clauseSpecsFailed ? "Publish" : "Loading clause specs…")
                         : anchoredBinding
                             ? "Already anchored"
                         : review?.ok && missingTerms.length > 0

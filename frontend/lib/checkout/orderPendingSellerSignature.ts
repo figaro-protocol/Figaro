@@ -36,6 +36,7 @@ import { CONTRACTS } from "@/lib/kernel/contracts";
 import { getCoreEvents, useWatchOrderEvents } from "@/lib/kernel/indexer";
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import type { RuntimeServices } from "@/lib/shared/runtimeServices";
 import type { WalletMessageSigner } from "@/lib/handoff/handoffMessagingService";
 import { MAX_COMMITMENT_PAYLOAD_BYTES } from "@figaro-protocol/sdk/agent";
@@ -97,38 +98,56 @@ export function awaitsMyBroadcast(p: CommitmentPayload, address: string): boolea
  * failed, and for a payload whose order hash cannot be computed: an order
  * whose chain state is unknown is not surfaced as pending.
  */
-export function useIsUncommitted(): (payload: CommitmentPayload) => boolean {
+export function useIsUncommitted(): { isUncommitted: (payload: CommitmentPayload) => boolean; known: boolean } {
     const publicClient = usePublicClient();
     const chainId = useChainId();
     const core = CONTRACTS.core as `0x${string}` | undefined;
     const enabled = !isE2EMockSession() && !!publicClient && !!chainId && !!core;
     const [committed, setCommitted] = useState<ReadonlySet<string> | null>(null);
+    const committedRef = useRef(committed);
+    committedRef.current = committed;
+    // Until a read lands nothing is known: a failed read is retried on the
+    // content schedule, and again on the next order event, which says the
+    // chain answers now. Neither the predicate nor `known` says "committed"
+    // for a read that failed.
+    const [tick, setTick] = useState(0);
+    const attempts = useRef(0);
 
     useEffect(() => {
         setCommitted(null);
         if (!enabled || !publicClient) return;
         let canceled = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
         getCoreEvents(publicClient, chainId)
             .then(({ events }) => {
-                if (!canceled) setCommitted(new Set(events.orderCommitted.map((e) => e.orderHash.toLowerCase())));
+                if (canceled) return;
+                attempts.current = 0;
+                setCommitted(new Set(events.orderCommitted.map((e) => e.orderHash.toLowerCase())));
             })
             .catch((err) => {
-                if (!canceled) console.warn("[useIsUncommitted] order read failed:", err);
+                if (canceled) return;
+                console.warn("[useIsUncommitted] order read failed:", err);
+                timer = setTimeout(() => setTick((t) => t + 1), contentRetryDelayMs(attempts.current++));
             });
         return () => {
             canceled = true;
+            if (timer !== undefined) clearTimeout(timer);
         };
-    }, [enabled, publicClient, chainId]);
+    }, [enabled, publicClient, chainId, tick]);
 
     const onEvents = useCallback((events: CoreEvents) => {
         if (events.orderCommitted.length === 0) return;
+        if (committedRef.current === null) {
+            setTick((t) => t + 1);
+            return;
+        }
         setCommitted((prev) =>
             prev ? new Set([...prev, ...events.orderCommitted.map((e) => e.orderHash.toLowerCase())]) : prev,
         );
     }, []);
     useWatchOrderEvents(onEvents, enabled);
 
-    return useCallback(
+    const isUncommitted = useCallback(
         (payload: CommitmentPayload) => {
             if (!committed || !core || !chainId) return false;
             try {
@@ -139,6 +158,9 @@ export function useIsUncommitted(): (payload: CommitmentPayload) => boolean {
         },
         [committed, core, chainId],
     );
+    // In a mock session nothing is read and nothing is owed: known.
+    const known = !enabled || committed !== null;
+    return useMemo(() => ({ isUncommitted, known }), [isUncommitted, known]);
 }
 
 /**
@@ -385,7 +407,7 @@ export function usePendingSellerSignature(
     const { entries } = useCommitmentPayloadInbox(!isMock);
     const dismissed = useDismissedPending((s) => s.dismissed);
     const dismissOrder = useDismissedPending((s) => s.dismissOrder);
-    const isUncommitted = useIsUncommitted();
+    const { isUncommitted } = useIsUncommitted();
 
     // Hide entries dismissed (or accepted) on ANY instance — the shared store
     // is the single source of that decision — and entries whose order is

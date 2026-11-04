@@ -75,7 +75,7 @@ import { specSource } from "@/lib/shared/clauseSpecSource";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
+import { ABSENT, PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
 /**
  * How many attestation payloads one pass tries to recover, most recent first.
@@ -391,7 +391,7 @@ export function corpusInputsLoaded(
  * present once projected — an empty corpus is the network's own answer.
  */
 export function useGraphCorpus(): NetworkRead<GraphCorpus> {
-    const { version: specVersion, loaded: specsLoaded } = useClauseSpecs();
+    const { version: specVersion, loaded: specsLoaded, failed: specsFailed } = useClauseSpecs();
     const { read: choicesRead } = useAssemblyChoices();
     const choices = choicesRead.status === "present" ? choicesRead.value : null;
     const assembliesFailed = choicesRead.status === "absent";
@@ -426,6 +426,12 @@ export function useGraphCorpus(): NetworkRead<GraphCorpus> {
     const inputsLoaded = corpusInputsLoaded(choices, assembliesFailed, specsLoaded);
 
     useEffect(() => {
+        // A failed clause-registry read: nothing is known of the terms the corpus
+        // reads, so the corpus is absent, not pending for ever.
+        if (specsFailed) {
+            setCorpus(ABSENT);
+            return;
+        }
         if (!inputsLoaded) return;
         let canceled = false;
         void readNetwork("useGraphCorpus", () => readGraphCorpus({ assemblies })).then((next) => {
@@ -437,7 +443,7 @@ export function useGraphCorpus(): NetworkRead<GraphCorpus> {
         // `specVersion` bumps as clause specs resolve from IPFS: overlays
         // decode and provenance attributions appear without a reload.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [inputsLoaded, assemblies, specVersion]);
+    }, [specsFailed, inputsLoaded, assemblies, specVersion]);
 
     return corpus;
 }

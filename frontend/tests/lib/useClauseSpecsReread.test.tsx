@@ -126,3 +126,27 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
         expect(reads).toBe(1);
     });
 });
+
+describe("useClauseSpecs — a failed registry read is reported, never shown as reading", () => {
+    beforeEach(() => _resetClauseSpecCache_TESTING_ONLY());
+
+    it("a failed read: `failed` true, `loaded` false, `total` null", () => {
+        useAllRegisteredClausesMock.mockReturnValue({ read: { status: "absent" } });
+        const { result } = renderHook(() => useClauseSpecs());
+        expect(result.current.failed).toBe(true);
+        expect(result.current.loaded).toBe(false);
+        expect(result.current.total).toBeNull();
+    });
+
+    it("a read in flight: `failed` false and not loaded; a resolved-empty read: loaded, not failed", async () => {
+        useAllRegisteredClausesMock.mockReturnValue({ read: { status: "pending" } });
+        const pending = renderHook(() => useClauseSpecs());
+        expect(pending.result.current.failed).toBe(false);
+        expect(pending.result.current.loaded).toBe(false);
+        useAllRegisteredClausesMock.mockReturnValue({ read: { status: "present", value: [] } });
+        const empty = renderHook(() => useClauseSpecs());
+        await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
+        expect(empty.result.current.failed).toBe(false);
+        expect(empty.result.current.loaded).toBe(true);
+    });
+});

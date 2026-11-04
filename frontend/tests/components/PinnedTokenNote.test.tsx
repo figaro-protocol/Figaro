@@ -14,9 +14,9 @@ import type { Assembly } from "@figaro-protocol/sdk";
 vi.mock("@/hooks/useTokenSymbol", () => ({
     useTokenSymbol: (address: string) => ({ data: address ? "MOCK" : undefined }),
 }));
-const specsState = { loaded: true };
+const specsState = { loaded: true, failed: false };
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({
-    useClauseSpecs: () => ({ version: 0, loaded: specsState.loaded, errors: [] }),
+    useClauseSpecs: () => ({ version: 0, loaded: specsState.loaded, failed: specsState.failed, errors: [] }),
 }));
 
 import { PinnedTokenNote } from "@/components/members/PinnedTokenNote";
@@ -57,5 +57,20 @@ describe("PinnedTokenNote — binding a pinned assembly accepts its token", () =
         expect(screen.getByTestId("seller-assembly-terms-reading-loading").textContent).toMatch(/Reading/);
         expect(screen.queryByTestId("seller-assembly-pinned-token-loading")).toBeNull();
         specsState.loaded = true;
+    });
+
+    it("renders nothing, not a reading line, when the registry read failed", () => {
+        // A failed read is not a read in flight (docs/OPEN_WORLD.md § 1): no
+        // loading sentence stands for a read that will not land.
+        specsState.loaded = false;
+        specsState.failed = true;
+        try {
+            const { container } = render(<PinnedTokenNote assembly={pinned()} slug="failed" />);
+            expect(container.textContent).toBe("");
+            expect(screen.queryByTestId("seller-assembly-terms-reading-failed")).toBeNull();
+        } finally {
+            specsState.loaded = true;
+            specsState.failed = false;
+        }
     });
 });

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     getOrCreateOrderEcdhKeypair,
     getOrderEcdhKeypair,
@@ -38,5 +38,26 @@ describe("sweepStaleEcdhKeypairs (item 2)", () => {
         sessionStorage.setItem(ECDH_KEYS_STORAGE_KEY, JSON.stringify(store));
         sweepStaleEcdhKeypairs(9_999_999_999, 1);
         expect(getOrderEcdhKeypair("0xABC", "order-old")).not.toBeNull();
+    });
+});
+
+/**
+ * The key must outlive the call that made it: the counterparty wraps a secret
+ * for the public half and the private half is read back to unwrap it. A write
+ * the browser refuses fails the ceremony here, before any public key is sent.
+ */
+describe("getOrCreateOrderEcdhKeypair — a key the browser will not keep fails loudly", () => {
+    beforeEach(() => sessionStorage.clear());
+
+    it("throws when session storage refuses the write, instead of returning a key that cannot be read back", () => {
+        const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+            throw new Error("QuotaExceededError");
+        });
+        try {
+            expect(() => getOrCreateOrderEcdhKeypair("0xABC", "order-unkept")).toThrow(/session storage/);
+        } finally {
+            setItem.mockRestore();
+        }
+        expect(getOrderEcdhKeypair("0xABC", "order-unkept")).toBeNull();
     });
 });
