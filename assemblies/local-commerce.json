@@ -20,7 +20,7 @@
         },
         {
             "question": "What do I need before my first order?",
-            "answer": "A wallet with a little ETH for gas, and the token this assembly is priced in for your bond. The merchant bonds twice the price of the meal; the courier bonds twice the price of the delivery leg."
+            "answer": "A wallet with a little ETH for gas, and the token this assembly is priced in for your bond. The merchant bonds twice the price of the meal. The courier's order follows the merchant's, so the courier bonds twice the running total through its order: the meal and the delivery together."
         },
         {
             "question": "How and when am I paid?",

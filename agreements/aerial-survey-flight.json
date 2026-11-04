@@ -7,7 +7,6 @@
             "disclosure": "each-own"
         },
         "figaro-geolocation": {},
-        "figaro-modalities": {},
         "figaro-schedule": {}
     },
     "name": "Aerial survey flight",

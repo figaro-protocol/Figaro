@@ -48,7 +48,6 @@ const CLAUSE_NAMES = {
     law: 'figaro-applicable-law',
     kleros: 'figaro-arbitration-kleros',
     geo: 'figaro-geolocation',
-    modalities: 'figaro-modalities',
     merchant: 'figaro-merchant-process',
     courier: 'figaro-courier-process',
     coldChain: 'figaro-cold-chain',
@@ -126,7 +125,6 @@ async function forEachCheckoutField(
  *  six-order chain needs (assemblies arrive value-free; catalog-sourced
  *  cargo/cold-chain/freight-class values fold from the items, never here). */
 export async function fillTradelensCheckout(page: Page): Promise<void> {
-    await checkoutFields(page, C.modalities, 'modality-delivery').first().check();
     await checkoutFields(page, C.incoterms, 'incotermsRule-CIF').first().check();
     await checkoutFields(page, C.incoterms, 'incotermsNamedPlace').first().fill('Port of Rotterdam');
     await checkoutFields(page, C.custody, 'custodyScheme').first()

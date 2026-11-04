@@ -53,7 +53,7 @@ const HANDOFF_CHAIN = `        shipper (origin country)
             v
         destination inland leg
             |
-            | modalities: delivery to consignee
+            | handoff: container delivered to consignee
             v
         consignee (importer, the root buyer)`;
 
@@ -244,7 +244,7 @@ export default function AfterTradeLensPaper() {
                     Every agreement composes the commerce clause, which carries the payment, and the topology clause. Beside them, each order carries the clauses its role needs; Section 6 states what each clause commits.
                 </PaperRun>
                 <ul className="space-y-2 list-disc pl-6 text-sm">
-                    <li><em>Shipper</em>: the cargo clause with the shipment&rsquo;s measures; the Incoterms 2020 clause for the rule and named place; the chain of custody clause, which opens the seal regime; the acceptance-criteria clause fixing the basis on which the importer receives; the modalities and geolocation clauses; optionally an emissions clause for manufacturing emissions.</li>
+                    <li><em>Shipper</em>: the cargo clause with the shipment&rsquo;s measures; the Incoterms 2020 clause for the rule and named place; the chain of custody clause, which opens the seal regime; the acceptance-criteria clause fixing the basis on which the importer receives; the geolocation clause; optionally an emissions clause for manufacturing emissions.</li>
                     <li><em>Freight forwarder</em>: the merchant process-event clause for its coordinating role; geolocation for the consolidation point; a handoff with its proximity policy where the forwarder takes physical receipt.</li>
                     <li><em>NVOCC</em>: the consent clause, binding the parties by content hash to the pinned house bill of lading, whose transferability Section 7 treats.</li>
                     <li><em>Origin and destination inland carriers</em>: the courier process-event clause, whose arrived-at-pickup and arrived-at-drop-off events mark the leg; one handoff on each carrier&rsquo;s order with its proximity policy; geolocation for origin and destination; on a road leg that needs one, the freight-class clause.</li>
@@ -343,7 +343,6 @@ export default function AfterTradeLensPaper() {
                     <li><em>Topology</em>: the parties&rsquo; own account of which orders each order follows, on every agreement. The Core stores no such structure.</li>
                     <li><em>Cargo</em>: the shipment&rsquo;s measures, namely gross and net mass, volume, packaged dimensions, packaging type and count, and the marks.</li>
                     <li><em>Geolocation</em>: the leg&rsquo;s origin and destination under a declared geocode standard, committed at signing. It has no witness stage and reports no positions.</li>
-                    <li><em>Modalities</em>: the buyer&rsquo;s requested delivery modality for the process.</li>
                     <li><em>Handoff</em>: the kinds of physical exchange the order admits, one or more of four: face to face, an agreed drop point, a parking area, or a locker. It names no place and has no witness stage. An order carries at most one handoff. A seller that touches the cargo more than once either names the handoff that matters to the parties, with its other movements as process events, or the leg is composed as several orders, each with its own handoff. The published composition takes the first course: one handoff on the carrier&rsquo;s order, one on the drayage order, none on the other four, the shipper&rsquo;s included.</li>
                     <li><em>Proximity policy</em>: nested under the handoff, the device-detection ranges that count as the two sides of the exchange being together, committed at signing: a shared Wi-Fi network, Bluetooth range, ultra-wideband ranging, or a near-field communication (NFC) tap. Its witness stage holds the range the exchange was detected in, with an optional evidence reference. It witnesses that the two sides&rsquo; devices met, not that the container moved. The two sides are the party that hands the container over and the party that takes it, who need not be the order&rsquo;s buyer and seller: at the port of discharge the ocean carrier hands the container to the destination drayage, and on the drayage order the consignee may take it.</li>
                     <li><em>Chain of custody</em>: the seal regime and its events, treated below.</li>

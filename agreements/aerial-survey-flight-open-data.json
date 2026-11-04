@@ -7,7 +7,6 @@
             "disclosure": "open"
         },
         "figaro-geolocation": {},
-        "figaro-modalities": {},
         "figaro-schedule": {}
     },
     "name": "Aerial survey flight, open data",

@@ -137,11 +137,10 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         await expect(checkbox, `the drawer surfaces ${TARGET_CLAUSE} from the live registry`).toHaveCount(1, { timeout: 20000 });
         await checkbox.check();
         // The composition IS the freelancer reference (assemblies/freelancer.json):
-        // content-handoff + modalities + geolocation. Identity is the
+        // content-handoff + geolocation. Identity is the
         // composition, so publishing collapses onto the reference's anchor —
         // this spec is the freelancer reference's named test
         // (assemblies/README.md).
-        await page.getByTestId(`drawer-registry-clause-${keyOf('figaro-modalities')}`).check();
         await page.getByTestId(`drawer-registry-clause-${keyOf('figaro-geolocation')}`).check();
         await page.getByTestId('designer-name-input').fill('Freelance deliverable');
         await page.getByTestId('designer-summary-input').fill('A single-order digital hand-off: the artifact travels the encrypted channel.');
@@ -204,12 +203,11 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         await page.getByTestId('btn-review-order').click();
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${TARGET_CLAUSE}-contentHandoff-encrypted-transfer"]`).first().check();
-        // The freelancer reference's remaining particulars: a virtual
-        // deliverable; the geolocation endpoints carry jurisdiction. The
+        // The freelancer reference's remaining particulars: the
+        // geolocation endpoints carry jurisdiction. The
         // origin is the seller's own place, taken from the offer the checkout
         // makes to every geohash-format field (no device read, no code to
         // know); the destination is typed.
-        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-virtual"]`).first().check();
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-origin-preset-0"]`).first().click();
         await expect(page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-origin"]`).first())
             .toHaveValue(SELLER_GEOHASH);

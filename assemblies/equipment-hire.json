@@ -1,7 +1,7 @@
 {
     "name": "Equipment hire",
     "summary": "A single bonded rental, resolved in the studio's own token — no card processor, no float.",
-    "description": "A renter books a piece of equipment — a camera kit, an audio rig, a tool — directly from its owner. Both sides lock a bond worth more than the trade, so returning it and paying for it are each party's most profitable move — no card network, no security deposit held by a platform. The composition pins one ERC-20 as the whole assembly's denomination, set once by the studio that designed it: checkout writes that pin straight into the agreement, so no token picker ever appears and every signer sees the same denomination the assembly was built in.",
+    "description": "A renter hires a piece of equipment — a camera kit, an audio rig, a tool — directly from its owner, in one bonded order with no card network between them. The renter locks twice the rental's price and the owner locks twice that price too; when the renter resolves, the owner is paid the price and both bonds are refunded. The bonds are sized to the price, not to the equipment's value, and the composition carries no rental window and no return hand-off: the bonds stand behind the order's own terms, the price and the hand-over, and the equipment's return is the parties' own matter, outside them. The composition pins one ERC-20 as the whole assembly's denomination, set once by the studio that designed it: checkout writes that pin straight into the agreement, so no token picker ever appears and every signer sees the same denomination the assembly was built in.",
     "assemblyClauses": {
         "figaro-utility-token": {}
     },
