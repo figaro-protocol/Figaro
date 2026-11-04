@@ -826,6 +826,11 @@
   },
   {
     "type": "error",
+    "name": "UsageCounterNotBoundToThis",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "VerifierNotContract",
     "inputs": []
   },

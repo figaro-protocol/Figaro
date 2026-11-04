@@ -28,6 +28,7 @@ interface IUsageCounter {
     }
 
     function applyBatchAccrual(uint8 period, bytes32 claimedProvenanceLeaf, BatchUse[] calldata uses) external;
+    function batchVerifier() external view returns (address);
 }
 
 /// @title FigaroBatchVerifier — Resolves batched Figaro operations via SP1 proof
@@ -284,6 +285,9 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     error VerifierNotContract();
     error ZeroClauseRegistry();
     error ZeroUsageCounter();
+    /// @notice The counter names another verifier, so it would refuse every
+    ///         accrual this one hands it.
+    error UsageCounterNotBoundToThis();
     /// @dev A resolve in the wallet-code form names a buyer whose account
     ///      has no code to ask: only the buyer's ECDSA signature can resolve
     ///      for it, in the first form.
@@ -320,6 +324,9 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             revert VerifierNotPinned();
         }
         if (named == bytes32(0)) revert VerifierNotPinned();
+        // The counter is deployed first and names its verifier immutably; a
+        // counter naming another would refuse every accrual from this one.
+        if (IUsageCounter(_usageCounter).batchVerifier() != address(this)) revert UsageCounterNotBoundToThis();
         verifier = ISP1Verifier(_verifier);
         verifierHash = named;
         programVKey = _programVKey;
@@ -460,12 +467,13 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         //    The catch is a catch-ALL, but it does NOT silently swallow a
         //    misconfiguration: the counter's only non-gate revert is
         //    `NotBatchVerifier` (msg.sender != its immutable batchVerifier), and
-        //    that address is this contract — the deploy scripts predict this
-        //    verifier's address, pass it to the counter's constructor, and assert
-        //    the prediction (`require(_batchVerifier == predictedVerifier)`), so
-        //    the counter can only ever accept THIS verifier. `NotBatchVerifier`
-        //    is therefore unreachable at runtime; every revert that reaches this
-        //    catch is a genuine accrual-gate skip, surfaced via the event.
+        //    the constructor refuses a counter whose batchVerifier is not this
+        //    contract (`UsageCounterNotBoundToThis`), however the pair was
+        //    deployed. `NotBatchVerifier` is therefore unreachable at runtime.
+        //    A revert that reaches this catch is a whole-call accrual gate
+        //    (the period, the provenance leaf), or an inner call its submitter
+        //    starved of gas; either way no use of the batch is counted, a later
+        //    batch may prove them again, and the event carries the reason.
         try usageCounter.applyBatchAccrual(usage.period, usage.provenanceLeaf, usage.uses) {
         // uses counted
         }

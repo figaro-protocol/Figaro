@@ -489,6 +489,11 @@ contract FigaroBatchVerifierTest is Test {
 
         vm.expectRevert(FigaroBatchVerifier.ZeroUsageCounter.selector);
         new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(0));
+
+        // A counter address with no code answers nothing to `batchVerifier()`:
+        // the deploy reverts.
+        vm.expectRevert();
+        new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(0xC0FFEE));
     }
 
     function test_constructor_setsImmutablesAndGenesis() public view {
@@ -1228,21 +1233,15 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(c, 0, "nothing counted");
     }
 
-    /// THE WIRING ASSUMPTION, pinned as it stands. The catch-all above is
-    /// sound only while the counter names THIS verifier, and that holds only
-    /// because the deploy scripts predict the verifier's address and assert
-    /// it; neither constructor checks the other. A pair deployed any other
-    /// way — here, a counter bound to a different address — constructs
-    /// without complaint, resolves every batch, and drops every use: the
-    /// counter's `NotBatchVerifier` lands in the catch and surfaces only as
-    /// `BatchAccrualSkipped`. This test pins that behavior; the proposed fix
-    /// (a constructor check that the counter's `batchVerifier()` is this
-    /// contract) turns it into a construction revert.
-    function test_settleBatch_aCounterBoundToAnotherVerifierSkipsEveryAccrual() public {
+    /// A counter bound to another verifier would refuse every accrual this
+    /// verifier hands it, and the catch-all would swallow each refusal: the
+    /// pair would resolve batches and count no use. The binding is checked at
+    /// construction, so such a pair cannot be deployed.
+    function test_constructor_revertsOnACounterBoundToAnotherVerifier() public {
         uint64[] memory periods = new uint64[](1);
         periods[0] = PERIOD_END;
         MockClauseOrAssemblyStake stakeGate = new MockClauseOrAssemblyStake();
-        counter = new UsageCounter(
+        UsageCounter misbound = new UsageCounter(
             address(core),
             address(members),
             address(stakeGate),
@@ -1252,30 +1251,8 @@ contract FigaroBatchVerifierTest is Test {
             1,
             periods
         );
-        verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter));
-        assertTrue(
-            counter.batchVerifier() != address(verifier), "the pair is mis-wired, and both constructors accept it"
-        );
-        token.mint(address(verifier), 1_000 ether);
-        vm.prank(buyer);
-        token.approve(address(verifier), type(uint256).max);
-
-        FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, 3);
-        (
-            bytes memory pv,
-            FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events,
-            bytes32 newRoot
-        ) = _batchWithUsage(usage);
-
-        vm.expectEmit(true, false, false, true, address(verifier));
-        emit FigaroBatchVerifier.BatchAccrualSkipped(1, abi.encodeWithSelector(UsageCounter.NotBatchVerifier.selector));
-        verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
-
-        assertEq(verifier.stateRoot(), newRoot, "the batch resolves");
-        (uint64 c,, uint256 score) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, usage.period);
-        assertEq(c, 0, "and not one of its uses is counted");
-        assertEq(score, 0);
+        vm.expectRevert(FigaroBatchVerifier.UsageCounterNotBoundToThis.selector);
+        new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(misbound));
     }
 
     /// A batch that moves no state — claims only — keeps the root where it

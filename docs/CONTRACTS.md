@@ -166,7 +166,9 @@ The proof-based path that resolves batches of processes beside the direct
   deploy. Not a florin minter. The constructor binds one routed SP1 verifier
   contract, never a gateway: it probes `VERIFIER_HASH()` and refuses a contract
   without one (`VerifierNotPinned`), so no route owner stands between a proven
-  batch and its resolution. The state root starts at `genesisRoot()`, the
+  batch and its resolution. It also refuses a usage counter whose immutable
+  `batchVerifier` is not this contract (`UsageCounterNotBoundToThis`), so a
+  pair that would count no use cannot be deployed. The state root starts at `genesisRoot()`, the
   empty state's, computed by the contract and never supplied.
 
 The two paths share no state: a batch-resolved process never acquires `FigaroCore`

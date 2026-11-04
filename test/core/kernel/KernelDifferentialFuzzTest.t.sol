@@ -96,7 +96,7 @@ contract KernelDifferentialFuzzTest is Test {
         tokenB = new MockPermitToken();
         core = new FigaroCore();
         coordinator = new AttestationCoordinator(address(core));
-        reader = new StreamReader(address(new MockSP1Verifier()));
+        reader = new StreamReader(address(new MockSP1Verifier()), address(new CallerNamingCounter()));
         for (uint256 i = 0; i < KEY_COUNT; i++) {
             wallets[i] = vm.addr(keys[i]);
             tokenA.mint(wallets[i], 1 << 200);
@@ -797,7 +797,7 @@ contract KernelDifferentialFuzzTest is Test {
 ///      events), and the `ResolveProcess` digest under this verifier's domain.
 ///      The registry and counter are never reached by the walk.
 contract StreamReader is FigaroBatchVerifier {
-    constructor(address sp1) FigaroBatchVerifier(sp1, bytes32(uint256(1)), address(1), address(1)) {}
+    constructor(address sp1, address counter) FigaroBatchVerifier(sp1, bytes32(uint256(1)), address(1), counter) {}
 
     function walk(bytes calldata s, bool publish) external {
         _walkOperations(s, publish);
@@ -811,5 +811,14 @@ contract StreamReader is FigaroBatchVerifier {
                 )
             )
         );
+    }
+}
+
+/// @dev A counter stub for the stream reader: it names its caller as its
+///      verifier, which during the reader's construction is the reader, so the
+///      verifier's binding check holds. The walk never reaches it.
+contract CallerNamingCounter {
+    function batchVerifier() external view returns (address) {
+        return msg.sender;
     }
 }
