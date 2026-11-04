@@ -96,7 +96,6 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
             "figaro-handoff.handoff",
             "figaro-incoterms.incotermsNamedPlace",
             "figaro-incoterms.incotermsRule",
-            "figaro-modalities.modality",
             "figaro-proximity-policy.bands",
         ]);
     });

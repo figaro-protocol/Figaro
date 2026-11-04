@@ -296,10 +296,8 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
             page.locator(`[data-testid^="checkout-field-"][data-testid*="${LICENSE_CLAUSE}"]`),
             'license terms are folded from the item, never typed by the buyer',
         ).toHaveCount(0);
-
-        // The buyer's transaction particulars: a virtual trade, an access
-        // window, encrypted delivery of the access credential.
-        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-virtual"]`).first().check();
+        // The buyer's transaction particulars: an access window and
+        // encrypted delivery of the access credential.
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-schedule')}-windowStart"]`).first().fill('2026-09-01T09:00');
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-schedule')}-windowEnd"]`).first().fill('2026-10-01T09:00');
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-content-handoff')}-contentHandoff-encrypted-transfer"]`).first().check();
@@ -399,7 +397,6 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
             page.locator(`[data-testid^="checkout-field-"][data-testid*="${LICENSE_CLAUSE}"]`),
             'seller-posture license terms are folded from the item too',
         ).toHaveCount(0);
-        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-virtual"]`).first().check();
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-schedule')}-windowStart"]`).first().fill('2026-09-01T09:00');
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-schedule')}-windowEnd"]`).first().fill('2026-10-01T09:00');
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-content-handoff')}-contentHandoff-encrypted-transfer"]`).first().check();

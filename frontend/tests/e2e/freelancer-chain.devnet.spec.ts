@@ -12,7 +12,7 @@
  * designates the contributors through the per-clause commit-order cursor),
  * and runs the chain end to end with every value leg from chain:
  *
- *   checkout  the client signs three orders (virtual modality, encrypted
+ *   checkout  the client signs three orders (encrypted
  *             transfer on every deliverable), relays.
  *   accepts   lead then contributors accept on their own /orders; exact
  *             2P/2G bond deltas after each commit.
@@ -165,11 +165,10 @@ async function seedChainSellers(
     return catalogs;
 }
 
-/** The checkout particulars every order of the chain takes: virtual
- *  modality; encrypted transfer + jurisdiction geohashes on EVERY
+/** The checkout particulars every order of the chain takes: encrypted
+ *  transfer + jurisdiction geohashes on EVERY
  *  deliverable. */
 async function fillChainCheckout(page: Page) {
-    await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-virtual"]`).first().check();
     const everyField = async (fieldPath: string, action: (c: ReturnType<typeof page.locator>) => Promise<void>) => {
         const controls = page.locator(`[data-testid^="checkout-field-"][data-testid$="-${fieldPath}"]`);
         const n = await controls.count();

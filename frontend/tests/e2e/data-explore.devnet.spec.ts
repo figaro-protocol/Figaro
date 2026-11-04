@@ -333,7 +333,6 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                         payment: parseEther('1').toString(),
                         lineItems: [{ itemId: 'survey-flight', name: 'Aerial survey flight', quantity: 1, unitPrice: parseEther('1').toString() }],
                     },
-                    [keyOf('figaro-modalities')]: { modality: 'consume-onsite' },
                     [keyOf('figaro-schedule')]: { windowStart: '2026-09-15T09:00:00Z', windowEnd: '2026-09-15T13:00:00Z' },
                     [GEO]: { geocodeStandard: 'geohash', origin: '9q8yyk', destination: '9q8yys' },
                     [CREDENTIAL]: {

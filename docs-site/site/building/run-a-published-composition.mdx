@@ -151,7 +151,7 @@ One line reads `<assemblyHash> 6 Containerized import chain`. Its six agreements
 
 | Agreement | Seller | Clauses beside commerce and topology |
 |---|---|---|
-| `agreement-0` (root) | shipper | `figaro-cargo`, `figaro-incoterms`, `figaro-chain-of-custody`, `figaro-acceptance-criteria`, `figaro-geolocation`, `figaro-modalities` |
+| `agreement-0` (root) | shipper | `figaro-cargo`, `figaro-incoterms`, `figaro-chain-of-custody`, `figaro-acceptance-criteria`, `figaro-geolocation` |
 | `agreement-1` follows 0 | inspection service | `figaro-acceptance-criteria`, `figaro-merchant-process` |
 | `agreement-2` follows 0 | freight forwarder | `figaro-geolocation`, `figaro-merchant-process` |
 | `agreement-3` follows 2 | reefer ocean carrier | `figaro-chain-of-custody`, `figaro-cold-chain`, `figaro-courier-process`, `figaro-emissions`, `figaro-geolocation`, `figaro-handoff`, `figaro-proximity-policy` |
@@ -291,7 +291,6 @@ The importer's particulars sit in their own module, keyed by field; a field no c
 // particulars.mjs — what the importer fills at checkout, keyed by field.
 // Keyed by the FIELD each spec declares; a field no composed spec declares is ignored.
 export const PARTICULARS = {
-    modality: "delivery",
     incotermsRule: "CIF", incotermsNamedPlace: "Port of Rotterdam",
     custodyScheme: "ISO 17712 high-security bolt seal on ISO 6346 container", unitIdentifier: "MSKU1234565",
     acceptanceBasis: "AQL 2.5 per ISO 2859-1 against PO 4711",

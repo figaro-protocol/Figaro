@@ -11,7 +11,7 @@
  *   agreement-0 root  shipper-of-record   cargo, incoterms, chain-of-custody,
  *                                     acceptance-criteria, applicable-law,
  *                                     arbitration-kleros, property-transfer (the three
- *                                     assembly terms), geolocation, modalities
+ *                                     assembly terms), geolocation
  *   agreement-1 p:0   inspection service  merchant-process, acceptance-criteria
  *   agreement-2 p:0   freight forwarder   merchant-process, geolocation
  *   agreement-3 p:2   ocean carrier       courier-process, cold-chain, chain-of-custody,
@@ -72,7 +72,7 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 // Per-node clause plan, keyed by draw order (root first). Parents encode the
 // chain: 1←0, 2←0, 3←2, 4←3, 5←4. Clause keys read lazily (after priming).
 const nodePlan = (): Array<{ parent: number | null; clauses: Hex[] }> => [
-    { parent: null, clauses: [C.cargo, C.incoterms, C.custody, C.acceptance, C.geo, C.modalities] },
+    { parent: null, clauses: [C.cargo, C.incoterms, C.custody, C.acceptance, C.geo] },
     { parent: 0, clauses: [C.merchant, C.acceptance] },
     { parent: 0, clauses: [C.merchant, C.geo] },
     { parent: 2, clauses: [C.courier, C.coldChain, C.custody, C.emissions, C.handoff, C.proximity, C.geo] },

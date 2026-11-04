@@ -4,7 +4,6 @@
         "figaro-topology": {},
         "figaro-content-handoff": {},
         "figaro-data-license": {},
-        "figaro-modalities": {},
         "figaro-schedule": {}
     },
     "name": "Data stream access",

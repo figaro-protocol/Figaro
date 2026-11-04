@@ -363,7 +363,6 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
                     payment: parseEther('1').toString(),
                     lineItems: [{ itemId: 'survey-flight', name: 'Aerial survey flight', quantity: 1, unitPrice: parseEther('1').toString() }],
                 },
-                [keyOf('figaro-modalities')]: { modality: 'consume-onsite' },
                 [keyOf('figaro-schedule')]: { windowStart: '2026-08-15T09:00:00Z', windowEnd: '2026-08-15T13:00:00Z' },
                 [keyOf('figaro-geolocation')]: { geocodeStandard: 'geohash', origin: '9q8yyk', destination: '9q8yys' },
                 [CREDENTIAL]: {
@@ -401,7 +400,6 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
                     payment: parseEther('2').toString(),
                     lineItems: [{ itemId: 'telemetry-stream', name: 'Flight telemetry stream — 30 days', quantity: 1, unitPrice: parseEther('2').toString() }],
                 },
-                [keyOf('figaro-modalities')]: { modality: 'virtual' },
                 [keyOf('figaro-schedule')]: { windowStart: '2026-09-01T00:00:00Z', windowEnd: '2026-10-01T00:00:00Z' },
                 [DATA_LICENSE]: {
                     licenseScope: 'Flight telemetry records of the surveyed route',

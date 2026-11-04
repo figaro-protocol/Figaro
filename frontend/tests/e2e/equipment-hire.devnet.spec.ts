@@ -2,7 +2,7 @@
  * equipment-hire.devnet.spec.ts — THE UTILITY-TOKEN REFERENCE
  * (`assemblies/equipment-hire.json`), end to end.
  *
- * The scenario: a renter books a piece of equipment from an owner directly —
+ * The scenario: a renter hires a piece of equipment from an owner directly —
  * the same one-order shape as the POS reference (commerce + topology +
  * modalities + geolocation), PLUS `figaro-utility-token` composed at ASSEMBLY
  * scope: the designer's own ERC-20 pin. When a composition carries that pin,
