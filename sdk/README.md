@@ -332,7 +332,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildQuoteRequest` | `/agent` | Build an UNSIGNED RFQ draft, priced at the buyer's ceiling. |
 | `buildAssembly` | root | Design time: the assembly of agreements plus the new agreements to register; the mandatory clauses (`mandatory`, from `mandatoryClauses`) are written into every new agreement first; binds a registered agreement as is (it must carry both mandatory shapes) or composes a new one. |
 | `composeOrderAgreement` | root | ONE agreement's registered agreement from the mandatory clauses written in and the clauses a designer selected — the scope check, the value-free rule, one clause of commerce's shape and one of topology's — and its `agreementHash`; `buildAssembly` composes every new agreement through it, and a designer registers one on its own through it. |
-| `mandatoryClauses` | root | The mandatory clauses a canvas writes into every agreement: the registrant's (the DAO wallet's) live `ClauseRegistry` registrations whose spec declares the mandatory article at agreement scope, one per shape, the later registration winning; `clauseKey → {}`. |
+| `mandatoryClauses` | root | The mandatory clauses a canvas writes into every agreement, read from the DAO wallet's live `ClauseRegistry` registrations (docs/CLAUSES.md § "The mandatory clauses"); `clauseKey → {}`. |
 | `specIsCommerceShape` / `specIsTopologyShape` | root | Mandatory is a shape, never a name: a spec declaring `payment`, `currency` and `lineItems` as content is commerce; one declaring `follows` is topology. |
 | `buildProvenanceInclusionProof` | root | Merkle proof that the agreement's provenance leaf sits under a signed `checkoutHash`. |
 | `buildAgreementInclusionProof` | root | An agreement's membership proof under `assemblyHash`, with its `slotContentHash` — what the assembly reward claim carries. |
@@ -1596,9 +1596,8 @@ lineage counter a reader shows); nothing on chain or in a leaf reads them.
 The clause's identity is its KEY, `keccak256` of exactly the bytes pinned at
 its `contentURI`. The reference tooling pins `canonicalize(spec)` — sorted
 keys at every depth, array order kept, no whitespace — and `computeClauseKey(spec)`
-is `keccak256` of those bytes. **A spec pinned in any other byte form has a
-different key**: a pretty-printed pin is another clause. Two specs sharing a
-name are two clauses; a lookalike shares nothing with the original.
+is `keccak256` of those bytes; the key, never the name, is the identity, and a spec
+pinned in any other byte form is another clause (docs/CLAUSES.md § "Identity").
 
 `ClauseRegistry.registerClause(bytes32 clauseKey, string contentURI)` is
 payable, permissionless and first-write-wins on the key, under the stake
@@ -1904,10 +1903,9 @@ surfaces, each with its `clauseKey`. Nothing folds from it: the mandatory
 clauses enter a NEW agreement as the set the caller passes (`mandatory`, read
 from the registry with `mandatoryClauses` — the DAO wallet's live
 `article: "mandatory"` registrations at agreement scope, one per shape), written
-in before the selection (`composeOrderAgreement`). Every agreement carries one
-clause of commerce's shape and one of topology's (`buildAssembly` refuses
-otherwise); a registered agreement bound as is must carry both shapes itself;
-and checkout adds no clause.
+in before the selection (`composeOrderAgreement`); `buildAssembly` refuses an agreement
+without both shapes and checkout adds no clause (the rule: docs/CLAUSES.md § "The
+mandatory clauses").
 
 A spec that is not (yet) loaded returns `undefined` from `get`, and the
 projection degrades exactly as the registry-reading frontend does (no defaults
@@ -2059,9 +2057,9 @@ value-free rule, one clause of commerce's shape and one of topology's) into the 
 key (`composeAuthoredAgreements` composes a whole set by name); an assembly file (agreements naming the written agreements they bind
 and carrying their own `follows`) binds each named agreement's hash
 and takes the topology parents as the agreement's fill, returning each DISTINCT
-agreement once beside the assembly. Neither runs on a read path. The published shape of each document is a JSON Schema beside the
-clause's: `src/agreement.schema.json` and `src/assembly.schema.json`, each covering the written form and the registered or pinned
-form, each `.schema.json` kept in lockstep with the composer and the builder over the reference files by `tests/documents/schema-conformance.test.ts`.
+agreement once beside the assembly. Neither runs on a read path. Each document's published shape is its JSON Schema,
+`src/agreement.schema.json` and `src/assembly.schema.json`, held to the composer and the builder by
+`tests/documents/schema-conformance.test.ts`.
 
 ## From Adopted Assembly to Signed Agreement — the ONE walk
 

@@ -16,16 +16,20 @@ Everything rests on two mechanisms that compose:
 
 Neither is tunable: the `2×` ratio and one-buyer-resolves are constitutive, not parameters.
 
-## The six nouns
+## The nouns
 
-On top of the two mechanisms there are exactly six things, ever:
+The protocol's nouns are few, and the [lexicon](/start-here/lexicon/) is their one list; the ones a builder meets first:
 
-- **buyer** — the one party who pays and resolves; any wallet.
-- **seller** — a value-adder; any wallet.
-- **clause** — one relationship, buyer↔seller or seller↔seller; who comes before whom is itself a clause.
-- **agreement** — the clauses composed for one order, hashed to the `checkoutHash` both parties sign.
-- **assembly** — agreements composed into something anyone can reuse.
-- **composition** — with other contracts on-chain, and with legal and regulatory norms off-chain (an EU electronic invoice, ESG reporting, GDPR, taxation).
+- **clause** — a term in an agreement; its spec is registered under the hash of its bytes.
+- **agreement** — the clauses composed for one trade; its design is registered under its merkle root, and at checkout it is completed into the tree whose root, the `checkoutHash`, both parties sign.
+- **assembly** — agreements composed into something anyone can reuse, registered under its root.
+- **process** — the runtime instance of an assembly: opened by a buyer's first commitment, extended by each further commitment, ended by the buyer's resolution.
+- **commitment** — the object a buyer and a seller both sign, one per seller: the parties, the token, the payment, the running total, the `checkoutHash`, a salt and a deadline.
+- **attestation** — a party's signed statement, during the process, about a clause of its agreement; the chain keeps its hash and checks who signed and what it is bound to, never whether it is true.
+- **resolution** — the buyer's one act that ends a process: every payment transfers and every bond is refunded in one transaction.
+- **composition** — how anything here is built: clauses into agreements, agreements into assemblies, assemblies into processes; a process with other contracts on-chain; a process with legal and regulatory norms off-chain.
+
+Roles are per order, not nouns: in any order the buyer pays and resolves and a seller adds value, and the same wallet can be buyer in one order and seller in the next.
 
 ## The lifecycle, and the two paths
 

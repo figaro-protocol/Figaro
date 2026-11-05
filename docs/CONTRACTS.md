@@ -489,7 +489,7 @@ no crowd mechanism.
 
 **`src/app/MembersRegistry.sol`** — Permissionless member
 registration under a stake. A member is a wallet that publishes a
-declaration — buyer, seller, or both; the declaration is one document, split
+profile — buyer, seller, or both; the profile is one document, split
 between the identity envelope here and the item list behind `catalogURI`.
 - `register(metadataURI)` — sets the dedup guard, takes the stake, emits
   `MemberRegistered`.

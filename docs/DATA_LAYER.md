@@ -222,7 +222,7 @@ that funded its bond through the coordinator (`readFundingLegs`,
 two denominations.
 
 **What stands behind a declaration or an attestation.** An institution-declared row is
-a declaration: content both parties signed into the agreement at commit, which the
+a declaration: a clause both parties signed into the agreement at commit, which the
 chain never validates. An attestation behind a protocol-derived row is a party's
 representation about the process while it is open, signed and bound to its order,
 which the chain checks for binding and never for truth. What stands behind a seller's
@@ -230,10 +230,10 @@ attestation is the buyer's decision: a buyer who finds it false before resolving
 withhold resolution, which keeps the seller's bond locked, and its own, and pays
 nobody, until it is put right; the co-sellers, whose own payment waits on the same
 resolution, have their own reason to press. That reach has three edges. A buyer's own
-attestation meets no such pressure, since the buyer resolves at will. A declaration is
-a term both parties agreed, so there is nothing to put right; what stands behind it is
-that both signed it. A member's profile is a declaration outside any process, backed by
-the member stake and the wallet's resolution history. After resolution, which no one can reverse, an attestation or a declaration
+attestation meets no such pressure, since the buyer resolves at will. A clause of the
+agreement is a term both parties signed, so there is nothing to put right; what stands
+behind it is that both signed it. A member's profile is a statement outside any process,
+backed by the member stake and the wallet's resolution history. After resolution, which no one can reverse, an attestation or a signed clause
 stays in the public data: its worth to whoever buys or analyses it, the evidence a forum
 or court reads, and the signer's resolution history. The SDK carries the two tails once
 (`TRUTH_BOUNDARY_GLOSS` in `sdk/src/derive/truth.ts`). What none of this reaches is
