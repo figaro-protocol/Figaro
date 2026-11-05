@@ -10,13 +10,18 @@
 // party's signed swap calldata to the venue by a low-level call, which the
 // prover resolves against the linked venue's functions.
 //
-// STATE: a draft the prover has run twice (jobs 9512759/8ad005da… and
-// 9512759/21cf4904…, about forty seconds each, no stall) and VIOLATED both
-// times, the second from an empty coordinator with the parties and the sender
-// distinct from it. The counterexample's trace is on the prover's page and has
-// not been read; until it is, and the rule or the scene is corrected, the three
-// inventory entries stay PENDING and this file is the starting point, not the
-// proof.
+// The first two runs (jobs 9512759/8ad005da… and 9512759/21cf4904…) reported
+// the rule violated. The counterexample's trace shows why the scene, not the
+// contract, was at fault: the party's input token (0x2914) and the commitment's
+// currency (0x7a7e) were arbitrary addresses, so each ERC-20 call on them was
+// dispatched to whichever of the two instances the prover chose, call by call,
+// and the swap calldata was empty, so the low-level call on the venue resolved
+// to no function and was havoced, which lets the prover write any balance into
+// an instance's storage. The scene now pins the two tokens to the two instances
+// and resolves every unresolved call to the venue's one function, with a
+// non-deterministic return and no state change otherwise (an empty or foreign
+// calldata then produces no output, so `OutputBelowBond` reverts the path).
+// With that scene the rule verifies and its vacuity check passes (job 9512759/22676dd3…).
 //
 // CoordinatorTokenConservation: on every completing path of swapAndCommit,
 // the coordinator ends holding exactly what it held before of both tokens —
@@ -34,6 +39,11 @@ methods {
     function _.allowance(address, address) external => DISPATCHER(true);
     function tokenA.balanceOf(address) external returns (uint256) envfree;
     function tokenB.balanceOf(address) external returns (uint256) envfree;
+    // The coordinator forwards the party's signed swap calldata to the venue by a
+    // low-level call. Calldata that names the venue's swap resolves to it; any
+    // other calldata (empty, or a selector the venue lacks) moves no token and
+    // returns anything, which is what the real venue's revert or no-op gives.
+    unresolved external in _._ => DISPATCH [ MockSwapVenue.swap(address, address, uint256, address) ] default NONDET;
 }
 
 rule coordinatorTokenConservation(
@@ -58,6 +68,11 @@ rule coordinatorTokenConservation(
     // are wallets, not this contract.
     require e.msg.sender != currentContract;
     require c.buyer != currentContract && c.seller != currentContract;
+    // The two tokens of the scene: a party swaps token A into the bond currency,
+    // token B. An ERC-20 call on any other address would be dispatched to
+    // either instance call by call, which no real token does.
+    require c.currency == tokenB;
+    require buyerFunding.inputToken == tokenA && sellerFunding.inputToken == tokenA;
 
     swapAndCommit(e, c, buyerSig, sellerSig, buyerFunding, sellerFunding);
 
