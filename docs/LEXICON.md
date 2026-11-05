@@ -33,8 +33,8 @@ These words are not Figaro's nouns. A sentence uses one only when it tells the l
 | The outside word | Its outside sense | Figaro's counterpart |
 |---|---|---|
 | `contract`, `terms` | the parties' binding promise and what it says | the agreement: every trade is an agreement |
-| `offer` | the first party's proposal | the buyer's signature over the commitment |
-| `acceptance` | the other party's assent | the seller's counter-signature |
+| `offer` | the first party's proposal | the buyer's signature over the commitment; in a dispatch race, the buyer's unsigned draft, which each candidate counter-signs as its availability and the buyer's signature on one of them then selects |
+| `acceptance` | the other party's assent | the seller's counter-signature; in a dispatch race, the buyer's signature on the one counter-signed draft it selects |
 | `mutual assent` | a meeting of minds | the Core's check of both signatures at commit |
 | `negotiation` | bargaining over the terms | design and selection: the designer composes, the seller binds, the buyer selects |
 | `consideration` | the value given in exchange | the payment |

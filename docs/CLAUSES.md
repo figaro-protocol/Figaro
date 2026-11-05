@@ -65,9 +65,11 @@ assemblyHash }` or `null`.
 ## The registered agreement and the assembly — units above the clause
 
 Three design-time objects, three registries, parallel: a clause is its spec
-(`ClauseRegistry`), a registered agreement is the design of an agreement — a
-merkle tree of clauses, one leaf per composed clause with the designer's fills,
-value-free, keyed by its root, the `agreementHash` (`AgreementRegistry`), and an
+(`ClauseRegistry`), a registered agreement is an agreement at design time, its
+registered design and not a second object beside the agreement completed at checkout
+(the lexicon has one entry for both) — a merkle tree of clauses, one leaf per composed
+clause with the designer's fills, value-free, keyed by its root, the `agreementHash`
+(`AgreementRegistry`), and an
 assembly is a merkle tree of agreements, each binding a registered agreement by
 its `agreementHash`, plus the assembly-scoped terms (`AssemblyRegistry`). Assemblies use agreements, agreements use clauses, and
 neither knows what uses it; every arrow is off-chain, in the pinned documents.
@@ -178,7 +180,7 @@ its manual.
   (`sdk/src/clauses/clause-spec.schema.json`): a closed subset of JSON Schema
   (`string`, `integer`, `bigint` as a decimal string, `boolean`, `enum`,
   `array`, `object`). A string field's `format` is an open axis: any non-empty
-  string is a valid declaration; the validator enforces the formats it knows
+  string is a valid value; the validator enforces the formats it knows
   and treats the rest as plain strings; an interface may map a known format to
   a richer input.
 - `validateContent(content, spec, { stage? })` — validates a value against a
@@ -214,11 +216,11 @@ terms — a temperature reading, measured grams, a detected proximity band —
 declares that content as `spec.stages[N]`, a per-stage field set keyed by the
 on-chain `uint8 stage`. Stage 0 is the committed content, declared by `fields`;
 `stages[N≥1]` are the shapes of evidence attested while the process is open.
-The declaration is the whole signal: an interface derives a witness capability
+The spec's stage list is the whole signal: an interface derives a witness capability
 for any composed clause that declares stages, renders the form from the
 declared fields, validates and encodes at the stage, and files through
 `AttestationCoordinator`; readers decode the recovered calldata against the
-same declaration. Who witnesses is never engine policy — either party may file,
+same spec. Who witnesses is never engine policy — either party may file,
 and sufficiency is derived at read time against the committed terms. The
 evidence window closes at resolution (`DESIGN_DECISIONS.md` §6).
 
@@ -339,7 +341,7 @@ field shape:
   same structure at length). These are coordination attestations between
   sellers — the same runtime-evidence category as witness stages, differing in
   shape.
-- **`coordination`** — committed declarations of which scenario everyone runs.
+- **`coordination`** — committed statements of which scenario everyone runs.
   Committed content, not a runtime lifecycle; a coordination clause never
   surfaces an attestation capability.
 - **`denomination`** — an assembly-scoped clause of this article has each

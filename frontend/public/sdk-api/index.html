@@ -403,7 +403,7 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <tr>
 <td><code>mandatoryClauses</code></td>
 <td>root</td>
-<td>The mandatory clauses a canvas writes into every agreement: the registrant's (the DAO wallet's) live <code>ClauseRegistry</code> registrations whose spec declares the mandatory article at agreement scope, one per shape, the later registration winning; <code>clauseKey → {}</code>.</td>
+<td>The mandatory clauses a canvas writes into every agreement, read from the DAO wallet's live <code>ClauseRegistry</code> registrations (docs/CLAUSES.md § &quot;The mandatory clauses&quot;); <code>clauseKey → {}</code>.</td>
 </tr>
 <tr>
 <td><code>specIsCommerceShape</code> / <code>specIsTopologyShape</code></td>
@@ -1525,9 +1525,8 @@ lineage counter a reader shows); nothing on chain or in a leaf reads them.
 The clause's identity is its KEY, <code>keccak256</code> of exactly the bytes pinned at
 its <code>contentURI</code>. The reference tooling pins <code>canonicalize(spec)</code> — sorted
 keys at every depth, array order kept, no whitespace — and <code>computeClauseKey(spec)</code>
-is <code>keccak256</code> of those bytes. <strong>A spec pinned in any other byte form has a
-different key</strong>: a pretty-printed pin is another clause. Two specs sharing a
-name are two clauses; a lookalike shares nothing with the original.</p>
+is <code>keccak256</code> of those bytes; the key, never the name, is the identity, and a spec
+pinned in any other byte form is another clause (docs/CLAUSES.md § &quot;Identity&quot;).</p>
 <p><code>ClauseRegistry.registerClause(bytes32 clauseKey, string contentURI)</code> is
 payable, permissionless and first-write-wins on the key, under the stake
 (<code>docs/CLAUSES.md</code> holds the adding-a-clause checklist). It stores no name,
@@ -1687,10 +1686,9 @@ surfaces, each with its <code>clauseKey</code>. Nothing folds from it: the manda
 clauses enter a NEW agreement as the set the caller passes (<code>mandatory</code>, read
 from the registry with <code>mandatoryClauses</code> — the DAO wallet's live
 <code>article: &quot;mandatory&quot;</code> registrations at agreement scope, one per shape), written
-in before the selection (<code>composeOrderAgreement</code>). Every agreement carries one
-clause of commerce's shape and one of topology's (<code>buildAssembly</code> refuses
-otherwise); a registered agreement bound as is must carry both shapes itself;
-and checkout adds no clause.</p>
+in before the selection (<code>composeOrderAgreement</code>); <code>buildAssembly</code> refuses an agreement
+without both shapes and checkout adds no clause (the rule: docs/CLAUSES.md § &quot;The
+mandatory clauses&quot;).</p>
 <p>A spec that is not (yet) loaded returns <code>undefined</code> from <code>get</code>, and the
 projection degrades exactly as the registry-reading frontend does (no defaults
 injected, validation skipped for that clause, field lookups fall back to
@@ -1779,9 +1777,9 @@ value-free rule, one clause of commerce's shape and one of topology's) into the 
 key (<code>composeAuthoredAgreements</code> composes a whole set by name); an assembly file (agreements naming the written agreements they bind
 and carrying their own <code>follows</code>) binds each named agreement's hash
 and takes the topology parents as the agreement's fill, returning each DISTINCT
-agreement once beside the assembly. Neither runs on a read path. The published shape of each document is a JSON Schema beside the
-clause's: <code>src/agreement.schema.json</code> and <code>src/assembly.schema.json</code>, each covering the written form and the registered or pinned
-form, each <code>.schema.json</code> kept in lockstep with the composer and the builder over the reference files by <code>tests/documents/schema-conformance.test.ts</code>.</p>
+agreement once beside the assembly. Neither runs on a read path. Each document's published shape is its JSON Schema,
+<code>src/agreement.schema.json</code> and <code>src/assembly.schema.json</code>, held to the composer and the builder by
+<code>tests/documents/schema-conformance.test.ts</code>.</p>
 <h2 id="from-adopted-assembly-to-signed-agreement-the-one-walk" class="tsd-anchor-link">From Adopted Assembly to Signed Agreement — the ONE walk<a href="#from-adopted-assembly-to-signed-agreement-the-one-walk" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>Every consumer that turns an assembly into <code>FigaroCore</code> orders — an agent originating a
 chain (<code>@figaro-protocol/sdk/agent</code> <code>buildChainOffers</code>), a checkout realizing a bound
