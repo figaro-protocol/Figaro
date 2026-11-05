@@ -58,6 +58,24 @@ Time:              7–19 minutes (hardware-dependent)
 TLC exit code:     0 (no errors)
 ```
 
+## The best-response inequalities (Lean)
+
+`lean/FigaroEquilibrium.lean` closes the one step no model checker expresses, a party choosing:
+the equilibrium argument's two-party comparisons as best-response inequalities over the payoff
+table the TLA⁺ invariants pin (`DeterrentEscrowMagnitudes`, `SettledNetPositions`). Four theorems,
+each over one order at a position of a chain: `buyer_resolves` (after performance, resolving
+strictly beats withholding, assuming nothing of the seller), `seller_performs` (given the buyer's
+plan, performing strictly beats holding out at every feasible retention), `deterrent_gap` (the
+margin by which performing beats holding out at maximal retention is `Pᵢ + Gᵢ`, at least `2Pᵢ`),
+and `holdout_when_dead` (where the process will not close, holding out beats performing, so the
+conclusion stays conditional). The hypotheses are two, carried by every order as fields of the
+`Order` structure and nowhere else, and they are the mechanism's own facts: `payment_floor`,
+`1 ≤ payment` (the `figaro-commerce` clause's floor), and `cumulative_inclusive`,
+`payment ≤ cumulative` (the accumulator includes the order's own payment). Subgame perfection, the
+second equilibrium and the co-sellers' selection are argued in `/papers/asymmetric-bonding` and
+are not claimed by the file. `lake build` in `formal/lean/` checks it with core Lean 4 and `omega`,
+no network beyond the pinned toolchain.
+
 ## Files
 
 | File | Purpose |
@@ -65,6 +83,7 @@ TLC exit code:     0 (no errors)
 | `FigaroCore.tla` | Main specification — actions, state machine, safety invariants |
 | `MC.tla` | Model-checking configuration (constants, model values) |
 | `MC.cfg` | TLC configuration (specification, constant bindings, invariant list) |
+| `lean/FigaroEquilibrium.lean` | The best-response inequalities, machine-checked (above) |
 
 ## How to Run
 

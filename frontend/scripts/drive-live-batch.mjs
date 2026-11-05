@@ -173,7 +173,8 @@ const witnessContent = {
 const read = (address, abi, functionName, args = []) =>
     publicClient.readContract({ address, abi, functionName, args });
 
-console.log(`\n── Preflight against ${RPC_URL} (chain ${chainId}) ──`);
+// The RPC URL often carries a provider key in its path; print its host alone.
+console.log(`\n── Preflight against ${new URL(RPC_URL).host} (chain ${chainId}) ──`);
 const gaps = [];
 
 if (chainId !== record.chainId) {

@@ -21,9 +21,11 @@ name: Sequencer Release
 # therefore built in the pinned SP1 DOCKER IMAGE — the canonical,
 # host-independent build (scripts/prover-box/build-guest.sh is the same
 # recipe) — injected where include_elf! resolves, and the computed key must
-# equal the programVKey of every deployment record (`deployments/<chainId>.json`)
-# or the release refuses to publish. The pins are printed into the release body so anyone can rebuild
-# and compare.
+# equal the programVKey of at least one deployment record (`deployments/<chainId>.json`)
+# or the release refuses to publish: a release is cut per guest GENERATION, serves
+# the verifiers that pin its key, and names the records another generation serves
+# (scripts/check-release-vkey.mjs; accepted risk 13 lets two chains pin different
+# keys). The pins are printed into the release body so anyone can rebuild and compare.
 
 on:
     push:
@@ -204,26 +206,14 @@ jobs:
                   fi
                   # Every public deployment record (`deployments/<chainId>.json`;
                   # the `.expected.json` files state intent, not a deployment)
-                  # is a verifier this binary serves, so each one's
-                  # programVKey must be the computed key, and at least one
-                  # record must exist.
-                  VKEY="$vkey" python3 - <<'PY'
-                  import glob, json, os, re, sys
-                  vkey = os.environ["VKEY"].lower()
-                  records = sorted(p for p in glob.glob("../deployments/*.json")
-                                   if re.fullmatch(r"\d+\.json", os.path.basename(p)))
-                  if not records:
-                      sys.exit("no deployment record under deployments/ — refusing to publish")
-                  bad = 0
-                  for path in records:
-                      recorded = json.load(open(path)).get("programVKey")
-                      if not isinstance(recorded, str) or recorded.lower() != vkey:
-                          print(f"computed vkey {vkey} is not {path}'s programVKey {recorded} — refusing to publish")
-                          bad += 1
-                      else:
-                          print(f"vkey matches {path}")
-                  sys.exit(1 if bad else 0)
-                  PY
+                  # that pins the computed key is a verifier this binary serves.
+                  # At least one must; the rest are served by another guest
+                  # generation and are named as such (scripts/check-release-vkey.mjs,
+                  # self-tested, the same script a reader runs on a downloaded key).
+                  node ../scripts/check-release-vkey.mjs --self-test
+                  node ../scripts/check-release-vkey.mjs --vkey "$vkey" --records ../deployments | tee vkey-check.txt
+                  served=$(grep '^served=' vkey-check.txt | cut -d= -f2)
+                  echo "served=$served" >> "$GITHUB_OUTPUT"
                   echo "vkey=$vkey" >> "$GITHUB_OUTPUT"
                   echo "vkey: $vkey"
 
@@ -260,6 +250,7 @@ jobs:
                   rust_pin=${RUST_TOOLCHAIN}
                   sp1=${SP1_VERSION}
                   vkey=${{ steps.vkey.outputs.vkey }}
+                  served=${{ steps.vkey.outputs.served }}
                   sha256=${{ steps.package.outputs.sha256 }}
                   archive=${{ steps.package.outputs.pkg }}.tar.gz
                   EOF
@@ -318,6 +309,13 @@ jobs:
                       exit 1
                   fi
                   echo "vkey=${keys#vkey=}" >> "$GITHUB_OUTPUT"
+                  served=$(cat staging/*.facts | grep '^served=' | sort -u)
+                  if [ "$(printf '%s\n' "$served" | wc -l | tr -d ' ')" -ne 1 ]; then
+                      echo "the deployments served differ across targets — refusing to publish:"
+                      printf '%s\n' "$served"
+                      exit 1
+                  fi
+                  echo "served=${served#served=}" >> "$GITHUB_OUTPUT"
                   sp1=$(cat staging/*.facts | grep '^sp1=' | sort -u)
                   if [ "$(printf '%s\n' "$sp1" | wc -l | tr -d ' ')" -ne 1 ]; then
                       echo "SP1 release differs across targets — refusing to publish:"
@@ -347,6 +345,7 @@ jobs:
             - name: Assemble release notes
               env:
                   VKEY: ${{ steps.facts.outputs.vkey }}
+                  SERVED: ${{ steps.facts.outputs.served }}
                   SP1_VERSION: ${{ steps.facts.outputs.sp1 }}
                   RUSTV: ${{ steps.facts.outputs.rust }}
                   RUST_TOOLCHAIN: ${{ steps.facts.outputs.rust_pin }}
@@ -403,9 +402,12 @@ jobs:
                   of the binary's identity rather than a separate download. It is the value
                   `DeployMainnet.s.sol` takes as `SP1_PROGRAM_VKEY` and `FigaroBatchVerifier`
                   stores as its `programVKey` immutable — a build whose key differs from the
-                  one a deployed verifier pins cannot resolve against it. Every binary in this
-                  release was checked to carry the same key; the workflow refuses to publish
-                  otherwise. Recompute it with:
+                  one a deployed verifier pins cannot resolve against it. This release serves
+                  the deployments whose records pin this key, chain ids `__SERVED__`; a
+                  record pinning another key is served by the release of that guest
+                  generation (`scripts/check-release-vkey.mjs --vkey <key>` lists both). Every
+                  binary in this release was checked to carry the same key; the workflow
+                  refuses to publish otherwise. Recompute it with:
 
                   ```sh
                   cd prover && cargo-prove prove vkey --elf __GUEST_ELF__
@@ -446,6 +448,7 @@ jobs:
                       -e "s|__RUST_FULL__|${RUSTV}|g" \
                       -e "s|__SP1__|${SP1_VERSION}|g" \
                       -e "s|__VKEY__|${VKEY}|g" \
+                      -e "s|__SERVED__|${SERVED}|g" \
                       -e "s|__GUEST_ELF__|${GUEST_ELF}|g" \
                       notes.md
                   # A placeholder that reached the published body would be a silent

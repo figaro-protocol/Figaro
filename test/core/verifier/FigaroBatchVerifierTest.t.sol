@@ -1233,6 +1233,134 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(c, 0, "nothing counted");
     }
 
+    /// DESIGN_DECISIONS § 19, the gas leg: a submitter can starve the accrual
+    /// call. The verifier forwards at most 63/64 of what remains (EIP-150), so
+    /// the accrual can run out of gas while the outer call keeps 1/64, and
+    /// that 1/64 finishes the batch only when it covers the tail after the
+    /// call (the root write, the batch id, the three events). The probe walks
+    /// the gas limit down from a full run at one, sixteen and sixty-four uses
+    /// and records, per limit, whether the batch landed with its uses
+    /// counted, landed with `BatchAccrualSkipped`, or reverted whole. It
+    /// asserts the invariant every outcome shares, a batch never lands
+    /// part-way, and the shape § 19 states: at one use no gas limit lands the
+    /// batch with the accrual starved (the call reverts whole instead), and at
+    /// sixty-four uses a band of limits does, because the accrual then costs
+    /// more than sixty-three times the tail. The figures in § 19 are read
+    /// from this probe's log; a repricing that moves them moves § 19.
+    function test_settleBatch_gasStarvationProbe() public {
+        _gasStarvationProbe(1);
+        _gasStarvationProbe(16);
+        _gasStarvationProbe(64);
+    }
+
+    /// The probe's working set, in memory so the loop keeps few locals on the
+    /// stack (the default profile compiles without via-IR).
+    struct Probe {
+        bytes callData;
+        bytes32 newRoot;
+        uint256 sellerBefore;
+        uint256 uses;
+        uint256 full; // gas a full run takes
+        uint256 counted; // least gas at which the batch landed with its uses counted
+        uint256 skippedHi; // most gas at which it landed with the accrual skipped
+        uint256 skippedLo; // least gas at which it landed with the accrual skipped
+        uint256 revertedHi; // most gas at which the whole call reverted
+    }
+
+    function _gasStarvationProbe(uint256 uses) internal {
+        Probe memory pr;
+        pr.uses = uses;
+        {
+            FigaroBatchVerifier.BatchUsageData memory usage = _usageFor(clauseKey, uses);
+            (
+                bytes memory pv,
+                FigaroBatchVerifier.NetPosition[] memory positions,
+                FigaroBatchVerifier.BatchEventData memory events,
+                bytes32 newRoot
+            ) = _batchWithUsage(usage);
+            pr.newRoot = newRoot;
+            pr.sellerBefore = token.balanceOf(seller);
+            uint256 snap = vm.snapshotState();
+            uint256 g0 = gasleft();
+            verifier.settleBatch(hex"", pv, positions, events, usage, hex"");
+            pr.full = g0 - gasleft();
+            vm.revertToState(snap);
+            pr.callData = abi.encodeWithSelector(this.landWith.selector, uint256(0), pv, positions, events, usage);
+        }
+
+        // Two hundred probes between a full run and half of it: the band, where
+        // it exists, sits above the gas at which the accrual alone can finish.
+        uint256 step = pr.full / 200 == 0 ? 1 : pr.full / 200;
+        for (uint256 g = pr.full + step; g > pr.full / 2; g -= step) {
+            _probeOnce(pr, g);
+        }
+        emit log_named_uint("uses in the batch", pr.uses);
+        emit log_named_uint("full run gas", pr.full);
+        emit log_named_uint("least gas landing with the use counted", pr.counted);
+        emit log_named_uint("most gas landing with the accrual skipped", pr.skippedHi);
+        emit log_named_uint("least gas landing with the accrual skipped", pr.skippedLo);
+        emit log_named_uint("most gas at which the whole call reverted", pr.revertedHi);
+        assertTrue(pr.revertedHi != 0, "the walk reached the gas at which the call reverts whole");
+        if (uses == 1) {
+            assertEq(pr.skippedHi, 0, "at one use no limit lands the batch with the accrual starved");
+        }
+        if (uses == 64) {
+            assertTrue(
+                pr.skippedHi != 0, "at sixty-four uses a band of limits lands the batch with the accrual starved"
+            );
+            assertTrue(pr.skippedLo > pr.revertedHi, "the band sits above the gas at which the call reverts whole");
+            assertTrue(pr.counted > pr.skippedHi, "and below the gas at which the accrual completes");
+        }
+    }
+
+    /// One probe at gas limit `g`: the batch lands whole, lands with the accrual
+    /// skipped, or the call reverts; the chain is rolled back after each.
+    function _probeOnce(Probe memory pr, uint256 g) internal {
+        uint256 snap = vm.snapshotState();
+        // The gas limit is the selector's first word; the rest of the call is fixed.
+        bytes memory callData = pr.callData;
+        assembly {
+            mstore(add(callData, 36), g)
+        }
+        vm.recordLogs();
+        (bool ok,) = address(this).call(callData);
+        if (ok) {
+            assertEq(verifier.stateRoot(), pr.newRoot, "a landed batch advances the root");
+            assertEq(token.balanceOf(seller) - pr.sellerBefore, 300 ether, "a landed batch pays the seller");
+            (uint64 c,,) = counter.accrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
+            if (_sawAccrualSkipped(vm.getRecordedLogs())) {
+                assertEq(c, 0, "a skipped accrual counts nothing");
+                if (pr.skippedHi == 0) pr.skippedHi = g;
+                pr.skippedLo = g;
+            } else {
+                assertEq(c, uint64(pr.uses), "a landed, unskipped batch counts its uses");
+                pr.counted = g;
+            }
+        } else if (pr.revertedHi == 0) {
+            pr.revertedHi = g;
+        }
+        vm.revertToState(snap);
+    }
+
+    function landWith(
+        uint256 g,
+        bytes calldata pv,
+        FigaroBatchVerifier.NetPosition[] calldata positions,
+        FigaroBatchVerifier.BatchEventData calldata events,
+        FigaroBatchVerifier.BatchUsageData calldata usage
+    ) external {
+        require(msg.sender == address(this), "probe");
+        verifier.settleBatch{gas: g}(hex"", pv, positions, events, usage, hex"");
+    }
+
+    function _sawAccrualSkipped(Vm.Log[] memory logs) internal pure returns (bool) {
+        bytes32 topic = FigaroBatchVerifier.BatchAccrualSkipped.selector;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics.length > 0 && logs[i].topics[0] == topic) return true;
+        }
+        return false;
+    }
+
     /// A counter bound to another verifier would refuse every accrual this
     /// verifier hands it, and the catch-all would swallow each refusal: the
     /// pair would resolve batches and count no use. The binding is checked at

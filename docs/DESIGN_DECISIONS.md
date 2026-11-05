@@ -678,6 +678,20 @@ every use of a batch whose call reverts (a period boundary crossed in flight), s
 and a later batch may prove it again — conservative under-pay, never over-pay. The sequencer
 additionally pre-filters the claims the counter would skip, so a batch carries few.
 
+**The gas leg, measured.** The catch-all also covers an accrual its submitter starved of gas: the
+verifier forwards at most 63/64 of what remains (EIP-150) and keeps 1/64, which finishes the batch
+only when it covers the tail after the call (the root write, the batch id, the events). The probe
+`test_settleBatch_gasStarvationProbe` (`test/core/verifier/FigaroBatchVerifierTest.t.sol`) walks
+the gas limit down from a full run. At one use (a full run of about 264k gas) and at sixteen (about
+1.11M) no limit lands the batch with the accrual starved: below the gas the accrual needs, the whole
+call reverts and nothing moves. At sixty-four uses (about 3.88M) a band of about 1.4M gas does land
+it: from about 2.43M to about 3.84M the accrual runs out of gas, `BatchAccrualSkipped` is emitted,
+the root advances and every payout transfers. A submitter can therefore land a large batch without
+its uses counted, and no smaller one. The effect is the one this section accepts: no use is counted,
+the uses stay provable by a later batch, no trade is held hostage, and the submitter gains nothing
+by it, since the reward is the designers' and counting earns a relay nothing. The probe
+asserts both shapes, so a repricing that moves them moves this paragraph.
+
 ## 20. The member-stake gate on the seller of record is retroactive — usage must be recorded while the stake is live
 
 **Looks wrong because:** a seller who requests withdrawal doesn't merely stop FUTURE trades

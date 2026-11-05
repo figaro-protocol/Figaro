@@ -34,6 +34,21 @@ neither line does not delay either.
    designer's assembly-level pin that overrides the buyer's selection, the assembly-wide
    mechanism kept; topology's labels and field name; and a seller's attestation only about
    a clause of its own order.
+   Who verifies, piece by piece (an agent is given only a piece with a machine check):
+   - [agent] the mandatory clauses — `frontend/tests/components/AgreementDrawerMandatoryArticle.test.tsx`
+     and `frontend/tests/e2e/designer-agreement-drawer.devnet.spec.ts` green;
+   - [agent] the DAO wallet's commerce and topology written by the canvas, nothing picked —
+     `frontend/tests/lib/referenceAssemblies.test.ts` and `draftToReviewProjection.test.ts` green;
+   - [agent] dispute resolution chosen by the buyer at checkout, its field required once
+     composed — `frontend/tests/lib/checkoutBuyerFieldComplement.test.ts` and
+     `frontend/tests/e2e/local-commerce.devnet.spec.ts` green;
+   - [agent] the utility token as the assembly-level pin — `frontend/tests/components/PinnedTokenNote.test.tsx`
+     and `frontend/tests/e2e/assembly-chain.devnet.spec.ts` green;
+   - [agent] topology's labels and field name — the clause-lockstep check (`figaro-clause-lockstep`)
+     reports no drift for `figaro-topology`;
+   - [agent] a seller's attestation only about a clause of its own order —
+     `test/core/attestation/AttestationCoordinatorTest.t.sol` green;
+   - [maintainer] that the list above is the whole set of open threads: a reading, never a run.
 2. **The site tells it correctly.** The maintainer has corrected the home page and the
    three landings, and every door page has had its copy sitting.
 3. **The papers stand.** The corpus passes the peer-review-ready gates, and each paper
@@ -41,12 +56,26 @@ neither line does not delay either.
 4. **Sepolia works end to end.** The stack is redeployed on the current commitment type,
    every reference assembly is registered, and one trade is resolved through the site
    with a real wallet.
+   - [maintainer] the redeploy and the registrations, in the Ledger session — check:
+     `node scripts/check-deployment.mjs` exits 0 against `deployments/11155111.json`;
+   - [agent] the smoke over every reference assembly — check: the Sepolia smoke's exit code,
+     recorded with its transaction hashes in the handover;
+   - [maintainer] one trade resolved through the site with a real wallet — check: the resolved
+     process's transaction hash, recorded in the handover.
 5. **The flip.** Robots' `Disallow` and the noindex meta are lifted, a sitemap of the
    canonical public pages is published, and the deployed headers are checked on the
    live host (Task 12). Before it, the testnet pinning key the bundle ships is reissued
    from a separate pinning account registered with an address that names no one, the
    old key is revoked, and the build is refused if any shipped token carries a personal
    field: a pinning service writes its account owner's email into every key it issues.
+   - [maintainer] the pinning key reissued and the old one revoked — check: the new key's
+     account names no one, read at the pinning service;
+   - [agent] no shipped token carries a personal field — check:
+     `node scripts/check-export-no-personal-info.mjs` exits 0 on the build;
+   - [agent] the sitemap and the lifted robots and noindex — check: `npm run estate:crawl`
+     exits 0 over the export and the sitemap lists every canonical public page;
+   - [maintainer] the deployed headers on the live host (Task 12) — check: read on the host
+     after the upload, which only the maintainer runs.
 6. **The stack is hardened.** The repository's secret scanning, push protection, Dependabot
    security updates and protection of `main` are on; the frontend's high security gaps are
    closed; the
@@ -54,6 +83,18 @@ neither line does not delay either.
    against WCAG AA; one public page states what is testnet-only, unaudited, or not yet built; and
    the SDK's next major version is published with the redeploy, so what a builder installs
    matches the contracts.
+   - [maintainer] the repository's switches (secret scanning, push protection, Dependabot
+     security updates, protection of `main`) — check: each reads on in the repository settings;
+   - [agent] the frontend's high security gaps — check: `node scripts/audit-frontend.mjs` reports
+     zero highs;
+   - [agent] a clean-checkout build of a named commit — check: the build script's exit code from
+     a fresh clone;
+   - [agent] the accessibility check — check: `frontend/tests/e2e/accessibility.stranger.spec.ts`
+     green over the export;
+   - [agent] the public page stating what is testnet-only, unaudited or not yet built — check:
+     the stranger crawl finds it;
+   - [maintainer] the SDK's next major version published with the redeploy — check:
+     `npm view @figaro-protocol/sdk version` equals the version the deployment record names.
 
 ## Open Tasks
 

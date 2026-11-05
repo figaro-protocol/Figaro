@@ -65,8 +65,8 @@ export interface ResolveCapReader extends BlockGasReader {
  * LOG + the order's calldata). The fork's repricing (EIP-8037 state creation, EIP-7778 refund accounting)
  * is why these sit above any pre-fork local measurement.
  *
- * Linted against the matching `RESOLVE_GAS_PER_ORDER` constant in
- * the Foundry test; either side moves, the other must move too.
+ * `sdk/tests/gasCeilings.test.ts` reads this and the Foundry test's
+ * `RESOLVE_GAS_PER_ORDER` from their sources and fails when they differ.
  */
 const RESOLVE_GAS_PER_ORDER = 30_000n;
 
@@ -78,8 +78,8 @@ const RESOLVE_GAS_PER_ORDER = 30_000n;
  * The marginal is used here; the root's one-time premium is amortized away
  * over a multi-order process.
  *
- * Linted against the matching `COMMIT_GAS_PER_ORDER` constant in the
- * Foundry test.
+ * `sdk/tests/gasCeilings.test.ts` reads this and the Foundry test's
+ * `COMMIT_GAS_PER_ORDER` from their sources and fails when they differ.
  */
 const COMMIT_GAS_PER_ORDER = 383_000n;
 
@@ -99,7 +99,8 @@ const RESOLVE_FIXED_OVERHEAD = 73_000n;
  * `(23·N)²/512` above the receipt line, and nothing at the N=1 and N=2 receipts the line was read from. Measured by
  * `test_Gas_resolveAtPublishedCapFitsTransactionCap`.
  *
- * Linted against the matching constants in the Foundry test.
+ * `sdk/tests/gasCeilings.test.ts` reads these and the Foundry test's
+ * constants from their sources and fails when they differ.
  */
 const RESOLVE_MEMORY_WORDS_PER_ORDER = 23n;
 const RESOLVE_MEMORY_QUADRATIC_DIVISOR = 512n;
@@ -111,8 +112,8 @@ const RESOLVE_MEMORY_QUADRATIC_DIVISOR = 512n;
  * process may need more than this to resolve, whatever the block holds.
  * A chain without the cap passes its own figure.
  *
- * Linted against the matching `TRANSACTION_GAS_CAP` constant in the
- * Foundry test.
+ * `sdk/tests/gasCeilings.test.ts` reads this and the Foundry test's
+ * `TRANSACTION_GAS_CAP` from their sources and fails when they differ.
  */
 export const TRANSACTION_GAS_CAP = 16_777_216n;
 
@@ -169,13 +170,15 @@ export function maxCommitsLandableForGasLimit(gasLimit: bigint): number {
  * in the active chain's block gas budget with safety headroom.
  *
  * Async because the block gas limit is a runtime read; pass the call's
- * result around rather than re-deriving on every render.
+ * result around rather than re-deriving on every render. A chain without
+ * the transaction cap passes its own figure as `transactionGasCap`.
  */
 export async function maxOrdersResolvablePerProcess(
     client: BlockGasReader,
+    transactionGasCap: bigint = TRANSACTION_GAS_CAP,
 ): Promise<number> {
     const block = await client.getBlock({ blockTag: "latest" });
-    return maxOrdersResolvableForGasLimit(block.gasLimit);
+    return maxOrdersResolvableForGasLimit(block.gasLimit, transactionGasCap);
 }
 
 /**
@@ -206,12 +209,14 @@ export interface ProcessResolveCapacity {
 /**
  * Read a live process's `activeOrderCount` and the active chain's resolve
  * ceiling in one call. The structural client shape (rather than a full
- * PublicClient) keeps this testable with a stub.
+ * PublicClient) keeps this testable with a stub. A chain without the
+ * transaction cap passes its own figure as `transactionGasCap`.
  */
 export async function readProcessResolveCapacity(
     client: ResolveCapReader,
     core: `0x${string}`,
     processId: `0x${string}`,
+    transactionGasCap: bigint = TRANSACTION_GAS_CAP,
 ): Promise<ProcessResolveCapacity> {
     const [state, block] = await Promise.all([
         client.readContract({
@@ -223,7 +228,7 @@ export async function readProcessResolveCapacity(
         client.getBlock({ blockTag: "latest" }),
     ]);
     const activeOrderCount = Number(state[3]);
-    const cap = maxOrdersResolvableForGasLimit(block.gasLimit);
+    const cap = maxOrdersResolvableForGasLimit(block.gasLimit, transactionGasCap);
     return {
         activeOrderCount,
         cap,
@@ -241,14 +246,22 @@ export async function readProcessResolveCapacity(
  * Root commitments (`processId` = zero) pass trivially — they create a
  * fresh process with one order. Whether the process EXISTS is the
  * FigaroCore's check, not this one's (`UnknownProcess` reverts on-chain).
+ *
+ * The refusal stands although the constants were measured on one network:
+ * a wrong refusal costs the buyer a fresh process, a missing one locks every
+ * bond in the process for good, and the message names the ceiling as this
+ * SDK's estimate. A chain whose cap differs passes its own figure as
+ * `transactionGasCap`; a chain whose per-order costs differ re-measures the
+ * constants above, never drops the check.
  */
 export async function assertOrderFitsResolveCap(
     client: ResolveCapReader,
     core: `0x${string}`,
     processId: `0x${string}`,
+    transactionGasCap: bigint = TRANSACTION_GAS_CAP,
 ): Promise<void> {
     if (/^0x0+$/.test(processId)) return;
-    const { activeOrderCount, cap } = await readProcessResolveCapacity(client, core, processId);
+    const { activeOrderCount, cap } = await readProcessResolveCapacity(client, core, processId, transactionGasCap);
     if (activeOrderCount + 1 > cap) {
         throw new Error(
             `Process has ${activeOrderCount} active orders; ${cap} is the most the SDK plans to fit ` +

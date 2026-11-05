@@ -37,7 +37,10 @@ type CommitmentPayloadWire = Pick<
  * Relay one commitment payload to a counterparty, keyed by the commitment's
  * order hash — the ONE relay-send mechanic (race drafts out, countersigned
  * replies back, the fully-signed last mile). Delivered INLINE over the
- * E2E-encrypted channel (audit F Arm 2), never a public IPFS pin.
+ * handoff channel (audit F Arm 2), never a public IPFS pin. Confidentiality
+ * is the transport's own: the XMTP channel encrypts end to end, the mock and
+ * null channels do not, and nothing here encrypts the payload. What the
+ * counterparty checks is the payload's signatures, never its secrecy.
  *
  * A QUOTE answers under the REQUEST's id (`threadOrderId`): a counter-draft
  * is a different struct by construction (the candidate re-priced it), and the

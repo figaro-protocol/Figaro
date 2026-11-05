@@ -24,6 +24,7 @@ import { ModalChrome } from "@/components/ui/ModalChrome";
 import { Button } from "@/components/ui/Button";
 import { AgreementReview } from "@/components/runtime/AgreementReview";
 import type { ConfirmationIntent, SwapConfirmationDetails } from "@/lib/checkout/orderPreview";
+import { activeChain } from "@/lib/shared/chains";
 
 interface Props {
     commitment: Commitment;
@@ -82,6 +83,15 @@ export function AgreementPreviewModal({ commitment, agreement, intent, swap, onC
                     <p className="text-sm text-ink-body mt-1">
                         {copy.lede}
                     </p>
+                    {/* Every commitment signature and commit broadcast passes through here,
+                        so on a test network the chain's own flag says so at that moment
+                        (the punch-list's reading of the testnet gate; stored nowhere). */}
+                    {activeChain.testnet && (
+                        <p role="note" data-testid="preview-testnet-notice" className="mt-2 text-sm font-semibold text-ink-primary">
+                            This is {activeChain.name}, a test network, not Ethereum mainnet. The commitment you sign
+                            here runs on {activeChain.name}, and so do the tokens it locks.
+                        </p>
+                    )}
                 </div>
 
                 {/* Body */}

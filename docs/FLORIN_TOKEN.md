@@ -39,7 +39,7 @@ instrument.
   protocol's permissionless nature is load-bearing.
 - **Not resolution-anchored emission.** The florin is **not minted on
   `resolveProcess`**. There is no per-resolution reward path.
-- **Never market-touched by its issuers.** The market stance is stated
+- **Never market-touched by the treasury or the founder.** The market stance is stated
   indelibly in the contract natspec (`src/build/florin/FlorinToken.sol`): neither the
   DAO treasury nor the founder ever sells, buys, or provides liquidity on any
   market; the first price is a stranger's to name.
