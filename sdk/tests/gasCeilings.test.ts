@@ -148,3 +148,22 @@ describe("the resolve memory constants, SDK and Foundry in lockstep", () => {
         });
     }
 });
+
+describe("a chain without the transaction cap passes its own figure", () => {
+    const uncapped = 1n << 62n;
+
+    it("readProcessResolveCapacity derives the ceiling under the caller's cap", async () => {
+        const capacity = await readProcessResolveCapacity(stubClient(500n, 60_000_000n), CORE, PROCESS_ID, uncapped);
+        expect(capacity).toEqual({ activeOrderCount: 500, cap: 1787, remaining: 1287 });
+    });
+
+    it("maxOrdersResolvablePerProcess derives the ceiling under the caller's cap", async () => {
+        await expect(maxOrdersResolvablePerProcess(stubClient(0n, 60_000_000n), uncapped)).resolves.toBe(1787);
+    });
+
+    it("assertOrderFitsResolveCap admits past the default cap under the caller's own", async () => {
+        const client = stubClient(900n, 60_000_000n);
+        await expect(assertOrderFitsResolveCap(client, CORE, PROCESS_ID)).rejects.toThrow(/permanently unresolvable/);
+        await expect(assertOrderFitsResolveCap(client, CORE, PROCESS_ID, uncapped)).resolves.toBeUndefined();
+    });
+});

@@ -1,3 +1,4 @@
+use crate::api::without_urls;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -148,7 +149,7 @@ pub async fn read_chain_id(rpc_url: &str) -> Result<u64, String> {
         .connect_http(url)
         .get_chain_id()
         .await
-        .map_err(|e| format!("chain id read failed: {e}"))
+        .map_err(|e| format!("chain id read failed: {}", without_urls(&e.to_string())))
 }
 
 /// A bond is funded when the wallet holds it AND has approved it to the
@@ -195,12 +196,12 @@ pub async fn check_commit_funding(
             .balanceOf(who)
             .call()
             .await
-            .map_err(|e| format!("balanceOf({who}) read failed: {e}"))?;
+            .map_err(|e| format!("balanceOf({who}) read failed: {}", without_urls(&e.to_string())))?;
         let allowance = token
             .allowance(who, gate.verifier)
             .call()
             .await
-            .map_err(|e| format!("allowance({who}) read failed: {e}"))?;
+            .map_err(|e| format!("allowance({who}) read failed: {}", without_urls(&e.to_string())))?;
         if !commit_funded(balance, allowance, need) {
             return Ok(Err(format!(
                 "{label} {who} holds {balance} and allows {allowance} to the verifier; the bond needs {need}"
@@ -461,7 +462,7 @@ pub async fn check_wallet_code_resolve(gate: &FundingGate, op: &KernelOp) -> Res
     let code = provider
         .get_code_at(buyer)
         .await
-        .map_err(|e| format!("code read of {buyer} failed: {e}"))?;
+        .map_err(|e| format!("code read of {buyer} failed: {}", without_urls(&e.to_string())))?;
     if code.is_empty() {
         return Ok(Err(format!(
             "buyer {buyer} has no account code to validate a wallet-code resolve — the verifier would revert the batch (BuyerHasNoCode)"
@@ -482,7 +483,7 @@ pub async fn check_wallet_code_resolve(gate: &FundingGate, op: &KernelOp) -> Res
             "buyer {buyer}'s code reverted for digest {digest} under {} gas — the verifier would revert the batch (WalletCodeAuthorizationRefused)",
             crate::gas::WALLET_CODE_EXECUTION_GAS
         ))),
-        Err(e) => Err(format!("isValidSignature read of {buyer} failed: {e}")),
+        Err(e) => Err(format!("isValidSignature read of {buyer} failed: {}", without_urls(&e.to_string()))),
     }
 }
 
@@ -594,7 +595,7 @@ pub async fn read_chain_timestamp(rpc_url: &str) -> Result<u64, String> {
     let block = provider
         .get_block_by_number(alloy::eips::BlockNumberOrTag::Latest)
         .await
-        .map_err(|e| format!("latest block read failed: {e}"))?
+        .map_err(|e| format!("latest block read failed: {}", without_urls(&e.to_string())))?
         .ok_or_else(|| "the node returned no latest block".to_string())?;
     Ok(block.header.timestamp)
 }
@@ -843,7 +844,7 @@ pub async fn filter_usage_claims(
                 UsageClaimKind::Clause { .. } => {
                     match clauses.depositOf(claim.clause_or_assembly).call().await {
                         Ok(d) => d.registeredBy != Address::ZERO && !d.withdrawn,
-                        Err(e) => return Err(format!("clause depositOf read failed: {e}")),
+                        Err(e) => return Err(format!("clause depositOf read failed: {}", without_urls(&e.to_string()))),
                     }
                 }
                 UsageClaimKind::Assembly { .. } => {
@@ -851,7 +852,7 @@ pub async fn filter_usage_claims(
                         Ok(b) => {
                             b.registeredBy != Address::ZERO && b.registeredAt != 0 && !b.depositWithdrawn
                         }
-                        Err(e) => return Err(format!("assembly bindings read failed: {e}")),
+                        Err(e) => return Err(format!("assembly bindings read failed: {}", without_urls(&e.to_string()))),
                     }
                 }
                 UsageClaimKind::Agreement { .. } => {
@@ -859,7 +860,7 @@ pub async fn filter_usage_claims(
                         Ok(b) => {
                             b.registeredBy != Address::ZERO && b.registeredAt != 0 && !b.depositWithdrawn
                         }
-                        Err(e) => return Err(format!("agreement bindings read failed: {e}")),
+                        Err(e) => return Err(format!("agreement bindings read failed: {}", without_urls(&e.to_string()))),
                     }
                 }
             };
@@ -871,7 +872,7 @@ pub async fn filter_usage_claims(
             match members.registered(claim.order.seller).call().await {
                 Ok(true) => {}
                 Ok(false) => return Err("seller is not live-staked".to_string()),
-                Err(e) => return Err(format!("member registered read failed: {e}")),
+                Err(e) => return Err(format!("member registered read failed: {}", without_urls(&e.to_string()))),
             }
 
             // Once ever: the counter's one counted-process set, both routes.
@@ -883,7 +884,7 @@ pub async fn filter_usage_claims(
             {
                 Ok(false) => Ok(()),
                 Ok(true) => Err("the counter has already counted this process under the key".to_string()),
-                Err(e) => Err(format!("counter processCounted read failed: {e}")),
+                Err(e) => Err(format!("counter processCounted read failed: {}", without_urls(&e.to_string()))),
             }
         }
         .await;
@@ -948,7 +949,7 @@ pub async fn submit_batch(
     let pending = match tx.send().await {
         Ok(p) => p,
         Err(e) => {
-            let msg = format!("tx submission failed: {e}");
+            let msg = format!("tx submission failed: {}", without_urls(&e.to_string()));
             eprintln!("SUBMIT_ERROR: {msg}");
             // A send-path revert is the chain's evaluated refusal (the node
             // simulates before accepting) — deterministic, never retried.
@@ -962,7 +963,7 @@ pub async fn submit_batch(
     let receipt = match pending.get_receipt().await {
         Ok(r) => r,
         Err(e) => {
-            let msg = format!("tx confirmation failed: {e}");
+            let msg = format!("tx confirmation failed: {}", without_urls(&e.to_string()));
             eprintln!("RECEIPT_ERROR: {msg}");
             return Err(transient(msg));
         }
@@ -1086,7 +1087,7 @@ pub async fn read_block_gas_limit(rpc_url: &str) -> Result<u64, String> {
     let block = provider
         .get_block_by_number(alloy::eips::BlockNumberOrTag::Latest)
         .await
-        .map_err(|e| format!("latest block read failed: {e}"))?
+        .map_err(|e| format!("latest block read failed: {}", without_urls(&e.to_string())))?
         .ok_or_else(|| "the node returned no latest block".to_string())?;
     Ok(block.header.gas_limit)
 }
@@ -1107,7 +1108,7 @@ pub async fn read_state_root(
         .stateRoot()
         .call()
         .await
-        .map_err(|e| format!("stateRoot() call failed: {e}"))?;
+        .map_err(|e| format!("stateRoot() call failed: {}", without_urls(&e.to_string())))?;
 
     Ok(root)
 }
@@ -1130,7 +1131,7 @@ pub async fn read_program_vkey(
         .programVKey()
         .call()
         .await
-        .map_err(|e| format!("programVKey() call failed: {e}"))
+        .map_err(|e| format!("programVKey() call failed: {}", without_urls(&e.to_string())))
 }
 
 #[cfg(test)]
@@ -1138,6 +1139,31 @@ mod tests {
     use super::*;
     use alloy::primitives::{B256, U256};
     use figaro_kernel::types::Commitment;
+
+    /// The key a provider URL carries never reaches a log line or `/status`:
+    /// every RPC error text this module formats passes through the one URL
+    /// helper (`api::without_urls`), and the send path's message, the one
+    /// logged at every failed batch, keeps its prefix and loses the URL whole.
+    #[test]
+    fn rpc_error_texts_carry_no_url() {
+        let e = "error sending request for url (https://eth-sepolia.g.alchemy.com/v2/SECRETKEY): connection refused";
+        let msg = format!("tx submission failed: {}", without_urls(e));
+        assert_eq!(msg, "tx submission failed: error sending request for url (<url>): connection refused");
+        assert!(is_deterministic_send_error(&msg) == is_deterministic_send_error(e), "the classification is the same on both texts");
+        for text in [
+            "[https://h.example/v2/SECRETKEY] next",
+            "`https://h.example/v2/SECRETKEY` next",
+            "https://h.example/v2/SECRETKEY: refused",
+            "https://h.example/x?apikey=SECRETKEY refused",
+            "https://user:SECRETKEY@h.example/x refused",
+            "HTTPS://h.example/v2/SECRETKEY refused",
+        ] {
+            let out = without_urls(text);
+            assert!(!out.contains("SECRETKEY"), "{text:?} → {out:?}");
+            assert!(out.contains("<url>"), "{text:?} → {out:?}");
+        }
+        assert_eq!(without_urls("no url here"), "no url here");
+    }
 
     /// The classifier's whole contract: the chain's evaluated refusal is
     /// deterministic; everything transport-shaped is not. The first case is

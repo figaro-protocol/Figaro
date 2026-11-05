@@ -42,8 +42,10 @@ behind the verifier's root from those logs (`REBUILD_FROM_CHAIN=1`).
 ways to get one, and the second is the one that proves anything.
 
 **Prebuilt.** Each `v*` tag publishes
-`figaro-sequencer-<tag>-<target>.tar.gz` for Linux x86_64 and macOS arm64 to the
-repo's GitHub Releases, built by `.github/workflows/sequencer-release.yml`.
+`figaro-sequencer-<tag>-<target>.tar.gz` for Linux x86_64 to the repo's GitHub
+Releases, built by `.github/workflows/sequencer-release.yml`. Linux is the one
+release target, by role: relay operation is server work, and a Mac developer
+builds from source (below).
 Download it, check the companion `.sha256` and the build-provenance
 attestation (`gh attestation verify <archive> --repo <owner>/<repo>`, which
 checks the archive against the Sigstore attestation of the run that built it),

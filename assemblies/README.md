@@ -42,7 +42,7 @@ asserted from chain:
 | `data-stream-subscription.json` | 1 order | A window of licensed access to another member's live data — credential over the encrypted hand-off, every entry a leaf provable against the resolved agreement that produced it; gas is paid once per window, never per data point | `data-market.devnet.spec.ts` (full cycle: license anchored to the resolved flight process, encrypted hand-off evidence, self-authenticating license leaf) |
 | `equipment-hire.json` | 1 order | A renter hires equipment straight from its owner — the same shape as the point-of-sale reference, plus the designer's own denomination pinned once for the whole composition, so no token picker ever appears at checkout | `equipment-hire.devnet.spec.ts` (full cycle: no picker, the pin drives the commitment and every value leg, the commerce/pin provenance pair asserted from the committed agreement) |
 
-`documents/` ships the raw bytes of every document a assembly affixes (consent
+`documents/` ships the raw bytes of every document an assembly affixes (consent
 anchors commit the document's keccak256 and `ipfs://` locator INSIDE the
 agreement — the bytes must pin byte-identical on any network for the
 `agreementHash`, and so the assembly hash, to reproduce; the populate path

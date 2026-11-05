@@ -51,7 +51,7 @@ pub async fn rebuild_from_chain(
     let head = provider
         .get_block_number()
         .await
-        .map_err(|e| format!("block number read failed: {e}"))?;
+        .map_err(|e| format!("block number read failed: {}", crate::api::without_urls(&e.to_string())))?;
 
     let mut state = KernelState::new();
     let mut root = state.compute_root();
@@ -70,7 +70,7 @@ pub async fn rebuild_from_chain(
         let mut logs = provider
             .get_logs(&filter)
             .await
-            .map_err(|e| format!("verifier log read failed ({from}..{to}): {e}"))?;
+            .map_err(|e| format!("verifier log read failed ({from}..{to}): {}", crate::api::without_urls(&e.to_string())))?;
         logs.sort_by_key(|l| (l.block_number, l.log_index));
         let mut pending: Option<(B256, IFigaroBatchVerifier::BatchOperations)> = None;
         for log in logs {
@@ -118,7 +118,7 @@ pub async fn rebuild_from_chain(
         .stateRoot()
         .call()
         .await
-        .map_err(|e| format!("stateRoot() call failed: {e}"))?;
+        .map_err(|e| format!("stateRoot() call failed: {}", crate::api::without_urls(&e.to_string())))?;
     if on_chain != root {
         return Err(format!(
             "the replay of {batches} batch(es) reaches {root}, the verifier holds {on_chain} (a batch landed after the logs were read, or before REBUILD_FROM_BLOCK)"
