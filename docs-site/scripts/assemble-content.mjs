@@ -15,6 +15,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { substituteCounts, verificationCounts } from './verification-counts.mjs';
 
 const SITE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const REPO_ROOT = resolve(SITE_ROOT, '..');
@@ -130,6 +131,17 @@ function assembleDocument([src, dest, title]) {
 
 rmSync(CONTENT, { recursive: true, force: true });
 cpSync(SITE_PAGES, CONTENT, { recursive: true });
+// The security page's verification counts are derived from the tree, never
+// typed: the page in site/ carries placeholders, the copy under content/ the
+// numbers (verification-counts.mjs; the commit-time counts guard reads the same
+// derivation and refuses a literal on the page).
+{
+    const securityPage = join(CONTENT, 'verification', 'security.mdx');
+    const counts = verificationCounts(REPO_ROOT);
+    const filled = substituteCounts(readFileSync(securityPage, 'utf8'), counts);
+    if (/__[A-Z_]+__/.test(filled)) throw new Error('verification/security.mdx: a placeholder has no count');
+    writeFileSync(securityPage, filled);
+}
 for (const entry of SOURCES) assembleDocument(entry);
 
 if (!existsSync(join(API_SRC, 'index.html'))) {

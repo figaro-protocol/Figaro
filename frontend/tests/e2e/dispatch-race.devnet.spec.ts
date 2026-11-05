@@ -23,7 +23,15 @@
  *   accept   → merchant accepts the root (creates the process); the WINNER
  *              submits the commit-ready order from /orders' "Ready to
  *              submit" lane. Exact bond deltas after each commit.
- *   resolve  → one signature resolves both; each seller nets +payment, the
+ *   approve  → the ready lane's bond approval runs AFTER the commit preview's
+ *              confirm: the winner's allowance to FigaroCore is unchanged
+ *              while the preview is open, and the approval lands only after
+ *              the confirm. The winner approved its bond on /sign to
+ *              countersign at all (the return button renders only once
+ *              `approvalDone`), so the spec first revokes that allowance out
+ *              of band — test-side pre-state, like the minting — or the
+ *              lane's approval would never run and the check would be vacuous.
+ *   resolve → one signature resolves both; each seller nets +payment, the
  *              LOSING courier nets exactly ZERO — a losing countersignature
  *              costs nothing and never touches the chain.
  *
@@ -70,6 +78,9 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 const ERC20_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',
     'function mint(address to, uint256 amount)',
+    'function allowance(address owner, address spender) view returns (uint256)',
+    'function approve(address spender, uint256 amount) returns (bool)',
+    'event Approval(address indexed owner, address indexed spender, uint256 value)',
 ]);
 
 const BUYER = ANVIL_ACCOUNTS[14] as Hex; // shared wallet — every assert is a delta
@@ -298,15 +309,50 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
             expect(c - core0, 'after root: escrow up by both bonds').toBe(rootBonds.buyerBond + rootBonds.sellerBond);
         }
 
+        // ── PRE-STATE for the ready lane's approval leg: revoke the winner's
+        //    allowance to FigaroCore (set on /sign to countersign), so the
+        //    lane's own approval must run — after the preview's confirm. Done
+        //    BEFORE the winner's /orders loads, so its allowance read is fresh. ──
+        const allowanceOf = () => publicClient.readContract({
+            address: token, abi: ERC20_ABI, functionName: 'allowance', args: [COURIER_CHEAP, core],
+        }) as Promise<bigint>;
+        const courierApprovals = (fromBlock: bigint) => publicClient.getContractEvents({
+            address: token, abi: ERC20_ABI, eventName: 'Approval',
+            args: { owner: COURIER_CHEAP, spender: core }, fromBlock,
+        });
+        let approvalsFrom: bigint;
+        {
+            const courierWallet = createWalletClient({
+                account: privateKeyToAccount(COURIER_CHEAP_KEY), chain: LOCAL_ANVIL, transport: http(RPC_URL),
+            });
+            const hash = await courierWallet.writeContract({
+                address: token, abi: ERC20_ABI, functionName: 'approve', args: [core, 0n],
+            });
+            const revoke = await publicClient.waitForTransactionReceipt({ hash });
+            approvalsFrom = revoke.blockNumber + 1n;
+        }
+        expect(await allowanceOf(), "the winner's allowance to the Core starts at zero").toBe(0n);
+
         // ── THE LAST MILE: the winner's /orders surfaces the commit-ready
         //    payload (both signatures) in "Ready to submit" — the WINNER
         //    broadcasts, exactly as an accepted order. ──
         await gotoAsWallet(cheapTab, COURIER_CHEAP, '/orders?e2e=devnet');
         await cheapTab.getByTestId('orders-list').waitFor({ timeout: 30000 });
         await waitForConnected(cheapTab);
+        // OrdersList renders the "Ready to submit" section (`orders-ready-section`)
+        // with YourTurnCard act="submit" → `order-ready-to-submit-card` /
+        // `btn-submit-ready-order` (TURN_WORDS.submit).
+        await cheapTab.getByTestId('orders-ready-section').waitFor({ state: 'visible', timeout: 60000 });
         await cheapTab.getByTestId('order-ready-to-submit-card').first().waitFor({ state: 'visible', timeout: 60000 });
         await cheapTab.getByTestId('btn-submit-ready-order').first().click();
+        // handleSubmitReady → commitOrder: the review-before-commit preview
+        // opens FIRST; the bond approval is its beforeBroadcast, after confirm.
         await cheapTab.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
+        expect(await allowanceOf(), 'no bond allowance is approved while the commit preview is open').toBe(0n);
+        expect(
+            (await courierApprovals(approvalsFrom)).length,
+            'no Approval transaction was sent while the commit preview is open',
+        ).toBe(0);
         await cheapTab.getByTestId('preview-confirm').click();
         await expect.poll(async () => (await queryCommitted()).length, {
             timeout: 90000, message: "the winner's submit lands the raced order on-chain",
@@ -324,6 +370,17 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
         ).toBe(COURIER_CHEAP.toLowerCase());
         expect(courierEvent.args.payment, "the committed payment is the winner's drafted posted price").toBe(cheapPayment);
         const courierBonds = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
+        // The ready lane's approval landed after the confirm and before the
+        // commit, and covered the bond the Core pulled.
+        {
+            const approvals = await courierApprovals(approvalsFrom);
+            expect(approvals.length, 'the ready lane sent the bond approval after the confirm').toBeGreaterThan(0);
+            const approval = approvals[approvals.length - 1];
+            expect(approval.args.value! >= courierBonds.sellerBond, 'the approval covers the seller bond').toBe(true);
+            expect(approval.blockNumber <= courierEvent.blockNumber, 'the approval landed no later than the commit').toBe(true);
+            expect(await allowanceOf(), 'the Core pulled exactly the seller bond from the approval')
+                .toBe(approval.args.value! - courierBonds.sellerBond);
+        }
         {
             const [b, cc, c] = await Promise.all([balanceOf(BUYER), balanceOf(COURIER_CHEAP), balanceOf(core)]);
             expect(buyer0 - b, 'after the raced commit: buyer down by both buyer bonds')
