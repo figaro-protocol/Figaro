@@ -19,7 +19,6 @@ export type {
 export {
     ecdhAuthText,
     verifyEcdhMessageAuth,
-    verifyEcdhMessageFromCounterparty,
     type AuthenticatedEcdhMessage,
 } from "./auth.js";
 

@@ -93,7 +93,9 @@ export function useSwapFunding({
      *  yet known is never covered. */
     const authorizationFor = (bond: bigint | null): FundingAuthorization => fundingAuthorization({
         fundingToken,
-        allowanceKnown: permit2.allowanceKnown && !permit2.isAllowanceRefetching,
+        // Until the bond is known there is nothing to cover it against, so the
+        // authorization reads as still being read, never as ready.
+        allowanceKnown: bond !== null && permit2.allowanceKnown && !permit2.isAllowanceRefetching,
         needsApproval: bond !== null && permit2.needsApproval(bond),
         isAuthorizing: permit2.isApprovePending || permit2.isApproveConfirming,
     });

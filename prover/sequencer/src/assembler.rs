@@ -38,17 +38,6 @@ pub struct AssemblerConfig {
     pub interval_secs: u64,
 }
 
-impl Default for AssemblerConfig {
-    fn default() -> Self {
-        Self {
-            max_ops: 100,
-            settle_gas_cap: crate::gas::DEFAULT_SETTLE_GAS_CAP,
-            settle_gas_cap_checked: true,
-            interval_secs: 10,
-        }
-    }
-}
-
 /// Build a BatchInput from a set of operations and current state.
 pub fn assemble_batch(
     chain_id: u64,

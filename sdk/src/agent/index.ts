@@ -183,9 +183,6 @@ export {
     SequencerError,
     toSequencerCommitment,
     toSequencerSig,
-    fromSequencerCommitment,
-    fromSequencerSig,
-    parseWireQuantity,
     MAX_SEQUENCER_RESPONSE_BYTES,
 } from "./sequencer.js";
 export type {

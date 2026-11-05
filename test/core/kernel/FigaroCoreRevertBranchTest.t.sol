@@ -336,8 +336,9 @@ contract FigaroCore_RevertBranch is Test {
         CommitmentTypes.Commitment[] memory commitments = new CommitmentTypes.Commitment[](1);
         commitments[0] = tampered;
 
+        bytes32 tamperedHash = keccak256(abi.encodePacked(processId, CommitmentTypes.hashStruct(tampered)));
         vm.prank(buyer);
-        vm.expectRevert(); // OrderNotCommitted
+        vm.expectRevert(abi.encodeWithSelector(FigaroCore.OrderNotCommitted.selector, tamperedHash));
         core.resolveProcess(processId, commitments);
     }
 

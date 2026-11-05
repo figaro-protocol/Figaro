@@ -8,7 +8,7 @@
 import { describe, it, expect } from "vitest";
 import { createWalletClient, http, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { buildDomain, COMMITMENT_TYPES, verifyCommitmentSignature } from "../src/commitments.js";
+import { buildDomain, COMMITMENT_TYPES, RESOLVE_PROCESS_TYPES, verifyCommitmentSignature, verifyResolveProcessSignature } from "../src/commitments.js";
 import type { Commitment } from "../src/types.js";
 
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]
@@ -67,5 +67,51 @@ describe("verifyCommitmentSignature", () => {
     it("rejects a signature bound to a different domain (chainId)", async () => {
         const sig = await sign(commitment);
         expect(await verifyCommitmentSignature(commitment, sig, BUYER.address, { chainId: 1, core: CORE })).toBe(false);
+    });
+});
+
+describe("verifyResolveProcessSignature — the batch path's signed resolve", () => {
+    // For batched trade the EIP-712 verifyingContract is the FigaroBatchVerifier.
+    const VERIFIER = "0x0000000000000000000000000000000000ba7c00" as Address;
+    const VCTX = { chainId: CHAIN, core: VERIFIER };
+    const PROCESS = `0x${"09".repeat(32)}` as const;
+
+    async function signResolve(processId: `0x${string}`, cumulativeValue: bigint) {
+        return buyerW.signTypedData({
+            account: BUYER,
+            domain: buildDomain(CHAIN, VERIFIER),
+            types: RESOLVE_PROCESS_TYPES,
+            primaryType: "ResolveProcess",
+            message: { processId, cumulativeValue },
+        });
+    }
+
+    it("recovers the buyer's resolve signature over the process and its cumulative value", async () => {
+        const sig = await signResolve(PROCESS, 1000n);
+        expect(await verifyResolveProcessSignature(PROCESS, 1000n, sig, BUYER.address, VCTX)).toBe(true);
+    });
+
+    it("rejects it against another signer", async () => {
+        const sig = await signResolve(PROCESS, 1000n);
+        expect(await verifyResolveProcessSignature(PROCESS, 1000n, sig, SELLER.address, VCTX)).toBe(false);
+    });
+
+    it("rejects it at another cumulative value (an order added after the signature)", async () => {
+        const sig = await signResolve(PROCESS, 1000n);
+        expect(await verifyResolveProcessSignature(PROCESS, 1001n, sig, BUYER.address, VCTX)).toBe(false);
+    });
+
+    it("rejects it for another process", async () => {
+        const sig = await signResolve(PROCESS, 1000n);
+        expect(await verifyResolveProcessSignature(`0x${"0a".repeat(32)}`, 1000n, sig, BUYER.address, VCTX)).toBe(false);
+    });
+
+    it("rejects it under FigaroCore's domain rather than the verifier's", async () => {
+        const sig = await signResolve(PROCESS, 1000n);
+        expect(await verifyResolveProcessSignature(PROCESS, 1000n, sig, BUYER.address, CTX)).toBe(false);
+    });
+
+    it("returns false on a malformed signature, never a throw", async () => {
+        expect(await verifyResolveProcessSignature(PROCESS, 1000n, "0x1234", BUYER.address, VCTX)).toBe(false);
     });
 });

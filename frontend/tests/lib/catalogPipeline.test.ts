@@ -162,48 +162,27 @@ describe("catalogPublisher", () => {
             expect(result.uri).toBe("ipfs://QmPubkished12311111111111111111111111111111111");
         });
 
-        it("invalidates caches after publishing", async () => {
-            // Pre-populate cache
-            vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        it("invalidates the published URI's cached catalog, so the next read refetches", async () => {
+            const uri = "ipfs://QmPubkished12311111111111111111111111111111111";
+            invalidateCatalogCache(uri);
+            const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
                 ok: true,
                 json: () => Promise.resolve(VALID_MERCHANT_DOC),
                 text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
             } as Response);
-            await fetchMemberCatalog("ipfs://QmPubkished12311111111111111111111111111111111");
 
-            // Publish should clear the cache for the new URI
-            await publishMemberCatalog(VALID_MERCHANT_DOC);
+            // Positive control: a second read of the same URI is served from the cache.
+            await fetchMemberCatalog(uri);
+            await fetchMemberCatalog(uri);
+            expect(fetchSpy).toHaveBeenCalledTimes(1);
 
-            // Next fetch should hit the network again
-            vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-                ok: true,
-                json: () => Promise.resolve(VALID_MERCHANT_DOC),
-                text: () => Promise.resolve(JSON.stringify(VALID_MERCHANT_DOC)),
-            } as Response);
-            await fetchMemberCatalog("ipfs://QmPubkished12311111111111111111111111111111111");
+            const result = await publishMemberCatalog(VALID_MERCHANT_DOC);
+            expect(result.uri).toBe(uri);
+
+            // The publish dropped the cached entry, so this read reaches the network.
+            await fetchMemberCatalog(uri);
+            expect(fetchSpy).toHaveBeenCalledTimes(2);
         });
-    });
-});
-
-// ── catalog shape sanity ────────────────────────────────────────────────────
-
-describe("MemberCatalogMetadata shape", () => {
-    it("carries only subjectAddress, items, and version after the clause split", () => {
-        const cat = VALID_MERCHANT_DOC;
-
-        expect(cat.subjectAddress).toBeDefined();
-        expect(cat.items.length).toBeGreaterThan(0);
-        expect(cat.version).toBeDefined();
-    });
-
-    it("each catalog item carries id, name, price, category, available", () => {
-        const item = VALID_MERCHANT_DOC.items[0];
-
-        expect(item.id).toBeDefined();
-        expect(item.name).toBeDefined();
-        expect(item.price).toBeDefined();
-        expect(item.category).toBeDefined();
-        expect(typeof item.available).toBe("boolean");
     });
 });
 

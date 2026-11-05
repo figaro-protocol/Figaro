@@ -151,8 +151,8 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     shared agreement-terms surface, composed by `AgreementPreviewModal` and
     rendered inline on `/sign`.
 - **`composition/`** — third-party on-network contract composition (the sixth noun).
-  Generic dispatch is `compositionTarget.ts` + `useCompositionActions.ts`, with
-  per-contract hooks and readers beneath it.
+  Generic dispatch is `useCompositionActions.ts`, with per-contract hooks and
+  readers beneath it.
   - *The funding leg:* `swapFunding.ts` — the venue quote/route plus the
     party-agnostic witness-signed leg builder, the buyer's at checkout and the
     seller's at accept: the party's own act of holding the denomination, never a

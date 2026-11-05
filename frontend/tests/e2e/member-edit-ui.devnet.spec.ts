@@ -18,7 +18,9 @@
  * Each test seeds anvil[0] as a registered member with a fresh
  * profile pinned to IPFS, then drives the edit form. Each assertion
  * verifies exactly one new `MemberProfileUpdated` event with a
- * metadataURI distinct from the initial registration URI.
+ * metadataURI distinct from the initial registration URI, then reads the
+ * profile that URI pins back from IPFS and asserts the field the form edited
+ * carries the value the spec entered (and the fields it did not edit survive).
  *
  * Requires: Anvil + ./deploy-local.sh + Kubo daemon at NEXT_PUBLIC_IPFS_API_URL.
  */
@@ -30,11 +32,14 @@ import {
     type Hex,
 } from 'viem';
 import {
+    chainProfileReader,
+    isBindingOf,
+    latestMemberProfileURI,
     pinJSONToIPFS,
     readLocalDeploymentConfig,
     seedRegisteredMember,
 } from './devnet-helpers';
-import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI, type MemberProfileMetadata } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
@@ -122,6 +127,19 @@ async function waitForOneUpdateEvent(
     );
 }
 
+/**
+ * The profile the UI's update anchored, read back out of band: the latest
+ * metadataURI MembersRegistry holds for the member must be the one the UI's
+ * event carried, and the document it pins must parse. The caller asserts the
+ * edited field on what this returns.
+ */
+async function anchoredProfile(seller: Hex, metadataURI: string): Promise<MemberProfileMetadata> {
+    expect(await latestMemberProfileURI(seller), 'the UI update is the anchored profile').toBe(metadataURI);
+    const profile = await chainProfileReader()(seller);
+    expect(profile, `the profile pinned at ${metadataURI} parses`).not.toBeNull();
+    return profile!;
+}
+
 test.describe('Seller edit UI surfaces (devnet)', () => {
     // PERSISTED, like mainnet: no chain snapshot/revert. Each test re-seeds
     // anvil[0]'s profile to its baseline via the idempotent seeder (register
@@ -163,6 +181,10 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
 
         const { metadataURI } = await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
         expect(metadataURI).toMatch(/^ipfs:\/\/[A-Za-z0-9]+/);
+
+        // Out-of-band: the pinned profile carries the name the spec typed.
+        const profile = await anchoredProfile(seller, metadataURI);
+        expect(profile.name).toBe('Renamed Seller');
 
         // On a confirmed update the success effect redirects to /members/manage.
         await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });
@@ -208,7 +230,13 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await page.getByRole('button', { name: 'Confirm delete' }).click();
 
         // The on-chain event is the system-of-record that the edit shipped.
-        await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
+        const { metadataURI } = await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
+
+        // Out-of-band: the pinned profile no longer points at the catalog the
+        // spec seeded, and the rest of the profile survived the clear.
+        const profile = await anchoredProfile(seller, metadataURI);
+        expect(profile.catalogURI, `the profile still points at ${catalogURI}`).toBeUndefined();
+        expect(profile.name).toBe('Seller with Catalog');
 
         // On a confirmed update the success effect redirects to /members/manage.
         await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });
@@ -236,7 +264,12 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         const mcpUrl = 'https://agent.example.com/mcp';
         await page.locator('#agent-mcp').fill(mcpUrl);
         await page.getByRole('button', { name: 'Save changes' }).click();
-        await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
+        const { metadataURI } = await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
+
+        // Out-of-band: the pinned profile carries the MCP endpoint the spec typed.
+        const profile = await anchoredProfile(seller, metadataURI);
+        expect(profile.services?.mcp).toBe(mcpUrl);
+        expect(profile.name).toBe('Agent Seller');
 
         // On a confirmed update the success effect redirects to /members/manage.
         await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });
@@ -268,7 +301,8 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
             fromBlock: 0n,
         });
         expect(registered.length, 'no anchored assemblies on this devnet — run the devnet-authoring project first').toBeGreaterThan(0);
-        const slug = deriveAssemblySlug(registered[registered.length - 1].args.assemblyHash as `0x${string}`);
+        const assemblyHash = registered[registered.length - 1].args.assemblyHash as `0x${string}`;
+        const slug = deriveAssemblySlug(assemblyHash);
 
         // 2. Register the seller (separate from the assembly author —
         //    same key here, fine). Seller starts with no bindings.
@@ -289,7 +323,15 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await assemblyRow.locator('input[type="checkbox"]').first().check();
 
         await page.getByRole('button', { name: 'Save changes' }).click();
-        await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
+        const { metadataURI } = await waitForOneUpdateEvent(seller, blockBefore, seeded.profileURI);
+
+        // Out-of-band: the pinned profile binds the assembly the spec toggled on.
+        const profile = await anchoredProfile(seller, metadataURI);
+        expect(
+            (profile.assemblyBindings ?? []).some((b) => isBindingOf(b, assemblyHash)),
+            `the pinned profile binds ${assemblyHash}`,
+        ).toBe(true);
+        expect(profile.name).toBe('Assemblies Seller');
 
         // On a confirmed update the success effect redirects to /members/manage.
         await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });

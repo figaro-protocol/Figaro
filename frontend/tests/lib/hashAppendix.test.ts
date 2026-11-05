@@ -4,11 +4,17 @@
  * clauses and, when the agreement names its provenance (its
  * registered agreement and its assembly's assembly root), the agreement
  * format's provenance leaf.
+ *
+ * Each attestation's contentRef is told as what the coordinator holds: the
+ * hash alone, the content held off chain by the parties and checked by
+ * recomputing keccak256 — never "recoverable from the transaction calldata",
+ * which the coordinator never receives.
  */
 import { describe, expect, it } from "vitest";
 import { agreementLeaves, computeCheckoutHash, computeProvenanceLeaf, type Agreement } from "@figaro-protocol/sdk";
 import { buildHashAppendix } from "@/lib/audit/hashAppendix";
 import { OrderState, type Order } from "@/lib/kernel/store";
+import type { AttestationRecord } from "@/lib/composition/indexer";
 
 const BUYER = "0x1111111111111111111111111111111111111111";
 const SELLER = "0x2222222222222222222222222222222222222222";
@@ -49,5 +55,23 @@ describe("buildHashAppendix — every leaf under the root", () => {
 
     it("lists no provenance leaf for an agreement that names no assembly", () => {
         expect(leavesOf(base).some((a) => a.kind === "agreement-provenance-leaf")).toBe(false);
+    });
+});
+
+describe("buildHashAppendix — an attestation's contentRef", () => {
+    it("says the coordinator holds only the hash and the parties hold the content, never that calldata carries it", () => {
+        const order = orderFor(base);
+        const attestation: AttestationRecord = {
+            orderHash: order.orderHash, processId: order.processId, attester: SELLER,
+            clauseId: `0x${"0a".repeat(32)}`, stage: 1, contentRef: `0x${"ce".repeat(32)}`,
+            transactionHash: `0x${"7a".repeat(32)}`, blockNumber: 9,
+        };
+        const anchor = buildHashAppendix(order, base, [attestation]).anchors.find((a) => a.kind === "attestation-content-ref");
+        expect(anchor?.hash).toBe(attestation.contentRef);
+        expect(anchor?.sourceLocation).toContain(
+            "The coordinator takes and emits only this hash, never the content: the content is held off chain by the parties, "
+            + "and a copy is verified by recomputing keccak256(content) against it (anchorAttestationContent).",
+        );
+        expect(anchor?.sourceLocation).not.toMatch(/calldata/i);
     });
 });

@@ -8,6 +8,10 @@ import { geohashCentroidDistanceKm } from "../src/derive/geo.js";
 import {
     planSubOrderSellers,
     resolveSubOrderPricing,
+    profileValuesFor,
+    registerRateQuantitySource,
+    listRateQuantitySources,
+    getRateQuantityResolver,
     type BoundAssemblyPlanInput,
     type PricingCatalog,
 } from "../src/checkoutPlan.js";
@@ -320,5 +324,54 @@ describe("resolveSubOrderPricing — rate items", () => {
         });
         expect(p.payment).toBe(0n);
         expect(p.issue).toBe("unresolvable-quantity");
+    });
+});
+
+describe("profileValuesFor — a seller's profile-filled clause values from its catalog", () => {
+    const values = { [PROX]: { radiusKm: 12 } };
+    const catalogs: PricingCatalog[] = [
+        { address: SWIFT, items: [] },
+        { address: MERCATO, items: [], profileClauseValues: values },
+    ];
+
+    it("returns the values of the catalog whose address is the seller, whatever the letter case", () => {
+        expect(profileValuesFor(MERCATO, catalogs)).toBe(values);
+        expect(profileValuesFor(MERCATO.toLowerCase() as `0x${string}`, catalogs)).toBe(values);
+    });
+
+    it("is undefined for a seller that stores none, and for a seller with no catalog", () => {
+        expect(profileValuesFor(SWIFT, catalogs)).toBeUndefined();
+        expect(profileValuesFor(ROSSO, catalogs)).toBeUndefined();
+    });
+});
+
+describe("the rate-quantity source registry", () => {
+    it("lists the three in-file derivations with their labels", () => {
+        const listed = listRateQuantitySources();
+        expect(listed).toEqual(expect.arrayContaining([
+            { source: "checkout-quantity", label: "Entered at checkout" },
+            { source: "order-geodistance", label: "Distance between the order's committed endpoints (km)" },
+            { source: "booking-window", label: "Hours from the order's committed schedule window" },
+        ]));
+    });
+
+    it("registers a tenant the picker then lists and the pricing site then resolves", () => {
+        const tenant = () => 42;
+        registerRateQuantitySource("acme-routed-distance", tenant, { label: "Routed distance (km)" });
+        expect(listRateQuantitySources()).toContainEqual({ source: "acme-routed-distance", label: "Routed distance (km)" });
+        expect(getRateQuantityResolver("acme-routed-distance")).toBe(tenant);
+    });
+
+    it("lists an unlabeled tenant under its source id", () => {
+        registerRateQuantitySource("acme-unlabeled", () => null);
+        expect(listRateQuantitySources()).toContainEqual({ source: "acme-unlabeled", label: "acme-unlabeled" });
+    });
+
+    it("lets the last registration win", () => {
+        const second = () => 2;
+        registerRateQuantitySource("acme-replaced", () => 1);
+        registerRateQuantitySource("acme-replaced", second);
+        expect(getRateQuantityResolver("acme-replaced")).toBe(second);
+        expect(listRateQuantitySources().filter((s) => s.source === "acme-replaced")).toHaveLength(1);
     });
 });

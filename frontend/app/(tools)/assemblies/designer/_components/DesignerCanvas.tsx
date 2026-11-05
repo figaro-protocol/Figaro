@@ -810,7 +810,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             <p
                                 data-testid="designer-node-capacity"
                                 className={`text-[11px] tabular-nums ${atOrderCapacity ? "text-error-fg font-semibold" : "text-ink-muted"}`}
-                                title={orderCaps ? `Hard cap ${maxOrders} orders — the most one atomic resolveProcess resolves in a block on this chain. Committing them lands ~${orderCaps.commit}/block ≈ ${commitBlocks} block(s) at checkout.` : undefined}
+                                title={orderCaps ? `${maxOrders} orders is the most the SDK plans to fit in one atomic resolveProcess on this chain (its own estimate from the block's gas limit, not a limit the chain enforces). Committing them lands ~${orderCaps.commit}/block ≈ ${commitBlocks} block(s) at checkout.` : undefined}
                             >
                                 {orders.length} / {maxOrders} orders{commitBlocks && commitBlocks > 1 ? ` · ~${commitBlocks} blocks to commit` : ""}
                             </p>

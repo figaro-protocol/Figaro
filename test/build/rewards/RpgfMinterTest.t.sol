@@ -312,10 +312,14 @@ contract RpgfMinterTest is Test {
     }
 
     function test_revertsOnUnknownClauseOrAssembly() public {
+        // The unknown key carries usage, so the period has a total and the
+        // claim reaches the author check rather than stopping at a zero score.
+        bytes32 unknown = keccak256("never-registered");
+        counter.setScore(KIND_CLAUSE, unknown, 0, 100);
         counter.setClosed(0, true);
         vm.prank(alice);
-        vm.expectRevert();
-        minter.claim(0, _clause(keccak256("never-registered")));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_CLAUSE, unknown, alice));
+        minter.claim(0, _clause(unknown));
     }
 
     function test_withdrawnAuthorForfeitsTheReward() public {

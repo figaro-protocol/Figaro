@@ -181,7 +181,7 @@ contract TreasuryProcurementTest is Test {
         CommitmentTypes.Commitment memory c = _procurementCommitment();
         c.buyer = address(treasury);
         bytes memory anySig = _signCommitment(c, OWNER1_KEY); // an owner signing is NOT the treasury signing
-        vm.expectRevert();
+        vm.expectRevert(FigaroCore.InvalidBuyerSignature.selector);
         core.commit(c, anySig, _signCommitment(c, SELLER_KEY));
     }
 }

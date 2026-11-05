@@ -430,7 +430,6 @@ mod tests {
         assert_eq!(max_orders_in_one_settle(DEFAULT_SETTLE_GAS_CAP), 208);
         assert!(resolve_settle_gas(208) <= DEFAULT_SETTLE_GAS_CAP && resolve_settle_gas(209) > DEFAULT_SETTLE_GAS_CAP);
         // The least cap admits a process of one order, and no less.
-        assert_eq!(MIN_SETTLE_GAS_CAP, resolve_settle_gas(1));
         assert_eq!(MIN_SETTLE_GAS_CAP, 1_178_439);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP), 1);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP - 1), 0);

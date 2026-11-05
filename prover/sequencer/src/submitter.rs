@@ -1413,66 +1413,42 @@ mod tests {
 
     /// A JSON-RPC double answering `eth_call` for the registries and the
     /// counter the pre-filter reads: `bindings(key)` is live for the
-    /// (registry, key) pairs in `live`, every member is staked, the counter
-    /// has counted a process under exactly the keys in `counted`, and
-    /// anything else is an unregistered binding. Returns the URL it serves on.
-    async fn registries_double(live: Vec<(Address, B256)>, counted: Vec<B256>) -> String {
+    /// (registry, key) pairs in `live`, every member is staked but those in
+    /// `unstaked`, the counter has counted a process under exactly the keys
+    /// in `counted`, and anything else is an unregistered binding. Returns
+    /// the URL it serves on.
+    async fn registries_double(live: Vec<(Address, B256)>, counted: Vec<B256>, unstaked: Vec<Address>) -> String {
+        use crate::rpc_double::{call_of, hex_value, serve, unserved};
         use alloy::sol_types::{SolCall, SolValue};
-        use axum::{routing::post, Json, Router};
 
-        let live = std::sync::Arc::new(live);
-        let counted = std::sync::Arc::new(counted);
-        let app = Router::new().route(
-            "/",
-            post(move |Json(req): Json<serde_json::Value>| {
-                let live = live.clone();
-                let counted = counted.clone();
-                async move {
-                    let answer = |req: &serde_json::Value| -> serde_json::Value {
-                        let id = req["id"].clone();
-                        let result = match req["method"].as_str().unwrap_or("") {
-                            "eth_chainId" => serde_json::json!("0x7a69"),
-                            "eth_blockNumber" => serde_json::json!("0x1"),
-                            "eth_call" => {
-                                let tx = &req["params"][0];
-                                let to: Address = tx["to"].as_str().unwrap().parse().unwrap();
-                                let input = tx["input"].as_str().or(tx["data"].as_str()).unwrap();
-                                let input = alloy::primitives::hex::decode(input).unwrap();
-                                let out: Vec<u8> = if input[..4] == IMembersRegistry::registeredCall::SELECTOR {
-                                    true.abi_encode()
-                                } else if input[..4] == IUsageCounter::processCountedCall::SELECTOR {
-                                    assert_eq!(to, COUNTER, "the counted set is the counter's");
-                                    counted.contains(&B256::from_slice(&input[36..68])).abi_encode()
-                                } else if input[..4] == IAgreementRegistry::bindingsCall::SELECTOR {
-                                    let key = B256::from_slice(&input[4..36]);
-                                    let registered = live.contains(&(to, key));
-                                    let by = if registered { Address::repeat_byte(0xDE) } else { Address::ZERO };
-                                    let at: u64 = if registered { 1 } else { 0 };
-                                    let uri = if registered { "ipfs://doc".to_string() } else { String::new() };
-                                    (by, at, false, uri).abi_encode_params()
-                                } else {
-                                    panic!("unexpected call to {to}");
-                                };
-                                serde_json::json!(format!("0x{}", alloy::primitives::hex::encode(out)))
-                            }
-                            other => panic!("unexpected method {other}"),
-                        };
-                        serde_json::json!({"jsonrpc": "2.0", "id": id, "result": result})
-                    };
-                    let body = match &req {
-                        serde_json::Value::Array(batch) => {
-                            serde_json::Value::Array(batch.iter().map(answer).collect())
-                        }
-                        single => answer(single),
-                    };
-                    Json(body)
-                }
-            }),
-        );
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let addr = listener.local_addr().unwrap();
-        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
-        format!("http://{addr}")
+        serve(move |method, params| match method {
+            "eth_chainId" => Ok(serde_json::json!("0x7a69")),
+            "eth_blockNumber" => Ok(serde_json::json!("0x1")),
+            "eth_call" => {
+                let (to, input) = call_of(params);
+                let out: Vec<u8> = if input[..4] == IMembersRegistry::registeredCall::SELECTOR {
+                    assert_eq!(to, MEMBERS, "the stake is the members registry's");
+                    let member = Address::from_slice(&input[16..36]);
+                    (!unstaked.contains(&member)).abi_encode()
+                } else if input[..4] == IUsageCounter::processCountedCall::SELECTOR {
+                    assert_eq!(to, COUNTER, "the counted set is the counter's");
+                    counted.contains(&B256::from_slice(&input[36..68])).abi_encode()
+                } else if input[..4] == IAgreementRegistry::bindingsCall::SELECTOR {
+                    let key = B256::from_slice(&input[4..36]);
+                    let registered = live.contains(&(to, key));
+                    let by = if registered { Address::repeat_byte(0xDE) } else { Address::ZERO };
+                    let at: u64 = if registered { 1 } else { 0 };
+                    let uri = if registered { "ipfs://doc".to_string() } else { String::new() };
+                    (by, at, false, uri).abi_encode_params()
+                } else {
+                    panic!("unexpected call to {to}");
+                };
+                Ok(hex_value(&out))
+            }
+            other => unserved(other),
+        })
+        .await
+        .url
     }
 
     fn live_config(rpc_url: String) -> SubmitterConfig {
@@ -1510,7 +1486,7 @@ mod tests {
         let url = registries_double(vec![
             (AGREEMENTS, registered),
             (ASSEMBLIES, assembly_only),
-        ], vec![])
+        ], vec![], vec![])
         .await;
         let config = live_config(url);
 
@@ -1541,7 +1517,7 @@ mod tests {
     async fn a_claim_the_counter_has_counted_is_dropped() {
         let fresh = B256::repeat_byte(0x31);
         let counted = B256::repeat_byte(0x32);
-        let url = registries_double(vec![(AGREEMENTS, fresh), (AGREEMENTS, counted)], vec![counted]).await;
+        let url = registries_double(vec![(AGREEMENTS, fresh), (AGREEMENTS, counted)], vec![counted], vec![]).await;
         let config = live_config(url);
 
         let (valid, dropped) =
@@ -1581,5 +1557,316 @@ mod tests {
         let (valid, dropped) = filter_usage_claims(&config, claims).await;
         assert_eq!(valid.len(), 1, "the ordinary claim passes through");
         assert_eq!(dropped.len(), 4, "every claim naming a reserved key is dropped");
+    }
+
+    // A claim whose order's seller holds no live member stake is dropped: the
+    // counter skips a use whose seller is not `registered`, and the read goes
+    // to the members registry under the order's seller (E-7's pre-filter).
+    #[tokio::test]
+    async fn a_claim_whose_seller_is_unstaked_is_dropped() {
+        let key = B256::repeat_byte(0x41);
+        let unstaked = Address::repeat_byte(0x5E);
+        let url = registries_double(vec![(AGREEMENTS, key)], vec![], vec![unstaked]).await;
+        let config = live_config(url);
+        let staked_claim = agreement_claim(key);
+        let mut unstaked_claim = agreement_claim(key);
+        unstaked_claim.order.seller = unstaked;
+
+        let (valid, dropped) = filter_usage_claims(&config, vec![staked_claim.clone(), unstaked_claim]).await;
+
+        assert_eq!(valid.len(), 1, "the staked seller's claim passes");
+        assert_eq!(valid[0].order.seller, staked_claim.order.seller);
+        assert_eq!(dropped.len(), 1, "the unstaked seller's claim is dropped");
+        assert_eq!(dropped[0].0.order.seller, unstaked);
+        assert!(dropped[0].1.contains("not live-staked"), "{}", dropped[0].1);
+    }
+
+    // ── Wallet-code resolves, against a chain double ──────────────────
+
+    const VERIFIER: Address = Address::repeat_byte(0x77);
+
+    /// What a buyer's account answers in the wallet-code double.
+    #[derive(Clone, Copy)]
+    enum WalletCode {
+        Absent,
+        Magic,
+        Other,
+        Reverts,
+    }
+
+    /// A JSON-RPC double holding each listed buyer's account: its code
+    /// (`eth_getCode`) and what that code answers to `isValidSignature`.
+    async fn wallet_code_double(accounts: Vec<(Address, WalletCode)>) -> crate::rpc_double::RpcDouble {
+        use crate::rpc_double::{call_of, hex_value, reverted, serve, unserved};
+        use alloy::sol_types::SolCall;
+        let held = move |who: Address| accounts.iter().find(|(a, _)| *a == who).map(|(_, c)| *c).unwrap_or(WalletCode::Absent);
+        serve(move |method, params| match method {
+            "eth_chainId" => Ok(serde_json::json!("0x7a69")),
+            "eth_getCode" => {
+                let who: Address = params[0].as_str().unwrap().parse().unwrap();
+                Ok(match held(who) {
+                    WalletCode::Absent => serde_json::json!("0x"),
+                    _ => serde_json::json!("0x6001600055"),
+                })
+            }
+            "eth_call" => {
+                let (to, input) = call_of(params);
+                assert_eq!(input[..4], IERC1271WalletCode::isValidSignatureCall::SELECTOR);
+                let mut word = [0u8; 32];
+                match held(to) {
+                    WalletCode::Magic => word[..4].copy_from_slice(&ERC1271_MAGIC_VALUE),
+                    WalletCode::Other => word[..4].copy_from_slice(&[0xff, 0xff, 0xff, 0xff]),
+                    WalletCode::Reverts | WalletCode::Absent => return reverted(),
+                }
+                Ok(hex_value(&word))
+            }
+            other => unserved(other),
+        })
+        .await
+    }
+
+    /// A wallet-code resolve of the canonical order, its buyer set to `buyer`.
+    fn wallet_code_resolve(buyer: Address) -> KernelOp {
+        let KernelOp::Commit { commitment: mut order, .. } = figaro_prove_test::build_canonical_batch_input().operations[0].clone() else {
+            panic!("the canonical batch opens with a commit");
+        };
+        order.buyer = buyer;
+        KernelOp::ResolveByWalletCode {
+            process_id: order.process_id,
+            cumulative_value: order.payment,
+            commitments: vec![order],
+            authorization: Bytes::from_static(b"guardian-approval"),
+        }
+    }
+
+    fn pending(id: u64, op: KernelOp) -> PendingOp {
+        PendingOp { id, key: B256::with_last_byte(id as u8), op, deferred_since: None, behind: Vec::new() }
+    }
+
+    fn gate(rpc_url: String) -> FundingGate {
+        FundingGate { rpc_url, verifier: VERIFIER, chain_id: 31337 }
+    }
+
+    // The relay asks the buyer's code the verifier's question, from the
+    // verifier's address, under the gas it plans for the wallet's code, and
+    // admits the resolve only on the ERC-1271 magic value.
+    #[tokio::test]
+    async fn a_wallet_code_resolve_passes_only_on_the_magic_value() {
+        let (yes, other, reverts, codeless) =
+            (Address::repeat_byte(0xA1), Address::repeat_byte(0xA2), Address::repeat_byte(0xA3), Address::repeat_byte(0xA4));
+        let double = wallet_code_double(vec![
+            (yes, WalletCode::Magic),
+            (other, WalletCode::Other),
+            (reverts, WalletCode::Reverts),
+        ])
+        .await;
+        let gate = gate(double.url.clone());
+
+        let op = wallet_code_resolve(yes);
+        assert_eq!(check_wallet_code_resolve(&gate, &op).await, Ok(Ok(())));
+        let asked = double.calls_to("eth_call");
+        assert_eq!(asked.len(), 1);
+        let (_, digest, bytes) = wallet_code_question(31337, VERIFIER, &op).unwrap();
+        let (to, input) = crate::rpc_double::call_of(&asked[0]);
+        assert_eq!(to, yes, "the buyer's own account is asked");
+        assert_eq!(&input[4..36], digest.as_slice(), "the digest is the verifier's");
+        assert!(input.windows(bytes.len()).any(|w| w == bytes.as_ref()), "the resolve's bytes are passed");
+        assert_eq!(asked[0][0]["from"].as_str().unwrap().parse::<Address>().unwrap(), VERIFIER, "asked from the verifier");
+        assert_eq!(
+            u64::from_str_radix(asked[0][0]["gas"].as_str().unwrap().trim_start_matches("0x"), 16).unwrap(),
+            crate::gas::WALLET_CODE_EXECUTION_GAS,
+            "under the gas the relay plans"
+        );
+
+        let refused = check_wallet_code_resolve(&gate, &wallet_code_resolve(other)).await.unwrap().unwrap_err();
+        assert!(refused.contains("not the ERC-1271 magic value"), "{refused}");
+        let refused = check_wallet_code_resolve(&gate, &wallet_code_resolve(reverts)).await.unwrap().unwrap_err();
+        assert!(refused.contains("reverted"), "{refused}");
+        let refused = check_wallet_code_resolve(&gate, &wallet_code_resolve(codeless)).await.unwrap().unwrap_err();
+        assert!(refused.contains("BuyerHasNoCode"), "{refused}");
+    }
+
+    // An op of any other form is no wallet-code question: it passes without
+    // a read (the RPC here is unreachable). A chain that cannot be asked is a
+    // read failure, never a verdict, and its text carries no URL.
+    #[tokio::test]
+    async fn a_wallet_code_check_reads_only_for_its_form_and_its_errors_carry_no_url() {
+        let gate = gate("http://127.0.0.1:1/v2/SECRETKEY".to_string());
+        let commit = figaro_prove_test::build_canonical_batch_input().operations[0].clone();
+        assert_eq!(check_wallet_code_resolve(&gate, &commit).await, Ok(Ok(())));
+        let err = check_wallet_code_resolve(&gate, &wallet_code_resolve(Address::repeat_byte(0xA1))).await.unwrap_err();
+        assert!(err.starts_with("code read of"), "{err}");
+        assert!(!err.contains("SECRETKEY") && !err.contains("127.0.0.1"), "{err}");
+    }
+
+    // The batch filter keeps a validated resolve and every other op, drops a
+    // refused one with its verdict and an unaskable one conservatively, and
+    // with no verifier configured passes everything through.
+    #[tokio::test]
+    async fn the_wallet_code_filter_drops_what_the_buyers_code_refuses() {
+        let (yes, no) = (Address::repeat_byte(0xB1), Address::repeat_byte(0xB2));
+        let double = wallet_code_double(vec![(yes, WalletCode::Magic), (no, WalletCode::Other)]).await;
+        let commit = figaro_prove_test::build_canonical_batch_input().operations[0].clone();
+        let ops = || vec![pending(1, wallet_code_resolve(yes)), pending(2, wallet_code_resolve(no)), pending(3, commit.clone())];
+
+        let (valid, dropped) = filter_wallet_code_resolves(Some(&gate(double.url.clone())), ops()).await;
+        assert_eq!(valid.iter().map(|p| p.id).collect::<Vec<_>>(), vec![1, 3]);
+        assert_eq!(dropped.len(), 1);
+        assert_eq!(dropped[0].0.id, 2);
+        assert!(dropped[0].1.contains("WalletCodeAuthorizationRefused"), "{}", dropped[0].1);
+
+        let (valid, dropped) = filter_wallet_code_resolves(Some(&gate("http://127.0.0.1:1".to_string())), ops()).await;
+        assert_eq!(valid.iter().map(|p| p.id).collect::<Vec<_>>(), vec![3]);
+        assert_eq!(dropped.len(), 2);
+        for (_, why) in &dropped {
+            assert!(why.contains("dropped conservatively"), "{why}");
+        }
+
+        let (valid, dropped) = filter_wallet_code_resolves(None, ops()).await;
+        assert_eq!(valid.len(), 3);
+        assert!(dropped.is_empty());
+    }
+
+    // ── The chain write: `submit_batch` against a chain double ────────
+
+    const SIGNING_KEY: &str = "0x1111111111111111111111111111111111111111111111111111111111111111";
+
+    /// How the submit double's chain treats the transaction.
+    #[derive(Clone, Copy)]
+    enum Chain {
+        Lands,
+        MinedReverted,
+        RefusesAtEstimate,
+    }
+
+    /// A JSON-RPC double for a signed send: it fills nonce, gas and the
+    /// EIP-1559 price, takes the raw transaction, and answers its receipt
+    /// with the status `chain` names.
+    async fn submit_double(chain: Chain) -> crate::rpc_double::RpcDouble {
+        use crate::rpc_double::{reverted, serve, unserved};
+        serve(move |method, params| match method {
+            "eth_chainId" => Ok(serde_json::json!("0x7a69")),
+            "eth_getTransactionCount" => Ok(serde_json::json!("0x0")),
+            "eth_estimateGas" => match chain {
+                Chain::RefusesAtEstimate => reverted(),
+                _ => Ok(serde_json::json!("0x100000")),
+            },
+            "eth_feeHistory" => Ok(serde_json::json!({
+                "oldestBlock": "0x1",
+                "baseFeePerGas": ["0x3b9aca00", "0x3b9aca00"],
+                "gasUsedRatio": [0.5],
+                "reward": [["0x1"]],
+            })),
+            "eth_sendRawTransaction" => {
+                let raw = alloy::primitives::hex::decode(params[0].as_str().unwrap()).unwrap();
+                Ok(serde_json::json!(alloy::primitives::keccak256(&raw)))
+            }
+            "eth_getTransactionReceipt" => Ok(serde_json::json!({
+                "transactionHash": params[0],
+                "transactionIndex": "0x0",
+                "blockHash": B256::repeat_byte(0x0b),
+                "blockNumber": "0x2",
+                "from": Address::repeat_byte(0x0f),
+                "to": VERIFIER,
+                "cumulativeGasUsed": "0x5208",
+                "gasUsed": "0x5208",
+                "effectiveGasPrice": "0x3b9aca01",
+                "contractAddress": null,
+                "logs": [],
+                "logsBloom": format!("0x{}", "00".repeat(256)),
+                "type": "0x2",
+                "status": match chain { Chain::MinedReverted => "0x0", _ => "0x1" },
+            })),
+            "eth_blockNumber" => Ok(serde_json::json!("0x2")),
+            other => unserved(other),
+        })
+        .await
+    }
+
+    fn submit_config(rpc_url: String) -> SubmitterConfig {
+        SubmitterConfig { verifier_address: VERIFIER, private_key: SIGNING_KEY.to_string(), ..live_config(rpc_url) }
+    }
+
+    /// The canonical batch, executed, as the prover hands it to the submitter.
+    fn proved_canonical_batch() -> ProveResult {
+        let input = figaro_prove_test::build_canonical_batch_input();
+        let (pv, positions, events, post_state) =
+            figaro_kernel::kernel::apply_batch_with_state(&input).expect("the canonical batch applies");
+        ProveResult {
+            public_values_bytes: pv.abi_encode(),
+            public_values: pv,
+            positions,
+            events,
+            proof_bytes: vec![0xAB; 7],
+            operations_bytes: figaro_kernel::operation_stream::encode_operation_stream(&input.operations, &input.usage_claims),
+            post_state,
+            provenance_leaf: input.provenance_leaf,
+        }
+    }
+
+    // The relay's one chain write: a transaction signed by the relay's key,
+    // to the verifier, on the RPC's chain, carrying `settleBatch` with the
+    // proof, the public values, the positions, the uses and the operation
+    // stream the prover handed over; its hash is the one returned.
+    #[tokio::test]
+    async fn the_batch_is_sent_signed_to_the_verifier_with_the_proved_arguments() {
+        use alloy::consensus::transaction::SignerRecoverable;
+        use alloy::consensus::{Transaction, TxEnvelope};
+        use alloy::eips::eip2718::Decodable2718;
+        use alloy::sol_types::SolCall;
+
+        let double = submit_double(Chain::Lands).await;
+        let result = proved_canonical_batch();
+        let hash = submit_batch(&submit_config(double.url.clone()), &result).await.expect("the batch lands");
+
+        let sent = double.calls_to("eth_sendRawTransaction");
+        assert_eq!(sent.len(), 1, "one transaction is sent");
+        let raw = alloy::primitives::hex::decode(sent[0][0].as_str().unwrap()).unwrap();
+        assert_eq!(hash, alloy::primitives::keccak256(&raw), "the returned hash is the sent transaction's");
+        let tx = TxEnvelope::decode_2718(&mut raw.as_slice()).expect("a signed transaction");
+        let relay: PrivateKeySigner = SIGNING_KEY.parse().unwrap();
+        assert_eq!(tx.recover_signer().unwrap(), relay.address(), "signed by the relay's key");
+        assert_eq!(tx.to(), Some(VERIFIER), "sent to the verifier");
+        assert_eq!(tx.chain_id(), Some(31337), "on the RPC's chain");
+        let call = IFigaroBatchVerifier::settleBatchCall::abi_decode(tx.input()).expect("a settleBatch call");
+        assert_eq!(call.proof.as_ref(), result.proof_bytes.as_slice());
+        assert_eq!(call.publicValues.as_ref(), result.public_values_bytes.as_slice());
+        assert_eq!(call.operations.as_ref(), result.operations_bytes.as_slice());
+        assert_eq!(
+            call.positions.iter().map(|p| (p.token, p.user, p.deposit, p.payout)).collect::<Vec<_>>(),
+            result.positions.iter().map(|p| (p.token, p.user, p.deposit, p.payout)).collect::<Vec<_>>()
+        );
+        assert_eq!(call.events.attestations.len(), result.events.attestations.len());
+        assert_eq!(call.usage.provenanceLeaf, result.provenance_leaf);
+        assert_eq!(call.usage.uses.len(), result.events.uses.len());
+    }
+
+    // A transaction mined but reverted is a deterministic failure, never a
+    // success: the chain's root did not move, so the mirror must not advance.
+    #[tokio::test]
+    async fn a_mined_but_reverted_batch_is_a_deterministic_failure() {
+        let double = submit_double(Chain::MinedReverted).await;
+        let err = submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch()).await.unwrap_err();
+        assert!(err.deterministic, "{}", err.message);
+        assert!(err.message.contains("REVERTED"), "{}", err.message);
+    }
+
+    // A revert at the send path is the chain's evaluated refusal:
+    // deterministic, and nothing is sent. Transport trouble is transient.
+    // Neither text carries the RPC's URL.
+    #[tokio::test]
+    async fn a_send_path_revert_is_deterministic_and_transport_trouble_is_not() {
+        let double = submit_double(Chain::RefusesAtEstimate).await;
+        let err = submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch()).await.unwrap_err();
+        assert!(err.deterministic, "{}", err.message);
+        assert!(double.calls_to("eth_sendRawTransaction").is_empty(), "nothing is sent");
+        assert!(!err.message.contains(&double.url), "{}", err.message);
+
+        let err = submit_batch(&submit_config("http://127.0.0.1:1/v2/SECRETKEY".to_string()), &proved_canonical_batch())
+            .await
+            .unwrap_err();
+        assert!(!err.deterministic, "{}", err.message);
+        assert!(err.message.starts_with("tx submission failed"), "{}", err.message);
+        assert!(!err.message.contains("SECRETKEY") && !err.message.contains("127.0.0.1"), "{}", err.message);
     }
 }

@@ -13,10 +13,9 @@ import { useAccount } from "wagmi";
  * single place a standard interface NAME maps to the concrete call — a
  * spec-routed dispatch, never a clause-id switch scattered through the UI.
  *
- * The concrete `{ address, abi }` comes from `compositionTarget` (env address +
- * the standard's ABI), so this hook carries no bundled contract handle. What
- * stays here is the CALL-SHAPE (which function, in what arg order) — integration
- * code. The call-shape is the interface STANDARD; the trade-level coordination
+ * A handler added here carries the concrete `{ address, abi }` (the env-looked-up
+ * deployment address and the standard's ABI) and the CALL-SHAPE (which function,
+ * in what arg order) — integration code. The call-shape is the interface STANDARD; the trade-level coordination
  * is the ASSEMBLY. A never-seen clause still renders and collects its fields with
  * zero code here; INVOKING a contract needs a handler here — invocation is
  * per-standard-interface (code), not a config artifact.

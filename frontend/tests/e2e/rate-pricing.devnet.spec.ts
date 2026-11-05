@@ -33,6 +33,7 @@ import {
     primeRegisteredClauseSpecs,
     anchoredAssemblyHash,
     isBindingOf,
+    expectRelayedOrder,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { geohashCentroidDistanceKm } from '@figaro-protocol/sdk/derive';
@@ -302,6 +303,10 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
         await page.getByTestId('send-commitment-xmtp').click();
         await expect(page.getByTestId('commitment-xmtp-status'), 'the signed root is relayed to the lead')
             .toBeVisible({ timeout: 30000 });
+
+        // Out-of-band: the hauled sub-order the buyer signed and relayed to the
+        // hauler carries exactly the derived payment, under the buyer's signature.
+        await expectRelayedOrder(page, { buyer: BUYER, seller: HAULER, payment: EXPECTED_SUB_PAYMENT });
 
         test.info().annotations.push({
             type: 'rate-derivation',

@@ -6,6 +6,7 @@ import {
     maxOrdersResolvableForGasLimit,
     TRANSACTION_GAS_CAP,
     maxCommitsLandableForGasLimit,
+    maxCommitsLandableInOneBlock,
     maxOrdersResolvablePerProcess,
     readProcessResolveCapacity,
     assertOrderFitsResolveCap,
@@ -66,6 +67,16 @@ describe("maxCommitsLandableForGasLimit", () => {
     it("derives the per-block commit landing rate", () => {
         // 30M × 95% ÷ 383k = 74
         expect(maxCommitsLandableForGasLimit(MAINNET_GAS_LIMIT)).toBe(74);
+    });
+});
+
+describe("maxCommitsLandableInOneBlock", () => {
+    it("reads the live block gas limit and derives the landing rate from it", async () => {
+        const client = stubClient(0n, MAINNET_GAS_LIMIT);
+        await expect(maxCommitsLandableInOneBlock(client)).resolves.toBe(74);
+        expect(client.getBlock).toHaveBeenCalledWith({ blockTag: "latest" });
+        // 60M × 95% ÷ 383k = 148: the figure follows the chain, never a literal.
+        await expect(maxCommitsLandableInOneBlock(stubClient(0n, 60_000_000n))).resolves.toBe(148);
     });
 });
 

@@ -6,7 +6,7 @@
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { agreementLeaves, computeProvenanceLeaf, assemblyHashOf } from "@figaro-protocol/sdk";
-import { planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
+import { executeAssemblyCheckout, planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
 import { referenceAssembly, primeClauseSpecs } from "./primeClauseSpecs";
 
@@ -60,5 +60,37 @@ describe("assembly checkout — the provenance leaf", () => {
                 expect(JSON.stringify(clauseEntry.data)).not.toContain(assemblyHash.slice(2));
             }
         }
+    });
+});
+
+describe("assembly checkout — the resolve cap", () => {
+    beforeAll(async () => {
+        await primeClauseSpecs();
+    });
+
+    it("refuses an assembly past the cap before any signature, naming the cap as the SDK's own estimate and not a chain limit", async () => {
+        const hydratedAssembly = referenceAssembly("pos.json");
+        const count = hydratedAssembly.assembly.agreements.length;
+        const signRoot = vi.fn();
+        const signAndShare = vi.fn();
+        await expect(executeAssemblyCheckout(
+            {
+                buyer: BUYER,
+                leadSellerAddress: SELLER,
+                currency: TOKEN,
+                payment: 1_000_000n,
+                lineItems: [{ itemId: "i1", name: "Coffee", quantity: 1, unitPrice: "1000000" }],
+                assembly: { slug: "asm-test", name: "Point of sale", hydratedAssembly, coSellerBindings: [] },
+                sellerCatalogs: [],
+                tokenDecimals: 6,
+            },
+            { chainId: 31337, readResolveCap: async () => count - 1, signRoot, signAndShare },
+        )).rejects.toThrow(
+            `This assembly composes ${count} orders; ${count - 1} is the most the SDK plans to fit in one atomic `
+            + "resolveProcess on this chain (its own estimate from the block's gas limit, not a limit the chain "
+            + "enforces). The designer must compose multiple processes instead.",
+        );
+        expect(signRoot).not.toHaveBeenCalled();
+        expect(signAndShare).not.toHaveBeenCalled();
     });
 });

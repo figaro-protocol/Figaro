@@ -308,13 +308,26 @@ contract ClauseRegistryTest is Test {
 
     // ── No owner, no activate/deactivate ─────────────────────────────
 
-    function test_noOwner_noActivateDeactivate() public view {
-        // ClauseRegistry has no owner() function or Ownable inheritance.
-        // This test documents the design: permissionless, immutable clauses.
-        // If someone tries to cast to Ownable it won't compile.
-        // The contract has exactly 3 externals: registerClause,
-        // withdrawDeposit, setMechanismClause. Plus public getters:
-        // registered(bytes32), depositOf(bytes32), registrationDeposit().
-        assertTrue(true);
+    function test_noOwner_noActivateDeactivate() public {
+        // ClauseRegistry has no owner and no way to deactivate a clause: an
+        // ownership or activation call finds no function and no fallback, so
+        // it fails, and a registered clause stays registered.
+        vm.prank(alice);
+        registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
+
+        bytes[6] memory probes = [
+            abi.encodeWithSignature("owner()"),
+            abi.encodeWithSignature("transferOwnership(address)", alice),
+            abi.encodeWithSignature("renounceOwnership()"),
+            abi.encodeWithSignature("activate(bytes32)", MODALITIES_KEY),
+            abi.encodeWithSignature("deactivate(bytes32)", MODALITIES_KEY),
+            abi.encodeWithSignature("setActive(bytes32,bool)", MODALITIES_KEY, false)
+        ];
+        for (uint256 i = 0; i < probes.length; i++) {
+            vm.prank(alice);
+            (bool ok,) = address(registry).call(probes[i]);
+            assertFalse(ok, "the registry answers an ownership or activation call");
+        }
+        assertTrue(registry.registered(MODALITIES_KEY), "the clause stays registered");
     }
 }

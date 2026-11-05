@@ -13,7 +13,6 @@
   ],
   "ignore": [
     "tests/e2e/fixtures/inject-ethereum-multi.js",
-    "lib/composition/compositionTarget.ts",
     "public/sdk-api/**"
   ]
 }
