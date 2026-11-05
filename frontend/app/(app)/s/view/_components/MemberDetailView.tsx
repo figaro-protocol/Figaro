@@ -266,34 +266,39 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                                     )}
                                                                 </span>
                                                                 {quantity === 0 ? (
-                                                                    <button
+                                                                    <Button
                                                                         type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
                                                                         onClick={() => handleAddItem(catalogItem)}
                                                                         disabled={!catalogItem.available}
-                                                                        className="rounded border border-ink-heading px-3 py-1.5 text-sm font-semibold text-ink-primary hover:bg-subtle disabled:opacity-40"
+                                                                        className="rounded border-ink-heading py-1.5 text-sm font-semibold disabled:opacity-40"
                                                                         data-testid={`btn-add-${catalogItem.id}`}
                                                                     >
                                                                         Add
-                                                                    </button>
+                                                                    </Button>
                                                                 ) : (
                                                                     <div className="flex items-center gap-2">
-                                                                        <button
+                                                                        <Button
                                                                             type="button"
+                                                                            variant="outline"
+                                                                            size="icon"
                                                                             onClick={() => handleRemoveItem(catalogItem.id)}
-                                                                            className="w-8 h-8 rounded border border-default bg-paper text-ink-primary hover:bg-subtle"
+                                                                            className="rounded border-default"
                                                                             aria-label={`Remove one ${catalogItem.name}`}
                                                                         >
                                                                             −
-                                                                        </button>
+                                                                        </Button>
                                                                         <span className="w-6 text-center text-ink-primary font-semibold">{quantity}</span>
-                                                                        <button
+                                                                        <Button
                                                                             type="button"
+                                                                            size="icon"
                                                                             onClick={() => handleAddItem(catalogItem)}
-                                                                            className="w-8 h-8 rounded border border-ink-primary bg-ink-primary text-paper hover:bg-ink-body"
+                                                                            className="rounded"
                                                                             aria-label={`Add another ${catalogItem.name}`}
                                                                         >
                                                                             +
-                                                                        </button>
+                                                                        </Button>
                                                                     </div>
                                                                 )}
                                                             </div>

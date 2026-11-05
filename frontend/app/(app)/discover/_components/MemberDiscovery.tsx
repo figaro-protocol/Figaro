@@ -5,6 +5,8 @@ import { deriveAssemblySlug } from "@/lib/shared/assembly";
 import { MemberCard } from "./MemberCard";
 import { useDeviceLocation } from "./useDeviceLocation";
 import { useMounted } from "@/hooks/useMounted";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import {
     listingMatchesGeohash,
     type Listing,
@@ -76,13 +78,15 @@ export function MemberDiscovery() {
                         <>
                             <span className="text-ink-body">Filtering near </span>
                             <span className="font-mono text-ink-primary">{location.geohash}</span>
-                            <button
+                            <Button
                                 type="button"
+                                variant="link"
+                                size="inline"
                                 onClick={location.clear}
                                 className="ml-3 text-xs text-ink-muted underline hover:text-ink-primary"
                             >
                                 clear
-                            </button>
+                            </Button>
                         </>
                     ) : location.status === "requesting" ? (
                         <span className="text-ink-body">Requesting location…</span>
@@ -97,25 +101,27 @@ export function MemberDiscovery() {
                     )}
                 </div>
                 {location.status !== "granted" && (
-                    <button
+                    <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={location.request}
-                        className="text-sm font-semibold text-ink-primary border border-default rounded-md px-3 py-1.5 hover:bg-paper"
+                        className="text-sm font-semibold bg-transparent border-default rounded-md py-1.5 hover:bg-paper"
                     >
                         Use my location
-                    </button>
+                    </Button>
                 )}
             </section>
 
             {/* Search */}
             <section>
-                <input
+                <Input
                     type="search"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search members…"
                     aria-label="Search members"
-                    className="w-full max-w-md rounded-md border border-default px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:border-transparent"
+                    className="max-w-md rounded-md focus-visible:border-transparent"
                 />
             </section>
 
@@ -124,32 +130,36 @@ export function MemberDiscovery() {
                 <span className="text-xs font-semibold text-ink-muted mr-1">
                     Assembly
                 </span>
-                <button
+                <Button
                     type="button"
+                    variant={assemblyFilter === null ? "default" : "outline"}
+                    size="compact"
                     onClick={() => setAssemblyFilter(null)}
                     className={
-                        "text-xs px-2.5 py-1 rounded-full border transition-colors " +
+                        "px-2.5 py-1 rounded-full " +
                         (assemblyFilter === null
-                            ? "bg-ink-primary text-paper border-ink-primary"
-                            : "bg-paper text-ink-body border-default hover:border-default-strong")
+                            ? ""
+                            : "text-ink-body border-default hover:bg-paper hover:border-default-strong")
                     }
                 >
                     All
-                </button>
+                </Button>
                 {knownAssemblies.map((slug) => (
-                    <button
+                    <Button
                         key={slug}
                         type="button"
+                        variant={assemblyFilter === slug ? "default" : "outline"}
+                        size="compact"
                         onClick={() => setAssemblyFilter(slug === assemblyFilter ? null : slug)}
                         className={
-                            "text-xs px-2.5 py-1 rounded-full border transition-colors " +
+                            "px-2.5 py-1 rounded-full " +
                             (assemblyFilter === slug
-                                ? "bg-ink-primary text-paper border-ink-primary"
-                                : "bg-paper text-ink-body border-default hover:border-default-strong")
+                                ? ""
+                                : "text-ink-body border-default hover:bg-paper hover:border-default-strong")
                         }
                     >
                         {slug}
-                    </button>
+                    </Button>
                 ))}
             </section>
 

@@ -2,6 +2,7 @@
 
 import { isValidAddress } from "@/lib/shared/evm";
 import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 
 export function TokenAddressInput({
@@ -45,14 +46,16 @@ export function TokenAddressInput({
                 )}
             </div>
             {onRemove && (
-                <button
+                <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={onRemove}
-                    className="text-ink-muted hover:text-error-fg transition-colors text-lg leading-none flex-shrink-0"
+                    className="text-ink-muted hover:text-error-fg text-lg leading-none flex-shrink-0"
                     aria-label="Remove"
                 >
                     &times;
-                </button>
+                </Button>
             )}
         </div>
     );

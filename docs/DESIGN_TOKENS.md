@@ -264,8 +264,11 @@ Every variant declares a border — including the two transparent ones — so sw
 | `lg` | `min-h-12 px-8` | 48px | WCAG 2.5.5 (AAA) |
 | `icon` | `min-h-11 min-w-11 h-11 w-11` | 44×44px | WCAG 2.5.5 (AAA) |
 | `compact` | `min-h-7 px-3 text-xs` | 28px | WCAG 2.5.8 (AA) only — **see the constraint** |
+| `inline` | `p-0` | the line's own | WCAG 2.5.5 Inline exception only — **see the constraint** |
 
 `sm` shrinks the *type*, never the target — that is the difference between `sm` and `compact`.
+
+**`inline` has no box of its own.** It is for a text action set inside a sentence or a line of text (a "clear" after a filter summary, a facet link in a table cell), which WCAG 2.5.5's Inline exception covers, and for a glyph on a zoomable canvas node that the caller sizes; the caller sets the type size to the line's. A standalone text action on its own line takes `size="sm"` with `variant="link"` or `"ghost"` (and `px-0` where the label should sit flush), so it keeps the 44px target.
 
 **`compact` is for dense tool rows only.** 28px clears WCAG 2.5.8 Target Size (Minimum, AA — 24 CSS px) but not 2.5.5 (AAA — 44). It is admissible where a row of controls sits inline with the content it acts on and a 44px row would push that content off the reading line: a table-row action strip, an editor toolbar, a filter bar over a list. It is **never** a primary CTA, never a lone control on a surface, and never the mobile-primary action. One precedence note: when a page's primary action genuinely lives inside a dense tool row (the designer's review toolbar), row consistency wins — the whole row is compact rather than one 44px control beside 28px siblings; the primary-CTA prohibition is about promoting compact onto surfaces that have room, not about demoting a row's member. Two further constraints: `px-3` plus a real label is what keeps the *width* past 24px as well, so an icon-only compact button is out (use `size="icon"`); and a compact control still needs a real gap from its neighbors — crowding two 28px targets together fails 2.5.8's spacing test even though each one passes alone.
 
@@ -349,7 +352,7 @@ The shared WAI-ARIA tab set — one row of tabs over ONE tabpanel, caller-owned 
 inline-flex items-center min-h-11 px-3 text-sm rounded-tile border
 ```
 
-the selected one `border-ink-heading text-ink-heading`, the rest `border-ink-muted/30 text-ink-muted hover:text-ink-heading`. `min-h-11` (44px) satisfies WCAG 2.5.5. `DataExplorer` and `RegistryExplorer` compose it; do not re-inline a tab set.
+the selected one `border-ink-heading text-ink-heading`, the rest `border-ink-muted/30 text-ink-muted hover:text-ink-heading`. `min-h-11` (44px) satisfies WCAG 2.5.5. `listTestId` puts a test-id on the tablist row. `DataExplorer` and `RegistryExplorer` compose it; do not re-inline a tab set.
 
 ### Status surfaces
 

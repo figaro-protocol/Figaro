@@ -26,6 +26,7 @@
 
 import { useEffect, useState } from "react";
 import { MemberEditGate } from "@/components/members/MemberEditGate";
+import { Button } from "@/components/ui/Button";
 import { useMemberProfileEditor } from "@/lib/member/useMemberProfileEditor";
 import { fetchMemberCatalog } from "@/lib/member/catalogFetcher";
 import { toError } from "@/lib/shared/errors";
@@ -211,14 +212,16 @@ function DeleteCatalogFooter({
     if (!confirming) {
         return (
             <div className="pt-4 border-t border-default text-xs text-ink-muted">
-                <button
+                <Button
                     type="button"
+                    variant="link"
+                    size="sm"
                     onClick={() => setConfirming(true)}
                     disabled={disabled}
-                    className="underline hover:text-ink-heading transition-colors disabled:opacity-50"
+                    className="px-0 text-inherit underline hover:text-ink-heading"
                 >
                     Delete catalog entirely
-                </button>
+                </Button>
             </div>
         );
     }
@@ -229,22 +232,26 @@ function DeleteCatalogFooter({
                 Clears <code>catalogURI</code> from the on-chain profile. The catalog document remains pinned on IPFS (content-addressed pins are immutable) but the buyer-side discovery surface no longer surfaces it. Re-add items by editing the catalog again. Deposit and lock period are unaffected.
             </p>
             <div className="flex items-center gap-3">
-                <button
+                <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={handleDelete}
                     disabled={running || disabled}
-                    className="text-sm border border-default rounded px-3 py-1.5 text-error-fg hover:bg-paper-200 transition-colors disabled:opacity-50"
+                    className="text-sm border-default rounded py-1.5 text-error-fg"
                 >
                     {running ? "Deleting…" : "Confirm delete"}
-                </button>
-                <button
+                </Button>
+                <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setConfirming(false)}
                     disabled={running}
-                    className="text-xs text-ink-muted hover:text-ink-heading transition-colors disabled:opacity-50"
+                    className="px-0 text-xs text-ink-muted hover:bg-transparent hover:text-ink-heading"
                 >
                     Cancel
-                </button>
+                </Button>
             </div>
             {error && (
                 <p className="text-xs text-error-fg" role="alert">{error}</p>

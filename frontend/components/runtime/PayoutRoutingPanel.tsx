@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "@/components/shared/Link";
 import { parseUnits, type Hex } from "viem";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { usePayoutRoutingActions } from "@/lib/composition/usePayoutRoutingActions";
@@ -75,7 +77,7 @@ export function PayoutRoutingPanel({ currency }: Props) {
     }
 
     return (
-        <div className="rounded-lg border border-default bg-paper p-4" data-testid="payout-routing">
+        <Card className="rounded-lg p-4" data-testid="payout-routing">
             <p className="text-xs font-semibold text-ink-muted mb-1">Route your receipts</p>
             <p className="text-sm text-ink-body mb-3">
                 Split what you were paid to earmarked addresses in one transaction,
@@ -87,46 +89,50 @@ export function PayoutRoutingPanel({ currency }: Props) {
             <div className="space-y-2">
                 {legs.map((leg, i) => (
                     <div key={i} className="flex items-center gap-2">
-                        <input
+                        <Input
                             type="text"
                             value={leg.recipient}
                             onChange={(e) => setLeg(i, { recipient: e.target.value })}
                             placeholder="0x recipient"
                             data-testid={`payout-routing-recipient-${i}`}
-                            className="flex-1 rounded border border-default bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                            className="flex-1 rounded px-2 py-1 text-xs font-mono"
                         />
-                        <input
+                        <Input
                             type="text"
                             inputMode="decimal"
                             value={leg.amount}
                             onChange={(e) => setLeg(i, { amount: e.target.value })}
                             placeholder={`amount${symbol ? ` (${symbol})` : ""}`}
                             data-testid={`payout-routing-amount-${i}`}
-                            className="w-36 rounded border border-default bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                            className="w-36 rounded px-2 py-1 text-xs font-mono"
                         />
                         {legs.length > 1 && (
-                            <button
+                            <Button
                                 type="button"
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => setLegs((prev) => prev.filter((_, j) => j !== i))}
                                 data-testid={`payout-routing-remove-${i}`}
                                 className="text-xs text-ink-muted hover:text-ink-body"
                                 title="Remove this leg"
                             >
                                 ✕
-                            </button>
+                            </Button>
                         )}
                     </div>
                 ))}
             </div>
             <div className="mt-3 flex items-center justify-between gap-3">
-                <button
+                <Button
                     type="button"
+                    variant="link"
+                    size="sm"
                     onClick={() => setLegs((prev) => [...prev, { recipient: "", amount: "" }])}
                     data-testid="payout-routing-add-leg"
-                    className="text-xs text-ink-muted hover:text-ink-body underline"
+                    className="px-0 text-xs text-ink-muted hover:text-ink-body underline"
                 >
                     Add a recipient
-                </button>
+                </Button>
                 <Button
                     type="button"
                     size="sm"
@@ -146,6 +152,6 @@ export function PayoutRoutingPanel({ currency }: Props) {
                     Routed — tx <span className="font-mono break-all">{routedTx}</span>
                 </p>
             )}
-        </div>
+        </Card>
     );
 }

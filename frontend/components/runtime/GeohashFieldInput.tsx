@@ -19,6 +19,8 @@
  */
 import { useState } from "react";
 import { getDeviceLocation } from "@/lib/shared/deviceLocation";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import { encodeGeohash } from "@figaro-protocol/sdk/derive";
 import { safeRegexTest } from "@figaro-protocol/sdk/clauses";
 import { capGeohashGrain, geohashCapturePrecision, PUBLIC_GEOHASH_MAX_PRECISION, PRIVATE_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
@@ -54,7 +56,7 @@ export function GeohashFieldInput({ value, onChange, testId, pattern, dispositio
     return (
         <div className="space-y-1">
             <div className="flex items-center gap-2">
-                <input
+                <Input
                     type="text"
                     value={value}
                     onChange={(e) => {
@@ -66,33 +68,37 @@ export function GeohashFieldInput({ value, onChange, testId, pattern, dispositio
                     }}
                     placeholder={`geohash (base32, ≤${maxChars} chars)`}
                     data-testid={testId}
-                    className={`w-full rounded border bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
+                    className={`rounded px-2 py-1 text-xs font-mono ${
                         shapeOk ? "border-default" : "border-error"
                     }`}
                 />
-                <button
+                <Button
                     type="button"
+                    variant="outline"
+                    size="compact"
                     onClick={() => void fillFromDevice()}
                     disabled={locating}
                     data-testid={`${testId}-device`}
                     title="Fill from this device's location"
-                    className="shrink-0 text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong disabled:opacity-50"
+                    className="shrink-0 text-[11px] px-2 py-1 rounded border-default text-ink-body hover:bg-paper hover:border-default-strong"
                 >
                     {locating ? "Locating…" : "Use device location"}
-                </button>
+                </Button>
                 {(presets ?? []).map((preset, i) => (
-                    <button
+                    <Button
                         key={`${preset.value}-${i}`}
+                        variant="outline"
+                        size="compact"
                         type="button"
                         // A preset lands under the same grain cap as a typed
                         // value: where it lands decides, not where it came from.
                         onClick={() => onChange(capGeohashGrain(disposition, preset.value))}
                         data-testid={`${testId}-preset-${i}`}
                         title={preset.value}
-                        className="shrink-0 text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong"
+                        className="shrink-0 text-[11px] px-2 py-1 rounded border-default text-ink-body hover:bg-paper hover:border-default-strong"
                     >
                         {preset.label}
-                    </button>
+                    </Button>
                 ))}
             </div>
             {error && (

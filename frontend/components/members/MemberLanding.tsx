@@ -489,13 +489,15 @@ function WithdrawRow({
                     <span className="text-ink-body">Leave the registry</span>
                     <span className="ml-2 text-xs">De-lists you from discovery straight away; the {depositLabel} stake follows {cooldownPhrase(cooldown)}.</span>
                 </div>
-                <button
+                <Button
                     type="button"
+                    variant="link"
+                    size="sm"
                     onClick={() => setConfirming(true)}
-                    className="text-xs underline hover:text-ink-heading transition-colors"
+                    className="px-0 text-xs text-inherit underline hover:text-ink-heading"
                 >
                     Begin
-                </button>
+                </Button>
             </li>
         );
     }
@@ -509,14 +511,16 @@ function WithdrawRow({
                 <Button variant="outline" size="sm" onClick={handleWithdraw} disabled={isProcessing}>
                     {isProcessing ? "Leaving…" : "Confirm and leave"}
                 </Button>
-                <button
+                <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setConfirming(false)}
                     disabled={isProcessing}
-                    className="text-xs text-ink-muted hover:text-ink-heading transition-colors disabled:opacity-50"
+                    className="px-0 text-xs text-ink-muted hover:bg-transparent hover:text-ink-heading"
                 >
                     Cancel
-                </button>
+                </Button>
             </div>
             {(submitError || error) && (
                 <p className="text-xs text-error-fg" role="alert">

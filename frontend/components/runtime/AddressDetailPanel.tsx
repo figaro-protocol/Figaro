@@ -25,6 +25,8 @@
  * the title, never a dispatch.
  */
 import { useCallback, useState } from "react";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import {
     addressDetailAnchorRef,
     addressDetailBlobHash,
@@ -103,15 +105,17 @@ export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: Inte
 
             {/* Ask for the counterparty's detail. */}
             {!detail && (
-                <button
+                <Button
                     type="button"
+                    variant="outline"
+                    size="compact"
                     onClick={() => void handleRequest()}
                     disabled={busy || !channel || requested}
                     data-testid="interaction-address-request"
-                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper text-ink-body hover:border-default-strong disabled:opacity-50"
+                    className="py-1.5 rounded border-default text-ink-body hover:bg-paper hover:border-default-strong"
                 >
                     {requested ? waitingLabel : busy ? "Requesting…" : requestLabel}
-                </button>
+                </Button>
             )}
 
             {/* The counterparty's decrypted detail + the anchor verdict. */}
@@ -165,24 +169,25 @@ export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: Inte
                     ] as const).map(([key, label, value]) => (
                         <label key={key} className="block text-xs font-semibold text-ink-body">
                             {label}
-                            <input
+                            <Input
                                 type="text"
                                 value={value}
                                 onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
                                 data-testid={`interaction-address-${key}`}
-                                className="mt-1 w-full text-xs px-2 py-1.5 border border-default rounded"
+                                className="mt-1 text-xs px-2 py-1.5 rounded"
                             />
                         </label>
                     ))}
-                    <button
+                    <Button
                         type="button"
+                        size="compact"
                         onClick={() => void handleSend()}
                         disabled={busy || !form.name.trim() || !form.street.trim()}
                         data-testid="interaction-address-send"
-                        className="text-xs px-3 py-1.5 rounded bg-ink-primary text-paper hover:bg-ink-body disabled:opacity-50"
+                        className="py-1.5 rounded"
                     >
                         {busy ? "Encrypting + anchoring…" : "Send privately"}
-                    </button>
+                    </Button>
                 </div>
             )}
             {!peerPubKey && !sent && !requested && !detail && (

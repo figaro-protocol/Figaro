@@ -24,6 +24,8 @@
 import { useState } from "react";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import {
     availableCaptures,
     captureEvidence,
@@ -76,36 +78,40 @@ export function EvidenceCaptureInput({ value, onChange, testId }: FieldFormatInp
             {kinds.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                     {kinds.map((kind) => (
-                        <button
+                        <Button
                             key={kind}
+                            variant="outline"
+                            size="compact"
                             type="button"
                             onClick={() => void capture(kind)}
                             disabled={capturing !== null}
                             data-testid={`${testId}-capture-${kind}`}
-                            className="text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong disabled:opacity-50"
+                            className="text-[11px] px-2 py-1 rounded border-default text-ink-body hover:bg-paper hover:border-default-strong"
                         >
                             {capturing === kind ? "Capturing…" : CAPTURE_LABELS[kind]}
-                        </button>
+                        </Button>
                     ))}
                 </div>
             )}
-            <input
+            <Input
                 type="text"
                 value={value}
                 onChange={(e) => onChange(e.target.value === "" ? undefined : e.target.value)}
                 placeholder="Evidence URI — capture above, or paste any artifact locator"
                 data-testid={testId}
-                className="w-full rounded border border-default bg-surface px-2 py-1.5 text-[12px] font-mono text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:border-transparent"
+                className="rounded px-2 py-1.5 text-[12px] font-mono focus-visible:border-transparent"
             />
             {retained && (
-                <button
+                <Button
                     type="button"
+                    variant="outline"
+                    size="compact"
                     onClick={() => void purge()}
                     data-testid={`${testId}-capture-purge`}
-                    className="text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-muted hover:border-error hover:text-error-fg"
+                    className="text-[11px] px-2 py-1 rounded border-default text-ink-muted hover:bg-paper hover:border-error hover:text-error-fg"
                 >
                     Unpin + purge this capture
-                </button>
+                </Button>
             )}
             {error && (
                 <p className="text-[11px] text-error-fg" data-testid={`${testId}-capture-error`}>

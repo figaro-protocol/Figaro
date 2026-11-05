@@ -23,6 +23,7 @@ import { useRef, useState } from "react";
 import { keccak256 } from "viem";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { Button } from "@/components/ui/Button";
 import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
 
 export function ContentAnchorFieldInput({ value, onChange, testId, onCompanion }: FieldFormatInputProps) {
@@ -62,6 +63,7 @@ export function ContentAnchorFieldInput({ value, onChange, testId, onCompanion }
     return (
         <div className="space-y-1">
             <div className="flex items-center gap-2">
+                {/* Raw: a file picker, which the Input primitive does not model. */}
                 <input
                     ref={fileRef}
                     type="file"
@@ -74,14 +76,16 @@ export function ContentAnchorFieldInput({ value, onChange, testId, onCompanion }
                     className="text-[11px] text-ink-body file:mr-2 file:rounded file:border file:border-default file:bg-surface file:px-2 file:py-1 file:text-[11px] file:text-ink-body hover:file:border-default-strong"
                 />
                 {value && (
-                    <button
+                    <Button
                         type="button"
+                        variant="outline"
+                        size="compact"
                         onClick={clear}
                         data-testid={`${testId}-clear`}
-                        className="shrink-0 text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong"
+                        className="shrink-0 text-[11px] px-2 py-1 rounded border-default text-ink-body hover:bg-paper hover:border-default-strong"
                     >
                         Clear
-                    </button>
+                    </Button>
                 )}
             </div>
             {affixing && (

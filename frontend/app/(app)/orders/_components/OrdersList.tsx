@@ -34,6 +34,7 @@ import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/kernel/walletProcessQueries";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
@@ -126,7 +127,7 @@ export function YourTurnCard({ act, payload, onAct, onDismiss, isActing, listing
     const handleAct = () => onAct(() => ensureApproval(myBond));
 
     return (
-        <div className="rounded-lg border border-default bg-paper p-5 space-y-4" data-testid={words.cardTestId}>
+        <Card className="rounded-lg p-5 space-y-4" data-testid={words.cardTestId}>
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                     <p className="text-xs font-semibold text-ink-muted mb-1">{words.heading}</p>
@@ -150,17 +151,18 @@ export function YourTurnCard({ act, payload, onAct, onDismiss, isActing, listing
                 <Button type="button" onClick={handleAct} disabled={isActing || isApproving} className="flex-1" data-testid={words.actTestId}>
                     {isApproving ? "Approving bond…" : isActing ? words.acting : words.act}
                 </Button>
-                <button
+                <Button
                     type="button"
+                    variant="outline"
                     onClick={onDismiss}
                     disabled={isActing || isApproving}
-                    className="rounded border border-default px-3 py-2 text-sm text-ink-muted hover:bg-subtle disabled:opacity-40"
+                    className="rounded border-default px-3 py-2 text-ink-muted disabled:opacity-40"
                     data-testid={words.dismissTestId}
                 >
                     Dismiss
-                </button>
+                </Button>
             </div>
-        </div>
+        </Card>
     );
 }
 
@@ -187,7 +189,7 @@ export function SignedUnsentRow({
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const counterpartyName = displayNameForAddress(listings, outboundCounterparty(commitment, address));
     return (
-        <div className="block rounded-lg border border-default bg-paper p-4" data-testid="order-unsent-row">
+        <Card className="block rounded-lg p-4" data-testid="order-unsent-row">
             <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-3">
@@ -223,7 +225,7 @@ export function SignedUnsentRow({
                     </div>
                 </div>
             </div>
-        </div>
+        </Card>
     );
 }
 
@@ -233,7 +235,7 @@ export function AwaitingAcceptanceRow({ payload, address, listings, onDismiss }:
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const counterpartyName = displayNameForAddress(listings, outboundCounterparty(commitment, address));
     return (
-        <div className="block rounded-lg border border-default bg-paper p-4" data-testid="order-pending-row">
+        <Card className="block rounded-lg p-4" data-testid="order-pending-row">
             <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-3">
@@ -258,16 +260,17 @@ export function AwaitingAcceptanceRow({ payload, address, listings, onDismiss }:
                 </div>
             </div>
             <div className="mt-3 flex justify-end">
-                <button
+                <Button
                     type="button"
+                    variant="outline"
                     onClick={onDismiss}
-                    className="rounded border border-default px-3 py-2 text-sm text-ink-muted hover:bg-subtle"
+                    className="rounded border-default px-3 py-2 text-ink-muted"
                     data-testid="btn-dismiss-pending"
                 >
                     Dismiss
-                </button>
+                </Button>
             </div>
-        </div>
+        </Card>
     );
 }
 

@@ -50,6 +50,8 @@ import { useRef } from "react";
 import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
 import { safeRegexTest } from "@figaro-protocol/sdk/clauses";
 import { labelEnumValue } from "@/lib/shared/clauseSpecSource";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import { getFieldFormatInput, type FormatPreset } from "@/components/runtime/fieldFormatInputs";
 
 export type FieldControlMode = "design" | "runtime";
@@ -194,6 +196,7 @@ export function FieldControl({
                 <div className="space-y-1">
                     {field.values.map((opt) => (
                         <label key={opt} className="flex items-center gap-2 text-xs text-ink-body cursor-pointer">
+                            {/* Raw: a radio, which the Input primitive does not model. */}
                             <input
                                 type="radio"
                                 name={testId}
@@ -251,25 +254,29 @@ export function FieldControl({
                                 mode="runtime"
                             />
                             <div className="flex justify-end">
-                                <button
+                                <Button
                                     type="button"
+                                    variant="outline"
+                                    size="compact"
                                     onClick={() => onChange(arr.filter((_item, j) => j !== i))}
                                     data-testid={`${testId}-item-${i}-remove`}
-                                    className="text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong"
+                                    className="text-[11px] px-2 py-1 rounded border-default text-ink-body hover:bg-paper hover:border-default-strong"
                                 >
                                     Remove
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     ))}
-                    <button
+                    <Button
                         type="button"
+                        variant="outline"
+                        size="compact"
                         onClick={() => onChange([...arr, {}])}
                         data-testid={`${testId}-add`}
-                        className="text-[11px] px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong"
+                        className="self-start text-[11px] px-2 py-1 rounded border-default text-ink-body hover:bg-paper hover:border-default-strong"
                     >
                         Add {field.name} entry
-                    </button>
+                    </Button>
                 </div>
             </div>
         );
@@ -289,6 +296,7 @@ export function FieldControl({
                 <div className="space-y-1">
                     {options.map((opt) => (
                         <label key={opt} className="flex items-center gap-2 text-xs text-ink-body cursor-pointer">
+                            {/* Raw: a checkbox, which the Input primitive does not model. */}
                             <input
                                 type="checkbox"
                                 checked={arr.includes(opt)}
@@ -309,6 +317,7 @@ export function FieldControl({
     if (field.type === "boolean") {
         return (
             <label className="flex items-center gap-2 text-xs text-ink-body cursor-pointer">
+                {/* Raw: a checkbox, which the Input primitive does not model. */}
                 <input
                     type="checkbox"
                     checked={value === true}
@@ -407,7 +416,7 @@ export function FieldControl({
         return (
             <div data-testid={`${testId}-field`}>
                 {label && <div className="mb-1">{label}</div>}
-                <input
+                <Input
                     type={numeric ? "number" : "text"}
                     value={current}
                     // The spec's declared default, shown as the placeholder: an
@@ -420,7 +429,7 @@ export function FieldControl({
                         else onChange(numeric ? Number(raw) : raw);
                     }}
                     data-testid={testId}
-                    className="w-full rounded border border-default bg-surface px-2 py-1 text-xs text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                    className="rounded px-2 py-1 text-xs"
                 />
                 {guidance}
             </div>

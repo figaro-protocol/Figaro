@@ -44,6 +44,7 @@ export function AssemblyChoiceRow({
         >
             <div className="flex items-start gap-3">
                 <label className="flex items-start gap-3 cursor-pointer flex-1 min-w-0">
+                    {/* Raw: a checkbox, which the Input primitive does not model. */}
                     <input
                         type="checkbox"
                         checked={checked}

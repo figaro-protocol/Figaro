@@ -29,6 +29,7 @@ import {
 import { useRegisteredMembers, type RegisteredMemberRow } from "@/lib/member/useRegisteredMembers";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
+import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Tabs } from "@/components/ui/Tabs";
@@ -238,7 +239,7 @@ export function RegistryExplorer() {
                     <p className="text-sm text-ink-muted">
                         {state.registeredBy ? <>Registered by <code className="font-mono">{truncateHex(state.registeredBy)}</code>{" "}</> : null}
                         {state.clause ? <>Composing <code className="font-mono">{state.clause}</code>{" "}</> : null}
-                        <button type="button" className="underline" onClick={() => setState({ registeredBy: "", clause: "" })}>clear</button>
+                        <Button type="button" variant="link" size="inline" className="text-sm text-inherit underline" onClick={() => setState({ registeredBy: "", clause: "" })}>clear</Button>
                     </p>
                 ) : null}
 
@@ -296,12 +297,12 @@ function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowTex
                                     {r.name !== r.id ? <span className="text-ink-heading">{r.name}. </span> : null}
                                     {r.description ? <>{r.description} </> : null}
                                     <span className="block mt-1 text-xs text-ink-muted">
-                                        <button type="button" className="underline mr-2" onClick={() => onFacet({ family: "assemblies", clause: r.id })}>
+                                        <Button type="button" variant="link" size="inline" className="text-xs text-inherit underline mr-2" onClick={() => onFacet({ family: "assemblies", clause: r.id })}>
                                             assemblies composing it
-                                        </button>
-                                        <button type="button" className="underline" onClick={() => onFacet({ registeredBy: r.registeredBy })}>
+                                        </Button>
+                                        <Button type="button" variant="link" size="inline" className="text-xs text-inherit underline" onClick={() => onFacet({ registeredBy: r.registeredBy })}>
                                             registered by {truncateHex(r.registeredBy)}
-                                        </button>
+                                        </Button>
                                         {r.stakeWithdrawn ? <span className="ml-2">(stake withdrawn)</span> : null}
                                         <a href={`#${r.key}`} className="underline ml-2" data-testid={`permalink-${r.key}`} title="This clause's own URL">
                                             permalink
@@ -340,9 +341,9 @@ function AgreementRows({ rows, onFacet }: { rows: Array<ExplorerRow & RowText>; 
                     ) : null}
                     <p className="text-xs text-ink-muted">
                         Designer of record{" "}
-                        <button type="button" className="font-mono underline" onClick={() => onFacet({ registeredBy: r.registeredBy })}>
+                        <Button type="button" variant="link" size="inline" className="text-xs text-inherit font-mono underline" onClick={() => onFacet({ registeredBy: r.registeredBy })}>
                             {truncateHex(r.registeredBy)}
-                        </button>
+                        </Button>
                         <span className="ml-2" data-testid={`agreement-stake-${r.id.toLowerCase()}`}>
                             {r.stakeWithdrawn ? "(stake withdrawn)" : "(live stake)"}
                         </span>
@@ -377,9 +378,9 @@ function AssemblyRows({ rows, assemblies, onFacet }: { rows: Array<ExplorerRow &
                         {choice ? <AssemblyShapeLine choice={choice} /> : null}
                         <p className="text-xs text-ink-muted">
                             Registered by{" "}
-                            <button type="button" className="font-mono underline" onClick={() => onFacet({ registeredBy: r.registeredBy })}>
+                            <Button type="button" variant="link" size="inline" className="text-xs text-inherit font-mono underline" onClick={() => onFacet({ registeredBy: r.registeredBy })}>
                                 {truncateHex(r.registeredBy)}
-                            </button>
+                            </Button>
                         </p>
                         <StoredRow row={r} />
                     </li>

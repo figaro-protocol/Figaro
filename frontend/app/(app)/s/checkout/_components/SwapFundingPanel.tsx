@@ -39,6 +39,7 @@ function FundingTokenOption({
             data-testid={`funding-token-option-${token.address.toLowerCase()}`}
         >
             <span className="flex items-center gap-2">
+                {/* Raw: a radio, which the Input primitive does not model. */}
                 <input
                     type="radio"
                     name="funding-token"

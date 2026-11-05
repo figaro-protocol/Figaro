@@ -20,6 +20,7 @@
 
 import { useState, type ReactNode } from "react";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { Button } from "@/components/ui/Button";
 import {
     useWithdrawGate,
     withdrawGateOpen,
@@ -95,8 +96,10 @@ export function ReclaimStakeRow({
                     </p>
                 </div>
                 {/* A gate that could not be read offers no reclaim at all. */}
-                {(withdrawn || gate.status !== "absent") && <button
+                {(withdrawn || gate.status !== "absent") && <Button
                     type="button"
+                    variant="outline"
+                    size="compact"
                     onClick={handleWithdraw}
                     // RegisteredBy-only reclaim, gated by the advisory commits==resolves
                     // gate: disabled while any VERIFIED in-flight trade composes this
@@ -104,7 +107,7 @@ export function ReclaimStakeRow({
                     // already reclaimed. Unverified trades never disable — they
                     // render as the caveat strip below.
                     disabled={withdrawing || withdrawn || !withdrawGateOpen(gate)}
-                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:bg-subtle text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    className="py-1.5 rounded border-default text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                     data-testid={`${family}-withdraw-button`}
                     title={
                         withdrawn
@@ -114,7 +117,7 @@ export function ReclaimStakeRow({
                     }
                 >
                     {withdrawn ? "Stake reclaimed" : withdrawing ? "Reclaiming…" : "Reclaim stake"}
-                </button>}
+                </Button>}
             </div>
             {caveat && (
                 <p className="text-xs text-ink-muted" role="status" data-testid={`${family}-withdraw-caveat`}>

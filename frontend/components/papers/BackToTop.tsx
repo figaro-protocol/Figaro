@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/Button";
 
 /**
  * Fixed back-to-top control for long paper pages. Appears after the reader
@@ -22,13 +23,14 @@ export function BackToTop() {
     if (!visible) return null;
 
     return (
-        <button
+        <Button
             type="button"
+            variant="outline"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             aria-label="Back to top"
-            className="print:hidden fixed bottom-6 right-6 z-50 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-default bg-paper px-4 py-2 text-sm text-ink-body shadow-section hover:bg-subtle-hover transition-colors"
+            className="print:hidden fixed bottom-6 right-6 z-50 min-w-11 rounded-full border-default text-ink-body shadow-section hover:bg-subtle-hover"
         >
             ↑ Top
-        </button>
+        </Button>
     );
 }

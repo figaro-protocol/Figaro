@@ -14,6 +14,8 @@ import { useSearchParams } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { deriveSignState } from "@/lib/checkout/signState";
 import { readSigningDesign, useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import {
@@ -326,9 +328,9 @@ function SignPageContent() {
                     <label className="block text-sm font-medium text-ink-body">
                         Commitment Payload
                     </label>
-                    <textarea
+                    <Textarea
                         data-testid="input-commitment-payload"
-                        className="w-full bg-surface border border-default rounded-lg px-3 py-2 text-ink-primary text-sm font-mono placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus resize-none"
+                        className="rounded-lg font-mono resize-none"
                         rows={6}
                         placeholder='Paste the JSON payload here…'
                         value={rawInput}
@@ -495,19 +497,21 @@ function SignPageContent() {
                         of the denomination. Absent when unconfigured. */}
                     {needsMySignature && isSeller && sellerFundingCandidates.length > 0 && (
                         <div className="space-y-2">
-                            <button
+                            <Button
                                 type="button"
+                                variant="link"
+                                size="sm"
                                 onClick={() => {
                                     // Collapsing withdraws the choice — a closed
                                     // panel never engages a leg silently.
                                     if (fundingOpen) setSellerFundingToken(null);
                                     setFundingOpen(!fundingOpen);
                                 }}
-                                className="text-xs text-ink-muted underline hover:text-ink-body"
+                                className="px-0 text-xs text-ink-muted underline hover:text-ink-body"
                                 data-testid="seller-funding-toggle"
                             >
                                 {fundingOpen ? "Bond from the order's token instead" : "Fund bond from another token"}
-                            </button>
+                            </Button>
                             {fundingOpen && (
                                 <SwapFundingPanel
                                     candidates={sellerFundingCandidates}
@@ -539,13 +543,13 @@ function SignPageContent() {
                                 </span>. Your counter-signature binds you at YOUR figure
                                 if the buyer commits it before the deadline.
                             </p>
-                            <input
+                            <Input
                                 type="text"
                                 inputMode="decimal"
                                 value={quotePrice}
                                 onChange={(e) => setQuotePrice(e.target.value)}
                                 placeholder="Your price"
-                                className="w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:border-transparent"
+                                className="rounded focus-visible:border-transparent"
                                 data-testid="quote-price-input"
                             />
                             <Button
@@ -597,12 +601,14 @@ function SignPageContent() {
                         <p className="text-error-fg text-xs" data-testid="sign-error">{commitError}</p>
                     )}
 
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={handleReset}
-                        className="text-xs text-ink-muted hover:text-ink-body"
+                        className="px-0 text-xs text-ink-muted hover:bg-transparent hover:text-ink-body"
                     >
                         ← Start over
-                    </button>
+                    </Button>
                 </Card>
             )}
 
@@ -619,12 +625,14 @@ function SignPageContent() {
                         commit-ready order appears on your Orders page. Until then
                         nothing binds either side, and the offer simply expires.
                     </p>
-                    <button
+                    <Button
+                        variant="link"
+                        size="sm"
                         onClick={handleReset}
-                        className="text-xs text-ink-heading hover:text-ink-body underline"
+                        className="px-0 text-xs text-ink-heading hover:text-ink-body underline"
                     >
                         Listen for another commitment
-                    </button>
+                    </Button>
                 </Card>
             )}
 
@@ -635,12 +643,14 @@ function SignPageContent() {
                     <p className="text-xs text-ink-muted">
                         Both parties&apos; bonds are now locked. The order is Active.
                     </p>
-                    <button
+                    <Button
+                        variant="link"
+                        size="sm"
                         onClick={handleReset}
-                        className="text-xs text-ink-heading hover:text-ink-body underline"
+                        className="px-0 text-xs text-ink-heading hover:text-ink-body underline"
                     >
                         Sign another commitment
-                    </button>
+                    </Button>
                 </Card>
             )}
 

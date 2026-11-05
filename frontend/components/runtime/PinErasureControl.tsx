@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { Button } from "@/components/ui/Button";
 
 /**
  * The shared idle/erasing/done control behind every author-pins →
@@ -59,14 +60,16 @@ export function PinErasureControl({
                 </p>
             ) : (
                 <>
-                    <button
+                    <Button
                         onClick={() => void handleUnpin()}
+                        variant="link"
+                        size="sm"
                         disabled={status === "erasing"}
                         data-testid={`${testidPrefix}-button`}
-                        className="text-xs text-ink-muted hover:text-ink-body underline disabled:opacity-50"
+                        className="px-0 text-xs text-ink-muted hover:text-ink-body underline"
                     >
                         {status === "erasing" ? erasingLabel : buttonLabel}
-                    </button>
+                    </Button>
                     {refusals.length > 0 && (
                         <ul className="mt-2 space-y-1 text-xs text-error-fg" data-testid={`${testidPrefix}-refused`}>
                             {refusals.map((message, i) => (
