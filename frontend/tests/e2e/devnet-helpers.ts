@@ -33,6 +33,7 @@ import {
     agreementHashOf,
     assemblyHashOf,
     tryParseMemberProfileDocument,
+    verifyCommitmentSignature,
     type Assembly,
     type BuiltAssembly,
     type MemberProfileReader,
@@ -42,6 +43,7 @@ import {
     type ProjectionSpecView,
     type SpecSource,
 } from '@figaro-protocol/sdk';
+import { deserializeCommitmentPayload } from '@figaro-protocol/sdk/agent';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 import { encodeGeohash } from '@figaro-protocol/sdk/derive';
 import { deriveAssemblySlug } from '@/lib/shared/assembly';
@@ -912,6 +914,40 @@ export function ladderLabelsOf(clauseKey: Hex): string[] {
     const ladder = clauseLadderField(clauseKey);
     if (!ladder) throw new Error(`${clauseKey} declares no enum ladder (or its spec is not primed)`);
     return ladder.values.map((v) => labelEnumValue(ladder, v));
+}
+
+/** Assert the order the buyer signed and relayed to `seller`, read from the
+ *  relayed bytes themselves rather than the checkout screen: exactly one
+ *  commitment payload the page relayed names this buyer and seller, its
+ *  `commitment.payment` is `payment` to the wei, and its buyer signature
+ *  recovers to the buyer under this chain's FigaroCore domain. An e2e session
+ *  relays over the mock coordination channel (`lib/handoff/channel.ts`), which
+ *  persists each message under `lib/handoff/mockChannel.ts`'s
+ *  MOCK_STORAGE_KEY in the page origin's localStorage. */
+export async function expectRelayedOrder(
+    page: Page,
+    order: { buyer: Hex; seller: Hex; payment: bigint },
+): Promise<void> {
+    const raw = await page.evaluate(
+        (key) => window.localStorage.getItem(key),
+        '__FIGARO_COORDINATION_MOCK_MESSAGES__',
+    );
+    const messages = (raw ? JSON.parse(raw) : []) as Array<{ type?: string; payload?: unknown }>;
+    const relayed = messages
+        .filter((m) => m.type === 'COMMITMENT_PAYLOAD' && typeof m.payload === 'string')
+        .map((m) => deserializeCommitmentPayload(m.payload as string))
+        .filter((p) => p.commitment.buyer.toLowerCase() === order.buyer.toLowerCase()
+            && p.commitment.seller.toLowerCase() === order.seller.toLowerCase());
+    expect(relayed, `exactly one order from ${order.buyer} to ${order.seller} was relayed`).toHaveLength(1);
+    const [{ commitment, buyerSig }] = relayed;
+    expect(commitment.payment, 'the relayed order carries the payment the buyer signed').toBe(order.payment);
+    const core = readLocalDeploymentConfig().figaroCore;
+    expect(core, 'the deployment names FigaroCore').toBeTruthy();
+    expect(buyerSig, 'the relayed order carries the buyer signature').toBeTruthy();
+    expect(
+        await verifyCommitmentSignature(commitment, buyerSig!, order.buyer, { chainId: LOCAL_ANVIL.id, core: core! }),
+        'the buyer signature recovers to the buyer over exactly this commitment',
+    ).toBe(true);
 }
 
 /** Resolve an `ipfs://` URI to a Kubo-gateway URL. */

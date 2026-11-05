@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {FlorinToken} from "src/build/florin/FlorinToken.sol";
+import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 /// @title FlorinTokenTest
 /// @notice Foundry tests for FlorinToken registry, minting, ERC-20, and permit logic. Covers all edge and revert cases.
@@ -103,7 +105,7 @@ contract FlorinTokenTest is Test {
     }
 
     function test_MintFailsToZeroAddress() public {
-        vm.expectRevert(); // OpenZeppelin ERC20: mint to the zero address
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, address(0)));
         florin.mint(address(0), 1 ether);
     }
 
@@ -119,7 +121,7 @@ contract FlorinTokenTest is Test {
     function test_TransferFailsIfInsufficientBalance() public {
         florin.mint(alice, 1 ether);
         vm.prank(alice);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, alice, 1 ether, 2 ether));
         florin.transfer(bob, 2 ether);
     }
 
@@ -136,7 +138,7 @@ contract FlorinTokenTest is Test {
     function test_TransferToZeroAddressFails() public {
         florin.mint(alice, 1 ether);
         vm.prank(alice);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, address(0)));
         florin.transfer(address(0), 1 ether);
     }
 
@@ -149,9 +151,9 @@ contract FlorinTokenTest is Test {
         uint256 nonce = florin.nonces(owner);
         uint256 deadline = block.timestamp + 1 hours;
         uint256 value = 500 ether;
-        // Use wrong private key
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xBEEF, keccak256(abi.encodePacked("bad")));
-        vm.expectRevert();
+        // The right permit digest, signed with the wrong private key.
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xBEEF, _permitDigest(owner, bob, value, nonce, deadline));
+        vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612InvalidSigner.selector, vm.addr(0xBEEF), owner));
         florin.permit(owner, bob, value, deadline, v, r, s);
     }
 
@@ -161,9 +163,10 @@ contract FlorinTokenTest is Test {
         florin.mint(owner, 1000 ether);
         uint256 nonce = florin.nonces(owner);
         uint256 deadline = block.timestamp;
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, keccak256(abi.encodePacked("bad")));
+        // A valid signature by the owner: only the deadline is wrong.
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, _permitDigest(owner, bob, 500 ether, nonce, deadline));
         vm.warp(deadline + 1);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612ExpiredSignature.selector, deadline));
         florin.permit(owner, bob, 500 ether, deadline, v, r, s);
     }
 
@@ -174,7 +177,17 @@ contract FlorinTokenTest is Test {
         uint256 nonce = florin.nonces(owner);
         uint256 deadline = block.timestamp + 1 hours;
         uint256 value = 500 ether;
-        bytes32 digest = keccak256(
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, _permitDigest(owner, bob, value, nonce, deadline));
+        florin.permit(owner, bob, value, deadline, v, r, s);
+        assertEq(florin.nonces(owner), nonce + 1);
+    }
+
+    function _permitDigest(address owner, address spender, uint256 value, uint256 nonce, uint256 deadline)
+        internal
+        view
+        returns (bytes32)
+    {
+        return keccak256(
             abi.encodePacked(
                 "\x19\x01",
                 florin.DOMAIN_SEPARATOR(),
@@ -182,7 +195,7 @@ contract FlorinTokenTest is Test {
                     abi.encode(
                         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
                         owner,
-                        bob,
+                        spender,
                         value,
                         nonce,
                         deadline
@@ -190,9 +203,6 @@ contract FlorinTokenTest is Test {
                 )
             )
         );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
-        florin.permit(owner, bob, value, deadline, v, r, s);
-        assertEq(florin.nonces(owner), nonce + 1);
     }
     FlorinToken florin;
     address deployer = address(this);

@@ -1,14 +1,18 @@
 /**
  * Integration test: the SDK ROUND-TRIP against Anvil — the one sanctioned
  * chain-touching Vitest file (skipIf-gated). It proves SDK ARTIFACTS survive
- * a real chain: a built+signed commitment is accepted by `commit`, events
- * fetch and reconstruct, and the reconstructed commitment resolves. It
+ * a real chain: a built+signed commitment is accepted by FigaroCore through
+ * the SDK's own `commit` write, events fetch and reconstruct, and the
+ * reconstructed commitment resolves through the SDK's `resolveProcess`. It
  * asserts NO FigaroCore math — bond/resolution amounts are Foundry/Certora-owned
  * (K-1/2/3/6; SDK-mirror parity lives in the Foundry parity vectors), and
  * `calculateResolution` is unit-tested in bonds.test.ts.
  *
- * Requires Anvil running at http://127.0.0.1:8545
- * Skip with: SKIP_ANVIL=1 npm test
+ * Requires Anvil running at http://127.0.0.1:8545 (or at `ANVIL_URL`). With
+ * none reachable, or with SKIP_ANVIL=1, the whole suite is SKIPPED and the
+ * run reports it skipped, never passed: no CI job starts an Anvil, so in CI
+ * this file proves nothing. The writes' arguments are pinned hermetically in
+ * autonomous.test.ts.
  *
  * Flow:
  *   1. Deploy MockERC20 + FigaroCore
@@ -36,6 +40,8 @@ import {
     OrderState,
 } from "../src/index.js";
 import {
+    commit,
+    resolveProcess,
     buildQuoteRequest,
     requestQuotes,
     makeSellerQuoteHandler,
@@ -47,9 +53,13 @@ import { ANVIL_URL, anvilReachable } from "./batchHarness.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { hydrateAuthored, profileBinding } from "./hydrate.js";
 
-// ── Skip unless Anvil is reachable ──────────────────────────────────────────
+// ── Skip, visibly, unless Anvil is reachable ────────────────────────────────
 
 const SKIP = process.env.SKIP_ANVIL === "1";
+// Read once at collection, so a dead chain skips the suite rather than letting
+// every test return early and report a pass with no assertion run.
+const ALIVE = !SKIP && (await anvilReachable());
+const SKIP_REASON = SKIP ? "SKIP_ANVIL=1" : `no Anvil reachable at ${ANVIL_URL}`;
 
 // ── Anvil pre-funded accounts ───────────────────────────────────────────────
 
@@ -71,7 +81,7 @@ function loadBytecode(contractPath: string): Hex {
 
 // ── Test suite ──────────────────────────────────────────────────────────────
 
-describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
+describe.skipIf(!ALIVE)(ALIVE ? "SDK Integration (Anvil)" : `SDK Integration (Anvil) — skipped: ${SKIP_REASON}`, () => {
     const transport = http(ANVIL_URL);
 
     // cacheTime: 0 — viem's default (chain.blockTime/3, 4000ms for the foundry
@@ -97,12 +107,8 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
     let coreAddress: Address;
     let tokenAddress: Address;
     let addresses: FigaroAddresses;
-    let alive = false;
 
     beforeAll(async () => {
-        alive = await anvilReachable();
-        if (!alive) return;
-
         // Deploy MockERC20
         const tokenBytecode = loadBytecode("MockERC20.sol/MockERC20.json");
         const tokenHash = await buyerWallet.deployContract({
@@ -136,14 +142,11 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
     }, 30_000);
 
     it("deploys contracts successfully", () => {
-        if (!alive) return;
         expect(coreAddress).toBeDefined();
         expect(tokenAddress).toBeDefined();
     });
 
     it("full lifecycle: commit → reconstruct → resolve → verify", async () => {
-        if (!alive) return;
-
         const PAYMENT = 100n * 10n ** 18n;
         // For root orders, cumulativeValue = payment after commit
         // So both bonds are 2 × payment
@@ -212,13 +215,8 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         const buyerSig = await buyerWallet.signTypedData(typedData);
         const sellerSig = await sellerWallet.signTypedData(typedData);
 
-        // ── 5. Commit order on-chain ────────────────────────────────────
-        const commitHash = await buyerWallet.writeContract({
-            address: coreAddress,
-            abi: CORE_ABI,
-            functionName: "commit",
-            args: [commitment, buyerSig, sellerSig],
-        });
+        // ── 5. Commit order on-chain through the SDK's write ────────────
+        const { hash: commitHash } = await commit(buyerWallet, publicClient, coreAddress, commitment, buyerSig, sellerSig);
         const commitReceipt = await publicClient.waitForTransactionReceipt({ hash: commitHash });
         expect(commitReceipt.status).toBe("success");
 
@@ -241,13 +239,8 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         expect(order.payment).toBe(PAYMENT);
         expect(order.state).toBe(OrderState.Active);
 
-        // ── 7. Resolve process (buyer-only) ─────────────────────────────
-        const resolveHash = await buyerWallet.writeContract({
-            address: coreAddress,
-            abi: CORE_ABI,
-            functionName: "resolveProcess",
-            args: [process.processId, [commitment]],
-        });
+        // ── 7. Resolve process (buyer-only) through the SDK's write ─────
+        const { hash: resolveHash } = await resolveProcess(buyerWallet, coreAddress, process.processId, [commitment]);
         const resolveReceipt = await publicClient.waitForTransactionReceipt({ hash: resolveHash });
         expect(resolveReceipt.status).toBe("success");
 
@@ -266,8 +259,6 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
     }, 60_000);
 
     it("RFQ round-trip: quote request → counter-drafts → cheapest wins → commit → resolve; the loser holds NOTHING", async () => {
-        if (!alive) return;
-
         const MOCK_ABI = parseAbi([
             "function mint(address to, uint256 amount) external",
             "function approve(address spender, uint256 amount) external returns (bool)",
@@ -343,10 +334,8 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         const buyerSig = await buyerWallet.signTypedData({
             domain, types: COMMITMENT_TYPES, primaryType: "Commitment", message: winner!.reply.commitment,
         });
-        const commitReceipt = await buyerWallet.writeContract({
-            address: coreAddress, abi: CORE_ABI, functionName: "commit",
-            args: [winner!.reply.commitment, buyerSig, winner!.reply.sellerSig!],
-        }).then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
+        const commitReceipt = await commit(buyerWallet, publicClient, coreAddress, winner!.reply.commitment, buyerSig, winner!.reply.sellerSig!)
+            .then(({ hash }) => publicClient.waitForTransactionReceipt({ hash }));
         expect(commitReceipt.status).toBe("success");
         {
             const [b, w, c] = await Promise.all([balanceOf(buyerAccount.address), balanceOf(sellerAccount.address), balanceOf(coreAddress)]);
@@ -363,10 +352,8 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         const proc = topology.getActiveProcesses().find((p) =>
             Array.from(p.orders.values()).some((o) => o.payment === WINNING_QUOTE));
         expect(proc, "the quoted order's process is live on-chain").toBeDefined();
-        const resolveReceipt = await buyerWallet.writeContract({
-            address: coreAddress, abi: CORE_ABI, functionName: "resolveProcess",
-            args: [proc!.processId, [winner!.reply.commitment]],
-        }).then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
+        const resolveReceipt = await resolveProcess(buyerWallet, coreAddress, proc!.processId, [winner!.reply.commitment])
+            .then(({ hash }) => publicClient.waitForTransactionReceipt({ hash }));
         expect(resolveReceipt.status).toBe("success");
         const [buyerF, winnerF, loserF, coreF] = await Promise.all([
             balanceOf(buyerAccount.address), balanceOf(sellerAccount.address), balanceOf(loserAccount.address), balanceOf(coreAddress),

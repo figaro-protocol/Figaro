@@ -33,6 +33,7 @@ import {
     primeRegisteredClauseSpecs,
     anchoredAssemblyHash,
     isBindingOf,
+    expectRelayedOrder,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import type { Page } from '@playwright/test';
@@ -286,6 +287,10 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
         await page.getByTestId('send-commitment-xmtp').click();
         await expect(page.getByTestId('commitment-xmtp-status'), 'the signed root is relayed to the lead')
             .toBeVisible({ timeout: 30000 });
+
+        // Out-of-band: the booked sub-order the buyer signed and relayed to the
+        // provider carries exactly the derived payment, under the buyer's signature.
+        await expectRelayedOrder(page, { buyer: BUYER, seller: PROVIDER, payment: EXPECTED_SUB_PAYMENT });
 
         test.info().annotations.push({
             type: 'booking-window',

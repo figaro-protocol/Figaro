@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import "src/mocks/MockDisperse.sol";
 import "src/mocks/MockERC20.sol";
 
@@ -112,7 +113,11 @@ contract MockDisperseTest is Test {
 
         vm.startPrank(sender);
         token.approve(address(disperse), 15 ether); // less than the 30 aggregate
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientAllowance.selector, address(disperse), 15 ether, 30 ether
+            )
+        );
         disperse.disperseToken(IERC20(address(token)), to, val);
         vm.stopPrank();
 

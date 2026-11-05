@@ -7,7 +7,7 @@
  * error, never the success, so the pended action is dropped.
  */
 import { describe, expect, it, vi } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 import useTokenApproval from "@/hooks/useTokenApproval";
 
@@ -22,6 +22,7 @@ vi.mock("wagmi", () => ({
     useReadContract: () => ({ data: 0n, isFetched: true, isRefetching: false, refetch: vi.fn() }),
     useWriteContract: () => ({ writeContract: wagmiState.writeContract, data: wagmiState.approveHash, isPending: false, isError: false }),
     useWaitForTransactionReceipt: () => wagmiState.receipt,
+    usePublicClient: () => ({ simulateContract: async () => ({}) }),
 }));
 
 type Props = { isApproveSuccess: boolean; isApproveError: boolean };
@@ -150,14 +151,15 @@ describe("useTokenApproval → useApproveThenAct — a reverted approve", () => 
         wagmiState.receipt = { data: { status }, isLoading: false, isSuccess: true, isError: false };
     }
 
-    it("a receipt with status reverted is the error, not the success, and the action never fires", () => {
+    it("a receipt with status reverted is the error, not the success, and the action never fires", async () => {
         wagmiState.approveHash = undefined;
         wagmiState.receipt = { data: undefined, isLoading: false, isSuccess: false, isError: false };
         wagmiState.writeContract = vi.fn();
         const act = vi.fn();
         const { result, rerender } = composed();
         result.current.runWithApproval(5n, act);
-        expect(wagmiState.writeContract).toHaveBeenCalledTimes(1);
+        // The approve is simulated before it is sent, so the send lands a tick later.
+        await waitFor(() => expect(wagmiState.writeContract).toHaveBeenCalledTimes(1));
 
         mined("reverted");
         rerender();
@@ -171,13 +173,14 @@ describe("useTokenApproval → useApproveThenAct — a reverted approve", () => 
         expect(act).not.toHaveBeenCalled();
     });
 
-    it("a receipt with status success is the success, and the pended action fires", () => {
+    it("a receipt with status success is the success, and the pended action fires", async () => {
         wagmiState.approveHash = undefined;
         wagmiState.receipt = { data: undefined, isLoading: false, isSuccess: false, isError: false };
         wagmiState.writeContract = vi.fn();
         const act = vi.fn();
         const { result, rerender } = composed();
         result.current.runWithApproval(5n, act);
+        await waitFor(() => expect(wagmiState.writeContract).toHaveBeenCalledTimes(1));
 
         mined("success");
         rerender();

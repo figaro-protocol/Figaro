@@ -2,6 +2,10 @@
  * usePublishMemberProfile — a member need not sell anything. A member with no
  * catalog item publishes its profile with no catalog: nothing is pinned for a
  * catalog, the profile carries no `catalogURI`, and the registry is written.
+ *
+ * The registry write: a wallet not yet registered sends `register(profileURI)`
+ * with the registry's stake; a registered one sends `updateProfile(profileURI)`
+ * with no value — each simulated before it is sent and held to its receipt.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
@@ -14,6 +18,7 @@ const w = vi.hoisted(() => {
         write: undefined as unknown as ReturnType<typeof vi.fn>,
         catalogPins: [] as unknown[],
         profilePins: [] as Record<string, unknown>[],
+        registered: false,
     };
 });
 
@@ -43,9 +48,10 @@ import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
 beforeEach(() => {
     w.catalogPins = [];
     w.profilePins = [];
+    w.registered = false;
     w.client = {
         readContract: vi.fn(async ({ functionName }: { functionName: string }) =>
-            functionName === "registered" ? false : 10n ** 16n),
+            functionName === "registered" ? w.registered : 10n ** 16n),
         simulateContract: vi.fn(async () => ({ request: {} })),
         waitForTransactionReceipt: vi.fn(async () => ({ status: "success" })),
     };
@@ -82,5 +88,31 @@ describe("usePublishMemberProfile — a member with no catalog item", () => {
         });
         expect(w.catalogPins).toHaveLength(1);
         expect(w.profilePins[0]).toMatchObject({ catalogURI: "ipfs://bafycatalog" });
+    });
+});
+
+describe("usePublishMemberProfile — the registry write", () => {
+    async function publish() {
+        const { result } = renderHook(() => usePublishMemberProfile());
+        await act(async () => {
+            await result.current.publish({ profileMetadata: { subjectAddress: w.wallet, name: "Member" }, items: [], wallet: w.wallet });
+        });
+    }
+    const sent = () => w.write.mock.calls.map(([c]) => ({ address: c.address, functionName: c.functionName, args: c.args, value: c.value }));
+    const simulated = () => (w.client.simulateContract as ReturnType<typeof vi.fn>).mock.calls.map(([c]) => ({ address: c.address, functionName: c.functionName, args: c.args, value: c.value }));
+    const REGISTRY = "0x00000000000000000000000000000000000e3b01";
+
+    it("a wallet not yet registered sends register(profileURI) with the registry's stake, simulated first and held to its receipt", async () => {
+        await publish();
+        expect(sent()).toEqual([{ address: REGISTRY, functionName: "register", args: ["ipfs://bafyprofile"], value: 10n ** 16n }]);
+        expect(simulated()).toEqual(sent());
+        expect(w.client.waitForTransactionReceipt).toHaveBeenCalledWith({ hash: `0x${"77".repeat(32)}` });
+    });
+
+    it("a registered wallet sends updateProfile(profileURI) with no value", async () => {
+        w.registered = true;
+        await publish();
+        expect(sent()).toEqual([{ address: REGISTRY, functionName: "updateProfile", args: ["ipfs://bafyprofile"], value: undefined }]);
+        expect(simulated()).toEqual(sent());
     });
 });

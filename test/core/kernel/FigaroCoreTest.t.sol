@@ -467,8 +467,9 @@ contract FigaroCoreTest is Test {
         CommitmentTypes.Commitment[] memory commitments = new CommitmentTypes.Commitment[](1);
         commitments[0] = rootC;
 
+        bytes32 tamperedHash = keccak256(abi.encodePacked(processId, CommitmentTypes.hashStruct(rootC)));
         vm.prank(buyer);
-        vm.expectRevert(); // OrderNotCommitted
+        vm.expectRevert(abi.encodeWithSelector(FigaroCore.OrderNotCommitted.selector, tamperedHash));
         core.resolveProcess(processId, commitments);
     }
 

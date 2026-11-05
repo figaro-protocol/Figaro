@@ -1,8 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 import { encodeAbiParameters, encodeEventTopics, parseAbiParameters, type Log, type PublicClient } from "viem";
-import { CORE_ABI } from "../src/abis.js";
-import { fetchLogsChunked, DEFAULT_LOG_CHUNK_SIZE, fetchCoreEvents, PRUNED_HISTORY_ATTEMPTS, RATE_LIMIT_ATTEMPTS, logReadRetry } from "../src/events.js";
+import { CORE_ABI, ATTESTATION_COORDINATOR_ABI } from "../src/abis.js";
+import {
+    fetchLogsChunked, DEFAULT_LOG_CHUNK_SIZE, fetchCoreEvents, PRUNED_HISTORY_ATTEMPTS, RATE_LIMIT_ATTEMPTS, logReadRetry,
+    parseAttestationLogs, tagAttestationUniverses, fetchAttestationRecords,
+} from "../src/events.js";
 import { fetchDiscoveryEvents } from "../src/discovery.js";
+import { FigaroContext } from "../src/agent/context.js";
+import { OrderState } from "../src/types.js";
 import type { Address, FigaroAddresses } from "../src/types.js";
 
 const ADDRESS = "0x000000000000000000000000000000000000c0de" as Address;
@@ -100,55 +105,57 @@ describe("fetchCoreEvents chunking", () => {
     });
 });
 
+// ── Real logs under the two resolution paths' addresses ───────────────────
+
+const CORE = "0x00000000000000000000000000000000000c0e00" as Address;
+const VERIFIER = "0x0000000000000000000000000000000000ba7c00" as Address;
+const BUYER = "0x00000000000000000000000000000000000b0b00" as Address;
+const SELLER = "0x0000000000000000000000000000000000005e11" as Address;
+const TOKEN = "0x0000000000000000000000000000000000007070" as Address;
+const id = (n: number) => `0x${n.toString(16).padStart(64, "0")}` as `0x${string}`;
+
+/** A real `OrderCommitted` log, encoded with the Core's ABI, under `address`. */
+function committed(address: Address, orderN: number, blockNumber: bigint, logIndex: number): Log {
+    const { data, topics } = {
+        data: encodeAbiParameters(
+            parseAbiParameters("address, address, uint256, uint256, bytes32, uint256, uint256"),
+            [SELLER, TOKEN, 10n, 10n, id(0xc0), 1n, 2n],
+        ),
+        topics: encodeEventTopics({
+            abi: CORE_ABI,
+            eventName: "OrderCommitted",
+            args: { orderHash: id(orderN), processId: id(orderN), buyer: BUYER },
+        }),
+    };
+    return { address, blockNumber, logIndex, data, topics, transactionHash: id(0xf0 + orderN) } as unknown as Log;
+}
+
+function resolved(address: Address, orderN: number, blockNumber: bigint, logIndex: number): Log {
+    return {
+        address,
+        blockNumber,
+        logIndex,
+        data: encodeAbiParameters(parseAbiParameters("uint256, uint256"), [10n, 20n]),
+        topics: encodeEventTopics({
+            abi: CORE_ABI,
+            eventName: "OrderResolved",
+            args: { orderHash: id(orderN), processId: id(orderN) },
+        }),
+    } as unknown as Log;
+}
+
+/** Answers each `getLogs` with the logs under the queried address only. */
+function twoContractClient(allLogs: Log[]): PublicClient {
+    const getLogs = vi.fn(async ({ address, fromBlock, toBlock }: { address: Address; fromBlock: bigint; toBlock: bigint }) =>
+        allLogs.filter((l) =>
+            l.address.toLowerCase() === address.toLowerCase()
+            && (l.blockNumber as bigint) >= fromBlock && (l.blockNumber as bigint) <= toBlock),
+    );
+    const getBlockNumber = vi.fn(async () => 50n);
+    return { getLogs, getBlockNumber } as unknown as PublicClient;
+}
+
 describe("fetchCoreEvents folds both resolution paths", () => {
-    const CORE = "0x00000000000000000000000000000000000c0e00" as Address;
-    const VERIFIER = "0x0000000000000000000000000000000000ba7c00" as Address;
-    const BUYER = "0x00000000000000000000000000000000000b0b00" as Address;
-    const SELLER = "0x0000000000000000000000000000000000005e11" as Address;
-    const TOKEN = "0x0000000000000000000000000000000000007070" as Address;
-    const id = (n: number) => `0x${n.toString(16).padStart(64, "0")}` as `0x${string}`;
-
-    /** A real `OrderCommitted` log, encoded with the Core's ABI, under `address`. */
-    function committed(address: Address, orderN: number, blockNumber: bigint, logIndex: number): Log {
-        const { data, topics } = {
-            data: encodeAbiParameters(
-                parseAbiParameters("address, address, uint256, uint256, bytes32, uint256, uint256"),
-                [SELLER, TOKEN, 10n, 10n, id(0xc0), 1n, 2n],
-            ),
-            topics: encodeEventTopics({
-                abi: CORE_ABI,
-                eventName: "OrderCommitted",
-                args: { orderHash: id(orderN), processId: id(orderN), buyer: BUYER },
-            }),
-        };
-        return { address, blockNumber, logIndex, data, topics, transactionHash: id(0xf0 + orderN) } as unknown as Log;
-    }
-
-    function resolved(address: Address, orderN: number, blockNumber: bigint, logIndex: number): Log {
-        return {
-            address,
-            blockNumber,
-            logIndex,
-            data: encodeAbiParameters(parseAbiParameters("uint256, uint256"), [10n, 20n]),
-            topics: encodeEventTopics({
-                abi: CORE_ABI,
-                eventName: "OrderResolved",
-                args: { orderHash: id(orderN), processId: id(orderN) },
-            }),
-        } as unknown as Log;
-    }
-
-    /** Answers each `getLogs` with the logs under the queried address only. */
-    function twoContractClient(allLogs: Log[]): PublicClient {
-        const getLogs = vi.fn(async ({ address, fromBlock, toBlock }: { address: Address; fromBlock: bigint; toBlock: bigint }) =>
-            allLogs.filter((l) =>
-                l.address.toLowerCase() === address.toLowerCase()
-                && (l.blockNumber as bigint) >= fromBlock && (l.blockNumber as bigint) <= toBlock),
-        );
-        const getBlockNumber = vi.fn(async () => 50n);
-        return { getLogs, getBlockNumber } as unknown as PublicClient;
-    }
-
     const LOGS = [
         committed(CORE, 1, 3n, 0),
         committed(VERIFIER, 2, 3n, 4),
@@ -340,5 +347,134 @@ describe("logReadRetry", () => {
         expect(logReadRetry(new Error("execution reverted"))).toBeNull();
         expect(logReadRetry(null)).toBeNull();
         expect(logReadRetry("boom")).toBeNull();
+    });
+});
+
+// ── Attestations from both resolution paths ─────────────────────────────────
+
+const COORDINATOR = "0x000000000000000000000000000000000000a77e" as Address;
+
+/** A real `Attestation` log, encoded with the coordinator's ABI (the batch
+ *  verifier re-emits under the same topic), under `address`. */
+function attested(address: Address, orderN: number, blockNumber: bigint, stage: number): Log {
+    return {
+        address,
+        blockNumber,
+        logIndex: 0,
+        data: encodeAbiParameters(parseAbiParameters("bytes32, uint8, bytes32"), [id(0xdd), stage, id(0xce + orderN)]),
+        topics: encodeEventTopics({
+            abi: ATTESTATION_COORDINATOR_ABI,
+            eventName: "Attestation",
+            args: { orderHash: id(orderN), processId: id(orderN), attester: SELLER },
+        }),
+        transactionHash: id(0xa0 + orderN),
+    } as unknown as Log;
+}
+
+describe("parseAttestationLogs", () => {
+    it("decodes every field of an Attestation log", () => {
+        const [row] = parseAttestationLogs([attested(COORDINATOR, 1, 7n, 2)]);
+        expect(row).toEqual({
+            orderHash: id(1),
+            processId: id(1),
+            attester: SELLER,
+            clauseId: id(0xdd),
+            stage: 2,
+            contentRef: id(0xcf),
+            blockNumber: 7,
+            transactionHash: id(0xa1),
+        });
+    });
+
+    it("skips a log of another event rather than throw", () => {
+        expect(parseAttestationLogs([committed(CORE, 1, 3n, 0), attested(COORDINATOR, 2, 4n, 0)]).map((r) => r.orderHash))
+            .toEqual([id(2)]);
+    });
+});
+
+describe("tagAttestationUniverses", () => {
+    it("tags each stream with its universe and merges them in block order", () => {
+        const rows = tagAttestationUniverses(
+            [attested(COORDINATOR, 1, 5n, 0), attested(COORDINATOR, 3, 9n, 0)],
+            [attested(VERIFIER, 2, 7n, 0)],
+        );
+        expect(rows.map((r) => [r.orderHash, r.universe, r.blockNumber])).toEqual([
+            [id(1), "direct", 5],
+            [id(2), "batch", 7],
+            [id(3), "direct", 9],
+        ]);
+    });
+});
+
+describe("fetchAttestationRecords", () => {
+    const LOGS = [attested(COORDINATOR, 1, 5n, 0), attested(VERIFIER, 2, 3n, 1), committed(CORE, 9, 4n, 0)];
+
+    it("fetches the coordinator and the batch verifier address-filtered and tags each row by its emitter", async () => {
+        const client = twoContractClient(LOGS);
+        const rows = await fetchAttestationRecords(client, { core: CORE, attestationCoordinator: COORDINATOR, batchVerifier: VERIFIER }, 0n, 50n);
+        expect(rows.map((r) => [r.orderHash, r.universe])).toEqual([[id(2), "batch"], [id(1), "direct"]]);
+        expect(client.getLogs).toHaveBeenCalledWith({ address: COORDINATOR, fromBlock: 0n, toBlock: 50n });
+        expect(client.getLogs).toHaveBeenCalledWith({ address: VERIFIER, fromBlock: 0n, toBlock: 50n });
+    });
+
+    it("reads the coordinator alone when no batch verifier is configured", async () => {
+        const client = twoContractClient(LOGS);
+        const rows = await fetchAttestationRecords(client, { core: CORE, attestationCoordinator: COORDINATOR }, 0n, 50n);
+        expect(client.getLogs).toHaveBeenCalledTimes(1);
+        expect(rows.map((r) => [r.orderHash, r.universe])).toEqual([[id(1), "direct"]]);
+    });
+
+    it("reads nothing when neither emitter is configured", async () => {
+        const client = twoContractClient(LOGS);
+        await expect(fetchAttestationRecords(client, { core: CORE }, 0n, 50n)).resolves.toEqual([]);
+        expect(client.getLogs).not.toHaveBeenCalled();
+    });
+});
+
+// ── The agent's stateful context ────────────────────────────────────────────
+
+describe("FigaroContext — sync folds the chain incrementally", () => {
+    const OTHER = "0x00000000000000000000000000000000000000ff" as Address;
+
+    it("syncs from genesis, then only the blocks past the last sync", async () => {
+        const logs = [committed(CORE, 1, 3n, 0), committed(CORE, 4, 5n, 0)];
+        const client = twoContractClient(logs);
+        const ctx = new FigaroContext(client, { core: CORE });
+
+        const first = await ctx.sync();
+        expect(first).toEqual({
+            newCommits: 2, newResolutions: 0, newClauses: 0, newMembers: 0, newAssemblies: 0, newAgreements: 0, syncedToBlock: 50n,
+        });
+        expect(client.getLogs).toHaveBeenCalledWith({ address: CORE, fromBlock: 0n, toBlock: 50n });
+        expect(ctx.syncedBlock).toBe(50n);
+        expect(client.getBlockNumber).toHaveBeenCalledWith({ cacheTime: 0 });
+
+        // No new block: nothing is read and nothing is counted.
+        vi.mocked(client.getLogs).mockClear();
+        const idle = await ctx.sync();
+        expect(idle.newCommits).toBe(0);
+        expect(idle.syncedToBlock).toBe(50n);
+        expect(client.getLogs).not.toHaveBeenCalled();
+
+        // The head moves: the next read starts one block past the last sync.
+        logs.push(resolved(CORE, 1, 60n, 0));
+        vi.mocked(client.getBlockNumber).mockResolvedValue(80n);
+        const next = await ctx.sync();
+        expect(client.getLogs).toHaveBeenCalledWith({ address: CORE, fromBlock: 51n, toBlock: 80n });
+        expect(next.newCommits).toBe(0);
+        expect(next.newResolutions).toBe(1);
+        expect(next.syncedToBlock).toBe(80n);
+        expect(ctx.getOrder(id(1))!.state).toBe(OrderState.Resolved);
+        expect(ctx.getOrder(id(4))!.state).toBe(OrderState.Active);
+    });
+
+    it("finds a wallet's processes as buyer or as seller, and no one else's", async () => {
+        const ctx = new FigaroContext(twoContractClient([committed(CORE, 1, 3n, 0)]), { core: CORE });
+        await ctx.sync();
+        expect(ctx.getMyProcesses(BUYER).map((p) => p.processId)).toEqual([id(1)]);
+        expect(ctx.getMyProcesses(SELLER.toUpperCase().replace("0X", "0x") as Address).map((p) => p.processId)).toEqual([id(1)]);
+        expect(ctx.getMyProcesses(OTHER)).toEqual([]);
+        expect(ctx.getProcessesAsBuyer(BUYER).map((p) => p.processId)).toEqual([id(1)]);
+        expect(ctx.getOrdersAsSeller(SELLER).map((o) => o.orderHash)).toEqual([id(1)]);
     });
 });

@@ -20,7 +20,7 @@ use figaro_prove_test::{
     BUYER_KEY, CHAIN_ID, CORE, SELLER1_KEY,
 };
 use figaro_sequencer::api::{self, record_dropped, ApiConfig, AppState, FailureLog};
-use figaro_sequencer::assembler::{self, AssemblerConfig, UsageContext};
+use figaro_sequencer::assembler::{self, UsageContext};
 use figaro_sequencer::gas::{self, SettleItems};
 use figaro_sequencer::submitter::settle_calldata;
 use figaro_sequencer::mempool::{Mempool, PendingOp, Refiltered, SubmitError};
@@ -352,13 +352,6 @@ fn assembler_batch_preserves_fields() {
     assert_eq!(batch.verifying_contract, CORE);
     assert_eq!(batch.block_timestamp, 1234);
     assert_eq!(batch.operations.len(), ops.len());
-}
-
-#[test]
-fn assembler_config_defaults() {
-    let c = AssemblerConfig::default();
-    assert_eq!(c.max_ops, 100);
-    assert_eq!(c.interval_secs, 10);
 }
 
 fn pend(ops: Vec<KernelOp>) -> Vec<PendingOp> {

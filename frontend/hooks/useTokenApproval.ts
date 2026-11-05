@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useCallback, useEffect, useState } from "react";
+import type { Abi } from "viem";
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
+import { simulateWrite } from "@/lib/shared/contractWrite";
 
 function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x${string}` | undefined; owner?: `0x${string}` | undefined; spender: `0x${string}` }) {
     const { data: allowance, isFetched: allowanceKnown, isRefetching: isAllowanceRefetching, refetch: refetchAllowance } = useReadContract({
@@ -14,6 +16,11 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
     });
 
     const { writeContract: writeApprove, data: approveHash, isPending: isApprovePending, isError: isApproveWriteError } = useWriteContract();
+    const client = usePublicClient();
+    // An approve whose simulation reverts is never sent: the party pays no gas
+    // for a transaction that cannot grant the allowance, and the failure is the
+    // approval's error like a refused send.
+    const [isSimulateError, setSimulateError] = useState(false);
 
     const { data: approveReceipt, isLoading: isApproveConfirming, isSuccess: isApproveReceiptRead, isError: isApproveReceiptError } = useWaitForTransactionReceipt({ hash: approveHash });
     // A mined approve that REVERTED still resolves the receipt query (wagmi
@@ -26,7 +33,7 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
     // failure) arrives later as the mutation's error state, and a receipt that
     // cannot be read arrives as the receipt query's. Any of these, or a
     // reverted receipt, ends the approval.
-    const isApproveError = isApproveWriteError || isApproveReceiptError || isApproveReverted;
+    const isApproveError = isSimulateError || isApproveWriteError || isApproveReceiptError || isApproveReverted;
 
     // Re-read the allowance once an approve tx has been confirmed so
     // `needsApproval` reflects the updated on-chain state immediately.
@@ -51,15 +58,28 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
         }
     }, [allowance]);
 
-    const approve = useCallback((amount: bigint) => {
+    // Simulate, then send: the one write sequence every other write follows
+    // (`simulateWriteVerify`); the receipt is verified by the query above.
+    const approve = useCallback(async (amount: bigint) => {
         if (!tokenAddress) return;
+        setSimulateError(false);
+        if (!client || !owner) {
+            setSimulateError(true);
+            return;
+        }
+        try {
+            await simulateWrite(client, { address: tokenAddress, abi: ERC20_ABI as Abi, functionName: "approve", args: [spender, amount], account: owner });
+        } catch {
+            setSimulateError(true);
+            return;
+        }
         return writeApprove({
             address: tokenAddress,
             abi: ERC20_ABI,
             functionName: "approve",
             args: [spender, amount],
         });
-    }, [tokenAddress, spender, writeApprove]);
+    }, [tokenAddress, owner, spender, writeApprove, client]);
 
     return {
         allowance,

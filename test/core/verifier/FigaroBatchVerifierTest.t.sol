@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import "forge-std/Test.sol";
 import {BatchHashes} from "test/helpers/BatchHashes.sol";
 import {VmSafe} from "forge-std/Vm.sol";
+import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import "src/core/verifier/FigaroBatchVerifier.sol";
 import "src/build/registries/ClauseRegistry.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
@@ -962,7 +963,10 @@ contract FigaroBatchVerifierTest is Test {
         vm.prank(buyer);
         token.approve(address(verifier), 0);
 
-        vm.expectRevert();
+        // The buyer's 200-ether deposit pull fails on the token's allowance check.
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(verifier), 0, 200 ether)
+        );
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
 
         assertEq(verifier.stateRoot(), GENESIS, "root must not advance on failed resolve");
@@ -994,7 +998,10 @@ contract FigaroBatchVerifierTest is Test {
             keccak256(hex"")
         );
 
-        vm.expectRevert();
+        // The 50-ether deposit pull fails on the token's balance check.
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, pauper, 1 ether, 50 ether)
+        );
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
         assertEq(verifier.stateRoot(), GENESIS, "root must not advance on failed resolve");
         assertEq(verifier.batchCount(), 0, "counter must not bump on failed resolve");
