@@ -1,4 +1,5 @@
-import { defineChain } from "viem";
+import { defineChain, type Chain } from "viem";
+import * as viemChains from "viem/chains";
 import { hardhat as _hardhat } from "wagmi/chains";
 import { sepolia } from "viem/chains";
 
@@ -42,3 +43,19 @@ export const activeChain =
 
 /** All chains supported by the dapp, in preference order. */
 export const chains = [activeChain, hardhat] as const;
+
+/**
+ * The chain a wallet is on, read from viem's registry of EVM networks by its
+ * id: its name and whether it is a test network come from that definition
+ * (`testnet: true` on Sepolia, Polygon Amoy and every other test network viem
+ * knows), never from a list this build keeps. The devnet (31337) is the local
+ * chain above. A chain the registry does not know resolves to nothing, and a
+ * surface then says nothing about it.
+ */
+export function chainById(id: number): Chain | undefined {
+    if (id === DEVNET_CHAIN_ID) return localAnvil;
+    for (const c of Object.values(viemChains)) {
+        if (typeof c === "object" && c !== null && "id" in c && (c as Chain).id === id) return c as Chain;
+    }
+    return undefined;
+}

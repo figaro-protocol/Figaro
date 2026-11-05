@@ -14,19 +14,19 @@
   },
   "agreementProjection": {
     "defaults": {
-      "canonicalAgreement": "{\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"clauses\":[{\"clause\":\"0x6a0a59d4fc6a2cd9733e58d456fdfbbcbdcf5bb06d6704f84f1555e1d7d4a7f8\",\"data\":{\"follows\":[]}},{\"clause\":\"0xa0713b585d8e3dbf9b23bf942b4360025d0dc0035c62325c96a8a717e5b0ed99\",\"data\":{\"currency\":\"0x0000000000000000000000000000000000000001\",\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}],\"payment\":\"1\"}},{\"clause\":\"0xfff36c93839957eef95099aa0f053bfda7a9a405592986e2ff870abc733f9d36\",\"data\":{\"applicableLaw\":\"US-NY\",\"forum\":\"us-federal-court\"}}],\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"version\":\"a1\"}",
-      "checkoutHash": "0x81058ce480c2bb646eb9f753b9f9ccefe62ef20659bf9ea966b161d84463547d"
+      "canonicalAgreement": "{\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"clauses\":[{\"clause\":\"0xa0713b585d8e3dbf9b23bf942b4360025d0dc0035c62325c96a8a717e5b0ed99\",\"data\":{\"currency\":\"0x0000000000000000000000000000000000000001\",\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}],\"payment\":\"1\"}},{\"clause\":\"0xffd2d521ce399dce4acfa5b0a1ddb6c8e34df1f3c457cdf7d0e29275947d994a\",\"data\":{\"follows\":[]}},{\"clause\":\"0xfff36c93839957eef95099aa0f053bfda7a9a405592986e2ff870abc733f9d36\",\"data\":{\"applicableLaw\":\"US-NY\",\"forum\":\"us-federal-court\"}}],\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"version\":\"a1\"}",
+      "checkoutHash": "0x95cba4881734f3f04f8a61456b0351888c1fcad94b707e5954a3c0f763f80398"
     },
     "processLog": {
-      "canonicalAgreement": "{\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"clauses\":[{\"clause\":\"0x6a0a59d4fc6a2cd9733e58d456fdfbbcbdcf5bb06d6704f84f1555e1d7d4a7f8\",\"data\":{\"follows\":[]}},{\"clause\":\"0xa0713b585d8e3dbf9b23bf942b4360025d0dc0035c62325c96a8a717e5b0ed99\",\"data\":{\"currency\":\"0x0000000000000000000000000000000000000001\",\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}],\"payment\":\"1\"}},{\"clause\":\"0xd2136ae18bc2629469efea4ad7544a4b6b42ff11c70d79f219be1825c6b5b95b\",\"data\":{}}],\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"version\":\"a1\"}",
-      "checkoutHash": "0x2077e0e1d3ebf9dd9859ddcd7897c1d8bc33826c327aa196dc984c10c7f0bedb"
+      "canonicalAgreement": "{\"buyer\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"clauses\":[{\"clause\":\"0xa0713b585d8e3dbf9b23bf942b4360025d0dc0035c62325c96a8a717e5b0ed99\",\"data\":{\"currency\":\"0x0000000000000000000000000000000000000001\",\"lineItems\":[{\"itemId\":\"item-1\",\"name\":\"Test item\",\"quantity\":1,\"unitPrice\":\"1\"}],\"payment\":\"1\"}},{\"clause\":\"0xd2136ae18bc2629469efea4ad7544a4b6b42ff11c70d79f219be1825c6b5b95b\",\"data\":{}},{\"clause\":\"0xffd2d521ce399dce4acfa5b0a1ddb6c8e34df1f3c457cdf7d0e29275947d994a\",\"data\":{\"follows\":[]}}],\"seller\":\"0x2546BcD3c84621e976D8185a91A922aE77ECEc30\",\"version\":\"a1\"}",
+      "checkoutHash": "0x6513712e095689fb0325812b449750e00f575f5fb94a5a0ac50a7e92e8710fa2"
     }
   },
   "assembly": {
-    "canonicalJson": "{\"agreements\":[{\"agreementHash\":\"0x2a478517a51e17d0624582b6f0cd45533d192c02ff6a9922e832935f63f6d677\",\"clauses\":{\"0x6a0a59d4fc6a2cd9733e58d456fdfbbcbdcf5bb06d6704f84f1555e1d7d4a7f8\":{\"follows\":[]}},\"id\":\"agreement-0\"},{\"agreementHash\":\"0x2a478517a51e17d0624582b6f0cd45533d192c02ff6a9922e832935f63f6d677\",\"clauses\":{\"0x6a0a59d4fc6a2cd9733e58d456fdfbbcbdcf5bb06d6704f84f1555e1d7d4a7f8\":{\"follows\":[\"agreement-0\"]}},\"id\":\"agreement-1\"}],\"assemblyClauses\":{\"0xfff36c93839957eef95099aa0f053bfda7a9a405592986e2ff870abc733f9d36\":{}},\"name\":\"Golden Vector Chain\"}",
-    "assemblyHash": "0x473f738257d5b6966a19b633484b7a81f70a1775c9b6d8c23d3e2290276aa4c2",
+    "canonicalJson": "{\"agreements\":[{\"agreementHash\":\"0x098e25e2bd6fe586282ef526582e0428549edf25f0228214f60c8780399ef5f0\",\"clauses\":{\"0xffd2d521ce399dce4acfa5b0a1ddb6c8e34df1f3c457cdf7d0e29275947d994a\":{\"follows\":[]}},\"id\":\"agreement-0\"},{\"agreementHash\":\"0x098e25e2bd6fe586282ef526582e0428549edf25f0228214f60c8780399ef5f0\",\"clauses\":{\"0xffd2d521ce399dce4acfa5b0a1ddb6c8e34df1f3c457cdf7d0e29275947d994a\":{\"follows\":[\"agreement-0\"]}},\"id\":\"agreement-1\"}],\"assemblyClauses\":{\"0xfff36c93839957eef95099aa0f053bfda7a9a405592986e2ff870abc733f9d36\":{}},\"name\":\"Golden Vector Chain\"}",
+    "assemblyHash": "0x0b5529fd0ddecb2229c84b86cf18007abba71d3c0e0bd97f3ddf8cf134f09aa0",
     "agreements": {
-      "0x2a478517a51e17d0624582b6f0cd45533d192c02ff6a9922e832935f63f6d677": "{\"clauses\":{\"0x6a0a59d4fc6a2cd9733e58d456fdfbbcbdcf5bb06d6704f84f1555e1d7d4a7f8\":{},\"0xa0713b585d8e3dbf9b23bf942b4360025d0dc0035c62325c96a8a717e5b0ed99\":{}}}"
+      "0x098e25e2bd6fe586282ef526582e0428549edf25f0228214f60c8780399ef5f0": "{\"clauses\":{\"0xa0713b585d8e3dbf9b23bf942b4360025d0dc0035c62325c96a8a717e5b0ed99\":{},\"0xffd2d521ce399dce4acfa5b0a1ddb6c8e34df1f3c457cdf7d0e29275947d994a\":{}}}"
     }
   }
 }

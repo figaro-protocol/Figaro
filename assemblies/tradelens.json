@@ -3,7 +3,7 @@
         "figaro-property-transfer": {
             "anticipatedEvents": [
                 "Cargo resold in transit",
-                "Re-routing of the consignment"
+                "Title passed to the letter-of-credit bank"
             ]
         },
         "figaro-applicable-law": {},

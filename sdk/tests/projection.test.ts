@@ -8,7 +8,7 @@
  * consumer performs on registry-fetched spec JSON. (The frontend's cache
  * adapter does exactly this against ClauseRegistry → IPFS.)
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -242,9 +242,50 @@ describe("the sign gate's denomination chain — pin == leaf == struct", () => {
 });
 
 describe("projection — golden-vector byte-exactness", () => {
-    const vectors = JSON.parse(
-        readFileSync(path.resolve(__dirname, "fixtures/promotion-golden-vectors.json"), "utf8"),
-    ) as {
+    const FIXTURE = path.resolve(__dirname, "fixtures/promotion-golden-vectors.json");
+    // The one harvest path, as the sibling vector suites have: a clause spec
+    // edit moves its key and every frozen agreement that carries it, so the
+    // three cases below are rewritten from the builders on
+    // `HARVEST_PROJECTION_VECTORS=1`; the ecdh and commitmentPayload sections
+    // carry no clause key and are kept as they are.
+    if (process.env.HARVEST_PROJECTION_VECTORS === "1") {
+        it("regenerates fixtures/promotion-golden-vectors.json", () => {
+            const current = JSON.parse(readFileSync(FIXTURE, "utf8")) as Record<string, unknown>;
+            const defaults = buildOrderAgreement(BUYER, SELLER, {
+                [keyOf("figaro-commerce")]: commerceData(),
+                [keyOf("figaro-topology")]: { follows: [] },
+                [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY", forum: "us-federal-court" },
+            }, SPECS);
+            const processLog = buildOrderAgreement(BUYER, SELLER, {
+                [keyOf("figaro-commerce")]: commerceData(),
+                [keyOf("figaro-topology")]: { follows: [] },
+                [keyOf("figaro-merchant-process")]: {},
+            }, SPECS);
+            const built = buildAssembly({
+                name: "Golden Vector Chain",
+                orders: [
+                    { orderHash: "synthetic-root", follows: [] },
+                    { orderHash: "synthetic-child", follows: ["synthetic-root"] },
+                ],
+                clausesByOrderId: {},
+                assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
+                mandatory: MANDATORY,
+                specs: SPECS,
+            });
+            const assembly = serializeAssembly(built.assembly);
+            current.agreementProjection = {
+                defaults: { canonicalAgreement: canonicalize(defaults.agreement), checkoutHash: defaults.checkoutHash },
+                processLog: { canonicalAgreement: canonicalize(processLog.agreement), checkoutHash: processLog.checkoutHash },
+            };
+            current.assembly = {
+                canonicalJson: assembly.json,
+                assemblyHash: assembly.assemblyHash,
+                agreements: Object.fromEntries(Object.entries(built.agreements).map(([k, v]) => [k, canonicalize(v)])),
+            };
+            writeFileSync(FIXTURE, JSON.stringify(current, null, 2) + "\n");
+        });
+    }
+    const vectors = JSON.parse(readFileSync(FIXTURE, "utf8")) as {
         agreementProjection: {
             defaults: { canonicalAgreement: string; checkoutHash: string };
             processLog: { canonicalAgreement: string; checkoutHash: string };

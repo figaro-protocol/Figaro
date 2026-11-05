@@ -24,7 +24,8 @@ import { ModalChrome } from "@/components/ui/ModalChrome";
 import { Button } from "@/components/ui/Button";
 import { AgreementReview } from "@/components/runtime/AgreementReview";
 import type { ConfirmationIntent, SwapConfirmationDetails } from "@/lib/checkout/orderPreview";
-import { activeChain } from "@/lib/shared/chains";
+import { useChainId } from "wagmi";
+import { chainById } from "@/lib/shared/chains";
 
 interface Props {
     commitment: Commitment;
@@ -64,6 +65,9 @@ const INTENT_COPY: Record<ConfirmationIntent, { eyebrow: string; lede: React.Rea
 
 export function AgreementPreviewModal({ commitment, agreement, intent, swap, onConfirm, onCancel }: Props) {
     const copy = INTENT_COPY[intent];
+    // The wallet's chain, by id, from viem's registry: whether it is a test
+    // network and what it is called are the network's own facts.
+    const chain = chainById(useChainId());
 
     return (
         <ModalChrome
@@ -84,12 +88,12 @@ export function AgreementPreviewModal({ commitment, agreement, intent, swap, onC
                         {copy.lede}
                     </p>
                     {/* Every commitment signature and commit broadcast passes through here,
-                        so on a test network the chain's own flag says so at that moment
-                        (the punch-list's reading of the testnet gate; stored nowhere). */}
-                    {activeChain.testnet && (
+                        so on a test network the wallet's chain says so at that moment, from
+                        viem's definition of that network (stored nowhere, pinned to no build). */}
+                    {chain?.testnet && (
                         <p role="note" data-testid="preview-testnet-notice" className="mt-2 text-sm font-semibold text-ink-primary">
-                            This is {activeChain.name}, a test network, not Ethereum mainnet. The commitment you sign
-                            here runs on {activeChain.name}, and so do the tokens it locks.
+                            This is {chain.name}, a test network. The commitment you sign here runs on {chain.name},
+                            and so do the tokens it locks.
                         </p>
                     )}
                 </div>
