@@ -416,7 +416,7 @@ transfers and the revised terms), and ownership passes when the outside
 instrument says, here at resolution. The sellers make the sale possible, exactly as every
 other outside event is squared before the buyer's one terminal call: each
 returns to the buyer the whole, or the part, of its committed payment
-that answers to what the buyer will not receive, the variation is
+that answers to what the buyer will not receive, the transfer is
 attested under `figaro-property-transfer` (the event in the parties' words,
 the sale instrument's fingerprint, the netting transfers, the revised terms'
 fingerprint; each party against its own order, agreement among the

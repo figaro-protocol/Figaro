@@ -827,7 +827,7 @@ describe("example clause specs — parse + validate sample content", () => {
     it("figaro-property-transfer accepts the designer's anticipated events and round-trips through the generic encoder", () => {
         const parsed = parseClauseSpec(propertyTransferSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        const committed = { anticipatedEvents: ["Cargo resold in transit", "Re-routing of the consignment"] };
+        const committed = { anticipatedEvents: ["Cargo resold in transit", "Title passed to the letter-of-credit bank"] };
         expect(validateContent(committed, parsed.spec).ok).toBe(true);
         const encoded = encodeContentFromSpec(parsed.spec, committed);
         expect(decodeContentFromSpec(parsed.spec, encoded)).toEqual(committed);

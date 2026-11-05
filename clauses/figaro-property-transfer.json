@@ -2,7 +2,7 @@
     "clauseId": "figaro-property-transfer",
     "version": 1,
     "title": "Property transfer",
-    "description": "A variation of a process's terms that its parties agree between the commits and the buyer's resolution, in answer to an external event: a cargo resold in transit, a re-routing, a change nobody is at fault for. Composed once for the whole assembly, so every agreement signed under it carries the clause from signing and each party can attest the variation against its own order while the process stands open. The designer names the external events the trade is known to admit; the list anticipates and never closes, and a variation answering an event it does not name is attested the same way. The variation is the stage-1 attestation: the event in the parties' words, the fingerprint of the transferable instrument through which it happened (a bill of lading, a warehouse receipt, a contract of sale) when there is one, the transfers between the process's parties that net the committed payments to the positions they agreed, and the fingerprint of the revised terms. The parties make the transfers themselves before resolution, out of their own balances; the Core executes the committed payments unchanged, and every bond stays locked until the buyer resolves. The instrument and the revised terms stay with the parties and the clause carries their fingerprints. Whether the parties' attestations agree is derived at read time, never stored.",
+    "description": "A transfer of property in what a process trades, agreed by its parties between the commits and the buyer's resolution, in answer to an external event: a cargo resold in transit, title passed to a financier, a consignment taken over by another buyer's agent. Composed once for the whole assembly, so every agreement signed under it carries the clause from signing and each party can attest the transfer against its own order while the process stands open. The designer names the transfers the trade is known to admit; the list anticipates and never closes, and a transfer answering an event it does not name is attested the same way. The transfer is the stage-1 attestation: the event in the parties' words, the fingerprint of the transferable instrument through which the property passed (a bill of lading, a warehouse receipt, a contract of sale) when there is one, the transfers between the process's parties that net the committed payments to the positions they agreed, and the fingerprint of the revised terms. The parties make the transfers themselves before resolution, out of their own balances; the Core executes the committed payments unchanged, and every bond stays locked until the buyer resolves. The instrument and the revised terms stay with the parties and the clause carries their fingerprints. Whether the parties' attestations agree is derived at read time, never stored.",
     "fields": [
         {
             "name": "anticipatedEvents",
@@ -15,7 +15,7 @@
             "minItems": 1,
             "required": true,
             "label": "Anticipated external events",
-            "description": "The external events the design anticipates, in the designer's words (e.g. \"Cargo resold in transit\", \"Re-routing of the consignment\"). Free-form, never a closed list: it tells the parties at signing which variations the trade is known to admit, and a variation answering an event not named here attests at stage 1 all the same."
+            "description": "The external events the design anticipates, in the designer's words (e.g. \"Cargo resold in transit\", \"Title passed to the letter-of-credit bank\"). Free-form, never a closed list: it tells the parties at signing which transfers the trade is known to admit, and a transfer answering an event not named here attests at stage 1 all the same."
         }
     ],
     "stages": {
@@ -27,7 +27,7 @@
                 "minLength": 1,
                 "maxLength": 140,
                 "label": "External event",
-                "description": "The external event the variation answers, in the parties' words (e.g. \"Sale of the consignment agreed mid-voyage, ownership passing at resolution\")."
+                "description": "The external event the transfer answers, in the parties' words (e.g. \"Sale of the consignment agreed mid-voyage, ownership passing at resolution\")."
             },
             {
                 "name": "instrumentHash",
@@ -69,7 +69,7 @@
                 "minItems": 0,
                 "required": true,
                 "label": "Netting transfers",
-                "description": "The transfers between the process's parties that net the committed payments to the positions the parties agreed, made by the parties before resolution out of their own balances. Empty when the variation moves no value inside the process."
+                "description": "The transfers between the process's parties that net the committed payments to the positions the parties agreed, made by the parties before resolution out of their own balances. Empty when the transfer moves no value inside the process."
             },
             {
                 "name": "revisedTermsHash",

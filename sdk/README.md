@@ -2703,7 +2703,7 @@ forum, ordinary courts), the same posture as every other off-chain obligation.
 sustainable form and the more interesting one: **each period's delivery is a
 further bonded order (or hand-off) under the same agreement's terms**, and a
 renewal is a new bonded process. That is what makes the obligation self-policing
-without any enforcement machinery — a licensee who breaches loses the continuing
+without any enforcement machinery — a buyer that uses a stream outside its permitted use loses the continuing
 stream, a seller who degrades it loses the renewal, and gas is paid per
 period rather than per data point. Who triggers period N+1 is the buyer's
 side of the repeated game: their agent re-runs the sign-and-commit ceremony under

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {BatchHashes} from "test/helpers/BatchHashes.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "src/core/kernel/FigaroCore.sol";
@@ -102,6 +103,11 @@ contract ReentrancyAdversarialTest is Test {
 
         assertTrue(token.reentryAttempted(), "the token must have attempted re-entry");
         assertTrue(token.reentryBlocked(), "the nonReentrant guard must block the nested commit");
+        assertEq(
+            token.reentryRevertSelector(),
+            ReentrancyGuard.ReentrancyGuardReentrantCall.selector,
+            "the nested commit reverted on the guard itself, not on a later check"
+        );
 
         // The outer commit still completed correctly, exactly once: buyer bonds
         // 2×payment, seller bonds 2×cumulativeValue — no double-pull.
@@ -132,6 +138,11 @@ contract ReentrancyAdversarialTest is Test {
 
         assertTrue(token.reentryAttempted(), "the token must have attempted re-entry");
         assertTrue(token.reentryBlocked(), "the nonReentrant guard must block the nested resolve");
+        assertEq(
+            token.reentryRevertSelector(),
+            ReentrancyGuard.ReentrancyGuardReentrantCall.selector,
+            "the nested resolve reverted on the guard itself, not on a later check"
+        );
 
         // Payouts are exactly once: seller 2×cum + payment = 150, buyer 50.
         assertEq(token.balanceOf(seller) - sellerBefore, 150 ether, "seller paid once");
@@ -205,6 +216,11 @@ contract ReentrancyAdversarialTest is Test {
 
         assertTrue(token.reentryAttempted(), "the token must have attempted re-entry");
         assertTrue(token.reentryBlocked(), "the nonReentrant guard must block the nested settleBatch");
+        assertEq(
+            token.reentryRevertSelector(),
+            ReentrancyGuard.ReentrancyGuardReentrantCall.selector,
+            "the nested settleBatch reverted on the guard itself, not on a later check"
+        );
 
         // The outer resolution paid the seller exactly once and advanced state.
         assertEq(token.balanceOf(seller) - sellerBefore, 10 ether, "seller paid once");

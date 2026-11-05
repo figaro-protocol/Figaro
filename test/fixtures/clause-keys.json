@@ -10,7 +10,7 @@
     "figaro-content-handoff": "0x94661b1144e7fccc829ecac9e3250fbbe348debb6978a654f6c11774670d8426",
     "figaro-courier-process": "0xb2bfeb9544a4a85911b9552ab1cc5a09df14643bd57fddbde68ba153687d15bf",
     "figaro-credential": "0xfe7afaba6fe4f95063a8b77c47ae5c4041e951901c1d907466ff7bbd046c64a7",
-    "figaro-data-license": "0x9fe5f93865c32ede810b557e2e93b1e4f3740cc5640b0ffc97ffd7078fffecdc",
+    "figaro-data-license": "0xb75efd59db5b05156fa4b6b9c2017bf452e11cbea0007590847022ae29f41960",
     "figaro-data-terms": "0x444e3238272a59860cbf5be703ccc3158f1fc7021eb272ccc0bd148ca7589547",
     "figaro-dimweight": "0x701a16d443b1055c18bf02b51fdd756cc1cff26e6268df29ac60b7a6db785300",
     "figaro-emissions": "0xbad0c34690c679576c3a210fe03bd2d5bbfd31f6e470e4ea56bb8bb448de6add",
@@ -21,9 +21,9 @@
     "figaro-incoterms": "0xb34a9512a1c42e8fd0bc64fd96778e85a147e3213a97f339a884685eb2fdb872",
     "figaro-merchant-process": "0xd2136ae18bc2629469efea4ad7544a4b6b42ff11c70d79f219be1825c6b5b95b",
     "figaro-modalities": "0x26dfedc69af302c56c47938b5e71f00ea2426b34f7add7ffcf73a3bac950e042",
-    "figaro-property-transfer": "0x7845181c8f6475e12a03a52b8181843152da7951570b6abda02f1f779173da54",
+    "figaro-property-transfer": "0x41d36f5add9af19d2f83db642d5ceb97fb2167a9ec9050e60b3b404cb85b6b34",
     "figaro-proximity-policy": "0x79d1219d6ed719b8613d998ec222dc32376b3a7f66bd217b63b49fe0d6f9613e",
     "figaro-schedule": "0xe5ea29a1885e18f22d53572578a29333c610c8078f39c0e2983af1d54798bada",
-    "figaro-topology": "0x6a0a59d4fc6a2cd9733e58d456fdfbbcbdcf5bb06d6704f84f1555e1d7d4a7f8",
+    "figaro-topology": "0xffd2d521ce399dce4acfa5b0a1ddb6c8e34df1f3c457cdf7d0e29275947d994a",
     "figaro-utility-token": "0x77fbd4d71d74e12399690e38ae1ab7b5b2215a335740cb041f32c335845e2d9e"
 }

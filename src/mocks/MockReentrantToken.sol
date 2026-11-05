@@ -27,6 +27,10 @@ contract MockReentrantToken is ERC20 {
     /// @notice Set true iff a re-entry attempt was made AND the inner call
     ///         reverted (i.e. the guard blocked it). Read by tests.
     bool public reentryBlocked;
+    /// @dev The first four bytes of the nested call's revert data: the test asserts the guard's own
+    ///      error, since any other revert (an order already committed, a failed pull) would also
+    ///      read as "blocked" and prove nothing about the guard.
+    bytes4 public reentryRevertSelector;
     /// @notice Set true iff a re-entry attempt was made at all.
     bool public reentryAttempted;
 
@@ -45,6 +49,7 @@ contract MockReentrantToken is ERC20 {
         armed = true;
         reentryBlocked = false;
         reentryAttempted = false;
+        reentryRevertSelector = bytes4(0);
     }
 
     /// @dev The re-entry hook. Fires once, on the first token movement after
@@ -56,7 +61,8 @@ contract MockReentrantToken is ERC20 {
         if (!armed) return;
         armed = false; // single-shot: the inner call must not re-arm
         reentryAttempted = true;
-        (bool ok,) = reentryTarget.call(reentryCalldata);
+        (bool ok, bytes memory ret) = reentryTarget.call(reentryCalldata);
+        if (!ok && ret.length >= 4) reentryRevertSelector = bytes4(ret);
         // ok == false means the guard (or any other check) rejected the
         // nested call — the property we want. A malicious token would ignore
         // this and let its own transfer succeed; so do we.

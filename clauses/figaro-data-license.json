@@ -2,7 +2,7 @@
     "clauseId": "figaro-data-license",
     "version": 1,
     "title": "Data license",
-    "description": "The terms of a DATA SALE \u2014 a bonded order whose value-added IS access to data (a dataset, a stream, the books behind resolved processes). Composes alongside figaro-commerce (the sale itself) and figaro-content-handoff (the delivery \u2014 encrypted-transfer for counterparty-private data). The license terms are WRITTEN ON THE CATALOG (checkout.catalogueFills): the seller writes them on the data item in its catalogue, and checkout folds them into the agreement both parties sign; price stays the item's own price field, never a field here. Licensed data is self-authenticating when sourceProcesses is set and every source named has resolved: each disclosed leaf travels with its merkle inclusion proof against that process's on-chain checkoutHash, so the licensee verifies provenance against the chain rather than the licensor's word; a source still open could take attestations after the sale commits, so the buyer reads each source's resolution on-chain before it signs. Data cannot be inspected before purchase without being given away; the seller's 2\u00d7 bond makes its promise about the data good before the trade, which is what makes pricing data possible without first revealing it. Redistribution cannot be prevented on-chain; the term creates timestamped, co-signed EVIDENCE for the outer recourse layers (co-seller pressure, arbitration forums, ordinary courts), the same posture as every off-chain obligation. The sustainable product is the stream, not the snapshot: a stream licensee who breaches loses the continuing stream. Compose figaro-schedule alongside for time-bounded access windows and figaro-geolocation for territory \u2014 those are their clauses' concerns, never fields here.",
+    "description": "The terms of a DATA SALE \u2014 a bonded order whose value-added IS access to data (a dataset, a stream, the books behind resolved processes). Composes alongside figaro-commerce (the sale itself) and figaro-content-handoff (the delivery \u2014 encrypted-transfer for counterparty-private data). The license terms are WRITTEN ON THE CATALOG (checkout.catalogueFills): the seller writes them on the data item in its catalogue, and checkout folds them into the agreement both parties sign; price stays the item's own price field, never a field here. Licensed data is self-authenticating when sourceProcesses is set and every source named has resolved: each disclosed leaf travels with its merkle inclusion proof against that process's on-chain checkoutHash, so the buyer (the licensee) verifies provenance against the chain rather than the seller's (the licensor's) word; a source still open could take attestations after the sale commits, so the buyer reads each source's resolution on-chain before it signs. Data cannot be inspected before purchase without being given away; the seller's 2\u00d7 bond makes its promise about the data good before the trade, which is what makes pricing data possible without first revealing it. Redistribution cannot be prevented on-chain; the term creates timestamped, co-signed EVIDENCE for the outer recourse layers (co-seller pressure, arbitration forums, ordinary courts), the same posture as every off-chain obligation. The sustainable product is the stream, not the snapshot: a buyer that uses a stream outside its permitted use loses the continuing stream, which is the move that leaves it worse off than keeping its word. Compose figaro-schedule alongside for time-bounded access windows and figaro-geolocation for territory \u2014 those are their clauses' concerns, never fields here.",
     "fields": [
         {
             "name": "licenseScope",
@@ -18,7 +18,7 @@
             "required": false,
             "minLength": 0,
             "maxLength": 512,
-            "description": "The permitted use, stated as a restriction the licensee co-signs (e.g. internal analytics only, model training excluded). Omit for unrestricted use within the redistribution term."
+            "description": "The permitted use, stated as a restriction the buyer co-signs (e.g. internal analytics only, model training excluded). Omit for unrestricted use within the redistribution term."
         },
         {
             "name": "access",
@@ -46,7 +46,7 @@
                 "prohibited": "No redistribution",
                 "permitted": "Redistribution permitted"
             },
-            "description": "Whether the licensee may pass the records onward. prohibited is an off-chain obligation: the chain cannot prevent copying, but this co-signed term is the timestamped evidence an outside forum reads."
+            "description": "Whether the buyer may pass the data onward. prohibited is an off-chain obligation: the chain cannot prevent copying, but this co-signed term is the timestamped evidence an outside forum reads."
         },
         {
             "name": "sourceProcesses",
