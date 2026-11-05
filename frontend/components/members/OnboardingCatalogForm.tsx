@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
 import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
@@ -372,6 +373,7 @@ export function OnboardingCatalogForm({
                         Unit system
                     </span>
                     <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        {/* Raw: a radio, which the Input primitive does not model. */}
                         <input
                             type="radio"
                             name="unit-system"
@@ -383,6 +385,7 @@ export function OnboardingCatalogForm({
                         Metric (g, ml)
                     </label>
                     <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        {/* Raw: a radio, which the Input primitive does not model. */}
                         <input
                             type="radio"
                             name="unit-system"
@@ -413,14 +416,17 @@ export function OnboardingCatalogForm({
                     />
                 ))}
                 <div className="flex items-center justify-between gap-4 pt-2">
-                    <button
+                    <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={addItem}
-                        className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
+                        className="px-0 text-sm text-ink-muted hover:bg-transparent hover:text-ink-heading"
                     >
                         + Add item
-                    </button>
+                    </Button>
                     <label className="text-xs text-ink-muted hover:text-ink-heading transition-colors cursor-pointer">
+                        {/* Raw: a hidden file picker, which the Input primitive does not model. */}
                         <input
                             type="file"
                             accept=".csv,text/csv"
@@ -490,13 +496,15 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, onChang
             <div className="flex items-baseline justify-between">
                 <h3 className="text-sm font-semibold text-ink-heading">Item {index + 1}</h3>
                 {onRemove && (
-                    <button
+                    <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={onRemove}
-                        className="text-xs text-ink-muted hover:text-error-fg transition-colors"
+                        className="px-0 text-xs text-ink-muted hover:bg-transparent hover:text-error-fg"
                     >
                         Remove
-                    </button>
+                    </Button>
                 )}
             </div>
 
@@ -556,16 +564,16 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, onChang
                 quantity read from the declared source (billed per started unit). */}
             <div className="grid grid-cols-3 gap-4">
                 <FormField label="Pricing" inputId={`${idPrefix}-pricing-policy`}>
-                    <select
+                    <Select
                         id={`${idPrefix}-pricing-policy`}
                         value={item.pricingPolicy}
                         onChange={(e) => onChange("pricingPolicy", e.target.value as FormItem["pricingPolicy"])}
-                        className="w-full rounded border border-default px-3 py-2 text-sm"
+                        className="rounded"
                         data-testid={`${idPrefix}-pricing-policy`}
                     >
                         <option value="fixed">Fixed price</option>
                         <option value="rate">Rate (price per unit)</option>
-                    </select>
+                    </Select>
                 </FormField>
                 {item.pricingPolicy === "rate" && (
                     <>
@@ -583,17 +591,17 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, onChang
                             {/* The options ARE the SDK's rate-quantity registry —
                                 a permissionlessly registered tenant surfaces here
                                 with zero picker changes; nothing is hardcoded. */}
-                            <select
+                            <Select
                                 id={`${idPrefix}-rate-source`}
                                 value={item.rateQuantitySource}
                                 onChange={(e) => onChange("rateQuantitySource", e.target.value)}
-                                className="w-full rounded border border-default px-3 py-2 text-sm"
+                                className="rounded"
                                 data-testid={`${idPrefix}-rate-source`}
                             >
                                 {listRateQuantitySources().map(({ source, label }) => (
                                     <option key={source} value={source}>{label}</option>
                                 ))}
-                            </select>
+                            </Select>
                         </FormField>
                     </>
                 )}
@@ -692,6 +700,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, onChang
             )}
 
             <label className="flex items-center gap-2 text-sm text-ink-body cursor-pointer">
+                {/* Raw: a checkbox, which the Input primitive does not model. */}
                 <input
                     type="checkbox"
                     checked={item.available}

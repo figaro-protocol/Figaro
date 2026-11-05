@@ -23,6 +23,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { usePublicClient, useChainId } from "wagmi";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { useMounted } from "@/hooks/useMounted";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -194,14 +195,15 @@ export function RecoursePanel({
                     className="mt-2 flex flex-col gap-1.5 rounded border border-default bg-subtle p-2"
                     data-testid="dispute-evidence-bundle"
                 >
-                    <button
+                    <Button
                         onClick={handlePrepareBundle}
+                        size="compact"
                         disabled={loading}
                         data-testid="dispute-evidence-prepare"
-                        className="self-start px-3 py-1.5 text-xs font-medium rounded bg-ink-primary text-paper hover:bg-ink-body disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="self-start py-1.5 rounded disabled:cursor-not-allowed"
                     >
                         {loading ? "Building…" : bundleCID ? "Rebuild evidence bundle" : "Prepare evidence bundle"}
-                    </button>
+                    </Button>
                     <p className="text-[10px] text-ink-body leading-tight">
                         Builds the process-scoped audit bundle (timeline, contracts,
                         clause data, attestations, financials) in your browser and pins
@@ -213,20 +215,24 @@ export function RecoursePanel({
                             <p className="text-[10px] font-mono text-ink-muted break-all">
                                 ipfs://{bundleCID}
                             </p>
-                            <button
+                            <Button
                                 onClick={handleDownload}
+                                variant="link"
+                                size="sm"
                                 data-testid="dispute-evidence-download"
-                                className="text-xs text-ink-heading hover:text-ink-body underline"
+                                className="px-0 self-start text-xs text-ink-heading hover:text-ink-body underline"
                             >
                                 Download evidence bundle (PDF)
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 onClick={() => void handleUnpin()}
+                                variant="link"
+                                size="sm"
                                 data-testid="dispute-evidence-unpin"
-                                className="ml-3 text-xs text-ink-muted hover:text-ink-body underline"
+                                className="px-0 ml-3 text-xs text-ink-muted hover:text-ink-body underline"
                             >
                                 Unpin from IPFS
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </div>

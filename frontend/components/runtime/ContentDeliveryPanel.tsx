@@ -37,6 +37,7 @@ import {
 } from "@/lib/handoff/contentDelivery";
 import { useCeremonyPanel } from "@/lib/handoff/useCeremonyChannel";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { Button } from "@/components/ui/Button";
 import { CeremonyPanelFrame } from "@/components/runtime/CeremonyPanelFrame";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 
@@ -120,15 +121,17 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
 
             {/* Ask for the counterparty's content. */}
             {!received && (
-                <button
+                <Button
                     type="button"
+                    variant="outline"
+                    size="compact"
                     onClick={() => void handleRequest()}
                     disabled={busy || !channel || requested}
                     data-testid="interaction-content-request"
-                    className="text-xs px-3 py-1.5 rounded border border-default bg-paper text-ink-body hover:border-default-strong disabled:opacity-50"
+                    className="py-1.5 rounded border-default text-ink-body hover:bg-paper hover:border-default-strong"
                 >
                     {requested ? waitingLabel : busy ? "Requesting…" : requestLabel}
-                </button>
+                </Button>
             )}
 
             {/* The decrypted deliverable + the anchor verdict. */}
@@ -151,14 +154,15 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
                             No on-chain completion evidence found for this artifact yet.
                         </p>
                     )}
-                    <button
+                    <Button
                         type="button"
+                        size="compact"
                         onClick={handleDownload}
                         data-testid="interaction-content-download"
-                        className="text-xs px-3 py-1.5 rounded bg-ink-primary text-paper hover:bg-ink-body"
+                        className="py-1.5 rounded"
                     >
                         Save the artifact
-                    </button>
+                    </Button>
                 </div>
             )}
 
@@ -171,6 +175,7 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
                         It is encrypted to this order&apos;s counterparty; only its keccak256
                         goes on-chain.
                     </p>
+                    {/* Raw: a file picker, which the Input primitive does not model. */}
                     <input
                         ref={fileInputRef}
                         type="file"

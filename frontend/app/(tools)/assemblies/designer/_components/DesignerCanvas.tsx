@@ -30,6 +30,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopologyCanvas } from "@/components/runtime/TopologyCanvas";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import type { Order } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import {
@@ -756,7 +758,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             <span className="text-xs font-semibold text-ink-heading">Assembly Name</span>
                             <span className="text-[10px] text-ink-muted tabular-nums">{name.length}/{NAME_MAX}</span>
                         </div>
-                        <input
+                        <Input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -764,7 +766,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             placeholder="A short, memorable name for this assembly"
                             aria-label="Assembly name"
                             data-testid="designer-name-input"
-                            className="mt-1 w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                            className="mt-1 text-xs px-2 py-1.5 rounded bg-paper text-ink-heading"
                         />
                     </label>
                     <label className="block">
@@ -772,7 +774,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             <span className="text-xs font-semibold text-ink-heading">Short description</span>
                             <span className="text-[10px] text-ink-muted tabular-nums">{summary.length}/{SUMMARY_MAX}</span>
                         </div>
-                        <input
+                        <Input
                             type="text"
                             value={summary}
                             onChange={(e) => setSummary(e.target.value)}
@@ -780,7 +782,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             placeholder="One line on what this assembly is for"
                             aria-label="Assembly summary"
                             data-testid="designer-summary-input"
-                            className="mt-1 w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                            className="mt-1 text-xs px-2 py-1.5 rounded bg-paper text-ink-heading"
                         />
                     </label>
                     <label className="block">
@@ -788,7 +790,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             <span className="text-xs font-semibold text-ink-heading">Full description</span>
                             <span className="text-[10px] text-ink-muted tabular-nums">{description.length}/{DESCRIPTION_MAX}</span>
                         </div>
-                        <textarea
+                        <Textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             maxLength={DESCRIPTION_MAX}
@@ -796,7 +798,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             aria-label="Assembly description"
                             rows={3}
                             data-testid="designer-description-input"
-                            className="mt-1 w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus resize-y"
+                            className="mt-1 text-xs px-2 py-1.5 rounded bg-paper text-ink-heading resize-y"
                         />
                     </label>
                     </div>

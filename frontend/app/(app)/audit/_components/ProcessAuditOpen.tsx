@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { isBytes32Hex } from "@/lib/shared/evm";
 
 /** The spectator's front door to the full process audit: paste a process ID,
@@ -24,13 +25,13 @@ export function ProcessAuditOpen() {
         >
             <label className="grow min-w-64 block text-sm text-ink-body">
                 Process ID
-                <input
+                <Input
                     type="text"
                     value={processId}
                     onChange={(e) => setProcessId(e.target.value)}
                     placeholder="0x…"
                     data-testid="process-audit-input"
-                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
+                    className="mt-1 font-mono text-xs"
                 />
             </label>
             <Button type="submit" disabled={!valid} data-testid="process-audit-go">

@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react'
 import { AlertTriangle } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 
 export default function Error({
     error,
@@ -17,7 +19,7 @@ export default function Error({
 
     return (
         <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-paper border border-default rounded-lg p-8 text-center">
+            <Card className="max-w-md w-full rounded-lg p-8 text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-subtle rounded-full mb-6">
                     <AlertTriangle className="w-8 h-8 text-ink-primary" aria-hidden="true" />
                 </div>
@@ -36,12 +38,13 @@ export default function Error({
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button
+                    <Button
+                        variant="outline"
                         onClick={reset}
-                        className="px-6 py-3 bg-paper border border-default text-ink-primary font-semibold rounded-lg hover:bg-subtle transition-colors"
+                        className="px-6 py-3 border-default font-semibold rounded-lg"
                     >
                         Try again
-                    </button>
+                    </Button>
 
                     <a
                         href="/"
@@ -62,7 +65,7 @@ export default function Error({
                         </pre>
                     </details>
                 )}
-            </div>
+            </Card>
         </div>
     )
 }

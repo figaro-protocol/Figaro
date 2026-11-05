@@ -4,6 +4,7 @@ import { useState } from "react";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { Button } from "@/components/ui/Button";
 
 interface IpfsImageUploadProps {
     /** Current IPFS URI (`ipfs://Qm…`). Empty string for "not yet uploaded". */
@@ -54,13 +55,15 @@ export function IpfsImageUpload({
                 <code className="text-xs text-ink-muted font-mono truncate flex-1">
                     {truncateHex(value, { head: 16, tail: 8 })}
                 </code>
-                <button
+                <Button
                     type="button"
+                    variant="link"
+                    size="sm"
                     onClick={() => onChange("")}
-                    className="text-xs text-ink-muted hover:text-error-fg transition-colors"
+                    className="px-0 text-xs text-ink-muted hover:text-error-fg hover:no-underline"
                 >
                     Remove
-                </button>
+                </Button>
             </div>
         );
     }
@@ -68,6 +71,7 @@ export function IpfsImageUpload({
     return (
         <label className="cursor-pointer text-sm font-semibold text-ink-heading border border-default rounded px-4 py-2 hover:bg-paper-200 transition-colors inline-block">
             {uploading ? "Uploading…" : label}
+            {/* Raw: a file picker, which the Input primitive does not model. */}
             <input
                 type="file"
                 accept={accept}

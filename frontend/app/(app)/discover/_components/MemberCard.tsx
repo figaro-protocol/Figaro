@@ -4,6 +4,7 @@ import Link from "@/components/shared/Link";
 import { deriveAssemblySlug } from "@/lib/shared/assembly";
 import { ContentImage } from "@/components/shared/ContentImage";
 import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
+import { Button } from "@/components/ui/Button";
 import {
     type Listing,
     listingClickThroughHref,
@@ -99,15 +100,17 @@ export function MemberCard({
             <div className="flex flex-wrap gap-1.5 mb-3">
                 {assemblies.map((slug) =>
                     onAssemblyClick ? (
-                        <button
+                        <Button
                             key={slug}
                             type="button"
+                            variant="secondary"
+                            size="compact"
                             onClick={() => onAssemblyClick(slug)}
-                            className="text-xs px-2 py-0.5 rounded-full bg-subtle text-ink-body border border-default hover:border-default-strong hover:bg-subtle-hover transition-colors cursor-pointer"
+                            className="px-2 py-0.5 rounded-full text-ink-body hover:border-default-strong"
                             aria-label={`Filter by ${slug}`}
                         >
                             {slug}
-                        </button>
+                        </Button>
                     ) : (
                         <span
                             key={slug}

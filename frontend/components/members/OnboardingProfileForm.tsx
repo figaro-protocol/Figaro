@@ -609,15 +609,17 @@ export function OnboardingProfileForm({
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs text-ink-muted">Quick-add:</span>
                         {commonTokens.map((token) => (
-                            <button
+                            <Button
                                 key={token.address}
+                                variant="outline"
+                                size="compact"
                                 type="button"
                                 onClick={() => quickAddToken(token)}
-                                className="text-xs px-3 py-1 rounded-full border border-default text-ink-heading hover:bg-paper-200 transition-colors"
+                                className="py-1 rounded-full border-default text-ink-heading"
                                 title={`${token.name} — ${token.address}`}
                             >
                                 + {token.symbol}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 )}
@@ -644,13 +646,15 @@ export function OnboardingProfileForm({
                             />
                         );
                     })}
-                    <button
+                    <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={addTokenRow}
-                        className="text-sm text-ink-muted hover:text-ink-heading transition-colors"
+                        className="px-0 text-sm text-ink-muted hover:bg-transparent hover:text-ink-heading"
                     >
                         + Add token
-                    </button>
+                    </Button>
                     {commonTokens.length === 0 && form.acceptedTokens.every((t) => !t.address.trim()) && (
                         <p className="text-xs text-ink-muted">
                             No quick-add tokens registered for this network. Paste an ERC-20 address above to fetch its symbol from the contract.
@@ -677,6 +681,7 @@ export function OnboardingProfileForm({
                                     key={token.address}
                                     className="flex items-center gap-3 cursor-pointer text-sm"
                                 >
+                                    {/* Raw: a radio, which the Input primitive does not model. */}
                                     <input
                                         type="radio"
                                         name="defaultTokenAddress"

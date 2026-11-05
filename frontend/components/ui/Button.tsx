@@ -34,6 +34,12 @@ const buttonVariants = cva(
                 // the width past 24px too — a compact ICON-only button would
                 // not, so use size="icon" for those. See DESIGN_TOKENS.md §7.
                 compact: "min-h-7 px-3 text-xs",
+                // No box: a text-link action set inside a sentence or a line of
+                // text (a "clear", a facet link on a table cell), or a glyph on a
+                // zoomable canvas node that the caller sizes. WCAG 2.5.5's Inline
+                // exception covers the text case and the glyph scales with the
+                // canvas zoom; never a standalone control on a page.
+                inline: "p-0",
             },
         },
         defaultVariants: {

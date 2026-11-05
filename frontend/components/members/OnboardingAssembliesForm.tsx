@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { isAddress } from "viem";
 import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useMounted } from "@/hooks/useMounted";
@@ -371,38 +373,42 @@ function CoSellerClauseEditor({
                     const valid = trimmed === "" || isAddress(trimmed);
                     return (
                         <div key={i} className="flex items-center gap-2">
-                            <input
+                            <Input
                                 type="text"
                                 placeholder="0x…"
                                 value={value}
                                 onChange={(e) => updateRow(i, e.target.value)}
-                                className={`flex-1 text-xs font-mono px-2 py-1.5 rounded border min-h-9 ${
+                                className={`flex-1 text-xs font-mono px-2 py-1.5 rounded ${
                                     valid ? "border-default" : "border-error"
                                 }`}
                                 data-testid={`co-seller-${clauseKey}-input-${i}`}
                             />
                             {rows.length > 1 && (
-                                <button
+                                <Button
                                     type="button"
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={() => removeRow(i)}
-                                    className="text-xs text-ink-muted hover:text-error-fg px-2"
+                                    className="text-xs text-ink-muted hover:text-error-fg"
                                     aria-label={`Remove address ${i + 1}`}
                                     data-testid={`co-seller-${clauseKey}-remove-${i}`}
                                 >
                                     ×
-                                </button>
+                                </Button>
                             )}
                         </div>
                     );
                 })}
-                <button
+                <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={addRow}
-                    className="text-xs text-ink-muted hover:text-ink-heading"
+                    className="px-0 text-xs text-ink-muted hover:bg-transparent hover:text-ink-heading"
                     data-testid={`co-seller-${clauseKey}-add`}
                 >
                     + Add another
-                </button>
+                </Button>
             </div>
         </div>
     );

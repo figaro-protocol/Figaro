@@ -34,6 +34,7 @@ import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { hydrateImportedAssembly, parseAssemblyJson } from "@/lib/designer/assemblyToDraft";
 import { ModalChrome } from "@/components/ui/ModalChrome";
 import { Button } from "@/components/ui/Button";
+import { Textarea } from "@/components/ui/Textarea";
 
 interface CompositionAssistProps {
     /** The canvas's current composition, or null when there is nothing to
@@ -143,14 +144,16 @@ export function CompositionAssist({ getSnapshot, onImportAssembly }: Composition
                         <h2 id="composition-assist-title" className="text-heading-h3 text-ink-heading">
                             Compose with your agent
                         </h2>
-                        <button
+                        <Button
                             type="button"
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setOpen(false)}
                             aria-label="Close"
                             className="text-ink-muted hover:text-ink-heading text-lg leading-none"
                         >
                             ×
-                        </button>
+                        </Button>
                     </div>
                     <p className="text-sm text-ink-body leading-relaxed">
                         <code className="text-xs">figaro-assembly-designer</code> is a public ecosystem
@@ -168,24 +171,26 @@ export function CompositionAssist({ getSnapshot, onImportAssembly }: Composition
                                 Your draft — the assembly your agent starts from
                             </h3>
                             {draft.json && (
-                                <button
+                                <Button
                                     type="button"
+                                    variant="outline"
+                                    size="compact"
                                     onClick={handleCopy}
                                     data-testid="designer-assist-copy"
-                                    className="text-[11px] px-2 py-1 rounded border border-default bg-paper hover:border-default-strong"
+                                    className="text-[11px] px-2 py-1 rounded border-default hover:bg-paper hover:border-default-strong"
                                 >
                                     {copied ? "Copied" : "Copy"}
-                                </button>
+                                </Button>
                             )}
                         </div>
                         {draft.json ? (
-                            <textarea
+                            <Textarea
                                 readOnly
                                 value={draft.json}
                                 rows={8}
                                 aria-label="Current draft as assembly JSON"
                                 data-testid="designer-assist-assembly"
-                                className="w-full text-[11px] font-mono px-2 py-1.5 rounded border border-default bg-subtle text-ink-body resize-y"
+                                className="text-[11px] font-mono px-2 py-1.5 rounded bg-subtle text-ink-body resize-y"
                             />
                         ) : (
                             <p className="text-xs text-ink-muted" data-testid="designer-assist-assembly-empty">
@@ -198,29 +203,31 @@ export function CompositionAssist({ getSnapshot, onImportAssembly }: Composition
                         <h3 className="text-xs font-semibold text-ink-heading">
                             Import your agent&apos;s assembly
                         </h3>
-                        <textarea
+                        <Textarea
                             value={importText}
                             onChange={(e) => { setImportText(e.target.value); setImportError(null); }}
                             rows={8}
                             placeholder='Paste the composition your agent returned — {"assembly": {...}, "agreements": {...}}'
                             aria-label="Assembly JSON to import"
                             data-testid="designer-assist-import-input"
-                            className="w-full text-[11px] font-mono px-2 py-1.5 rounded border border-default bg-paper text-ink-body placeholder:text-ink-muted resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                            className="text-[11px] font-mono px-2 py-1.5 rounded bg-paper text-ink-body resize-y"
                         />
                         {importError && (
                             <p className="text-xs text-error-fg" data-testid="designer-assist-import-error">
                                 {importError}
                             </p>
                         )}
-                        <button
+                        <Button
                             type="button"
+                            variant="outline"
+                            size="compact"
                             onClick={handleImport}
                             disabled={importText.trim() === ""}
                             data-testid="designer-assist-import"
-                            className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="py-1.5 rounded border-ink-heading text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             Import to canvas
-                        </button>
+                        </Button>
                     </div>
                 </ModalChrome>
             )}

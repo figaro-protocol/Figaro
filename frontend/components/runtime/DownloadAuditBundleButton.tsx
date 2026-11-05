@@ -15,6 +15,7 @@ import type { Order } from "@/lib/kernel/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { Button } from "@/components/ui/Button";
 
 interface DownloadAuditBundleButtonProps {
     processId: string;
@@ -47,8 +48,10 @@ export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBu
 
     return (
         <div className="flex flex-col gap-2" data-testid="download-audit-bundle">
-            <button
+            <Button
                 type="button"
+                variant={disabled ? "secondary" : "default"}
+                size="compact"
                 onClick={async () => {
                     setBusy(true);
                     setError(null);
@@ -62,11 +65,11 @@ export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBu
                     }
                 }}
                 disabled={disabled}
-                className={`text-xs px-3 py-1.5 rounded border ${disabled ? "bg-subtle text-ink-faint border-default cursor-not-allowed" : "bg-ink-primary text-paper border-ink-primary hover:bg-ink-body"}`}
+                className={`py-1.5 rounded ${disabled ? "text-ink-faint cursor-not-allowed disabled:opacity-100" : ""}`}
                 data-testid="download-audit-bundle-button"
             >
                 {busy ? "Building bundle…" : "Download audit bundle (PDF)"}
-            </button>
+            </Button>
             {error && (
                 <p className="text-[11px] text-error-fg" data-testid="download-audit-bundle-error">
                     {error}

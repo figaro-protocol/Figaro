@@ -36,11 +36,13 @@ export interface TabsProps<K extends string> {
     selected: K;
     onSelect: (value: K) => void;
     panelClassName?: string;
+    /** Optional test-id on the tablist row. */
+    listTestId?: string;
     /** The selected tab's panel content. */
     children: ReactNode;
 }
 
-export function Tabs<K extends string>({ label, tabs, selected, onSelect, panelClassName = "", children }: TabsProps<K>) {
+export function Tabs<K extends string>({ label, tabs, selected, onSelect, panelClassName = "", listTestId, children }: TabsProps<K>) {
     const idBase = useId();
     const tabId = (value: K) => `${idBase}-tab-${value}`;
     const panelId = `${idBase}-panel`;
@@ -67,7 +69,7 @@ export function Tabs<K extends string>({ label, tabs, selected, onSelect, panelC
 
     return (
         <>
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label={label}>
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label={label} data-testid={listTestId}>
                 {tabs.map((t) => {
                     const isSelected = t.value === selected;
                     return (

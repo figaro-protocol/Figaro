@@ -17,6 +17,8 @@
 import { useState } from "react";
 import type { useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
 import { tokenFigure } from "@/lib/shared/utils";
 import { truncateHex } from "@/lib/shared/formatHex";
 
@@ -30,7 +32,7 @@ export interface RaceStartPolicy {
     ceiling?: string;
 }
 
-const FIELD = "w-full rounded border border-default bg-surface px-2 py-1.5 text-sm text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:border-transparent";
+const FIELD = "rounded px-2 py-1.5 focus-visible:border-transparent";
 
 interface Props {
     race: ReturnType<typeof useDispatchRace>;
@@ -54,7 +56,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
         };
         const ceilingValid = /^\d+(\.\d+)?$/.test(ceiling.trim()) && Number(ceiling) > 0;
         return (
-            <div className="rounded-lg border border-default bg-paper p-4 space-y-3" data-testid="race-panel">
+            <Card className="rounded-lg p-4 space-y-3" data-testid="race-panel">
                 <p className="text-xs text-ink-body">
                     Or form the market: every registered member whose catalog can
                     serve this order receives your draft; whoever counter-signs is
@@ -63,7 +65,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                 <div className="grid grid-cols-2 gap-2">
                     <label className="text-xs text-ink-body">
                         Window (seconds)
-                        <input
+                        <Input
                             type="number" min="1" value={windowSeconds}
                             onChange={(e) => setWindowSeconds(e.target.value)}
                             className={FIELD} data-testid="race-window-input"
@@ -71,7 +73,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                     </label>
                     <label className="text-xs text-ink-body">
                         Candidates (blank = all)
-                        <input
+                        <Input
                             type="number" min="1" value={maxCandidates}
                             onChange={(e) => setMaxCandidates(e.target.value)}
                             className={FIELD} data-testid="race-k-input"
@@ -88,7 +90,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                     </p>
                     <label className="text-xs text-ink-body">
                         Your ceiling ({tokenSymbol})
-                        <input
+                        <Input
                             type="text" inputMode="decimal" value={ceiling} placeholder="0.00"
                             onChange={(e) => setCeiling(e.target.value)}
                             className={FIELD} data-testid="quote-ceiling-input"
@@ -104,21 +106,21 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                         Request quotes
                     </Button>
                 </div>
-            </div>
+            </Card>
         );
     }
 
     if (step === "drafting") {
         return (
-            <div className="rounded-lg border border-default bg-paper p-4" data-testid="race-panel">
+            <Card className="rounded-lg p-4" data-testid="race-panel">
                 <p className="text-sm text-ink-body">Drafting offers…</p>
-            </div>
+            </Card>
         );
     }
 
     if (step === "racing") {
         return (
-            <div className="rounded-lg border border-default bg-paper p-4 space-y-3" data-testid="race-panel">
+            <Card className="rounded-lg p-4 space-y-3" data-testid="race-panel">
                 <p className="text-xs font-semibold text-ink-muted">
                     {quoting ? "Requesting quotes from" : "Racing"} {candidates.length} candidate{candidates.length === 1 ? "" : "s"} — {repliedCount} {quoting ? "quoted" : "available"}
                 </p>
@@ -145,14 +147,16 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                                     </span>
                                 )}
                                 {c.replied ? (
-                                    <button
+                                    <Button
                                         type="button"
+                                        variant="outline"
+                                        size="compact"
                                         onClick={() => race.pick(c.address)}
-                                        className="rounded border border-default px-2 py-1 text-xs text-ink-primary hover:bg-subtle"
+                                        className="rounded border-default px-2 py-1"
                                         data-testid={`race-pick-${c.address.toLowerCase()}`}
                                     >
                                         Choose
-                                    </button>
+                                    </Button>
                                 ) : (
                                     <span className="text-xs text-ink-muted">{quoting ? "awaiting quote…" : "waiting…"}</span>
                                 )}
@@ -169,13 +173,13 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                 >
                     {quoting ? "Take the best quote now" : "Take the best offer now"}
                 </Button>
-            </div>
+            </Card>
         );
     }
 
     if (step === "done" && result) {
         return (
-            <div className="rounded-lg border border-default bg-paper p-4 space-y-2" data-testid="race-panel">
+            <Card className="rounded-lg p-4 space-y-2" data-testid="race-panel">
                 <p className="text-xs font-semibold text-ink-muted">Race winner</p>
                 <p className="text-sm font-mono text-ink-body" data-testid="race-winner" data-seller={result.selection.seller.toLowerCase()}>
                     {truncateHex(result.selection.seller)} — {result.selection.price} {tokenSymbol}
@@ -184,29 +188,33 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                     Their counter-signature rides your order: placing it delivers a
                     commit-ready order to them.
                 </p>
-                <button
+                <Button
                     type="button"
+                    variant="link"
+                    size="sm"
                     onClick={race.reset}
-                    className="text-xs text-ink-muted hover:text-ink-body underline"
+                    className="px-0 self-start text-xs text-ink-muted hover:text-ink-body underline"
                     data-testid="race-reset"
                 >
                     Race again
-                </button>
-            </div>
+                </Button>
+            </Card>
         );
     }
 
     return (
-        <div className="rounded-lg border border-default bg-paper p-4 space-y-2" data-testid="race-panel">
+        <Card className="rounded-lg p-4 space-y-2" data-testid="race-panel">
             <p className="text-sm text-error-fg" data-testid="race-error">{error ?? "The race failed."}</p>
-            <button
+            <Button
                 type="button"
+                variant="link"
+                size="sm"
                 onClick={race.reset}
-                className="text-xs text-ink-muted hover:text-ink-body underline"
+                className="px-0 self-start text-xs text-ink-muted hover:text-ink-body underline"
                 data-testid="race-reset"
             >
                 Try again
-            </button>
-        </div>
+            </Button>
+        </Card>
     );
 }

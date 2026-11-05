@@ -24,6 +24,8 @@ import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { deploymentFingerprint } from "@/lib/shared/deploymentFingerprint";
 import { useConnectInjected } from "@/hooks/useConnectInjected";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
+import { Input } from "@/components/ui/Input";
 import { CartLineList } from "@/components/runtime/CartLineList";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
@@ -841,6 +843,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 <div className="flex flex-wrap gap-3 text-sm">
                                     {memberCatalog!.acceptedTokens!.map((t) => (
                                         <label key={t.address} className="flex items-center gap-1.5 cursor-pointer">
+                                            {/* Raw: a radio, which the Input primitive does not model. */}
                                             <input
                                                 type="radio"
                                                 name="payment-token"
@@ -896,12 +899,12 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                     {listedSymbol}
                                                 </span>
                                                 <label className="flex items-center gap-1.5 text-ink-body">
-                                                    <input
+                                                    <Input
                                                         type="text"
                                                         inputMode="decimal"
                                                         value={shown}
                                                         onChange={(e) => setTranslationEdits((prev) => ({ ...prev, [l.key]: e.target.value }))}
-                                                        className="w-28 rounded border border-default px-2 py-1 text-right text-sm tabular-nums"
+                                                        className="w-28 rounded px-2 py-1 text-right tabular-nums"
                                                         aria-label={`Amount you sign for ${l.label}, in ${tokenSymbol}`}
                                                         data-testid={`payment-translation-amount-${l.key}`}
                                                     />
@@ -967,7 +970,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             {row.pricing?.item?.rateQuantitySource === "checkout-quantity" && (
                                                 <label className="mt-1 flex items-center justify-between gap-2 text-xs text-ink-body">
                                                     <span>{row.pricing.item.rateUnit ?? "unit"}s</span>
-                                                    <input
+                                                    <Input
                                                         type="number"
                                                         min={1}
                                                         step={1}
@@ -980,7 +983,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                                 [row.nodeId!]: Number.isFinite(n) && n > 0 ? n : 0,
                                                             }));
                                                         }}
-                                                        className="w-20 rounded border border-default px-2 py-1 text-right text-sm"
+                                                        className="w-20 rounded px-2 py-1 text-right"
                                                         data-testid={`rate-quantity-input-${row.nodeId}`}
                                                     />
                                                 </label>
@@ -1156,13 +1159,13 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 >
                                     Method
                                 </label>
-                                <select
+                                <Select
                                     id="method-select"
                                     value={selectedSlug ?? ""}
                                     onChange={(e) =>
                                         setSelectedSlug(e.target.value === "" ? undefined : e.target.value)
                                     }
-                                    className="w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:border-transparent"
+                                    className="rounded focus-visible:border-transparent"
                                     data-testid="select-method"
                                 >
                                     <option value="" data-testid="option-method-unset">
@@ -1173,7 +1176,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             {opt.name}
                                         </option>
                                     ))}
-                                </select>
+                                </Select>
                             </div>
                         )}
 

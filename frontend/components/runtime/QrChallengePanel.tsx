@@ -20,6 +20,7 @@ import Link from "@/components/shared/Link";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { hexEqual } from "@/lib/shared/evm";
+import { Textarea } from "@/components/ui/Textarea";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 
 interface QrOrderIdentity {
@@ -106,13 +107,13 @@ export function QrChallengePanel({ processId, orderHash, clauseKey }: Interactio
                     </p>
                     <label className="block text-xs font-semibold text-ink-body">
                         Scanned a code? Verify it here
-                        <textarea
+                        <Textarea
                             value={scanned}
                             onChange={(e) => setScanned(e.target.value)}
                             rows={2}
                             placeholder='{"processId":"0x…","orderHash":"0x…"}'
                             data-testid="interaction-qr-scan-input"
-                            className="mt-1 w-full font-mono text-[11px] px-2 py-1.5 border border-default rounded"
+                            className="mt-1 font-mono text-[11px] px-2 py-1.5 rounded"
                         />
                     </label>
                     {scanned.trim() && decoded === null && (

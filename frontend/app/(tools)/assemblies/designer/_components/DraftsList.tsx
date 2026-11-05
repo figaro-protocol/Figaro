@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "@/components/shared/Link";
+import { Button } from "@/components/ui/Button";
 import {
     deleteNamedDraft,
     listNamedDrafts,
@@ -76,14 +77,16 @@ export function DraftsList() {
                         >
                             Inspect
                         </Link>
-                        <button
+                        <Button
                             type="button"
+                            variant="outline"
+                            size="compact"
                             onClick={() => handleDelete(d.slug, d.name)}
-                            className="text-xs px-3 py-1.5 rounded border border-error/40 bg-paper hover:border-error text-error-fg text-center"
+                            className="py-1.5 rounded border-error/40 hover:bg-paper hover:border-error text-error-fg text-center"
                             data-testid={`draft-delete-${d.slug}`}
                         >
                             Delete
-                        </button>
+                        </Button>
                     </div>
                 </li>
             ))}

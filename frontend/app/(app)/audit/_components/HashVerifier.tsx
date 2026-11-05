@@ -37,8 +37,17 @@ import { useWalletOrders } from "@/hooks/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Tabs } from "@/components/ui/Tabs";
 
 type Mode = "agreement" | "clause" | "search";
+
+const MODE_TABS = [
+    { value: "agreement", label: "A. Agreement", testId: "verify-mode-agreement" },
+    { value: "clause", label: "B. Clause", testId: "verify-mode-clause" },
+    { value: "search", label: "C. Search", testId: "verify-mode-search" },
+] as const;
 
 export function HashVerifier() {
     const [mode, setMode] = useState<Mode>("agreement");
@@ -58,27 +67,17 @@ export function HashVerifier() {
                 </p>
             </header>
 
-            <nav className="flex gap-2 border-b border-default" data-testid="verify-mode-tabs">
-                {(["agreement", "clause", "search"] as const).map((m) => (
-                    <button
-                        key={m}
-                        type="button"
-                        onClick={() => setMode(m)}
-                        data-testid={`verify-mode-${m}`}
-                        className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 ${
-                            mode === m
-                                ? "border-ink-heading text-ink-primary"
-                                : "border-transparent text-ink-muted hover:text-ink-primary"
-                        }`}
-                    >
-                        {m === "agreement" ? "A. Agreement" : m === "clause" ? "B. Clause" : "C. Search"}
-                    </button>
-                ))}
-            </nav>
-
-            {mode === "agreement" && <AgreementMode />}
-            {mode === "clause" && <ClauseMode />}
-            {mode === "search" && <SearchMode />}
+            <Tabs
+                label="Verification mode"
+                listTestId="verify-mode-tabs"
+                tabs={MODE_TABS}
+                selected={mode}
+                onSelect={setMode}
+            >
+                {mode === "agreement" && <AgreementMode />}
+                {mode === "clause" && <ClauseMode />}
+                {mode === "search" && <SearchMode />}
+            </Tabs>
         </div>
     );
 }
@@ -161,23 +160,23 @@ function AgreementMode() {
             </p>
             <label className="block text-xs font-semibold text-ink-body">
                 Agreement JSON
-                <textarea
+                <Textarea
                     value={json}
                     onChange={(e) => setJson(e.target.value)}
                     rows={12}
                     placeholder='{"version":"a1","buyer":"0x...","seller":"0x...","clauses":[...]}'
                     data-testid="verify-agreement-input"
-                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
+                    className="mt-1 font-mono text-xs"
                 />
             </label>
             <label className="block text-xs font-semibold text-ink-body">
                 Expected checkoutHash (optional)
-                <input
+                <Input
                     value={expected}
                     onChange={(e) => setExpected(e.target.value)}
                     placeholder="0x…"
                     data-testid="verify-agreement-expected"
-                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
+                    className="mt-1 font-mono text-xs"
                 />
             </label>
             {result.kind === "error" && <ErrorBox message={result.message} />}
@@ -220,23 +219,23 @@ function ClauseMode() {
             </p>
             <label className="block text-xs font-semibold text-ink-body">
                 Clause JSON
-                <textarea
+                <Textarea
                     value={json}
                     onChange={(e) => setJson(e.target.value)}
                     rows={8}
                     placeholder='{"clause":"0x<clause key>","data":{"currency":"0x...","payment":"100","lineItems":[...]}}'
                     data-testid="verify-clause-input"
-                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
+                    className="mt-1 font-mono text-xs"
                 />
             </label>
             <label className="block text-xs font-semibold text-ink-body">
                 Expected leaf hash (optional)
-                <input
+                <Input
                     value={expected}
                     onChange={(e) => setExpected(e.target.value)}
                     placeholder="0x…"
                     data-testid="verify-clause-expected"
-                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
+                    className="mt-1 font-mono text-xs"
                 />
             </label>
             {result.kind === "error" && <ErrorBox message={result.message} />}
@@ -333,12 +332,12 @@ function SearchMode() {
             </p>
             <label className="block text-xs font-semibold text-ink-body">
                 Hash to look up
-                <input
+                <Input
                     value={hash}
                     onChange={(e) => setHash(e.target.value)}
                     placeholder="0x…"
                     data-testid="verify-search-input"
-                    className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
+                    className="mt-1 font-mono text-xs"
                 />
             </label>
             {hash.trim() && ordersRead.status === "present" && hits.length === 0 && (

@@ -101,17 +101,19 @@ export function RegisterClauseForm() {
                     { label: "Spec URI", value: receipt.contentURI },
                 ]}
                 actions={
-                    <button
+                    <Button
                         type="button"
+                        variant="outline"
+                        size="compact"
                         onClick={() => {
                             setReceipt(null);
                             setSpecText("");
                         }}
-                        className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-heading"
+                        className="py-1.5 rounded border-default hover:bg-paper hover:border-default-strong text-ink-heading"
                         data-testid="clause-register-again"
                     >
                         Register another
-                    </button>
+                    </Button>
                 }
             />
         );

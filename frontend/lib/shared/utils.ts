@@ -1,6 +1,21 @@
 import { formatUnits, parseUnits } from "viem";
 import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// The theme's own scale keys (tailwind.config.ts, docs/DESIGN_TOKENS.md §2-§4),
+// so a caller's `rounded-full` beats a primitive's `rounded-tile`, `px-2` beats
+// `px-lg` and `text-heading-h2` merges as a size, not a color.
+const twMerge = extendTailwindMerge({
+    extend: {
+        theme: {
+            spacing: ["xs", "sm", "md", "lg", "xl", "2xl"],
+            borderRadius: ["section", "invariant", "tile"],
+        },
+        classGroups: {
+            "font-size": [{ text: ["heading-h1", "heading-h2", "heading-h3", "body-lead"] }],
+        },
+    },
+});
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));

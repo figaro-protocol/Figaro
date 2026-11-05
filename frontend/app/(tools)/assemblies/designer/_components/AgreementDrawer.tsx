@@ -32,6 +32,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/kernel/store";
+import { Button } from "@/components/ui/Button";
 import {
     fetchRegisteredAgreement,
     getRegisteredAgreement,
@@ -172,37 +173,42 @@ export function AgreementDrawer({
         >
             {minimized && (
                 <div className="flex flex-col items-center py-3 gap-2">
-                    <button
+                    <Button
                         type="button"
+                        variant="outline"
+                        size="icon"
                         onClick={() => setMinimized(false)}
                         aria-label="Expand drawer"
                         data-testid="drawer-expand"
                         title="Expand"
-                        className="w-8 h-8 rounded border border-default hover:border-default-strong bg-paper text-ink-body text-xs"
+                        className="rounded border-default hover:bg-paper hover:border-default-strong text-ink-body text-xs"
                     >
                         ‹
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
+                        variant="outline"
+                        size="icon"
                         onClick={onClose}
                         aria-label="Close drawer"
                         title="Close"
-                        className="w-8 h-8 rounded border border-default hover:border-error bg-paper text-ink-body text-xs"
+                        className="rounded border-default hover:bg-paper hover:border-error text-ink-body text-xs"
                     >
                         ✕
-                    </button>
+                    </Button>
                     <div className="border-t border-default w-6 my-1" />
                     {presentArticles.map((article) => (
-                        <button
+                        <Button
                             key={article}
                             type="button"
+                            variant="ghost"
                             onClick={() => { setMinimized(false); setOpenSection(article); }}
                             title={article}
                             data-testid={`drawer-rail-${article}`}
-                            className="w-full text-[10px] text-ink-muted hover:text-ink-primary px-1 py-1"
+                            className="w-full text-[10px] text-ink-muted hover:bg-transparent hover:text-ink-primary px-1 py-1"
                         >
                             {article.slice(0, 3)}
-                        </button>
+                        </Button>
                     ))}
                 </div>
             )}
@@ -219,25 +225,29 @@ export function AgreementDrawer({
                     </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                    <button
+                    <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => setMinimized(true)}
                         aria-label="Minimize drawer"
                         data-testid="drawer-minimize"
                         title="Minimize"
-                        className="text-xs text-ink-muted hover:text-ink-primary px-1"
+                        className="text-xs text-ink-muted hover:text-ink-primary"
                     >
                         ›
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         onClick={onClose}
                         aria-label="Close drawer"
                         data-testid="drawer-close"
-                        className="text-xs text-ink-muted hover:text-ink-primary px-1"
+                        className="text-xs text-ink-muted hover:text-ink-primary"
                     >
                         ✕
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -249,21 +259,23 @@ export function AgreementDrawer({
                     {orders.map((node, index) => {
                         const isActive = node.orderHash === order.orderHash;
                         return (
-                            <button
+                            <Button
                                 key={node.orderHash}
                                 type="button"
+                                variant={isActive ? "default" : "outline"}
+                                size="compact"
                                 onClick={() => onSelectOrder(node.orderHash)}
                                 data-testid={`drawer-node-tab-${node.orderHash}`}
                                 aria-pressed={isActive}
                                 title={node.orderHash}
-                                className={`shrink-0 rounded border px-3 py-1 text-xs ${
+                                className={`shrink-0 rounded px-3 py-1 ${
                                     isActive
-                                        ? "border-ink-primary bg-ink-primary text-paper"
-                                        : "border-default bg-paper text-ink-body hover:border-default-strong"
+                                        ? ""
+                                        : "border-default text-ink-body hover:bg-paper hover:border-default-strong"
                                 }`}
                             >
                                 Order {index + 1}
-                            </button>
+                            </Button>
                         );
                     })}
                 </div>
@@ -277,20 +289,21 @@ export function AgreementDrawer({
                     {presentArticles.map((article) => {
                         const isOpen = openSection === article;
                         return (
-                            <button
+                            <Button
                                 key={article}
                                 type="button"
+                                variant="ghost"
                                 onClick={() => selectSection(article)}
                                 data-testid={`drawer-tab-${article}`}
                                 aria-pressed={isOpen}
-                                className={`w-full text-left text-xs px-4 py-2.5 ${
+                                className={`w-full justify-start rounded-none text-left text-xs px-4 py-2.5 ${
                                     isOpen
                                         ? "bg-subtle text-ink-primary font-semibold"
-                                        : "text-ink-body hover:bg-subtle"
+                                        : "text-ink-body"
                                 }`}
                             >
                                 {article}
-                            </button>
+                            </Button>
                         );
                     })}
                 </nav>
@@ -431,14 +444,16 @@ function RegisteredAgreementsPanel({
                             </ul>
                         )}
                         {!readOnly && onBindAgreement && (
-                            <button
+                            <Button
                                 type="button"
+                                variant="link"
+                                size="sm"
                                 onClick={() => onBindAgreement(null)}
                                 data-testid="drawer-unbind-agreement"
-                                className="text-xs underline text-ink-muted hover:text-ink-primary"
+                                className="px-0 text-xs underline text-ink-muted hover:text-ink-primary"
                             >
                                 Unbind &mdash; compose this order&rsquo;s clauses instead
-                            </button>
+                            </Button>
                         )}
                     </div>
                 ) : (
@@ -449,8 +464,10 @@ function RegisteredAgreementsPanel({
                             or register it now on its own: one stake, reusable in any assembly.
                         </p>
                         {!readOnly && onRegisterAgreement && (
-                            <button
+                            <Button
                                 type="button"
+                                variant="outline"
+                                size="compact"
                                 disabled={registering || composedClauseCount === 0}
                                 onClick={() => {
                                     setRegistering(true);
@@ -465,10 +482,10 @@ function RegisteredAgreementsPanel({
                                         .finally(() => setRegistering(false));
                                 }}
                                 data-testid="drawer-register-agreement"
-                                className="text-xs px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong disabled:opacity-50"
+                                className="px-2 py-1 rounded border-default text-ink-body hover:bg-paper hover:border-default-strong"
                             >
                                 {registering ? "Registering\u2026" : "Register this agreement on its own"}
-                            </button>
+                            </Button>
                         )}
                         {registerError && (
                             <p className="text-xs text-danger-fg" role="alert" data-testid="drawer-register-agreement-error">
@@ -500,20 +517,22 @@ function RegisteredAgreementsPanel({
                                 const bound = hexEqual(boundAgreementHash, row.agreementHash);
                                 return (
                                     <li key={row.agreementHash}>
-                                        <button
+                                        <Button
                                             type="button"
+                                            variant="outline"
+                                            size="compact"
                                             onClick={() => onBindAgreement?.(row.agreementHash)}
                                             aria-pressed={bound}
                                             data-testid={`drawer-agreement-${row.agreementHash}`}
                                             title={row.agreementHash}
-                                            className={`w-full text-left text-[11px] font-mono px-2 py-1 rounded border break-all ${
+                                            className={`w-full justify-start text-left text-[11px] font-mono px-2 py-1 rounded break-all ${
                                                 bound
                                                     ? "border-ink-primary bg-subtle text-ink-primary"
-                                                    : "border-default bg-paper text-ink-body hover:border-default-strong"
+                                                    : "border-default text-ink-body hover:bg-paper hover:border-default-strong"
                                             }`}
                                         >
                                             {label(row.agreementHash)}
-                                        </button>
+                                        </Button>
                                     </li>
                                 );
                             })}
@@ -729,6 +748,7 @@ function ClauseControl({
     return (
         <div>
             <label className="flex items-center gap-2 text-xs text-ink-body">
+                {/* Raw: a checkbox, which the Input primitive does not model. */}
                 <input
                     type="checkbox"
                     className="h-3.5 w-3.5"

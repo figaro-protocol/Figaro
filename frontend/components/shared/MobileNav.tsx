@@ -10,6 +10,7 @@ import { usePathname } from "next/navigation";
 import { NAV_LINKS, NavLink } from "@/components/shared/navLinks";
 import { doorOfRoute, navCurrent } from "@/components/shared/navActive";
 import { Disclosure } from "@/components/ui/Disclosure";
+import { Button } from "@/components/ui/Button";
 
 interface MobileNavProps {
     links?: NavLink[];
@@ -173,10 +174,12 @@ export function MobileNav({ links }: MobileNavProps) {
     return (
         <>
             {/* Hamburger Button */}
-            <button
+            <Button
                 ref={triggerRef}
+                variant="ghost"
+                size="icon"
                 onClick={() => (isOpen ? close() : open())}
-                className="md:hidden flex min-h-11 min-w-11 items-center justify-center rounded-tile border-0 bg-transparent p-2 text-ink-heading hover:bg-subtle-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="md:hidden flex border-0 p-2 text-ink-heading hover:bg-subtle-hover focus-visible:ring-offset-0"
                 aria-label="Toggle mobile menu"
                 aria-expanded={isOpen}
                 aria-controls="mobile-menu"
@@ -186,7 +189,7 @@ export function MobileNav({ links }: MobileNavProps) {
                 ) : (
                     <Menu className="w-6 h-6" aria-hidden="true" />
                 )}
-            </button>
+            </Button>
 
             {/* The drawer PORTALS to <body>: the sticky header's
                 backdrop-blur makes the header a containing block for fixed
@@ -216,13 +219,15 @@ export function MobileNav({ links }: MobileNavProps) {
                             <span className="text-heading-h3 text-ink-heading">
                                 Figaro<span className="align-super text-xs ml-1" aria-label="registered trademark">®</span> Protocol
                             </span>
-                            <button
+                            <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={close}
-                                className="flex min-h-11 min-w-11 items-center justify-center rounded-tile border-0 bg-transparent p-2 text-ink-muted hover:bg-subtle-hover hover:text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                                className="border-0 p-2 text-ink-muted hover:bg-subtle-hover hover:text-ink-primary focus-visible:ring-offset-0"
                                 aria-label="Close menu"
                             >
                                 <X className="w-5 h-5" aria-hidden="true" />
-                            </button>
+                            </Button>
                         </div>
 
                         {/* Navigation */}

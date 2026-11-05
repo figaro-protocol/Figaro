@@ -17,6 +17,7 @@
  */
 
 import { useId } from "react";
+import { Input } from "@/components/ui/Input";
 
 import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
 
@@ -39,13 +40,13 @@ export function DatetimeFieldInput({ value, onChange, testId }: FieldFormatInput
     const utcHintId = useId();
     return (
         <div className="flex items-center gap-2">
-            <input
+            <Input
                 type="datetime-local"
                 value={isoToLocal(value ?? "")}
                 onChange={(e) => onChange(localToIso(e.target.value))}
                 data-testid={testId}
                 aria-describedby={utcHintId}
-                className="w-full rounded border border-default bg-surface px-2 py-1 text-xs text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="rounded px-2 py-1 text-xs"
             />
             <span id={utcHintId} className="text-[11px] text-ink-muted">UTC</span>
         </div>

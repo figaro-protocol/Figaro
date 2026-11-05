@@ -127,6 +127,7 @@ export function AssemblyTermsPanel({
                 return (
                     <div key={clauseKey} className="space-y-1.5">
                         <label className="flex items-start gap-2 cursor-pointer">
+                            {/* Raw: a checkbox, which the Input primitive does not model. */}
                             <input
                                 type="checkbox"
                                 data-testid={`assembly-terms-clause-${clauseKey}`}

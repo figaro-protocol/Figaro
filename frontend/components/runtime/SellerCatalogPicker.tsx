@@ -31,6 +31,7 @@ import { isAddress } from "viem";
 import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
 import { hexEqual } from "@/lib/shared/evm";
+import { Input } from "@/components/ui/Input";
 import { bindsAssembly } from "@/lib/member/memberListing";
 import { deriveAssemblySlug } from "@/lib/shared/assembly";
 
@@ -52,7 +53,7 @@ interface Props {
     onSelect: (selection: SellerSelection | null) => void;
 }
 
-const FIELD = "w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:border-transparent";
+const FIELD = "rounded focus-visible:border-transparent";
 
 export function SellerCatalogPicker({ tokenSymbol, assemblyHash, onSelect }: Props) {
     const [selectedSellerAddress, setSelectedSellerAddress] = useState("");
@@ -106,7 +107,7 @@ export function SellerCatalogPicker({ tokenSymbol, assemblyHash, onSelect }: Pro
             </label>
 
             {/* Address step — the buyer enters any seller's address. */}
-            <input
+            <Input
                 type="text"
                 value={selectedSellerAddress}
                 onChange={(e) => { setSelectedSellerAddress(e.target.value); resetItem(); }}
@@ -135,6 +136,7 @@ export function SellerCatalogPicker({ tokenSymbol, assemblyHash, onSelect }: Pro
                 <div className="space-y-1 rounded border border-default p-2" data-testid="seller-catalog-list">
                     {catalogItems.map((item) => (
                         <label key={item.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                            {/* Raw: a radio, which the Input primitive does not model. */}
                             <input
                                 type="radio"
                                 name="seller-catalog-item"

@@ -17,6 +17,7 @@
 import { useCallback, useState } from "react";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "@/components/shared/Link";
+import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import {
@@ -92,15 +93,17 @@ export function PublishedList() {
                         <p className="text-[11px] text-ink-muted mt-0.5 break-all">{choice.contentURI}</p>
                     </div>
                     <div className="flex flex-col gap-2 shrink-0">
-                        <button
+                        <Button
                             type="button"
+                            variant="outline"
+                            size="compact"
                             onClick={() => handleFork(choice)}
                             disabled={forking !== null || choice.state !== "loaded"}
-                            className="text-xs px-3 py-1.5 rounded border border-ink-heading bg-paper hover:bg-subtle text-ink-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="py-1.5 rounded border-ink-heading disabled:opacity-40 disabled:cursor-not-allowed"
                             data-testid={`published-fork-${choice.slug}`}
                         >
                             {forking === choice.slug ? "Forking…" : "Fork"}
-                        </button>
+                        </Button>
                         <Link
                             href={`/assemblies/designer/view?slug=${encodeURIComponent(choice.slug)}`}
                             className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:border-default-strong text-ink-body text-center"

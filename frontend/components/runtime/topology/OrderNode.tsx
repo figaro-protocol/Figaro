@@ -6,6 +6,8 @@ import { tokenFigure } from "@/lib/shared/utils";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { describeClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { colorTokens } from "@/lib/shared/designTokenValues";
+import { Select } from "@/components/ui/Select";
+import { Button } from "@/components/ui/Button";
 
 // ── Visual maps ─────────────────────────────────────────────────────────────
 //
@@ -139,8 +141,10 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                         />
                     )}
                     {data.designerMode && data.onAddSubOrderClick && (
-                        <button
+                        <Button
                             type="button"
+                            variant="outline"
+                            size="inline"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 data.onAddSubOrderClick?.(data.orderHash);
@@ -148,14 +152,16 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             data-testid={`btn-add-suborder-${data.orderHash}`}
                             aria-label={`Add a sub-order under order ${data.orderHash.slice(0, 8)}`}
                             title="Add a sub-order (child) of this order"
-                            className="nodrag w-3.5 h-3.5 rounded-full border border-default bg-paper text-ink-body hover:bg-subtle hover:border-default-strong text-[10px] leading-none flex items-center justify-center"
+                            className="nodrag w-3.5 h-3.5 rounded-full border-default text-ink-body hover:border-default-strong text-[10px] leading-none flex"
                         >
                             +
-                        </button>
+                        </Button>
                     )}
                     {data.onDelete && !data.isRoot && (
-                        <button
+                        <Button
                             type="button"
+                            variant="outline"
+                            size="inline"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 data.onDelete?.(data.orderHash);
@@ -163,10 +169,10 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             data-testid={`order-node-${data.orderHash}-delete`}
                             aria-label={`Delete order ${data.orderHash.slice(0, 8)}`}
                             title="Delete this order (and any descendants)"
-                            className="nodrag w-3.5 h-3.5 rounded-full border border-error/40 bg-paper text-error-fg hover:bg-error/10 hover:border-error text-[10px] leading-none flex items-center justify-center"
+                            className="nodrag w-3.5 h-3.5 rounded-full border-error/40 text-error-fg hover:bg-error/10 hover:border-error text-[10px] leading-none flex"
                         >
                             ×
-                        </button>
+                        </Button>
                     )}
                 </span>
             </div>
@@ -219,7 +225,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
             </div>
             {data.designerMode && data.onAddParentClick && data.candidateParents && data.candidateParents.length > 0 && (
                 <div className="nodrag mt-1.5 pt-1.5 border-t border-default">
-                    <select
+                    <Select
                         data-testid={`select-add-parent-${data.orderHash}`}
                         aria-label={`Add a parent to order ${data.orderHash.slice(0, 8)}`}
                         title="Add an existing order as a parent (creates a join)"
@@ -230,13 +236,13 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                             e.currentTarget.value = "";
                             if (parentId) data.onAddParentClick?.(data.orderHash, parentId);
                         }}
-                        className="nodrag w-full rounded border border-default bg-surface text-[10px] text-ink-body px-1 py-0.5"
+                        className="nodrag min-h-0 rounded text-[10px] text-ink-body px-1 py-0.5"
                     >
                         <option value="" disabled>+ add parent…</option>
                         {data.candidateParents.map((p) => (
                             <option key={p.id} value={p.id}>{p.label}</option>
                         ))}
-                    </select>
+                    </Select>
                 </div>
             )}
             <Handle

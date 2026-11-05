@@ -50,6 +50,7 @@ export default function GlobalError({
                         </p>
 
                         <div className="flex flex-col gap-3">
+                            {/* Raw: global-error renders outside the app shell, without the design-system CSS the Button primitive needs. */}
                             <button
                                 onClick={reset}
                                 className="px-6 py-3 bg-paper border border-default text-ink-primary font-semibold rounded-lg"
@@ -57,6 +58,7 @@ export default function GlobalError({
                                 Try again
                             </button>
 
+                            {/* Raw: global-error renders outside the app shell, without the design-system CSS the Button primitive needs. */}
                             <button
                                 onClick={copyError}
                                 className="px-6 py-3 bg-paper border border-default text-ink-primary font-semibold rounded-lg inline-flex items-center justify-center gap-2"
@@ -65,6 +67,7 @@ export default function GlobalError({
                                 {copied ? 'Copied' : 'Copy Error Details'}
                             </button>
 
+                            {/* Raw: global-error renders outside the app shell, without the design-system CSS the Button primitive needs. */}
                             <button
                                 onClick={() => window.location.href = '/'}
                                 className="px-6 py-3 bg-paper border border-default text-ink-primary font-semibold rounded-lg"
