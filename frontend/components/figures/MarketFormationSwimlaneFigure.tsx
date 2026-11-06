@@ -154,7 +154,7 @@ export function MarketFormationSwimlaneFigure({
             frameClassName="w-full max-w-2xl mx-auto"
             title={
                 <>
-                    Offer formation by dispatch race and by request for quotes, and where
+                    Commitment formation by dispatch race and by request for quotes, and where
                     the mechanism enters
                 </>
             }
@@ -164,7 +164,7 @@ export function MarketFormationSwimlaneFigure({
                     candidate sellers, and the band beneath both is the mechanism.
                     Step one, in the buyer&apos;s lane: the buyer builds one unsigned
                     commitment struct per candidate, each naming that candidate and stating
-                    the value the chain has accumulated through its link, so a candidate
+                    the value the process has accumulated through its order, so a candidate
                     knows the balance the commitment will require of it before it answers.
                     Step two or step three, in the candidates&apos; lane and never both: on
                     the race leg a candidate countersigns the draft exactly as it stands,
@@ -191,7 +191,7 @@ export function MarketFormationSwimlaneFigure({
             caption={
                 <>
                     Reversing the signing order is the whole mechanism: drafts bind nobody, an
-                    answer binds only its author, and the buyer&rsquo;s one signature is at once
+                    answer binds only its signer, and the buyer&rsquo;s one signature is at once
                     the selection and the commitment &mdash; so no venue is needed to hold state
                     between the two.
                 </>
@@ -372,7 +372,7 @@ export function MarketFormationSwimlaneFigure({
                     Two signatures over one struct admit the commitment; the bonds pull from both
                 </text>
                 <text x={LANE_A_X + 12} y={bandY + 42.5} fontSize="8" className="fill-ink-body">
-                    sides. Nothing in the artifact says how the seller was found, so a raced offer,
+                    sides. Nothing in the artifact says how the seller was found, so a raced commitment,
                 </text>
                 <text x={LANE_A_X + 12} y={bandY + 53} fontSize="8" className="fill-ink-body">
                     a quoted one, and one arranged by hand are the same object here.

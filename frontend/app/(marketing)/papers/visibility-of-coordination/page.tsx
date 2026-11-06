@@ -12,7 +12,7 @@ import { Math } from "@/components/papers/Math";
 export const metadata: Metadata = withOg({
     title: "The Visibility of Coordination — Figaro",
     description:
-        "A Gramscian reading: “two strangers need a platform to transact safely” is a hegemonic proposition, not a structural necessity. The mechanism makes the coordination function visible as a separable design choice.",
+        "A Gramscian reading: the platform, the firm and clearing rails a state or alliance controls carry one hegemonic proposition, that a stranger's promise is made good after the fact. Bonds locked before the trade make it visible as a contingent design choice.",
 });
 
 export default function VisibilityOfCoordinationPaper() {
@@ -83,7 +83,7 @@ export default function VisibilityOfCoordinationPaper() {
                     Step 1 (lineage), from (3): the three propositions carry one older proposition. Step 2 (hegemony), from (1), (2), and Step 1: to presuppose a carrier is to presuppose what it carries, so the older proposition is presupposed in each carrier&rsquo;s reform discourse, disputing it fails to make sense, and it is hegemonic. Step 3 (separation), from (4), (6), and §3&rsquo;s assignment of each other part of the bundle (the functions §2 lists) to a performer, stipulated there: each part, the guarantee included, has a performer other than the incumbent, so the function is separable. Step 4 (visibility, interpretive), from Step 3 and (5): the function becomes visible as a bundle without a breakdown. Step 5 (diagnosis), from (4), Steps 2 and 4: the alternative holds an equilibrium on the guarantee, so the obstacle is that the second answer is hard to hear, not that it is weak on the guarantee.
                 </p>
                 <p>
-                    So the proposition that a stranger&rsquo;s promise must be made good after the fact, by an authority outside the trade, is hegemonic (Step 2); the platform, the firm, and the corridor carry it (Step 1); the bonded mechanism makes it visible as a contingent design choice (Steps 3 and 4); and making that substitution conceivable is the political-economy problem (Step 5). The falsifier is the debate the previous paragraph names. The argument is diagnostic only: it predicts no adoption, and §6 applies it to itself.
+                    So the proposition that a stranger&rsquo;s promise must be made good after the fact, by an authority outside the trade, is hegemonic (Step 2); the platform, the firm, and the corridor carry it (Step 1); the bonded mechanism makes it visible as a contingent design choice (Steps 3 and 4); and making that substitution conceivable is the political-economy problem (Step 5). The falsifier is the debate the second paragraph of this section names. The argument is diagnostic only: it predicts no adoption, and §6 applies it to itself.
                 </p>
                 <PaperSubsection title="1.1 The Part of the Mechanism This Paper Uses">
                     <p>
