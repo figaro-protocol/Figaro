@@ -6,7 +6,6 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { DisciplineIntersectionFigure } from "@/components/figures/DisciplineIntersectionFigure";
 import { PAPER_GROUPS, tagIndex } from "@/app/(marketing)/_lib/paperGroups";
 import { PaperRow } from "./_components/PaperRow";
-import { More } from "./_components/More";
 
 /** The taxonomy's source — cited ONCE, in the page footnote. */
 const TAXONOMY_URL =
@@ -15,21 +14,11 @@ const TAXONOMY_URL =
 export const metadata: Metadata = withOg({
     title: "Working Groups — Figaro",
     description:
-        "Form a working group where you are: people from different disciplines, around one paper. The eight disciplines of cryptoeconomics, the question each paper asks, and how to publish what your group finds.",
+        "Form working groups where you are: people from different disciplines, around the papers. The eight disciplines of cryptoeconomics, the papers in each, and how to publish what your group finds.",
 });
-
-/** Derived, never stated: the corpus size is whatever `PAPER_GROUPS` holds. */
-const PAPER_COUNT = PAPER_GROUPS.reduce((n, g) => n + g.papers.length, 0);
 
 /** The reader's index, derived: which industries and fields the papers name as their doorway. */
 const INDUSTRIES = tagIndex("for");
-
-/** The three papers to read first, whatever the reader's discipline. */
-const READ_FIRST = [
-    { href: "/papers/figaro-as-a-cryptoeconomic-system", label: "Figaro as a Cryptoeconomic System", line: "the whole, in the field’s own definitions" },
-    { href: "/papers/asymmetric-bonding", label: "Asymmetric Bonding and Buyer Dominance", line: "the equilibrium everything else reasons from" },
-    { href: "/papers/verified-resolution-kernel", label: "What Formal Verification Transfers to a Bonded Contract", line: "what a machine has and has not checked" },
-];
 
 export default function WorkingGroups() {
     return (
@@ -38,7 +27,7 @@ export default function WorkingGroups() {
                 title="Working groups."
                 lead={
                     <>
-                        Form one where you are. No permission. No charter.
+                        Form working groups where you are. No permission. No charter.
                         <br />
                         Mix the disciplines: no single one closes these questions.
                         <br />
@@ -50,13 +39,13 @@ export default function WorkingGroups() {
             <MarketingSection title="Form a group.">
                 <ol className="text-base text-ink-body leading-relaxed max-w-2xl space-y-2 list-decimal pl-6">
                     <li>
-                        <span className="text-ink-heading font-medium">Pick a question.</span> Every paper below asks one.
+                        <span className="text-ink-heading font-medium">Pick an area of interest.</span> One of the eight disciplines below. Explore the papers, within and outside of that area.
                     </li>
                     <li>
                         <span className="text-ink-heading font-medium">Find people.</span> Three or four, from different disciplines, near you.
                     </li>
                     <li>
-                        <span className="text-ink-heading font-medium">Meet.</span> Read the paper together. Try to refute it.
+                        <span className="text-ink-heading font-medium">Meet.</span> Read a paper together. Try to refute it.
                     </li>
                     <li>
                         <span className="text-ink-heading font-medium">Publish.</span> A new paper, a correction, or your group&rsquo;s venue: one pull request against{" "}
@@ -66,31 +55,16 @@ export default function WorkingGroups() {
                         .
                     </li>
                     <li>
-                        <span className="text-ink-heading font-medium">Build.</span> Clauses and assemblies the network uses earn{" "}
-                        <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Designer Rewards</Link>, in proportion to use. Work that comes before any use: the{" "}
-                        <Link href="/dao" className="text-ink-heading font-medium hover:underline">DAO&rsquo;s treasury</Link>, by human judgment.
+                        <span className="text-ink-heading font-medium">Build.</span> Clauses, agreements and assemblies the network uses earn{" "}
+                        <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Designer Rewards</Link>, in proportion to use.
                     </li>
                 </ol>
             </MarketingSection>
 
             <MarketingSection title="Eight disciplines.">
-                <ul className="text-sm text-ink-body leading-relaxed max-w-2xl space-y-1 mb-8">
-                    <li>
-                        The eight are Voshmgir and Zargham&rsquo;s, not ours<sup>1</sup>. {PAPER_COUNT} papers so far.
-                    </li>
-                    <li>A working group crosses them. Never one group per discipline.</li>
-                    <li>
-                        Read first, whatever your field:
-                        <ul className="mt-1 space-y-1 pl-4">
-                            {READ_FIRST.map((p) => (
-                                <li key={p.href}>
-                                    <Link href={p.href} className="text-ink-heading hover:underline">{p.label}</Link>
-                                    <span className="text-ink-muted"> — {p.line}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </li>
-                </ul>
+                <p className="text-base text-ink-body leading-relaxed max-w-2xl mb-6">
+                    The eight disciplines are<sup>1</sup>:
+                </p>
                 <DisciplineIntersectionFigure labels={PAPER_GROUPS.map((g) => g.name)} className="mb-10" />
                 <div id="index" className="scroll-mt-24 lg:grid lg:grid-cols-[1fr_15rem] lg:gap-10">
                 <aside className="mb-10 lg:mb-0 lg:order-2 lg:sticky lg:top-24 lg:self-start">
@@ -104,7 +78,6 @@ export default function WorkingGroups() {
                                 <Link href={`/working-groups/for/${t.slug}`} className="text-ink-heading hover:underline">
                                     {t.label}
                                 </Link>
-                                <span className="text-xs text-ink-muted"> · {t.papers.length}</span>
                             </li>
                         ))}
                     </ul>
@@ -118,15 +91,10 @@ export default function WorkingGroups() {
                             <p className="text-xs text-ink-muted italic mt-0.5">
                                 {g.discipline}
                             </p>
-                            <More id={`about-${g.slug}`} label="About this discipline">
-                                <p className="text-sm text-ink-body leading-relaxed max-w-2xl mb-3">
-                                    {g.intro}
-                                </p>
-                                <p className="text-sm text-ink-body leading-relaxed max-w-2xl">
-                                    {g.definition}
-                                </p>
-                            </More>
-                            <ul className="space-y-4 max-w-2xl mt-2">
+                            <p className="text-sm text-ink-body leading-relaxed max-w-2xl mt-2">
+                                {g.definition}
+                            </p>
+                            <ul className="space-y-5 max-w-2xl mt-5">
                                 {g.papers.map((p) => (
                                     <PaperRow key={p.href} paper={p} group={g} showGroup={false} />
                                 ))}
