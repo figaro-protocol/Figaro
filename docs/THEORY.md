@@ -30,7 +30,7 @@ exchange at an order, at most `G` for everything accumulated through it. The
 second part is a credit and never a debit: a party is counted for what is in
 its hands and never charged for what is not.
 
-Resolving *is* the buyer's acceptance — `FigaroCore` holds no test of
+Resolving *is* the buyer's acceptance of the performance, the law's word for taking what was delivered and never its word for assenting to an offer (that one's counterpart is the seller's counter-signature, `docs/LEXICON.md`) — `FigaroCore` holds no test of
 performance and admits no report of delivery. Resolution is the only terminal
 move; withholding is not terminal, and no clock runs from the bonded state, so
 every comparison is between *doing* and *never doing*.
