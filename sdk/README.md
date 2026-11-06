@@ -2685,7 +2685,7 @@ that *this content sat under that agreement's root, signed by those two parties,
 at that commit* — provenance and integrity, not veracity: no chain can testify
 that a sensor was pointed where its data says. The content is its signer's
 declaration or attestation; what stands behind a seller's attestation is the buyer's
-decision to withhold resolution, at the price of its own bond, until a false one is
+decision to withhold resolution, with its own bond locked beside the seller's, until a false one is
 put right, and after resolution it stays in the public data, in the evidence a forum
 or court reads, and in the signer's resolution history. Weigh a source by that history and by the bond
 it had at stake; there is no protocol-issued score, and parties acting together can
