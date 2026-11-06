@@ -19,7 +19,7 @@ Payoffs are ℤ, relative to each party's pre-commit balance, exactly as
 THEORY.md § "The comparison at position i" states them:
 
   seller, perform then resolution:      +Pᵢ        (payment earned, bond back)
-  seller, hold out (no resolution):     −2Gᵢ + rᵢ  (bond lost; rᵢ ≤ Gᵢ is what
+  seller, hold out (no resolution):     −2Gᵢ + rᵢ  (bond stays locked; rᵢ ≤ Gᵢ is what
                                                     it can actually retain)
   buyer after performance, resolve:     −Pᵢ        (pays, bond back)
   buyer after performance, withhold:    −2Pᵢ       (bond stays locked)
@@ -51,8 +51,8 @@ namespace Order
 /-- Seller payoff for performing, given the buyer then resolves. -/
 def performPayoff (o : Order) : Int := o.payment
 
-/-- Seller payoff for holding out with retention `r`: the bond is forfeit
-(never returned — no escape hatches) against whatever the seller can
+/-- Seller payoff for holding out with retention `r`: the bond stays locked
+(no escape hatch returns it) against whatever the seller can
 actually retain off-chain. -/
 def holdoutPayoff (o : Order) (r : Int) : Int := -(2 * o.cumulative) + r
 
@@ -78,7 +78,7 @@ theorem buyer_resolves (o : Order) : o.resolvePayoff > o.withholdPayoff := by
 plan — resolve after performance and withhold before it (the paper's σ*_B;
 `holdoutPayoff` is defined against that plan, so the conditioning lives in
 the definition, not in a hypothesis): earning the payment strictly beats
-forfeiting the bond, at every feasible retention `r ≤ Gᵢ`. -/
+leaving the bond locked, at every feasible retention `r ≤ Gᵢ`. -/
 theorem seller_performs (o : Order) (r : Int) (hr : r ≤ o.cumulative) :
     o.performPayoff > o.holdoutPayoff r := by
   have h1 := o.payment_floor
