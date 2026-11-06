@@ -357,7 +357,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 keywords: ["weaponized interdependence", "hegemony", "Belt and Road Initiative", "IMEC", "infrastructure power", "cooperation under anarchy", "permissionless substrate"],
                 industries: ["Cross-border trade"],
                 question: "Must a partner that chooses Belt and Road or IMEC also choose whose chokepoint its trade coordination sits behind?",
-                result: "Argued: a corridor's coordination layer can rest on a decentralized, permissionless substrate whose every position belongs to a party to the trade it carries and whose data is public to every reader alike; a participant sits behind one chokepoint fewer, never none.",
+                result: "Argued: a corridor's coordination layer can rest on a decentralized, permissionless substrate whose every position belongs to a party to the trade it carries and to whose data no reader has privileged access; the layer stops being a chokepoint that a corridor's sponsor holds.",
                 scope: "The physical layer stays with whoever finances it; the denomination, the ramps to local purchasing power and the chain beneath stay governed, and an issuer's lever over a denomination reaches through the substrate.",
             },
         ],
