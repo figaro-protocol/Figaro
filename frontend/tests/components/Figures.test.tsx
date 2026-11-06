@@ -7,6 +7,7 @@ import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure"
 import { MarketFormationSwimlaneFigure } from "@/components/figures/MarketFormationSwimlaneFigure";
 import { RegistryLifecycleFigure } from "@/components/figures/RegistryLifecycleFigure";
 import { WholeSystemFigure } from "@/components/figures/WholeSystemFigure";
+import { DisciplineIntersectionFigure } from "@/components/figures/DisciplineIntersectionFigure";
 import { readFile } from "node:fs/promises";
 
 afterEach(() => {
@@ -389,5 +390,22 @@ describe("WholeSystemFigure", () => {
         expect(container.querySelector("#paper-whole-title")?.textContent).toBe("The whole of Figaro");
         expect(container.querySelector("#paper-whole-desc")?.textContent).toContain("Bottom to top: the base chain");
         expect(container.querySelector("figcaption")).toBeNull();
+    });
+});
+
+describe("DisciplineIntersectionFigure", () => {
+    const labels = ["Economics and Game Theory", "Philosophy, Law and Ethics"];
+
+    it("links each discipline's name to its section when given the links, in the labels' order", () => {
+        const { container } = render(<DisciplineIntersectionFigure labels={labels} hrefs={["#economics", "#law"]} />);
+        const links = Array.from(container.querySelectorAll("svg a"));
+        expect(links.map((a) => a.getAttribute("href"))).toEqual(["#economics", "#law"]);
+        expect(links.map((a) => a.textContent)).toEqual(["Economics and GameTheory", "Philosophy, Law andEthics"]);
+    });
+
+    it("draws the names as plain text when given no links", () => {
+        const { container } = render(<DisciplineIntersectionFigure labels={labels} />);
+        expect(container.querySelector("svg a")).toBeNull();
+        expect(container.querySelector("svg")?.textContent).toContain("a working group");
     });
 });

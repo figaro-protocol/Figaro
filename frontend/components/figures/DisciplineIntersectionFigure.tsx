@@ -5,6 +5,10 @@ export interface DisciplineIntersectionFigureProps extends BaseFigureProps {
     /** One circle per discipline. Pass the live catalog
      *  (`PAPER_GROUPS.map((g) => g.name)`), never a copied list. */
     labels: string[];
+    /** One link per label, in the labels' order: where a press on the
+     *  discipline's name takes the reader (its section's `#<slug>`). Without
+     *  it the names are plain text. */
+    hrefs?: string[];
 }
 
 const CX = 330;
@@ -34,6 +38,7 @@ function wrapLabel(label: string, max = 20): string[] {
 
 export function DisciplineIntersectionFigure({
     labels,
+    hrefs,
     idPrefix = "discipline-intersection",
     className,
     svgProps,
@@ -73,6 +78,12 @@ export function DisciplineIntersectionFigure({
                               ? ly + LINE_H
                               : ly - ((lines.length - 1) * LINE_H) / 2 + 4;
 
+                    const name = lines.map((line, j) => (
+                        <tspan key={j} x={lx} y={startY + j * LINE_H}>
+                            {line}
+                        </tspan>
+                    ));
+
                     return (
                         <g key={label}>
                             <circle
@@ -82,13 +93,21 @@ export function DisciplineIntersectionFigure({
                                 className="fill-none stroke-default"
                                 strokeWidth="1"
                             />
-                            <text textAnchor={anchor} fontSize="10.5" className="fill-ink-body">
-                                {lines.map((line, j) => (
-                                    <tspan key={j} x={lx} y={startY + j * LINE_H}>
-                                        {line}
-                                    </tspan>
-                                ))}
-                            </text>
+                            {hrefs?.[i] ? (
+                                <a href={hrefs[i]} className="group focus-visible:outline-none">
+                                    <text
+                                        textAnchor={anchor}
+                                        fontSize="10.5"
+                                        className="fill-ink-heading group-hover:underline group-focus-visible:underline"
+                                    >
+                                        {name}
+                                    </text>
+                                </a>
+                            ) : (
+                                <text textAnchor={anchor} fontSize="10.5" className="fill-ink-body">
+                                    {name}
+                                </text>
+                            )}
                         </g>
                     );
                 })}

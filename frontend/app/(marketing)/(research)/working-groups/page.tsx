@@ -65,24 +65,29 @@ export default function WorkingGroups() {
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl mb-6">
                     The eight disciplines are<sup>1</sup>:
                 </p>
-                <DisciplineIntersectionFigure labels={PAPER_GROUPS.map((g) => g.name)} className="mb-10" />
-                <div id="index" className="scroll-mt-24 lg:grid lg:grid-cols-[1fr_15rem] lg:gap-10">
-                <aside className="mb-10 lg:mb-0 lg:order-2 lg:sticky lg:top-24 lg:self-start">
+                <DisciplineIntersectionFigure
+                    labels={PAPER_GROUPS.map((g) => g.name)}
+                    hrefs={PAPER_GROUPS.map((g) => `#${g.slug}`)}
+                    className="mb-10"
+                />
+                <div id="index" className="scroll-mt-24 md:grid md:grid-cols-[1fr_13rem] md:gap-8">
+                <aside className="mb-10 md:mb-0 md:order-2 md:sticky md:top-24 md:self-start">
                     <h3 className="text-sm text-ink-heading font-medium">By industry.</h3>
                     <p className="text-xs text-ink-muted leading-relaxed mt-1 mb-3">
                         Arriving from one of these? Start there.
                     </p>
-                    <ul className="text-sm space-y-1">
+                    <ul className="text-xs space-y-1">
                         {INDUSTRIES.map((t) => (
                             <li key={t.slug}>
                                 <Link href={`/working-groups/for/${t.slug}`} className="text-ink-heading hover:underline">
                                     {t.label}
                                 </Link>
+                                <span className="text-ink-muted"> · {t.papers.length}</span>
                             </li>
                         ))}
                     </ul>
                 </aside>
-                <div className="space-y-10 lg:order-1">
+                <div className="space-y-10 md:order-1">
                     {PAPER_GROUPS.map((g) => (
                         <article key={g.slug} id={g.slug} className="scroll-mt-24 border-l-2 border-default pl-6">
                             <h3 className="text-heading-h3 text-ink-heading leading-snug">
