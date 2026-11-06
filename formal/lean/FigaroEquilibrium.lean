@@ -99,7 +99,7 @@ theorem deterrent_gap (o : Order) :
 /-- **Not dominance-solvable, honestly** (THEORY.md: "the conclusion is
 conditional and must stay so"): where the process will NOT close — some
 other seller held out — a seller's own holdout strictly beats performing
-whenever it retains anything: performing costs bond and product together,
+whenever it retains anything: performing leaves the bond locked and the product handed over,
 `−2Gᵢ`, against `−2Gᵢ + rᵢ`. Cooperation is a best response GIVEN the
 others perform; no bond schedule makes handing goods to a non-paying
 process attractive. -/
