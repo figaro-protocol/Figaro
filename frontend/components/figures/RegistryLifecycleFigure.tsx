@@ -30,7 +30,7 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  *    comment names — without it, one deposit is recyclable across identities.
  *
  * `src/build/registries/ClauseRegistry.sol` + `AssemblyRegistry.sol`
- *  - `registerClause(...)` / `registerAssembly(...)` take the exact deposit
+ *  - `registerClause(...)` / `registerAgreement(...)` / `registerAssembly(...)` take the exact deposit
  *    (`WrongDeposit`), keep `registeredBy`, and are first-write-wins:
  *    `AlreadyRegistered(clauseKey)` / `AssemblyAlreadyRegistered(hash)`.
  *    First-write-wins is anti-DISPLACEMENT: a clause key is `keccak256` of the
@@ -106,9 +106,10 @@ const MEMBER: Machine = {
 };
 
 const CLAUSE: Machine = {
-    heading: "A clause or an assembly",
+    heading: "A clause, agreement or assembly",
     subheading: [
         "ClauseRegistry — hash of the pinned spec",
+        "AgreementRegistry — root of its composed clauses",
         "AssemblyRegistry — hash of the pinned composition",
     ],
     states: [
@@ -117,7 +118,7 @@ const CLAUSE: Machine = {
         { label: "deposit withdrawn", note: "de-surfaced for NEW compositions" },
     ],
     edges: [
-        { call: "registerClause / registerAssembly", note: "first-write-wins, exact deposit" },
+        { call: "register{Clause|Agreement|Assembly}", note: "first-write-wins, exact deposit" },
         { call: "withdrawDeposit(key)", note: "registeredBy only, once, no cooldown" },
     ],
     nonTransition: [
@@ -182,8 +183,9 @@ export function RegistryLifecycleFigure({
                     requested, and releases the deposit only after a cooldown
                     fixed at deployment; re-registering is open immediately and
                     costs a second deposit while the first stays locked. A
-                    clause, keyed by the hash of its pinned spec, or an assembly,
-                    keyed by the assembly hash of its pinned document, moves from
+                    clause, keyed by the hash of its pinned spec, an agreement,
+                    keyed by the merkle root over its composed clauses, or an
+                    assembly, keyed by the assembly hash of its pinned document, moves from
                     unregistered to live on the same kind of deposit, and its
                     author can withdraw that deposit in a single call with no
                     cooldown — though the protocol surface refuses while commits
@@ -196,8 +198,8 @@ export function RegistryLifecycleFigure({
                 <>
                     Both families price entry the same way &mdash; a reclaimable
                     deposit, set per deployment. What differs is what leaving clears:
-                    a participant is a live identity, a clause or an assembly is a
-                    permanent published entry.
+                    a participant is a live identity, a clause, an agreement or an
+                    assembly is a permanent published entry.
                 </>
             }
         >

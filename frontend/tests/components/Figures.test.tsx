@@ -311,6 +311,7 @@ describe("RegistryLifecycleFigure", () => {
         const { container } = render(<RegistryLifecycleFigure />);
         const text = container.textContent ?? "";
         expect(text).toContain("ClauseRegistry — hash of the pinned spec");
+        expect(text).toContain("AgreementRegistry — root of its composed clauses");
         expect(text).toContain("AssemblyRegistry — hash of the pinned composition");
         // Collapsing both into one "by hash" line loses the distinction.
         expect(text).not.toContain("ClauseRegistry / AssemblyRegistry — by hash");

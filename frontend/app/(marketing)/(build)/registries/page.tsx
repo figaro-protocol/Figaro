@@ -14,7 +14,7 @@ import { RegistryExplorer } from "@/components/registries/RegistryExplorer";
 export const metadata: Metadata = withOg({
     title: "Registries — Figaro",
     description:
-        "Search what is registered on the network: every clause, assembly, and member, read live from the three registries' event streams and IPFS — faceted by article, registeredBy, composed clause, and live stake. Nothing bundled, nothing ranked.",
+        "Search what is registered on the network: every clause, agreement, assembly, and member, read live from the four registries' event streams and IPFS — faceted by article, registeredBy, composed clause, and live stake. Nothing bundled, nothing ranked.",
 });
 
 export default function Registries() {
@@ -24,7 +24,7 @@ export default function Registries() {
                 title="Registry explorer."
                 lead={
                     <>
-                        Every clause, assembly, and member registered on the network this site
+                        Every clause, agreement, assembly, and member registered on the network this site
                         reads &mdash; each row an on-chain registration with a live stake, its
                         content fetched from IPFS. Search, facet, sort; nothing here is a
                         bundled roster, and nothing is ranked by use. This lists every

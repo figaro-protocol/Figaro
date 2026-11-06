@@ -7,7 +7,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Build — Figaro",
     description:
-        "Publish clauses and assemblies for anyone to compose, and be rewarded for the use real trades make of them; the Core is deployed once, decentralized and permissionless, and anyone builds above it.",
+        "Publish clauses, agreements and assemblies for anyone to compose, and be rewarded for the use real trades make of them; the Core is deployed once, decentralized and permissionless, and anyone builds above it.",
 });
 
 // THE BUILD LANDING — the door of whoever writes and publishes what trades are
@@ -44,13 +44,13 @@ const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
     },
     {
         line: "An agent builds and trades on the same footing as a person.",
-        body: "Software holding a key buys, sells, designs clauses and assemblies, and operates a wallet under its holder's policy. Four open prompts and a policy signer are published for it.",
+        body: "Software holding a key buys, sells, designs clauses, agreements and assemblies, and operates a wallet under its holder's policy. Four open prompts and a policy signer are published for it.",
         cta: "Agents",
         href: "/agents",
     },
     {
-        line: "A designer is rewarded for the use real trades make of its clauses and assemblies.",
-        body: "Each resolved process counts once toward every clause and assembly its signed agreement committed, and a published formula turns those processes and the distinct sellers behind them into a share of a fixed reserve of florins. No vote allocates the reward.",
+        line: "A designer is rewarded for the use real trades make of its clauses, agreements and assemblies.",
+        body: "Each resolved process counts once toward every clause, registered agreement and assembly its signed agreement committed, and a published formula turns those processes and the distinct sellers behind them into a share of a fixed reserve of florins. No vote allocates the reward.",
         cta: "Designer Rewards",
         href: "/rpgf",
     },

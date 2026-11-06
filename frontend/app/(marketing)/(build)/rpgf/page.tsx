@@ -33,9 +33,9 @@ export default function DesignerRewards() {
                     The 600 million are rewarded over nine annual periods in three rising steps &mdash; 15% of the reserve (45 million a year for two years), then 30% (60 million a year for three), then 55% (82.5 million a year for four) &mdash; claimable once a year, each year from its own tally, fixed at deployment; the biggest payouts wait for the most evidence. Where the 600 million sits within the fixed billion is on <Link href="/tokenomics" className="text-ink-heading font-medium hover:underline">Tokenomics</Link>, which owns the supply side.
                 </p>
                 <ul className="space-y-3 text-base text-ink-body leading-relaxed list-disc pl-5">
-                    <li>Every clause and assembly earns the same way: by how much real resolved trade reached for it.</li>
+                    <li>Every clause, agreement and assembly earns the same way: by how much real resolved trade reached for it.</li>
                     <li>Two numbers decide a share: resolved trades that carried it, and distinct sellers behind them. Breadth beats volume &mdash; fifty sellers reaching for it once outweighs one seller using it fifty times. Payment size never enters.</li>
-                    <li>Your share is your clauses&apos; and assemblies&apos; numbers over everyone&apos;s. The rule is the smart contract itself.</li>
+                    <li>Your share is your clauses&apos;, agreements&apos; and assemblies&apos; numbers over everyone&apos;s. The rule is the smart contract itself.</li>
                 </ul>
                 <p className="text-base text-ink-body leading-relaxed mt-6">
                     The two conditions in the lead are one guard, read from both ends: three distinct staked sellers is the smallest count neither one identity nor a colluding pair reaches, and staging it costs three live stakes and three resolved processes; a live stake required of designer and seller alike means farming the count &mdash; padding a tally with wallets you control &mdash; costs real stake for as long as the padding stands. That stake is what stops reward farming; no cap, weight, or reviewer is needed.

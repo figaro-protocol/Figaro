@@ -22,7 +22,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = withOg({
     title: "Tokenomics — Figaro",
     description:
-        "The florin: a unit two strangers can converge on when they share no other. One billion, minted once, closed by a one-way latch. 600 million is reserved for designers, drawn in fixed period budgets in proportion to how much processes use their clauses and assemblies. The rest is held openly: 300 million the DAO treasury, 70 million the founder, 30 million supporters. The page also places the florin among the units a trade can be denominated in.",
+        "The florin: a unit two strangers can converge on when they share no other. One billion, minted once, closed by a one-way latch. 600 million is reserved for designers, drawn in fixed period budgets in proportion to how much processes use their clauses, agreements and assemblies. The rest is held openly: 300 million the DAO treasury, 70 million the founder, 30 million supporters. The page also places the florin among the units a trade can be denominated in.",
 });
 
 export default function Tokenomics() {
@@ -80,7 +80,7 @@ export default function Tokenomics() {
                                 <td className="py-2">The treasury, spent by human judgment. Genesis mint, operational from the first block.</td>
                             </tr>
                             <tr>
-                                <td className="py-2 pr-4">Clause and assembly designers</td>
+                                <td className="py-2 pr-4">Clause, agreement and assembly designers</td>
                                 <td className="py-2 pr-4">60%</td>
                                 <td className="py-2 pr-4">600,000,000</td>
                                 <td className="py-2">A reserve, not a holding: minted only against counted use of the work, over nine annual periods.</td>
@@ -89,7 +89,7 @@ export default function Tokenomics() {
                     </table>
                 </div>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    A florin is a Schelling point: a unit strangers converge on because others do, and nothing else. It carries no rights of any kind &mdash; no ownership interest in the protocol, no influence over it, no vote, and no claim on the value produced by the work of others. That is as true of the founder&apos;s and supporters&apos; florins as of any other. The founder&apos;s florins recognize design work done before the token existed; the supporters&apos; florins were given, not sold; nobody bought either, and every florin is worth something only if the network is used and designers keep adding clauses and assemblies. What a florin is, and why it is not a security, is argued once, in <Link href="/papers/florin-schelling-point-token" className="text-ink-heading font-medium hover:underline">The Florin: A Schelling-Point Token Issued at Zero</Link>.
+                    A florin is a Schelling point: a unit strangers converge on because others do, and nothing else. It carries no rights of any kind &mdash; no ownership interest in the protocol, no influence over it, no vote, and no claim on the value produced by the work of others. That is as true of the founder&apos;s and supporters&apos; florins as of any other. The founder&apos;s florins recognize design work done before the token existed; the supporters&apos; florins were given, not sold; nobody bought either, and every florin is worth something only if the network is used and designers keep adding clauses, agreements and assemblies. What a florin is, and why it is not a security, is argued once, in <Link href="/papers/florin-schelling-point-token" className="text-ink-heading font-medium hover:underline">The Florin: A Schelling-Point Token Issued at Zero</Link>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Nothing here was sold. There was no sale, no round, and no offer of any kind &mdash; the genesis holdings simply sit in their wallets, which is also why there is no vesting to describe. A vesting cliff exists to protect investors from founders walking away, and there are no investors; adding one would be theater, and it would recruit holders whose reason for holding is a schedule rather than agreement with what is being built.
@@ -104,7 +104,7 @@ export default function Tokenomics() {
 
             <MarketingSection title="Each year's budget is fixed in advance, at one of three rising levels.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The largest budgets fall in the later years, against the longest record of use. The 600 million is not held by anyone waiting to be handed out. It is minted only when a designer claims a closed period&apos;s share against use the chain already holds &mdash; nine annual periods at three rising levels, ending after the ninth. Funding the network before there is evidence to measure is the treasury&apos;s job, not the counter&apos;s. The schedule itself, and how a share is worked out from a period&apos;s usage &mdash; the same rule for every clause and every assembly, no weights, no categories, no per-wallet cap, and nothing taken from anyone to fund it &mdash; is set out on <Link href="/rpgf" className="text-ink-heading hover:underline">Designer Rewards</Link>, which owns that mechanism; it is not restated here.
+                    The largest budgets fall in the later years, against the longest record of use. The 600 million is not held by anyone waiting to be handed out. It is minted only when a designer claims a closed period&apos;s share against use the chain already holds &mdash; nine annual periods at three rising levels, ending after the ninth. Funding the network before there is evidence to measure is the treasury&apos;s job, not the counter&apos;s. The schedule itself, and how a share is worked out from a period&apos;s usage &mdash; the same rule for every clause, every agreement and every assembly, no weights, no categories, no per-wallet cap, and nothing taken from anyone to fund it &mdash; is set out on <Link href="/rpgf" className="text-ink-heading hover:underline">Designer Rewards</Link>, which owns that mechanism; it is not restated here.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Two limits belong beside the schedule. The pool is fixed, so a wallet manufacturing usage dilutes everyone&apos;s share and inflates nothing &mdash; it can never mint a florin that was not already reserved. And the budgets end: after the ninth period nothing renews them &mdash; by design.
