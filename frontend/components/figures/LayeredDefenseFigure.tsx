@@ -115,7 +115,12 @@ export function LayeredDefenseFigure({
 
                 {/* Boundary callout, anchored on the reach-boundary ring */}
                 <line x1={cx + rSellers} y1={cy} x2="322" y2={cy} className="stroke-ink-primary" strokeWidth="1" />
-                <text x="326" y={cy + 3} fontSize="8" className="fill-ink-primary font-mono">{boundaryRingLabel}</text>
+                {/* One word a line, so the label stays inside the plate's 400 units. */}
+                <text y={cy - 3} fontSize="8" className="fill-ink-primary font-mono">
+                    {boundaryRingLabel.split(" ").map((word, i) => (
+                        <tspan key={word} x="326" dy={i === 0 ? 0 : 10}>{word}</tspan>
+                    ))}
+                </text>
 
                 {/* ── Legend / label list ─────────────────────────────── */}
                 {layers.map((layer, i) => {

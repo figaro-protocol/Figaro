@@ -60,10 +60,11 @@ const ROWS: readonly Row[] = [
         n: "1",
         title: "Draft",
         lines: [
-            "One unsigned struct per candidate, each naming",
-            "that candidate and stating the value the chain",
-            "has accumulated through its link — so a candidate",
-            "knows the balance it must hold before it answers.",
+            "One unsigned struct per candidate, each",
+            "naming that candidate and stating the",
+            "value the process has accumulated through",
+            "its order — so a candidate knows the",
+            "balance it must hold before it answers.",
         ],
     },
     {
@@ -72,8 +73,9 @@ const ROWS: readonly Row[] = [
         title: "Answer — race leg",
         leg: true,
         lines: [
-            "Countersign the draft as it stands: available at",
-            "the price the catalog already posted.",
+            "Countersign the draft as it stands:",
+            "available at the price the catalog",
+            "already posted.",
         ],
     },
     {
@@ -82,8 +84,9 @@ const ROWS: readonly Row[] = [
         title: "Answer — quote leg",
         leg: true,
         lines: [
-            "Return the draft re-priced at your own figure, at",
-            "or below the ceiling the buyer drafted at.",
+            "Return the draft re-priced at your own",
+            "figure, at or below the ceiling the buyer",
+            "drafted at.",
         ],
     },
     {
@@ -91,9 +94,10 @@ const ROWS: readonly Row[] = [
         n: "4",
         title: "Verify",
         lines: [
-            "Race: the answer must be the drafted struct, hash",
-            "for hash. Quote: rebuild at the quoted figure and",
-            "require the same equality — never a difference.",
+            "Race: the answer must be the drafted",
+            "struct, hash for hash. Quote: rebuild at",
+            "the quoted figure and require the same",
+            "equality — never a difference.",
         ],
     },
     {
@@ -101,9 +105,10 @@ const ROWS: readonly Row[] = [
         n: "5",
         title: "Select, and sign once",
         lines: [
-            "Cheapest verified answer by default; any answer",
-            "at the buyer's discretion. The single signature is",
-            "the selection and the commitment in one act.",
+            "Cheapest verified answer by default; any",
+            "answer at the buyer's discretion. The",
+            "single signature is the selection and the",
+            "commitment in one act.",
         ],
     },
 ];

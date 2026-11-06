@@ -134,7 +134,7 @@ export function DesignGraphCollapseFigure({
 
                 {/* The collapse arrow, between the panels */}
                 <line
-                    x1={L_X + L_W + 4}
+                    x1={R_X - 26}
                     y1={(leftTop + bodyBottom) / 2}
                     x2={R_X - 4}
                     y2={(leftTop + bodyBottom) / 2}
@@ -143,10 +143,10 @@ export function DesignGraphCollapseFigure({
                     markerEnd={`url(#${idPrefix}-arrow)`}
                 />
                 <text
-                    x={(L_X + L_W + R_X) / 2}
+                    x={R_X + 4}
                     y={(leftTop + bodyBottom) / 2 - 6}
                     fontSize="7.5"
-                    textAnchor="middle"
+                    textAnchor="end"
                     className="fill-ink-primary"
                 >
                     collapses
@@ -170,7 +170,7 @@ export function DesignGraphCollapseFigure({
                                 // No connector: these value-adders are deliberately NOT on
                                 // the main line, and drawing them onto it would assert the
                                 // sequence the paragraph denies.
-                                <text x={x - 4} y={y - 12} fontSize="7.5" fontStyle="italic" className="fill-ink-muted">
+                                <text x={spineX + 9} y={y - 12} fontSize="7.5" fontStyle="italic" className="fill-ink-muted">
                                     {branchNote}
                                 </text>
                             )}

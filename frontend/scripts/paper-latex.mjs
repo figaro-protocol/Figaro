@@ -137,6 +137,8 @@ function hasClass(el, ...names) {
 function isBlock(node) {
     if (node.nodeType !== 1) return false;
     if (hasClass(node, "katex-display")) return true;
+    // A span the page displays as a block (Tailwind's `block`) starts its own paragraph.
+    if (node.tagName === "SPAN" && hasClass(node, "block")) return true;
     return BLOCK_TAGS.has(node.tagName);
 }
 
@@ -257,24 +259,39 @@ function table(el, ctx) {
     if (rows.length === 0) return "";
     const ncols = Math.max(...rows.map((r) => [...r.children].reduce((n, c) => n + Number(c.getAttribute("colspan") ?? 1), 0)));
     const longest = Math.max(...rows.map((r) => r.textContent.replace(/\s+/g, " ").length));
-    // Short rows set at natural width; prose cells wrap across the line.
+    // Short rows set at natural width and stay whole; prose cells wrap across
+    // the line, and such a table may break across pages between rows, its
+    // header printed again on each page.
     const wide = longest > 70;
     const spec = wide ? `@{}${"L".repeat(ncols)}@{}` : `@{}${"l".repeat(ncols)}@{}`;
     const head = el.querySelector("thead");
+    const headRows = head ? head.querySelectorAll("tr").length : 0;
     let out = wide
-        ? `\\begin{center}\\small\n\\begin{tabularx}{\\linewidth}{${spec}}\n\\toprule\n`
+        ? `\\begingroup\\small\n\\begin{xltabular}{\\linewidth}{${spec}}\n\\toprule\n`
         : `\\begin{center}\\small\n\\begin{tabular}{${spec}}\n\\toprule\n`;
     rows.forEach((tr, i) => {
+        let col = 0;
         const cells = [...tr.children].map((c) => {
             const body = inlineChildren(c, ctx).replace(/\n+/g, " ").trim();
             const span = Number(c.getAttribute("colspan") ?? 1);
             const strong = c.tagName === "TH" && !hasClass(c, "font-normal") ? `\\textbf{${body}}` : body;
-            return span > 1 ? `\\multicolumn{${span}}{${wide ? "L" : "l"}}{${strong}}` : strong;
+            const start = col;
+            col += span;
+            if (span === 1) return strong;
+            // A spanning cell is as wide as the columns it covers, and keeps
+            // the table's flush edge where it sits on one.
+            const column = wide
+                ? `>{\\raggedright\\arraybackslash\\hsize=\\dimexpr ${span}\\hsize+${2 * (span - 1)}\\tabcolsep\\relax}X`
+                : "l";
+            return `\\multicolumn{${span}}{${start === 0 ? "@{}" : ""}${column}${col === ncols ? "@{}" : ""}}{${strong}}`;
         });
-        out += `${cells.join(" & ")} \\\\\n`;
-        if (head && tr.parentElement === head && i === head.querySelectorAll("tr").length - 1) out += "\\midrule\n";
+        // A row that opens with "(" or "[" would be read as the option of the
+        // rule or the row end before it; an empty group in front shields it.
+        const row = cells.join(" & ");
+        out += `${/^[([]/.test(row) ? "{}" : ""}${row} \\\\\n`;
+        if (head && tr.parentElement === head && i === headRows - 1) out += wide ? "\\midrule\n\\endhead\n" : "\\midrule\n";
     });
-    return `${out}\\bottomrule\n\\end{${wide ? "tabularx" : "tabular"}}\n\\end{center}\n\n`;
+    return wide ? `${out}\\bottomrule\n\\end{xltabular}\n\\endgroup\n\n` : `${out}\\bottomrule\n\\end{tabular}\n\\end{center}\n\n`;
 }
 
 function figure(el, ctx) {
@@ -304,8 +321,28 @@ function blockNode(el, ctx) {
         case "H5":
         case "H6":
             return heading("subsubsection", el, ctx);
-        case "P":
-            return paragraph(inlineChildren(el, ctx));
+        case "P": {
+            // A paragraph the page sets bold (a formal block's label) stays bold.
+            const strong = hasClass(el, "font-semibold", "font-bold");
+            let out = "";
+            let run = "";
+            const flush = () => {
+                const body = run.replace(/^[ \n]+|[ \n]+$/g, "");
+                out += paragraph(body && strong ? `\\textbf{${body}}` : body);
+                run = "";
+            };
+            for (const child of el.childNodes) {
+                // A block inside the paragraph (a display-block span) ends the run before it.
+                if (isBlock(child) && !hasClass(child, "katex-display")) {
+                    flush();
+                    out += blockNode(child, ctx);
+                } else {
+                    run += inlineNode(child, ctx);
+                }
+            }
+            flush();
+            return out;
+        }
         case "OL":
         case "UL":
             return list(el, ctx);
@@ -397,6 +434,7 @@ export function paperToLatex(document, { figureFile = paperFigureFile } = {}) {
 \\usepackage{graphicx}
 \\usepackage{booktabs}
 \\usepackage{tabularx}
+\\usepackage{xltabular}
 \\newcolumntype{L}{>{\\raggedright\\arraybackslash}X}
 \\usepackage{enumitem}
 \\usepackage{fancyhdr}
@@ -412,6 +450,10 @@ export function paperToLatex(document, { figureFile = paperFigureFile } = {}) {
 \\setlength{\\parskip}{0.6em}
 \\setlist{itemsep=0.2em,topsep=0.4em}
 \\emergencystretch=2em
+\\usepackage{sectsty}
+\\allsectionsfont{\\raggedright}
+\\widowpenalty=10000
+\\clubpenalty=10000
 \\AtBeginDocument{\\renewcommand{\\setminus}{\\smallsetminus}}
 \\begin{document}
 \\thispagestyle{fancy}

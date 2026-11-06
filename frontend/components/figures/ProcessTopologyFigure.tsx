@@ -105,7 +105,7 @@ export function ProcessTopologyFigure({
                     payment P · accumulator G
                 </text>
                 <text x={BAR_X} y="40" fontSize="8.5" className="fill-ink-muted">
-                    bar ∝ 2G
+                    bar scaled to 2G
                 </text>
 
                 {/* The hub: one root buyer on the buyer side of every edge. */}
