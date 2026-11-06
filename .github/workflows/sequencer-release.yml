@@ -71,7 +71,7 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - runner: ubuntu-latest
+                    - runner: ubuntu-24.04
                       target: x86_64-unknown-linux-gnu
                     # Linux is the only release target by role: relay operation
                     # is server work; Mac developers build from source. The
@@ -282,7 +282,7 @@ jobs:
         # Requires every matrix leg. A release that silently shipped one
         # platform because the other broke would be worse than no release.
         needs: build
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         permissions:
             # The one scope a release needs. The attestation scopes live on
             # the build job, never here. No packages:, no id-token:, no actions:.

@@ -37,7 +37,7 @@ jobs:
     # ── Job 1: the local xmtpd broker, brought up and answering ─────────────
     xmtpd-stack:
         name: xmtpd stack proof (hermetic broker bring-up)
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 40
 
         steps:
@@ -123,7 +123,7 @@ jobs:
     # ── Job 2: the container-equivalent sandbox, deny cases inside ──────────
     linux-sandbox:
         name: Linux sandbox variant (container deny cases)
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 15
 
         steps:
