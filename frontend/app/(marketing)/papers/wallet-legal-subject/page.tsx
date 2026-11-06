@@ -164,7 +164,7 @@ export default function WalletLegalSubjectPaper() {
                 </PaperRun>
             </PaperSection>
 
-            <PaperSection title="4. The Wallet as Legal Subject">
+            <PaperSection title="4. The Wallet and the Legal Subject">
                 <p>
                     Roman private law distinguished <em>res</em> (things that can be owned and alienated) from <em>persona</em> (subjects capable of acting in law). Modern private law keeps the distinction. Physical assets are <em>res</em>; natural persons and legal persons such as corporations and states are <em>personae</em>; the two meet in contracts of sale, lease, license, and labor.
                 </p>

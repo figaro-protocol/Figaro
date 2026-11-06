@@ -92,7 +92,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "The Graph Layer: Economic Form Read from Signed Data Under the Open-World Assumption",
                 href: "/papers/the-graph-layer",
-                summary: "Above a mechanism that fixes only two bonds and the buyer's resolution, a party's role, its market, its community and the law the parties chose are read from composed clauses, signed topology, holdings and attestations under the open-world assumption, and no stored reading gates a trade.",
+                summary: "Above a mechanism that fixes only two bonds and the buyer's resolution, a party's role, its market, its community and the law the parties chose are read from composed clauses, signed topology, bindings and selections, holdings and attestations under the open-world assumption, and no stored reading gates a trade.",
                 keywords: ["open-world assumption", "closed-world assumption", "buyer-seller networks", "economic networks", "derived meaning", "token gating", "polycentric governance", "embeddedness"],
                 industries: ["Marketplaces", "Platforms"],
             },
@@ -180,7 +180,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "What Formal Verification Transfers to a Bonded Contract: The Payoff Table as the Specification, and What No Check Reaches",
                 href: "/papers/verified-resolution-kernel",
-                summary: "For a contract whose security is an equilibrium, machine verification transfers the theorem only through a specification that pins the payoff table: conservation and solvency do not pin it, two variants that conserve and stay solvent break the equilibrium, and \"formally verified\" can mean only the conjunction of checks that the code realizes the table and a proof of the equilibrium over it, with the residue no check reaches named.",
+                summary: "For a contract whose security is an equilibrium, machine verification transfers the theorem only through a specification that pins the payoff table, or narrows it to a family of tables over which an equilibrium has been proved: conservation and solvency do neither, two variants that conserve and stay solvent break the equilibrium, and \"formally verified\" can mean only the conjunction of checks that the code realizes the table and a proof of the equilibrium over it, with the residue no check reaches named.",
                 keywords: ["smart contracts", "formal verification", "mechanized proof", "mechanism design", "specification", "verification scope"],
                 industries: ["Security and audit"],
             },
