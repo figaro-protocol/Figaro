@@ -307,7 +307,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "What a Trust Layer for Agents Acting for Principals Needs",
                 href: "/papers/actor-neutral-coordination",
-                summary: "An agent acting for a principal needs, from a stranger it has never met, a promise that is good before the work and a ceiling on what one commitment can cost the principal. A reputation registry, a validator's stake over finished work and a legal wrapper each supply neither; a bond locked at commit supplies both, and leaves the aggregate bound to the agent's own policy.",
+                summary: "An agent acting for a principal needs, from a stranger, a promise good before the work and a ceiling on loss. A reputation registry, a validator's stake over finished work and a legal wrapper supply neither; a bond locked at commit makes the promise good, so the agent can weigh what an agreement pays against what performing it costs before it signs.",
                 keywords: ["multi-agent coordination", "bonded commitment", "autonomous agents", "principal-agent", "reputation", "legal wrapper", "AI agent design"],
                 industries: ["AI agents"],
             },
