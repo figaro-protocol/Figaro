@@ -10,7 +10,7 @@ import {
 export const metadata: Metadata = withOg({
     title: "Corridors Without a Hegemon — Figaro",
     description:
-        "The Belt and Road Initiative and the India-Middle East-Europe Economic Corridor are rival infrastructure-power projects in which control of the corridor is the geopolitical prize. A decentralized, permissionless bonded substrate, in which every position is held by a party over its own trade and no reader has privileged access to the data, can be common ground beneath them. The physical corridor, the denomination, and the ramps stay exactly as contested as they were, and where a denomination's issuer can block an address, its lever reaches through the substrate.",
+        "The Belt and Road Initiative and IMEC are rival infrastructure-power projects. A decentralized, permissionless bonded substrate with no hub can be common ground beneath them. The rails, the ramps and the chain beneath stay contested, and an issuer that can block addresses reaches through.",
 });
 
 export default function CorridorsWithoutAHegemonPaper() {
