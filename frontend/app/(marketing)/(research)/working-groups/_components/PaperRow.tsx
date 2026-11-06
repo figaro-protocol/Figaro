@@ -39,7 +39,7 @@ export function PaperRow({
                 </Link>
             )}
             <p className="text-xs text-ink-body leading-relaxed mt-1">{paper.summary}</p>
-            <p className="text-xs text-ink-muted mt-1 leading-relaxed">
+            <p className="text-[10px] text-ink-muted mt-1 leading-relaxed">
                 Keywords:{" "}
                 {paper.keywords.map((k, i) => {
                     const slug = tagSlug(k);

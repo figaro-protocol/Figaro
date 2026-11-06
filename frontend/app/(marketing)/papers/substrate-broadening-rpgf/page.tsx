@@ -152,7 +152,7 @@ export default function SubstrateBroadeningRpgfPaper() {
                     </span>
                 </PaperRemark>
                 <PaperRun title="Counting is permissionless and opt-in.">
-                    Anyone may submit a count; nothing is trusted about the caller, because the proof is what is checked. Its gas is paid by whoever submits it, and the party with the incentive to submit it is the designer. An uncounted resolution earns nothing. Its evidence stays on chain, but a count lands only while a period is open, so counting must be current.
+                    A use is counted when its proof is presented, either in a count of its own or carried in a resolution that closes several processes at once. Anyone may present it either way, and nothing is trusted about the caller, because the proof is what is checked. Its gas is paid by whoever presents it, and the party with the incentive to see it counted is the designer. An uncounted resolution earns nothing. Its evidence stays on chain, but a count lands only while a period is open, so counting must be current.
                 </PaperRun>
             </PaperSection>
 
