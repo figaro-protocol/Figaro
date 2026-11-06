@@ -146,4 +146,87 @@ describe("paper HTML → LaTeX", () => {
         );
         expect(tex).toContain("\\begin{tabular}{@{}ll@{}}\n\\toprule\n$(u_b, u_s)$ & \\textbf{resolution occurs} \\\\\n\\midrule\nperformance occurs & $(0,\\; +P)$ \\\\\n\\bottomrule");
     });
+
+    it("sets a prose table so it can break across pages, its header repeated, and a spanning cell across its columns", () => {
+        const tex = paperToLatex(
+            paperDocument(
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Step</th>
+                            <th>Dispatch race</th>
+                            <th>Request for quotes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>5. Select and sign</td>
+                            <td>The buyer signs the first valid answer, and that signature is the selection.</td>
+                            <td>The buyer signs the cheapest verified answer at the close.</td>
+                        </tr>
+                        <tr>
+                            <td>6. Admission</td>
+                            <td colSpan={2}>The commitment, with both signatures, is submitted.</td>
+                        </tr>
+                    </tbody>
+                </table>,
+            ),
+        );
+        // A page-breaking table: the header rows end at \endhead and print again on each page.
+        expect(tex).toContain("\\begin{xltabular}{\\linewidth}{@{}LLL@{}}\n\\toprule\n\\textbf{Step} & \\textbf{Dispatch race} & \\textbf{Request for quotes} \\\\\n\\midrule\n\\endhead\n");
+        // The spanning cell is as wide as the two columns it covers, and keeps the table's flush right edge.
+        expect(tex).toContain("6. Admission & \\multicolumn{2}{>{\\raggedright\\arraybackslash\\hsize=\\dimexpr 2\\hsize+2\\tabcolsep\\relax}X@{}}{The commitment, with both signatures, is submitted.} \\\\\n\\bottomrule\n\\end{xltabular}");
+        expect(tex).toContain("\\usepackage{xltabular}");
+    });
+
+    it("shields a row that opens with a parenthesis or a bracket, which a rule or a row end would read as its own option", () => {
+        const tex = paperToLatex(
+            paperDocument(
+                <table>
+                    <thead>
+                        <tr>
+                            <th className="font-normal">(buyer, seller)</th>
+                            <th>resolution occurs, and every bond is refunded</th>
+                            <th>no resolution, and every bond stays locked</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>[performance occurs]</td>
+                            <td>the seller is paid</td>
+                            <td>nobody is paid</td>
+                        </tr>
+                    </tbody>
+                </table>,
+            ),
+        );
+        expect(tex).toContain("\\toprule\n{}(buyer, seller) & ");
+        expect(tex).toContain("\\endhead\n{}[performance occurs] & ");
+    });
+
+    it("sets a bold paragraph bold, and a block span inside a paragraph as a paragraph of its own", () => {
+        const tex = paperToLatex(
+            paperDocument(
+                <PaperSection title="3. The Frame">
+                    <div className="border-l-2 border-default pl-6 my-3 space-y-3">
+                        <p className="text-sm font-semibold text-ink-heading">Definition 1 (The committed schedule).</p>
+                        <p>At commit, each order locks its bonds.</p>
+                    </div>
+                    <p>
+                        The share is a ratio, never an identity.
+                        <span className="block mt-2">Two properties bound that share.</span>
+                    </p>
+                </PaperSection>,
+            ),
+        );
+        expect(tex).toContain("\\textbf{Definition 1 (The committed schedule).}\n\nAt commit, each order locks its bonds.");
+        expect(tex).toContain("The share is a ratio, never an identity.\n\nTwo properties bound that share.");
+    });
+
+    it("sets headings ragged right, so none is hyphenated, and leaves no single line of a paragraph alone on a page", () => {
+        const tex = paperToLatex(paperDocument(<p>Text.</p>));
+        expect(tex).toContain("\\allsectionsfont{\\raggedright}");
+        expect(tex).toContain("\\widowpenalty=10000");
+        expect(tex).toContain("\\clubpenalty=10000");
+    });
 });

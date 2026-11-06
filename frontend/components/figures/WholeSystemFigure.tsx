@@ -16,9 +16,9 @@ interface WholeSystemPart {
     y: number;
 }
 
-// Parts 1–7, bottom to top, every word from the cryptoeconomic paper's § 2 and
-// § 5 (/papers/figaro-as-a-cryptoeconomic-system). Part 8, the data, is the
-// strip along the side. The y positions are the approved draft's.
+// Parts 1–6 and 8, bottom to top, every word and every number from the
+// cryptoeconomic paper's § 2 and § 5 (/papers/figaro-as-a-cryptoeconomic-system).
+// Part 7, the data, is the strip along the side. The y positions are the approved draft's.
 const PARTS: readonly WholeSystemPart[] = [
     {
         n: 1,
@@ -43,7 +43,7 @@ const PARTS: readonly WholeSystemPart[] = [
     { n: 5, name: "The DAO", gloss: ["governs its own treasury and", "reaches nothing else"], y: 356 },
     { n: 6, name: "The denominations", gloss: ["any ERC-20 token, one per process"], y: 304 },
     {
-        n: 7,
+        n: 8,
         name: "The composition with law and the market",
         gloss: ["clauses name the law, a forum, a filing, a license;", "the data meets a norm"],
         y: 236,
@@ -55,11 +55,11 @@ const DESC =
     "Bottom to top: the base chain, with gas; 1, the bonded commitment: commit and resolve, the only " +
     "operations, the buyer bonding 2P and each seller 2G, only the buyer resolving and resolution atomic; " +
     "2, the stake; 3, the designs and the designers’ rewards; 4, the florin; 5, the DAO; 6, the " +
-    "denominations; 7, the composition with law and the market: clauses name the law, a forum, a filing, " +
+    "denominations; 8, the composition with law and the market: clauses name the law, a forum, a filing, " +
     "a license; the data meets a norm. The rules fix the bond and the resolution and nothing else. Above " +
     "them, the graph: the designs published, the bindings sellers make, the selections buyers make; and " +
     "the economic forms it carries: a market-liberal graph, a cooperative graph, a mutual-aid graph. Along " +
-    "the side, 8, the data: the chain holds a fingerprint of the agreement; the aggregate is public, the " +
+    "the side, 7, the data: the chain holds a fingerprint of the agreement; the aggregate is public, the " +
     "detail the parties’ own, sealed or sold.";
 
 const FORMS = ["market-liberal", "cooperative", "mutual-aid"] as const;
@@ -78,15 +78,15 @@ const NUM = { fill: "currentColor", fontSize: 12, fontWeight: 600, fillOpacity: 
 const LABEL = { fill: "currentColor", fontSize: 11.5, fontStyle: "italic", fillOpacity: 0.75 } as const;
 
 /**
- * The whole of Figaro as one stack: the base chain at the foot, the seven
- * parts of the rules above it (the bonded commitment drawn as the core
+ * The whole of Figaro as one stack: the base chain at the foot, seven of
+ * the paper's eight parts above it (the bonded commitment drawn as the core
  * tile), the line where the rules stop, the graph composed above them and
- * the economic forms it carries; part 8, the data, runs the full height
+ * the economic forms it carries; part 7, the data, runs the full height
  * along the side. Source: the cryptoeconomic paper's § 2 and § 5; the
  * words are the paper's, and a change to the parts changes there first.
  *
  * DOM order is bottom to top, the order the description reads, so a screen
- * reader and the drawing agree; part 8 follows part 7.
+ * reader and the drawing agree; the data strip follows the stack.
  */
 export function WholeSystemFigure({ idPrefix = "whole-system", className, svgProps, caption }: WholeSystemFigureProps) {
     return (
@@ -109,7 +109,7 @@ export function WholeSystemFigure({ idPrefix = "whole-system", className, svgPro
                 gas
             </text>
 
-            {/* ── Parts 1–7, bottom to top ───────────────────────────── */}
+            {/* ── Parts 1–6 and 8, bottom to top ───────────────────────────── */}
             {PARTS.map((part) => {
                 const height = 30 + part.gloss.length * 16;
                 return (
@@ -130,10 +130,10 @@ export function WholeSystemFigure({ idPrefix = "whole-system", className, svgPro
                 );
             })}
 
-            {/* ── Part 8, the data, along the side ──────────────────── */}
+            {/* ── Part 7, the data, along the side ──────────────────── */}
             <rect x={332} y={34} width={56} height={722} rx={12} {...TILE} />
             <text x={0} y={0} textAnchor="middle" transform="translate(349 395) rotate(-90)" {...NAME}>
-                {"8  The data"}
+                {"7  The data"}
             </text>
             <text x={0} y={0} textAnchor="middle" transform="translate(364 395) rotate(-90)" {...GLOSS}>
                 the chain holds a fingerprint of the agreement

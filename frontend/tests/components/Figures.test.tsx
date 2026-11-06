@@ -360,18 +360,21 @@ describe("WholeSystemFigure", () => {
         "The DAO",
         "The denominations",
         "The composition with law and the market",
-        "8  The data",
+        "7  The data",
     ];
+    // The numbers are the paper's (§ 2): the stack holds parts 1 to 6 and 8,
+    // and part 7, the data, is the strip along the side.
+    const STACK_NUMBERS = [1, 2, 3, 4, 5, 6, 8];
 
-    it("renders the eight part titles, numbered 1 to 8 in order, above the base chain", () => {
+    it("renders the eight part titles under the paper's own numbers, above the base chain", () => {
         const { container } = render(<WholeSystemFigure />);
         const texts = Array.from(container.querySelectorAll("svg text")).map((t) => t.textContent ?? "");
         const positions = PART_TITLES.map((title) => texts.indexOf(title));
         expect(positions.every((p) => p >= 0)).toBe(true);
         expect([...positions].sort((a, b) => a - b)).toEqual(positions);
-        for (let n = 1; n <= 7; n++) {
-            expect(texts[positions[n - 1] - 1]).toBe(String(n));
-        }
+        STACK_NUMBERS.forEach((n, i) => {
+            expect(texts[positions[i] - 1]).toBe(String(n));
+        });
         expect(screen.getByText("The base chain")).toBeInTheDocument();
         expect(screen.getByText("the rules fix the bond and the resolution")).toBeInTheDocument();
         expect(screen.getByText("mutual-aid")).toBeInTheDocument();
