@@ -1,10 +1,11 @@
+import { FileText } from "lucide-react";
 import Link from "@/components/shared/Link";
 import type { PaperGroup, PaperRef } from "@/app/(marketing)/_lib/paperGroups";
 import { tagSlug } from "@/app/(marketing)/_lib/paperGroups";
 
 /**
- * One paper in the corpus index: the word "Paper" before its title, the title
- * as the link to it, its abstract in one breath, and its keywords. `showGroup`
+ * One paper in the corpus index: a document icon (read aloud as "Paper")
+ * before its title, the title as the link to it, its abstract in one breath, and its keywords. `showGroup`
  * adds the discipline link, for pages that list papers across disciplines.
  */
 export function PaperRow({
@@ -20,10 +21,14 @@ export function PaperRow({
     highlight?: string;
 }) {
     const isPdf = paper.href.endsWith(".pdf");
-    const titleClassName = "text-base text-ink-heading font-medium underline underline-offset-2 hover:no-underline";
+    const titleClassName = "text-sm text-ink-heading font-medium underline underline-offset-2 hover:no-underline";
     return (
         <li>
-            <span className="text-base text-ink-muted">{isPdf ? "Paper (PDF): " : "Paper: "}</span>
+            <FileText
+                role="img"
+                aria-label={isPdf ? "Paper (PDF)" : "Paper"}
+                className="inline-block w-3.5 h-3.5 mr-1.5 align-[-2px] text-ink-muted"
+            />
             {isPdf ? (
                 <a href={paper.href} className={titleClassName}>
                     {paper.title}
@@ -33,7 +38,7 @@ export function PaperRow({
                     {paper.title}
                 </Link>
             )}
-            <p className="text-sm text-ink-body leading-relaxed mt-1">{paper.summary}</p>
+            <p className="text-xs text-ink-body leading-relaxed mt-1">{paper.summary}</p>
             <p className="text-xs text-ink-muted mt-1 leading-relaxed">
                 Keywords:{" "}
                 {paper.keywords.map((k, i) => {
