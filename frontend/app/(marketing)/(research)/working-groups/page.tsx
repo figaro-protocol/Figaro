@@ -29,7 +29,7 @@ export default function WorkingGroups() {
                     <>
                         Form working groups where you are. No permission. No charter.
                         <br />
-                        Mix the disciplines: no single one closes these questions.
+                        Bring people from different disciplines together: every question here crosses several, and no single discipline can close it alone.
                         <br />
                         Start from a paper. Read it. Break it. Build on it.
                     </>
@@ -92,7 +92,7 @@ export default function WorkingGroups() {
                                 {g.discipline}
                             </p>
                             <p className="text-sm text-ink-body leading-relaxed max-w-2xl mt-2">
-                                {g.definition}
+                                {g.intro}
                             </p>
                             <ul className="space-y-5 max-w-2xl mt-5">
                                 {g.papers.map((p) => (
