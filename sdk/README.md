@@ -500,9 +500,9 @@ nothing in a key's bytes says which family it names; the mirror files each
 pair under `usageKeyId(kind, key)`, `computeRpgfAllocations` takes its designers
 keyed the same way, and each allocation's `claims` is the `{ kind, key }` list
 that wallet's `RpgfMinter.claim` takes. The reward is UNIFORM (no tag,
-category or weight — every clause or assembly's score is `icbrt(c·d²·10^18)`, its real
+category or weight — every clause, agreement or assembly's score is `icbrt(c·d²·10^18)`, its real
 usage alone) and UNCAPPED; the only eligibility gate is a two-sided live ETH
-stake (usage counts only for a live-staked seller of record, and a designer earns only while the clause or assembly's stake stays un-withdrawn). The mirror
+stake (usage counts only for a live-staked seller of record, and a designer earns only while the clause, agreement or assembly's stake stays un-withdrawn). The mirror
 exists to display a distribution, predict a claim, and verify a recorded
 accrual; `formula.json` is the normative prose statement of the mechanism and
 the source of every constant the mirror uses.
