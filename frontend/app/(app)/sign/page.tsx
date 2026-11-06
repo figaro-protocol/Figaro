@@ -269,10 +269,10 @@ function SignPageContent() {
     const agreementCheck = useMemo(() => {
         if (!parsed?.agreement || !commitment) return null;
         if (designRead?.agreement !== parsed.agreement) return null;
-        // The design the agreement names could not be read: no verdict is
-        // shown (a failed read is not a tampering finding); the sign gate
-        // still refuses what it cannot verify.
-        if (parsed.agreement.provenance && !designRead.design) return null;
+        // A design the agreement names that could not be read is the
+        // validator's own refusal (its verdict names the unread assembly), and
+        // the review shows it before any signature: the gate refuses what it
+        // cannot read, and the party reads why rather than no verdict at all.
         return validateCommitmentAgreement(parsed.agreement, commitment.checkoutHash, specSource(), commitment, designRead.design);
     }, [parsed, commitment, designRead]);
 

@@ -13,6 +13,7 @@
  *       ...
  *   });
  */
+import fs from 'fs';
 import path from 'path';
 import { test as base, expect, Browser, BrowserContext, Page } from '@playwright/test';
 import { ANVIL_ACCOUNTS } from './test-helpers';
@@ -32,9 +33,28 @@ export { expect };
 export const test = base.extend<{ page: Page }>({
     page: async ({ page }, use) => {
         await page.addInitScript({ path: multiInjectPath });
+        attachConsoleCapture(page);
         await use(page);
     },
 });
+
+/**
+ * Opt-in browser-console capture for a failing flow: with
+ * `FIGARO_E2E_CONSOLE=<file>` set, every console message and page error the
+ * page emits is appended to that file, prefixed by the test title, so a hang
+ * that the UI shows as "Submitting…" can be read from the page's own words.
+ * The listeners go on the page object the fixture hands out, which is the
+ * one `gotoAsWallet` navigates, so a wallet switch loses nothing.
+ */
+function attachConsoleCapture(page: Page): void {
+    const file = process.env.FIGARO_E2E_CONSOLE;
+    if (!file) return;
+    const title = base.info().title;
+    const write = (line: string) => fs.appendFileSync(file, `[${title}] ${line}\n`);
+    page.on('console', (m) => write(`console.${m.type()}: ${m.text()}`));
+    page.on('pageerror', (e) => write(`pageerror: ${e.message}`));
+    page.on('requestfailed', (r) => write(`requestfailed: ${r.method()} ${r.url()} ${r.failure()?.errorText ?? ''}`));
+}
 
 
 

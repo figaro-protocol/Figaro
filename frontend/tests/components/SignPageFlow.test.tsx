@@ -143,6 +143,20 @@ describe("/sign — the terms check", () => {
         expect(screen.getByTestId("sign-agreement-invalid").textContent).toMatch(/These terms do NOT match the signed checkoutHash — do not proceed\./);
         expect(screen.queryByTestId("sign-agreement-verified")).toBeNull();
     });
+
+    it("an agreement naming a design that could not be read is refused in the review, before any signature", async () => {
+        // The gate reads the design an agreement names and refuses what it
+        // cannot read: the validator's verdict names the unread assembly, and
+        // the review shows it rather than no verdict at all.
+        const p = payload();
+        const agreement = { ...p.agreement, provenance: { agreementHash: `0x${"a1".repeat(32)}` as Hex, assemblyHash: `0x${"a5".repeat(32)}` as Hex } };
+        const unread: CommitmentPayload = { ...p, agreement, commitment: { ...p.commitment, checkoutHash: computeCheckoutHash(agreement) } };
+        m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(unread))}`;
+        render(<SignPage />);
+        await flush();
+        expect(screen.getByTestId("sign-agreement-invalid").textContent).toMatch(/was not read/);
+        expect(screen.queryByTestId("sign-agreement-verified")).toBeNull();
+    });
 });
 
 describe("/sign — the seller's counter-signature and the flow's step", () => {
