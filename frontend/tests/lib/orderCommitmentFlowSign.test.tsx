@@ -277,4 +277,14 @@ describe("acceptOrder — the seller's funded counter-signature", () => {
         expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, null);
         expect(commitSignedOrder.mock.calls[0][0].commit).toBe(commit);
     });
+
+    it("waits for no second receipt: the broadcaster verifies its own, and a second wait on the same hash never resolves in the browser", async () => {
+        s.address = SELLER;
+        const p = preview();
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        const { value } = await run(() => result.current.acceptOrder({ commitment: p.commitment, agreement: p.agreement, buyerSig: BUYER_SIG }));
+        expect(commitSignedOrder.mock.calls[0][0]).toMatchObject({ waitForReceipt: false });
+        expect(value).toBe(`0x${"cc".repeat(32)}`);
+        expect(result.current.step).toBe("done");
+    });
 });

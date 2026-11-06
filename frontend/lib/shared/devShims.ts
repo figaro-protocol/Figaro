@@ -15,6 +15,7 @@
 import { createPublicClient, createWalletClient, http, type Abi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { localAnvil } from "./chains";
+import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 const log = (...args: unknown[]) =>
     console.log("[figaro][devShims]", ...args);
@@ -46,6 +47,18 @@ function asDebugClientLike(client: DebugClient): DebugClientLike {
 // ---------------------------------------------------------------------------
 // 1. Debug public client attached to window
 // ---------------------------------------------------------------------------
+/** The JSON-RPC method names a request body carries (one call or a batch), for the trace log. */
+function rpcMethodsOf(body: unknown): string[] {
+    if (typeof body !== "string") return [];
+    try {
+        const parsed = JSON.parse(body) as { method?: string } | Array<{ method?: string }>;
+        const calls = Array.isArray(parsed) ? parsed : [parsed];
+        return calls.map((c) => c?.method ?? "?");
+    } catch {
+        return [];
+    }
+}
+
 export function attachDebugClient(rpcUrl: string): void {
     if (typeof window === "undefined") return;
     // Parity with attachDevProvider / attachTestSigner: never ship the debug
@@ -91,9 +104,23 @@ export function attachDebugClient(rpcUrl: string): void {
         if (!window.__figaro_fetch_wrapped) {
             const orig = window.fetch.bind(window);
             window.fetch = async (...args: Parameters<typeof fetch>) => {
-                log("fetch →", args[0]);
+                // The JSON-RPC method(s) in the body, so a trace reads what the page asked.
+                const methods = rpcMethodsOf(args[1]?.body);
+                if (methods.length === 0) log("fetch → (no json body)", typeof args[0], args[0] instanceof Request ? "Request" : String(args[0]).slice(0, 80), typeof args[1]?.body);
+                log("fetch →", args[0], methods);
                 const res = await orig(...args);
-                log("fetch ←", String(args[0]), res.status);
+                // A receipt poll's answer: null (not yet mined) or the receipt's status.
+                let note = "";
+                if (methods.includes("eth_getTransactionReceipt") || methods.includes("eth_getTransactionByHash")) {
+                    try {
+                        const body = (await safeJsonFromResponse(res.clone())) as { result?: { status?: string } | null } | Array<{ result?: { status?: string } | null }>;
+                        const first = Array.isArray(body) ? body[0] : body;
+                        note = first?.result ? `result.status=${first.result.status ?? "(tx)"}` : "result=null";
+                    } catch {
+                        note = "receipt=unreadable";
+                    }
+                }
+                log("fetch ←", String(args[0]), res.status, methods, note);
                 return res;
             };
             window.__figaro_fetch_wrapped = true;

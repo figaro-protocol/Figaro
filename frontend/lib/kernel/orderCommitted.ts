@@ -37,8 +37,10 @@ function canReadCap(client: unknown): client is CapReadClient {
 }
 
 /**
- * Broadcast the fully-signed payload to FigaroCore. Optionally waits for the
- * receipt and throws if the commit reverted on-chain.
+ * Broadcast the fully-signed payload to FigaroCore. `waitForReceipt` is for
+ * a broadcaster that does not verify its own receipt; the UI's broadcasters
+ * (`simulateWriteVerify`) do, and a second wait on a hash the first already
+ * observed never resolves in the browser, so they pass `false`.
  *
  * Before broadcasting a SUB-ORDER, refuses any commit that would push the
  * live process past the chain's resolve ceiling (`assertOrderFitsResolveCap`)

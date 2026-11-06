@@ -418,11 +418,17 @@ export function useOrderCommitmentFlow() {
         await opts?.beforeBroadcast?.();
 
         setStep("committing");
+        // Every broadcaster `broadcasterFor` returns verifies its own receipt
+        // (`simulateWriteVerify`: simulate → send → verify), so the helper
+        // waits for no second one: a second `waitForTransactionReceipt` on
+        // the same hash never resolves in the browser (viem's observer for
+        // that hash is still registered when the first wait returns), which
+        // held this step at "committing" after a mined commit.
         const hash = await commitSignedOrder({
             payload,
             commit: broadcasterFor(payload, sellerFunding),
             publicClient,
-            waitForReceipt: true,
+            waitForReceipt: false,
         });
 
         setStep("done");
@@ -553,11 +559,12 @@ export function useOrderCommitmentFlow() {
         if (!approved) throw new Error("Commit canceled by user.");
         await opts?.beforeBroadcast?.();
         setStep("committing");
+        // The broadcaster verifies the receipt itself (see `acceptOrder`).
         const hash = await commitSignedOrder({
             payload,
             commit: broadcasterFor(payload),
             publicClient,
-            waitForReceipt: true,
+            waitForReceipt: false,
         });
         setStep("done");
         return hash;
