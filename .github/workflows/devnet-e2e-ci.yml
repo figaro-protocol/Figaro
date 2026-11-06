@@ -71,7 +71,7 @@ permissions:
 jobs:
     devnet-e2e:
         name: ${{ (github.event_name == 'schedule' || inputs.suite == 'full') && 'Full devnet suite' || 'Bilateral spine (orders-accept)' }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         # The spine: 30 minutes. The full suite: 38 spec files (37 in `devnet`
         # plus the `devnet-authoring` wizard), one worker, one retry per test,
         # about 40 minutes on a laptop; the runner has two cores and builds the

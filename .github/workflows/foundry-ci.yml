@@ -28,7 +28,7 @@ permissions:
 jobs:
     test:
         name: Forge Test
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         steps:
             - name: Checkout code
               uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -67,7 +67,7 @@ jobs:
     # and leaves the main suite's verdict standing.
     fork:
         name: Fork tests (real Permit2, real SwapRouter02)
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         steps:
             - name: Checkout code
               uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -93,7 +93,7 @@ jobs:
 
     coverage:
         name: Forge Coverage
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         steps:
             - name: Checkout code
               uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -129,7 +129,7 @@ jobs:
     # (model-level) remain local harnesses — see docs/TESTING.md.
     halmos:
         name: Halmos Symbolic Proofs
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 60
         steps:
             - name: Checkout code
@@ -172,7 +172,7 @@ jobs:
     # `identity` function and paste the list into `triaged`.
     static-analysis:
         name: Static Analysis
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         steps:
             - name: Checkout code
               uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

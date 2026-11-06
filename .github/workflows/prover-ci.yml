@@ -77,7 +77,7 @@ permissions:
 jobs:
     test:
         name: cargo test (figaro-clause, figaro-kernel)
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         steps:
             - name: Checkout code
               uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -141,7 +141,7 @@ jobs:
 
     cross-impl-fuzz:
         name: differential fuzz (FigaroCore, agreement tree, clause engine)
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         steps:
             - name: Checkout code
               uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -196,7 +196,7 @@ jobs:
     sp1:
         name: SP1 crates + batch e2e (main only)
         if: github.event_name != 'pull_request'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 90
         steps:
             - name: Checkout code
