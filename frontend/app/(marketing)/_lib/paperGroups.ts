@@ -94,7 +94,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 title: "Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers",
                 href: "/papers/asymmetric-bonding",
                 summary: "The two calls of the mechanism and why they compose: commit locks a bond on each side, resolve closes every order at once on the buyer's signature alone, and at every link a defector is left out of pocket even after crediting what it keeps.",
-                keywords: ["mechanism design", "subgame-perfect equilibrium", "Nash equilibrium", "asymmetric bonding", "multi-party coordination", "process chains", "peer enforcement"],
+                keywords: ["mechanism design", "subgame-perfect equilibrium", "Nash equilibrium", "asymmetric bonding", "multi-party coordination", "N-party processes", "peer enforcement"],
                 industries: [],
                 question: "Can a promise between strangers, and a chain of sellers behind one buyer, be made credible before the trade, with no authority acting after it?",
                 result: "Proved: cooperation is the equilibrium for any number of orders the network resolves in one call: after performance resolving is the buyer's strict preference with no assumption about the seller; given the buyer's plan to resolve once performance has occurred and its co-sellers' performance, performing is each seller's strict best response; and atomic resolution puts the sellers in a weakest-link subgame whose selection criteria favor universal performance.",
