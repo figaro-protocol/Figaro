@@ -171,7 +171,7 @@ export default function CodeIsConstitutionPaper() {
 
             <PaperSection title="5. The Debate Moves Down a Layer">
                 <p>
-                    Code is not law in the state&rsquo;s sense: enacted by legislatures, applied with discretion, and backed by force. Nor is the code of such a protocol a rival law. It is the language beneath the laws: its invariants fix how any promise is made good before the trade. The laws of each economic system are the clauses and assemblies its designers legislate in that language, bound by the sellers and selected by the buyers who use them. The question the code-is-law debate asked of the code, whether its execution is the agreement, belongs to those laws and to the parties who write and sign them. A regulator puts that question to the actors at the edges, while the invariants beneath stay neutral.
+                    Code is not law in the state&rsquo;s sense: enacted by legislatures, applied with discretion, and backed by force. Nor is the code of such a protocol a rival law. It is the language beneath the laws: its invariants fix how any promise is made good before the trade. The laws of each economic system are the clauses, agreements, and assemblies its designers legislate in that language, bound by the sellers and selected by the buyers who use them. The question the code-is-law debate asked of the code, whether its execution is the agreement, belongs to those laws and to the parties who write and sign them. A regulator puts that question to the actors at the edges, while the invariants beneath stay neutral.
                 </p>
             </PaperSection>
 

@@ -134,7 +134,7 @@ export default function Invariants() {
             <MarketingSection title="Where the meaning lives." bottomPad="wide">
                 <div className="space-y-4 text-base text-ink-body leading-relaxed max-w-prose">
                     <p>
-                        A law this small barely says anything on its own. What it means shows up one level up: in the agreements people write on it, the roles they take, the multi-party processes they assemble. And that is what the florin rewards &mdash; not the core, which runs itself, but the clauses and assemblies built on it, whose designers the protocol{" "}
+                        A law this small barely says anything on its own. What it means shows up one level up: in the agreements people write on it, the roles they take, the multi-party processes they assemble. And that is what the florin rewards &mdash; not the core, which runs itself, but the clauses, agreements and assemblies built on it, whose designers the protocol{" "}
                         <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">
                             rewards for the ones it comes to rely on
                         </Link>

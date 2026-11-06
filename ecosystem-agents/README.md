@@ -53,8 +53,8 @@ the whole model first.
   bought.
 
 All four are **prompts** (frontmatter + body). They drive `@figaro-protocol/sdk` (the SDK), act for
-a user's key, and never touch this repo. Authored clauses and assemblies belong to the user (RPGF rewards
-them); forks are first-class.
+a user's key, and never touch this repo. The clauses, agreements and assemblies a user writes belong to that user (they earn
+Designer Rewards); forks are first-class.
 
 ## The seam — two worlds, do not blur them
 
@@ -71,8 +71,8 @@ permission barrier (repo access + a merge) the open world exists to remove.
 
 ## No UI to satisfy
 
-Registration is the whole act. A UI surfaces clauses and assemblies *from the registry
-events*, so registering makes a clause or assembly discoverable everywhere that reads the registry —
+Registration is the whole act. A UI surfaces clauses, agreements and assemblies *from the registry
+events*, so registering makes a clause, an agreement or an assembly discoverable everywhere that reads the registry —
 there is no frontend binding to meet. MOST `block` attributes shape how a UI *presents* an
 entry and affect neither validity nor discoverability — **but never say that unqualified:
 five hints inside `block` are hash-load-bearing and change what a designer's assembly and a
