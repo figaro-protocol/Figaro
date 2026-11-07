@@ -23,6 +23,7 @@ import {
     specDeclaresField,
     specCatalogFills,
     specProfileFills,
+    withSpecDefaults,
     type ProjectionSpecView,
     type SpecSource,
 } from "./projection.js";
@@ -544,8 +545,16 @@ export function resolveSubOrderPricing(args: {
         return { item, payment, billedQuantity: 1, unitPrice: payment, resolvedUnits: null };
     }
     const resolver = getRateQuantityResolver(item.rateQuantitySource);
+    // The quantity is read from the values the agreement commits: the
+    // order's fields with each spec's declared defaults filled
+    // (`buildOrderAgreement`), so a field the buyer left at its default
+    // prices as it is signed.
+    const committed = Object.fromEntries(
+        Object.entries(args.node.clauses).map(([clauseKey, data]) =>
+            [clauseKey, withSpecDefaults(args.specs, clauseKey as Hex, data)]),
+    );
     const units = resolver?.({
-        clauses: args.node.clauses,
+        clauses: committed,
         checkoutQuantity: args.checkoutQuantity,
         specs: args.specs,
     }) ?? null;
@@ -626,6 +635,8 @@ function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
     // standard is committed content, so the gate reads the CLAUSE_DATA, not the
     // spec). An unknown, absent or empty standard is unresolvable, never
     // junk-priced: the codes are read as geohash only when the order says so.
+    // The caller passes the committed values, so a standard the buyer left at
+    // the spec's declared default arrives here as that default.
     const geoClauseId = composedClauseWhere(
         ctx.clauses,
         ctx.specs,

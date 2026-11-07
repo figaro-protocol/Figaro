@@ -15,7 +15,8 @@ import {
     type BoundAssemblyPlanInput,
     type PricingCatalog,
 } from "../src/checkoutPlan.js";
-import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
+import { buildOrderAgreement } from "../src/projection.js";
+import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceOf, viewOf } from "./specFixtures.js";
 import { hydrateAuthored } from "./hydrate.js";
 
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.
@@ -37,6 +38,17 @@ const parents = (ids: string[]) => ({ [TOPO]: { follows: ids } });
 
 const NO_SPECS = specSourceFromFixtures([]);
 const GEO_SPECS = specSourceFromFixtures(["figaro-geolocation"]);
+// The geolocation spec with no declared default for its standard, read under
+// the same key, so an omitted standard stays absent in what commits.
+const GEO_SPECS_NO_DEFAULT = (() => {
+    const raw = rawSpecOf("figaro-geolocation");
+    const fields = (raw.fields as Array<Record<string, unknown>>).map((field) => {
+        if (field.name !== "geocodeStandard") return field;
+        const { default: _omitted, ...rest } = field;
+        return rest;
+    });
+    return specSourceOf([{ ...viewOf({ ...raw, fields }), clauseKey: keyOf("figaro-geolocation") }]);
+})();
 const SCHEDULE_SPECS = specSourceFromFixtures(["figaro-schedule"]);
 
 const assembly: BoundAssemblyPlanInput = {
@@ -221,9 +233,9 @@ describe("resolveSubOrderPricing — rate items", () => {
     });
 
     it.each([
-        ["absent", {}],
-        ["empty", { geocodeStandard: "" }],
-    ])("order-geodistance with an %s geocodeStandard prices nothing, never reads the codes as geohash", (_label, standard) => {
+        ["absent, under a spec that declares no default,", {}, GEO_SPECS_NO_DEFAULT],
+        ["empty", { geocodeStandard: "" }, GEO_SPECS],
+    ])("order-geodistance with an %s geocodeStandard prices nothing, never reads the codes as geohash", (_label, standard, specs) => {
         const p = resolveSubOrderPricing({
             node: nodeWithClauses({ [GEO]: { ...standard, origin: SF, destination: LA } }),
             seller: SWIFT,
@@ -232,10 +244,31 @@ describe("resolveSubOrderPricing — rate items", () => {
                 pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
             }),
             tokenDecimals: 18,
-            specs: GEO_SPECS,
+            specs,
         });
         expect(p.payment).toBe(0n);
         expect(p.issue).toBe("unresolvable-quantity");
+    });
+
+    it("order-geodistance with an absent geocodeStandard prices by the spec's declared default, the value the agreement commits", () => {
+        // The buyer leaves the standard at the spec's default; the agreement
+        // projection fills that default into what is signed, so the price
+        // is read from the same values.
+        const clauses = { [GEO]: { origin: SF, destination: LA } };
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses(clauses),
+            seller: SWIFT,
+            sellerCatalogs: rateCatalog({
+                id: "haul", name: "Haul", price: "0.01", available: true,
+                pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
+            }),
+            tokenDecimals: 18,
+            specs: GEO_SPECS,
+        });
+        const committed = buildOrderAgreement(ROSSO, SWIFT, clauses, GEO_SPECS);
+        expect(committed.agreement.clauses.find((c) => c.clause === GEO)?.data.geocodeStandard).toBe("geohash");
+        expect(p.issue).toBeUndefined();
+        expect(p.billedQuantity).toBe(Math.ceil(geohashCentroidDistanceKm(SF, LA)));
     });
 
     it("order-geodistance on an order without committed endpoints is unresolvable", () => {

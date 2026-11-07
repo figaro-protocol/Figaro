@@ -401,8 +401,10 @@ export interface OrderAgreement {
 
 /** Fill fields the composing input omitted with the clause spec's OWN declared
  *  defaults (registry-sourced, never code-sourced). A process-log clause is an
- *  empty anchor at commit and stays untouched. */
-function withSpecDefaults(
+ *  empty anchor at commit and stays untouched. The agreement is built from
+ *  these values, and checkout pricing reads them, so a price is derived from
+ *  what is signed. */
+export function withSpecDefaults(
     specs: SpecSource,
     clauseKey: Hex,
     data: Record<string, unknown>,
