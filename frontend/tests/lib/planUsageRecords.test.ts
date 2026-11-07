@@ -164,7 +164,7 @@ function deps(overrides: Partial<CapabilityExecutorDeps> = {}) {
     const sent: Hex[] = [];
     const base: CapabilityExecutorDeps = {
         isE2EMock: false,
-        publicClient: { waitForTransactionReceipt: async () => ({ status: "success" }), chain: { id: 31337 } },
+        publicClient: { chain: { id: 31337 } },
         processOrders: orders,
         processAgreements: agreements,
         resolveProcess: vi.fn(async () => `0x${"11".repeat(32)}` as Hex),
@@ -228,6 +228,23 @@ describe("createCapabilityExecutors — resolve with usage writes", () => {
         errors.mockRestore();
     });
 
+    it("sends the usage writes once the resolve returns, without waiting on its receipt again", async () => {
+        // The resolve and each usage write return only once their receipt
+        // succeeded (the shared write helper). A second wait on the same hash
+        // can join viem's finished watcher and never return, which recorded
+        // no use at all on the devnet; the receipt reader here never returns.
+        const { deps: d, sent } = deps({
+            publicClient: {
+                chain: { id: 31337 },
+                waitForTransactionReceipt: () => new Promise<never>(() => {}),
+            } as CapabilityExecutorDeps["publicClient"],
+        });
+        const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+        await createCapabilityExecutors(d).executorCallbacks.resolveProcess(PROCESS);
+        expect(sent).toHaveLength(4);
+        errors.mockRestore();
+    }, 2000);
+
     it("stays loud about an order whose agreement is not hydrated, and plans the others", async () => {
         const { deps: d } = deps();
         d.processAgreements.delete(d.processOrders[0].checkoutHash!);
@@ -241,7 +258,7 @@ describe("createCapabilityExecutors — resolve with usage writes", () => {
 
 describe("createCapabilityExecutors — the chain id comes from the connected chain", () => {
     it("with no connected chain, nothing is restored, asked or sent", async () => {
-        const { deps: d, sent } = deps({ publicClient: { waitForTransactionReceipt: async () => ({ status: "success" }) } });
+        const { deps: d, sent } = deps({ publicClient: {} });
         await expect(createCapabilityExecutors(d).executorCallbacks.resolveProcess(PROCESS)).rejects.toThrow(/chain/i);
         expect(d.confirmResolve).not.toHaveBeenCalled();
         expect(d.resolveProcess).not.toHaveBeenCalled();

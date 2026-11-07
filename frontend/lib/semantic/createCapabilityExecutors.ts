@@ -26,7 +26,6 @@ import { encodeContentFromSpec, validateContent } from "@figaro-protocol/sdk/cla
 import { OrderState, type Order } from "@/lib/kernel/store";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { isBytes32Hex } from "@/lib/shared/evm";
 import type { UsageWrite } from "@/lib/protocol/useUsageRecorder";
 import { planUsageRecords, type PlannedUsageWrite, type UsagePlanEntry } from "@/lib/semantic/planUsageRecords";
@@ -42,10 +41,13 @@ interface AttestationSubmitArgs {
 }
 
 export interface CapabilityExecutorDeps {
-    /** e2e mock sessions skip receipt waits (no chain). */
+    /** e2e mock sessions plan and send no usage writes (no chain). */
     isE2EMock: boolean;
-    /** Receipt reader — undefined until the wallet client hydrates. */
-    publicClient: { waitForTransactionReceipt(args: { hash: Hex }): Promise<{ status: string }>; chain?: { id: number } } | undefined;
+    /** The connected chain, whose id the commitments were signed under —
+     *  undefined until the wallet client hydrates. Every write below returns
+     *  only once its receipt succeeded (`simulateWriteVerify`), so nothing
+     *  here waits on a receipt again. */
+    publicClient: { chain?: { id: number } } | undefined;
     processOrders: readonly Order[];
     processAgreements: Map<string, Agreement>;
     /** FigaroCore resolve — buyer dominance's single signature. */
@@ -72,14 +74,6 @@ export interface CapabilityExecutorDeps {
 }
 
 export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
-    const waitForTransactionConfirmation = async (txHash?: Hex) => {
-        if (deps.isE2EMock || !deps.publicClient || !txHash) return;
-        // A mined-but-reverted tx must surface as a failure, not flow on as
-        // success — otherwise the capability sticks in its in-flight state
-        // with no error (the publish-flow rule: receipt + status check).
-        await verifyTxSuccess(deps.publicClient, txHash, "The capability's transaction did not complete.");
-    };
-
     const resolveActiveProcess = async (targetProcessId: string) => {
         const activeOrders = deps.processOrders.filter(
             (order) => order.processId === targetProcessId && order.state === OrderState.Active,
@@ -127,7 +121,6 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         // never sent. Best-effort by design: the process has already
         // resolved, and recording is permissionless work anyone can redo.
         if (!deps.isE2EMock) {
-            await waitForTransactionConfirmation(resolveTx as Hex | undefined);
             let recorded = 0;
             let skipped = 0;
             const recordedKinds = new Set<string>();
@@ -141,8 +134,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                     continue;
                 }
                 try {
-                    const tx = await deps.recordUsage(write);
-                    await waitForTransactionConfirmation(tx);
+                    await deps.recordUsage(write);
                     recorded++;
                     if (write.kind !== "clause") recordedKinds.add(write.kind);
                 } catch (error) {
@@ -261,7 +253,6 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
 
     /** The callback bag `executeTransactionCapabilityAction` dispatches on. */
     const executorCallbacks = {
-        waitForTransactionConfirmation,
         // The confirm is asked inside, once the usage writes are planned.
         resolveProcess: (processId: string) => resolveActiveProcess(processId),
         registerMember: deps.registerMember,
@@ -274,5 +265,5 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         attestProvenanceLeaf,
     };
 
-    return { waitForTransactionConfirmation, resolveActiveProcess, executorCallbacks };
+    return { resolveActiveProcess, executorCallbacks };
 }
