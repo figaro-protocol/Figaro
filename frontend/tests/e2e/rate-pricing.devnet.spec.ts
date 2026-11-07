@@ -41,9 +41,14 @@ import type { Page } from '@playwright/test';
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
-const BUYER = ANVIL_ACCOUNTS[3] as Hex; // anvil[3] — a buyer no other spec uses
-const LEAD = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 14 }).address as Hex;
-const HAULER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 15 }).address as Hex;
+// anvil[3] — the buyer. Other specs use it too (a buyer in swap-funded-checkout,
+// a member that leaves in member-withdraw); buying needs no member profile.
+const BUYER = ANVIL_ACCOUNTS[3] as Hex;
+// anvil[39] and anvil[40] — the two sellers, dedicated to this spec: each holds
+// a member profile this spec writes, and a wallet another spec also registered
+// would have its profile replaced by whichever spec ran last.
+const LEAD = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 39 }).address as Hex;
+const HAULER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 40 }).address as Hex;
 
 let PROCESS_CLAUSE: Hex; // the transfer-ladder the binding keys on
 let GEO_CLAUSE: Hex;

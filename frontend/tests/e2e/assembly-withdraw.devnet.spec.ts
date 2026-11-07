@@ -67,8 +67,8 @@ const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
 // anvil[18] — the assembly REGISTERED_BY, used by no other spec: each run leaves a
 // fresh binding of theirs withdrawn.
 const REGISTERED_BY = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 18 }).address as Hex;
-// anvil[19] — the seller bound to the per-run probe assembly, used by no other
-// spec (its profile binding is rewritten every run).
+// anvil[19] — the seller bound to the per-run probe assembly, shared with
+// clause-authoring and content-delivery (its profile binding is rewritten every run).
 const SELLER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 19 }).address as Hex;
 
 test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)', () => {

@@ -110,11 +110,11 @@ if [ -z "$CORE_ADDR" ]; then
 fi
 
 # ── Gas top-up for anvil[10..19] — belt-and-suspenders, local Anvil only ──
-# Anvil MUST be started with `--accounts 39` (devup does) so indices 10-38 are
+# Anvil MUST be started with `--accounts 47` (devup does) so indices 10-46 are
 # unlocked SIGNERS — a default `anvil` only unlocks (and funds) 0-9, and sellers
 # beyond anvil[9] (see tests/e2e/seller-roster.ts) cannot sign otherwise.
-# `--accounts 39` also funds all 39 with ETH, so this setBalance loop is just a
-# safety net for the 10-19 range (22-33 get their ETH from the launch funding —
+# `--accounts 47` also funds all 47 with ETH, so this setBalance loop is just a
+# safety net for the 10-19 range (22-46 get their ETH from the launch funding —
 # a self-seeding spec's dedicated wallets). `anvil_setBalance` only funds gas — it
 # does NOT unlock a signer, which is why the launch flag is required. Skipped on
 # non-Anvil RPCs (anvil_setBalance is Anvil-only).

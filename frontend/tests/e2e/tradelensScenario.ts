@@ -5,9 +5,8 @@
  * the project_tradelens_assembly memory; /papers/after-tradelens is
  * narrative, never spec.
  *
- * Wallets: buyer = anvil[14]; the six sellers re-assert their profiles
- * idempotently each run (every index is shared world-state on the persisted
- * devnet). The shipper's binding designates the five sub-order co-sellers
+ * Wallets: buyer = anvil[14]; the six sellers (anvil[41..46], this
+ * scenario's own) re-assert their profiles idempotently each run. The shipper's binding designates the five sub-order co-sellers
  * — the per-clause commit-order cursor maps merchant-process →
  * [inspector, forwarder, customs] and courier-process → [carrier, inland].
  */
@@ -32,12 +31,16 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 const key = (i: number) => mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: i });
 
 export const TRADELENS_BUYER = ANVIL_ACCOUNTS[14] as Hex;
-export const SHIPPER = key(15);
-export const INSPECTOR = key(16);
-export const FORWARDER = key(17);
-export const CARRIER = key(18);
-export const CUSTOMS = key(20);
-export const INLAND = key(21);
+// anvil[41..46] — the six sellers, dedicated to this scenario: each holds a
+// member profile the scenario writes, and a wallet another spec also
+// registered would have its profile replaced by whichever spec ran last.
+const SELLER_INDEX = { shipper: 41, inspector: 42, forwarder: 43, carrier: 44, customs: 45, inland: 46 } as const;
+export const SHIPPER = key(SELLER_INDEX.shipper);
+export const INSPECTOR = key(SELLER_INDEX.inspector);
+export const FORWARDER = key(SELLER_INDEX.forwarder);
+export const CARRIER = key(SELLER_INDEX.carrier);
+export const CUSTOMS = key(SELLER_INDEX.customs);
+export const INLAND = key(SELLER_INDEX.inland);
 
 /** The scenario's clauses by the names their specs carry. */
 const CLAUSE_NAMES = {
@@ -220,21 +223,21 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
     };
 
     if (await conformant()) return;
-    await seed(SHIPPER, 15, 'Meridian Exports', 'Containerized cargo (invoice)', PRICES.shipper,
+    await seed(SHIPPER, SELLER_INDEX.shipper, 'Meridian Exports', 'Containerized cargo (invoice)', PRICES.shipper,
         { massGrams: 12_000_000, volumeMl: 33_000_000 },
         [
             { clauseKey: C.merchant, addresses: [INSPECTOR.address, FORWARDER.address, CUSTOMS.address] },
             { clauseKey: C.courier, addresses: [CARRIER.address, INLAND.address] },
         ]);
-    await seed(INSPECTOR, 16, 'Veritas Inspection', 'Pre-shipment inspection', PRICES.inspector);
-    await seed(FORWARDER, 17, 'Atlas Forwarding', 'Freight coordination', PRICES.forwarder);
-    await seed(CARRIER, 18, 'Boreal Lines', 'Reefer ocean freight', PRICES.carrier, {
+    await seed(INSPECTOR, SELLER_INDEX.inspector, 'Veritas Inspection', 'Pre-shipment inspection', PRICES.inspector);
+    await seed(FORWARDER, SELLER_INDEX.forwarder, 'Atlas Forwarding', 'Freight coordination', PRICES.forwarder);
+    await seed(CARRIER, SELLER_INDEX.carrier, 'Boreal Lines', 'Reefer ocean freight', PRICES.carrier, {
         clauseValues: {
             [C.coldChain]: { tempClass: 'refrigerated', tempMinC: 2, tempMaxC: 8, recordingIntervalSeconds: 900 },
         },
     });
-    await seed(CUSTOMS, 20, 'Portside Customs Agents', 'Customs entry filing', PRICES.customs);
-    await seed(INLAND, 21, 'Delta Drayage', 'Destination drayage', PRICES.inland, {
+    await seed(CUSTOMS, SELLER_INDEX.customs, 'Portside Customs Agents', 'Customs entry filing', PRICES.customs);
+    await seed(INLAND, SELLER_INDEX.inland, 'Delta Drayage', 'Destination drayage', PRICES.inland, {
         clauseValues: {
             [C.freightClass]: { nmfcClass: '85' },
         },

@@ -10,7 +10,7 @@
  * ProcessResolved, the wallet's balance) are read out-of-band with fresh chain
  * queries, never from the screen that wrote them.
  *
- * Wallet: anvil[38] — this spec's own index (the launch count is 39; the
+ * Wallet: anvil[38] — this spec's own index (the launch count is 47; the
  * allocation lives in frontend/tests/anvilAccounts.ts's lockstep). Every run
  * replaces its profile on entry (`seedRegisteredMember`).
  *
