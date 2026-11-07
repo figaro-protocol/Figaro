@@ -396,6 +396,18 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
             address: florin, abi: ERC20_ABI, functionName: 'balanceOf', args: [AUTHOR],
         })) as bigint;
 
+        // The UI claims EVERY clause or assembly this wallet authored in the period, not the
+        // single one quoted above (on devnet one wallet registers every clause, so
+        // that is the whole period budget). Assert against what the UI actually PROMISED
+        // the user — the claimable figure it rendered — which is the property that
+        // matters: the number on screen is the number that moves. It is read BEFORE
+        // the claim: a claimed period no longer shows a claimable figure.
+        const promised = parseUnits(
+            (await page.getByTestId(`period-claimable-${period}`).innerText())
+                .replace(/[^0-9.]/g, ''),
+            18,
+        );
+
         await claimButton.click();
         await expect
             .poll(async () => (await publicClient.readContract({
@@ -406,17 +418,9 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
         const after = (await publicClient.readContract({
             address: florin, abi: ERC20_ABI, functionName: 'balanceOf', args: [AUTHOR],
         })) as bigint;
-        // The UI claims EVERY clause or assembly this wallet authored in the period, not the
-        // single one quoted above (on devnet one wallet registers every clause, so
-        // that is the whole period budget). Assert against what the UI actually PROMISED
-        // the user — the claimable figure it rendered — which is the property that
-        // matters: the number on screen is the number that moves.
-        const promised = parseUnits(
-            (await page.getByTestId(`period-claimable-${period}`).innerText())
-                .replace(/[^0-9.]/g, ''),
-            18,
-        );
         expect(after - before, 'the payout matches what the UI promised').toBe(promised);
+        await expect(page.getByTestId(`period-claimable-${period}`), 'a claimed period shows no claimable figure')
+            .toHaveCount(0);
         expect(after - before, 'and covers the single-clause quote').toBeGreaterThanOrEqual(quoted);
         await expect(page.getByTestId(`period-status-${period}`)).toHaveText('claimed');
 
