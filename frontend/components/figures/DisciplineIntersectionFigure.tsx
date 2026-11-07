@@ -47,7 +47,10 @@ export function DisciplineIntersectionFigure({
         <FigureFrame
             idPrefix={idPrefix}
             className={className}
-            svgProps={svgProps}
+            // With links the drawing holds controls, so it is a labeled
+            // group: an image's children are presentational and may not be
+            // focusable (WCAG, axe's nested-interactive).
+            svgProps={hrefs?.some(Boolean) ? { role: "group", ...svgProps } : svgProps}
             viewBox="0 0 660 580"
             frameClassName="w-full max-w-2xl mx-auto"
             title="The disciplines intersecting in one working group"

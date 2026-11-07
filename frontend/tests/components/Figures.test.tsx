@@ -408,4 +408,16 @@ describe("DisciplineIntersectionFigure", () => {
         expect(container.querySelector("svg a")).toBeNull();
         expect(container.querySelector("svg")?.textContent).toContain("a working group");
     });
+
+    it("is a labeled group when it carries links, since an image holds no controls (WCAG nested-interactive)", () => {
+        const { container } = render(<DisciplineIntersectionFigure labels={labels} hrefs={["#economics", "#law"]} />);
+        const svg = container.querySelector("svg");
+        expect(svg?.getAttribute("role")).toBe("group");
+        expect(svg?.getAttribute("aria-labelledby")).toBe("discipline-intersection-title discipline-intersection-desc");
+    });
+
+    it("stays an image when it carries no links", () => {
+        const { container } = render(<DisciplineIntersectionFigure labels={labels} />);
+        expect(container.querySelector("svg")?.getAttribute("role")).toBe("img");
+    });
 });
