@@ -533,6 +533,9 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
             "the geolocation clause's declared interaction mounts on the courier's page",
         ).toBeVisible({ timeout: 15000 });
         await page.getByTestId('interaction-address-request').click();
+        // The request is signed and sent before the button reads "Requested";
+        // leaving the page earlier drops it, and the buyer's form never opens.
+        await expect(page.getByTestId('interaction-address-request')).toContainText(/Requested/, { timeout: 30000 });
 
         // The buyer answers: fills the addressee block, sends it encrypted,
         // and the anchor lands on-chain (poll the Attestation event —
