@@ -71,8 +71,7 @@ const BUYER = privateKeyToAccount(ANVIL_KEYS[0] as Hex).address; // anvil[0] —
 // This scenario's seller — anvil[19], SHARED with assembly-withdraw and
 // clause-authoring by design: every sharer's wizard leg self-establishes
 // (uncheck all bindings, bind its own), the tolerance the wizard's
-// profile-update path exists for. Indexes past 19 are not unlocked on the
-// devnet Anvil (`--accounts 20`), so a transacting wallet must sit within.
+// profile-update path exists for.
 const seller = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 19 });
 const SELLER = seller.address;
 

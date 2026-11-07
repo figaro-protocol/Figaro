@@ -59,8 +59,8 @@ const LOCAL_ANVIL = defineChain({
 });
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
-// anvil[9] — the agreement DESIGNER. Anvil launches 39 unlocked accounts
-// (scripts/devup.sh) and every index 0..38 is referenced by some e2e file, so
+// anvil[9] — the agreement DESIGNER. Anvil launches 47 unlocked accounts
+// (scripts/devup.sh) and every index 0..46 is referenced by some e2e file, so
 // no index is wholly unused. anvil[9] is the least contended: no spec signs
 // with it; populate-test-data seeds it as a member (Linden Florist) and
 // visitor-discover only READS that member's binding. This spec spends only the

@@ -52,12 +52,20 @@ export const ANVIL_ACCOUNTS = [
     '0x1003ff39d25F2Ab16dBCc18EcE05a9B6154f65F4',
     '0x9eAF5590f2c84912A08de97FA28d0529361Deb9E',
     '0x11e8F3eA3C6FcF12EcfF2722d75CEFC539c51a1C',
+    '0x7D86687F980A56b832e9378952B738b614A99dc6',
+    '0x9eF6c02FB2ECc446146E05F1fF687a788a8BF76d',
+    '0x08A2DE6F3528319123b25935C92888B16db8913E',
+    '0xe141C82D99D85098e03E1a1cC1CdE676556fDdE0',
+    '0x4b23D303D9e3719D6CDf8d172Ea030F80509ea15',
+    '0xC004e69C5C04A223463Ff32042dd36DabF63A25a',
+    '0x5eb15C0992734B5e77c888D713b4FC67b3D679A2',
+    '0x7Ebb637fd68c523613bE51aad27C35C4DB199B9c',
 ] as const;
 
 /**
- * Private keys for `ANVIL_ACCOUNTS[0..38]` — same default mnemonic,
- * index-aligned (verified by derivation; the address list mirrors
- * `script/Deploy.s.sol`'s funded testAccounts exactly). The canonical
+ * Private keys for `ANVIL_ACCOUNTS[0..46]` — same default mnemonic,
+ * index-aligned (verified by derivation; the first 20 addresses are
+ * `script/Deploy.s.sol`'s testAccounts, which it mints tokens to). The canonical
  * source for specs that sign as the buyer / a seller; never re-paste
  * the literals.
  */
@@ -101,4 +109,12 @@ export const ANVIL_KEYS = [
     '0xcaa7b4a2d30d1d565716199f068f69ba5df586cf32ce396744858924fdf827f0',
     '0xfc5a028670e1b6381ea876dd444d3faaee96cffae6db8d93ca6141130259247c',
     '0x5b92c5fe82d4fabee0bc6d95b4b8a3f9680a0ed7801f631035528f32c9eb2ad5',
+    '0xb68ac4aa2137dd31fd0732436d8e59e959bb62b4db2e6107b15f594caf0f405f',
+    '0xc95eaed402c8bd203ba04d81b35509f17d0719e3f71f40061a2ec2889bc4caa7',
+    '0x55afe0ab59c1f7bbd00d5531ddb834c3c0d289a4ff8f318e498cb3f004db0b53',
+    '0xc3f9b30f83d660231203f8395762fa4257fa7db32039f739630f87b8836552cc',
+    '0x3db34a7bcc6424e7eadb8e290ce6b3e1423c6e3ef482dd890a812cd3c12bbede',
+    '0xae2daaa1ce8a70e510243a77187d2bc8da63f0186074e4a4e3a7bfae7fa0d639',
+    '0x5ea5c783b615eb12be1afd2bdd9d96fae56dda0efe894da77286501fd56bac64',
+    '0xf702e0ff916a5a76aaf953de7583d128c013e7f13ecee5d701b49917361c5e90',
 ] as const;

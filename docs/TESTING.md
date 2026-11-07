@@ -858,6 +858,23 @@ stranger auditing the chain would. Assert on that. The UI's own display is a
 - **Reading a swallowed failure as absence.** A `catch` that logs nothing turns a
   broken read into an empty section. If a surface can render empty, assert the
   populated case explicitly — `toHaveCount(n)`, never `not.toHaveCount(0)`.
+- **Leaving a page before its action finished.** A click can start work that signs
+  and sends after the click returns (a ceremony request over the coordination
+  channel). A `gotoAsWallet` to the counterparty right after the click unloads the
+  page and drops it; the spec then passes only on retry. Wait for the UI's own
+  sign that the action finished (the request button reading "Requested") before
+  switching wallet, as `content-delivery` and `local-commerce` do.
+- **Reading a figure after the action that hides it.** The rewards page shows a
+  period's claimable figure only until it is claimed. Read what the UI promised
+  BEFORE the action, then assert the chain moved that amount.
+- **Two specs registering one wallet.** A seller wallet holds one member profile,
+  so a second spec that registers it replaces the first's binding and catalog,
+  and the suite passes only in the order that happens to re-register last. Each
+  spec that writes a member profile owns its seller indices, unless every sharer
+  rewrites the whole profile on entry and says so (anvil[19]: assembly-withdraw,
+  clause-authoring, content-delivery). New indices go past the last; `--accounts` in
+  `scripts/devup.sh` and the CI workflow grows with
+  `frontend/tests/anvilAccounts.ts` (`scripts/lint-anvil-accounts-lockstep.sh`).
 
 **Where it stops.** This does not replace Foundry: contract behavior belongs
 there and is cheaper to prove there. Chain-fact e2e covers the seam Foundry
