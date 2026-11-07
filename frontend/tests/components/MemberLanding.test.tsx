@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
     } as Record<string, unknown>,
     router: { push: () => {}, replace: vi.fn() },
     fetchProfile: vi.fn(),
+    account: {} as { address?: string; isConnected: boolean; status: string },
 }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => mocks.router }));
@@ -36,7 +37,7 @@ vi.mock("next/link", async () => {
     };
 });
 vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: ADDRESS, isConnected: true }),
+    useAccount: () => mocks.account,
     usePublicClient: () => ({}),
 }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
@@ -87,6 +88,7 @@ const REGISTERED = {
 };
 
 beforeEach(() => {
+    mocks.account = { address: ADDRESS, isConnected: true, status: "connected" };
     mocks.profile = REGISTERED;
     mocks.withdrawal = {
         pending: { status: "present", value: 0n },
@@ -111,6 +113,24 @@ describe("MemberLanding — a failed read renders nothing and takes no action", 
 
     it("the chain's answer 'not registered', with nothing owed, redirects to Identity", async () => {
         mocks.profile = { read: { status: "present", value: { registered: false } }, refetch: () => Promise.resolve() };
+        render(<MemberLanding />);
+        await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith("/members/identity"));
+    });
+
+    it("a wallet still connecting after the page loads is not sent to Identity", async () => {
+        // wagmi restores the wallet after the page loads: until it is done,
+        // isConnected is false and no address is known. Nothing about the
+        // wallet has been answered yet, so nothing redirects.
+        mocks.account = { address: undefined, isConnected: false, status: "connecting" };
+        mocks.profile = { read: { status: "pending" }, refetch: () => Promise.resolve() };
+        render(<MemberLanding />);
+        await new Promise((r) => setTimeout(r, 20));
+        expect(mocks.router.replace).not.toHaveBeenCalled();
+    });
+
+    it("a wallet whose status is disconnected is sent to Identity", async () => {
+        mocks.account = { address: undefined, isConnected: false, status: "disconnected" };
+        mocks.profile = { read: { status: "pending" }, refetch: () => Promise.resolve() };
         render(<MemberLanding />);
         await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith("/members/identity"));
     });
