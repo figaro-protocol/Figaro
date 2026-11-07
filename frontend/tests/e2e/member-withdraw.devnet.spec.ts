@@ -88,9 +88,12 @@ test.describe('MembersRegistry leave + claim (devnet)', () => {
 
         await gotoAsWallet(page, SELLER_ADDR, '/members/manage?e2e=devnet');
 
-        // The idle row's text proves the dashboard (not the welcome view) is up.
-        await page.getByText('Leave the registry').first().waitFor({ timeout: 30000 });
-        await page.getByRole('button', { name: /^Begin$/ }).click();
+        // The leave row's Begin button renders only on the registered member's
+        // dashboard; the header above it also says "leave the registry", so
+        // that text alone does not prove the dashboard is up.
+        const begin = page.getByRole('button', { name: /^Begin$/ });
+        await begin.waitFor({ state: 'visible', timeout: 30000 });
+        await begin.click();
 
         const registry = getRegistryAddress();
         const client = publicClient();

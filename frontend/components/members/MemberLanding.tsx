@@ -43,7 +43,7 @@ import { formatEther } from "viem";
 export function MemberLanding() {
     const router = useRouter();
     const mounted = useMounted();
-    const { address, isConnected } = useAccount();
+    const { address, status } = useAccount();
     const { read: registration, refetch } = useMemberProfile(address);
     const deposit = useRegistrationDeposit();
     const { pending, refetch: refetchWithdrawal } = useWithdrawalStatus(address);
@@ -54,10 +54,13 @@ export function MemberLanding() {
     // redirecting it would strand the ETH behind a screen it can't reach, so
     // the claim surface renders here instead. The redirect is taken only on
     // the chain's ANSWERS — registration and pending stake both read; a
-    // failed read of either renders nothing and redirects nowhere.
+    // failed read of either renders nothing and redirects nowhere. A wallet
+    // still connecting has not answered either: wagmi restores it after the
+    // page loads, so only a wallet whose status is "disconnected" is sent on.
     const unregistered = registration.status === "present" && !registration.value.registered;
     const owedDeposit = pending.status === "present" && pending.value > 0n;
-    const redirect = mounted && (!isConnected || (unregistered && pending.status === "present" && !owedDeposit));
+    const redirect = mounted
+        && (status === "disconnected" || (unregistered && pending.status === "present" && !owedDeposit));
     useEffect(() => {
         if (redirect) router.replace("/members/identity");
     }, [redirect, router]);
