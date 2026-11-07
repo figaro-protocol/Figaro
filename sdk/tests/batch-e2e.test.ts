@@ -659,7 +659,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         expect(resolved.args.buyerPayout).toBe(PAYMENT);
         expect(committed.transactionHash).not.toBe(resolved.transactionHash);
     }, 5 * 60_000);
-    // ── The pass test of the batch design (punch-list band 0) ─────────────
+    // ── The pass test of the batch design ─────────────────────────────────
     // Batch and Core are equivalent: with every relay's state file
     // deleted and every relay stopped, a stranger rebuilds the state behind
     // the verifier's root from the chain alone, and the buyer, or anyone
