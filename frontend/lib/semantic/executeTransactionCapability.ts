@@ -9,7 +9,6 @@ import type {
 type TransactionExecutionResult = Promise<Hex | undefined | void>;
 
 export interface TransactionCapabilityExecutors {
-    waitForTransactionConfirmation?: (txHash?: Hex) => Promise<void>;
     resolveProcess?: (processId: string) => TransactionExecutionResult;
     /** Registers with the stake the registry asks for, read from the chain
      *  inside the write. Maps to MembersRegistry.register. */
@@ -52,11 +51,9 @@ export async function executeTransactionCapabilityAction(
         throw new Error(`Capability ${action.kind} is not a transaction action.`);
     }
 
-    let txHash: Hex | undefined | void;
-
     switch (action.kind) {
         case "resolve-process":
-            txHash = await ensureExecutor(
+            await ensureExecutor(
                 executors.resolveProcess,
                 "Resolve-process execution is unavailable.",
             )(action.processId);
@@ -65,7 +62,7 @@ export async function executeTransactionCapabilityAction(
             const metadataURI = input?.kind === "register-member"
                 ? (input.metadataURI ?? "")
                 : "";
-            txHash = await ensureExecutor(
+            await ensureExecutor(
                 executors.registerMember,
                 "Member registration is unavailable.",
             )(metadataURI);
@@ -75,27 +72,27 @@ export async function executeTransactionCapabilityAction(
             const metadataURI = input?.kind === "update-member-profile"
                 ? (input.metadataURI ?? "")
                 : "";
-            txHash = await ensureExecutor(
+            await ensureExecutor(
                 executors.updateMemberProfile,
                 "Member profile update is unavailable.",
             )(metadataURI);
             break;
         }
         case "withdraw-member-deposit": {
-            txHash = await ensureExecutor(
+            await ensureExecutor(
                 executors.withdrawMemberDeposit,
                 "Member stake withdrawal is unavailable.",
             )();
             break;
         }
         case "submit-clause-attestation":
-            txHash = await ensureExecutor(
+            await ensureExecutor(
                 executors.submitClauseAttestation,
                 "Clause attestation execution is unavailable.",
             )(action, input?.kind === "submit-clause-attestation" ? input.values : undefined);
             break;
         case "attest-provenance-leaf":
-            txHash = await ensureExecutor(
+            await ensureExecutor(
                 executors.attestProvenanceLeaf,
                 "Provenance attestation execution is unavailable.",
             )(action);
@@ -103,6 +100,4 @@ export async function executeTransactionCapabilityAction(
         default:
             return assertNever(action);
     }
-
-    await executors.waitForTransactionConfirmation?.(txHash as Hex | undefined);
 }
