@@ -42,8 +42,8 @@ src/app/WitnessSwapAndCommitCoordinator.sol :: WitnessSwapAndCommitCoordinator._
 
 # FigaroBatchVerifier — the batch-settlement verifier (proof-apparatus
 # rebuild, witness model). BatchVerifierTokenOps.spec covers both sites:
-# single-position rules with the documented inductive generalization;
-# registered summarized as a revert-only view (sound — the anchor gate
-# refuses settlement, never moves a token). Cloud run green 2026-07-16.
-src/core/verifier/FigaroBatchVerifier.sol :: FigaroBatchVerifier._executePositions :: IERC20(p.token).safeTransfer(p.user, net) | net payout → user | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
-src/core/verifier/FigaroBatchVerifier.sol :: FigaroBatchVerifier._pullExact :: token.safeTransferFrom(from, address(this), amount) | net deposit pull | singlePositionUserDelta, singlePositionContractDelta, singlePositionAllowanceDrainSafety, singlePositionConservation
+# rules on `_executePositions` alone, through the harness's
+# `executePositions`, over two positions of any tokens, with the argument for
+# longer lists stated in the spec; the rest of `settleBatch` moves no token.
+src/core/verifier/FigaroBatchVerifier.sol :: FigaroBatchVerifier._executePositions :: IERC20(p.token).safeTransfer(p.user, net) | net payout → user | eachUserMovesByItsNetPosition, verifierMovesByTheBatchNetInEachToken, noOtherBalanceMoves, noPayoutWaitsOnAPull
+src/core/verifier/FigaroBatchVerifier.sol :: FigaroBatchVerifier._pullExact :: token.safeTransferFrom(from, address(this), amount) | net deposit pull | eachUserMovesByItsNetPosition, verifierMovesByTheBatchNetInEachToken, noOtherBalanceMoves, noPayoutWaitsOnAPull
