@@ -1361,7 +1361,6 @@ should build them.
 | `POST /submit-usage` | `{ "claim": <UsageClaim> }` | `{ "pending": n }` | `submitUsageClaim` |
 | `GET /health` | — | `{ status, pending_ops, pending_usage_claims, batches_settled }` | none — `isAvailable()` probes `/status` instead |
 | `GET /status` | — | the `/health` fields plus `state_root`, `dead_lettered_ops`, `last_settle_error`, `dropped_usage_claims`, `last_dropped_claim_error` (usage claims dropped without landing, counted apart from the operations), | `status()` |
-| `GET /state` | — | the state behind the relay's root, in the relay's state-file format (the snapshot `prover/lib/src/types.rs` defines); the root is in the `x-figaro-state-root` header | none — save it to a new file; when the header's root is the verifier's `stateRoot`, make that file a relay's `STATE_PATH` and start it on this state (the relay checks the root again). Never write it over a state file unchecked: a stale relay serves a stale state, and the file it replaces may be the only copy |
 
 `/submit` is idempotent on **on-chain identity** (order hash / process id /
 attestation identity): a retry, even a re-signed one, returns the original `id`

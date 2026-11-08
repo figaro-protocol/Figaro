@@ -25,8 +25,7 @@ use figaro_sequencer::gas::{self, SettleItems};
 use figaro_sequencer::submitter::settle_calldata;
 use figaro_sequencer::mempool::{Mempool, PendingOp, Refiltered, SubmitError};
 use figaro_sequencer::state::{
-    fetch_served_state, fetch_served_state_within, held_state_for, take_over_from_served, takeover, Held,
-    NextState, StateMirror, StateStore, Takeover, TakeoverRefused,
+    held_state_for, Held, NextState, StateMirror, StateStore,
 };
 
 fn mempool() -> Mempool {
@@ -1724,229 +1723,22 @@ fn the_spec_an_attestation_carries_is_what_the_registry_check_reads() {
     assert!(attestation_spec(&ops[3]).is_none());
 }
 
-// ── The state is published, so another relay can start on it ───────────
+// ── The state is rebuilt from the chain, never served ───────────────────
+//
+// A relay holding nothing rebuilds the state behind the verifier's root from
+// the operation streams the verifier logs (`REBUILD_FROM_CHAIN=1`,
+// `src/rebuild.rs`); no relay serves its state to another, so no relay
+// starts on a state another relay chose to serve.
 
 #[tokio::test]
-async fn api_state_route_serves_the_state_another_relay_starts_on() {
-    let mut state = test_app_state();
-    let next = canonical_next();
-    state.state_mirror = StateMirror::from_snapshot(next.state.clone());
-    let app = api::router(state, ApiConfig::default());
+async fn the_relay_serves_no_state() {
+    let app = api::router(test_app_state(), ApiConfig::default());
     let response = app
         .oneshot(Request::builder().uri("/state").body(Body::empty()).unwrap())
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let header = response.headers()["x-figaro-state-root"].to_str().unwrap().to_string();
-    assert_eq!(header, format!("{:?}", next.root));
-    let body = axum::body::to_bytes(response.into_body(), 1 << 20).await.unwrap();
-
-    // The body is the kept-state file's format: written as STATE_PATH, it is
-    // the state a second relay opens and starts on, with the same root.
-    let path = temp_state("fetched");
-    tokio::fs::write(&path, &body).await.unwrap();
-    let (_, kept) = StateStore::open(Some(path)).await.unwrap();
-    let mirror = StateMirror::from_snapshot(kept.expect("the fetched state parses as a kept state"));
-    assert_eq!(mirror.state_root().await, next.root);
-}
-
-// ── A relay started on another relay's `GET /state` ────────────────────
-//
-// `formal/RelayState.tla`, `Takeover`: a stopped relay adopts a served
-// state only when its root is the verifier's (`TakeoverChecksRoot`), and
-// never when it already holds the state behind that root — the served
-// state of a stale relay would replace what may be the only copy, and an
-// adoption over a landed batch of this relay's own would drop its record.
-
-#[test]
-fn takeover_adopts_the_served_state_behind_the_verifiers_root() {
-    let verifier = B256::repeat_byte(1);
-    assert_eq!(takeover(false, Some(verifier), verifier, verifier), Takeover::Adopt);
-    // No header: the body's own root decides.
-    assert_eq!(takeover(false, None, verifier, verifier), Takeover::Adopt);
-}
-
-#[test]
-fn takeover_never_writes_over_the_verifiers_state_this_relay_holds() {
-    let verifier = B256::repeat_byte(1);
-    let stale = B256::repeat_byte(3);
-    assert_eq!(takeover(true, Some(stale), stale, verifier), Takeover::KeptStands);
-    assert_eq!(takeover(true, Some(verifier), verifier, verifier), Takeover::KeptStands);
-    // A lying header changes nothing held.
-    assert_eq!(takeover(true, Some(verifier), stale, verifier), Takeover::KeptStands);
-}
-
-#[test]
-fn takeover_refuses_a_served_state_whose_root_is_not_the_verifiers() {
-    let verifier = B256::repeat_byte(1);
-    let stale = B256::repeat_byte(3);
-    assert_eq!(takeover(false, Some(stale), stale, verifier), Takeover::Refused { served: stale, verifier });
-    assert_eq!(takeover(false, None, stale, verifier), Takeover::Refused { served: stale, verifier });
-}
-
-#[test]
-fn takeover_refuses_a_served_state_whose_header_is_not_its_root() {
-    // The header claims the verifier's root; the body computes to another.
-    let verifier = B256::repeat_byte(1);
-    let computed = B256::repeat_byte(4);
-    assert_eq!(
-        takeover(false, Some(verifier), computed, verifier),
-        Takeover::HeaderDisagrees { header: verifier, computed }
-    );
-    // A header that disagrees with its body is refused as such, before the
-    // root is read against the verifier's.
-    let other = B256::repeat_byte(5);
-    assert_eq!(
-        takeover(false, Some(other), computed, verifier),
-        Takeover::HeaderDisagrees { header: other, computed }
-    );
-}
-
-#[tokio::test]
-async fn takeover_leaves_a_landed_batch_this_relay_built_in_its_journal() {
-    // R built a batch on genesis, sent it, and crashed before it kept the
-    // result; the batch landed, so the verifier's root is the batch's and R
-    // holds the state behind it in its journal. Started with STATE_FROM on
-    // a relay serving that same state, R writes nothing and runs on what it
-    // held: `step_to` then finds the held state and publishes the batch's
-    // record, which an adoption would have pruned from the journal.
-    let path = temp_state("own-landed");
-    let next = canonical_next();
-    let (store, kept) = StateStore::open(Some(path.clone())).await.unwrap();
-    assert!(kept.is_none());
-    store.hold_next(next.clone()).await.unwrap();
-    let mirror = StateMirror::genesis();
-    let (running, decision) =
-        take_over_from_served(&store, &mirror, next.root, next.state.clone(), Some(next.root)).await.unwrap();
-    assert_eq!(decision, Takeover::KeptStands);
-    assert_eq!(running.state_root().await, mirror.state_root().await, "the relay runs on what it held");
-    assert!(!path.exists(), "no kept file was written");
-    assert_eq!(store.next_roots().await, vec![next.root], "the journal still holds the batch");
-}
-
-#[tokio::test]
-async fn adopting_a_served_state_keeps_only_the_journal_entries_built_on_it() {
-    // R holds two next states: one built on the served root (a batch of R's
-    // that can still land on it) and one built on another root (a batch the
-    // verifier can no longer accept). Adopting the served state keeps the
-    // first and drops the second.
-    let path = temp_state("adopt-journal");
-    let served = canonical_next();
-    let on_served = next_between(served.root, B256::repeat_byte(7));
-    let on_other = next_between(B256::repeat_byte(8), B256::repeat_byte(9));
-    let (store, _) = StateStore::open(Some(path.clone())).await.unwrap();
-    store.hold_next(on_served.clone()).await.unwrap();
-    store.hold_next(on_other.clone()).await.unwrap();
-    let (running, decision) =
-        take_over_from_served(&store, &StateMirror::genesis(), served.root, served.state.clone(), Some(served.root))
-            .await
-            .unwrap();
-    assert_eq!(decision, Takeover::Adopt);
-    assert_eq!(running.state_root().await, served.root, "the relay runs on the adopted state");
-    drop(store);
-
-    let (store, kept) = StateStore::open(Some(path)).await.unwrap();
-    let mirror = StateMirror::from_snapshot(kept.expect("the adopted state is on disk"));
-    assert_eq!(mirror.state_root().await, served.root);
-    assert_eq!(store.next_roots().await, vec![on_served.root], "only the batch built on the adopted root can still land");
-}
-
-#[tokio::test]
-async fn a_relay_takes_over_from_another_relays_state_route_through_its_own_fetch() {
-    // Relay S serves the state behind the verifier's root over HTTP.
-    let mut served = test_app_state();
-    let next = canonical_next();
-    served.state_mirror = StateMirror::from_snapshot(next.state.clone());
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let app = api::router(served, ApiConfig::default());
-    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
-
-    // Relay R, stopped, holding no state file (its mirror is genesis),
-    // fetches S's state itself and recomputes its root: the header is a
-    // claim, the body is the state.
-    let (snapshot, header) = fetch_served_state(&base_url).await.unwrap();
-    assert_eq!(header, Some(next.root));
-    assert_eq!(StateMirror::from_snapshot(snapshot.clone()).state_root().await, next.root);
-
-    let path = temp_state("takeover");
-    let (store, kept) = StateStore::open(Some(path.clone())).await.unwrap();
-    assert!(kept.is_none());
-    let (running, decision) =
-        take_over_from_served(&store, &StateMirror::genesis(), next.root, snapshot.clone(), header).await.unwrap();
-    assert_eq!(decision, Takeover::Adopt);
-    assert_eq!(running.state_root().await, next.root);
-    drop(store);
-
-    // A restart opens the adopted state, and its root is the verifier's.
-    let (store, kept) = StateStore::open(Some(path.clone())).await.unwrap();
-    let mirror = StateMirror::from_snapshot(kept.expect("the adopted state is on disk"));
-    assert_eq!(mirror.state_root().await, next.root);
-    let kept_bytes = tokio::fs::read(&path).await.unwrap();
-
-    // R holds the verifier's root: whatever S serves, R's file stands and is
-    // byte-identical after.
-    let (running, decision) =
-        take_over_from_served(&store, &mirror, next.root, snapshot.clone(), header).await.unwrap();
-    assert_eq!(decision, Takeover::KeptStands);
-    assert_eq!(running.state_root().await, next.root);
-    assert_eq!(tokio::fs::read(&path).await.unwrap(), kept_bytes, "a kept state that stands is not rewritten");
-
-    // The verifier moved on to a root R does not hold. The same served
-    // state is refused, and R's kept file is byte-identical after.
-    let moved = B256::repeat_byte(9);
-    match take_over_from_served(&store, &mirror, moved, snapshot.clone(), header).await {
-        Err(TakeoverRefused::Decided(decision)) => {
-            assert_eq!(decision, Takeover::Refused { served: next.root, verifier: moved });
-        }
-        Ok((_, decision)) => panic!("a served state behind another root is refused, got {decision:?}"),
-        Err(other) => panic!("a served state behind another root is refused, got {other:?}"),
-    }
-    assert_eq!(tokio::fs::read(&path).await.unwrap(), kept_bytes, "a refusal writes nothing");
-
-    // A header that names a root other than the body's is refused as such,
-    // and writes nothing.
-    match take_over_from_served(&store, &mirror, moved, snapshot, Some(moved)).await {
-        Err(TakeoverRefused::Decided(Takeover::HeaderDisagrees { header, computed })) => {
-            assert_eq!((header, computed), (moved, next.root));
-        }
-        Ok((_, decision)) => panic!("a header that disagrees with its body is refused, got {decision:?}"),
-        Err(other) => panic!("a header that disagrees with its body is refused, got {other:?}"),
-    }
-    assert_eq!(tokio::fs::read(&path).await.unwrap(), kept_bytes, "a refusal writes nothing");
-}
-
-#[tokio::test]
-async fn fetching_a_served_state_refuses_every_malformed_peer() {
-    use axum::routing::get;
-    // One router, four faults: a header that is not a root, a body that is
-    // not a state, a status that is not success, and a body over the limit.
-    let good = canonical_next();
-    let good_body = serde_json::to_string(&good.state).unwrap();
-    let app = axum::Router::new()
-        .route("/bad-header/state", get(|| async { ([("x-figaro-state-root", "not-a-root")], "{}") }))
-        .route("/bad-body/state", get(|| async { ([("x-figaro-state-root", format!("{:?}", B256::ZERO))], "not json") }))
-        .route("/failing/state", get(|| async { (StatusCode::INTERNAL_SERVER_ERROR, "down") }))
-        .route("/big/state", get(move || async move { ([("x-figaro-state-root", format!("{:?}", good.root))], good_body) }));
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let base = format!("http://{}", listener.local_addr().unwrap());
-    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
-
-    let err = fetch_served_state(&format!("{base}/bad-header")).await.unwrap_err();
-    assert!(err.contains("x-figaro-state-root header does not parse"), "{err}");
-    let err = fetch_served_state(&format!("{base}/bad-body")).await.unwrap_err();
-    assert!(err.contains("the served state does not parse"), "{err}");
-    let err = fetch_served_state(&format!("{base}/failing")).await.unwrap_err();
-    assert!(err.contains("HTTP 500"), "{err}");
-    let err = fetch_served_state_within(&format!("{base}/big"), 16).await.unwrap_err();
-    assert!(err.contains("16-byte limit"), "{err}");
-    // Under a limit the state fits, the same route serves it.
-    let (snapshot, header) = fetch_served_state(&format!("{base}/big")).await.unwrap();
-    assert_eq!(header, Some(canonical_next().root));
-    assert_eq!(StateMirror::from_snapshot(snapshot).state_root().await, canonical_next().root);
-    // A peer that is not there.
-    let err = fetch_served_state("http://127.0.0.1:9").await.unwrap_err();
-    assert!(err.starts_with("GET http://127.0.0.1:9/state"), "{err}");
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert!(response.headers().get("x-figaro-state-root").is_none());
 }
 
 // ── The batch's cost on chain bounds it ───────────────────────────────
@@ -2737,7 +2529,6 @@ async fn the_read_routes_answer_a_cross_origin_page_and_the_submit_routes_do_not
     for uri in [
         "/health".to_string(),
         "/status".to_string(),
-        "/state".to_string(),
         "/batches".to_string(),
         format!("/orders/{hash}"),
         format!("/processes/{hash}"),
@@ -2750,10 +2541,6 @@ async fn the_read_routes_answer_a_cross_origin_page_and_the_submit_routes_do_not
             Some("*"),
             "GET {uri} answers any origin"
         );
-        if uri == "/state" {
-            let exposed = response.headers()["access-control-expose-headers"].to_str().unwrap().to_ascii_lowercase();
-            assert!(exposed.contains("x-figaro-state-root"), "{exposed}");
-        }
         // The preflight a page's GET may send.
         let app = api::router(test_app_state(), ApiConfig::default());
         let preflight = with_origin(
@@ -3270,7 +3057,7 @@ async fn the_relay_writes_no_attestation_content_to_its_logs_state_or_routes() {
     }
 
     // The batch loop's path: drain, filter, apply, hold the next state,
-    // keep it, advance the served state.
+    // keep it, advance the mirror.
     let pending = state.mempool.drain().await;
     let prev = state.state_mirror.snapshot().await;
     let (valid, poison) = assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &prev, pending);
@@ -3292,7 +3079,7 @@ async fn the_relay_writes_no_attestation_content_to_its_logs_state_or_routes() {
     state.state_mirror.advance(post).await;
 
     let mut served = String::new();
-    for route in ["/state", "/status"] {
+    for route in ["/status"] {
         let response = app
             .clone()
             .oneshot(Request::builder().uri(route).body(Body::empty()).unwrap())
@@ -3309,7 +3096,7 @@ async fn the_relay_writes_no_attestation_content_to_its_logs_state_or_routes() {
         ("the logs", &logs),
         ("the next-state journal", &journal_text),
         ("the kept state file", &kept_text),
-        ("/state and /status", &served),
+        ("/status", &served),
     ] {
         assert!(!text.contains(MARKER), "{surface} carry attestation content: {text}");
         assert!(!text.contains("attpriv-note") && !text.contains("attpriv-choice"), "{surface} carry a spec");

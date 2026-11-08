@@ -24,8 +24,8 @@
 (* Adopting (`adopt` → `keep`) writes the kept file, which can fail, and   *)
 (* only then prunes the journal to the entries built on the new root.      *)
 (* A relay starts on its kept file and refuses to start unless it holds    *)
-(* the verifier's root; another relay can be started on a relay's          *)
-(* `GET /state` (its mirror) written over its kept file.                   *)
+(* the verifier's root, or starts on the state it rebuilds from the chain  *)
+(* (`StartFromChain`). No relay serves its state to another.               *)
 (*                                                                         *)
 (* A batch carries the parties whose bonds it pulls; a party can revoke    *)
 (* its allowance after the relay's funding check, and `settleBatch` then   *)
@@ -62,11 +62,11 @@
 (* a foreign submitter the model violates `Recoverable`: that is the       *)
 (* defect the batch review found, which the stream check closes.           *)
 (*                                                                         *)
-(* FIVE RELAY SWITCHES. All TRUE is the relay as it must run; each FALSE   *)
+(* FOUR RELAY SWITCHES. All TRUE is the relay as it must run; each FALSE   *)
 (* restores a defect, and the model must then violate `Recoverable`        *)
-(* (the first four — checked with `OpsOnChain` and `ForeignSubmitters`     *)
+(* (the first three — checked with `OpsOnChain` and `ForeignSubmitters`    *)
 (* FALSE, the world where the relay's discipline is the only keeper of     *)
-(* the state) or `SendsExcludeKnownRevoked` (the fifth):                   *)
+(* the state) or `SendsExcludeKnownRevoked` (the fourth):                  *)
 (*   HoldBeforeSend         — FALSE: the state is written after the send,  *)
 (*                            so a crash between the two loses a state the *)
 (*                            chain can reach                              *)
@@ -76,10 +76,6 @@
 (*   KeepRetainsBuiltOnRoot — FALSE: adopting a root clears the whole      *)
 (*                            journal, including batches built on that     *)
 (*                            root and sent while the kept file lagged     *)
-(*   TakeoverChecksRoot     — FALSE: a relay's kept file is overwritten    *)
-(*                            with another relay's `GET /state` whatever   *)
-(*                            root it serves, which can destroy the only   *)
-(*                            copy of the verifier's state                 *)
 (*   RebatchDropsRevoker    — FALSE: a refusal caused by a revoked         *)
 (*                            approval re-sends the same batch instead of  *)
 (*                            dropping the revoker and rebuilding, so the  *)
@@ -217,7 +213,6 @@ CONSTANTS
     HoldBeforeSend,
     HoldThroughRevert,
     KeepRetainsBuiltOnRoot,
-    TakeoverChecksRoot,
     RebatchDropsRevoker,
     OpsOnChain,         \* the design: a batch carries its operations on chain
     ForeignSubmitters,  \* the world: a submitter that is no relay lands batches
@@ -515,20 +510,6 @@ Crash(r) ==
     /\ knownRevoked' = [knownRevoked EXCEPT ![r] = {}]
     /\ UNCHANGED <<vRoot, hist, published, nextId, revoked, kept, journal>>
 
-\* A stopped relay is started on another's `GET /state`: the served state
-\* (that relay's mirror) is written over its kept file; its journal stays
-\* (the relay trims it to the states built on the adopted root, the only
-\* ones that can still land). Checked, the overwrite happens only when the
-\* served root (recomputed from the served state; the `x-figaro-state-root`
-\* header is what the serving relay claims) is the verifier's, and never
-\* when the relay already holds the state behind it.
-Takeover(r, s) ==
-    /\ r # s
-    /\ ~alive[r] /\ alive[s]
-    /\ TakeoverChecksRoot => mirror[s] = vRoot
-    /\ kept' = [kept EXCEPT ![r] = mirror[s]]
-    /\ UNCHANGED <<vRoot, hist, published, nextId, revoked, alive, mirror, ready, phase, inflight, journal, knownRevoked>>
-
 Next ==
     \/ /\ \E r \in Relays :
             \/ StartHolding(r) \/ StartAdopting(r) \/ StartUnread(r) \/ StartFromChain(r)
@@ -539,8 +520,6 @@ Next ==
     \/ \E b \in published : Settle(b)
     \/ ForeignSettle
     \/ /\ \E p \in Parties : Revoke(p)
-       /\ UNCHANGED chainOps
-    \/ /\ \E r, s \in Relays : Takeover(r, s)
        /\ UNCHANGED chainOps
 
 (***************************************************************************)

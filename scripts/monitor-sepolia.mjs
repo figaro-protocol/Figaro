@@ -183,7 +183,7 @@ if (RELAYS.length > 0) {
         if (queued > 0 && age > maxWaitSeconds) {
             alert("high", `relay-stalled-${url}`,
                 `Monitor: the relay at ${url} holds work and has resolved no batch for ${age}s`,
-                `${status.pending_ops} operation(s) and ${status.pending_usage_claims} usage claim(s) queued; ${age}s of chain time since ${since}, past the relay's stated wait of ${maxWaitSeconds}s. Its last resolve error: ${status.last_settle_error ?? "none"}; ${status.dead_lettered_ops} operation(s) dead-lettered. Anyone holding the state can take over: \`GET /state\` from this relay, saved to a new file, gives another relay the state to start on once its \`x-figaro-state-root\` header is the verifier's \`stateRoot\` — never write it over a state file unchecked.`);
+                `${status.pending_ops} operation(s) and ${status.pending_usage_claims} usage claim(s) queued; ${age}s of chain time since ${since}, past the relay's stated wait of ${maxWaitSeconds}s. Its last resolve error: ${status.last_settle_error ?? "none"}; ${status.dead_lettered_ops} operation(s) dead-lettered. Anyone can take over: a relay of the pinned guest started with \`REBUILD_FROM_CHAIN=1\` rebuilds the state behind the verifier's root from the verifier's logs; the queued operations are this relay's alone, so each party submits its signed operation to the new relay.`);
         }
     }
 }

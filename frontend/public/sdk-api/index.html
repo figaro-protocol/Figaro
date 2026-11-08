@@ -1398,12 +1398,6 @@ should build them.</p>
 <td>the <code>/health</code> fields plus <code>state_root</code>, <code>dead_lettered_ops</code>, <code>last_settle_error</code>, <code>dropped_usage_claims</code>, <code>last_dropped_claim_error</code> (usage claims dropped without landing, counted apart from the operations),</td>
 <td><code>status()</code></td>
 </tr>
-<tr>
-<td><code>GET /state</code></td>
-<td>—</td>
-<td>the state behind the relay's root, in the relay's state-file format (the snapshot <code>prover/lib/src/types.rs</code> defines); the root is in the <code>x-figaro-state-root</code> header</td>
-<td>none — save it to a new file; when the header's root is the verifier's <code>stateRoot</code>, make that file a relay's <code>STATE_PATH</code> and start it on this state (the relay checks the root again). Never write it over a state file unchecked: a stale relay serves a stale state, and the file it replaces may be the only copy</td>
-</tr>
 </tbody>
 </table>
 <p><code>/submit</code> is idempotent on <strong>on-chain identity</strong> (order hash / process id /

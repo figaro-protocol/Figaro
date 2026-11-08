@@ -15,7 +15,7 @@ the patterns that look like vulnerabilities and are intended: read it first.
 | Baseline commit | none: no audit is engaged (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 14 contract files, 1,598 lines of code (3,850 physical); 3 deploy scripts, 398 lines of code (842 physical) |
-| Rust in scope | 4 crates, 22 files under `src/`, 7,128 lines of code (10,140 physical) net of their inline test modules |
+| Rust in scope | 4 crates, 23 files under `src/`, 7,032 lines of code (9,985 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, the routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the testnet scripts, `frontend/`, `sdk/` |
@@ -77,7 +77,7 @@ in scope.
 | `prover/program/` | `figaro-prover` | 1, 9 (13) | The guest's entry point: reads the batch input, runs the mirror, commits the public values | A batch the chain resolves wrongly |
 | `prover/lib/` | `figaro-kernel` | 7, 1,558 (2,472) | The mirror of `FigaroCore`'s commit and resolve, the witness gates, the operation stream, the public values, the state root, the usage claims | A batch the chain resolves wrongly |
 | `prover/clause/` | `figaro-clause` | 4, 1,588 (1,939) | The generic clause engine: parses any clause spec supplied as witness input, validates content against it, encodes it | An attestation the batch path reads differently from the party who signed it |
-| `prover/sequencer/` | `figaro-sequencer` | 10, 3,968 (5,705) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, serves its state | Liveness and griefing; a reader misled by what it serves |
+| `prover/sequencer/` | `figaro-sequencer` | 11, 3,877 (5,561) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, rebuilds its state from the chain | Liveness and griefing |
 
 The figures count the files under each crate's `src/`, net of their inline
 test modules.

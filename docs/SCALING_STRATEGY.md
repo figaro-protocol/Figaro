@@ -170,7 +170,9 @@ hands the batch's uses to `UsageCounter.applyBatchAccrual`. It is not a florin m
 `BatchEventData` struct to avoid stack-too-deep.
 
 **Verifier interface and mock** (`ISP1Verifier.sol`, `MockSP1Verifier.sol`):
-the Succinct gateway ABI, and a devnet stand-in that accepts any proof.
+the SP1 verifier interface (`verifyProof`, and `VERIFIER_HASH()`, which the
+constructor reads to pin one SP1 verifier contract), and a devnet stand-in
+that accepts any proof.
 
 ### What the proof must verify
 
@@ -301,9 +303,9 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
    the prover, and submits. It cannot fabricate, steal, or violate invariants;
    the direct `FigaroCore` path is always available beside it.
 4. **Verification wiring**: a devnet wires `MockSP1Verifier`; a public
-   deployment wires the canonical Succinct gateway and the program vkey, by
-   environment. The batch verifier and `FigaroCore` coexist — two resolution
-   paths.
+   deployment pins one specific SP1 verifier contract for one proof form,
+   never a gateway, and the program vkey, by environment. The batch verifier
+   and `FigaroCore` coexist — two resolution paths.
 5. **Event reconstruction**: the verifier re-emits proven attestation events
    with protocol-compatible signatures, hash-verified against proof
    commitments. Event-sourced readers consume the verifier's events identically to
@@ -487,12 +489,18 @@ Two Succinct surfaces beyond the zkVM itself; both are proving
 infrastructure, separate from the clause-engine work and sequenced
 independently of it.
 
-**On-chain verification — `SP1VerifierGateway`.** `FigaroBatchVerifier`
-verifies a batch proof through `ISP1Verifier.verifyProof`. SP1 verification is
-EVM-pure — a Solidity Groth16/PLONK verifier — so it runs on any EVM chain.
-Succinct maintains canonical gateway deployments on the major chains (the
-current list is in Succinct's `verification/contract-addresses` docs); a chain
-with no canonical deployment can still host the verifier contract directly.
+**On-chain verification — one pinned SP1 verifier.** `FigaroBatchVerifier`
+verifies a batch proof through `ISP1Verifier.verifyProof` on one specific SP1
+verifier contract, bound immutably at construction. The constructor reads that
+contract's `VERIFIER_HASH()` and refuses any contract that names none
+(`VerifierNotPinned`), a gateway included. A gateway routes proofs to verifier
+versions, and its owner can freeze a route; this verifier fixes one program key
+and has no upgrade path, so a route buys nothing and a frozen route would leave
+every open batch-path process unresolvable. The deployment resolves the
+verifier the gateway routes for the chosen proof form and binds that contract
+(`script/DeploySepoliaPair.s.sol`, `SP1_VERIFIER`). SP1 verification is
+EVM-pure — a Solidity Groth16/PLONK verifier — so it runs on any EVM chain; a
+chain with no Succinct deployment can host the verifier contract directly.
 Figaro is therefore not chain-constrained — the deployment target is a Figaro
 decision, not an SP1 limit.
 
@@ -509,7 +517,7 @@ trust model draws. It is not only a cost choice: under `network` the whole
 batch input reaches the network's provers — every operation, and the spec,
 content and clauseData of any attestation sent in the plaintext form; a
 hash-only attestation sends them its fingerprints alone. `SP1_PROOF_MODE` (`groth16` default | `plonk`) picks the
-form; it must be the form the deployed verifier's gateway routes. The generic
+form; it must be the form of the SP1 verifier contract the deployed verifier pins. The generic
 clause engine's in-circuit cost is what makes offloading proof generation to
 the network the natural answer rather than scaling a self-hosted prover.
 
@@ -633,22 +641,25 @@ transactions, never to a council making discretionary decisions.
 | State-transition correctness | none | SP1 proof + on-chain verifier |
 | Chain continuity | none | `prevStateRoot == stateRoot` check |
 | Cross-chain replay prevention | none | `chainId` + `verifyingContract` in public inputs |
-| Batch liveness | the sequencer, the prover it proves with, and the verifier gateway the deployment wires | operational; a new process can open on the direct path, an open batch-path process needs the state the sequencer holds |
+| Batch liveness | the sequencer and the prover it proves with | operational; a new process can open on the direct path, and an open batch-path process resolves when its buyer's signed resolve reaches a relay of the pinned guest, which rebuilds the state behind the verifier's root from the chain |
 | Approval integrity before a batch | the sequencer | pre-submission approval check (operational) |
 | Ordering within a batch | none | deterministic mirror execution |
 
 ### State synchronization
 
 The sequencer starts from its kept state (`STATE_PATH`; genesis on a first
-run; with `STATE_FROM`, another relay's served state, adopted only when its
-recomputed root is the verifier's), reads the verifier's on-chain `stateRoot` at startup and before every
-batch, and builds only when it holds a state with that root; it advances its
+run; with `REBUILD_FROM_CHAIN=1`, the state it rebuilds from the operation
+streams the verifier logs), reads the verifier's on-chain `stateRoot` at
+startup and before every batch, and builds only when it holds a state with
+that root; it advances its
 mirror only after a `settleBatch` of its own has landed. Direct `FigaroCore`
 transactions never touch this state — the two paths share none — so nothing
 on the direct path can move the verifier's root. What CAN move it is another
 submitter: `settleBatch` is permissionless, so if a different sequencer
 instance lands a batch, this one holds no state for the new root and builds
-nothing until it is started on that state.
+nothing until it is restarted with `REBUILD_FROM_CHAIN=1`, which replays that
+batch's stream from the chain like every other. No relay serves its state to
+another: the chain is the one source every relay rebuilds from.
 
 ### Batch DoS via approval revocation
 
@@ -699,13 +710,10 @@ of one approval transaction, repeatable against specific counterparties.
    mirror past a landed batch.
 4. **Keep the root's preimage** — the sequencer holds the off-chain PREIMAGE
    of the on-chain state root, on disk at `STATE_PATH`, written before each
-   batch is sent, and publishes it (`GET /state`) so a party or a second
-   relay can keep a copy and start on it — saved to a new file, its
-   `x-figaro-state-root` checked against the verifier's `stateRoot` before
-   it replaces any state file. Losing every copy loses nothing: a relay
+   batch is sent. Losing that copy loses nothing: a relay
    started with `REBUILD_FROM_CHAIN=1` (`prover/sequencer/src/rebuild.rs`)
    replays every landed batch's operation stream from the verifier's
-   transactions, holds each root to the one its `BatchSettled` names, and
+   `BatchOperations` logs, holds each root to the one its `BatchSettled` names, and
    starts on the result. A relay
    that does not hold the state behind the verifier's root refuses to start.
 5. **Retry on gas spikes** — a `settleBatch` that reverts on gas is retried
