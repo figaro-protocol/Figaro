@@ -11,9 +11,10 @@ import { act, renderHook } from "@testing-library/react";
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 
-const { CLIENT, CORE, getCoreEventsMock } = vi.hoisted(() => ({
+const { CLIENT, CORE, VERIFIER, getCoreEventsMock } = vi.hoisted(() => ({
     CLIENT: { chain: { id: 31337 } },
     CORE: "0x00000000000000000000000000000000000000c0" as const,
+    VERIFIER: "0x00000000000000000000000000000000000000c9" as const,
     getCoreEventsMock: vi.fn(),
 }));
 vi.mock("wagmi", () => ({
@@ -25,7 +26,8 @@ vi.mock("wagmi", () => ({
 }));
 vi.mock("@/lib/kernel/contracts", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/kernel/contracts")>()),
-    CONTRACTS: { core: CORE, batchVerifier: "0x00000000000000000000000000000000000000c9" },
+    CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
+    getBatchVerifier: () => VERIFIER,
 }));
 vi.mock("@/lib/kernel/indexer", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/kernel/indexer")>()),
@@ -35,6 +37,7 @@ vi.mock("@/lib/kernel/indexer", async (importOriginal) => ({
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({ useRuntimeServices: () => ({}) }));
 
+import { computeOrderHash } from "@figaro-protocol/sdk";
 import { useIsUncommitted } from "@/lib/checkout/orderPendingSellerSignature";
 
 const PAYLOAD = {
@@ -91,5 +94,29 @@ describe("useIsUncommitted — a failed read is unknown, retried on the schedule
         expect(getCoreEventsMock).toHaveBeenCalledTimes(1);
         expect(result.current.known).toBe(true);
         expect(result.current.isUncommitted(PAYLOAD)).toBe(true);
+    });
+});
+
+describe("useIsUncommitted — an order committed on either path is committed", () => {
+    beforeEach(() => getCoreEventsMock.mockReset());
+
+    const committedAs = (orderHash: string) => ({
+        ...EMPTY,
+        events: { ...EMPTY.events, orderCommitted: [{ orderHash }] },
+    });
+
+    it("a root order the batch verifier committed, its id derived under the verifier's domain, is not pending", async () => {
+        getCoreEventsMock.mockResolvedValue(committedAs(computeOrderHash(PAYLOAD.commitment, 31337, VERIFIER)));
+        const { result } = renderHook(() => useIsUncommitted());
+        await flush();
+        expect(result.current.known).toBe(true);
+        expect(result.current.isUncommitted(PAYLOAD)).toBe(false);
+    });
+
+    it("a root order FigaroCore committed is not pending", async () => {
+        getCoreEventsMock.mockResolvedValue(committedAs(computeOrderHash(PAYLOAD.commitment, 31337, CORE)));
+        const { result } = renderHook(() => useIsUncommitted());
+        await flush();
+        expect(result.current.isUncommitted(PAYLOAD)).toBe(false);
     });
 });

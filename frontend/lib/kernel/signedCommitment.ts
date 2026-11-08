@@ -16,7 +16,7 @@ import {
     restoreSignedProcessId as sdkRestoreSignedProcessId,
     type Commitment,
 } from "@figaro-protocol/sdk";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS, getBatchVerifier } from "@/lib/kernel/contracts";
 
 function configuredCore(): `0x${string}` {
     if (!CONTRACTS.core) {
@@ -25,11 +25,23 @@ function configuredCore(): `0x${string}` {
     return CONTRACTS.core as `0x${string}`;
 }
 
-/** This deployment's order hash for a commitment — the ONE home for the
- *  (commitment, chainId, Core address) hashing plumbing. Throws when the
- *  Core address is unconfigured. */
+/** A commitment's order hash on the direct path, under FigaroCore's domain —
+ *  the hash a write to FigaroCore or the attestation coordinator recomputes.
+ *  Throws when the Core address is unconfigured. */
 export function commitmentOrderHash(c: Commitment, chainId: number): `0x${string}` {
     return computeOrderHash(c, chainId, configuredCore());
+}
+
+/** A commitment's order hash under every order emitter's domain: FigaroCore's,
+ *  and the batch verifier's when one is configured. A signed payload does not
+ *  say which path will commit it, and a root order's id differs between the
+ *  two domains, so a reader matching a payload to a committed order tries
+ *  each. Throws when the Core address is unconfigured. */
+export function commitmentOrderHashes(c: Commitment, chainId: number): `0x${string}`[] {
+    const verifier = getBatchVerifier();
+    const hashes = [computeOrderHash(c, chainId, configuredCore())];
+    if (verifier) hashes.push(computeOrderHash(c, chainId, verifier));
+    return hashes;
 }
 
 /** Deployment-curried wrapper over the SDK's `restoreSignedProcessId` — the
