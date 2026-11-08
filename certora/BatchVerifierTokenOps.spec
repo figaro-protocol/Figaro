@@ -1,127 +1,66 @@
 // SPDX-License-Identifier: MIT
-// Certora CVL — token-operation surface verification for FigaroBatchVerifier.
+// Certora CVL — the token movements of FigaroBatchVerifier's batch resolution.
 //
-// Goal: universal balance-flow proof for BatchVerifier's net-position
-// resolution path — the second of Figaro's two token-moving surfaces
-// (alongside FigaroCore, covered by TokenOpsVerification.spec).
+// What is proved, and on what. `settleBatch` moves tokens in one step:
+// `_executePositions`, which reconciles the batch's net positions in two passes
+// over the guest's order, every pull before any payout. These rules run that
+// step alone, through `certora/harness/FigaroBatchVerifierHarness.sol`'s
+// `executePositions`, on two positions of any tokens and any users. The rest of
+// `settleBatch` (the proof, the public values, the hash checks, the registry
+// anchor, the operation stream, the counter call) moves no token; Foundry holds
+// that `settleBatch` executes exactly the positions the proof committed
+// (`PositionHashMismatch`), and the equivalence run under VERIFICATION_MAP E-13
+// holds it against `FigaroCore`. A rule over all of `settleBatch` processed no
+// rule within the prover's global timeout, so the step is proved where it is.
 //
-// Modeling approach: ghost-based balance tracking (same as
-// TokenOpsVerification.spec) plus AGGRESSIVE SUMMARIZATION of every
-// internal helper that does not affect balance flow. Without these
-// summaries the prover times out exploring the symbolic state space of
-// `settleBatch`: 4 event arrays × multiple keccak256 hash checks ×
-// `abi.decode` on dynamic bytes × loop unwinding compose multiplicatively.
+// The rules, for every two positions:
+//   1. each position's user moves by exactly its payout minus its deposit;
+//   2. the verifier moves, per token, by exactly the positions' deposits minus
+//      their payouts in that token;
+//   3. no other balance moves;
+//   4. no payout waits on a pull: when the verifier's holding of a token plus
+//      the batch's pulls in it cover the batch's payouts in it, and each payer
+//      holds its net deposit, no transfer asks a holder for more than it holds
+//      (the property the second pass exists for; one pass in the guest's order
+//      fails it with the payee listed first and the verifier holding nothing).
 //
-// Summarized away (balance-irrelevant):
-//   _hashPositions, _hashAttestations, _hashSpecBindings
-//                   — uninterpreted bytes32 return
-//   _emitAttestations — no-op (events don't affect ghost balance)
-//   clauseRegistry.registered — NONDET external view (the spec-binding
-//                   anchor check gates resolution but moves no tokens)
+// The token model: one ghost balance per (token, holder). `safeTransfer` and
+// `safeTransferFrom` move it; `balanceOf` reads it, so `_pullExact`'s
+// fee-on-transfer check runs against it. A transfer its holder cannot cover
+// moves nothing and sets `shortfall` — a real token reverts there — so rules
+// 1–3 hold on every call that resolves without a shortfall, and rule 4 proves
+// the shortfall unreachable under its precondition.
 //
-// Additionally we pin both event arrays (attestations, specBindings) to
-// length 0 in rule preconditions so their loops bound to 0 iterations
-// and drop out.
-//
-// Scope (this spec): single-position batch — positions.length == 1, both
-// event arrays empty.
-//
-// ═══════════════════════════════════════════════════════════════════
-// Inductive generalization — why single-position proofs cover settleBatch
-// with arbitrary position arrays.
-// ═══════════════════════════════════════════════════════════════════
-//
-// The rules below prove balance invariants for the single-position case
-// (positions.length == 1). Production `settleBatch` iterates over an
-// unbounded position array. The invariants hold for every N ≥ 1 by
-// induction on the position loop:
-//
-//   Base case (N = 1): proved by the rules below. Each position executes
-//     at most one `safeTransfer` and at most one `safeTransferFrom` against
-//     the batch verifier's own balance — both routed through the ghost
-//     summaries, which are *balance-neutral by construction* (each summary
-//     debits and credits equal amounts).
-//
-//   Inductive step: assume the invariant holds after k iterations. The
-//     (k+1)th iteration executes the same summarized transfers as the
-//     base case; other loop operations (hash checks, event emission) are
-//     themselves summarized to NONDET above and do not touch the ghost.
-//     Therefore the invariant holds after k+1.
-//
-// This induction is not written as a CVL rule because the prover would
-// have to re-derive per iteration what the summary makes mechanical.
-// Token conservation under the summaries is a definitional property —
-// restating it in CVL adds search cost without adding assurance.
-//
-// An external auditor can confirm the induction directly:
-//   1. Read the two `summarize*` bodies above — equal debit/credit.
-//   2. Read `FigaroBatchVerifier.settleBatch` — the only balance-touching
-//      calls in its position loop are those summarized transfers.
-//   3. Conclude: loop iteration is balance-neutral; multi-position
-//      resolution preserves token conservation.
-//
-// The same holds for the event arrays (attestations, spec bindings):
-// they are summarized to NONDET and never touch the ghost, so their
-// length is irrelevant to balance-flow correctness. The spec-binding
-// anchor check (`_checkSpecBindings` → `clauseRegistry.registered`)
-// is a view path — it can only make resolution revert, never move a
-// token, so summarizing it to NONDET is sound for balance rules.
+// More than two positions. Each pass is a loop whose body moves one position's
+// tokens and nothing else. Rules 1–3 are sums of per-position moves, so a third
+// position adds its own term and touches no other's. Rule 4's only
+// order-dependence is a payout before a pull in the same token; two positions,
+// one of each in either order and in one token or two, are the cases a longer
+// list is built from. The rules state two; the argument extends them.
 
-ghost mapping(address => mathint) balance;
+ghost mapping(address => mapping(address => mathint)) bal;
+persistent ghost bool shortfall;
 
 methods {
-    // SafeERC20 helpers — ghost-update summary (same as TokenOpsVerification)
     function SafeERC20.safeTransfer(address token, address to, uint256 value) internal
-        => summarizeSafeTransfer(to, value);
+        => move(token, currentContract, to, value);
     function SafeERC20.safeTransferFrom(address token, address from, address to, uint256 value) internal
-        => summarizeSafeTransferFrom(from, to, value);
-    function _.balanceOf(address a) external => ghostBalanceOf(a) expect (uint256);
-
-    // SP1 verifier — arbitrary external call, no ghost side effects
-    function _.verifyProof(bytes32, bytes, bytes) external => NONDET;
-
-    // ClauseRegistry anchor read — a view gate (revert-only power, no
-    // token movement); NONDET is sound for balance rules.
-    function _.registered(bytes32) external => NONDET;
-
-    // Balance-irrelevant internal helpers — summarize to collapse the
-    // symbolic state space. NONDET on primitive returns is safe; CVL
-    // disallows it on reference returns, so `_decodePV` (returns a struct)
-    // is analyzed normally — its 7 abi.decode outputs get constrained by
-    // the NONDET hash-equality checks below, so the prover has freedom to
-    // pick satisfying values.
-    function FigaroBatchVerifier._hashPositions(FigaroBatchVerifier.NetPosition[] calldata) internal returns (bytes32) => NONDET;
-    function FigaroBatchVerifier._hashAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal returns (bytes32) => NONDET;
-    function FigaroBatchVerifier._hashSpecBindings(FigaroBatchVerifier.SpecBinding[] calldata) internal returns (bytes32) => NONDET;
-    function FigaroBatchVerifier._emitAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal => NONDET;
-
-    // The usage-bridge amendment's additions, same idiom as the
-    // three hash summaries above. `_hashUsage`'s assembly-packed hashing of a
-    // nested-dynamic-array struct defeats the prover's pointer analysis (a
-    // run burned the 2h global timeout inside it before reaching
-    // any rule); its result only gates resolution against the proof's public
-    // values — revert-only power, no token movement — so NONDET is sound for
-    // balance rules. The counter's accrual call is a reward-tier write behind
-    // try/catch, no token movement either way.
-    function FigaroBatchVerifier._hashUsage(FigaroBatchVerifier.BatchUsageData calldata) internal returns (bytes32) => NONDET;
-    function _.applyBatchAccrual(uint8, bytes32, IUsageCounter.BatchUse[]) external => NONDET;
+        => move(token, from, to, value);
+    function _.balanceOf(address a) external => balanceIn(calledContract, a) expect (uint256);
 }
 
-function summarizeSafeTransfer(address to, uint256 value) {
-    require balance[currentContract] >= to_mathint(value);
-    balance[currentContract] = balance[currentContract] - to_mathint(value);
-    balance[to] = balance[to] + to_mathint(value);
+function move(address token, address from, address to, uint256 value) {
+    if (bal[token][from] < to_mathint(value)) {
+        shortfall = true;
+    } else {
+        bal[token][from] = bal[token][from] - to_mathint(value);
+        bal[token][to] = bal[token][to] + to_mathint(value);
+    }
 }
 
-function summarizeSafeTransferFrom(address from, address to, uint256 value) {
-    require balance[from] >= to_mathint(value);
-    balance[from] = balance[from] - to_mathint(value);
-    balance[to] = balance[to] + to_mathint(value);
-}
-
-function ghostBalanceOf(address a) returns uint256 {
-    require balance[a] >= 0 && balance[a] <= max_uint256;
-    return assert_uint256(balance[a]);
+function balanceIn(address token, address a) returns uint256 {
+    require bal[token][a] >= 0 && bal[token][a] <= max_uint256;
+    return assert_uint256(bal[token][a]);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -130,132 +69,121 @@ function ghostBalanceOf(address a) returns uint256 {
 
 definition MAX_VALUE() returns uint256 = 2^200;
 
-function validSinglePositionBatch(
-    FigaroBatchVerifier.NetPosition[] positions,
-    FigaroBatchVerifier.BatchEventData batchEvents,
-    FigaroBatchVerifier.BatchUsageData usage
-) returns bool {
-    return
-        positions.length == 1 &&
-        positions[0].user != currentContract &&
-        positions[0].user != 0 &&
-        positions[0].deposit < MAX_VALUE() &&
-        positions[0].payout  < MAX_VALUE() &&
-        // Collapse the event loops to zero iterations — we're not proving
-        // any event-re-emission or anchor-check property here.
-        batchEvents.attestations.length == 0 &&
-        batchEvents.specBindings.length == 0 &&
-        // Same strategy for the usage bridge: the per-use loop is not a
-        // token-flow path — the counter call is try/catch decoupled from
-        // resolution — so collapse it too.
-        usage.uses.length == 0;
+/// Two positions, each on a user that is neither zero nor the verifier, no two
+/// on the same (token, user) — the guest nets one position per pair.
+function twoPositions(FigaroBatchVerifier.NetPosition[] positions) {
+    require positions.length == 2;
+    require positions[0].user != currentContract && positions[1].user != currentContract;
+    require positions[0].user != 0 && positions[1].user != 0;
+    require positions[0].user != positions[1].user || positions[0].token != positions[1].token;
+    require positions[0].deposit < MAX_VALUE() && positions[0].payout < MAX_VALUE();
+    require positions[1].deposit < MAX_VALUE() && positions[1].payout < MAX_VALUE();
+    require bal[positions[0].token][currentContract] < to_mathint(MAX_VALUE());
+    require bal[positions[1].token][currentContract] < to_mathint(MAX_VALUE());
+}
+
+/// What the batch's positions pull from their users in `token`, and pay out.
+function pulledIn(FigaroBatchVerifier.NetPosition[] positions, address token) returns mathint {
+    mathint sum = 0;
+    if (positions[0].token == token && positions[0].deposit > positions[0].payout) {
+        sum = sum + positions[0].deposit - positions[0].payout;
+    }
+    if (positions[1].token == token && positions[1].deposit > positions[1].payout) {
+        sum = sum + positions[1].deposit - positions[1].payout;
+    }
+    return sum;
+}
+
+function paidIn(FigaroBatchVerifier.NetPosition[] positions, address token) returns mathint {
+    mathint sum = 0;
+    if (positions[0].token == token && positions[0].payout > positions[0].deposit) {
+        sum = sum + positions[0].payout - positions[0].deposit;
+    }
+    if (positions[1].token == token && positions[1].payout > positions[1].deposit) {
+        sum = sum + positions[1].payout - positions[1].deposit;
+    }
+    return sum;
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 1: User balance delta = payout - deposit
+// RULE 1: Each user moves by its payout minus its deposit
 // ═══════════════════════════════════════════════════════════════════
 
-rule singlePositionUserDelta(
-    bytes proof,
-    bytes publicValues,
-    FigaroBatchVerifier.NetPosition[] positions,
-    FigaroBatchVerifier.BatchEventData batchEvents,
-    FigaroBatchVerifier.BatchUsageData usage,
-    bytes operations
-) {
-    require validSinglePositionBatch(positions, batchEvents, usage);
-    FigaroBatchVerifier.NetPosition p = positions[0];
-
+rule eachUserMovesByItsNetPosition(FigaroBatchVerifier.NetPosition[] positions) {
+    twoPositions(positions);
+    require !shortfall;
     env e;
+    mathint before0 = bal[positions[0].token][positions[0].user];
+    mathint before1 = bal[positions[1].token][positions[1].user];
 
-    mathint before = balance[p.user];
-    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage, operations);
-    bool reverted = lastReverted;
-    mathint after_ = balance[p.user];
+    executePositions@withrevert(e, positions);
+    bool resolved = !lastReverted && !shortfall;
 
-    assert !reverted
-        => after_ - before == to_mathint(p.payout) - to_mathint(p.deposit),
-        "on successful settleBatch, user balance delta = payout - deposit";
+    assert resolved => bal[positions[0].token][positions[0].user] - before0
+        == positions[0].payout - positions[0].deposit,
+        "the first position's user moves by its payout minus its deposit";
+    assert resolved => bal[positions[1].token][positions[1].user] - before1
+        == positions[1].payout - positions[1].deposit,
+        "the second position's user moves by its payout minus its deposit";
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 2: Contract balance delta = deposit - payout
+// RULE 2: The verifier moves, per token, by deposits minus payouts
 // ═══════════════════════════════════════════════════════════════════
 
-rule singlePositionContractDelta(
-    bytes proof,
-    bytes publicValues,
-    FigaroBatchVerifier.NetPosition[] positions,
-    FigaroBatchVerifier.BatchEventData batchEvents,
-    FigaroBatchVerifier.BatchUsageData usage,
-    bytes operations
-) {
-    require validSinglePositionBatch(positions, batchEvents, usage);
-    FigaroBatchVerifier.NetPosition p = positions[0];
-
+rule verifierMovesByTheBatchNetInEachToken(FigaroBatchVerifier.NetPosition[] positions, address token) {
+    twoPositions(positions);
+    require !shortfall;
     env e;
+    mathint before = bal[token][currentContract];
 
-    mathint before = balance[currentContract];
-    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage, operations);
-    bool reverted = lastReverted;
-    mathint after_ = balance[currentContract];
+    executePositions@withrevert(e, positions);
+    bool resolved = !lastReverted && !shortfall;
 
-    assert !reverted
-        => after_ - before == to_mathint(p.deposit) - to_mathint(p.payout),
-        "on successful settleBatch, contract balance delta = deposit - payout";
+    assert resolved => bal[token][currentContract] - before
+        == pulledIn(positions, token) - paidIn(positions, token),
+        "the verifier's holding of a token moves by the batch's pulls minus its payouts in it";
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 3: Allowance-drain safety
+// RULE 3: No other balance moves
 // ═══════════════════════════════════════════════════════════════════
 
-rule singlePositionAllowanceDrainSafety(
-    bytes proof,
-    bytes publicValues,
-    FigaroBatchVerifier.NetPosition[] positions,
-    FigaroBatchVerifier.BatchEventData batchEvents,
-    FigaroBatchVerifier.BatchUsageData usage,
-    bytes operations,
-    address a
-) {
-    require validSinglePositionBatch(positions, batchEvents, usage);
-    FigaroBatchVerifier.NetPosition p = positions[0];
-    require a != p.user && a != currentContract;
-
+rule noOtherBalanceMoves(FigaroBatchVerifier.NetPosition[] positions, address token, address holder) {
+    twoPositions(positions);
+    require !shortfall;
+    require holder != currentContract;
+    require holder != positions[0].user || token != positions[0].token;
+    require holder != positions[1].user || token != positions[1].token;
     env e;
+    mathint before = bal[token][holder];
 
-    mathint before = balance[a];
-    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage, operations);
-    bool reverted = lastReverted;
-    mathint after_ = balance[a];
+    executePositions@withrevert(e, positions);
+    bool resolved = !lastReverted && !shortfall;
 
-    assert !reverted => after_ == before,
-        "on successful settleBatch, no balance outside of {user, BatchVerifier} may change";
+    assert resolved => bal[token][holder] == before,
+        "no balance outside the positions' users and the verifier moves";
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 4: Token conservation
+// RULE 4: No payout waits on a pull
 // ═══════════════════════════════════════════════════════════════════
 
-rule singlePositionConservation(
-    bytes proof,
-    bytes publicValues,
-    FigaroBatchVerifier.NetPosition[] positions,
-    FigaroBatchVerifier.BatchEventData batchEvents,
-    FigaroBatchVerifier.BatchUsageData usage,
-    bytes operations
-) {
-    require validSinglePositionBatch(positions, batchEvents, usage);
-    FigaroBatchVerifier.NetPosition p = positions[0];
-    require p.user != currentContract;
-
+rule noPayoutWaitsOnAPull(FigaroBatchVerifier.NetPosition[] positions) {
+    twoPositions(positions);
+    require !shortfall;
+    address t0 = positions[0].token;
+    address t1 = positions[1].token;
+    require bal[t0][currentContract] + pulledIn(positions, t0) >= paidIn(positions, t0);
+    require bal[t1][currentContract] + pulledIn(positions, t1) >= paidIn(positions, t1);
+    require positions[0].deposit > positions[0].payout
+        => bal[t0][positions[0].user] >= positions[0].deposit - positions[0].payout;
+    require positions[1].deposit > positions[1].payout
+        => bal[t1][positions[1].user] >= positions[1].deposit - positions[1].payout;
     env e;
 
-    mathint totalBefore = balance[p.user] + balance[currentContract];
-    settleBatch@withrevert(e, proof, publicValues, positions, batchEvents, usage, operations);
-    bool reverted = lastReverted;
-    mathint totalAfter = balance[p.user] + balance[currentContract];
+    executePositions@withrevert(e, positions);
 
-    assert !reverted => totalBefore == totalAfter,
-        "on successful settleBatch, sum of (user + BatchVerifier) balances is preserved";
+    assert !shortfall,
+        "a payout never asks the verifier for more than it holds once the batch's pulls are in";
 }

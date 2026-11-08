@@ -26,6 +26,16 @@
 //   the hash helpers and `_emitAttestations` — pure or event-only; their
 //                        results only decide whether the call reverts, which
 //                        every rule already allows
+//   _executePositions, _checkSpecBindings, _walkOperations — the token step,
+//                        the registry anchor and the operation stream's walk
+//                        (the wallet-code questions and the Core's events).
+//                        None writes the verifier's storage: the first moves
+//                        tokens, the second reads, the third emits and makes
+//                        static calls. Each can only revert the call, which
+//                        every rule allows; summarized, `settleBatch` is
+//                        reduced to its state-root step, which a run over the
+//                        whole function did not reach within the prover's
+//                        global timeout.
 
 methods {
     function stateRoot() external returns (bytes32) envfree;
@@ -44,6 +54,9 @@ methods {
     function FigaroBatchVerifier._hashSpecBindings(FigaroBatchVerifier.SpecBinding[] calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._hashUsage(FigaroBatchVerifier.BatchUsageData calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._emitAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal => NONDET;
+    function FigaroBatchVerifier._executePositions(FigaroBatchVerifier.NetPosition[] calldata) internal => NONDET;
+    function FigaroBatchVerifier._checkSpecBindings(FigaroBatchVerifier.SpecBinding[] calldata) internal => NONDET;
+    function FigaroBatchVerifier._walkOperations(bytes calldata, bool) internal => NONDET;
 }
 
 // ═══════════════════════════════════════════════════════════════════
