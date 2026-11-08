@@ -265,20 +265,20 @@ while the earlier bonds stay locked until the buyer resolves. Size it with
 `calculateSubOrderApproval` and check it with `assertApprovalCoversBond` (both
 below).
 
-## Six Entry Points
+## Seven Entry Points
 
 **The generated API reference — every export, every signature.** TypeDoc over
 this same source is served at
 [figaroprotocol.com/sdk-api](https://www.figaroprotocol.com/sdk-api/index.html),
-one page per entry point — all six: the root package plus `/agent`, `/derive`,
-`/clauses`, `/handoff`, and `/signer`. `npm run docs` from `sdk/` regenerates
+one page per entry point — all seven: the root package plus `/agent`, `/derive`,
+`/clauses`, `/handoff`, `/signer`, and `/relay`. `npm run docs` from `sdk/` regenerates
 the whole reference from a checkout. This README stays the
 manual — recipes, traps, and the order to do things in; the reference is where
 you look a signature up.
 
 ### Where each entry point can run
 
-Nothing here is browser-only, and only one thing is Node-only. The column that
+Nothing here is browser-only, and two entry points are Node-only. The column that
 matters is the last one: what the entry point actually needs from its host.
 
 | Entry point | Browser | Node | What it needs from the host |
@@ -289,9 +289,10 @@ matters is the last one: what the entry point actually needs from its host.
 | `/clauses` | yes | yes | Nothing but `viem`'s encoders. Parse, validate and encode clause content with no chain and no network at all. |
 | `/handoff` | yes | yes | The WebCrypto global (`crypto.subtle`) for AES-GCM: present in Node, and in a browser only in a **secure context** (https, or localhost) — over plain http the wrap/unwrap calls throw. |
 | `/signer` | **no** | yes | `node:net`, `node:fs`, `node:crypto`, `node:path` — a UNIX socket and a keystore file. It is a **daemon plus a client**: run the daemon with the `figaro-signer` bin, then `socketSignerAccount` connects to its socket from your Node process. Never bundle this into a browser build. |
+| `/relay` | **no** | yes | `node:child_process`, `node:fs`, `node:net`, `node:os`, `node:path` — it starts the relay program (`prover/sequencer`) on your machine, gives it a free local port and a temporary state file, and talks to it over HTTP. Never bundle this into a browser build. |
 
 Verified by importing each built entry point under bare Node (`sdk/dist/*`),
-and by the module graph: `/signer` is the only one that reaches a `node:`
+and by the module graph: `/signer` and `/relay` are the only ones that reach a `node:`
 builtin, and `/handoff` the only one that reaches `crypto.subtle`.
 
 ### Synopsis — which entry point is each export from?
@@ -301,7 +302,7 @@ so this table answers the question you hit while reading a recipe ("was
 `attestAsSeller` root or `/agent`?") without scrolling back to an `import`
 line. It is a SYNOPSIS, not a reference — one line per export, no signatures.
 Scope: **every export a recipe on this page calls.** For the full surface —
-every export of all six entry points, with signatures, parameters and types —
+every export of all seven entry points, with signatures, parameters and types —
 [figaroprotocol.com/sdk-api](https://www.figaroprotocol.com/sdk-api/index.html).
 
 Constants follow a rule instead of a row: every `*_ABI`, `EV_*` (event
@@ -419,6 +420,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `projectProcessGraph` | `/derive` | The process graph, labeled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
 | `projectResolutionGraph` | `/derive` | Per-order bonds locked and payouts at resolve, grouped into `FigaroCore`'s LINEAR per-process chains. |
 | `projectValueFlow` | `/derive` | Denomination nodes and flow edges: resolutions per denomination, swap legs between denominations; no venue list is bundled. |
+| `proveAndSettle` | `/relay` | Prove and land the buyer's resolve on the batch path with a relay of your own, started on the state it rebuilds from the chain. |
 | `proposeActions` | `/agent` | Every action a wallet may take on a process it is already in. |
 | `proposeInitiations` | `/agent` | Every process a wallet could START — one per live-staked assembly. |
 | `readChainTimestamp` | root | The chain's `block.timestamp`: the only clock a protocol deadline may be computed from. |
@@ -1817,6 +1819,56 @@ node sdk/scripts/signer-policy-from-record.mjs .deployments/local.json > .deploy
 
 The host-shaped half (the sandbox wrapper carrying the policy's
 `egress` allowlist) lives beside the agent prompts, not in this package.
+
+### `@figaro-protocol/sdk/relay` — Your Own Relay
+
+A process open on the batch path holds its bonds in `FigaroBatchVerifier` and
+resolves only through a batch built on the state behind the verifier's root.
+Every landed batch logs its whole operation stream, so anyone rebuilds that
+state from the chain, and `settleBatch` takes a proof from anyone. The buyer
+therefore needs no relay but its own: `proveAndSettle` starts the relay
+program with `REBUILD_FROM_CHAIN=1`, submits the buyer's signed resolve to
+it, waits for the verifier's `ProcessResolved` for that process, and stops
+the relay.
+
+```ts
+import { proveAndSettle } from "@figaro-protocol/sdk/relay";
+
+const settled = await proveAndSettle(
+    {
+        relayBinary: "/path/to/sequencer",    // the build whose guest the verifier pins
+        rpcUrl,
+        batchVerifier,                         // the record's batchVerifier
+        submitterKey,                          // pays settleBatch's gas: the buyer's, or anyone's
+        fromBlock: verifierDeploymentBlock,    // where the verifier's logs begin
+        env: { SP1_PROVER: "network" },        // the prover; see prover/sequencer/README.md
+    },
+    // The buyer's EIP-712 signature over ResolveProcess(processId, cumulativeValue)
+    // under the verifier's domain; or { walletAuthorization } for the wallet-code form.
+    { processId, cumulativeValue, commitments, buyerSignature },
+);
+// settled.transactionHash, settled.blockNumber, settled.batchId
+```
+
+What it needs:
+- **The relay program of the pinned guest.** The relay compares its guest
+  fingerprint with the verifier's `programVKey()` at startup and refuses to
+  start on any other; build it from the recipe that produced the verifier's
+  key (`scripts/prover-box/README.md`).
+- **A prover.** `SP1_PROVER` names it: a local CPU or GPU (a Groth16 wrap
+  needs about 14 GB of memory), or the Succinct Prover Network, paid per proof
+  by the requester. A devnet verifier accepts the mock prover.
+- **The process's commitments**, as the buyer signed them, and the buyer's
+  resolve in either form.
+
+It rejects with the relay's own output when the relay cannot be started,
+refuses to start or exits, when the relay dead-letters the resolve, when
+another submitter's batch lands on the verifier after the relay rebuilt (call
+it again: the new call rebuilds on the new root), or when nothing lands within
+`timeoutMs` (ten minutes by default). The relay inherits the calling
+process's environment beside `env`; the settings `proveAndSettle` names
+itself override both. The relay is stopped and its temporary
+state file deleted in every case.
 
 ## Projection: from Composed Clauses to the Hashed Agreement
 

@@ -66,6 +66,7 @@ import {
 } from "../src/index.js";
 import { parseClauseSpec, encodeContentFromSpec } from "../src/clauses/index.js";
 import { SequencerClient } from "../src/agent/sequencer.js";
+import { proveAndSettle } from "../src/relay/index.js";
 import type { SequencerContentProof } from "../src/agent/sequencer.js";
 
 import {
@@ -119,8 +120,6 @@ const CLAUSE_DATA = `{"modality":"delivery"}`;
 const STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}.json`);
 /** The second relay's state file: written by the relay itself from the state it rebuilds from the chain. */
 const SECOND_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-second.json`);
-/** The state file of the relay that rebuilds from the chain alone (the pass test). */
-const REBUILT_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-rebuilt.json`);
 
 // ── Batch-only typed data (EIP-712 signature replaces msg.sender) ───────────
 
@@ -171,8 +170,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     let sequencerProcess: ChildProcess | null = null;
     /** The relay that takes over from the first and settles batch 2. */
     let secondProcess: ChildProcess | null = null;
-    /** The relay the pass test starts with nothing, to rebuild from the chain. */
-    let rebuiltProcess: ChildProcess | null = null;
     let sequencerClient: SequencerClient;
     let relay: RelayConfig;
 
@@ -312,14 +309,9 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             await stopSequencer(secondProcess);
             secondProcess = null;
         }
-        if (rebuiltProcess) {
-            await stopSequencer(rebuiltProcess);
-            rebuiltProcess = null;
-        }
         for (const suffix of ["", ".tmp", ".next.jsonl", ".next.jsonl.tmp"]) {
             fs.rmSync(STATE_PATH + suffix, { force: true });
             fs.rmSync(SECOND_STATE_PATH + suffix, { force: true });
-            fs.rmSync(REBUILT_STATE_PATH + suffix, { force: true });
         }
     });
 
@@ -670,7 +662,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     //
     // The rebuild-from-chain start is `REBUILD_FROM_CHAIN=1`
     // (`prover/sequencer/src/rebuild.rs`): it replays every landed batch's
-    // operation stream from the verifier's transactions and holds each root to
+    // operation stream from the verifier's logs and holds each root to
     // the one the batch's log names. The formal twin is `formal/RelayState.tla`'s
     // `OpsOnChain` and `StartFromChain`.
     it(
@@ -759,35 +751,12 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                 fs.rmSync(SECOND_STATE_PATH + suffix, { force: true });
             }
     
-            // ── 4. A relay with nothing rebuilds the state from the chain ──
-            // It replays every settled batch's operations from the verifier's
-            // transactions, checks each root against the chain's, writes the
-            // state behind the current root as its kept file, and serves it.
-            const REBUILT_URL = `http://127.0.0.1:${SEQUENCER_PORT + 3}`;
-            rebuiltProcess = startSequencer(relay, {
-                STATE_PATH: REBUILT_STATE_PATH,
-                    LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT + 3}`,
-                REBUILD_FROM_CHAIN: "1",
-            });
-            attachLogs(rebuiltProcess);
-            // A relay that refuses to start exits at once; waiting the full
-            // ready timeout for it would hide the refusal behind a timeout.
-            let rebuiltOutput = "";
-            rebuiltProcess.stdout?.on("data", (chunk: Buffer) => (rebuiltOutput += chunk.toString()));
-            rebuiltProcess.stderr?.on("data", (chunk: Buffer) => (rebuiltOutput += chunk.toString()));
-            const exited = new Promise<never>((_, reject) => {
-                rebuiltProcess!.once("close", (code) =>
-                    reject(new Error(`the rebuilt relay exited with ${code} before it was ready:\n${rebuiltOutput}`)),
-                );
-            });
-            await Promise.race([waitForSequencer(REBUILT_URL, 10 * 60_000), exited]);
-            const rebuilt = new SequencerClient({ url: REBUILT_URL });
-            expect((await rebuilt.status()).state_root.toLowerCase(), "the rebuilt state is the chain's root").toBe(
-                rootAfterCommit.toLowerCase(),
-            );
-            expect(fs.existsSync(REBUILT_STATE_PATH), "the rebuilt state is kept").toBe(true);
-
-            // ── 5. The buyer's resolve, carried by the rebuilt relay ──
+            // ── 4. The buyer proves and settles its own resolve ──
+            // `proveAndSettle` starts the relay program on the buyer's machine
+            // with nothing but the chain: it rebuilds the state behind the
+            // verifier's root from the verifier's logs (REBUILD_FROM_CHAIN=1),
+            // takes the buyer's signed resolve, proves the batch and lands it,
+            // and answers with the transaction that resolved the process.
             const cumulativeValue = commitment.expectedCumulativeValue;
             const buyerResolveSig = await buyerWallet.signTypedData({
                 domain,
@@ -795,8 +764,36 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                 primaryType: "ResolveProcess" as const,
                 message: { processId, cumulativeValue },
             });
-            await rebuilt.submitResolve(processId, cumulativeValue, [commitment], buyerResolveSig);
-            await waitForBatchCount(rebuilt, 1, 5 * 60_000);
+            const settled = await proveAndSettle(
+                {
+                    relayBinary: sequencerBinaryPath(),
+                    rpcUrl: ANVIL_URL,
+                    batchVerifier: batchVerifierAddress,
+                    submitterKey: relay.privateKey,
+                    env: {
+                        USAGE_COUNTER_ADDRESS: relay.usageCounterAddress,
+                        CLAUSE_REGISTRY_ADDRESS: relay.registries.clauses,
+                        ASSEMBLY_REGISTRY_ADDRESS: relay.registries.assemblies,
+                        AGREEMENT_REGISTRY_ADDRESS: relay.registries.agreements,
+                        MEMBERS_REGISTRY_ADDRESS: relay.registries.members,
+                        BATCH_INTERVAL_SECS: "2",
+                    },
+                    timeoutMs: 10 * 60_000,
+                },
+                { processId, cumulativeValue, commitments: [commitment], buyerSignature: buyerResolveSig },
+            );
+            const receipt = await publicClient.getTransactionReceipt({ hash: settled.transactionHash });
+            expect(receipt.status).toBe("success");
+            expect(receipt.to?.toLowerCase()).toBe(batchVerifierAddress.toLowerCase());
+            expect((await publicClient.readContract({
+                address: batchVerifierAddress, abi: BATCH_VERIFIER_ABI, functionName: "batchCount",
+            })) as bigint, "the batch the buyer landed is the verifier's last").toBe(settled.batchId);
+            expect(
+                ((await publicClient.readContract({
+                    address: batchVerifierAddress, abi: BATCH_VERIFIER_ABI, functionName: "stateRoot",
+                })) as Hex).toLowerCase(),
+                "the root moved past the one the commit left",
+            ).not.toBe(rootAfterCommit.toLowerCase());
 
             // ── 6. Paid out: the chain's facts ──
             const [buyerFinal, sellerFinal, verifierFinal] = await Promise.all([
@@ -828,4 +825,37 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         },
         15 * 60_000,
     );
+
+    // A relay that refuses to start is reported with its own words: pointed at
+    // a contract that is no batch verifier, the relay cannot read a state root
+    // from it, so the rebuild from the chain fails and the relay refuses to
+    // start; proveAndSettle rejects with that output and lands nothing.
+    it("proveAndSettle reports a relay that refuses to start, with the relay's own output", async () => {
+        if (!alive || !hasBinary) {
+            return;
+        }
+        const countBefore = (await publicClient.readContract({
+            address: batchVerifierAddress, abi: BATCH_VERIFIER_ABI, functionName: "batchCount",
+        })) as bigint;
+        await expect(
+            proveAndSettle(
+                {
+                    relayBinary: sequencerBinaryPath(),
+                    rpcUrl: ANVIL_URL,
+                    batchVerifier: tokenAddress,
+                    submitterKey: relay.privateKey,
+                    timeoutMs: 2 * 60_000,
+                },
+                {
+                    processId: `0x${"11".repeat(32)}` as Hex,
+                    cumulativeValue: 1n,
+                    commitments: [],
+                    buyerSignature: `0x${"22".repeat(65)}` as Hex,
+                },
+            ),
+        ).rejects.toThrow(/the relay exited with 2 before it was ready[\s\S]*refusing to start/);
+        expect((await publicClient.readContract({
+            address: batchVerifierAddress, abi: BATCH_VERIFIER_ABI, functionName: "batchCount",
+        })) as bigint).toBe(countBefore);
+    }, 3 * 60_000);
 });

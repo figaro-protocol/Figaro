@@ -598,7 +598,10 @@ uses to `UsageCounter.applyBatchAccrual`; advances the state root.
 
 - **Delay** — withhold operations from a batch. Mitigation for a process not yet
   opened on the batch path: open it directly on `FigaroCore`. A process already open
-  on the batch path has no such exit (§ "Operational requirements" 4).
+  on the batch path cannot move to the direct path; its buyer lands its own
+  resolve instead, with a relay of its own started on the state rebuilt from
+  the chain (`proveAndSettle`, `@figaro-protocol/sdk/relay`), proving with a
+  prover of its choice (§ "Operational requirements" 4).
 - **Order within a batch** — harmless: `FigaroCore`'s transitions are
   deterministic and order-independent within a batch; there is no MEV surface.
 - **Refuse service** — same mitigation as delay.

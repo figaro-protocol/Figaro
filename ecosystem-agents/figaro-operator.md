@@ -527,7 +527,9 @@ safety you do not have:
   open on `FigaroCore` as a NEW process, signed again for its domain — a batch-path
   signature names `FigaroBatchVerifier` as `verifyingContract` and does not verify there.
   A process already open on the batch path resolves only through a relay holding that
-  state. Say so when you report a stalled submission.
+  state; its buyer can run one for the one call, `proveAndSettle` from
+  `@figaro-protocol/sdk/relay`, which rebuilds the state from the chain, proves the
+  buyer's signed resolve and lands it. Say so when you report a stalled submission.
 
 Operationally: `submitCommit` is **idempotent on on-chain identity** (order hash), so a
 retry — even one where you re-signed — returns the original `{ id }` and enqueues nothing;
