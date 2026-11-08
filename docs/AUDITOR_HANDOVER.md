@@ -361,9 +361,9 @@ these rows summarize.
 | TLA+ | five models in seven configurations (the Core, the florin, the swap coordinator, the two paths composed, the relay) | no error | `1d39092c` |
 | Lean 4 | the best responses over the A-8/A-9 payoff table | builds | `1d39092c` |
 | Rust, `cargo test` | the guest against the Core, the clause engine, the guest in the executor | 0 failed | `1d39092c` |
-| Rust, `cargo test -p figaro-sequencer` | the relay | 37 unit, 112 integration, 0 failed | `d5ba6d79` |
+| Rust, `cargo test -p figaro-sequencer` | the relay | 37 unit, 112 integration, 0 failed | `b1b26c54` |
 | Differential fuzz | Core operations (wallet-code resolves among them), agreements, clause cases: the Core and the SDK as oracles of the mirror and the Rust engine | no divergence over nine seeds | `0532cd3a` |
-| Batch end-to-end, SDK → relay → verifier | a batch on Anvil with the release binary | 4 of 4 pass | `d5ba6d79` |
+| Batch end-to-end, SDK → relay → verifier | a batch on Anvil with the release binary | 4 of 4 pass | `b1b26c54` |
 | Coverage, `scripts/coverage.sh` (legacy pipeline) | the eleven contracts then in scope that hold code | lines 99.81%, statements 99.44%, branches 97.04%, functions 100%; uncovered: the `DuplicateCommitment` and `CumulativeValueOverflow` guards, `RpgfMinter`'s `score == 0` early return, `FlorinToken.mint`'s `MAX_SUPPLY` check | `f62b71cf` |
 | Mutation, `mewt` 4.0.0 (`scripts/mewt-run.sh`) | the same eleven contracts, high and medium severity | 912 mutants, 904 caught, 8 survived, each read as unreachable or equivalent: the `DuplicateCommitment` guard (2) and the `CumulativeValueOverflow` guard in `FigaroCore`, `UsageCounter`'s seller-seen write, `RpgfMinter`'s `score == 0` return (2), `FlorinToken.mint`'s `MAX_SUPPLY` check (2); `AgreementRegistry` not run | `f62b71cf` |
 | Mutation, `cargo-mutants` (`scripts/cargo-mutants-run.sh`) | `figaro-kernel`, `figaro-clause` | 617 mutants: 550 caught, 26 timed out, 29 unviable, 12 survived, each read as equivalent | `f62b71cf` |
