@@ -203,17 +203,17 @@ increment reverts inside the token with <code>ERC20InsufficientAllowance</code>
 while the earlier bonds stay locked until the buyer resolves. Size it with
 <code>calculateSubOrderApproval</code> and check it with <code>assertApprovalCoversBond</code> (both
 below).</p>
-<h2 id="six-entry-points" class="tsd-anchor-link">Six Entry Points<a href="#six-entry-points" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<h2 id="seven-entry-points" class="tsd-anchor-link">Seven Entry Points<a href="#seven-entry-points" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p><strong>The generated API reference — every export, every signature.</strong> TypeDoc over
 this same source is served at
 <a href="https://www.figaroprotocol.com/sdk-api/index.html">figaroprotocol.com/sdk-api</a>,
-one page per entry point — all six: the root package plus <code>/agent</code>, <code>/derive</code>,
-<code>/clauses</code>, <code>/handoff</code>, and <code>/signer</code>. <code>npm run docs</code> from <code>sdk/</code> regenerates
+one page per entry point — all seven: the root package plus <code>/agent</code>, <code>/derive</code>,
+<code>/clauses</code>, <code>/handoff</code>, <code>/signer</code>, and <code>/relay</code>. <code>npm run docs</code> from <code>sdk/</code> regenerates
 the whole reference from a checkout. This README stays the
 manual — recipes, traps, and the order to do things in; the reference is where
 you look a signature up.</p>
 <h3 id="where-each-entry-point-can-run" class="tsd-anchor-link">Where each entry point can run<a href="#where-each-entry-point-can-run" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<p>Nothing here is browser-only, and only one thing is Node-only. The column that
+<p>Nothing here is browser-only, and two entry points are Node-only. The column that
 matters is the last one: what the entry point actually needs from its host.</p>
 <table>
 <thead>
@@ -261,10 +261,16 @@ matters is the last one: what the entry point actually needs from its host.</p>
 <td>yes</td>
 <td><code>node:net</code>, <code>node:fs</code>, <code>node:crypto</code>, <code>node:path</code> — a UNIX socket and a keystore file. It is a <strong>daemon plus a client</strong>: run the daemon with the <code>figaro-signer</code> bin, then <code>socketSignerAccount</code> connects to its socket from your Node process. Never bundle this into a browser build.</td>
 </tr>
+<tr>
+<td><code>/relay</code></td>
+<td><strong>no</strong></td>
+<td>yes</td>
+<td><code>node:child_process</code>, <code>node:fs</code>, <code>node:net</code>, <code>node:os</code>, <code>node:path</code> — it starts the relay program (<code>prover/sequencer</code>) on your machine, gives it a free local port and a temporary state file, and talks to it over HTTP. Never bundle this into a browser build.</td>
+</tr>
 </tbody>
 </table>
 <p>Verified by importing each built entry point under bare Node (<code>sdk/dist/*</code>),
-and by the module graph: <code>/signer</code> is the only one that reaches a <code>node:</code>
+and by the module graph: <code>/signer</code> and <code>/relay</code> are the only ones that reach a <code>node:</code>
 builtin, and <code>/handoff</code> the only one that reaches <code>crypto.subtle</code>.</p>
 <h3 id="synopsis-which-entry-point-is-each-export-from" class="tsd-anchor-link">Synopsis — which entry point is each export from?<a href="#synopsis-which-entry-point-is-each-export-from" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <p>Nothing is re-exported: <strong>every name below lives in exactly one entry point</strong>,
@@ -272,7 +278,7 @@ so this table answers the question you hit while reading a recipe (&quot;was
 <code>attestAsSeller</code> root or <code>/agent</code>?&quot;) without scrolling back to an <code>import</code>
 line. It is a SYNOPSIS, not a reference — one line per export, no signatures.
 Scope: <strong>every export a recipe on this page calls.</strong> For the full surface —
-every export of all six entry points, with signatures, parameters and types —
+every export of all seven entry points, with signatures, parameters and types —
 <a href="https://www.figaroprotocol.com/sdk-api/index.html">figaroprotocol.com/sdk-api</a>.</p>
 <p>Constants follow a rule instead of a row: every <code>*_ABI</code>, <code>EV_*</code> (event
 definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.</p>
@@ -834,6 +840,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td><code>projectValueFlow</code></td>
 <td><code>/derive</code></td>
 <td>Denomination nodes and flow edges: resolutions per denomination, swap legs between denominations; no venue list is bundled.</td>
+</tr>
+<tr>
+<td><code>proveAndSettle</code></td>
+<td><code>/relay</code></td>
+<td>Prove and land the buyer's resolve on the batch path with a relay of your own, started on the state it rebuilds from the chain.</td>
 </tr>
 <tr>
 <td><code>proposeActions</code></td>
@@ -1657,6 +1668,38 @@ and egress (<code>sdk/scripts/signer-policy-from-record.mjs</code>):</p>
 
 <p>The host-shaped half (the sandbox wrapper carrying the policy's
 <code>egress</code> allowlist) lives beside the agent prompts, not in this package.</p>
+<h3 id="-your-own-relay" class="tsd-anchor-link"><code>@figaro-protocol/sdk/relay</code> — Your Own Relay<a href="#-your-own-relay" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>A process open on the batch path holds its bonds in <code>FigaroBatchVerifier</code> and
+resolves only through a batch built on the state behind the verifier's root.
+Every landed batch logs its whole operation stream, so anyone rebuilds that
+state from the chain, and <code>settleBatch</code> takes a proof from anyone. The buyer
+therefore needs no relay but its own: <code>proveAndSettle</code> starts the relay
+program with <code>REBUILD_FROM_CHAIN=1</code>, submits the buyer's signed resolve to
+it, waits for the verifier's <code>ProcessResolved</code> for that process, and stops
+the relay.</p>
+<pre><code class="ts"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-5">proveAndSettle</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro-protocol/sdk/relay&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">settled</span><span class="hl-1"> = </span><span class="hl-6">await</span><span class="hl-1"> </span><span class="hl-0">proveAndSettle</span><span class="hl-1">(</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">        </span><span class="hl-5">relayBinary:</span><span class="hl-1"> </span><span class="hl-2">&quot;/path/to/sequencer&quot;</span><span class="hl-1">,    </span><span class="hl-3">// the build whose guest the verifier pins</span><br/><span class="hl-1">        </span><span class="hl-5">rpcUrl</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-5">batchVerifier</span><span class="hl-1">,                         </span><span class="hl-3">// the record&#39;s batchVerifier</span><br/><span class="hl-1">        </span><span class="hl-5">submitterKey</span><span class="hl-1">,                          </span><span class="hl-3">// pays settleBatch&#39;s gas: the buyer&#39;s, or anyone&#39;s</span><br/><span class="hl-1">        </span><span class="hl-5">fromBlock:</span><span class="hl-1"> </span><span class="hl-5">verifierDeploymentBlock</span><span class="hl-1">,    </span><span class="hl-3">// where the verifier&#39;s logs begin</span><br/><span class="hl-1">        </span><span class="hl-5">env:</span><span class="hl-1"> { </span><span class="hl-5">SP1_PROVER:</span><span class="hl-1"> </span><span class="hl-2">&quot;network&quot;</span><span class="hl-1"> },        </span><span class="hl-3">// the prover; see prover/sequencer/README.md</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-3">// The buyer&#39;s EIP-712 signature over ResolveProcess(processId, cumulativeValue)</span><br/><span class="hl-1">    </span><span class="hl-3">// under the verifier&#39;s domain; or { walletAuthorization } for the wallet-code form.</span><br/><span class="hl-1">    { </span><span class="hl-5">processId</span><span class="hl-1">, </span><span class="hl-5">cumulativeValue</span><span class="hl-1">, </span><span class="hl-5">commitments</span><span class="hl-1">, </span><span class="hl-5">buyerSignature</span><span class="hl-1"> },</span><br/><span class="hl-1">);</span><br/><span class="hl-3">// settled.transactionHash, settled.blockNumber, settled.batchId</span>
+</code><button type="button">Copy</button></pre>
+
+<p>What it needs:</p>
+<ul>
+<li><strong>The relay program of the pinned guest.</strong> The relay compares its guest
+fingerprint with the verifier's <code>programVKey()</code> at startup and refuses to
+start on any other; build it from the recipe that produced the verifier's
+key (<code>scripts/prover-box/README.md</code>).</li>
+<li><strong>A prover.</strong> <code>SP1_PROVER</code> names it: a local CPU or GPU (a Groth16 wrap
+needs about 14 GB of memory), or the Succinct Prover Network, paid per proof
+by the requester. A devnet verifier accepts the mock prover.</li>
+<li><strong>The process's commitments</strong>, as the buyer signed them, and the buyer's
+resolve in either form.</li>
+</ul>
+<p>It rejects with the relay's own output when the relay cannot be started,
+refuses to start or exits, when the relay dead-letters the resolve, when
+another submitter's batch lands on the verifier after the relay rebuilt (call
+it again: the new call rebuilds on the new root), or when nothing lands within
+<code>timeoutMs</code> (ten minutes by default). The relay inherits the calling
+process's environment beside <code>env</code>; the settings <code>proveAndSettle</code> names
+itself override both. The relay is stopped and its temporary
+state file deleted in every case.</p>
 <h2 id="projection-from-composed-clauses-to-the-hashed-agreement" class="tsd-anchor-link">Projection: from Composed Clauses to the Hashed Agreement<a href="#projection-from-composed-clauses-to-the-hashed-agreement" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>An adopted assembly's registered agreements ship their clause maps mostly
 empty — an empty <code>{}</code> means the designer <em>selected</em> the clause but set no
@@ -2254,7 +2297,7 @@ socket via <code>HttpChannel</code>, not the in-process channel), and
 <ul>
 <li><a href="#install"><span>Install</span></a></li>
 <li><a href="#your-first-commit"><span>Your first commit</span></a></li>
-<li><a href="#six-entry-points"><span>Six <wbr/>Entry <wbr/>Points</span></a></li>
+<li><a href="#seven-entry-points"><span>Seven <wbr/>Entry <wbr/>Points</span></a></li>
 <li>
 <ul>
 <li><a href="#where-each-entry-point-can-run"><span>Where each entry point can run</span></a></li>
@@ -2277,7 +2320,8 @@ socket via <code>HttpChannel</code>, not the in-process channel), and
 <li><a href="#the-graph-projections"><span>The graph projections</span></a></li></ul></li>
 <li><a href="#-clause-spec-format-content-encoding"><span> — <wbr/>Clause-<wbr/>Spec <wbr/>Format + <wbr/>Content <wbr/>Encoding</span></a></li>
 <li><a href="#-runtime-handoff-wire-protocol"><span> — <wbr/>Runtime <wbr/>Handoff <wbr/>Wire <wbr/>Protocol</span></a></li>
-<li><a href="#-the-policy-signer"><span> — <wbr/>The <wbr/>Policy <wbr/>Signer</span></a></li></ul></li>
+<li><a href="#-the-policy-signer"><span> — <wbr/>The <wbr/>Policy <wbr/>Signer</span></a></li>
+<li><a href="#-your-own-relay"><span> — <wbr/>Your <wbr/>Own <wbr/>Relay</span></a></li></ul></li>
 <li><a href="#projection-from-composed-clauses-to-the-hashed-agreement"><span>Projection: from <wbr/>Composed <wbr/>Clauses to the <wbr/>Hashed <wbr/>Agreement</span></a></li>
 <li><a href="#registered-agreements-compose-register-hydrate-prove"><span>Registered agreements — compose, register, hydrate, prove</span></a></li>
 <li><a href="#from-adopted-assembly-to-signed-agreement-the-one-walk"><span>From <wbr/>Adopted <wbr/>Assembly to <wbr/>Signed <wbr/>Agreement — the <wbr/>ONE walk</span></a></li>

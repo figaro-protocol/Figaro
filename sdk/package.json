@@ -35,6 +35,11 @@
             "import": "./dist/signer/index.js",
             "types": "./dist/signer/index.d.ts",
             "default": "./dist/signer/index.js"
+        },
+        "./relay": {
+            "import": "./dist/relay/index.js",
+            "types": "./dist/relay/index.d.ts",
+            "default": "./dist/relay/index.js"
         }
     },
     "files": [

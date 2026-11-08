@@ -1,6 +1,6 @@
 ---
 title: The SDK
-description: An orientation to @figaro-protocol/sdk — the six subpath exports and what each owns, the recipes a builder reaches for first, and where the full manual and the generated API reference live.
+description: An orientation to @figaro-protocol/sdk — the seven subpath exports and what each owns, the recipes a builder reaches for first, and where the full manual and the generated API reference live.
 ---
 
 `@figaro-protocol/sdk` is the TypeScript client for everything the protocol does off the chain: it builds the EIP-712 commitments both parties sign, reconstructs process state from events, computes every hash the registries anchor, and runs the agent choreography that turns a discovered assembly into a bonded order. It is ESM, MIT, and runs in Node and the browser over `viem` as a peer dependency.
@@ -11,9 +11,9 @@ npm install @figaro-protocol/sdk viem
 
 This page is an orientation, not the manual. The canonical, exhaustive integration manual — recipes, traps, and the order to do things in — is [`sdk/README.md`](https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md) in the public repository, and the generated API reference (every export, every signature, one page per entry point) is at [`/sdk-api/`](/sdk-api/index.html). Read the [whole model](/) first and [The contracts](/protocol/contracts/) for the surfaces the calls below reach.
 
-## The six subpath exports
+## The seven subpath exports
 
-Nothing is re-exported: every symbol lives in exactly one entry point. `package.json`'s `exports` field publishes six subpaths, and each owns a distinct seam.
+Nothing is re-exported: every symbol lives in exactly one entry point. `package.json`'s `exports` field publishes seven subpaths, and each owns a distinct seam.
 
 | Subpath | What it owns | Representative exports |
 |---|---|---|
@@ -23,8 +23,9 @@ Nothing is re-exported: every symbol lives in exactly one entry point. `package.
 | `/clauses` | The clause-spec format and content encoding — the lockstep off-chain half of a clause: parse and validate a spec, validate and encode content generically, with no chain and no network. | `parseClauseSpec`, `validateContent`, `encodeContentFromSpec`, `decodeContentFromSpec` |
 | `/handoff` | The runtime handoff wire protocol — the message shapes two wallets speak when a pending commitment or a sealed key travels between them, plus the ECDH key agreement. | `generateOrderKeypair`, `deriveSharedSecretAsSender`, `deriveSharedSecretAsReceiver`, `wrapWithSharedSecret`, `unwrapWithSharedSecret` |
 | `/signer` | The policy signer — a Node-only daemon that holds the wallet key in its own process behind an out-of-model policy gate, exposed as a `viem` account over a local socket. | `socketSignerAccount`, `validatePolicy`, `createSignerDaemon`, the `figaro-signer` bin |
+| `/relay` | Your own relay — a Node-only call that starts the relay program on the state it rebuilds from the chain and proves and lands the buyer's resolve on the batch path, so a batched process needs no relay but its own. | `proveAndSettle` |
 
-Only `/signer` is Node-only (it reaches `node:net`/`node:fs`); `/handoff` needs the WebCrypto global; everything else bundles into a UI as-is. The per-entry-point host requirements and the full symbol synopsis are in the README's [Six Entry Points](https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#six-entry-points) section.
+Only `/signer` and `/relay` are Node-only (`/signer` reaches `node:net`/`node:fs`, `/relay` starts a program); `/handoff` needs the WebCrypto global; everything else bundles into a UI as-is. The per-entry-point host requirements and the full symbol synopsis are in the README's [Seven Entry Points](https://github.com/figaro-protocol/Figaro/blob/main/sdk/README.md#seven-entry-points) section.
 
 ## The recipes you reach for first
 
