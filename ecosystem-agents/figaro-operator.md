@@ -518,12 +518,12 @@ safety you do not have:
 - Its admission checks call the **same `FigaroCore` functions the proof runs** (EIP-712
   recovery, the attestation witness gates), so it rejects *earlier* than the proof would
   and can never accept *more*. A `400` from it is `FigaroCore`'s own reason string.
-- Its powers are exactly to **delay**, to **censor**, and to **withhold the state its
-  batches are built on**. It cannot forge a signature, alter a struct you signed, resolve
-  something you did not sign, or take a bond.
+- Its powers are exactly to **delay** and to **censor**. It cannot withhold the state its
+  batches are built on: every batch logs its whole operation stream. It cannot forge a
+  signature, alter a struct you signed, resolve something you did not sign, or take a bond.
 - Because `settleBatch` is permissionless, censorship is not a trap: the owner can run
-  their own relay on a copy of that state (the relay's `GET /state`, saved to a new file and
-  started on only once its `x-figaro-state-root` header is the verifier's `stateRoot`), and a new trade can
+  their own relay, started with `REBUILD_FROM_CHAIN=1`, which rebuilds the state behind the
+  verifier's root from the verifier's own logs, and a new trade can
   open on `FigaroCore` as a NEW process, signed again for its domain — a batch-path
   signature names `FigaroBatchVerifier` as `verifyingContract` and does not verify there.
   A process already open on the batch path resolves only through a relay holding that

@@ -1,10 +1,9 @@
-/// HTTP API — axum routes for operation submission, the state read, and
-/// status queries.
+/// HTTP API — axum routes for operation submission and status queries.
 ///
 /// This is a PUBLIC, unauthenticated surface. It holds no keys and grants
 /// no privilege: it only relays signed submissions into the mempool, where
 /// admission runs the same EIP-712 recovery and witness gates the proof
-/// enforces, and serves the state behind the verifier's root. Every failure is a structured
+/// enforces. Every failure is a structured
 /// `{ "error": … }` JSON body — never a panic, never a plaintext rejection.
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -16,7 +15,7 @@ use axum::{
         rejection::JsonRejection,
         ConnectInfo, DefaultBodyLimit, State,
     },
-    http::{HeaderName, Method, StatusCode},
+    http::{Method, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -361,23 +360,19 @@ pub fn router(state: AppState, config: ApiConfig) -> Router {
         // Outermost last: the in-flight cap admits, the timeout bounds.
         .layer(TimeoutLayer::new(config.request_timeout))
         .layer(in_flight.clone());
-    // The read routes answer a page on any origin: GET and its preflight,
-    // `/state`'s root header exposed. The read routes
-    // change nothing, and serve what the relay already serves to any client
+    // The read routes answer a page on any origin: GET and its preflight.
+    // The read routes change nothing, and serve what the relay already serves to any client
     // on `LISTEN_ADDR`. The cross-origin header is outermost, so an answer
     // the timeout gives (`408`) reaches the page too.
     let reads = Router::new()
         .route("/health", get(health))
         .route("/status", get(status))
-        // The state behind the verifier's root, as this relay holds it.
-        .route("/state", get(get_state))
         .layer(TimeoutLayer::new(config.request_timeout))
         .layer(in_flight)
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
-                .allow_methods([Method::GET, Method::OPTIONS])
-                .expose_headers([HeaderName::from_static("x-figaro-state-root")]),
+                .allow_methods([Method::GET, Method::OPTIONS]),
         );
     Router::new().merge(submissions).merge(reads).with_state(state)
 }
@@ -568,27 +563,6 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
         dropped_usage_claims,
         last_dropped_claim_error,
     })
-}
-
-/// `GET /state` — the state behind this relay's root: the kept-state file's
-/// own format (`KernelStateSnapshot`), so it gives another relay the state
-/// to start on (`STATE_FROM=<this relay's base URL>`), a faster start than
-/// rebuilding it from the chain (`REBUILD_FROM_CHAIN=1`). Nothing in it is
-/// private: it is derived from the operation streams every landed batch
-/// logs. It is checked, never trusted — the relay started on it recomputes
-/// the root from the body and adopts the state only when that root is the
-/// verifier's and it does not already hold the state behind it
-/// (`state::takeover`); the `x-figaro-state-root` header is what this relay
-/// claims, and a header that disagrees with the body is a refusal. A stale
-/// relay serves a stale state, and the file it would replace may be the
-/// only copy, so the served state is never written unchecked.
-async fn get_state(State(state): State<AppState>) -> impl IntoResponse {
-    let snapshot = state.state_mirror.snapshot().await;
-    let root = state.state_mirror.state_root().await;
-    (
-        [("x-figaro-state-root", format!("{root:?}"))],
-        Json(snapshot),
-    )
 }
 
 #[cfg(test)]

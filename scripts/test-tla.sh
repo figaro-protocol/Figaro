@@ -55,18 +55,18 @@
 #      formal/RelayState.cfg (2 relays, 3 batches). The off-chain relay
 #      (prover/sequencer) under crashes at any step, kept-file write
 #      failures, refused batches, permissionless resends of a public proof,
-#      takeover from another relay's GET /state, and a foreign submitter
+#      a start on the state rebuilt from the chain, and a foreign submitter
 #      (no relay of the model) that lands a batch and publishes nothing.
 #      Verifies 8 invariants and 2 action properties; the load-bearing one is
 #      Recoverable: whenever the verifier's root is past genesis, some relay
 #      has the state behind it on disk, or the chain carries every batch
 #      that landed so a stranger rebuilds it. OpsOnChain in the .cfg is the
-#      accepted batch design (every batch carries its signed operations in
-#      its own transaction); FALSE is today's verifier and MUST fail
-#      Recoverable through the foreign submitter. Five relay switches each
-#      restore one defect when FALSE: four (HoldBeforeSend, HoldThroughRevert,
-#      KeepRetainsBuiltOnRoot, TakeoverChecksRoot) MUST fail Recoverable with
-#      OpsOnChain and ForeignSubmitters FALSE, the fifth (RebatchDropsRevoker)
+#      batch design (every batch carries its signed operations in its own
+#      transaction); FALSE is a verifier without the stream check and MUST
+#      fail Recoverable through the foreign submitter. Four relay switches
+#      each restore one defect when FALSE: three (HoldBeforeSend,
+#      HoldThroughRevert, KeepRetainsBuiltOnRoot) MUST fail Recoverable with
+#      OpsOnChain and ForeignSubmitters FALSE, the fourth (RebatchDropsRevoker)
 #      SendsExcludeKnownRevoked.
 #      The same module's second spec, DeferSpec (formal/RelayStateDeferral.cfg),
 #      models the deferral of an operation dropped at batch formation: 10

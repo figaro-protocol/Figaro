@@ -175,7 +175,6 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `RUST_LOG` | `figaro_sequencer=info,sequencer=info` | Log filter. Two targets: the library's modules log as `figaro_sequencer`, the binary's own lines (startup, every refusal to start, the batch loop) as `sequencer` — name both |
 | `STATE_PATH` | `sequencer-state-<chain id>-<verifier>.json` | The relay's state, the preimage of the verifier's root (see The state behind the root); empty = in-memory only |
 | `REBUILD_FROM_CHAIN` | unset | `1`: at startup this relay rebuilds the state behind the verifier's root from the chain alone, replaying every landed batch's operation stream from `REBUILD_FROM_BLOCK` (default `0`; the verifier's deployment block saves the scan), holding each root to its `BatchSettled`, and keeps the result as its state file before starting. Refuses, writing nothing, on the first batch whose two logs do not pair up in one transaction, whose stream does not decode or apply, or whose replay does not reach the root its `BatchSettled` names, and when the replay's last root is not the verifier's `stateRoot()`. |
-| `STATE_FROM` | unset | Another relay's base URL: at startup this relay fetches its `GET /state`, recomputes the root, and adopts it into `STATE_PATH` only when that root is the verifier's and this relay does not already hold the state behind it (kept file or journal); holding it, it starts on its own and writes nothing; any other served state is a refusal to start that writes nothing (see The state behind the root) |
 
 ## HTTP API
 
@@ -192,7 +191,7 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   `{"Plaintext":{"spec_json","content_json","clause_data","inclusion_proof","content_kind"}}`,
   sent when the party chooses to have its content checked in the proof. The
   relay writes no attestation content to its logs, its state file, its
-  journal, `/state` or `/status`; a refused attestation is logged without
+  journal or `/status`; a refused attestation is logged without
   its reason, which goes to the sender alone.
   A resolve is `{"Resolve":{"process_id","cumulative_value","commitments","buyer_sig"}}`:
   `buyer_sig` signs `ResolveProcess(bytes32 processId,uint256 cumulativeValue)`
@@ -239,7 +238,7 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
 ### Status
 
 The read routes below answer a page on any origin: `Access-Control-Allow-Origin: *`
-for `GET` and its `OPTIONS` preflight, with `x-figaro-state-root` exposed.
+for `GET` and its `OPTIONS` preflight.
 They change nothing, and serve what the relay already serves to any client on
 `LISTEN_ADDR`. The cross-origin header is outermost, so a `408` reaches the
 page too. The submission routes carry no cross-origin header: a JSON
@@ -249,17 +248,6 @@ answered `415` by the JSON extractor and admits nothing. So no page can have
 its visitors' browsers submit for it, each from an address of its own past
 `SUBMITS_PER_MINUTE_PER_IP`.
 
-- `GET /state` — the state behind this relay's root (`KernelStateSnapshot`,
-  the kept-state file's own format; the root is in the `x-figaro-state-root`
-  header). It gives another relay the state to start on: that relay is
-  started with `STATE_FROM=<this relay's base URL>` and fetches it itself,
-  recomputes the root from the body, and adopts the state into its
-  `STATE_PATH` only when the root is the verifier's `stateRoot` and its kept
-  file does not already hold that root; a served state behind any other root,
-  or whose header names a root other than the body's, is a refusal to start
-  and writes nothing. Nothing in it is private — it is derived from the
-  operation streams every landed batch logs. A relay started with
-  `REBUILD_FROM_CHAIN=1` needs no `GET /state` at all.
 - `GET /health` — liveness + bounded counts:
   `{ "status": "ok", "pending_ops", "pending_usage_claims", "batches_settled" }`.
 - `GET /status` — the above plus the sequencer's local `state_root` mirror
@@ -341,21 +329,14 @@ The relay builds only on a held state whose root is the verifier's. It reads
   `last_settle_error`.
 
 A relay that holds no state for a verifier past genesis therefore never
-proves a batch that can only revert. The relay publishes its state
-(`GET /state`), so a party can hold a copy and a second relay can start on
-it: started with `STATE_FROM=<the serving relay's base URL>`, it fetches the
-state, recomputes the root, and writes it over its own `STATE_PATH` only
-when that root is the verifier's `stateRoot` and the kept file does not
-already hold it — a stale relay serves a stale state, and the file it would
-replace may be the only copy, so a served state behind any other root is a
-refusal to start that writes nothing (`formal/RelayState.tla`,
-`TakeoverChecksRoot`); a served state over 1 GiB is refused unread. The
-journal beside the kept file stays, trimmed to the batches built on the
-adopted root. A second relay beside the first takes its own `STATE_PATH`: the
+proves a batch that can only revert. No relay serves its state to another:
+a relay that holds nothing is started with `REBUILD_FROM_CHAIN=1` and
+rebuilds the state behind the verifier's root from the operation streams the
+verifier logs, so it trusts no other relay's copy. A second relay beside the first takes its own `STATE_PATH`: the
 default is relative to the working directory and names only the chain and
 the verifier, so two relays started from one directory with the default
 would share one file. Back up the state file and its journal after every
-batch that lands, or keep a copy of `/state`: losing every copy costs a
+batch that lands: losing every copy costs a
 rebuild from the chain (`REBUILD_FROM_CHAIN=1`), which replays every landed
 batch. A state file or a journal that is there and does not
 parse is a refusal to start, never a silent start from less than this host

@@ -328,20 +328,19 @@ invariants and 2 action properties:
 
 | Property | Code | Formal |
 |---|---|---|
-| Whenever the verifier's root is past genesis, some relay has the state behind it on disk — through a crash at any step, a refused batch, a resend by anyone, a takeover — or the chain carries every batch that landed, so a stranger rebuilds it | `StateStore::hold_next` before the send; `StateStore::keep` writes the kept file, then retains the journal entries built on the new root; a refused batch's entry stays held. The chain half is the accepted batch design (`OpsOnChain`): the verifier admits a batch only with its signed operations in its own transaction, and a relay starting with nothing replays them (`StartFromChain`; `prover/sequencer/src/rebuild.rs`, `REBUILD_FROM_CHAIN=1`) | `Recoverable` |
+| Whenever the verifier's root is past genesis, some relay has the state behind it on disk — through a crash at any step, a refused batch, a resend by anyone — or the chain carries every batch that landed, so a stranger rebuilds it | `StateStore::hold_next` before the send; `StateStore::keep` writes the kept file, then retains the journal entries built on the new root; a refused batch's entry stays held. The chain half is the accepted batch design (`OpsOnChain`): the verifier admits a batch only with its signed operations in its own transaction, and a relay starting with nothing replays them (`StartFromChain`; `prover/sequencer/src/rebuild.rs`, `REBUILD_FROM_CHAIN=1`) | `Recoverable` |
 | Under the design no landing path escapes the rule: every batch that moved the root, a relay's or a foreign submitter's, has its operations in its own transaction | the verifier's hash check of the operation stream against public value 9 (`OperationsHashMismatch`) | `ChainCarriesEveryLandedBatch` |
 | A relay builds only on a root the verifier has held, and its mirror never goes back | `step_to` / `held_state_for` at start and before every batch; the start refusal | `BuiltOnVerifierRoot`, `MirrorOnVerifierRoot`, `KeptOnVerifierRoot`, `JournalBuiltOnVerifierRoot`, `MirrorNeverGoesBack` |
-| A takeover overwrites a kept file only with the verifier's state | NOT relay-enforced: writing `GET /state` over a state file is safe only when its `x-figaro-state-root` header is the verifier's `stateRoot`; the relay refuses to start on a wrong state, but a file it overwrites is lost | carried by **`TakeoverChecksRoot`** — FALSE: a stale served state written over the only copy of the verifier's state |
 | A relay never re-sends a batch a revocation refusal already showed it cannot pull — it drops the revoker and rebuilds with everyone else | the deterministic-revert arm re-reads funding, dead-letters only the named revoker's operations and re-queues the rest (`main.rs`, `submitter.rs`); a revoker who re-approves before the re-read is not named, and the whole batch dead-letters as before (the handover's limitation 3) | `SendsExcludeKnownRevoked` — the model assumes the refusal names the revoker and checks the relay's discipline given that knowledge, never the funding read itself; `sdk/tests/batch-revoke-e2e.test.ts` checks the funding read and the arm end to end on Anvil (the revoker named, its op dead-lettered alone, the rest landing next batch) |
 
 Mutation-checked: `OpsOnChain` FALSE (a verifier that does not check the
 operation stream, with `ForeignSubmitters` TRUE) fails `Recoverable` in 2
 states — the defect the batch review found, which the verifier's stream check
 (`OperationsHashMismatch`) closes; and, with `OpsOnChain`
-and `ForeignSubmitters` FALSE, each of the four lifecycle switches FALSE
-(`HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`,
-`TakeoverChecksRoot`) fails `Recoverable`, and `RebatchDropsRevoker` FALSE fails
-`SendsExcludeKnownRevoked`; the counterexamples are 6, 7, 13, 10 and 8
+and `ForeignSubmitters` FALSE, each of the three lifecycle switches FALSE
+(`HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`) fails
+`Recoverable`, and `RebatchDropsRevoker` FALSE fails
+`SendsExcludeKnownRevoked`; the counterexamples are 6, 7, 13 and 8
 states long.
 
 The same module's second spec, `DeferSpec` (`formal/RelayStateDeferral.cfg`),
@@ -767,10 +766,10 @@ One row per component and bench. The components are the tree's: every contract u
 | the proof program (`prover/program`, `prover/lib`, `prover/clause`) | the guest's rules against the Core (`parity` 41, `usage` 33, `transition_vectors` 1, `attestation_vectors` 1, `merkle_parity` 8, `operation_stream` 5, `operation_stream_vectors` 1, `packers` 3, `eip712_vectors` 2, `bincode_roundtrip` 8, unit 6), the clause engine (`conformance` 37, `encode_conformance` 14, `engine_vectors` 5), the clause keys (1) and the guest run in the executor (`guest_program` 6); 3 ignored by design, run by the fuzz script | Rust, `cargo test` over the prover workspace | pass | `1d39092c` |
 | the proof program | that the guest implements the model, by proof | no formal proof of the Rust crates | owed | — |
 | the proof program | a Groth16 proof from this tree's guest key accepted by the Sepolia verifier | no such run; the Sepolia verifier's pinned key is an earlier guest's | owed | — |
-| the relay (`prover/sequencer`) | admission, the capacity filter by derived process id, deferral, re-queue, the usage-claim pre-filter (unregistered key, unstaked seller, process already counted, reserved key), rebuild from the chain (`rebuild_from_chain` against an RPC double), wallet-code resolves, no attestation content in logs, state or routes | Rust `cargo test -p figaro-sequencer`: 37 unit, 120 integration | pass | uncommitted, over `88f54acc` |
-| the relay (the model) | the state lifecycle (8 invariants, 2 action properties), the deferral at batch formation (10), the resolve authorization (3) | TLA+ passes 5–7: 22,467,078 / 3,939,572 distinct, depth 30; 445,431 / 116,190, depth 19; 3,293,884 / 809,956, depth 19; no error | pass | `1d39092c` |
+| the relay (`prover/sequencer`) | admission, the capacity filter by derived process id, deferral, re-queue, the usage-claim pre-filter (unregistered key, unstaked seller, process already counted, reserved key), rebuild from the chain (`rebuild_from_chain` against an RPC double), wallet-code resolves, no attestation content in logs, state or routes | Rust `cargo test -p figaro-sequencer`: 37 unit, 112 integration | pass | uncommitted, over `42cfaec8` |
+| the relay (the model) | the state lifecycle (8 invariants, 2 action properties), the deferral at batch formation (10), the resolve authorization (3) | TLA+ passes 5–7: 13,336,906 / 2,403,260 distinct, depth 22; 445,431 / 116,190, depth 19; 3,293,884 / 809,956, depth 19; no error | pass | uncommitted, over `42cfaec8` |
 | the relay | its behavior, by proof, beyond the TLA+ models | no formal proof of the relay's code | owed | — |
-| the relay, with the SDK and the verifier | a batch end to end, SDK → relay → verifier on Anvil | `sdk/tests/batch-e2e.test.ts` skipped in the run: no Anvil, no relay binary | owed | `d399506e` |
+| the relay, with the SDK and the verifier | a batch end to end, SDK → relay → verifier on Anvil | `sdk/tests/batch-e2e.test.ts` on Anvil with the release relay binary: 4 of 4 | pass | uncommitted, over `42cfaec8` |
 | the SDK (`sdk/`) | the encoders, bonds, discovery, clauses, the cross-language parity vectors, the resolve gas model | Vitest, the whole suite | pass | `d399506e` |
 | the SDK | the resolve model's memory constants held equal to `GasCeilingTest`'s | Vitest `gasCeilings.test.ts` | pass | `04611ead` |
 | the SDK's signer (`sdk/src/signer`) | the policy gate and the keystore; a key held on a Ledger signs as the raw key does | Vitest `signer.test.ts` and `signerLedger.test.ts`, within the SDK run | pass, the Ledger on a mock transport only | `d399506e` |

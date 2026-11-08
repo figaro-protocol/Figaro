@@ -22,9 +22,9 @@
  *   5. Submit Commit + AttestAsSeller (the plaintext form, RuntimeWitness) via SequencerClient
  *   6. Wait for batch 1: bonds pulled, Attestation re-emitted
  *   6b. A relay holding no state refuses to start; a second relay starts
- *       on the state the first serves (STATE_FROM=<its URL>, fetched and
- *       checked by the relay itself); the relay that built batch 1
- *       restarts and resumes on its kept state
+ *       on the state it rebuilds from the verifier's logs
+ *       (REBUILD_FROM_CHAIN=1); the relay that built batch 1 restarts and
+ *       resumes on its kept state
  *   7. Submit Resolve to the second relay; it settles batch 2
  *   8. Verify: final balances, state root advanced, batch count
  */
@@ -117,8 +117,8 @@ const CLAUSE_DATA = `{"modality":"delivery"}`;
 
 /** The relay's state file for this run: the preimage of the verifier's root. */
 const STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}.json`);
-/** The second relay's state file: written by the relay itself from the first's GET /state. */
-const TAKEOVER_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-takeover.json`);
+/** The second relay's state file: written by the relay itself from the state it rebuilds from the chain. */
+const SECOND_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-second.json`);
 /** The state file of the relay that rebuilds from the chain alone (the pass test). */
 const REBUILT_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-rebuilt.json`);
 
@@ -318,7 +318,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         }
         for (const suffix of ["", ".tmp", ".next.jsonl", ".next.jsonl.tmp"]) {
             fs.rmSync(STATE_PATH + suffix, { force: true });
-            fs.rmSync(TAKEOVER_STATE_PATH + suffix, { force: true });
+            fs.rmSync(SECOND_STATE_PATH + suffix, { force: true });
             fs.rmSync(REBUILT_STATE_PATH + suffix, { force: true });
         }
     });
@@ -475,28 +475,29 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         expect(statelessOutput).toContain("does not hold the state behind the verifier's root");
         expect(statelessExit).toBe(2);
 
-        // A second relay takes over from the served state: started with
-        // STATE_FROM=<the first relay's URL> and an empty STATE_PATH, it
-        // fetches the first relay's GET /state itself, recomputes the root,
-        // writes the state over its own kept file only because that root is
-        // the verifier's, and starts on it. It settles the next batch.
+        // A second relay starts on the state it rebuilds from the chain:
+        // started with REBUILD_FROM_CHAIN=1 and an empty STATE_PATH, it
+        // replays the operation stream every landed batch logs, keeps the
+        // rebuilt state, and starts on it because its root is the
+        // verifier's. No relay serves its state to another. It settles the
+        // next batch.
         const SECOND_URL = `http://127.0.0.1:${SEQUENCER_PORT + 2}`;
-        expect(fs.existsSync(TAKEOVER_STATE_PATH)).toBe(false);
+        expect(fs.existsSync(SECOND_STATE_PATH)).toBe(false);
         secondProcess = startSequencer(relay, {
-            STATE_PATH: TAKEOVER_STATE_PATH,
-            STATE_FROM: SEQUENCER_URL,
+            STATE_PATH: SECOND_STATE_PATH,
+            REBUILD_FROM_CHAIN: "1",
             LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT + 2}`,
         });
         attachLogs(secondProcess);
         await waitForSequencer(SECOND_URL, 10 * 60_000);
         const secondClient = new SequencerClient({ url: SECOND_URL });
-        const rootAtTakeover = (await publicClient.readContract({
+        const rootAtRebuild = (await publicClient.readContract({
             address: batchVerifierAddress,
             abi: BATCH_VERIFIER_ABI,
             functionName: "stateRoot",
         })) as string;
-        expect((await secondClient.status()).state_root.toLowerCase()).toBe(rootAtTakeover.toLowerCase());
-        expect(fs.existsSync(TAKEOVER_STATE_PATH), "the relay wrote the adopted state as its kept file").toBe(true);
+        expect((await secondClient.status()).state_root.toLowerCase()).toBe(rootAtRebuild.toLowerCase());
+        expect(fs.existsSync(SECOND_STATE_PATH), "the relay wrote the rebuilt state as its kept file").toBe(true);
 
         // The relay that built batch 1 restarts and resumes on its kept
         // state, beside the second; the batch below is the second's.
@@ -755,7 +756,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             }
             for (const suffix of ["", ".tmp", ".next.jsonl", ".next.jsonl.tmp"]) {
                 fs.rmSync(STATE_PATH + suffix, { force: true });
-                fs.rmSync(TAKEOVER_STATE_PATH + suffix, { force: true });
+                fs.rmSync(SECOND_STATE_PATH + suffix, { force: true });
             }
     
             // ── 4. A relay with nothing rebuilds the state from the chain ──

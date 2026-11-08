@@ -221,7 +221,7 @@ regression.
 RelayState (`RelayState.tla` + `.cfg`): the relay's state lifecycle
 (`prover/sequencer/src/state.rs`, `main.rs`) — 2 relays, 3 batches, a crash at
 any step, a kept-file write that fails, a batch the chain refuses, anyone
-resending a public proof, a takeover from another relay's `GET /state`, and a
+resending a public proof, a start on the state rebuilt from the chain, and a
 foreign submitter, no relay of the model, that lands a batch on a copy of the
 state and publishes nothing. 8 invariants — `Recoverable` (whenever the
 verifier's root is past genesis, some relay has the state behind it on disk, or
@@ -233,18 +233,18 @@ a foreign submitter's, escapes the rule), `BuiltOnVerifierRoot`,
 `MirrorNeverGoesBack`, and `SendsExcludeKnownRevoked` (a relay never sends a
 batch carrying a party whose revocation a refusal already showed it — the
 re-batch drops the revoker and rebuilds with everyone else):
-22,467,078 states / 3,939,572 distinct, under four minutes. The `.cfg` carries
+13,336,906 states / 2,403,260 distinct, under four minutes. The `.cfg` carries
 the world and the design: `ForeignSubmitters` admits the foreign submitter, and
 `OpsOnChain` is the accepted batch design, every batch carrying its signed
 operations in its own transaction so the chain rebuilds the state behind any
 root (`StartFromChain`, the relay's rebuild-from-chain start). Mutation-checked:
 `OpsOnChain` FALSE (a verifier that does not check the operation stream) fails
 `Recoverable` in two states, the foreign batch's state nowhere a stranger can
-reach; and five relay switches,
+reach; and four relay switches,
 each restoring one defect, checked with `OpsOnChain` and `ForeignSubmitters`
 FALSE (the world where the relays' discipline is the only keeper of the
-state): `HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`,
-`TakeoverChecksRoot` — each FALSE fails `Recoverable` — and
+state): `HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot` —
+each FALSE fails `Recoverable` — and
 `RebatchDropsRevoker` — FALSE fails `SendsExcludeKnownRevoked`.
 
 RelayState's second spec, `DeferSpec` (`RelayState.tla` +
@@ -385,8 +385,8 @@ rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof;
 asserts it hashes to the SDK's key in `test/fixtures/clause-keys.json`),
 and `figaro-sequencer` (mempool runs the mirror's own witness gates at the
 door, admitting a hash-only attestation and refusing a wrong `clauseDataHash`;
-the relay writes no attestation content to its logs, state file, journal,
-`/state` or `/status`, a refused attestation logged without its reason
+the relay writes no attestation content to its logs, state file, journal
+or `/status`, a refused attestation logged without its reason
 (`the_relay_writes_no_attestation_content_to_its_logs_state_or_routes`); a dedup slot belongs to the submission that will be accepted — a
 stranger's resolve, the buyer's signature over another order list or another
 cumulative value, and an
@@ -394,8 +394,8 @@ attestation with other witness spec bytes each leave the real one queued; the st
 survives a restart with its root, a batch's state is held across a crash
 before its receipt and for as long as the batch can land, a held root is not
 replaced, a damaged state file or journal is refused, a verifier root the
-relay does not hold finds nothing, and `GET /state` serves a state another
-relay opens with the same root; a batch takes at most `MAX_BATCH_OPS` and its
+relay does not hold finds nothing, and the relay serves no state
+(`the_relay_serves_no_state`); a batch takes at most `MAX_BATCH_OPS` and its
 settle is planned to fit the block from the batch's own execution (`gas.rs`,
 the newest operations given back when it would not); a
 wallet's funds are allocated across a batch's commits; an attestation's
@@ -417,8 +417,9 @@ committed, `the_published_stream_rebuilds_the_root_the_batch_committed`).
 a plaintext attestation witness, the Rust sequencer binary proves + submits, the Solidity
 verifier checks the hashes and the registry anchor on a live Anvil — value
 legs asserted from the chain. Between its two batches the test starts a relay
-that holds no state, which must refuse to start; starts a second relay on the
-first relay's `GET /state`, which must hold the verifier's root; and restarts
+that holds no state, which must refuse to start; starts a second relay with
+`REBUILD_FROM_CHAIN=1`, which must rebuild the state behind the verifier's root
+from the verifier's logs; and restarts
 the relay that built the first batch, which must resume on its kept state and resolve the
 second. The verifier is deployed with the fingerprint
 the binary itself reports (`sequencer --vkey`), so the sequencer's startup
