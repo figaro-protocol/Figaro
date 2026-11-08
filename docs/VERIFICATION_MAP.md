@@ -22,7 +22,7 @@ a test file). Where a check runs, and what shows it is load-bearing:
 |---|---|---|---|
 | Foundry | `forge test --via-ir` | the pre-commit hook; `foundry-ci` on every push, the fork tests included | `mewt` over every contract in scope: 912 mutants, 904 caught, 8 survivors each read as unreachable or equivalent (`AUDITOR_HANDOVER.md` § "Verification evidence") |
 | Halmos | `scripts/test-halmos.sh` | `foundry-ci` | the properties marked MUTATION-CHECKED in §9 (MembersRegistry 2, UsageCounter 2, the two designer registries 4); the seven `HalmosFigaroCore` properties are not mutation-checked |
-| Certora | `scripts/test-certora.sh` | the maintainer's gate — needs `CERTORAKEY`, never CI | `RpgfMinter`'s conservation, double-claim and eligibility rules and all three `BatchVerifierStateRoot` rules (§10); the other five specs are not mutation-checked |
+| Certora | `scripts/test-certora.sh` | the maintainer's gate — needs `CERTORAKEY`, never CI | `RpgfMinter`'s conservation, double-claim and eligibility rules all three `BatchVerifierStateRoot` rules and all four `BatchVerifierTokenOps` rules (§10); the other four specs are not mutation-checked |
 | Echidna | `scripts/test-echidna.sh` | the gate | not mutation-checked |
 | TLA+ | `scripts/test-tla.sh` | the gate | `WitnessSwapAndCommitCoordinator` 6 mutations, `ResolutionUniverses` 4 mutations + 4 reachability witnesses (§7), `RelayState` 12 (§7: the design switch, five lifecycle switches, five deferral switches, the resolve authorization's switch); `FigaroCore.tla` and `FlorinToken.tla` are not mutation-checked |
 | Lean 4 | `lake build` in `formal/lean/` | the gate | proof-checked; a mutation is a build failure |
@@ -567,7 +567,18 @@ Foundry-covered companion:
 | `settleBatchCountsOneBatch` | E-9 | `batchCount` advances by exactly one per resolved batch |
 | `onlySettleBatchMovesTheRoot` | E-9 | Parametric (all other methods): neither `stateRoot` nor `batchCount` moves |
 
-Mutation-checked, all three: with the `StateRootMismatch` check blanked and `++batchCount` replaced by `batchCount + 1` in the verifier, and a root-setting function added to the harness, each rule FAILED on its own mutation and on nothing else; the files were restored byte-identical. Report: https://prover.certora.com/output/9512759/9fb2a938b04847b8b44c83fee498631a
+Mutation-checked, all three (job `86bd3ce52d2a4351a0883726b9923921`): with `settleBatch` leaving the previous root and counting two batches, and the harness's `executePositions` writing the root, `settleBatchChainsTheRoot`, `settleBatchCountsOneBatch` and `onlySettleBatchMovesTheRoot` (on `executePositions`) each FAILED, and every other method's instance held. `_executePositions`, `_checkSpecBindings` and `_walkOperations` are summarized: none writes the verifier's storage, and with them analyzed no rule was processed within the prover's two-hour budget.
+
+**BatchVerifierTokenOps (4 declared rules — `_executePositions` alone, through `certora/harness/FigaroBatchVerifierHarness.sol`'s `executePositions`)**
+
+| CVL rule | Maps to | Type |
+|---|---|---|
+| `eachUserMovesByItsNetPosition` | E-13 (what moves in tokens) | Each of two positions' users moves by exactly its payout minus its deposit, in its token |
+| `verifierMovesByTheBatchNetInEachToken` | E-13 | The verifier's holding of any token moves by the batch's pulls minus its payouts in that token |
+| `noOtherBalanceMoves` | E-13 | No (token, holder) outside the positions' users and the verifier moves |
+| `noPayoutWaitsOnAPull` | the two-pass order | When the verifier's holding plus the batch's pulls cover its payouts in each token, and each payer holds its net deposit, no transfer asks a holder for more than it holds |
+
+Two positions of any token addresses and any users, each token a standard ERC-20 (every transfer arrives whole), one ghost balance per (token, holder); the argument for longer lists is in the spec's header. Mutation-checked (jobs `2c081ea836334bb8a0d3ec803ceb586b` and `eacfbf6ee61c487eba78f334d2f51c2b`): one pass in the guest's order with the payout sent to the wrong address fails all four rules, `noPayoutWaitsOnAPull` among them; a payout one unit too large fails `eachUserMovesByItsNetPosition`, `verifierMovesByTheBatchNetInEachToken` and `noPayoutWaitsOnAPull`, while `noOtherBalanceMoves` holds, as it should.
 
 **RpgfMinter (10 declared rules — deps summarized via ghosts/wildcard dispatch)**
 
@@ -599,11 +610,12 @@ Verified, both rules, on the non-via-IR build (under via-IR the prover's call re
 
 ### Status
 
-**Six of eight specs green** with `--wait_for_results all`
+**Eight of eight specs green** with `--wait_for_results all`
 (exit 0 = every rule verified; every `Violated` line in the stream is the
-`rule_not_vacuous` healthy polarity); `BatchVerifierTokenOps` and
-`BatchVerifierStateRoot` reach the prover's global timeout with no rule
-processed, and are owed. Which run, at which commit, and the job ids: §14.
+`rule_not_vacuous` healthy polarity). `BatchVerifierTokenOps` and
+`BatchVerifierStateRoot` run since each was narrowed to the step it is about:
+the token step alone, and `settleBatch` with the steps that write no storage
+summarized. Which run, at which commit, and the job ids: §14.
 
 ```bash
 # Install
@@ -741,8 +753,8 @@ One row per component and bench. The components are the tree's: every contract u
 | `AttestationCoordinator` | the role gates, the two reachability witnesses (satisfied), and that an attestation moves no Core state: 8 declared rules and the envfree check | Certora `AttestationCoordinator.spec`, 9 of 9 (job `60f8af0cbb6746a48b8d1fda425ae83b`) | pass | `1d39092c` |
 | `FigaroBatchVerifier` | E-7, E-9, E-13, E-16: the public-value bindings, the operation stream, the wallet-code resolve, the Core's traces through both paths, the batch gas ceilings | Foundry: `FigaroBatchVerifierTest`, `OperationStreamVectorsTest`, `CoreBatchEquivalenceTest`, `BatchGasCeilingTest` | pass | `04611ead` |
 | `FigaroBatchVerifier` (with `FigaroCore` and `UsageCounter`) | the two paths composed: no cross-path double payout, per-pool holdings, the one tally | TLA+ pass 4 of 7, `ResolutionUniverses` (21 invariants): 45,000,639 states generated, 12,828,199 distinct, depth 18, no error | pass | `1d39092c` |
-| `FigaroBatchVerifier` | the batch path's token flows: 4 rules | Certora `BatchVerifierTokenOps.spec`, the committed via-IR build: 0 of 4 rules processed in 121 minutes, the prover's global timeout (job `924da9f11eba4cc0ab3e4b9a82aaa0a8`) | owed: the spec's scope exceeds the prover's budget | `1d39092c` |
-| `FigaroBatchVerifier` | the state root's unbroken chain: 3 rules | Certora `BatchVerifierStateRoot.spec`, the committed via-IR build: 0 of 4 rules (3 declared and the envfree check) processed in 121 minutes, the prover's global timeout (job `d0dbb1ead1ab40269588b09888ffd388`) | owed: the spec's scope exceeds the prover's budget | `1d39092c` |
+| `FigaroBatchVerifier` | the batch path's token step, two positions of any token addresses, each a standard ERC-20: 4 rules | Certora `BatchVerifierTokenOps.spec`, the via-IR build: 4 of 4 verified, each with its vacuity check (job `6cdb03ff3fe049baa2c4c5ea30af51a3`) | pass | uncommitted, over `a2bc9e39` |
+| `FigaroBatchVerifier` | the state root's unbroken chain: 3 rules | Certora `BatchVerifierStateRoot.spec`, the via-IR build: 3 of 3 verified and the envfree check, each with its vacuity check (job `6060d036621040efac67402f45036eb5`); mutation-checked, each rule failing on its own mutant (job `86bd3ce52d2a4351a0883726b9923921`) | pass | uncommitted, over `a2bc9e39` |
 | `ClauseRegistry` | E-2: first-write-wins, the stake and its withdrawal; the clause keys pinned across languages | Foundry `ClauseRegistryTest` | pass | `04611ead` |
 | `ClauseRegistry` | stake solvency, withdrawable in full, first-write-wins, one-shot withdrawal, eligibility ends at withdraw, key isolation | Halmos, 6 of 6 | pass | `1d39092c` |
 | `AgreementRegistry` | registration, the reserved keys refused, the stake | Foundry `AgreementRegistryTest` | pass | `04611ead` |
@@ -769,7 +781,7 @@ One row per component and bench. The components are the tree's: every contract u
 | the relay (`prover/sequencer`) | admission, the capacity filter by derived process id, deferral, re-queue, the usage-claim pre-filter (unregistered key, unstaked seller, process already counted, reserved key), rebuild from the chain (`rebuild_from_chain` against an RPC double), wallet-code resolves, no attestation content in logs, state or routes | Rust `cargo test -p figaro-sequencer`: 37 unit, 112 integration | pass | `b1b26c54` |
 | the relay (the model) | the state lifecycle (8 invariants, 2 action properties), the deferral at batch formation (10), the resolve authorization (3) | TLA+ passes 5–7: 13,336,906 / 2,403,260 distinct, depth 22; 445,431 / 116,190, depth 19; 3,293,884 / 809,956, depth 19; no error | pass | `b1b26c54` |
 | the relay | its behavior, by proof, beyond the TLA+ models | no formal proof of the relay's code | owed | — |
-| the relay, with the SDK and the verifier | a batch end to end, SDK → relay → verifier on Anvil | `sdk/tests/batch-e2e.test.ts` on Anvil with the release relay binary: 5 of 5, the pass test through `proveAndSettle` | pass | uncommitted, over `b1b26c54` |
+| the relay, with the SDK and the verifier | a batch end to end, SDK → relay → verifier on Anvil | `sdk/tests/batch-e2e.test.ts` on Anvil with the release relay binary: 5 of 5, the pass test through `proveAndSettle` | pass | `914719ab` |
 | the SDK (`sdk/`) | the encoders, bonds, discovery, clauses, the cross-language parity vectors, the resolve gas model | Vitest, the whole suite | pass | `d399506e` |
 | the SDK | the resolve model's memory constants held equal to `GasCeilingTest`'s | Vitest `gasCeilings.test.ts` | pass | `04611ead` |
 | the SDK's signer (`sdk/src/signer`) | the policy gate and the keystore; a key held on a Ledger signs as the raw key does | Vitest `signer.test.ts` and `signerLedger.test.ts`, within the SDK run | pass, the Ledger on a mock transport only | `d399506e` |

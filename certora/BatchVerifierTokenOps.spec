@@ -31,12 +31,17 @@
 // 1–3 hold on every call that resolves without a shortfall, and rule 4 proves
 // the shortfall unreachable under its precondition.
 //
-// More than two positions. Each pass is a loop whose body moves one position's
-// tokens and nothing else. Rules 1–3 are sums of per-position moves, so a third
-// position adds its own term and touches no other's. Rule 4's only
-// order-dependence is a payout before a pull in the same token; two positions,
-// one of each in either order and in one token or two, are the cases a longer
-// list is built from. The rules state two; the argument extends them.
+// More than two positions. The guest nets one position per (token, user) for
+// any number of positions (`prover/lib/src/kernel.rs`, `TokenTracker`), and
+// `settleBatch` executes only the positions the proof committed. Each pass is a
+// loop whose body moves one position's tokens and nothing else, so rules 1–3,
+// sums of per-position moves, hold for N positions term by term. Rule 4 holds
+// for N directly: every pull is in the first pass, and each payer holds its own
+// net deposit, so the first pass completes; the verifier then holds, in each
+// token, its holding before the batch plus the batch's pulls in it; the second
+// pass pays non-negative amounts in that token whose total is at most that, so
+// no running total exceeds the holding. The rules state two positions; this
+// argument, not the prover, extends them.
 
 ghost mapping(address => mapping(address => mathint)) bal;
 persistent ghost bool shortfall;
@@ -47,6 +52,21 @@ methods {
     function SafeERC20.safeTransferFrom(address token, address from, address to, uint256 value) internal
         => move(token, from, to, value);
     function _.balanceOf(address a) external => balanceIn(calledContract, a) expect (uint256);
+
+    // The rest of the contract moves no token, and the rules never call it.
+    // The prover still analyzes every function of the contract it reads, and
+    // `_hashUsage`'s assembly packing alone exhausted its two-hour budget, so
+    // each is summarized as `certora/BatchVerifierStateRoot.spec` does.
+    function _.verifyProof(bytes32, bytes, bytes) external => NONDET;
+    function _.registered(bytes32) external => NONDET;
+    function _.applyBatchAccrual(uint8, bytes32, IUsageCounter.BatchUse[]) external => NONDET;
+    function FigaroBatchVerifier._hashPositions(FigaroBatchVerifier.NetPosition[] calldata) internal returns (bytes32) => NONDET;
+    function FigaroBatchVerifier._hashAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal returns (bytes32) => NONDET;
+    function FigaroBatchVerifier._hashSpecBindings(FigaroBatchVerifier.SpecBinding[] calldata) internal returns (bytes32) => NONDET;
+    function FigaroBatchVerifier._hashUsage(FigaroBatchVerifier.BatchUsageData calldata) internal returns (bytes32) => NONDET;
+    function FigaroBatchVerifier._emitAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal => NONDET;
+    function FigaroBatchVerifier._checkSpecBindings(FigaroBatchVerifier.SpecBinding[] calldata) internal => NONDET;
+    function FigaroBatchVerifier._walkOperations(bytes calldata, bool) internal => NONDET;
 }
 
 function move(address token, address from, address to, uint256 value) {
@@ -84,25 +104,19 @@ function twoPositions(FigaroBatchVerifier.NetPosition[] positions) {
 
 /// What the batch's positions pull from their users in `token`, and pay out.
 function pulledIn(FigaroBatchVerifier.NetPosition[] positions, address token) returns mathint {
-    mathint sum = 0;
-    if (positions[0].token == token && positions[0].deposit > positions[0].payout) {
-        sum = sum + positions[0].deposit - positions[0].payout;
-    }
-    if (positions[1].token == token && positions[1].deposit > positions[1].payout) {
-        sum = sum + positions[1].deposit - positions[1].payout;
-    }
-    return sum;
+    mathint first = (positions[0].token == token && positions[0].deposit > positions[0].payout)
+        ? positions[0].deposit - positions[0].payout : 0;
+    mathint second = (positions[1].token == token && positions[1].deposit > positions[1].payout)
+        ? positions[1].deposit - positions[1].payout : 0;
+    return first + second;
 }
 
 function paidIn(FigaroBatchVerifier.NetPosition[] positions, address token) returns mathint {
-    mathint sum = 0;
-    if (positions[0].token == token && positions[0].payout > positions[0].deposit) {
-        sum = sum + positions[0].payout - positions[0].deposit;
-    }
-    if (positions[1].token == token && positions[1].payout > positions[1].deposit) {
-        sum = sum + positions[1].payout - positions[1].deposit;
-    }
-    return sum;
+    mathint first = (positions[0].token == token && positions[0].payout > positions[0].deposit)
+        ? positions[0].payout - positions[0].deposit : 0;
+    mathint second = (positions[1].token == token && positions[1].payout > positions[1].deposit)
+        ? positions[1].payout - positions[1].deposit : 0;
+    return first + second;
 }
 
 // ═══════════════════════════════════════════════════════════════════
