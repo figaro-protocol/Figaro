@@ -31,9 +31,10 @@ import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
 } from "@figaro-protocol/sdk/agent";
-import { computeOrderHash, verifyCommitmentSignature, type CoreEvents } from "@figaro-protocol/sdk";
+import { verifyCommitmentSignature, type CoreEvents } from "@figaro-protocol/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { getCoreEvents, useWatchOrderEvents } from "@/lib/kernel/indexer";
+import { commitmentOrderHashes } from "@/lib/kernel/signedCommitment";
 import { publishAgreement } from "@/lib/kernel/agreementFetch";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
@@ -94,7 +95,9 @@ export function awaitsMyBroadcast(p: CommitmentPayload, address: string): boolea
 /**
  * Is this payload's order still off-chain? Read from the indexer's one order
  * reader and kept live by the order-event watcher, both over every order
- * emitter. The predicate answers `false` while the read is in flight, when it
+ * emitter, a payload matched under each emitter's domain (a root order's id
+ * differs between FigaroCore's and the batch verifier's). The predicate
+ * answers `false` while the read is in flight, when it
  * failed, and for a payload whose order hash cannot be computed: an order
  * whose chain state is unknown is not surfaced as pending.
  */
@@ -151,7 +154,7 @@ export function useIsUncommitted(): { isUncommitted: (payload: CommitmentPayload
         (payload: CommitmentPayload) => {
             if (!committed || !core || !chainId) return false;
             try {
-                return !committed.has(computeOrderHash(payload.commitment, chainId, core).toLowerCase());
+                return !commitmentOrderHashes(payload.commitment, chainId).some((h) => committed.has(h.toLowerCase()));
             } catch {
                 return false;
             }
