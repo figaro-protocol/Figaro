@@ -450,13 +450,15 @@ export interface BoundAssemblyPlanInput {
  * orders draws distinct wallets by commit order (the per-clause cursor), so the
  * ordering is significant and must match the checkout's commit order. `seller`
  * is `null` when the assembly binds no co-seller for that order's clause.
+ * `itemId` is the item the binding names for that seller in the seller's own
+ * catalog (`CoSellerBinding.itemIds`), or `null` when it names none.
  *
  * Throws when the topology has a cycle (a sub-order's parents are
  * unresolvable) — the same guard the checkout relies on.
  */
 export function planSubOrderSellers(
     bound: BoundAssemblyPlanInput,
-): Array<{ node: PlannedAssemblyOrder; seller: `0x${string}` | null }> {
+): Array<{ node: PlannedAssemblyOrder; seller: `0x${string}` | null; itemId: string | null }> {
     const { assembly } = bound.hydratedAssembly;
     const rootId =
         assembly.agreements.find((o) => assemblyFollows(o).length === 0)?.id ??
@@ -472,11 +474,12 @@ export function planSubOrderSellers(
         const entry = byId.get(node.nodeId) as AssemblyAgreement;
         const nodeClauses = Object.keys(agreementClauses(bound.hydratedAssembly, entry)).map((k) => k.toLowerCase());
         const binding = bound.coSellerBindings.find((cb) => nodeClauses.includes(cb.clauseKey.toLowerCase()));
-        if (!binding || binding.addresses.length === 0) return { node, seller: null };
+        if (!binding || binding.addresses.length === 0) return { node, seller: null, itemId: null };
         const bindingKey = binding.clauseKey.toLowerCase();
         const c = cursor.get(bindingKey) ?? 0;
         cursor.set(bindingKey, c + 1);
-        return { node, seller: binding.addresses[Math.min(c, binding.addresses.length - 1)] as `0x${string}` };
+        const seller = binding.addresses[Math.min(c, binding.addresses.length - 1)] as `0x${string}`;
+        return { node, seller, itemId: binding.itemIds?.[seller.toLowerCase()] ?? null };
     });
 }
 
@@ -488,8 +491,9 @@ export function planSubOrderSellers(
  *  committed line item replay the payment with no reference back to the
  *  (mutable) catalog. */
 export interface SubOrderPricing {
-    /** The catalog item priced — the contributor's first available item;
-     *  null when the contributor publishes none. */
+    /** The catalog item priced — the item the binding names for the
+     *  contributor, else the contributor's first available item; null when
+     *  there is none to price from. */
     item: CatalogItemMetadata | null;
     /** The payment the buyer signs, in the currency's smallest unit. 0n when
      *  unpriceable (no item, or a rate quantity that doesn't resolve). */
@@ -503,18 +507,22 @@ export interface SubOrderPricing {
     /** The raw resolved units before per-started-unit rounding (e.g. 4.2 km)
      *  — display only; null for fixed items or when unresolvable. */
     resolvedUnits: number | null;
-    /** Why the pricing is 0n, when it is. */
-    issue?: "no-item" | "unresolvable-quantity";
+    /** Why the pricing is 0n, when it is. `named-item-not-offered`: the
+     *  binding names an item the contributor's catalog no longer offers
+     *  (deleted, re-added under a new id, or marked unavailable) — the
+     *  surface refuses the order, never prices another item in its place. */
+    issue?: "no-item" | "unresolvable-quantity" | "named-item-not-offered";
 }
 
 /**
  * Price a sub-order from its contributor's OWN catalog — the lead included.
  * The assembly carries no payment (it's a runtime value), so the figure is
  * resolved LIVE from the pricing seller's catalog — the same path the
- * delivery leg uses, minus the picker. The item rule is the contributor's
- * first available item (open refinement, kit-assembly: an itemId on the
- * binding — catalog categories are seller-authored free-form values, never
- * a closed set this code may branch on).
+ * delivery leg uses, minus the picker. The item is the one the binding
+ * names for this contributor (`itemId`, from `planSubOrderSellers`), looked
+ * up by id in the contributor's own catalog; with none named, the
+ * contributor's first available item (catalog categories are seller-authored
+ * free-form values, never a closed set this code may branch on).
  *
  * A `pricingPolicy: "rate"` item prices as rate × quantity, the quantity
  * resolved through the rate-quantity-source registry from the order's OWN
@@ -532,11 +540,19 @@ export function resolveSubOrderPricing(args: {
     /** The buyer's entered units for this node (the "checkout-quantity"
      *  source's input), when the surface collected one. */
     checkoutQuantity?: number;
+    /** The item the binding names for this seller in its own catalog. */
+    itemId?: string;
 }): SubOrderPricing {
     const catalog = args.sellerCatalogs.find(
         (c) => c.address.toLowerCase() === args.seller.toLowerCase(),
     );
-    const item = catalog?.items.find((i) => i.available !== false) ?? null;
+    const item = catalog?.items.find((i) =>
+        i.available !== false && (args.itemId === undefined || i.id === args.itemId)) ?? null;
+    // A named item the catalog that was read no longer offers is a refusal,
+    // never the first available item in its place.
+    if (!item && catalog && args.itemId !== undefined) {
+        return { item: null, payment: 0n, billedQuantity: 1, unitPrice: 0n, resolvedUnits: null, issue: "named-item-not-offered" };
+    }
     if (!item) {
         return { item: null, payment: 0n, billedQuantity: 1, unitPrice: 0n, resolvedUnits: null, issue: "no-item" };
     }

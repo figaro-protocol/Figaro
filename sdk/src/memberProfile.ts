@@ -107,6 +107,14 @@ export interface CoSellerBinding {
      *  significant — checkout picks the first reachable one (or
      *  surfaces the list to the buyer). */
     addresses: `0x${string}`[];
+    /** The one item the member names, per designated wallet, in that
+     *  wallet's OWN catalog: keyed by the co-seller's address, lowercased,
+     *  each key one of `addresses`. Item ids are unique only inside one
+     *  member's catalog, so an id is read against the keyed co-seller's
+     *  catalog alone. Checkout prices that co-seller's sub-order from the
+     *  named item and refuses the order when the item is no longer offered;
+     *  a wallet with no entry prices from its first available item. */
+    itemIds?: Record<string, string>;
 }
 
 /**
@@ -247,11 +255,38 @@ function parseCoSellerBindingArray(value: unknown, path: string): CoSellerBindin
         const addresses = addressesRaw.map((addr, j) =>
             asAddress(addr, `${path}[${index}].addresses[${j}]`),
         );
+        const itemIds = parseCoSellerItemIds(record.itemIds, addresses, `${path}[${index}].itemIds`);
         return {
             clauseKey: asClauseKey(record.clauseKey, `${path}[${index}].clauseKey`),
             addresses,
+            ...(itemIds ? { itemIds } : {}),
         };
     });
+}
+
+/** The named-item map: each key a designated address (stored lowercased),
+ *  each value an item id in that co-seller's own catalog. A key outside
+ *  `addresses` is refused — an item can be named only for a wallet the
+ *  binding designates. */
+function parseCoSellerItemIds(
+    value: unknown,
+    addresses: readonly `0x${string}`[],
+    path: string,
+): Record<string, string> | undefined {
+    if (value === undefined) return undefined;
+    const record = asRecord(value, path);
+    const designated = new Set(addresses.map((a) => a.toLowerCase()));
+    const out: Record<string, string> = {};
+    for (const [key, itemId] of Object.entries(record)) {
+        const address = key.toLowerCase();
+        if (!designated.has(address)) {
+            throw new Error(`${path} key ${key} is not one of the binding's addresses.`);
+        }
+        const id = asOptionalString(itemId, `${path}.${address}`);
+        if (id === undefined) throw new Error(`${path}.${address} must be a string.`);
+        out[address] = id;
+    }
+    return out;
 }
 
 function parseAssemblyBindingDocument(value: unknown, sourceLabel = "institution binding"): AssemblyBindingRecord {

@@ -7,9 +7,12 @@ import { isAddress } from "viem";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useMounted } from "@/hooks/useMounted";
+import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
+import { findListingByAddress } from "@/lib/member/memberListing";
 import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
 import type {
     AssemblyBindingRecord,
@@ -36,7 +39,11 @@ import { OnboardingLoadingCard, OnboardingStepFooter, finishStep, type Onboardin
  * to designate at least one wallet for that role. The picker surfaces an
  * inline editor when those rows are checked. Without these addresses
  * the cart has nowhere to read the co-seller's seller field from at
- * checkout time.
+ * checkout time. For each designated wallet the member may name one item
+ * from that wallet's OWN catalog (`itemIds`, keyed by the lowercased
+ * address), chosen from a live read of the catalog; checkout prices the
+ * co-seller's sub-order from it. With none named, the co-seller's first
+ * available item prices it.
  *
  * MANDATORY: at least one assembly binding is required — a member
  * profile with no binding cannot be ordered from (it surfaces to no
@@ -146,12 +153,17 @@ export function OnboardingAssembliesForm({
     }
 
     const updateCoSellers = useCallback(
-        (key: string, clauseKey: `0x${string}`, addresses: `0x${string}`[]) => {
+        (key: string, clauseKey: `0x${string}`, addresses: `0x${string}`[], itemIds: Record<string, string>) => {
             setCoSellersByAssembly((prev) => {
                 const next = new Map(prev);
                 const existing = (next.get(key) ?? []).filter((cb) => !hexEqual(cb.clauseKey, clauseKey));
                 if (addresses.length > 0) {
-                    existing.push({ clauseKey, addresses });
+                    // An item is named only for a wallet the binding still
+                    // designates (the profile parser refuses any other key).
+                    const kept = Object.fromEntries(
+                        Object.entries(itemIds).filter(([a]) => addresses.some((d) => hexEqual(d, a))),
+                    );
+                    existing.push({ clauseKey, addresses, ...(Object.keys(kept).length > 0 ? { itemIds: kept } : {}) });
                 }
                 if (existing.length > 0) next.set(key, existing);
                 else next.delete(key);
@@ -237,13 +249,18 @@ export function OnboardingAssembliesForm({
                                     {requiredClauses.map((clauseKey) => {
                                         const entry = coSellers.find((cb) => hexEqual(cb.clauseKey, clauseKey));
                                         const addresses = entry?.addresses ?? [];
+                                        const itemIds = entry?.itemIds ?? {};
                                         return (
                                             <CoSellerClauseEditor
                                                 key={clauseKey}
                                                 clauseKey={clauseKey}
                                                 addresses={addresses}
+                                                itemIds={itemIds}
                                                 onChange={(next) =>
-                                                    updateCoSellers(assemblyKey(choice), clauseKey as `0x${string}`, next)
+                                                    updateCoSellers(assemblyKey(choice), clauseKey as `0x${string}`, next, itemIds)
+                                                }
+                                                onItemChange={(next) =>
+                                                    updateCoSellers(assemblyKey(choice), clauseKey as `0x${string}`, addresses, next)
                                                 }
                                             />
                                         );
@@ -300,13 +317,21 @@ export function OnboardingAssembliesForm({
 function CoSellerClauseEditor({
     clauseKey,
     addresses,
+    itemIds,
     onChange,
+    onItemChange,
 }: {
     clauseKey: string;
     addresses: `0x${string}`[];
+    /** The item named per designated wallet, keyed by its lowercased address. */
+    itemIds: Record<string, string>;
     onChange: (next: `0x${string}`[]) => void;
+    onItemChange: (next: Record<string, string>) => void;
 }) {
     const heading = getClauseSpec(clauseKey)?.title ?? clauseKey;
+    // The designated wallets' own catalogs, read live: only a present read
+    // with offered items for a wallet shows that wallet's list.
+    const { read: catalogsRead } = useRegisteredCatalogs();
     // Local rows include in-progress (typed but not yet valid) entries.
     // Always pad with one trailing empty row so the user has somewhere
     // to add a new address.
@@ -397,6 +422,42 @@ function CoSellerClauseEditor({
                                 </Button>
                             )}
                         </div>
+                    );
+                })}
+                {addresses.map((address) => {
+                    const key = address.toLowerCase();
+                    const catalog = catalogsRead.status === "present"
+                        ? findListingByAddress(catalogsRead.value, address)
+                        : undefined;
+                    const offered = (catalog?.items ?? []).filter((item) => item.available !== false);
+                    if (offered.length === 0) return null;
+                    const named = itemIds[key];
+                    return (
+                        <label key={key} className="block space-y-1 text-[11px] text-ink-muted">
+                            <span>
+                                The item from <span className="font-mono">{address}</span>&apos;s own catalog
+                                that prices this sub-order.
+                            </span>
+                            <Select
+                                value={named ?? ""}
+                                onChange={(e) => {
+                                    const next = { ...itemIds };
+                                    if (e.target.value) next[key] = e.target.value;
+                                    else delete next[key];
+                                    onItemChange(next);
+                                }}
+                                className="text-xs"
+                                data-testid={`co-seller-${clauseKey}-item-${key}`}
+                            >
+                                <option value="">No item named: the co-seller&apos;s first available item prices the order</option>
+                                {offered.map((item) => (
+                                    <option key={item.id} value={item.id}>{item.name} ({item.price})</option>
+                                ))}
+                                {named && !offered.some((item) => item.id === named) && (
+                                    <option value={named}>{named}: no longer offered</option>
+                                )}
+                            </Select>
+                        </label>
                     );
                 })}
                 <Button

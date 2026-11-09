@@ -312,6 +312,46 @@ describe("member profile metadata parser", () => {
             })).toThrow(/assemblyBindings\[0\]\.assemblyHash must be a 32-byte hex hash/);
         });
     });
+
+    describe("a co-seller binding may name one item in each co-seller's own catalog", () => {
+        const HASH = `0x${"ab".repeat(32)}`;
+        const SUBJECT = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+        const CLAUSE = `0x${"cd".repeat(32)}`;
+        const SWIFT = "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955";
+        const ROSSO = "0x976EA74026E726554dB657fA54763abd0C3a0aa9";
+        const profileWith = (coSeller: Record<string, unknown>) => ({
+            name: "Bob",
+            assemblyBindings: [{ bindingId: "b-1", subjectAddress: SUBJECT, assemblyHash: HASH, coSellerBindings: [coSeller] }],
+        });
+
+        it("parses the item map keyed by the lowercased address and round-trips it", () => {
+            const first = parseMemberProfileDocument(profileWith({
+                clauseKey: CLAUSE, addresses: [SWIFT, ROSSO], itemIds: { [SWIFT.toLowerCase()]: "kit-fastening" },
+            }));
+            const binding = first.assemblyBindings?.[0]?.coSellerBindings?.[0];
+            expect(binding?.itemIds).toEqual({ [SWIFT.toLowerCase()]: "kit-fastening" });
+            expect(parseMemberProfileDocument(first)).toEqual(first);
+        });
+
+        it("without the map, the binding parses and round-trips with no item map", () => {
+            const first = parseMemberProfileDocument(profileWith({ clauseKey: CLAUSE, addresses: [SWIFT] }));
+            const binding = first.assemblyBindings?.[0]?.coSellerBindings?.[0];
+            expect(binding?.itemIds).toBeUndefined();
+            expect(parseMemberProfileDocument(first)).toEqual(first);
+        });
+
+        it("refuses an item named for an address the binding does not designate", () => {
+            expect(() => parseMemberProfileDocument(profileWith({
+                clauseKey: CLAUSE, addresses: [SWIFT], itemIds: { [ROSSO.toLowerCase()]: "kit-housing" },
+            }))).toThrow(/coSellerBindings\[0\]\.itemIds key .* is not one of the binding's addresses/);
+        });
+
+        it("refuses an item id that is not a string", () => {
+            expect(() => parseMemberProfileDocument(profileWith({
+                clauseKey: CLAUSE, addresses: [SWIFT], itemIds: { [SWIFT.toLowerCase()]: 7 },
+            }))).toThrow(/itemIds\.0x14dc.* must be a string/);
+        });
+    });
 });
 
 describe("checkSellerBindsAssembly — the seller's own bound assemblies, read at the edge", () => {

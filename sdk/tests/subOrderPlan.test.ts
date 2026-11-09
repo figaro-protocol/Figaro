@@ -117,6 +117,86 @@ describe("planSubOrderSellers", () => {
     });
 });
 
+describe("a co-seller binding that names an item in the co-seller's catalog", () => {
+    // Swift publishes two items; the binding names the second for Swift and
+    // nothing for Mercato.
+    const twoItemCatalogs = [
+        {
+            address: SWIFT,
+            items: [
+                { id: "kit-fastening", name: "Fastening", price: "0.6", available: true },
+                { id: "kit-rivets", name: "Rivets", price: "0.9", available: true },
+            ],
+        },
+        { address: MERCATO, items: [{ id: "kit-assemble", name: "Assemble", price: "0.25", available: true }] },
+    ] as unknown as PricingCatalog[];
+    const named: BoundAssemblyPlanInput = {
+        ...assembly,
+        coSellerBindings: [
+            { clauseKey: PROX, addresses: [SWIFT, MERCATO], itemIds: { [SWIFT.toLowerCase()]: "kit-rivets" } },
+            { clauseKey: EMISSIONS, addresses: [ROSSO] },
+        ],
+    };
+    const planned = (id: string) => planSubOrderSellers(named).find((p) => p.node.nodeId === id)!;
+
+    it("the plan hands each sub-order the item named for its seller, and null where none is named", () => {
+        expect(planned("B").itemId).toBe("kit-rivets"); // Swift, named
+        expect(planned("D").itemId).toBeNull(); // Mercato, not named
+        expect(planned("C").itemId).toBeNull(); // Rosso, no map on its binding
+    });
+
+    it("named and available: prices from the named item, not the first available one", () => {
+        const { node, seller, itemId } = planned("B");
+        const p = resolveSubOrderPricing({
+            node, seller: seller!, itemId: itemId ?? undefined,
+            sellerCatalogs: twoItemCatalogs, tokenDecimals: 18, specs: NO_SPECS,
+        });
+        expect(p.item?.id).toBe("kit-rivets");
+        expect(p.payment).toBe(900000000000000000n);
+        expect(p.issue).toBeUndefined();
+    });
+
+    it("named and gone from the catalog: refuses with named-item-not-offered and prices nothing", () => {
+        const gone = [
+            { address: SWIFT, items: [{ id: "kit-rivets-v2", name: "Rivets", price: "0.9", available: true }] },
+        ] as unknown as PricingCatalog[];
+        const p = resolveSubOrderPricing({
+            node: planned("B").node, seller: SWIFT, itemId: "kit-rivets",
+            sellerCatalogs: gone, tokenDecimals: 18, specs: NO_SPECS,
+        });
+        expect(p.issue).toBe("named-item-not-offered");
+        expect(p.item).toBeNull();
+        expect(p.payment).toBe(0n);
+    });
+
+    it("named and marked unavailable: refuses the same way, never falls back to another item", () => {
+        const off = [
+            {
+                address: SWIFT,
+                items: [
+                    { id: "kit-fastening", name: "Fastening", price: "0.6", available: true },
+                    { id: "kit-rivets", name: "Rivets", price: "0.9", available: false },
+                ],
+            },
+        ] as unknown as PricingCatalog[];
+        const p = resolveSubOrderPricing({
+            node: planned("B").node, seller: SWIFT, itemId: "kit-rivets",
+            sellerCatalogs: off, tokenDecimals: 18, specs: NO_SPECS,
+        });
+        expect(p.issue).toBe("named-item-not-offered");
+        expect(p.payment).toBe(0n);
+    });
+
+    it("unnamed: prices from the first available item, as before", () => {
+        const p = resolveSubOrderPricing({
+            node: planned("B").node, seller: SWIFT,
+            sellerCatalogs: twoItemCatalogs, tokenDecimals: 18, specs: NO_SPECS,
+        });
+        expect(p.item?.id).toBe("kit-fastening");
+        expect(p.payment).toBe(600000000000000000n);
+    });
+});
+
 describe("resolveSubOrderPricing — fixed items", () => {
     it("prices a contributor node live from its published catalog price", () => {
         const p = resolveSubOrderPricing(payArgs(orderById("B"), SWIFT));
