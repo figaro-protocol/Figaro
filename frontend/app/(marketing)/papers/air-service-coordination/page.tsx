@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PAPER_CELL } from "@/components/papers/tableCell";
 import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
@@ -140,11 +141,11 @@ export default function AirServiceCoordinationPaper() {
                         <table className="text-sm border-collapse w-full">
                             <thead>
                                 <tr>
-                                    <th className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">Seller (commit sequence)</th>
-                                    <th className="border border-default px-3 py-1.5 text-right font-semibold text-ink-heading"><Math>{"P_i"}</Math></th>
-                                    <th className="border border-default px-3 py-1.5 text-right font-semibold text-ink-heading"><Math>{"G"}</Math> after</th>
-                                    <th className="border border-default px-3 py-1.5 text-right font-semibold text-ink-heading">Buyer <Math>{"2P_i"}</Math></th>
-                                    <th className="border border-default px-3 py-1.5 text-right font-semibold text-ink-heading">Seller <Math>{"2G"}</Math></th>
+                                    <th className={`${PAPER_CELL} text-left font-semibold text-ink-heading`}>Seller (commit sequence)</th>
+                                    <th className={`${PAPER_CELL} text-right font-semibold text-ink-heading`}><Math>{"P_i"}</Math></th>
+                                    <th className={`${PAPER_CELL} text-right font-semibold text-ink-heading`}><Math>{"G"}</Math> after</th>
+                                    <th className={`${PAPER_CELL} text-right font-semibold text-ink-heading`}>Buyer <Math>{"2P_i"}</Math></th>
+                                    <th className={`${PAPER_CELL} text-right font-semibold text-ink-heading`}>Seller <Math>{"2G"}</Math></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -161,19 +162,19 @@ export default function AirServiceCoordinationPaper() {
                                     ["Federal aviation system wallet", "$19", "$250", "$38", "$500"],
                                 ].map((row) => (
                                     <tr key={row[0]}>
-                                        <td className="border border-default px-3 py-1.5">{row[0]}</td>
-                                        <td className="border border-default px-3 py-1.5 text-right">{row[1]}</td>
-                                        <td className="border border-default px-3 py-1.5 text-right">{row[2]}</td>
-                                        <td className="border border-default px-3 py-1.5 text-right">{row[3]}</td>
-                                        <td className="border border-default px-3 py-1.5 text-right">{row[4]}</td>
+                                        <td className={PAPER_CELL}>{row[0]}</td>
+                                        <td className={`${PAPER_CELL} text-right`}>{row[1]}</td>
+                                        <td className={`${PAPER_CELL} text-right`}>{row[2]}</td>
+                                        <td className={`${PAPER_CELL} text-right`}>{row[3]}</td>
+                                        <td className={`${PAPER_CELL} text-right`}>{row[4]}</td>
                                     </tr>
                                 ))}
                                 <tr className="font-semibold text-ink-heading">
-                                    <td className="border border-default px-3 py-1.5">Total bond locked across the process</td>
-                                    <td className="border border-default px-3 py-1.5 text-right">&mdash;</td>
-                                    <td className="border border-default px-3 py-1.5 text-right">&mdash;</td>
-                                    <td className="border border-default px-3 py-1.5 text-right">$500</td>
-                                    <td className="border border-default px-3 py-1.5 text-right">$3,512</td>
+                                    <td className={PAPER_CELL}>Total bond locked across the process</td>
+                                    <td className={`${PAPER_CELL} text-right`}>&mdash;</td>
+                                    <td className={`${PAPER_CELL} text-right`}>&mdash;</td>
+                                    <td className={`${PAPER_CELL} text-right`}>$500</td>
+                                    <td className={`${PAPER_CELL} text-right`}>$3,512</td>
                                 </tr>
                             </tbody>
                         </table>

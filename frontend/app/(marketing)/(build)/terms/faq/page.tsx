@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { FaqJumpIndex } from "@/components/marketing/FaqJumpIndex";
 import { RegistryLifecycleFigure } from "@/components/figures/RegistryLifecycleFigure";
 import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
 
@@ -41,23 +42,7 @@ export default function Faq() {
             />
 
             <MarketingSection bottomPad="default">
-                <nav aria-label="Jump to a question" data-testid="faq-jump-index">
-                    <div>
-                        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
-                            Questions
-                        </h2>
-                        <ul className="[&>li]:border-b [&>li]:border-default text-base">
-                            {QUESTIONS.map((item) => (
-                                <li key={item.id}>
-                                    <Link href={`#${item.id}`} className="flex items-baseline justify-between gap-4 py-2.5 text-ink-heading hover:underline">
-                                        <span>{item.title}</span>
-                                        <span aria-hidden="true" className="text-ink-muted">&darr;</span>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </nav>
+                <FaqJumpIndex groups={[{ heading: "Questions", questions: QUESTIONS }]} />
             </MarketingSection>
 
             <MarketingSection title="Can someone hijack your registration or clause?" sectionId="builders-registries">

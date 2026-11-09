@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PAPER_CELL } from "@/components/papers/tableCell";
 import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
@@ -267,38 +268,38 @@ export default function SelfClosingLedgerPeriodsPaper() {
                             <thead>
                                 <tr>
                                     {["Account", "At commit", "Reclassification", "Disbursement", "Balance"].map((h) => (
-                                        <th key={h} className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">{h}</th>
+                                        <th key={h} className={`${PAPER_CELL} text-left font-semibold text-ink-heading`}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Balance held for <Math>{"\\Pi"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">Dr <Math>{"2P_i + 2G_i"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">&mdash;</td>
-                                    <td className="border border-default px-3 py-1.5">Cr <Math>{"2G_i + 2P_i"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">0</td>
+                                    <td className={PAPER_CELL}>Balance held for <Math>{"\\Pi"}</Math></td>
+                                    <td className={PAPER_CELL}>Dr <Math>{"2P_i + 2G_i"}</Math></td>
+                                    <td className={PAPER_CELL}>&mdash;</td>
+                                    <td className={PAPER_CELL}>Cr <Math>{"2G_i + 2P_i"}</Math></td>
+                                    <td className={PAPER_CELL}>0</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Claim of <Math>{"B"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">Cr <Math>{"2P_i"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">Dr <Math>{"P_i"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">Dr <Math>{"P_i"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">0</td>
+                                    <td className={PAPER_CELL}>Claim of <Math>{"B"}</Math></td>
+                                    <td className={PAPER_CELL}>Cr <Math>{"2P_i"}</Math></td>
+                                    <td className={PAPER_CELL}>Dr <Math>{"P_i"}</Math></td>
+                                    <td className={PAPER_CELL}>Dr <Math>{"P_i"}</Math></td>
+                                    <td className={PAPER_CELL}>0</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Claim of <Math>{"S_i"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">Cr <Math>{"2G_i"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">&mdash;</td>
-                                    <td className="border border-default px-3 py-1.5">Dr <Math>{"2G_i"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">0</td>
+                                    <td className={PAPER_CELL}>Claim of <Math>{"S_i"}</Math></td>
+                                    <td className={PAPER_CELL}>Cr <Math>{"2G_i"}</Math></td>
+                                    <td className={PAPER_CELL}>&mdash;</td>
+                                    <td className={PAPER_CELL}>Dr <Math>{"2G_i"}</Math></td>
+                                    <td className={PAPER_CELL}>0</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Payment payable to <Math>{"S_i"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">&mdash;</td>
-                                    <td className="border border-default px-3 py-1.5">Cr <Math>{"P_i"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">Dr <Math>{"P_i"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5">0</td>
+                                    <td className={PAPER_CELL}>Payment payable to <Math>{"S_i"}</Math></td>
+                                    <td className={PAPER_CELL}>&mdash;</td>
+                                    <td className={PAPER_CELL}>Cr <Math>{"P_i"}</Math></td>
+                                    <td className={PAPER_CELL}>Dr <Math>{"P_i"}</Math></td>
+                                    <td className={PAPER_CELL}>0</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -423,18 +424,18 @@ export default function SelfClosingLedgerPeriodsPaper() {
                     <table className="text-sm border-collapse">
                         <thead>
                             <tr>
-                                <th className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">EN 16931 core element</th>
-                                <th className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">Recovered from the order as</th>
+                                <th className={`${PAPER_CELL} text-left font-semibold text-ink-heading`}>EN 16931 core element</th>
+                                <th className={`${PAPER_CELL} text-left font-semibold text-ink-heading`}>Recovered from the order as</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td className="border border-default px-3 py-1.5">Invoice number (BT-1)</td><td className="border border-default px-3 py-1.5">an identifier of the order derived from its signed commitment</td></tr>
-                            <tr><td className="border border-default px-3 py-1.5">Issue date (BT-2)</td><td className="border border-default px-3 py-1.5">the date of the block that carries the resolution</td></tr>
-                            <tr><td className="border border-default px-3 py-1.5">Invoice type code (BT-3)</td><td className="border border-default px-3 py-1.5">projection constant (commercial invoice, code 380)</td></tr>
-                            <tr><td className="border border-default px-3 py-1.5">Seller (BG-4, BT-27)</td><td className="border border-default px-3 py-1.5">the seller wallet the commitment names</td></tr>
-                            <tr><td className="border border-default px-3 py-1.5">Buyer (BG-7, BT-44)</td><td className="border border-default px-3 py-1.5">the buyer wallet the commitment names</td></tr>
-                            <tr><td className="border border-default px-3 py-1.5">Invoice line (BG-25, BT-131)</td><td className="border border-default px-3 py-1.5">the order&rsquo;s payment <Math>{"P_i"}</Math>, described by the clauses of its agreement</td></tr>
-                            <tr><td className="border border-default px-3 py-1.5">Sum of Invoice line net amount (BG-22, BT-106)</td><td className="border border-default px-3 py-1.5"><Math>{"P_i"}</Math></td></tr>
+                            <tr><td className={PAPER_CELL}>Invoice number (BT-1)</td><td className={PAPER_CELL}>an identifier of the order derived from its signed commitment</td></tr>
+                            <tr><td className={PAPER_CELL}>Issue date (BT-2)</td><td className={PAPER_CELL}>the date of the block that carries the resolution</td></tr>
+                            <tr><td className={PAPER_CELL}>Invoice type code (BT-3)</td><td className={PAPER_CELL}>projection constant (commercial invoice, code 380)</td></tr>
+                            <tr><td className={PAPER_CELL}>Seller (BG-4, BT-27)</td><td className={PAPER_CELL}>the seller wallet the commitment names</td></tr>
+                            <tr><td className={PAPER_CELL}>Buyer (BG-7, BT-44)</td><td className={PAPER_CELL}>the buyer wallet the commitment names</td></tr>
+                            <tr><td className={PAPER_CELL}>Invoice line (BG-25, BT-131)</td><td className={PAPER_CELL}>the order&rsquo;s payment <Math>{"P_i"}</Math>, described by the clauses of its agreement</td></tr>
+                            <tr><td className={PAPER_CELL}>Sum of Invoice line net amount (BG-22, BT-106)</td><td className={PAPER_CELL}><Math>{"P_i"}</Math></td></tr>
                         </tbody>
                     </table>
                 </PaperScroll>

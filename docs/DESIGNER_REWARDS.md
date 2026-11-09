@@ -130,8 +130,7 @@ own currency, at the moment it counts:
   `AssemblyRegistry` for the assembly kind, `AgreementRegistry` for the
   agreement kind; a withdrawn stake earns nothing further.
 
-This is a **value loop, not a cost.** The stake is reclaimable, and holding it
-is exposure to the growth of the network one's own work produces. A designer
+The stake is reclaimable, and use counts only while the stake is live. A designer
 who withdraws de-surfaces the entry for new compositions and stops earning on
 it, while every order already committed against it still resolves.
 
