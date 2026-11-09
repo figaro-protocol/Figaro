@@ -4,19 +4,32 @@ name: Devnet E2E CI
 # highest-catch layer, run against a REAL stack in the runner: Anvil + a
 # deployed protocol + Kubo (IPFS) + the production static export.
 #
-# Every trigger first runs the walletless four-family registries spec on the
-# bare genesis the deploy leaves, before any test population.
+# Every run of the e2e job first runs the walletless four-family registries
+# spec on the bare genesis the deploy leaves, before any test population.
 #
-# Scope on push and pull request: the `orders-accept` spec (the bilateral
-# spine), then the four origination proofs (in-process / HTTP socket / A2A /
-# multi-order chain) against the same live stack, then the watcher's test.
+# Three jobs. `scope` decides what the run covers; `devnet-e2e` runs it, one
+# job and one copy of the stack setup whatever the scope; `gate` is the one
+# result a branch protection rule requires.
 #
-# Scope on the nightly schedule (and on a dispatch with suite=full): the whole
-# Playwright `devnet` project — every runtime *.devnet.spec.ts after its
-# `devnet-authoring` dependency — through `npm run test:e2e:devnet`, the same
-# command a laptop runs, in place of the spine spec; the proofs and the
-# watcher's test follow as on push. One job, one copy of the stack setup: the
-# trigger picks the scope.
+# The scopes:
+#   - full: the whole Playwright `devnet` project — every runtime
+#     *.devnet.spec.ts after its `devnet-authoring` dependency — through
+#     `npm run test:e2e:devnet`, the same command a laptop runs. The nightly
+#     schedule, a dispatch with suite=full, and a pull request that touches a
+#     flow path (the app routes, frontend/lib, the SDK's source, the
+#     contracts, or this file).
+#   - spine: the `orders-accept` spec (the bilateral spine) only. A push to
+#     main or develop, a dispatch with suite=spine, and a pull request that
+#     touches the rest of the stack the push trigger watches (the deploy, the
+#     clauses, the rest of the frontend or the SDK) but no flow path.
+#   - none: a pull request that touches neither; the e2e job is skipped.
+# Either scope then runs the four origination proofs (in-process / HTTP
+# socket / A2A / multi-order chain) and the watcher's test against the same
+# live stack.
+#
+# The pull request trigger carries no `paths` filter on purpose: a required
+# check that a filter skips never reports, and GitHub then blocks the merge.
+# The `scope` job filters instead, and `gate` reports on every pull request.
 
 on:
     # Nightly, 03:37 UTC. GitHub starts this repository's scheduled runs hours
@@ -51,34 +64,82 @@ on:
             - ".github/workflows/devnet-e2e-ci.yml"
     pull_request:
         branches: [main, develop]
-        paths:
-            - "src/**"
-            - "script/**"
-            - "sdk/**"
-            - "frontend/**"
-            - "clauses/**"
-            - "agreements/**"
-            - "assemblies/**"
-            - "scripts/deploy-local.sh"
-            - "scripts/check-deployment.mjs"
-            - "deployments/*.expected.json"
-            - "scripts/monitor-sepolia.mjs"
-            - "scripts/test-monitor.mjs"
 
 permissions:
     contents: read
 
+# A new push to a pull request cancels the run it supersedes; the schedule,
+# a dispatch and a push to a branch each run to the end.
+concurrency:
+    group: devnet-e2e-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+    scope:
+        name: Scope
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
+        outputs:
+            scope: ${{ steps.decide.outputs.scope }}
+        steps:
+            # The merge commit a pull request checks out has the base branch
+            # as its first parent: two commits of history hold the diff.
+            - name: Checkout code
+              if: github.event_name == 'pull_request'
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  fetch-depth: 2
+
+            - name: Decide the scope
+              id: decide
+              env:
+                  EVENT: ${{ github.event_name }}
+                  SUITE: ${{ inputs.suite }}
+              run: |
+                  case "$EVENT" in
+                      schedule) scope=full ;;
+                      workflow_dispatch) scope="$SUITE" ;;
+                      push) scope=spine ;;
+                      pull_request)
+                          scope=none
+                          git diff --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed.txt"
+                          echo "Files the pull request changes:"
+                          cat "$RUNNER_TEMP/changed.txt"
+                          while IFS= read -r f; do
+                              case "$f" in
+                                  # Flow paths: the whole suite.
+                                  "frontend/app/(app)/"*|frontend/lib/*|sdk/src/*|src/*|.github/workflows/devnet-e2e-ci.yml)
+                                      scope=full
+                                      break
+                                      ;;
+                                  # The rest of the stack the push trigger
+                                  # watches: the spine.
+                                  script/*|sdk/*|frontend/*|clauses/*|agreements/*|assemblies/*|scripts/deploy-local.sh|scripts/check-deployment.mjs|deployments/*.expected.json|scripts/monitor-sepolia.mjs|scripts/test-monitor.mjs)
+                                      scope=spine
+                                      ;;
+                              esac
+                          done < "$RUNNER_TEMP/changed.txt"
+                          ;;
+                      *)
+                          echo "::error::Unhandled event $EVENT"
+                          exit 1
+                          ;;
+                  esac
+                  echo "Scope: $scope"
+                  echo "scope=$scope" >> "$GITHUB_OUTPUT"
+
     devnet-e2e:
-        name: ${{ (github.event_name == 'schedule' || inputs.suite == 'full') && 'Full devnet suite' || 'Bilateral spine (orders-accept)' }}
+        name: ${{ needs.scope.outputs.scope == 'full' && 'Full devnet suite' || 'Bilateral spine (orders-accept)' }}
+        needs: scope
+        if: needs.scope.outputs.scope != 'none'
         runs-on: ubuntu-24.04
         # The spine: 30 minutes. The full suite: 38 spec files (37 in `devnet`
         # plus the `devnet-authoring` wizard), one worker, one retry per test,
         # about 40 minutes on a laptop; the runner has two cores and builds the
         # export inside the run, so the budget is three times that.
-        timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.suite == 'full') && 120 || 30 }}
+        timeout-minutes: ${{ needs.scope.outputs.scope == 'full' && 120 || 30 }}
         env:
-            FULL_SUITE: ${{ github.event_name == 'schedule' || inputs.suite == 'full' }}
+            FULL_SUITE: ${{ needs.scope.outputs.scope == 'full' }}
 
         steps:
             - name: Checkout code
@@ -185,7 +246,7 @@ jobs:
               env:
                   CI: true
 
-            # ── The whole devnet project (nightly) ───────────────────────
+            # ── The whole devnet project (the full scope) ────────────────
             # test:e2e:devnet = the same preflight + seed, then every runtime
             # devnet spec after the devnet-authoring wizard, one worker.
             - name: Run the full devnet e2e suite
@@ -231,3 +292,28 @@ jobs:
             - name: Anvil log tail on failure
               if: failure()
               run: tail -100 /tmp/anvil.log || true
+
+    # The required check. It reports on every run, so a branch protection rule
+    # can require it: a needed job that failed or was canceled fails it; a
+    # job skipped by its `if` (the e2e job on a pull request with scope none)
+    # passes it.
+    gate:
+        name: devnet-e2e gate
+        needs: [scope, devnet-e2e]
+        if: always()
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
+        steps:
+            - name: Read the needed jobs' results
+              env:
+                  RESULTS: ${{ join(needs.*.result, ' ') }}
+              run: |
+                  echo "Needed jobs: $RESULTS"
+                  for r in $RESULTS; do
+                      case "$r" in
+                          failure|cancelled)
+                              echo "::error::A needed job ended with $r."
+                              exit 1
+                              ;;
+                      esac
+                  done
