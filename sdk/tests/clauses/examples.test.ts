@@ -391,9 +391,9 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ incotermsRule: "EXW" }, parsed.spec).ok).toBe(false);
     });
 
-    // ── figaro-credential (declared credential vs an authority's register) ──
+    // ── figaro-credential (declared credential vs the issuing institution's register) ──
 
-    it("figaro-credential accepts a declared credential against a register assembly", () => {
+    it("figaro-credential accepts a declared credential with the register that issued it", () => {
         const parsed = parseClauseSpec(credentialSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({
@@ -412,7 +412,7 @@ describe("example clause specs — parse + validate sample content", () => {
         }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-credential rejects a pinned register with no declared identifier", () => {
+    it("figaro-credential rejects a declared register with no declared identifier", () => {
         const parsed = parseClauseSpec(credentialSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({

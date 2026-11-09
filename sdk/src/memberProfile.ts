@@ -198,8 +198,11 @@ export interface MemberProfileMetadata {
      * catalog's per-item `clauseValues`): keyed clauseKey → field → value,
      * restricted by each spec's declared profile-authored subset. Examples:
      * `figaro-dimweight`'s `divisor` (the member's shipping convention, e.g.
-     * ~5000 metric), `figaro-credential`'s `credentialId` (a declared license
-     * number). Checkout folds these onto composed profile-sourced leaves.
+     * ~5000 metric), `figaro-credential`'s `credentialRegisterUri`,
+     * `credentialTitle` and `credentialId` (the register of the institution
+     * that issued the member's credential, the credential's name and the
+     * member's identifier there). Checkout folds these onto composed
+     * profile-sourced leaves.
      * Absent when the member authors none.
      */
     profileClauseValues?: Record<string, Record<string, unknown>>;

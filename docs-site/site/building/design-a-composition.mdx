@@ -68,7 +68,7 @@ Who fills a field is declared by the spec, never by the design: a field in `bloc
 |---|---|---|---|
 | `figaro-schedule` | `windowStart`, `windowEnd`: the order's agreed window | passenger | none; what happened is an attestation |
 | `figaro-geolocation` | `geocodeStandard` (default `geohash`), `origin`, `destination`; `geocoder` | passenger; `geocoder` designer | none |
-| `figaro-credential` | `credentialRegisterUri` (a URI template with `{id}`), `credentialTitle`; `credentialId` | designer; `credentialId` seller profile | none; any reader checks the id against the register |
+| `figaro-credential` | `credentialRegisterUri` (the issuing institution's register, a URI template with `{id}`), `credentialTitle`, `credentialId` | seller profile; no agreement names the institution | none; any reader checks the id against the register |
 | `figaro-emissions` | `standard`, the methodology | passenger | stage 1: `gramsCO2e` |
 | `figaro-cold-chain` | `tempClass`, `tempMinC`, `tempMaxC`, `recordingIntervalSeconds` | seller catalog | stage 1: the observed range over a period |
 | `figaro-acceptance-criteria` | `acceptanceBasis` | passenger | stage 1: the outcome against the basis |
@@ -161,7 +161,7 @@ The clause is one of the network's: any designer composes it, and once a resolve
 
 ## 5. Compose the agreements and anchor the assembly
 
-`buildAssembly` is the composition the frontend's designer canvas runs. It takes the orders with their topology, the clauses selected for each order with the designer's fills, the assembly terms, and the mandatory clauses: the live commerce and topology clauses the DAO's wallet registered, read from the `ClauseRegistered` events by `mandatoryClauses`. It writes the mandatory clauses into every agreement, keeps only design fills (the value-free rule), and returns the assembly beside each new agreement, keyed by its `agreementHash`. The script registers each agreement on `AgreementRegistry` that is not yet bound, then the assembly on `AssemblyRegistry` under its `assemblyHash` (`serializeAssembly`), each under its registry's stake, and reads the result back the way any seller or buyer will. The register URIs below are placeholders on `example.org`; a real design pins the issuing authority's register.
+`buildAssembly` is the composition the frontend's designer canvas runs. It takes the orders with their topology, the clauses selected for each order with the designer's fills, the assembly terms, and the mandatory clauses: the live commerce and topology clauses the DAO's wallet registered, read from the `ClauseRegistered` events by `mandatoryClauses`. It writes the mandatory clauses into every agreement, keeps only design fills (the value-free rule), and returns the assembly beside each new agreement, keyed by its `agreementHash`. The script registers each agreement on `AgreementRegistry` that is not yet bound, then the assembly on `AssemblyRegistry` under its `assemblyHash` (`serializeAssembly`), each under its registry's stake, and reads the result back the way any seller or buyer will. The design names no register: a credentialed provider declares, on its profile, the register of the institution that issued its own credential, so one agreement accommodates every issuer. The register URIs in **sellers.mjs** below are placeholders on `example.org`.
 
 ```js title="compose.mjs"
 // compose.mjs — ten agreements, one assembly, registered and read back.
@@ -193,14 +193,15 @@ const mandatory = mandatoryClauses(rows, specs, deployment.daoTreasury);
 // a field the spec lists in block.design.fills; every other field is the
 // passenger's at checkout, or the seller's catalog or profile.
 const SCHEDULE = keyOf("figaro-schedule");
-const credential = (title, uriTemplate) => ({ [keyOf("figaro-credential")]: { credentialTitle: title, credentialRegisterUri: uriTemplate } });
+// The credential names no institution: each provider declares the register
+// of the institution that issued its own credential on its profile.
+const CREDENTIAL = keyOf("figaro-credential");
 const ORDERS = [
     ["aircraft", { [SCHEDULE]: {}, [keyOf("figaro-geolocation")]: {}, [keyOf("air-service-events")]: {}, [keyOf("figaro-emissions")]: {},
-                   ...credential("Airworthiness certificate", "https://register.example.org/airworthiness/{id}") }],
+                   [CREDENTIAL]: {} }],
     ["fuel", { [SCHEDULE]: {}, [keyOf("figaro-merchant-process")]: {}, [keyOf("figaro-emissions")]: {} }],
-    ["crew", { [SCHEDULE]: {}, ...credential("Flight crew certificate", "https://register.example.org/airmen/{id}") }],
-    ["maintenance", { [SCHEDULE]: {}, [keyOf("figaro-acceptance-criteria")]: {},
-                      ...credential("Maintenance authorization", "https://register.example.org/repair-stations/{id}") }],
+    ["crew", { [SCHEDULE]: {}, [CREDENTIAL]: {} }],
+    ["maintenance", { [SCHEDULE]: {}, [keyOf("figaro-acceptance-criteria")]: {}, [CREDENTIAL]: {} }],
     ["catering", { [SCHEDULE]: {}, [keyOf("figaro-cold-chain")]: {}, [keyOf("figaro-merchant-process")]: {} }],
     ["ground-handling", { [SCHEDULE]: {}, [keyOf("figaro-handoff")]: {}, [keyOf("figaro-proximity-policy")]: {}, [keyOf("figaro-courier-process")]: {} }],
     ["origin-airport", { [SCHEDULE]: {} }],
@@ -253,7 +254,7 @@ Seven `agreement … success` lines, one `assembly … success` line and `hydrat
 
 ## 6. Bind sellers and run it
 
-The run is the previous tutorial's, with the composition swapped. In its project, keep **figaro.mjs**, **register.mjs**, **open.mjs** and **resolve.mjs** unchanged, and replace **sellers.mjs** and **particulars.mjs** with these. The aircraft wallet sells the root order and designates the nine other providers by the clause every sub-order carries, the schedule (DESIGNATE_BY, the field its spec declares). Each credentialed provider declares its identifier on its profile, and the caterer lists its cold-chain window on its catalog item.
+The run is the previous tutorial's, with the composition swapped. In its project, keep **figaro.mjs**, **register.mjs**, **open.mjs** and **resolve.mjs** unchanged, and replace **sellers.mjs** and **particulars.mjs** with these. The aircraft wallet sells the root order and designates the nine other providers by the clause every sub-order carries, the schedule (DESIGNATE_BY, the field its spec declares). Each credentialed provider declares on its profile the register of the institution that issued its credential, the credential's name and its identifier there, and the caterer lists its cold-chain window on its catalog item.
 
 ```js title="sellers.mjs"
 // sellers.mjs (the journey) — ten providers, one per agreement, in commit order.
@@ -263,12 +264,15 @@ export const ASSEMBLY_NAME = "Domestic short-haul journey";
 // Every sub-order carries the schedule clause: the aircraft wallet designates
 // the nine other providers by it, in commit order.
 export const DESIGNATE_BY = "windowStart";
+// A credentialed provider names the issuer of its own credential: the
+// institution's register (a URI template), the credential's name, its identifier.
+const credential = (credentialTitle, credentialRegisterUri, credentialId) => ({ credentialRegisterUri, credentialTitle, credentialId });
 const provider = (i, name, item, price, extra = {}) => ({ agreement: `agreement-${i}`, key: account(20 + i), name, item, price, ...extra });
 export const SELLERS = [
-    provider(0, "Aircraft wallet", "Aircraft-time, one sector", "65", { profileFields: { credentialId: "N123FG" } }),
+    provider(0, "Aircraft wallet", "Aircraft-time, one sector", "65", { profileFields: credential("Airworthiness certificate", "https://register.example.org/airworthiness/{id}", "N123FG") }),
     provider(1, "Fuel supplier", "Jet fuel uplift", "45"),
-    provider(2, "Crew member", "Crew-hours, one sector", "40", { profileFields: { credentialId: "ATP-0001" } }),
-    provider(3, "Maintenance provider", "Line maintenance check", "15", { profileFields: { credentialId: "RS-0042" } }),
+    provider(2, "Crew member", "Crew-hours, one sector", "40", { profileFields: credential("Flight crew certificate", "https://register.example.org/airmen/{id}", "ATP-0001") }),
+    provider(3, "Maintenance provider", "Line maintenance check", "15", { profileFields: credential("Maintenance authorization", "https://register.example.org/repair-stations/{id}", "RS-0042") }),
     provider(4, "Caterer", "Per-passenger catering", "5",
              { catalogFields: { tempClass: "refrigerated", tempMinC: 1, tempMaxC: 5, recordingIntervalSeconds: 600 } }),
     provider(5, "Ground handler", "Boarding and baggage", "15"),

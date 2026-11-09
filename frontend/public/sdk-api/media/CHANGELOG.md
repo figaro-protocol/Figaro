@@ -14,6 +14,17 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **Clause `figaro-credential`: the seller names the issuer of its own credential; the clause is
+  re-keyed.** The agreement names no institution, so one agreement accommodates every issuer.
+  `credentialRegisterUri` (the issuing institution's register, a URI template with `{id}`) and
+  `credentialTitle` move from `block.design.fills` to `block.checkout.profileFills`, beside
+  `credentialId`: the seller declares all three on its profile and the checkout folds them onto
+  the leaf; the designer fills none. The NYC TLC register in the spec's description is an example,
+  never a default. The key in `test/fixtures/clause-keys.json` moves with the bytes, and so do the
+  hashes of the `aerial-survey-flight` and `aerial-survey-flight-open-data` agreements and of the
+  `aerial-survey` and `aerial-survey-open-data` reference assemblies; the Sepolia registrations
+  are still to come. An agreement registered under the old key keeps that key and its old fills.
+
 - **A clause spec declares the measures it reads from the catalog item; every clause is
   re-keyed.** `block.checkout.catalogueMeasures` maps a content field to the catalog-item field it
   is read from and how the order's lines combine it (`"sum"`, or `"single-unit"` for a one-unit

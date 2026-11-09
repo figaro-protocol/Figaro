@@ -335,8 +335,12 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                     },
                     [keyOf('figaro-schedule')]: { windowStart: '2026-09-15T09:00:00Z', windowEnd: '2026-09-15T13:00:00Z' },
                     [GEO]: { geocodeStandard: 'geohash', origin: '9q8yyk', destination: '9q8yys' },
+                    // The surveyor's own credential declaration (its issuing
+                    // institution's register, the credential's name, its
+                    // identifier): the app's checkout folds it from the
+                    // seller's profile; no agreement names the institution.
                     [CREDENTIAL]: {
-                        credentialRegisterUri: 'https://uav-register.example/registrations{/id}',
+                        credentialRegisterUri: 'https://uav-register.example/registrations?entry={id}',
                         credentialTitle: 'Remote pilot certificate',
                         credentialId: 'RPC-107-0077',
                     },

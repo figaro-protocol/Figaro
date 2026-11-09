@@ -69,7 +69,7 @@ plays in an assembly is event-derived, not declared here. See
 <code>AssemblyBindingRecord</code> above for the shape.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberProfile.ts#L213">memberProfile.ts:213</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberProfile.ts#L216">memberProfile.ts:216</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="assets"><code class="tsd-tag">Optional</code><span>assets</span><a href="#assets" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">assets</span><span class="tsd-signature-symbol">?:</span> <a href="index.MemberAssetReferences.html" class="tsd-signature-type tsd-kind-interface">MemberAssetReferences</a></div>
@@ -92,14 +92,14 @@ this member buys through and monetizes records from. Independent
 of <code>assemblyBindings</code> (the seller's list).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberProfile.ts#L219">memberProfile.ts:219</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberProfile.ts#L222">memberProfile.ts:222</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="cataloguri"><code class="tsd-tag">Optional</code><span>catalog<wbr/>URI</span><a href="#cataloguri" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">catalogURI</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>IPFS URI of the wallet's catalog document.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberProfile.ts#L223">memberProfile.ts:223</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberProfile.ts#L226">memberProfile.ts:226</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="defaulttokenaddress"><code class="tsd-tag">Optional</code><span>default<wbr/>Token<wbr/>Address</span><a href="#defaulttokenaddress" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">defaultTokenAddress</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div>
@@ -140,19 +140,22 @@ clause declaring <code>block.checkout.profileFills</code> (the member-level sibl
 catalog's per-item <code>clauseValues</code>): keyed clauseKey → field → value,
 restricted by each spec's declared profile-authored subset. Examples:
 <code>figaro-dimweight</code>'s <code>divisor</code> (the member's shipping convention, e.g.
-~5000 metric), <code>figaro-credential</code>'s <code>credentialId</code> (a declared license
-number). Checkout folds these onto composed profile-sourced leaves.
+~5000 metric), <code>figaro-credential</code>'s <code>credentialRegisterUri</code>,
+<code>credentialTitle</code> and <code>credentialId</code> (the register of the institution
+that issued the member's credential, the credential's name and the
+member's identifier there). Checkout folds these onto composed
+profile-sourced leaves.
 Absent when the member authors none.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberProfile.ts#L205">memberProfile.ts:205</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberProfile.ts#L208">memberProfile.ts:208</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="services"><code class="tsd-tag">Optional</code><span>services</span><a href="#services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">services</span><span class="tsd-signature-symbol">?:</span> <a href="../types/index.MemberAgentServices.html" class="tsd-signature-type tsd-kind-type-alias">MemberAgentServices</a></div>
 <div class="tsd-comment tsd-typography"><p>ERC-8004 agent service endpoints, keyed by transport (an open set).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberProfile.ts#L221">memberProfile.ts:221</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberProfile.ts#L224">memberProfile.ts:224</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="specialty"><code class="tsd-tag">Optional</code><span>specialty</span><a href="#specialty" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">specialty</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
