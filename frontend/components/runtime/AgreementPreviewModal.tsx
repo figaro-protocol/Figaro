@@ -26,6 +26,9 @@ import { AgreementReview } from "@/components/runtime/AgreementReview";
 import type { ConfirmationIntent, SwapConfirmationDetails } from "@/lib/checkout/orderPreview";
 import { useWalletChain } from "@/components/runtime/ActiveNetworkLine";
 import useTokenBalance from "@/hooks/useTokenBalance";
+import useTokenDecimals from "@/hooks/useTokenDecimals";
+import { useTokenSymbol } from "@/hooks/useTokenSymbol";
+import { tokenFigure } from "@/lib/shared/utils";
 import { formatSlippagePercent } from "@/lib/composition/swapVenue";
 
 interface Props {
@@ -69,23 +72,33 @@ const INTENT_COPY: Record<ConfirmationIntent, { eyebrow: string; lede: React.Rea
  *  coordinator pulls the whole max input from the party through Permit2, so
  *  the party's balance of the input token is shown against it. */
 function SwapLegFigures({ swap }: { swap: SwapConfirmationDetails }) {
-    const { read: balance } = useTokenBalance(swap.inputToken as `0x${string}`, swap.party as `0x${string}`);
+    const inputToken = swap.inputToken as `0x${string}`;
+    const { read: balance } = useTokenBalance(inputToken, swap.party as `0x${string}`);
+    // The figures are in the FUNDING token's units, read from the chain —
+    // never the process token's. Until decimals() answers, no figure shows.
+    const { decimals } = useTokenDecimals(inputToken);
+    const { data: symbol } = useTokenSymbol(swap.inputToken);
+    const figure = (value: bigint) => `${tokenFigure(value, decimals)}${typeof symbol === "string" && symbol ? ` ${symbol}` : ""}`;
     return (
         <>
             <dl className="grid grid-cols-[110px_1fr] gap-y-1 text-sm">
-                <dt className="text-ink-muted">Max input</dt>
-                <dd className="text-ink-primary" data-testid="preview-swap-max-input">
-                    <span className="font-mono text-xs">{swap.maxInput.toString()}</span>
-                </dd>
+                {decimals !== undefined && (
+                    <>
+                        <dt className="text-ink-muted">Max input</dt>
+                        <dd className="text-ink-primary" data-testid="preview-swap-max-input">
+                            <span className="font-mono text-xs">{figure(swap.maxInput)}</span>
+                        </dd>
+                    </>
+                )}
                 <dt className="text-ink-muted">Slippage margin</dt>
                 <dd className="text-ink-primary" data-testid="preview-swap-margin">
                     {formatSlippagePercent(swap.slippageBps)}%
                 </dd>
-                {balance.status === "present" && (
+                {balance.status === "present" && decimals !== undefined && (
                     <>
                         <dt className="text-ink-muted">Your balance</dt>
                         <dd className="text-ink-primary" data-testid="preview-swap-balance">
-                            <span className="font-mono text-xs">{balance.value.toString()}</span>
+                            <span className="font-mono text-xs">{figure(balance.value)}</span>
                         </dd>
                     </>
                 )}
