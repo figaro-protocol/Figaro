@@ -24,8 +24,7 @@ import { ModalChrome } from "@/components/ui/ModalChrome";
 import { Button } from "@/components/ui/Button";
 import { AgreementReview } from "@/components/runtime/AgreementReview";
 import type { ConfirmationIntent, SwapConfirmationDetails } from "@/lib/checkout/orderPreview";
-import { useChainId } from "wagmi";
-import { chainById } from "@/lib/shared/chains";
+import { useWalletChain } from "@/components/runtime/ActiveNetworkLine";
 
 interface Props {
     commitment: Commitment;
@@ -66,8 +65,9 @@ const INTENT_COPY: Record<ConfirmationIntent, { eyebrow: string; lede: React.Rea
 export function AgreementPreviewModal({ commitment, agreement, intent, swap, onConfirm, onCancel }: Props) {
     const copy = INTENT_COPY[intent];
     // The wallet's chain, by id, from viem's registry: whether it is a test
-    // network and what it is called are the network's own facts.
-    const chain = chainById(useChainId());
+    // network and what it is called are the network's own facts. Read from
+    // the wallet's connection, the same reading as the shell's network line.
+    const chain = useWalletChain();
 
     return (
         <ModalChrome

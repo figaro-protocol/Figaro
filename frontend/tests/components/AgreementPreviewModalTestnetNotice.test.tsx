@@ -4,14 +4,17 @@
  * derived from viem's definition of the wallet's chain, by id, and stored
  * nowhere; on the devnet, on mainnet and on a chain viem does not know the
  * notice does not render. Other wallet writes (publishing, registering,
- * rewards, attestations, resolution) do not open this modal and carry no notice.
+ * rewards, attestations, resolution) do not open this modal; the shell's
+ * network line (`ActiveNetworkLine.test.tsx`) names the chain for them.
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-let chainId = 31337;
-vi.mock("wagmi", () => ({ useChainId: () => chainId }));
+let chainId: number | undefined = 31337;
+// The notice reads the wallet's chain from wagmi's connection. `useChainId`
+// is the build's chain (the devnet here), and the notice must not read it.
+vi.mock("wagmi", () => ({ useConnection: () => ({ chainId }), useChainId: () => 31337 }));
 vi.mock("@/components/runtime/AgreementReview", () => ({ AgreementReview: () => <div data-testid="review-stub" /> }));
 vi.mock("@/components/ui/ModalChrome", () => ({
     ModalChrome: ({ children, ...rest }: { children: React.ReactNode; "data-testid"?: string }) => (
@@ -44,8 +47,8 @@ describe("AgreementPreviewModal — the test-network notice", () => {
         expect(screen.getByTestId("preview-testnet-notice")).toHaveTextContent(/Polygon Amoy, a test network/);
     });
 
-    it("renders no notice on the devnet, on mainnet, or on a chain the registry does not know", () => {
-        for (const id of [31337, 1, 424242]) {
+    it("renders no notice on the devnet, on mainnet, on a chain the registry does not know, or with no wallet on the devnet build", () => {
+        for (const id of [31337, 1, 424242, undefined]) {
             chainId = id;
             const { unmount } = render(modal("commit"));
             expect(screen.queryByTestId("preview-testnet-notice")).toBeNull();

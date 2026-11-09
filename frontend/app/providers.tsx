@@ -12,6 +12,7 @@ import { ClauseSpecsLoader } from "@/components/runtime/ClauseSpecsLoader";
 import { HandoffCleanupProvider } from "@/components/runtime/HandoffCleanupProvider";
 import { CommitmentSignPreviewProvider } from "@/components/runtime/CommitmentSignPreviewProvider";
 import { ConfigurationBanner } from "@/components/runtime/ConfigurationBanner";
+import { ActiveNetworkLine } from "@/components/runtime/ActiveNetworkLine";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 <ChainGuard>
                     <CommerceProvider>
                         <ConfigurationBanner />
+                        <ActiveNetworkLine />
                         <ClientInit />
                         <ClauseSpecsLoader />
                         <HandoffCleanupProvider />
