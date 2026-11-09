@@ -233,7 +233,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
     draft/publish.
   - *Design time is STRUCTURAL.* The designer SELECTS clauses and sub-clauses; field
     editors render exactly for the fields a clause names in `block.design.fills` —
-    consent's affix, the denomination pin, the credential register: the designer's
+    consent's affix, the denomination pin: the designer's
     tailoring. Every other field is a transaction particular, filled at checkout
     (the spec-routed fill surface → `clauseFills` → `executeAssemblyCheckout`). The
     selection is captured into the no-hash assembly (`clausesByOrderId` →

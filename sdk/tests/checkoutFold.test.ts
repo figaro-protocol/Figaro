@@ -24,7 +24,7 @@ import {
 } from "../src/checkoutPlan.js";
 import { fillWalkProvenance } from "../src/reconstructOrders.js";
 import type { Agreement } from "../src/agreement.js";
-import { withSpecDefaults } from "../src/projection.js";
+import { specDesignFills, specProfileFills, withSpecDefaults } from "../src/projection.js";
 import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
 
 type ClauseFields = Record<string, Record<string, unknown>>;
@@ -210,35 +210,50 @@ describe("fillClassClauses — catalog-sourced values folded onto their leaves",
 
 const CREDENTIAL = specSourceFromFixtures(["figaro-credential"]);
 const REGISTER = "https://data.cityofnewyork.us/resource/xjfq-wh2d.json?license_number={id}";
+// The holder's declaration: the register of the institution that issued its
+// credential, the credential's name and its identifier there. No agreement
+// names the institution; each seller names its own.
+const DECLARED = {
+    credentialRegisterUri: REGISTER,
+    credentialTitle: "NYC TLC For-Hire Vehicle Driver License",
+    credentialId: "500458",
+};
+
+describe("figaro-credential — the seller declares the register, the title and the identifier", () => {
+    const spec = CREDENTIAL.get(keyOf("figaro-credential"))!;
+
+    it("all three fields are profile fills", () => {
+        expect([...specProfileFills(spec)].sort()).toEqual(["credentialId", "credentialRegisterUri", "credentialTitle"]);
+    });
+
+    it("no field is a design fill, so no agreement names the institution", () => {
+        expect(specDesignFills(spec)).toEqual([]);
+    });
+});
 
 describe("fillProfileClauses — member profile master data folded onto their leaves", () => {
-    it("folds the declared profile-authored subset onto a composed leaf", () => {
+    it("folds the seller's register, title and identifier onto a leaf no agreement pinned", () => {
         const out = fillProfileClauses(
-            { [keyOf("figaro-credential")]: { credentialRegisterUri: REGISTER } },
-            { [keyOf("figaro-credential")]: { credentialId: "500458" } },
+            { [keyOf("figaro-credential")]: {} },
+            { [keyOf("figaro-credential")]: DECLARED },
             CREDENTIAL,
         );
-        expect(out[keyOf("figaro-credential")]).toMatchObject({
-            credentialRegisterUri: REGISTER,
-            credentialId: "500458",
-        });
+        expect(out[keyOf("figaro-credential")]).toEqual(DECLARED);
     });
 
     it("folds ONLY the spec's declared subset — stored values outside it never land", () => {
         const out = fillProfileClauses(
-            { [keyOf("figaro-credential")]: { credentialRegisterUri: REGISTER } },
-            // The register pin is the DESIGNER's field; a profile-stored copy is
-            // outside `profileFills: ["credentialId"]` and must not fold.
-            { [keyOf("figaro-credential")]: { credentialId: "500458", credentialRegisterUri: "https://evil.example/{id}" } },
+            { [keyOf("figaro-credential")]: {} },
+            { [keyOf("figaro-credential")]: { ...DECLARED, verified: "yes" } },
             CREDENTIAL,
         );
-        expect(out[keyOf("figaro-credential")].credentialRegisterUri).toBe(REGISTER);
+        expect(out[keyOf("figaro-credential")]).toEqual(DECLARED);
     });
 
     it("no-ops for clauses that are not profile-sourced, absent stores, and undeclared fields", () => {
         const clauses: ClauseFields = { [keyOf("figaro-commerce")]: {} };
         expect(fillProfileClauses(clauses, { [keyOf("figaro-commerce")]: { x: 1 } }, COMMERCE)).toEqual(clauses);
-        const credential: ClauseFields = { [keyOf("figaro-credential")]: { credentialRegisterUri: REGISTER } };
+        const credential: ClauseFields = { [keyOf("figaro-credential")]: {} };
         expect(fillProfileClauses(credential, undefined, CREDENTIAL)).toEqual(credential);
         expect(fillProfileClauses(credential, {}, CREDENTIAL)).toEqual(credential);
     });
@@ -246,31 +261,30 @@ describe("fillProfileClauses — member profile master data folded onto their le
 
 describe("the profile fill and the mechanical field set read the spec each key names", () => {
     // A lookalike registration (same clauseId and version, other bytes) is
-    // another clause with its own key: it never widens what an order that
+    // another clause with its own key: it never changes what an order that
     // composed the real key takes from a profile, or what it marks mechanical.
     const rawCredential = rawSpecOf("figaro-credential");
     const fakeCredential = viewOf({
         ...rawCredential,
         title: "a stranger's registration",
-        block: { ...(rawCredential.block as object), checkout: { profileFills: ["credentialId", "credentialRegisterUri"] } },
+        block: { ...(rawCredential.block as object), checkout: { profileFills: ["credentialId"] } },
     });
     const credentials = specSourceWithRegistrations(CREDENTIAL, [fakeCredential]);
-    const values = { credentialId: "500458", credentialRegisterUri: "https://evil.example/{id}" };
-    const stored = { [keyOf("figaro-credential")]: values, [fakeCredential.clauseKey]: values };
+    const stored = { [keyOf("figaro-credential")]: DECLARED, [fakeCredential.clauseKey]: DECLARED };
 
     it("the real key folds the real spec's declared subset, whatever else is loaded", () => {
         const out = fillProfileClauses({ [keyOf("figaro-credential")]: {} }, stored, credentials);
-        expect(out[keyOf("figaro-credential")]).toEqual({ credentialId: "500458" });
+        expect(out[keyOf("figaro-credential")]).toEqual(DECLARED);
     });
 
     it("the lookalike's key folds the lookalike's declared subset", () => {
         const out = fillProfileClauses({ [fakeCredential.clauseKey]: {} }, stored, credentials);
-        expect(out[fakeCredential.clauseKey]).toMatchObject({ credentialRegisterUri: "https://evil.example/{id}" });
+        expect(out[fakeCredential.clauseKey]).toEqual({ credentialId: "500458" });
     });
 
     it("fillDerivedClauses reads each clause by its key", () => {
         expect(fillDerivedClauses({ [keyOf("figaro-credential")]: {} }, [], credentials, stored)[keyOf("figaro-credential")])
-            .toEqual({ credentialId: "500458" });
+            .toEqual(DECLARED);
     });
 
     it("mechanicallyFilledFieldNames reads the composed key's spec only", () => {

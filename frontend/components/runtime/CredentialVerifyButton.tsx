@@ -3,8 +3,9 @@
 /**
  * CredentialVerifyButton — the reader's verification affordance for a DECLARED
  * credential leaf. Renders for any clause data declaring BOTH
- * `credentialRegisterUri` (the authority's public register, a URI assembly
- * with an `{id}` placeholder) and `credentialId` (the declared identifier) —
+ * `credentialRegisterUri` (the public register of the institution that issued
+ * the credential, a URI template with an `{id}` placeholder, declared by the
+ * seller) and `credentialId` (the declared identifier) —
  * discovered by declared field, never by clause id, so a never-seen clause
  * declaring the same fields participates.
  *

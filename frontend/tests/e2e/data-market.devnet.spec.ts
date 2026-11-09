@@ -8,7 +8,10 @@
  *      operator credential, and the data-terms disclosure regime
  *      (design fill `each-own`, the buyer's `buyerDisclosure` filled at
  *      checkout) are committed merkle leaves; sign → both bonds → commit
- *      → resolve.
+ *      → resolve. The credential is A's own declaration on its profile
+ *      (the issuing institution's register, the credential's name, its
+ *      identifier there): no agreement names the institution, and the
+ *      buyer fills none of the three.
  *   2. Member B (seller) LICENSES their stream to member A (buyer) under
  *      the ADOPTED data-stream-subscription assembly — the data-license
  *      terms filled at checkout, `sourceProcesses` anchored to process 1's
@@ -56,6 +59,7 @@ import {
     MEMBERS_REGISTRY_ABI,
     buildSignedClauseInclusionProof,
     calculateBonds,
+    fillProfileClauses,
     generateSalt,
     reconstructOrdersFromAssembly,
     hashClauseData,
@@ -64,8 +68,8 @@ import {
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
 import { encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
-import { getClauseSpec } from '@/lib/shared/clauseSpecSource';
-import { LOCAL_ANVIL, RPC_URL, discoverAnchoredAssemblies, localPublicClient, pinJSONToIPFS, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs, type DiscoveredAssembly } from './devnet-helpers';
+import { getClauseSpec, specSource } from '@/lib/shared/clauseSpecSource';
+import { LOCAL_ANVIL, RPC_URL, chainProfileReader, discoverAnchoredAssemblies, localPublicClient, pinJSONToIPFS, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs, type DiscoveredAssembly } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 
@@ -176,8 +180,30 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
                 args: [uri], value: deposit,
             }));
         };
-        await ensureRegistered(walletA, memberA, { name: 'Skyline Survey Works', specialty: 'aerial survey flights' });
+        const profileA = { name: 'Skyline Survey Works', specialty: 'aerial survey flights' };
+        await ensureRegistered(walletA, memberA, profileA);
         await ensureRegistered(walletB, memberB, { name: 'Confluence Data Desk', specialty: 'licensed data streams' });
+
+        // ── THE SELLER'S DECLARATION: A declares its own credential on its
+        //    profile — the register of the institution that issued it, the
+        //    credential's name and its identifier there. No agreement names
+        //    an institution; each seller names the issuer of its own. ──
+        const declaredCredential = {
+            credentialRegisterUri: 'https://uav-register.example/registrations?entry={id}',
+            credentialTitle: 'Remote pilot certificate',
+            credentialId: 'RPC-107-0042',
+        };
+        const { uri: declaredProfileUri } = await pinJSONToIPFS({
+            subjectAddress: memberA.address, ...profileA,
+            profileClauseValues: { [CREDENTIAL]: declaredCredential },
+        });
+        await receipt(await walletA.writeContract({
+            address: membersRegistry, abi: MEMBERS_REGISTRY_ABI, functionName: 'updateProfile', args: [declaredProfileUri],
+        }));
+        // Read back out of band: MembersRegistry's latest profile URI → IPFS.
+        const sellerProfile = await chainProfileReader()(memberA.address);
+        expect(sellerProfile?.profileClauseValues?.[CREDENTIAL], "A's anchored profile carries its credential declaration")
+            .toEqual(declaredCredential);
         for (const [member, label] of [[memberA, 'A'], [memberB, 'B']] as const) {
             expect(
                 await publicClient.readContract({
@@ -349,9 +375,18 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         };
 
         // ── PROCESS 1 — the flight: A (seller) flies for B (buyer) under the
-        //    adopted aerial-survey assembly. The window, route, credential,
-        //    and disclosure terms are the buyer's checkout fills; the regime
-        //    itself (`each-own`) rides in from the assembly's design fill. ──
+        //    adopted aerial-survey assembly. The window, route and
+        //    disclosure terms are the buyer's checkout fills; the regime
+        //    itself (`each-own`) rides in from the assembly's design fill;
+        //    the credential is folded from A's anchored profile, as the
+        //    checkout folds it (`fillProfileClauses`), and the buyer fills
+        //    none of its fields. ──
+        const credentialLeaf = fillProfileClauses(
+            { [CREDENTIAL]: aerialSurvey!.agreements[0].clauses[CREDENTIAL] ?? {} },
+            sellerProfile?.profileClauseValues,
+            specSource(),
+        )[CREDENTIAL];
+        expect(credentialLeaf, "the credential leaf is A's declaration, folded from its profile").toEqual(declaredCredential);
         const flight = await commitProcess({
             adopted: aerialSurvey!,
             buyer: memberB, buyerWallet: walletB,
@@ -365,15 +400,16 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
                 },
                 [keyOf('figaro-schedule')]: { windowStart: '2026-08-15T09:00:00Z', windowEnd: '2026-08-15T13:00:00Z' },
                 [keyOf('figaro-geolocation')]: { geocodeStandard: 'geohash', origin: '9q8yyk', destination: '9q8yys' },
-                [CREDENTIAL]: {
-                    credentialRegisterUri: 'https://uav-register.example/registrations{/id}',
-                    credentialTitle: 'Remote pilot certificate',
-                    credentialId: 'RPC-107-0042',
-                },
+                [CREDENTIAL]: credentialLeaf,
                 [DATA_TERMS]: { buyerDisclosure: 'permit' },
             },
             label: 'flight',
         });
+        // The committed credential leaf proves against the chain's root and
+        // carries the seller's declaration, nothing the buyer entered.
+        const committedCredential = await assertSelfAuthenticatingLeaf(flight, CREDENTIAL, 'flight');
+        expect(committedCredential.data, "the committed credential is the seller's profile declaration")
+            .toEqual(declaredCredential);
         // The assembly's design fill survived reconstruction into the signed
         // clause (the regime is the DESIGNER's term, not this spec's input).
         const dataTermsClause = await assertSelfAuthenticatingLeaf(flight, DATA_TERMS, 'flight');

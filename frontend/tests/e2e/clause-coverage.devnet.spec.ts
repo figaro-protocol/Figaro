@@ -367,19 +367,22 @@ const RUNGS: ClauseRung[] = [
         },
     },
     {
-        // DECLARED credential (the NYC-TLC shape): the designer pins the
-        // authority's public REGISTER (a URI assembly, a designer fill); the
-        // seller declares their id ONCE on the profile (profile-sourced
-        // master data); checkout folds the id onto the leaf and offers the
-        // buyer the Verify link-out — the register stays the source of
-        // truth, nothing gates signing, no status is stored.
+        // DECLARED credential (the NYC-TLC shape): no agreement names an
+        // institution, so the rung composes the clause with no design fill.
+        // The seller declares ONCE on its profile the register of the
+        // institution that issued its credential (a URI template), the
+        // credential's name and its identifier there; checkout folds all
+        // three onto the leaf and offers the buyer the Verify link-out. The
+        // register stays the source of truth, nothing gates signing, and no
+        // status is stored.
         clauseId: 'figaro-credential',
-        // The drawer renders editors for REQUIRED specific-term fields only —
-        // the optional credentialTitle surfaces as a producing-surface note,
-        // so the rung pins the register and leaves the title unset.
-        design: async (page) => page.getByTestId(`drawer-field-${keyOf('figaro-credential')}-credentialRegisterUri`)
-            .fill('https://register.example/lookup?entry={id}'),
-        profile: async (page) => page.getByTestId(`profile-clause-${keyOf('figaro-credential')}-credentialId`).fill('LIC-500458'),
+        profile: all(
+            async (page) => page.getByTestId(`profile-clause-${keyOf('figaro-credential')}-credentialRegisterUri`)
+                .fill('https://register.example/lookup?entry={id}'),
+            async (page) => page.getByTestId(`profile-clause-${keyOf('figaro-credential')}-credentialTitle`)
+                .fill('Example operator license'),
+            async (page) => page.getByTestId(`profile-clause-${keyOf('figaro-credential')}-credentialId`).fill('LIC-500458'),
+        ),
         checkout: async (page) => {
             // The buyer's verification opportunity: the leaf's Verify link-out,
             // already substituted with the seller's declared id.
@@ -389,7 +392,10 @@ const RUNGS: ClauseRung[] = [
         },
         auditTexts: ['Credential', 'LIC-500458'],
         leaf: (data) => {
-            expect(data.credentialRegisterUri).toBe('https://register.example/lookup?entry={id}');
+            expect(data.credentialRegisterUri, "the seller's declared register folded onto the committed leaf")
+                .toBe('https://register.example/lookup?entry={id}');
+            expect(data.credentialTitle, "the seller's declared credential name folded onto the committed leaf")
+                .toBe('Example operator license');
             expect(data.credentialId, "the seller's profile declaration folded onto the committed leaf").toBe('LIC-500458');
         },
     },
