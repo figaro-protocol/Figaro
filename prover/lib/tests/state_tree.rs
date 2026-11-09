@@ -404,3 +404,14 @@ fn a_mutated_proof_is_refused_or_reaches_the_true_root() {
         }
     }
 }
+
+#[test]
+fn a_descend_where_no_path_is_witnessed_is_refused() {
+    let (a, b) = (path(0x00, 1), path(0x80, 2));
+    let prev = BTreeMap::from([(b, vh(2))]);
+    // a's side is split by the witnessed path; b's side holds nothing
+    // witnessed, and the proof says to descend there.
+    let leaves = vec![WitnessedLeaf { path: a, before: None, after: None }];
+    let proof = vec![ProofItem::Descend, ProofItem::Empty, ProofItem::Descend];
+    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::DescendWithoutWitnessedPath));
+}

@@ -385,7 +385,8 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                 // cumulative value in the mirror's state (zero for a
                 // process the mirror never saw).
                 let cumulative_value = state
-                    .processes
+                    .full_processes()
+                    .unwrap()
                     .get(&process_id)
                     .map(|p| p.cumulative_value)
                     .unwrap_or(U256::ZERO);
@@ -547,7 +548,7 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
     for process in lines.iter().filter(|l| s(&l["type"]) == "process") {
         processes += 1;
         let pid = b256(&process["processId"]);
-        match state.processes.get(&pid) {
+        match state.full_processes().unwrap().get(&pid) {
             None => divergences.push(format!("process {pid}: missing from the mirror")),
             Some(ps) => {
                 if ps.cumulative_value != u256(&process["cumulativeValue"]) {
@@ -559,10 +560,10 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
             }
         }
     }
-    if state.processes.len() != processes {
+    if state.full_processes().unwrap().len() != processes {
         divergences.push(format!(
             "the mirror holds {} processes, the kernel {processes}",
-            state.processes.len()
+            state.full_processes().unwrap().len()
         ));
     }
 

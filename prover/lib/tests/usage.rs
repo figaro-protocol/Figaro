@@ -15,7 +15,7 @@ use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::{
-    apply_batch_with_state, compute_usage_accrual_hash, derive_commitment_ids,
+    apply_batch_with_state, apply_guest, compute_usage_accrual_hash, derive_commitment_ids, guest_input,
     ASSEMBLY_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY,
 };
 use figaro_kernel::types::*;
@@ -347,6 +347,32 @@ fn a_claim_presented_in_a_later_batch_yields_the_same_use() {
     );
     let (_, _, again_events, _) = apply_batch_with_state(&again).expect("the claim proves again");
     assert_eq!(again_events.uses, first_events.uses, "the same (kind, key, process, seller)");
+}
+
+/// The guest proves a claim against the post-state it reads from its witness:
+/// a claim batch whose witness leaves out the claimed order is refused, never
+/// read as an order that did not resolve.
+#[test]
+fn the_guest_refuses_a_claim_whose_order_the_witness_leaves_out() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
+    let clause_data_hash = keccak256(b"clause-bytes");
+    let (order, ops) = settled_order(&buyer, &seller, &clause_or_assembly, &clause_data_hash, 1);
+    let (_, _, _, post) = apply_batch_with_state(&batch(ops, vec![], empty_snapshot())).expect("the order settles");
+    let claim_batch = batch(
+        vec![],
+        vec![clause_claim(&order, clause_or_assembly, clause_data_hash)],
+        post.to_snapshot(),
+    );
+
+    let honest = guest_input(&claim_batch).expect("the claim batch's witness");
+    assert_eq!(honest.prev_witness.orders.len(), 1, "the witness carries the claimed order");
+    assert!(apply_guest(&honest).is_ok());
+
+    let mut missing = honest.clone();
+    missing.prev_witness.orders.clear();
+    assert!(matches!(apply_guest(&missing).unwrap_err(), KernelError::UnwitnessedKey));
 }
 
 /// The same claim twice in one batch is one use: the guest gives each

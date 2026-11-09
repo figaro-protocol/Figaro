@@ -169,7 +169,8 @@ The proof-based path that resolves batches of processes beside the direct
   batch and its resolution. It also refuses a usage counter whose immutable
   `batchVerifier` is not this contract (`UsageCounterNotBoundToThis`), so a
   pair that would count no use cannot be deployed. The state root starts at `genesisRoot()`, the
-  empty state's, computed by the contract and never supplied.
+  empty state's — zero, the state tree's root over no entries — computed by the contract and never
+  supplied.
 
 The two paths share no state: a batch-resolved process never acquires `FigaroCore`
 status (`core.orderStatus` stays 0 for it), so every reader folds both

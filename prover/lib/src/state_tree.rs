@@ -231,14 +231,12 @@ impl<'a> Descent<'a> {
     }
 }
 
-/// Check a batch's witness against the previous root and return the new
-/// root. `leaves` are the batch's touched leaves, strictly increasing by
-/// path; `proof` the previous tree's items for them, in descent order.
-pub fn verify_and_update(
-    prev_root: B256,
-    leaves: &[WitnessedLeaf],
-    proof: &[ProofItem],
-) -> Result<B256, TreeError> {
+/// Check a batch's witness and return its (previous, new) roots: the guest
+/// commits the previous root as a public value, and the chain holds it to
+/// the root it keeps. `leaves` are the batch's touched leaves, strictly
+/// increasing by path; `proof` the previous tree's items for them, in
+/// descent order.
+pub fn roots(leaves: &[WitnessedLeaf], proof: &[ProofItem]) -> Result<(B256, B256), TreeError> {
     if leaves.windows(2).any(|pair| pair[0].path >= pair[1].path) {
         return Err(TreeError::EntriesNotStrictlyIncreasing);
     }
@@ -250,10 +248,20 @@ pub fn verify_and_update(
     if descent.next != proof.len() {
         return Err(TreeError::ProofNotConsumed);
     }
-    if before.hash() != prev_root {
+    Ok((before.hash(), after.hash()))
+}
+
+/// `roots`, held to a given previous root: the new root.
+pub fn verify_and_update(
+    prev_root: B256,
+    leaves: &[WitnessedLeaf],
+    proof: &[ProofItem],
+) -> Result<B256, TreeError> {
+    let (before, after) = roots(leaves, proof)?;
+    if before != prev_root {
         return Err(TreeError::PreviousRootMismatch);
     }
-    Ok(after.hash())
+    Ok(after)
 }
 
 /// The proof for `paths` (strictly increasing) against the full set of

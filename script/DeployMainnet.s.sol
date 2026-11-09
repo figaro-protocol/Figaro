@@ -217,8 +217,8 @@ contract DeployMainnet is Script {
         // VERIFIER_HASH() and refuses a gateway.
         // SP1_PROGRAM_VKEY: the guest program's verification key —
         // `SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`.
-        // The genesis root is the contract's own (`genesisRoot()`, the empty
-        // state's), matching the Rust KernelState::compute_root on nothing. ClauseRegistry anchors the witness specs: the clause key IS
+        // The genesis root is the contract's own (`genesisRoot()`, zero: the
+        // guest's state tree over no entries). ClauseRegistry anchors the witness specs: the clause key IS
         // the spec hash, so settleBatch requires each proof's binding to carry
         // one word twice and the key registered. Not a florin minter, never will be.
         require(vm.envAddress("SP1_VERIFIER") != address(0), "SP1_VERIFIER not set");
@@ -232,8 +232,7 @@ contract DeployMainnet is Script {
         address predictedVerifier = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
         _deployUsageCounter(predictedVerifier);
 
-        // The genesis root is DERIVED: one keccak256("") per mirror state map,
-        // matching the Rust KernelState::compute_root on the empty state.
+        // The genesis root is the contract's own (`genesisRoot()`, zero).
         FigaroBatchVerifier batchVerifier = new FigaroBatchVerifier(
             vm.envAddress("SP1_VERIFIER"), vm.envBytes32("SP1_PROGRAM_VKEY"), _clauses, _usageCounter
         );

@@ -305,12 +305,12 @@ async fn mempool_refuses_a_seller_attestation_not_signed_by_the_targets_seller()
 
 // ── State mirror ──────────────────────────────────────────────────
 
+/// The empty state's root is the state tree's over no entries, zero — the
+/// root `FigaroBatchVerifier.genesisRoot()` starts every verifier on.
 #[tokio::test]
-async fn state_mirror_genesis_root_is_deterministic_and_nonzero() {
+async fn state_mirror_genesis_root_is_the_empty_trees() {
     let a = StateMirror::genesis().state_root().await;
-    let b = StateMirror::genesis().state_root().await;
-    assert_eq!(a, b);
-    assert_ne!(a, B256::ZERO);
+    assert_eq!(a, B256::ZERO);
     assert_eq!(a, KernelState::new().compute_root());
 }
 

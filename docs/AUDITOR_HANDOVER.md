@@ -14,8 +14,8 @@ the patterns that look like vulnerabilities and are intended: read it first.
 | Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | none: no audit is engaged (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 14 contract files, 1,598 lines of code (3,850 physical); 3 deploy scripts, 398 lines of code (842 physical) |
-| Rust in scope | 4 crates, 23 files under `src/`, 7,032 lines of code (9,985 physical) net of their inline test modules |
+| Solidity in scope | 14 contract files, 1,597 lines of code (3,849 physical); 3 deploy scripts, 398 lines of code (838 physical) |
+| Rust in scope | 4 crates, 24 files under `src/`, 7,464 lines of code (10,574 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, the routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the testnet scripts, `frontend/`, `sdk/` |
@@ -58,13 +58,13 @@ processes under one SP1 proof, in four parts:
 |---|---|---|
 | `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` | 164 (306), 36 (67) |
 | `src/core/attestation/` | `AttestationCoordinator.sol` | 77 (197) |
-| `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 497 (903), 7 (23) |
+| `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 496 (903), 7 (23) |
 | `src/build/registries/` | `ClauseRegistry.sol`, `AgreementRegistry.sol`, `AssemblyRegistry.sol` | 49 (196), 53 (202), 47 (189) |
 | `src/build/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol` | 296 (884), 147 (344) |
 | `src/build/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` | 51 (83), 4 (9) |
 | `src/app/` | `MembersRegistry.sol`, `WitnessSwapAndCommitCoordinator.sol` | 60 (210), 110 (239) |
-| `script/Deploy.s.sol` | The devnet deploy | 198 (435) |
-| `script/DeployMainnet.s.sol` | The mainnet deploy: the audited mainnet surface | 169 (349) |
+| `script/Deploy.s.sol` | The devnet deploy | 198 (432) |
+| `script/DeployMainnet.s.sol` | The mainnet deploy: the audited mainnet surface | 169 (348) |
 | `script/DeploySwapCoordinator.s.sol` | The swap coordinator alone, onto a live stack | 31 (58) |
 
 ### In scope — Rust
@@ -74,10 +74,10 @@ in scope.
 
 | Crate | Package | Files, lines of code (physical) | What it is | What a defect costs |
 |---|---|---|---|---|
-| `prover/program/` | `figaro-prover` | 1, 9 (13) | The guest's entry point: reads the batch input, runs the mirror, commits the public values | A batch the chain resolves wrongly |
-| `prover/lib/` | `figaro-kernel` | 7, 1,558 (2,472) | The mirror of `FigaroCore`'s commit and resolve, the witness gates, the operation stream, the public values, the state root, the usage claims | A batch the chain resolves wrongly |
+| `prover/program/` | `figaro-prover` | 1, 9 (13) | The guest's entry point: reads the batch and the witness of the entries it touches, runs the mirror, commits the public values | A batch the chain resolves wrongly |
+| `prover/lib/` | `figaro-kernel` | 8, 1,983 (3,046) | The mirror of `FigaroCore`'s commit and resolve, the witness gates, the operation stream, the public values, the state tree and the witness the guest reads, the usage claims | A batch the chain resolves wrongly |
 | `prover/clause/` | `figaro-clause` | 4, 1,588 (1,939) | The generic clause engine: parses any clause spec supplied as witness input, validates content against it, encodes it | An attestation the batch path reads differently from the party who signed it |
-| `prover/sequencer/` | `figaro-sequencer` | 11, 3,877 (5,561) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, rebuilds its state from the chain | Liveness and griefing |
+| `prover/sequencer/` | `figaro-sequencer` | 11, 3,884 (5,576) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, rebuilds its state from the chain | Liveness and griefing |
 
 The figures count the files under each crate's `src/`, net of their inline
 test modules.
@@ -340,7 +340,7 @@ neither covers:
 | 8 | A batched attestation's witness form is not signed: a relay holding a plaintext operation can submit it hash-only, and the event is the same | `DESIGN_DECISIONS.md` #26 |
 | 9 | The batch path's resolve authorization carries no nonce and no deadline | `DESIGN_DECISIONS.md` #21 |
 | 10 | A state-neutral batch's proof can land twice | `DESIGN_DECISIONS.md` #27 |
-| 11 | The Rust carries no formal proof: the mirror is held to the Core by vectors and the differential fuzz, not by a proof of equivalence | `docs/VERIFICATION_MAP.md` § 14 |
+| 11 | The Rust carries no formal proof: the mirror is held to the Core by vectors and the differential fuzz, not by a proof of equivalence; the batch state tree (`prover/lib/src/state_tree.rs`), new, is held by hand-computed vectors, a refusal test per check and two property tests (random histories, and honest witnesses mutated at random), not by a proof | `docs/VERIFICATION_MAP.md` § 14 |
 | 12 | The relay is not mutation-tested; mutation testing covers the guest's two crates | `docs/VERIFICATION_MAP.md` § 14 |
 | 13 | The Sepolia verifier pins an earlier guest's key; this tree's guest is not deployed | `docs/VERIFICATION_MAP.md` § 14 |
 

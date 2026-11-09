@@ -329,10 +329,12 @@ pub struct BatchUse {
     pub seller: Address,
 }
 
-// ── State snapshot (deterministic, sorted) ────────────────────────
+// ── State snapshot ────────────────────────────────────────────────
 
-/// Serializable state snapshot — the FigaroCore mappings. Entries must be
-/// sorted by key for deterministic root computation.
+/// Serializable state snapshot — the FigaroCore mappings, the relay's whole
+/// state. Its root is the state tree's over every entry
+/// (`KernelState::compute_root`), whatever the entries' order; the guest
+/// never receives it, only a `StateWitness` of the entries a batch touches.
 ///
 /// No usage state lives here: `UsageCounter` holds the one counted-process
 /// set and the one seller set for both routes, and skips a use whose process
@@ -345,9 +347,10 @@ pub struct KernelStateSnapshot {
     pub order_process_id: Vec<(B256, B256)>,
 }
 
-// ── SP1 I/O types ─────────────────────────────────────────────────
+// ── Batch inputs ──────────────────────────────────────────────────
 
-/// Input to the SP1 prover program.
+/// The relay's native batch input, with the whole previous state; the guest
+/// reads `GuestInput`, the same batch with a witness in its place.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BatchInput {
     pub chain_id: u64,
@@ -378,6 +381,34 @@ pub struct BatchInput {
     /// (`kernel::PROVENANCE_LEAF_KEY`), because the chain's check of this
     /// witness sits inside the verifier's accrual try/catch and cannot
     /// refuse a batch's attestations.
+    pub provenance_leaf: B256,
+}
+
+/// The entries a batch reads or writes, with their values before the batch,
+/// and the previous tree's proof for them (`crate::state_tree`). The guest
+/// computes each entry's path from its key itself.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StateWitness {
+    /// Process id → its state, `None` when absent.
+    pub processes: Vec<(B256, Option<ProcessState>)>,
+    /// Order hash → (status, process id), `None` when absent.
+    pub orders: Vec<(B256, Option<(u8, B256)>)>,
+    /// The previous tree's items for these entries, in descent order.
+    pub proof: Vec<crate::state_tree::ProofItem>,
+}
+
+/// What the guest program reads: a batch with the witness of the entries it
+/// touches in place of the whole previous state (`BatchInput`, the relay's
+/// native input, carries the whole state).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GuestInput {
+    pub chain_id: u64,
+    pub verifying_contract: Address,
+    pub block_timestamp: u64,
+    pub operations: Vec<KernelOp>,
+    pub prev_witness: StateWitness,
+    pub usage_claims: Vec<UsageClaim>,
+    pub usage_period: u8,
     pub provenance_leaf: B256,
 }
 
@@ -608,6 +639,13 @@ pub enum KernelError {
     /// ever a clause, an agreement or an assembly, so no claim is credited
     /// under it — the guest's mirror of the counter's refusal of both.
     ReservedKeyIsNotARegistration(B256),
+    /// The guest's batch read or wrote an entry its witness does not carry:
+    /// an entry left out is refused, never taken as absent.
+    UnwitnessedKey,
+    /// The witness carries one entry twice.
+    DuplicateWitnessEntry,
+    /// The witness does not prove its entries against the previous root.
+    Witness(crate::state_tree::TreeError),
 }
 
 impl core::fmt::Display for KernelError {

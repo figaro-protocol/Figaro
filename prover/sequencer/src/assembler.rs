@@ -189,6 +189,9 @@ pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bo
         KernelError::UsageOrderNotResolved(_)
         | KernelError::UsageInvalidInclusionProof
         | KernelError::ReservedKeyIsNotARegistration(_) => false,
+        // The guest's witnessed run's refusals; the relay runs every batch on
+        // the full state, where no key is unwitnessed, and never meets them.
+        KernelError::UnwitnessedKey | KernelError::DuplicateWitnessEntry | KernelError::Witness(_) => false,
     }
 }
 

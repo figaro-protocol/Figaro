@@ -345,7 +345,21 @@ stage-scoped witnesses, tuple[] arrays, top-level bytes32 and address words, ope
 the transition replay — `prover/lib/tests/transition_vectors.rs` replays
 `test/fixtures/kernel-transition-vectors.json`, harvested from the live `FigaroCore`
 by `KernelTransitionVectorsTest`, and asserts every id, bond, payout,
-accumulator and active count; the three packer vectors (`packers.rs`) and the
+accumulator and active count, and that the guest's witnessed run
+(`apply_guest` on `guest_input`) reaches the native run's public values in
+every scenario, refuses a witness that leaves out an entry the batch reads
+(`UnwitnessedKey`) and one whose entry the tree does not hold; the batch state
+tree (`prover/lib/tests/state_tree.rs`, `prover/lib/src/state_tree.rs`) —
+hand-computed root vectors, a refusal test for each check the root alone does
+not give (a present leaf read as absent, a leaf off its position in both
+relocation forms, an absence proof for a present entry, a wrong value, unsorted
+or doubled entries, a node at a witnessed position, a descend past the last
+bit, a short or surplus proof, a removed leaf), a property test that the
+descent reaches the root of the true post-state over random histories, and
+one that mutates honest proofs at random and requires every accepted one to
+reach it; the guest's cycles beside a growing stored state
+(`prover/script/tests/guest_cycles.rs`, ignored by default, run with
+`--ignored`); the three packer vectors (`packers.rs`) and the
 Merkle leg of the agreement-tree lock (`merkle_parity.rs`), both asserted on
 the Solidity side too +
 the witness-gate suite: spec-identity substitution (Gate S,

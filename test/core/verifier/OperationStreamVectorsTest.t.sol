@@ -316,8 +316,8 @@ contract OperationStreamVectorsTest is Test {
     }
 
     function test_theGenesisRootIsTheEmptyStatesAndNeverSupplied() public view {
-        bytes32 emptyMap = keccak256("");
-        assertEq(verifier.genesisRoot(), keccak256(abi.encodePacked(emptyMap, emptyMap, emptyMap)));
+        // The guest's state tree over no entries (`prover/lib/src/state_tree.rs`).
+        assertEq(verifier.genesisRoot(), bytes32(0));
         assertEq(verifier.stateRoot(), verifier.genesisRoot());
     }
 

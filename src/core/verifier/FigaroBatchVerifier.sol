@@ -335,12 +335,11 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         stateRoot = genesisRoot();
     }
 
-    /// @notice The root of the empty mirror state: one `keccak256("")` per
-    ///         map (processes, order status, order → process), hashed flat, as
-    ///         the guest's `KernelState::compute_root` does on nothing.
+    /// @notice The root of the empty mirror state: the guest's state tree over
+    ///         no entries is zero (`prover/lib/src/state_tree.rs`; a set's root
+    ///         is a function of the set, and the empty set's is zero).
     function genesisRoot() public pure returns (bytes32) {
-        bytes32 emptyMap = keccak256("");
-        return keccak256(abi.encodePacked(emptyMap, emptyMap, emptyMap));
+        return bytes32(0);
     }
 
     // ── Internal decode struct (avoids stack-too-deep) ─────────
@@ -523,7 +522,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             address user = positions[i].user;
             uint256 dep = positions[i].deposit;
             uint256 pay = positions[i].payout;
-            assembly {
+            assembly ("memory-safe") {
                 let dst := add(add(packed, 32), offset)
                 mstore(dst, shl(96, token))
                 mstore(add(dst, 20), shl(96, user))
@@ -548,7 +547,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             bytes32 clauseId = attestations[i].clauseId;
             uint8 stage = attestations[i].stage;
             bytes32 contentRef = attestations[i].contentRef;
-            assembly {
+            assembly ("memory-safe") {
                 let dst := add(add(packed, 32), offset)
                 mstore(dst, orderHash)
                 mstore(add(dst, 32), processId)
@@ -572,7 +571,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         for (uint256 i = 0; i < len; i++) {
             bytes32 clauseId = bindings[i].clauseId;
             bytes32 specHash = bindings[i].specHash;
-            assembly {
+            assembly ("memory-safe") {
                 let dst := add(add(packed, 32), offset)
                 mstore(dst, clauseId)
                 mstore(add(dst, 32), specHash)
@@ -600,7 +599,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
         uint8 period = usage.period;
         bytes32 provenance = usage.provenanceLeaf;
-        assembly {
+        assembly ("memory-safe") {
             let dst := add(packed, 32)
             mstore8(dst, period)
             mstore(add(dst, 1), provenance)
@@ -613,7 +612,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             uint8 kind = usage.uses[i].kind;
             bytes32 processId = usage.uses[i].processId;
             address seller = usage.uses[i].seller;
-            assembly {
+            assembly ("memory-safe") {
                 let dst := add(add(packed, 32), offset)
                 mstore(dst, clauseOrAssembly)
                 mstore8(add(dst, 32), kind)
@@ -624,7 +623,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         }
 
         // Drop the slack so keccak covers exactly the packed span.
-        assembly {
+        assembly ("memory-safe") {
             mstore(packed, span)
         }
         return keccak256(packed);
