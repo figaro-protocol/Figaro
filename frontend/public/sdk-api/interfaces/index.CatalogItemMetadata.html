@@ -68,7 +68,7 @@ Absent for non-physical / unannotated items. Validated against each
 clause's registered spec (off-chain) before publish.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L113">memberCatalog.ts:113</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L114">memberCatalog.ts:114</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="description"><code class="tsd-tag">Optional</code><span>description</span><a href="#description" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">description</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
@@ -78,7 +78,7 @@ clause's registered spec (off-chain) before publish.</p>
 <h3 class="tsd-anchor-link" id="heightmm"><code class="tsd-tag">Optional</code><span>height<wbr/>Mm</span><a href="#heightmm" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">heightMm</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L78">memberCatalog.ts:78</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L79">memberCatalog.ts:79</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="id"><span>id</span><a href="#id" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">id</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
@@ -98,10 +98,11 @@ input). <strong>Parcel-only</strong> — a shippable box carries all three; a se
 a non-parcel item omits them. The individual dimensions are load-bearing:
 dimensional weight rounds each dimension before multiplying and oversize
 rules read the longest side, neither of which a single <code>volumeMl</code> can
-reproduce. Consumed by <code>figaro-dimweight</code> / <code>figaro-cargo</code> at checkout.</p>
+reproduce. Read at checkout by any clause that declares them in
+<code>block.checkout.catalogueMeasures</code> (<code>fillCatalogueMeasures</code>).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L76">memberCatalog.ts:76</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L77">memberCatalog.ts:77</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="massgrams"><code class="tsd-tag">Optional</code><span>mass<wbr/>Grams</span><a href="#massgrams" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">massGrams</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span></div>
@@ -143,7 +144,7 @@ payment (quantity × unitPrice) with no reference back to this mutable
 catalog.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L88">memberCatalog.ts:88</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L89">memberCatalog.ts:89</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="ratequantitysource"><code class="tsd-tag">Optional</code><span>rate<wbr/>Quantity<wbr/>Source</span><a href="#ratequantitysource" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">rateQuantitySource</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
@@ -154,7 +155,7 @@ units) or &quot;order-geodistance&quot; (derived from the order's committed
 geolocation endpoints). New sources register without touching checkout.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L101">memberCatalog.ts:101</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L102">memberCatalog.ts:102</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="rateunit"><code class="tsd-tag">Optional</code><span>rate<wbr/>Unit</span><a href="#rateunit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">rateUnit</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
@@ -162,7 +163,7 @@ geolocation endpoints). New sources register without touching checkout.</p>
 text like <code>category</code>, never a closed set; display-only.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L93">memberCatalog.ts:93</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L94">memberCatalog.ts:94</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="volumeml"><code class="tsd-tag">Optional</code><span>volume<wbr/>Ml</span><a href="#volumeml" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">volumeMl</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span></div>
@@ -177,7 +178,7 @@ shippable box; for a parcel with L/W/D below, volume is derivable
 <h3 class="tsd-anchor-link" id="widthmm"><code class="tsd-tag">Optional</code><span>width<wbr/>Mm</span><a href="#widthmm" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">widthMm</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L77">memberCatalog.ts:77</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L78">memberCatalog.ts:78</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

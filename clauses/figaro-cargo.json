@@ -10,7 +10,6 @@
             "required": true,
             "min": 1,
             "max": 4294967295,
-            "default": 1,
             "description": "Shipment GROSS mass in whole grams (contents + packaging \u2014 the physical weight carriers bill against). Must be at least 1 g; capped at uint32 max (\u22484.29 million kg)."
         },
         {
@@ -27,7 +26,6 @@
             "required": true,
             "min": 1,
             "max": 4294967295,
-            "default": 1,
             "description": "Shipment volume in whole millilitres. Must be at least 1 ml; capped at uint32 max (\u22484.29 million L). Derivable from the packaged dimensions below when those are present."
         },
         {
@@ -90,7 +88,29 @@
         },
         "checkout": {
             "catalogueFills": [],
-            "profileFills": []
+            "profileFills": [],
+            "catalogueMeasures": {
+                "massGrams": {
+                    "from": "massGrams",
+                    "combine": "sum"
+                },
+                "volumeMl": {
+                    "from": "volumeMl",
+                    "combine": "sum"
+                },
+                "lengthMm": {
+                    "from": "lengthMm",
+                    "combine": "single-unit"
+                },
+                "widthMm": {
+                    "from": "widthMm",
+                    "combine": "single-unit"
+                },
+                "heightMm": {
+                    "from": "heightMm",
+                    "combine": "single-unit"
+                }
+            }
         },
         "runtime": {
             "interaction": null,

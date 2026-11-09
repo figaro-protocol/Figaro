@@ -75,9 +75,9 @@ Registration is the whole act. A UI surfaces clauses, agreements and assemblies 
 events*, so registering makes a clause, an agreement or an assembly discoverable everywhere that reads the registry —
 there is no frontend binding to meet. MOST `block` attributes shape how a UI *presents* an
 entry and affect neither validity nor discoverability — **but never say that unqualified:
-five hints inside `block` are hash-load-bearing and change what a designer's assembly and a
+six hints inside `block` are hash-load-bearing and change what a designer's assembly and a
 party's signed agreement actually CONTAIN** (a reserved `design.article`, `design.scope`,
-`design.fills`, and the two `checkout` fill lists — `figaro-clause-author` § "The five
+`design.fills`, and the three `checkout` fill lists — `figaro-clause-author` § "The six
 hash-load-bearing `block` hints" is the owner of that list, and it bans the unqualified
 sentence for the same reason). The core is invariant (unless forked); many
 UIs compete — that is what permissionless and decentralized mean.

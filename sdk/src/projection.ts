@@ -24,8 +24,8 @@
  * DESIGNER composes into the assembly — the tailoring; every other clause's
  * assembly values are `{}` and the fields fill at checkout →
  * assemblyHash), and the `checkout` fills (`catalogueFills` /
- * `profileFills` — which clauses the catalog and member-profile folds
- * write → checkoutHash). `parseProjectionHints` extracts exactly those from
+ * `profileFills` / `catalogueMeasures` — which clauses the catalog and
+ * member-profile folds write → checkoutHash). `parseProjectionHints` extracts exactly those from
  * a raw spec document; everything else in `block` remains presentation the
  * SDK never reads. (A field's `default` is the sixth thing that reaches a
  * hash without living in `block`: `withSpecDefaults` fills omitted fields
@@ -83,6 +83,21 @@ export interface ProjectionHints {
      *  divisor, a declared credential id), folded onto the matching leaf at
      *  checkout. The profile sibling of `catalogueFills` (item master data). */
     profileFills?: readonly string[];
+    /** The spec's `block.checkout.catalogueMeasures` — for each content field
+     *  (by name) it lists, the catalog-item field it is read from and how the
+     *  order's lines combine it (`CatalogueMeasure`). */
+    catalogueMeasures?: Readonly<Record<string, CatalogueMeasure>>;
+}
+
+/** One declared catalog measure: the catalog-item field (`from`, a field
+ *  of the item a seller lists, e.g. its mass) and how an order's lines
+ *  combine it into the clause field. `"sum"`: the item's value × the line's
+ *  quantity, added over every line. `"single-unit"`: the item's value, only
+ *  when the order is one unit (one line, quantity 1) — a measure that does
+ *  not add across units, such as a packaged dimension. */
+export interface CatalogueMeasure {
+    from: string;
+    combine: "sum" | "single-unit";
 }
 
 /** A clause spec as the projection sees it: the off-chain spec plus the
@@ -124,8 +139,27 @@ export function parseProjectionHints(rawSpec: unknown): ProjectionHints {
         if (catalog) hints.catalogueFills = catalog;
         const profile = parseFillList(c.profileFills);
         if (profile) hints.profileFills = profile;
+        const measures = parseCatalogueMeasures(c.catalogueMeasures);
+        if (measures) hints.catalogueMeasures = measures;
     }
     return hints;
+}
+
+/** The well-formed entries of a `catalogueMeasures` map, or undefined when
+ *  none is. An entry with an unknown `combine` is skipped, as an absent
+ *  attribute is: the schema is open, so a later combinator never breaks an
+ *  older reader. */
+function parseCatalogueMeasures(raw: unknown): Readonly<Record<string, CatalogueMeasure>> | undefined {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    const out: Record<string, CatalogueMeasure> = {};
+    for (const [field, entry] of Object.entries(raw as Record<string, unknown>)) {
+        if (field.length === 0 || !entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+        const { from, combine } = entry as Record<string, unknown>;
+        if (typeof from !== "string" || from.length === 0) continue;
+        if (combine !== "sum" && combine !== "single-unit") continue;
+        out[field] = { from, combine };
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /** A non-empty array of non-empty field names, or undefined. */
@@ -345,11 +379,18 @@ export function specProfileFills(spec: ProjectionSpecView): readonly string[] {
     return spec.hints?.profileFills ?? [];
 }
 
+/** The CATALOG MEASURES of a clause (`block.checkout.catalogueMeasures`) —
+ *  each content field read from a catalog-item field and combined over the
+ *  order's lines (`CatalogueMeasure`). Empty for clauses that declare none. */
+export function specCatalogueMeasures(spec: ProjectionSpecView): Readonly<Record<string, CatalogueMeasure>> {
+    return spec.hints?.catalogueMeasures ?? {};
+}
+
 /** An off-chain validation WARNING (never an error — the permissionless extension axiom:
  *  a third-party clause may declare ANY article) for the one construction
  *  that never makes sense under `article: "attestations"`: pinning content
  *  at DESIGN or CHECKOUT time (`design.fills` / `checkout.catalogueFills` /
- *  `checkout.profileFills`) on a clause the article marks a process-log
+ *  `checkout.profileFills` / `checkout.catalogueMeasures`) on a clause the article marks a process-log
  *  (`specIsProcessLog`).
  *
  *  Process-log clauses are runtime event ladders — content arrives via
@@ -379,11 +420,12 @@ export function warnProcessLogFillsTrap(spec: ProjectionSpecView): readonly stri
             `different article; "attestations" is reserved for runtime event ladders.`,
         );
     }
-    if (specCatalogFills(spec).length > 0 || specProfileFills(spec).length > 0) {
+    if (specCatalogFills(spec).length > 0 || specProfileFills(spec).length > 0
+        || Object.keys(specCatalogueMeasures(spec)).length > 0) {
         warnings.push(
             `${spec.clauseId}: block.design.article is "attestations" (a process-log clause — ` +
             `content arrives via later runtime attestations, never the initial agreement) but the ` +
-            `spec also declares block.checkout.catalogueFills or profileFills. That checkout-authored ` +
+            `spec also declares block.checkout.catalogueFills, profileFills or catalogueMeasures. That checkout-authored ` +
             `content will never be validated — validateCommitmentAgreement skips content validation ` +
             `entirely for process-log clauseEntries. "attestations" is reserved for runtime event ladders ` +
             `whose content arrives later, not checkout-time fills.`,

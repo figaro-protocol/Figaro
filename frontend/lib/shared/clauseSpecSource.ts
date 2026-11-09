@@ -261,7 +261,7 @@ export function listKnownClauses(): readonly KnownClause[] {
 
 /** A cached spec as the SDK projection sees it: the off-chain spec plus the
  *  hash-load-bearing `block` hints (design.article, design.fills,
- *  checkout.catalogueFills, checkout.profileFills). */
+ *  checkout.catalogueFills, checkout.profileFills, checkout.catalogueMeasures). */
 function toProjectionView(spec: ClauseSpecWithBlock): ProjectionSpecView {
     const hints: ProjectionHints = {};
     if (spec.block !== undefined) {
@@ -270,6 +270,7 @@ function toProjectionView(spec: ClauseSpecWithBlock): ProjectionSpecView {
         if (spec.block.design.fills.length > 0) hints.designFills = spec.block.design.fills;
         if (spec.block.checkout.catalogueFills.length > 0) hints.catalogueFills = spec.block.checkout.catalogueFills;
         if (spec.block.checkout.profileFills.length > 0) hints.profileFills = spec.block.checkout.profileFills;
+        if (Object.keys(spec.block.checkout.catalogueMeasures).length > 0) hints.catalogueMeasures = spec.block.checkout.catalogueMeasures;
     }
     return { ...spec, hints };
 }

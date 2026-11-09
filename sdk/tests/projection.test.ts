@@ -26,6 +26,7 @@ import {
     publicForm,
     clauseByField,
     hashClauseData,
+    parseProjectionHints,
     serializeAssembly,
     specHasPrivateField,
     validateCommitmentAgreement,
@@ -492,6 +493,16 @@ describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap",
         expect(warnings).toHaveLength(1);
     });
 
+    it("warns when article is 'attestations' AND checkout.catalogueMeasures is declared", () => {
+        const spec = specView("trap-clause-5", {
+            article: "attestations",
+            catalogueMeasures: { eventType: { from: "massGrams", combine: "sum" } },
+        });
+        const warnings = warnProcessLogFillsTrap(spec);
+        expect(warnings).toHaveLength(1);
+        expect(warnings[0]).toContain("catalogueMeasures");
+    });
+
     it("returns both warnings when design.fills AND checkout fills are both declared", () => {
         const spec = specView("trap-clause-4", {
             article: "attestations",
@@ -504,6 +515,31 @@ describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap",
     it("matches the real shipped process-log fixtures exactly (via parseProjectionHints)", () => {
         const merchant = specSourceFromFixtures(["figaro-merchant-process"]).get(keyOf("figaro-merchant-process"))!;
         expect(warnProcessLogFillsTrap(merchant)).toEqual([]);
+    });
+});
+
+describe("parseProjectionHints — block.checkout.catalogueMeasures", () => {
+    const hintsOf = (catalogueMeasures: unknown) =>
+        parseProjectionHints({ block: { checkout: { catalogueMeasures } } }).catalogueMeasures;
+
+    it("lifts each well-formed entry: the clause field, its catalog-item field and its combinator", () => {
+        expect(hintsOf({
+            weight: { from: "massGrams", combine: "sum" },
+            length: { from: "lengthMm", combine: "single-unit" },
+        })).toEqual({
+            weight: { from: "massGrams", combine: "sum" },
+            length: { from: "lengthMm", combine: "single-unit" },
+        });
+    });
+
+    it("skips an entry with no source field or an unknown combinator, as an absent attribute", () => {
+        expect(hintsOf({
+            weight: { from: "massGrams", combine: "average" },
+            other: { combine: "sum" },
+            kept: { from: "volumeMl", combine: "sum" },
+        })).toEqual({ kept: { from: "volumeMl", combine: "sum" } });
+        expect(hintsOf({})).toBeUndefined();
+        expect(hintsOf(["massGrams"])).toBeUndefined();
     });
 });
 

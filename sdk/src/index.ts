@@ -259,6 +259,7 @@ export {
     specDeclaresDesignFill,
     specHasPrivateField,
     specCatalogFills,
+    specCatalogueMeasures,
     specProfileFills,
     specIsProcessLog,
     specIsAssemblyScoped,
@@ -275,6 +276,7 @@ export type {
     CommitmentAgreementIssue,
     CommitmentMirror,
     OrderAgreement,
+    CatalogueMeasure,
     ProjectionHints,
     ProjectionSpecView,
     SpecSource,
@@ -301,7 +303,7 @@ export { topologicalOrder, depthsOverParents } from "./topology.js";
 // seller plan, live contributor pricing, the rate-quantity-source registry
 export {
     profileValuesFor,
-    fillCargoClause,
+    fillCatalogueMeasures,
     derivePricedFields,
     fillClassClauses,
     fillProfileClauses,
@@ -312,6 +314,7 @@ export {
     getRateQuantityResolver,
     listRateQuantitySources,
     mechanicallyFilledFieldNames,
+    missingCatalogueMeasures,
     planSubOrderSellers,
     registerRateQuantitySource,
     resolveSubOrderPricing,
@@ -320,6 +323,7 @@ export {
 export type {
     AssemblyCheckoutLineItem,
     BoundAssemblyPlanInput,
+    MissingCatalogueMeasure,
     PricingCatalog,
     RateQuantityContext,
     RateQuantityResolver,

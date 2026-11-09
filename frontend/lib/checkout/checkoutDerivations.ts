@@ -13,6 +13,7 @@ import {
     profileValuesFor,
     resolveSubOrderPricing,
     agreementClauses,
+    specCatalogueMeasures,
     type SubOrderPricing,
 } from "@figaro-protocol/sdk";
 import { displayNameForAddress } from "@/lib/member/memberListing";
@@ -285,8 +286,9 @@ export function deriveAgreementGroups(args: {
  * field-granular (`clauseBlockBinding`: the buyer owns every content field no
  * phase's actor fills, derived as the complement, never stored): subtracted
  * are the designer's tailoring (`block.design.fills`, already valued on the
- * assembly), the seller's catalog items (`block.checkout.catalogueFills`), the
- * seller's standing declarations (`block.checkout.profileFills`) and, for a
+ * assembly), the seller's catalog items (`block.checkout.catalogueFills`, and
+ * the item measures `block.checkout.catalogueMeasures` reads), the seller's
+ * standing declarations (`block.checkout.profileFills`) and, for a
  * per-order row, the fields the checkout walk fills mechanically
  * (`mechanicalFields`, the planner's own set). ONE list — the form renders it
  * and the place-order gate below checks it, so the sign gate can never demand
@@ -297,6 +299,7 @@ export function buyerAuthoredFields(clauseKey: string, mechanicalFields: Readonl
     const sourced = new Set([
         ...clauseDesignFills(clauseKey),
         ...clauseCatalogFills(clauseKey),
+        ...clauseCatalogueMeasureFields(clauseKey),
         ...clauseProfileFills(clauseKey),
         ...mechanicalFields,
     ]);
@@ -304,6 +307,13 @@ export function buyerAuthoredFields(clauseKey: string, mechanicalFields: Readonl
 }
 
 const NO_FIELDS: ReadonlySet<string> = new Set();
+
+/** The content fields a clause reads from its order's catalog items
+ *  (`block.checkout.catalogueMeasures`), from the exact spec its key names. */
+function clauseCatalogueMeasureFields(clauseKey: string): readonly string[] {
+    const spec = specSource().get(clauseKey as `0x${string}`);
+    return spec ? Object.keys(specCatalogueMeasures(spec)) : [];
+}
 
 /** A value counts as filled when it is present and non-empty — the same
  *  emptiness the off-chain validator treats as "missing". */

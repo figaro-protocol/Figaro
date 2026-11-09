@@ -101,9 +101,9 @@ export default function Clauses() {
                                 <td className="py-2">Names the fields whose <em>design-time</em> values survive into the registered agreement &mdash; the tailoring. Name nothing here and the agreement carries <code>{"{}"}</code> for your clause: the fields become transaction particulars, filled at checkout.</td>
                             </tr>
                             <tr>
-                                <td className="py-2 pr-4"><code>block.checkout.catalogueFills</code> · <code>block.checkout.profileFills</code></td>
+                                <td className="py-2 pr-4"><code>block.checkout.catalogueFills</code> · <code>block.checkout.catalogueMeasures</code> · <code>block.checkout.profileFills</code></td>
                                 <td className="py-2 pr-4"><strong><code>checkoutHash</code></strong></td>
-                                <td className="py-2">Names which of your fields the seller&apos;s catalog (per-item) and profile (master data) folds write onto the leaf at checkout. A field not named here is never folded &mdash; it stays empty unless a party types it.</td>
+                                <td className="py-2">Names which of your fields the seller&apos;s catalog (per-item values, and measures such as mass summed over the order&apos;s lines) and profile (master data) folds write onto the leaf at checkout. A field not named here is never folded &mdash; it stays empty unless a party types it.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4">a field&apos;s <code>default</code></td>
@@ -119,15 +119,16 @@ export default function Clauses() {
                     </table>
                 </div>
                 <p className="text-sm text-ink-body leading-relaxed mt-5">
-                    You do not have to take this on trust &mdash; every row is a pure function you can call. <code>parseProjectionHints(spec)</code> returns exactly the five hash-load-bearing hints it found in your <code>block</code>; <code>buildOrderAgreement</code> shows you the clause a party would sign; <code>computeClauseKey</code> is the registry key. All from <code>@figaro-protocol/sdk</code>, no chain needed:
+                    You do not have to take this on trust &mdash; every row is a pure function you can call. <code>parseProjectionHints(spec)</code> returns exactly the six hash-load-bearing hints it found in your <code>block</code>; <code>buildOrderAgreement</code> shows you the clause a party would sign; <code>computeClauseKey</code> is the registry key. All from <code>@figaro-protocol/sdk</code>, no chain needed:
                 </p>
                 <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mt-3"><code>{`import { parseProjectionHints, buildOrderAgreement,
          computeClauseKey } from "@figaro-protocol/sdk";
 import { keccak256 } from "viem";
 
 parseProjectionHints(spec);
-// → { article, scope, designFills, catalogueFills, profileFills }
-//   — the five. Everything else in \`block\` is not returned.
+// → { article, scope, designFills, catalogueFills, profileFills,
+//     catalogueMeasures }
+//   — the six. Everything else in \`block\` is not returned.
 
 const clauseKey = computeClauseKey(spec);
 // → the key ClauseRegistry registers: keccak256 over the canonical JSON

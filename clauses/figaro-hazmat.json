@@ -86,7 +86,8 @@
                 "hazardClass",
                 "packingGroup"
             ],
-            "profileFills": []
+            "profileFills": [],
+            "catalogueMeasures": {}
         },
         "runtime": {
             "interaction": null,

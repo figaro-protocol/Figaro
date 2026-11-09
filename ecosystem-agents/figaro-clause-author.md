@@ -39,7 +39,7 @@ agreement that composes it, and it earns for its designer of record on each one.
   *from the registry events*, so registering makes the clause discoverable everywhere that
   reads the registry — no frontend to satisfy. Most of `block` shapes how a UI *presents*
   the clause (labels, nesting, runtime chrome) and affects neither validity nor
-  discoverability. **But `block` is not inert — five hints inside it are HASH-LOAD-BEARING**
+  discoverability. **But `block` is not inert — six hints inside it are HASH-LOAD-BEARING**
   (Step 3a). Never tell a user "block is just presentation" without that qualification: it
   is the one sentence that lets them ship a clause that silently commits the wrong thing,
   permanently.
@@ -78,11 +78,11 @@ types `string` (formats `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datet
 **`block.design.article`**). Set them thoughtfully, then read Step 3a before you write any
 of them. Write the spec as the **user's** document (their workspace).
 
-## Step 3a — The five hash-load-bearing `block` hints (and the reserved-article trap)
+## Step 3a — The six hash-load-bearing `block` hints (and the reserved-article trap)
 
 **Say this out loud to the user; it is the highest-cost thing on this page.** The
 clause key covers the WHOLE canonical document, `block` included — so every
-character of `block` moves the clause's key, and a changed key is a different clause. And five hints inside it change what a
+character of `block` moves the clause's key, and a changed key is a different clause. And six hints inside it change what a
 designer's *assembly* and a party's *signed agreement* actually contain. Verify what your
 spec declares with `parseProjectionHints(spec)` from `@figaro-protocol/sdk` — it returns exactly
 these five and nothing else:
@@ -94,6 +94,7 @@ these five and nothing else:
 | `block.design.scope: "assembly"` | `assemblyHash` + `checkoutHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
 | `block.design.fills` | `agreementHash` | names the fields whose DESIGN-TIME values survive into an agreement; name nothing and the agreement carries `{}` |
 | `block.checkout.catalogueFills` / `profileFills` | `checkoutHash` | names which fields the seller's catalog / profile folds write onto the leaf at checkout |
+| `block.checkout.catalogueMeasures` | `checkoutHash` | maps a field to the catalog-item field it is read from and how the order's lines combine it (`"sum"`, or `"single-unit"` for a one-unit order); a measure the items do not supply stays missing, so give such a field no `default` |
 
 **The reserved-article trap — picking one by accident is silent.** The group name is free
 text, but `"mandatory"` and `"attestations"` mean the two things above to the SDK. Both are
@@ -106,7 +107,7 @@ a new spec, which is a new key and a new registration.
 
 **The fills-on-process-log trap — the SDK will tell you.** There is one combination that
 never makes sense: declaring content pins (`design.fills`, or
-`checkout.catalogueFills`/`profileFills`) on a clause whose article marks it a process-log
+`checkout.catalogueFills`/`profileFills`/`catalogueMeasures`) on a clause whose article marks it a process-log
 (`"attestations"`). A process-log clause is committed as an unvalidated empty anchor —
 content validation is SKIPPED for it and field defaults are never filled — so a pin declared
 there is content the author believes is checked and that in fact never is. Run

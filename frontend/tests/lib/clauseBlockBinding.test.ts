@@ -95,6 +95,25 @@ describe("parseBlockBinding — clause block-binding (sectioned UI half)", () =>
         expect(errors.some((e) => e.path === "$.block.checkout.catalogueFills")).toBe(true);
     });
 
+    it("preserves checkout.catalogueMeasures, and reads its absence as {}", () => {
+        const measures = {
+            massGrams: { from: "massGrams", combine: "sum" },
+            lengthMm: { from: "lengthMm", combine: "single-unit" },
+        };
+        const { block } = parse({ design: { article: "logistics" }, checkout: { catalogueMeasures: measures } });
+        expect(block?.checkout.catalogueMeasures).toEqual(measures);
+        expect(parse({ design: { article: "logistics" } }).block?.checkout.catalogueMeasures).toEqual({});
+    });
+
+    it("rejects a catalogueMeasures entry with no source field or an unknown combinator", () => {
+        const noFrom = parse({ design: { article: "logistics" }, checkout: { catalogueMeasures: { massGrams: { combine: "sum" } } } });
+        expect(noFrom.block).toBeNull();
+        expect(noFrom.errors.some((e) => e.path === "$.block.checkout.catalogueMeasures.massGrams")).toBe(true);
+        const badCombine = parse({ design: { article: "logistics" }, checkout: { catalogueMeasures: { massGrams: { from: "massGrams", combine: "average" } } } });
+        expect(badCombine.block).toBeNull();
+        expect(badCombine.errors.some((e) => e.path === "$.block.checkout.catalogueMeasures.massGrams.combine")).toBe(true);
+    });
+
     // The drawer's cross-clause nesting (e.g. a proximity policy under the hand-off
     // clause's `handoff` field) is read from design.nestsUnder — it MUST round-trip.
     it("preserves design.nestsUnder", () => {

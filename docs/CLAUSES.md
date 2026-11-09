@@ -305,15 +305,30 @@ registry's seed data; the published definition of the format is
   attestations to the signed agreement; it reads no content shape.
 - **`block` — the presentation**, organized into phase sections named for their
   reader: `design` (`article`, `scope`, `nestsUnder`, `fills`, `composes`),
-  `checkout` (`catalogueFills`, `profileFills`), `runtime` (`interaction`,
-  `fields`). `runtime.fields` serves on-network composition inputs only (paired
+  `checkout` (`catalogueFills`, `profileFills`, `catalogueMeasures`), `runtime`
+  (`interaction`, `fields`). `runtime.fields` serves on-network composition inputs only (paired
   with `design.composes`); reporting is witness stages (`spec.stages`), never
   `runtime.fields`. Nothing on-chain or in the SDK's content layer reads `block`;
   the reference parser is `ClauseBlockBinding`
   (`frontend/lib/shared/clauseBlockBinding.ts`) — derive the attribute list from
   that type. **One verb — `fills` — says who fills which content fields**
   (designer / catalog / profile); the buyer owns every field named in no fills
-  list, derived as the complement, never stored.
+  list and no `catalogueMeasures` entry, derived as the complement, never stored.
+- **`block.checkout.catalogueMeasures` reads a field from the catalog item
+  itself.** It maps a content field to the catalog-item field it is read from
+  and how the order's lines combine it: `{ "massGrams": { "from": "massGrams",
+  "combine": "sum" } }`. `"sum"` adds the item's value × the line's quantity
+  over every line; `"single-unit"` takes the item's value only when the order
+  is one unit (one line, quantity 1), for a measure such as a packaged dimension
+  that does not add across units. `catalogueFills` differs: there the seller
+  sets per-clause values on the item (`clauseValues`). The checkout fill
+  (`fillCatalogueMeasures`) reads the field names from the spec and names no
+  clause. A measure the lines cannot supply stays missing: the fill writes
+  nothing, and a required one that stays missing refuses the order before it
+  is signed (`missingCatalogueMeasures`). A clause's designer keeps a `default` off a
+  measured field, or the agreement build would invent the number the catalog
+  lacks. `figaro-cargo` declares its mass and volume as sums and its packaged
+  dimensions as single-unit measures, with no `default` on any of them.
 
 `fields` are the protocol; everything in `block` is replaceable presentation.
 Anyone can build a different frontend — ignore `block`, invent their own

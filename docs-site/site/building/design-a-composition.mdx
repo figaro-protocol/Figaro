@@ -62,7 +62,7 @@ It prints `500 3512` and `500 3392`. Until the passenger resolves, the whole poo
 
 ## 3. The term each order carries
 
-Who fills a field is declared by the spec, never by the design: a field in `block.design.fills` is the designer's, written into the registered agreement; a field in `block.checkout.catalogueFills` comes from the seller's catalog item; a field in `block.checkout.profileFills` from the seller's profile; every other field is the passenger's at checkout. Read each spec from the chain (the spec source in **figaro.mjs** holds them all) before you design against it.
+Who fills a field is declared by the spec, never by the design: a field in `block.design.fills` is the designer's, written into the registered agreement; a field in `block.checkout.catalogueFills` comes from the seller's catalog item; a field in `block.checkout.catalogueMeasures` is read from the catalog item's own measures (summed over the order's lines, or taken from a one-unit order); a field in `block.checkout.profileFills` from the seller's profile; every other field is the passenger's at checkout. Read each spec from the chain (the spec source in **figaro.mjs** holds them all) before you design against it.
 
 | Clause | Committed at signing | Filled by | Filed while the process is open |
 |---|---|---|---|
@@ -118,7 +118,7 @@ The air service's operating events are a process-log clause: the `attestations` 
     "stages": {},
     "block": {
         "design": { "article": "attestations", "scope": "agreement", "nestsUnder": null, "fills": [], "composes": null },
-        "checkout": { "catalogueFills": [], "profileFills": [] },
+        "checkout": { "catalogueFills": [], "profileFills": [], "catalogueMeasures": {} },
         "runtime": { "interaction": null, "fields": [] }
     }
 }

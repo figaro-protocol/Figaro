@@ -53,6 +53,16 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         expect(validateAgainstSchema(noArticle)).toBe(false);
     });
 
+    it("rejects a catalogueMeasures entry with no source field or an unknown combinator at the schema", () => {
+        const withMeasures = (entry: unknown) => ({
+            clauseId: "x", version: 1, title: "T", description: "D", fields: [],
+            block: { design: { article: "logistics" }, checkout: { catalogueMeasures: { weight: entry } } },
+        });
+        expect(validateAgainstSchema(withMeasures({ from: "massGrams", combine: "sum" }))).toBe(true);
+        expect(validateAgainstSchema(withMeasures({ from: "massGrams", combine: "average" }))).toBe(false);
+        expect(validateAgainstSchema(withMeasures({ combine: "sum" }))).toBe(false);
+    });
+
     // THE STANDARD (maintainer ruling): the repo's own clause corpus
     // expresses every standard attribute explicitly — zero, empty, or null,
     // never absent. Consumers still treat an absent attribute as its empty
@@ -70,7 +80,7 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         for (const key of ["article", "scope", "nestsUnder", "fills", "composes"]) {
             expect(key in spec.block.design, `${file}: block.design.${key} must be expressed`).toBe(true);
         }
-        for (const key of ["catalogueFills", "profileFills"]) {
+        for (const key of ["catalogueFills", "profileFills", "catalogueMeasures"]) {
             expect(key in spec.block.checkout, `${file}: block.checkout.${key} must be expressed`).toBe(true);
         }
         for (const key of ["interaction", "fields"]) {

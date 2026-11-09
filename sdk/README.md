@@ -381,11 +381,11 @@ definition) and `RPGF_*` constant is a **root** export.
 | `fetchProcessesResolved` | root | For each process id, whether it has resolved and the block of its `ProcessResolved`: the Core's `processes(id)` getter decides the direct path, the verifier's `ProcessResolved` the batch path. |
 | `fetchUsageRecords` | root | `UsageRecorded` events — the direct-path half of the rewards mirror. |
 | `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalog and process set. |
-| `fillCargoClause` | root | Fold the order's summed mass and volume onto its cargo leaf, found by declared field. |
+| `fillCatalogueMeasures` | root | Fold the measures each composed spec declares in `block.checkout.catalogueMeasures` from the lines' catalog items; a missing measure stays missing. |
 | `fillClassClauses` | root | Fold catalog-filled class values (freight class, hazmat, cold chain, …) onto their leaves. |
 | `fillCommerceClause` | root | Write payment, currency and (root only) the cart's line items into the commerce leaf. |
-| `fillDerivedClauses` | root | Run every logistics fill the order composes — cargo, class, profile, then dimweight. |
-| `fillDimweightClause` | root | Billed weight = max(gross mass, volumetric) onto the dimweight leaf. DERIVED, never hand-filled. |
+| `fillDerivedClauses` | root | Run every logistics fill the order composes — catalog measures, class, profile, then dimweight. |
+| `fillDimweightClause` | root | Billed weight = max(gross mass, volumetric) onto the dimweight leaf. DERIVED, never hand-filled; skipped while the gross mass or a dimension is missing. |
 | `fillProfileClauses` | root | Fold the seller's profile-filled clause values onto their leaves. |
 | `filterByClause` | `/derive` | Narrow attestation events to one clause. |
 | `generateOrderKeypair` | `/handoff` | A fresh ephemeral secp256k1 keypair for a single order's handoff. |
@@ -1894,7 +1894,8 @@ import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 // Build a SpecSource from the raw spec JSON you fetched from the registry.
 // A view is the parsed spec PLUS the hash-load-bearing `block` hints
 // (`design.article`, `design.scope`, `design.fills`, `checkout.catalogueFills`,
-// `checkout.profileFills`) that parseProjectionHints extracts — everything
+// `checkout.profileFills`, `checkout.catalogueMeasures`) that
+// parseProjectionHints extracts — everything
 // else in `block` is presentation the SDK never reads. `design.fills` names
 // the content fields the DESIGNER authors into the assembly (the tailoring);
 // the assembly keeps those values and strips every other clause's to `{}`.
@@ -1921,8 +1922,8 @@ import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 //
 // `warnProcessLogFillsTrap(view)` catches the one construction that never
 // makes sense under "attestations": declaring `design.fills` or
-// `checkout.catalogueFills`/`profileFills` (designer/catalog/profile
-// content pins) on a clause the article marks a process-log. A process-log
+// `checkout.catalogueFills`/`profileFills`/`catalogueMeasures`
+// (designer/catalog/profile content pins) on a clause the article marks a process-log. A process-log
 // clause is unvalidated at commit (`validateCommitmentAgreement` skips it
 // outright), so a pinned fill there is content the author believes is
 // checked that in fact never is. It's a WARNING, not a parse error —
@@ -2217,22 +2218,26 @@ COMMITTED bytes (agreement clauses the merkle root hashes) or the payment
 figures the commitments sign, so a second frontend must reproduce it exactly. **No
 clause is ever named**: clauses are found by their DECLARED FIELDS (`lineItems`,
 `follows`, `massGrams`, `billedMassGrams`) or their spec hints
-(`catalogueFills`) through the caller's `SpecSource` — a fill whose clause isn't
+(`catalogueFills`, `catalogueMeasures`) through the caller's `SpecSource` — a fill whose clause isn't
 composed is a no-op, so the same call serves the root and every sub-order.
 
 ```ts
 import {
   fillCommerceClause, writeTopologyClause, fillDerivedClauses,
-  fillCargoClause, fillClassClauses, fillProfileClauses, fillDimweightClause,
-  planSubOrderSellers, resolveSubOrderPricing, profileValuesFor,
+  fillCatalogueMeasures, missingCatalogueMeasures, fillClassClauses,
+  fillProfileClauses, fillDimweightClause, planSubOrderSellers, resolveSubOrderPricing, profileValuesFor,
   registerRateQuantitySource, getRateQuantityResolver, topologicalOrder,
 } from "@figaro-protocol/sdk";
 ```
 
 - **Clause fills** (by declared field): `fillCommerceClause` (payment terms — `lineItems` supplied only for the root cart), `writeTopologyClause`
   (the REAL order hashes of the orders followed into `follows`), and the logistics
-  fills `fillDerivedClauses` folds together — `fillCargoClause` (mass/volume
-  sum × quantity), `fillClassClauses` (catalog-filled freight-class/hazmat/…),
+  fills `fillDerivedClauses` folds together — `fillCatalogueMeasures` (each
+  field a spec declares in `block.checkout.catalogueMeasures`, read from the
+  declared field of each line's `catalogItem`: summed × quantity, or taken from
+  a one-unit order; a measure the items do not supply stays missing, and
+  `missingCatalogueMeasures` names the required ones so the surface refuses the
+  order), `fillClassClauses` (catalog-filled freight-class/hazmat/…),
   `fillProfileClauses` (the seller's profile-filled master data — dimweight's
   divisor, a declared credential id — restricted to each spec's declared
   `block.checkout.profileFills` subset, with the registered agreement's committed terms winning),
@@ -2283,8 +2288,9 @@ import {
 // `catalogItemToLineItem` in the SDK — so do the mapping yourself:
 // `id` → `itemId`, `price` (human decimal) → `unitPrice` (smallest unit, via
 // viem's `parseUnits(item.price, tokenDecimals)` — see `CatalogItemMetadata.price`'s
-// doc comment), and `clauseValues` copied through UNCHANGED (same
-// `{clauseKey: fieldValues}` shape `fillClassClauses` reads below).
+// doc comment), `clauseValues` copied through UNCHANGED (same
+// `{clauseKey: fieldValues}` shape `fillClassClauses` reads below), and the
+// item itself as `catalogItem` (the declared catalog measures read from it).
 const lineItems: AssemblyCheckoutLineItem[] = [
   { itemId: "espresso", name: "Espresso", quantity: 2, unitPrice: "150000000000000000" },
 ];

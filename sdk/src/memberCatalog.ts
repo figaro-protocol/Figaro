@@ -71,7 +71,8 @@ export interface CatalogItemMetadata {
      * a non-parcel item omits them. The individual dimensions are load-bearing:
      * dimensional weight rounds each dimension before multiplying and oversize
      * rules read the longest side, neither of which a single `volumeMl` can
-     * reproduce. Consumed by `figaro-dimweight` / `figaro-cargo` at checkout.
+     * reproduce. Read at checkout by any clause that declares them in
+     * `block.checkout.catalogueMeasures` (`fillCatalogueMeasures`).
      */
     lengthMm?: number;
     widthMm?: number;
