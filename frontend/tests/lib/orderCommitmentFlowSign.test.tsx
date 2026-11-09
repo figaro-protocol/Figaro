@@ -80,10 +80,11 @@ vi.mock("@/lib/checkout/orderPreview", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/checkout/orderPreview")>()),
     requestSignConfirmation: (...args: unknown[]) => confirm(...args),
 }));
-const quoteFundingLeg = vi.fn(async (args: { inputToken: Hex; currency: Hex; bondAmount: bigint; deadline: bigint; chainId: number }): Promise<FundingQuote> => {
+const quoteFundingLeg = vi.fn(async (args: { inputToken: Hex; currency: Hex; bondAmount: bigint; deadline: bigint; chainId: number; slippageBps?: number }): Promise<FundingQuote> => {
     s.acts.push("quote");
     return {
         inputToken: args.inputToken, currency: args.currency, router: `0x${"d0".repeat(20)}`,
+        slippageBps: args.slippageBps ?? 0,
         maxInput: args.bondAmount + 7n, nonce: 42n, deadline: args.deadline, chainId: args.chainId,
         permit2: `0x${"a2".repeat(20)}`, coordinator: `0x${"c0".repeat(20)}`, swapData: "0xdead",
     };
@@ -172,14 +173,15 @@ describe("signCommitment — the buyer's signature", () => {
     it("with a funding token, quotes the buyer's bond (2 × payment), shows its swap summary in the same confirm, then witness-signs that quote", async () => {
         const p = preview();
         const { result } = renderHook(() => useOrderCommitmentFlow());
-        const { value } = await run(() => result.current.signCommitment(p, { inputToken: INPUT_TOKEN }));
+        const { value } = await run(() => result.current.signCommitment(p, { inputToken: INPUT_TOKEN, slippageBps: 300 }));
         expect(quoteFundingLeg).toHaveBeenCalledTimes(1);
+        // The margin the buyer set in the chooser is the one the quote's cap is built from.
         expect(quoteFundingLeg.mock.calls[0][0]).toEqual({
             publicClient: s.client, chainId: 31337, inputToken: INPUT_TOKEN, currency: CURRENCY,
-            bondAmount: 200n, deadline: 9_999_999_999n,
+            bondAmount: 200n, deadline: 9_999_999_999n, slippageBps: 300,
         });
-        // The confirm's swap summary is the quote's three figures, nothing else.
-        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, { inputToken: INPUT_TOKEN, currency: CURRENCY, maxInput: 207n });
+        // The confirm's swap summary is the quote's figures and the signing party, nothing else.
+        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, { inputToken: INPUT_TOKEN, currency: CURRENCY, maxInput: 207n, slippageBps: 300, party: BUYER });
         expect(s.acts).toEqual(["quote", "confirm", "sign:Commitment", `sign:${s.typedData[1].primaryType}`]);
         // The witness the wallet signs carries the maxInput the confirm showed.
         expect((s.typedData[1].message as { permitted: { token: Hex; amount: bigint } }).permitted).toEqual({ token: INPUT_TOKEN, amount: 207n });
@@ -254,10 +256,10 @@ describe("acceptOrder — the seller's funded counter-signature", () => {
         const p = preview();
         const incoming: CommitmentPayload = { commitment: p.commitment, agreement: p.agreement, buyerSig: BUYER_SIG };
         const { result } = renderHook(() => useOrderCommitmentFlow());
-        const { value } = await run(() => result.current.acceptOrder(incoming, { inputToken: INPUT_TOKEN }));
+        const { value } = await run(() => result.current.acceptOrder(incoming, { inputToken: INPUT_TOKEN, slippageBps: 50 }));
         expect(value).toBe(`0x${"cc".repeat(32)}`);
-        expect(quoteFundingLeg.mock.calls[0][0]).toMatchObject({ inputToken: INPUT_TOKEN, currency: CURRENCY, bondAmount: 600n });
-        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, { inputToken: INPUT_TOKEN, currency: CURRENCY, maxInput: 607n });
+        expect(quoteFundingLeg.mock.calls[0][0]).toMatchObject({ inputToken: INPUT_TOKEN, currency: CURRENCY, bondAmount: 600n, slippageBps: 50 });
+        expect(confirm).toHaveBeenCalledWith(p.commitment, p.agreement, { inputToken: INPUT_TOKEN, currency: CURRENCY, maxInput: 607n, slippageBps: 50, party: SELLER });
         // The broadcast the flow hands to commitSignedOrder routes the funded
         // order through the coordinator, with the seller's witness-signed leg.
         const { payload, commit: broadcast } = commitSignedOrder.mock.calls[0][0];

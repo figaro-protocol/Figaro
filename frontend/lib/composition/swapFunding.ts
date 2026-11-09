@@ -79,6 +79,20 @@ export async function translateListedPrice(
     return { listedAmount, amount: amountIn, source: { venue: venue.kind, router } };
 }
 
+/** What the funding-token chooser shows before the sign: the venue, its own
+ *  margin, and the input it quotes now for exactly `bondAmount` of the
+ *  denomination. The sign quotes again (`quoteFundingLeg`); this figure lets
+ *  the party see the cap its margin yields and whether its balance covers it. */
+export async function quoteFundingInput(
+    publicClient: PublicClient,
+    router: Hex,
+    args: { inputToken: Hex; currency: Hex; bondAmount: bigint },
+): Promise<{ venue: SwapVenue["kind"]; slippageBps: number; quotedInput: bigint }> {
+    const venue = await detectSwapVenue(publicClient, router);
+    const { amountIn } = await venue.quote(args.inputToken, args.currency, args.bondAmount);
+    return { venue: venue.kind, slippageBps: venue.slippageBps, quotedInput: amountIn };
+}
+
 export interface QuoteFundingLegArgs {
     publicClient: PublicClient;
     chainId: number;
@@ -91,6 +105,10 @@ export interface QuoteFundingLegArgs {
     bondAmount: bigint;
     /** Signature window — the order's own deadline. */
     deadline: bigint;
+    /** The slippage margin the party set in the funding-token chooser, in
+     *  basis points; absent, the venue's own (`SwapVenue.slippageBps`).
+     *  Refused outside [0, MAX_SLIPPAGE_BPS] (`capWithSlippage`). */
+    slippageBps?: number;
 }
 
 /** Everything about a swap-funded leg EXCEPT the party's witness signature —
@@ -101,6 +119,10 @@ export interface FundingQuote {
     inputToken: Hex;
     currency: Hex;
     router: Hex;
+    /** The margin `maxInput` carries over the venue's quote, in basis points —
+     *  shown beside it before the party signs. Not itself a witness field:
+     *  the `maxInput` and the `swapData` built from it are. */
+    slippageBps: number;
     maxInput: bigint;
     nonce: bigint;
     deadline: bigint;
@@ -124,18 +146,21 @@ export async function quoteFundingLeg(
         );
     }
     // The venue quotes the exact bond as output; the cap the party signs is
-    // that quote plus the venue's headroom (0 on the fixed-rate mock). The
+    // that quote plus the party's chosen margin, else the venue's own (0 on
+    // the fixed-rate mock), refused outside [0, MAX_SLIPPAGE_BPS]. The
     // exact route the witness binds: input → the process denomination,
     // proceeds to the coordinator (it forwards them to the funded party
     // before FigaroCore pull, and refunds any input the swap did not spend).
     const venue = await detectSwapVenue(args.publicClient, contracts.router);
     const quote = await venue.quote(args.inputToken, args.currency, args.bondAmount);
-    const maxInput = capWithSlippage(quote.amountIn, venue.slippageBps);
+    const slippageBps = args.slippageBps ?? venue.slippageBps;
+    const maxInput = capWithSlippage(quote.amountIn, slippageBps);
     const swapData = quote.route(maxInput, contracts.coordinator);
     return {
         inputToken: args.inputToken,
         currency: args.currency,
         router: contracts.router,
+        slippageBps,
         maxInput,
         // A never-used unordered Permit2 nonce: 256 bits of client
         // randomness — the SDK's salt generator, which is the same draw.

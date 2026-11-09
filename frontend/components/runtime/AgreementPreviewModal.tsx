@@ -25,6 +25,8 @@ import { Button } from "@/components/ui/Button";
 import { AgreementReview } from "@/components/runtime/AgreementReview";
 import type { ConfirmationIntent, SwapConfirmationDetails } from "@/lib/checkout/orderPreview";
 import { useWalletChain } from "@/components/runtime/ActiveNetworkLine";
+import useTokenBalance from "@/hooks/useTokenBalance";
+import { formatSlippagePercent } from "@/lib/composition/swapVenue";
 
 interface Props {
     commitment: Commitment;
@@ -61,6 +63,45 @@ const INTENT_COPY: Record<ConfirmationIntent, { eyebrow: string; lede: React.Rea
         confirm: "Confirm & commit",
     },
 };
+
+/** The swap leg's figures, read-only: the margin was set in the funding-token
+ *  chooser before the quote, so these are exactly what the party signs. The
+ *  coordinator pulls the whole max input from the party through Permit2, so
+ *  the party's balance of the input token is shown against it. */
+function SwapLegFigures({ swap }: { swap: SwapConfirmationDetails }) {
+    const { read: balance } = useTokenBalance(swap.inputToken as `0x${string}`, swap.party as `0x${string}`);
+    return (
+        <>
+            <dl className="grid grid-cols-[110px_1fr] gap-y-1 text-sm">
+                <dt className="text-ink-muted">Max input</dt>
+                <dd className="text-ink-primary" data-testid="preview-swap-max-input">
+                    <span className="font-mono text-xs">{swap.maxInput.toString()}</span>
+                </dd>
+                <dt className="text-ink-muted">Slippage margin</dt>
+                <dd className="text-ink-primary" data-testid="preview-swap-margin">
+                    {formatSlippagePercent(swap.slippageBps)}%
+                </dd>
+                {balance.status === "present" && (
+                    <>
+                        <dt className="text-ink-muted">Your balance</dt>
+                        <dd className="text-ink-primary" data-testid="preview-swap-balance">
+                            <span className="font-mono text-xs">{balance.value.toString()}</span>
+                        </dd>
+                    </>
+                )}
+                <dt className="text-ink-muted">From token</dt>
+                <dd className="font-mono text-xs text-ink-primary break-all">{swap.inputToken}</dd>
+                <dt className="text-ink-muted">Into</dt>
+                <dd className="font-mono text-xs text-ink-primary break-all">{swap.currency}</dd>
+            </dl>
+            {balance.status === "present" && balance.value < swap.maxInput && (
+                <p role="alert" className="mt-2 text-sm text-error-fg" data-testid="preview-swap-balance-short">
+                    Your balance is below the max input, so this commit will fail.
+                </p>
+            )}
+        </>
+    );
+}
 
 export function AgreementPreviewModal({ commitment, agreement, intent, swap, onConfirm, onCancel }: Props) {
     const copy = INTENT_COPY[intent];
@@ -111,16 +152,7 @@ export function AgreementPreviewModal({ commitment, agreement, intent, swap, onC
                                 currency. You are also authorizing a Permit2 transfer of up to
                                 the amount below — your wallet will show it as a second signature.
                             </p>
-                            <dl className="grid grid-cols-[90px_1fr] gap-y-1 text-sm">
-                                <dt className="text-ink-muted">Max input</dt>
-                                <dd className="text-ink-primary" data-testid="preview-swap-max-input">
-                                    <span className="font-mono text-xs">{swap.maxInput.toString()}</span>
-                                </dd>
-                                <dt className="text-ink-muted">From token</dt>
-                                <dd className="font-mono text-xs text-ink-primary break-all">{swap.inputToken}</dd>
-                                <dt className="text-ink-muted">Into</dt>
-                                <dd className="font-mono text-xs text-ink-primary break-all">{swap.currency}</dd>
-                            </dl>
+                            <SwapLegFigures swap={swap} />
                         </section>
                     )}
                 </div>

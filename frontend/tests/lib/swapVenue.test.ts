@@ -7,7 +7,7 @@ vi.mock("@/lib/composition/contracts", () => ({
     getSwapQuoter: () => quoterMock(),
 }));
 
-import { _resetSwapVenueCache_TESTING_ONLY, capWithSlippage, MAX_SLIPPAGE_BPS, detectSwapVenue } from "@/lib/composition/swapVenue";
+import { _resetSwapVenueCache_TESTING_ONLY, capWithSlippage, MAX_SLIPPAGE_BPS, detectSwapVenue, formatSlippagePercent, parseSlippagePercent } from "@/lib/composition/swapVenue";
 
 const ROUTER = ("0x" + "d0".repeat(20)) as `0x${string}`;
 const QUOTER = ("0x" + "e0".repeat(20)) as `0x${string}`;
@@ -123,5 +123,32 @@ describe("capWithSlippage refuses a loose, MEV-extractable input cap", () => {
         expect(() => capWithSlippage(1_000n, MAX_SLIPPAGE_BPS + 1)).toThrow(/out of range/);
         expect(() => capWithSlippage(1_000n, 5_000)).toThrow(/MEV-extractable/);
         expect(() => capWithSlippage(1_000n, -1)).toThrow(/out of range/);
+    });
+});
+
+// The party types its slippage margin as a percent; the cap is built in basis
+// points. A margin outside [0, 10%] or finer than a basis point is REFUSED
+// (null), never clamped: the margin sets the cap the party signs, and a clamp
+// would sign a figure the party did not type.
+describe("parseSlippagePercent — the party's margin, as typed, into basis points", () => {
+    it("reads 0% to 10% in steps of a basis point", () => {
+        expect(parseSlippagePercent("0")).toBe(0);
+        expect(parseSlippagePercent("1")).toBe(100);
+        expect(parseSlippagePercent("0.25")).toBe(25);
+        expect(parseSlippagePercent(" 2.5 ")).toBe(250);
+        expect(parseSlippagePercent("10")).toBe(MAX_SLIPPAGE_BPS);
+    });
+
+    it("refuses a margin below 0, above the 10% cap, finer than a basis point, or not a number", () => {
+        for (const text of ["-1", "-0.01", "10.01", "11", "1.005", "", "abc", "1e1"]) {
+            expect(parseSlippagePercent(text)).toBeNull();
+        }
+    });
+
+    it("writes basis points back as the percent the party reads", () => {
+        expect(formatSlippagePercent(0)).toBe("0");
+        expect(formatSlippagePercent(100)).toBe("1");
+        expect(formatSlippagePercent(25)).toBe("0.25");
+        expect(formatSlippagePercent(MAX_SLIPPAGE_BPS)).toBe("10");
     });
 });

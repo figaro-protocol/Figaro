@@ -25,7 +25,14 @@ import { encodeFunctionData, decodeFunctionResult, parseAbi, type PublicClient }
 import { SWAP_ROUTER_02_ABI, QUOTER_V2_ABI, UNISWAP_V3_FEE_TIERS, type Hex } from "@figaro-protocol/sdk";
 import { getSwapQuoter } from "@/lib/composition/contracts";
 
-type SwapVenueKind = "devnet-mock" | "uniswap-v3";
+export type SwapVenueKind = "devnet-mock" | "uniswap-v3";
+
+/** Whether a venue's route is exact-input, spending the whole cap the party
+ *  signs (the mock venue's `swap`), rather than exact-output, which takes at
+ *  most the cap and leaves the rest for the coordinator to return. */
+export function spendsWholeCap(kind: SwapVenueKind | null): boolean {
+    return kind === "devnet-mock";
+}
 
 /** A live quote for one exact-output swap and the route that executes it. */
 interface SwapQuote {
@@ -39,8 +46,10 @@ interface SwapQuote {
 export interface SwapVenue {
     kind: SwapVenueKind;
     router: Hex;
-    /** Headroom the signed cap (`maxInput`) carries over the quote, in basis
-     *  points: 0 on the fixed-rate mock; on a live pool the price can move
+    /** The venue's own headroom of the signed cap (`maxInput`) over the
+     *  quote, in basis points — the margin the party's chooser starts from;
+     *  the party may set another within [0, MAX_SLIPPAGE_BPS]. 0 on the
+     *  fixed-rate mock; on a live pool the price can move
      *  between quote and execution, and a swap that would exceed the cap
      *  reverts inside the coordinator (`SwapCallFailed`) — the party keeps
      *  every token, the commit simply does not happen. */
@@ -69,6 +78,26 @@ export function capWithSlippage(amountIn: bigint, slippageBps: number): bigint {
     return amountIn + (amountIn * BigInt(slippageBps) + 9_999n) / 10_000n;
 }
 
+/** The margin as the party types it — a percent with at most two decimals, a
+ *  basis point being the finest step — read into basis points. A margin
+ *  below 0, above MAX_SLIPPAGE_BPS or not a plain decimal is refused (null),
+ *  never clamped: the margin decides the cap the party signs, and a clamp
+ *  would sign a figure the party did not type. */
+export function parseSlippagePercent(text: string): number | null {
+    const t = text.trim();
+    if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
+    const [whole, frac = ""] = t.split(".");
+    const bps = Number(whole) * 100 + Number(frac.padEnd(2, "0"));
+    return bps <= MAX_SLIPPAGE_BPS ? bps : null;
+}
+
+/** Basis points written back as the percent the party reads ("2.5" for 250). */
+export function formatSlippagePercent(bps: number): string {
+    const whole = Math.trunc(bps / 100);
+    const frac = String(bps % 100).padStart(2, "0").replace(/0+$/, "");
+    return frac ? `${whole}.${frac}` : String(whole);
+}
+
 // ── Devnet venue: MockSwapVenue ─────────────────────────────────────────────
 
 const MOCK_VENUE_ABI = parseAbi([
@@ -77,6 +106,10 @@ const MOCK_VENUE_ABI = parseAbi([
     "function rateDenominator() view returns (uint256)",
 ]);
 
+// The mock's route is EXACT-INPUT: `swap()` spends the whole `maxInput` it is
+// handed and delivers its rate's worth of output, so a margin above 0 here
+// spends more input (and the coordinator forwards the larger output to the
+// party). Its own margin is 0 because its rate does not move.
 function mockVenue(publicClient: PublicClient, router: Hex): SwapVenue {
     return {
         kind: "devnet-mock",
