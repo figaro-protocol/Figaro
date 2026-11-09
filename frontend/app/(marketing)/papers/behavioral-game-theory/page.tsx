@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PAPER_CELL } from "@/components/papers/tableCell";
 import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
@@ -106,21 +107,21 @@ export default function BehavioralGameTheoryPaper() {
                     <table className="text-sm border-collapse">
                         <thead>
                             <tr>
-                                <th className="border border-default px-3 py-1.5 text-left text-ink-muted font-normal"><Math>{"(u_b, u_s)"}</Math></th>
-                                <th className="border border-default px-3 py-1.5 font-semibold text-ink-heading">resolution occurs</th>
-                                <th className="border border-default px-3 py-1.5 font-semibold text-ink-heading">no resolution</th>
+                                <th className={`${PAPER_CELL} text-left text-ink-muted font-normal`}><Math>{"(u_b, u_s)"}</Math></th>
+                                <th className={`${PAPER_CELL} font-semibold text-ink-heading`}>resolution occurs</th>
+                                <th className={`${PAPER_CELL} font-semibold text-ink-heading`}>no resolution</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td className="border border-default px-3 py-1.5 font-semibold text-ink-heading">performance occurs</td>
-                                <td className="border border-default px-3 py-1.5"><Math>{"(0,\\; +P)"}</Math></td>
-                                <td className="border border-default px-3 py-1.5"><Math>{"(-P,\\; -2G)"}</Math></td>
+                                <td className={`${PAPER_CELL} font-semibold text-ink-heading`}>performance occurs</td>
+                                <td className={PAPER_CELL}><Math>{"(0,\\; +P)"}</Math></td>
+                                <td className={PAPER_CELL}><Math>{"(-P,\\; -2G)"}</Math></td>
                             </tr>
                             <tr>
-                                <td className="border border-default px-3 py-1.5 font-semibold text-ink-heading">no performance</td>
-                                <td className="border border-default px-3 py-1.5"><Math>{"(-P,\\; \\leq P + G)"}</Math></td>
-                                <td className="border border-default px-3 py-1.5"><Math>{"(-2P,\\; \\leq -G)"}</Math></td>
+                                <td className={`${PAPER_CELL} font-semibold text-ink-heading`}>no performance</td>
+                                <td className={PAPER_CELL}><Math>{"(-P,\\; \\leq P + G)"}</Math></td>
+                                <td className={PAPER_CELL}><Math>{"(-2P,\\; \\leq -G)"}</Math></td>
                             </tr>
                         </tbody>
                     </table>

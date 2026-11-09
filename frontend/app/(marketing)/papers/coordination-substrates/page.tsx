@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PAPER_CELL } from "@/components/papers/tableCell";
 import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
@@ -394,101 +395,101 @@ export default function CoordinationSubstratesPaper() {
                             <thead>
                                 <tr>
                                     {["Axis", "Firm: hierarchy", "Firm: platform", "Court", "Bond"].map((h) => (
-                                        <th key={h} className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">{h}</th>
+                                        <th key={h} className={`${PAPER_CELL} text-left font-semibold text-ink-heading`}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Cost borne by</td>
-                                    <td className="border border-default px-3 py-1.5">the hierarchy, as standing overhead</td>
-                                    <td className="border border-default px-3 py-1.5">the intermediary, recovered per trade</td>
-                                    <td className="border border-default px-3 py-1.5">the state and the litigants</td>
-                                    <td className="border border-default px-3 py-1.5">each party, for its own bond, before the trade</td>
+                                    <td className={PAPER_CELL}>Cost borne by</td>
+                                    <td className={PAPER_CELL}>the hierarchy, as standing overhead</td>
+                                    <td className={PAPER_CELL}>the intermediary, recovered per trade</td>
+                                    <td className={PAPER_CELL}>the state and the litigants</td>
+                                    <td className={PAPER_CELL}>each party, for its own bond, before the trade</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Cost is revenue to</td>
-                                    <td className="border border-default px-3 py-1.5">the management function</td>
-                                    <td className="border border-default px-3 py-1.5">the intermediary (take-rate and data)</td>
-                                    <td className="border border-default px-3 py-1.5">the professions; funded by taxation</td>
-                                    <td className="border border-default px-3 py-1.5">time value: nobody; gas: the network</td>
+                                    <td className={PAPER_CELL}>Cost is revenue to</td>
+                                    <td className={PAPER_CELL}>the management function</td>
+                                    <td className={PAPER_CELL}>the intermediary (take-rate and data)</td>
+                                    <td className={PAPER_CELL}>the professions; funded by taxation</td>
+                                    <td className={PAPER_CELL}>time value: nobody; gas: the network</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Holds the map</td>
-                                    <td className="border border-default px-3 py-1.5">the nucleus; dies with the entity</td>
-                                    <td className="border border-default px-3 py-1.5">the intermediary; it is the asset</td>
-                                    <td className="border border-default px-3 py-1.5">dockets: failures only, unusable in aggregate</td>
-                                    <td className="border border-default px-3 py-1.5">skeleton public, content with the parties</td>
+                                    <td className={PAPER_CELL}>Holds the map</td>
+                                    <td className={PAPER_CELL}>the nucleus; dies with the entity</td>
+                                    <td className={PAPER_CELL}>the intermediary; it is the asset</td>
+                                    <td className={PAPER_CELL}>dockets: failures only, unusable in aggregate</td>
+                                    <td className={PAPER_CELL}>skeleton public, content with the parties</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Admission</td>
-                                    <td className="border border-default px-3 py-1.5">hire, at the nucleus&rsquo;s discretion</td>
-                                    <td className="border border-default px-3 py-1.5">terms of service; revocable</td>
-                                    <td className="border border-default px-3 py-1.5">legal personality and standing</td>
-                                    <td className="border border-default px-3 py-1.5">a key and a balance</td>
+                                    <td className={PAPER_CELL}>Admission</td>
+                                    <td className={PAPER_CELL}>hire, at the nucleus&rsquo;s discretion</td>
+                                    <td className={PAPER_CELL}>terms of service; revocable</td>
+                                    <td className={PAPER_CELL}>legal personality and standing</td>
+                                    <td className={PAPER_CELL}>a key and a balance</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Discretion</td>
-                                    <td className="border border-default px-3 py-1.5">managerial; unreviewable from outside</td>
-                                    <td className="border border-default px-3 py-1.5">operator policy; unilateral</td>
-                                    <td className="border border-default px-3 py-1.5">judicial; procedural, reviewable</td>
-                                    <td className="border border-default px-3 py-1.5">the buyer&rsquo;s, to resolve; forums rule but cannot resolve</td>
+                                    <td className={PAPER_CELL}>Discretion</td>
+                                    <td className={PAPER_CELL}>managerial; unreviewable from outside</td>
+                                    <td className={PAPER_CELL}>operator policy; unilateral</td>
+                                    <td className={PAPER_CELL}>judicial; procedural, reviewable</td>
+                                    <td className={PAPER_CELL}>the buyer&rsquo;s, to resolve; forums rule but cannot resolve</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Cost of instituting</td>
-                                    <td className="border border-default px-3 py-1.5">incorporation; buys asset partitioning</td>
-                                    <td className="border border-default px-3 py-1.5">two-sided launch; very high</td>
-                                    <td className="border border-default px-3 py-1.5">not available to the parties</td>
-                                    <td className="border border-default px-3 py-1.5">signatures, gas, and the bonds&rsquo; time value, per trade</td>
+                                    <td className={PAPER_CELL}>Cost of instituting</td>
+                                    <td className={PAPER_CELL}>incorporation; buys asset partitioning</td>
+                                    <td className={PAPER_CELL}>two-sided launch; very high</td>
+                                    <td className={PAPER_CELL}>not available to the parties</td>
+                                    <td className={PAPER_CELL}>signatures, gas, and the bonds&rsquo; time value, per trade</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Jurisdiction</td>
-                                    <td className="border border-default px-3 py-1.5">chartered somewhere</td>
-                                    <td className="border border-default px-3 py-1.5">regulated where it holds payments</td>
-                                    <td className="border border-default px-3 py-1.5">constitutive; extended only by treaty</td>
-                                    <td className="border border-default px-3 py-1.5">not a precondition of the trade</td>
+                                    <td className={PAPER_CELL}>Jurisdiction</td>
+                                    <td className={PAPER_CELL}>chartered somewhere</td>
+                                    <td className={PAPER_CELL}>regulated where it holds payments</td>
+                                    <td className={PAPER_CELL}>constitutive; extended only by treaty</td>
+                                    <td className={PAPER_CELL}>not a precondition of the trade</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Charge shape</td>
-                                    <td className="border border-default px-3 py-1.5">standing overhead, spread over trades</td>
-                                    <td className="border border-default px-3 py-1.5">take-rate on value, plus the parties&rsquo; data</td>
-                                    <td className="border border-default px-3 py-1.5">contingent and lumpy, per dispute</td>
-                                    <td className="border border-default px-3 py-1.5">time value over the duration, plus the network&rsquo;s gas</td>
+                                    <td className={PAPER_CELL}>Charge shape</td>
+                                    <td className={PAPER_CELL}>standing overhead, spread over trades</td>
+                                    <td className={PAPER_CELL}>take-rate on value, plus the parties&rsquo; data</td>
+                                    <td className={PAPER_CELL}>contingent and lumpy, per dispute</td>
+                                    <td className={PAPER_CELL}>time value over the duration, plus the network&rsquo;s gas</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Transparency / verifiability / privacy</td>
-                                    <td className="border border-default px-3 py-1.5">privacy only; opaque and unverifiable outside</td>
-                                    <td className="border border-default px-3 py-1.5">transparent to the operator alone; unverifiable</td>
-                                    <td className="border border-default px-3 py-1.5">public and reviewable, at privacy&rsquo;s expense</td>
-                                    <td className="border border-default px-3 py-1.5">all three: public skeleton, sealed content, bound by a fingerprint</td>
+                                    <td className={PAPER_CELL}>Transparency / verifiability / privacy</td>
+                                    <td className={PAPER_CELL}>privacy only; opaque and unverifiable outside</td>
+                                    <td className={PAPER_CELL}>transparent to the operator alone; unverifiable</td>
+                                    <td className={PAPER_CELL}>public and reviewable, at privacy&rsquo;s expense</td>
+                                    <td className={PAPER_CELL}>all three: public skeleton, sealed content, bound by a fingerprint</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Unit of account</td>
-                                    <td className="border border-default px-3 py-1.5">functional currency; bank rails</td>
-                                    <td className="border border-default px-3 py-1.5">the operator&rsquo;s rail and accepted list</td>
-                                    <td className="border border-default px-3 py-1.5">the forum&rsquo;s legal tender</td>
-                                    <td className="border border-default px-3 py-1.5">named by the parties; one exact-transfer token per process</td>
+                                    <td className={PAPER_CELL}>Unit of account</td>
+                                    <td className={PAPER_CELL}>functional currency; bank rails</td>
+                                    <td className={PAPER_CELL}>the operator&rsquo;s rail and accepted list</td>
+                                    <td className={PAPER_CELL}>the forum&rsquo;s legal tender</td>
+                                    <td className={PAPER_CELL}>named by the parties; one exact-transfer token per process</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Regulatory data</td>
-                                    <td className="border border-default px-3 py-1.5">reconstructed from internal books; audited</td>
-                                    <td className="border border-default px-3 py-1.5">held by the intermediary, which reports it</td>
-                                    <td className="border border-default px-3 py-1.5">adversarial only: disputes, by disclosure</td>
-                                    <td className="border border-default px-3 py-1.5">byproduct of trading; signed by both sides</td>
+                                    <td className={PAPER_CELL}>Regulatory data</td>
+                                    <td className={PAPER_CELL}>reconstructed from internal books; audited</td>
+                                    <td className={PAPER_CELL}>held by the intermediary, which reports it</td>
+                                    <td className={PAPER_CELL}>adversarial only: disputes, by disclosure</td>
+                                    <td className={PAPER_CELL}>byproduct of trading; signed by both sides</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Compliance cost</td>
-                                    <td className="border border-default px-3 py-1.5">standing overhead; favors the larger entity</td>
-                                    <td className="border border-default px-3 py-1.5">bundled into the take-rate; access-contingent</td>
-                                    <td className="border border-default px-3 py-1.5">borne per dispute; produces nothing otherwise</td>
-                                    <td className="border border-default px-3 py-1.5">retrieval, plus disclosure and regime attributes from the parties</td>
+                                    <td className={PAPER_CELL}>Compliance cost</td>
+                                    <td className={PAPER_CELL}>standing overhead; favors the larger entity</td>
+                                    <td className={PAPER_CELL}>bundled into the take-rate; access-contingent</td>
+                                    <td className={PAPER_CELL}>borne per dispute; produces nothing otherwise</td>
+                                    <td className={PAPER_CELL}>retrieval, plus disclosure and regime attributes from the parties</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Fails by</td>
-                                    <td className="border border-default px-3 py-1.5">agency loss; insolvency; costly exit</td>
-                                    <td className="border border-default px-3 py-1.5">rule-setter is the cost-bearer; removal</td>
-                                    <td className="border border-default px-3 py-1.5">delay, cost floor, repeat-player advantage</td>
-                                    <td className="border border-default px-3 py-1.5">balance rationing; no remedy from the bond; no recovery</td>
+                                    <td className={PAPER_CELL}>Fails by</td>
+                                    <td className={PAPER_CELL}>agency loss; insolvency; costly exit</td>
+                                    <td className={PAPER_CELL}>rule-setter is the cost-bearer; removal</td>
+                                    <td className={PAPER_CELL}>delay, cost floor, repeat-player advantage</td>
+                                    <td className={PAPER_CELL}>balance rationing; no remedy from the bond; no recovery</td>
                                 </tr>
                             </tbody>
                         </table>

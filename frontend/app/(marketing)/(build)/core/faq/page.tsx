@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { FaqJumpIndex } from "@/components/marketing/FaqJumpIndex";
 import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure";
 import { LabelledListRow } from "@/components/shared/LabelledListRow";
 import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
@@ -52,23 +53,7 @@ export default function Faq() {
             />
 
             <MarketingSection bottomPad="default">
-                <nav aria-label="Jump to a question" data-testid="faq-jump-index">
-                    <div>
-                        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
-                            Questions
-                        </h2>
-                        <ul className="[&>li]:border-b [&>li]:border-default text-base">
-                            {QUESTIONS.map((item) => (
-                                <li key={item.id}>
-                                    <Link href={`#${item.id}`} className="flex items-baseline justify-between gap-4 py-2.5 text-ink-heading hover:underline">
-                                        <span>{item.title}</span>
-                                        <span aria-hidden="true" className="text-ink-muted">&darr;</span>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </nav>
+                <FaqJumpIndex groups={[{ heading: "Questions", questions: QUESTIONS }]} />
             </MarketingSection>
 
 
@@ -330,7 +315,7 @@ export default function Faq() {
                         <strong className="text-ink-heading font-medium">A trade here is still an ordinary trade.</strong> The same income, sales-tax/VAT, and consumer-law treatment as any direct trade in your jurisdiction. The runtime carries the fiscal limb that helps you meet them. After resolution, a paid seller splits its own receipts onward in one transaction. The fiscal trail falls out of the chain data as a byproduct (<Link href="/composition" className="text-ink-heading font-medium hover:underline">how that composes</Link>).
                     </LabelledListRow>
                     <LabelledListRow label="Gas ceilings" labelWidth="wide" uppercase>
-                        <strong className="text-ink-heading font-medium">Two separate gas constraints govern a process.</strong> <em>Resolution</em> pays every order in one transaction, so it caps process size. Under the chain&apos;s cap on one transaction&apos;s gas that cap is about 550 orders. That is ~30k gas per order plus a fixed ~73k overhead, measured on live post-fork receipts, and a memory cost that grows with the square of the order count; the cap is held to the smaller of the transaction cap and 95% of the block limit. <em>Commit</em> is per-transaction (~382k gas for a sub-order, ~794k for the process root), so a block lands about 74 commits and a 900-order process needs roughly 13 blocks to assemble. A single commit or resolution costs cents to a few dollars at typical network prices. The figure moves with the network&apos;s gas price, not with anything Figaro sets or charges. Keep the two currencies apart. Gas is the network&apos;s own charge for running the step, and is paid in ETH. The trade itself, both bonds with the payment carried inside the buyer&apos;s, resolves in whichever ERC-20 the parties chose. Nothing is taken out of either. Both numbers are chain-specific. The SDK reads the live block limit, never a stored constant, and takes the chain&apos;s cap on one transaction, so the same arithmetic on another chain gives that chain&apos;s ceiling. Large coordinations compose across processes rather than pushing one process toward either ceiling.
+                        <strong className="text-ink-heading font-medium">Two limits on a process come from the chain.</strong> <em>Resolution</em> pays every order in one transaction, so the chain&apos;s cap on one transaction, or the block&apos;s gas limit where that is lower, limits how many orders a process can hold. <em>A commit</em> is one transaction per order, so a block holds only so many commits. Both limits are the chain&apos;s, and they change when the chain changes. The SDK reads the block&apos;s gas limit from the live chain, takes the chain&apos;s cap on one transaction, and refuses an order that would make a process too large to resolve. Large coordinations compose across processes rather than pushing one process toward either limit. What a step costs in gas moves with the network&apos;s gas price, not with anything Figaro sets or charges. Keep the two currencies apart. Gas is the network&apos;s own charge for running the step, and is paid in the chain&apos;s own token. The trade itself, both bonds with the payment carried inside the buyer&apos;s, resolves in whichever ERC-20 the parties chose. Nothing is taken out of either.
                     </LabelledListRow>
                     <LabelledListRow label="Fee-on-transfer" labelWidth="wide" uppercase>
                         <strong className="text-ink-heading font-medium">Fee-on-transfer tokens are rejected.</strong> If the ERC-20 you pay with takes a percentage on transfer, FigaroCore refuses the commit &mdash; the bond arithmetic depends on the Core receiving exactly what was committed. Pay in a non-rebasing, non-fee-on-transfer token.

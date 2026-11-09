@@ -3,6 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
+import { FaqJumpIndex } from "@/components/marketing/FaqJumpIndex";
 import { AssemblyFaqs } from "@/components/assemblies/AssemblyFaqs";
 
 export const metadata: Metadata = withOg({
@@ -36,38 +37,12 @@ export default function Faq() {
             />
 
             <MarketingSection bottomPad="default">
-                <nav aria-label="Jump to a question" data-testid="faq-jump-index">
-                    <div className="mb-8">
-                        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
-                            Before you trade
-                        </h2>
-                        <ul className="[&>li]:border-b [&>li]:border-default text-base">
-                            {BEFORE_YOU_TRADE.map((item) => (
-                                <li key={item.id}>
-                                    <Link href={`#${item.id}`} className="flex items-baseline justify-between gap-4 py-2.5 text-ink-heading hover:underline">
-                                        <span>{item.title}</span>
-                                        <span aria-hidden="true" className="text-ink-muted">&darr;</span>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                    <div>
-                        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
-                            Getting started
-                        </h2>
-                        <ul className="[&>li]:border-b [&>li]:border-default text-base">
-                            {GETTING_STARTED.map((item) => (
-                                <li key={item.id}>
-                                    <Link href={`#${item.id}`} className="flex items-baseline justify-between gap-4 py-2.5 text-ink-heading hover:underline">
-                                        <span>{item.title}</span>
-                                        <span aria-hidden="true" className="text-ink-muted">&darr;</span>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </nav>
+                <FaqJumpIndex
+                    groups={[
+                        { heading: "Before you trade", questions: BEFORE_YOU_TRADE },
+                        { heading: "Getting started", questions: GETTING_STARTED },
+                    ]}
+                />
             </MarketingSection>
 
             {/* Named in the jump index above as its leading entry: the index is the complete map and POINTS here; this
@@ -109,13 +84,13 @@ export default function Faq() {
 
             <MarketingSection title="Do I need crypto already?" sectionId="wallet">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    You need three things. A wallet app, a little ETH for gas, and the token the trade is priced in.
+                    You need three things. A wallet app, a little of the chain&apos;s own token for gas, and the token the trade is priced in.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     A wallet is free. Install one on your phone or in your browser and it gives you an address. That address is you here.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Gas is what the network charges for each transaction. It is cents to a few dollars, and you pay it in ETH. If you hold a different token than the trade uses, checkout can swap it in the same step. The details are in <Link href="/core/faq#compatibility" className="text-ink-heading font-medium hover:underline">Gas, tokens, and tax</Link>.
+                    Gas is what the network charges for each transaction. Its price moves with the network, and you pay it in the chain&apos;s own token. If you hold a different token than the trade uses, checkout can swap it in the same step. The details are in <Link href="/core/faq#compatibility" className="text-ink-heading font-medium hover:underline">Gas, tokens, and tax</Link>.
                 </p>
             </MarketingSection>
 

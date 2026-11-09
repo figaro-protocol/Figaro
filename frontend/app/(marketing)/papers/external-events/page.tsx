@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PAPER_CELL } from "@/components/papers/tableCell";
 import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
@@ -114,21 +115,21 @@ export default function ExternalEventsPaper() {
                     <table className="text-sm border-collapse">
                         <thead>
                             <tr>
-                                <th className="border border-default px-3 py-1.5 text-left text-ink-muted font-normal"> </th>
-                                <th className="border border-default px-3 py-1.5 font-semibold text-ink-heading">Deterministic</th>
-                                <th className="border border-default px-3 py-1.5 font-semibold text-ink-heading">Discretionary</th>
+                                <th className={`${PAPER_CELL} text-left text-ink-muted font-normal`}> </th>
+                                <th className={`${PAPER_CELL} font-semibold text-ink-heading`}>Deterministic</th>
+                                <th className={`${PAPER_CELL} font-semibold text-ink-heading`}>Discretionary</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td className="border border-default px-3 py-1.5 font-semibold text-ink-heading">Before the signatures</td>
-                                <td className="border border-default px-3 py-1.5">the bond schedule applied to the signed figures; the accumulator&rsquo;s arithmetic; the hashing of what was assented to</td>
-                                <td className="border border-default px-3 py-1.5">what to offer, whom to bind, which terms to compose, what price to accept: where all meaning enters</td>
+                                <td className={`${PAPER_CELL} font-semibold text-ink-heading`}>Before the signatures</td>
+                                <td className={PAPER_CELL}>the bond schedule applied to the signed figures; the accumulator&rsquo;s arithmetic; the hashing of what was assented to</td>
+                                <td className={PAPER_CELL}>what to offer, whom to bind, which terms to compose, what price to accept: where all meaning enters</td>
                             </tr>
                             <tr>
-                                <td className="border border-default px-3 py-1.5 font-semibold text-ink-heading">After the signatures</td>
-                                <td className="border border-default px-3 py-1.5">the resolution schedule&rsquo;s execution; the data of what was undertaken</td>
-                                <td className="border border-default px-3 py-1.5">the buyer&rsquo;s decision to resolve; the remedies the parties agree beforehand; a forum&rsquo;s ruling on the open process</td>
+                                <td className={`${PAPER_CELL} font-semibold text-ink-heading`}>After the signatures</td>
+                                <td className={PAPER_CELL}>the resolution schedule&rsquo;s execution; the data of what was undertaken</td>
+                                <td className={PAPER_CELL}>the buyer&rsquo;s decision to resolve; the remedies the parties agree beforehand; a forum&rsquo;s ruling on the open process</td>
                             </tr>
                         </tbody>
                     </table>

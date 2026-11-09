@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PAPER_CELL } from "@/components/papers/tableCell";
 import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
@@ -161,21 +162,21 @@ export default function AsymmetricBondingPaper() {
                         <table className="text-sm border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="border border-default px-3 py-1.5 text-left text-ink-muted font-normal">(buyer, seller)</th>
-                                    <th className="border border-default px-3 py-1.5 font-semibold text-ink-heading">resolution occurs</th>
-                                    <th className="border border-default px-3 py-1.5 font-semibold text-ink-heading">no resolution</th>
+                                    <th className={`${PAPER_CELL} text-left text-ink-muted font-normal`}>(buyer, seller)</th>
+                                    <th className={`${PAPER_CELL} font-semibold text-ink-heading`}>resolution occurs</th>
+                                    <th className={`${PAPER_CELL} font-semibold text-ink-heading`}>no resolution</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5 font-semibold text-ink-heading">performance occurs</td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{`(0,\\; +${EX_P})`}</Math></td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{`(-${EX_P},\\; -${2 * EX_G})`}</Math></td>
+                                    <td className={`${PAPER_CELL} font-semibold text-ink-heading`}>performance occurs</td>
+                                    <td className={PAPER_CELL}><Math>{`(0,\\; +${EX_P})`}</Math></td>
+                                    <td className={PAPER_CELL}><Math>{`(-${EX_P},\\; -${2 * EX_G})`}</Math></td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5 font-semibold text-ink-heading">no performance</td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{`(-${EX_P},\\; \\leq ${EX_P + EX_G})`}</Math></td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{`(-${2 * EX_P},\\; \\leq -${EX_G})`}</Math></td>
+                                    <td className={`${PAPER_CELL} font-semibold text-ink-heading`}>no performance</td>
+                                    <td className={PAPER_CELL}><Math>{`(-${EX_P},\\; \\leq ${EX_P + EX_G})`}</Math></td>
+                                    <td className={PAPER_CELL}><Math>{`(-${2 * EX_P},\\; \\leq -${EX_G})`}</Math></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -327,21 +328,21 @@ export default function AsymmetricBondingPaper() {
                         <table className="text-sm border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="border border-default px-3 py-1.5 text-left text-ink-muted font-normal"><Math>{"(u_b, u_s)"}</Math></th>
-                                    <th className="border border-default px-3 py-1.5 font-semibold text-ink-heading">resolution occurs</th>
-                                    <th className="border border-default px-3 py-1.5 font-semibold text-ink-heading">no resolution</th>
+                                    <th className={`${PAPER_CELL} text-left text-ink-muted font-normal`}><Math>{"(u_b, u_s)"}</Math></th>
+                                    <th className={`${PAPER_CELL} font-semibold text-ink-heading`}>resolution occurs</th>
+                                    <th className={`${PAPER_CELL} font-semibold text-ink-heading`}>no resolution</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5 font-semibold text-ink-heading">performance occurs</td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{"(0,\\; +P)"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{"(-P,\\; -2G)"}</Math></td>
+                                    <td className={`${PAPER_CELL} font-semibold text-ink-heading`}>performance occurs</td>
+                                    <td className={PAPER_CELL}><Math>{"(0,\\; +P)"}</Math></td>
+                                    <td className={PAPER_CELL}><Math>{"(-P,\\; -2G)"}</Math></td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5 font-semibold text-ink-heading">no performance</td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{"(-P,\\; \\leq P + G)"}</Math></td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{"(-2P,\\; \\leq -G)"}</Math></td>
+                                    <td className={`${PAPER_CELL} font-semibold text-ink-heading`}>no performance</td>
+                                    <td className={PAPER_CELL}><Math>{"(-P,\\; \\leq P + G)"}</Math></td>
+                                    <td className={PAPER_CELL}><Math>{"(-2P,\\; \\leq -G)"}</Math></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -464,9 +465,9 @@ export default function AsymmetricBondingPaper() {
                         <table className="text-sm border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">Party</th>
+                                    <th className={`${PAPER_CELL} text-left font-semibold text-ink-heading`}>Party</th>
                                     {["P_i", "G_i", "C_{s,i}", "C_{b,i}", "\\rho_i"].map((h) => (
-                                        <th key={h} className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading"><Math>{h}</Math></th>
+                                        <th key={h} className={`${PAPER_CELL} text-left font-semibold text-ink-heading`}><Math>{h}</Math></th>
                                     ))}
                                 </tr>
                             </thead>
@@ -474,13 +475,13 @@ export default function AsymmetricBondingPaper() {
                                 {CH_SELLERS.map((r) => (
                                     <tr key={r.label}>
                                         {[r.label, String(r.P), String(r.G), String(r.sellerBond), String(r.buyerBond), fmtRatio(r.rho)].map((c, i) => (
-                                            <td key={i} className="border border-default px-3 py-1.5">{c}</td>
+                                            <td key={i} className={PAPER_CELL}>{c}</td>
                                         ))}
                                     </tr>
                                 ))}
                                 <tr>
                                     {["All three", String(CH.trade), "", String(CH.seller_bonds_total), String(CH.buyer_total), ""].map((c, i) => (
-                                        <td key={i} className="border border-default px-3 py-1.5 font-semibold text-ink-heading">{c}</td>
+                                        <td key={i} className={`${PAPER_CELL} font-semibold text-ink-heading`}>{c}</td>
                                     ))}
                                 </tr>
                             </tbody>

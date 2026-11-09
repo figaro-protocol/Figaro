@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PAPER_CELL } from "@/components/papers/tableCell";
 import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
@@ -179,52 +180,52 @@ export default function FlorinSchellingPointTokenPaper() {
                         <thead>
                             <tr>
                                 {["Token", "What was sold, to whom", "Who controlled the rules", "What a holder could verify at acquisition", "What the tests found"].map((h) => (
-                                    <th key={h} className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">{h}</th>
+                                    <th key={h} className={`${PAPER_CELL} text-left font-semibold text-ink-heading`}>{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5 align-top">Bitcoin</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">nothing sold; every unit mined against real cost</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">no central operator</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">the code, running</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">treated as a commodity (CFTC 2015)</td>
+                                    <td className={`${PAPER_CELL} align-top`}>Bitcoin</td>
+                                    <td className={`${PAPER_CELL} align-top`}>nothing sold; every unit mined against real cost</td>
+                                    <td className={`${PAPER_CELL} align-top`}>no central operator</td>
+                                    <td className={`${PAPER_CELL} align-top`}>the code, running</td>
+                                    <td className={`${PAPER_CELL} align-top`}>treated as a commodity (CFTC 2015)</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5 align-top">Ether, 2014</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">ether sold in advance to pay for development</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">a foundation and a founding team</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">a white paper (Buterin 2014) and a promise</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">years later, current offers and sales taken not to be securities transactions, in one official&rsquo;s stated view (Hinman 2018)</td>
+                                    <td className={`${PAPER_CELL} align-top`}>Ether, 2014</td>
+                                    <td className={`${PAPER_CELL} align-top`}>ether sold in advance to pay for development</td>
+                                    <td className={`${PAPER_CELL} align-top`}>a foundation and a founding team</td>
+                                    <td className={`${PAPER_CELL} align-top`}>a white paper (Buterin 2014) and a promise</td>
+                                    <td className={`${PAPER_CELL} align-top`}>years later, current offers and sales taken not to be securities transactions, in one official&rsquo;s stated view (Hinman 2018)</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5 align-top">The token-sale generation</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">tokens sold to investors to pay for a network not yet built</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">the issuing company</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">a white paper</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">securities (<em>SEC v. Telegram</em>, 2020; <em>SEC v. Kik</em>, 2020); exchange sales treated as their own question (<em>SEC v. Ripple Labs</em>, 2023)</td>
+                                    <td className={`${PAPER_CELL} align-top`}>The token-sale generation</td>
+                                    <td className={`${PAPER_CELL} align-top`}>tokens sold to investors to pay for a network not yet built</td>
+                                    <td className={`${PAPER_CELL} align-top`}>the issuing company</td>
+                                    <td className={`${PAPER_CELL} align-top`}>a white paper</td>
+                                    <td className={`${PAPER_CELL} align-top`}>securities (<em>SEC v. Telegram</em>, 2020; <em>SEC v. Kik</em>, 2020); exchange sales treated as their own question (<em>SEC v. Ripple Labs</em>, 2023)</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5 align-top">Venture-backed tokens with vesting</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">equity and tokens sold to venture investors before launch</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">the company and its investors</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">nothing public until launch</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">the company shape in full; analyzed case by case</td>
+                                    <td className={`${PAPER_CELL} align-top`}>Venture-backed tokens with vesting</td>
+                                    <td className={`${PAPER_CELL} align-top`}>equity and tokens sold to venture investors before launch</td>
+                                    <td className={`${PAPER_CELL} align-top`}>the company and its investors</td>
+                                    <td className={`${PAPER_CELL} align-top`}>nothing public until launch</td>
+                                    <td className={`${PAPER_CELL} align-top`}>the company shape in full; analyzed case by case</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5 align-top">Meme coins</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">launched into a market, often with insiders holding early</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">nobody, and no enterprise</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">nothing</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">on the staff&rsquo;s view, not securities, for the type of meme coin the statement describes (SEC 2025)</td>
+                                    <td className={`${PAPER_CELL} align-top`}>Meme coins</td>
+                                    <td className={`${PAPER_CELL} align-top`}>launched into a market, often with insiders holding early</td>
+                                    <td className={`${PAPER_CELL} align-top`}>nobody, and no enterprise</td>
+                                    <td className={`${PAPER_CELL} align-top`}>nothing</td>
+                                    <td className={`${PAPER_CELL} align-top`}>on the staff&rsquo;s view, not securities, for the type of meme coin the statement describes (SEC 2025)</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5 align-top">The florin</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">nothing sold; issued at zero, after the work, in no offering</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">no central operator; nobody can mint beyond the schedule, upgrade, or freeze</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">the whole system, running and verifiable, before a unit exists</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">none of the four questions met on the mint path (Section 4)</td>
+                                    <td className={`${PAPER_CELL} align-top`}>The florin</td>
+                                    <td className={`${PAPER_CELL} align-top`}>nothing sold; issued at zero, after the work, in no offering</td>
+                                    <td className={`${PAPER_CELL} align-top`}>no central operator; nobody can mint beyond the schedule, upgrade, or freeze</td>
+                                    <td className={`${PAPER_CELL} align-top`}>the whole system, running and verifiable, before a unit exists</td>
+                                    <td className={`${PAPER_CELL} align-top`}>none of the four questions met on the mint path (Section 4)</td>
                                 </tr>
                         </tbody>
                     </table>

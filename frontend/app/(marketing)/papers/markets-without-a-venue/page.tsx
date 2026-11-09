@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PAPER_CELL } from "@/components/papers/tableCell";
 import { withOg } from "@/lib/shared/pageMetadata";
 import {
     PaperLayout,
@@ -119,39 +120,39 @@ export default function MarketsWithoutAVenuePaper() {
                             <thead>
                                 <tr>
                                     {["Step", "Dispatch race", "Request for quotes"].map((h) => (
-                                        <th key={h} className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">{h}</th>
+                                        <th key={h} className={`${PAPER_CELL} text-left font-semibold text-ink-heading`}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">1. Read, before asking</td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{"B"}</Math> reads the published prices: <Math>{"S_1"}</Math> at {EX_CHEAPER}, <Math>{"S_2"}</Math> at {EX_P}, <Math>{"S_3"}</Math> at {EX_DEARER}. Nobody signs.</td>
-                                    <td className="border border-default px-3 py-1.5">No published price fits the job. <Math>{"B"}</Math> fixes its ceiling at {EX_CEILING}, the most it will pay. Nobody signs.</td>
+                                    <td className={PAPER_CELL}>1. Read, before asking</td>
+                                    <td className={PAPER_CELL}><Math>{"B"}</Math> reads the published prices: <Math>{"S_1"}</Math> at {EX_CHEAPER}, <Math>{"S_2"}</Math> at {EX_P}, <Math>{"S_3"}</Math> at {EX_DEARER}. Nobody signs.</td>
+                                    <td className={PAPER_CELL}>No published price fits the job. <Math>{"B"}</Math> fixes its ceiling at {EX_CEILING}, the most it will pay. Nobody signs.</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">2. Draft, sent at once with one deadline</td>
-                                    <td className="border border-default px-3 py-1.5">Three drafts, each naming one candidate at that candidate&rsquo;s own price. <Math>{"B"}</Math> signs nothing.</td>
-                                    <td className="border border-default px-3 py-1.5">Three drafts at the ceiling, each naming one candidate and the fields <Math>{"B"}</Math> treats as priced. <Math>{"B"}</Math> signs nothing.</td>
+                                    <td className={PAPER_CELL}>2. Draft, sent at once with one deadline</td>
+                                    <td className={PAPER_CELL}>Three drafts, each naming one candidate at that candidate&rsquo;s own price. <Math>{"B"}</Math> signs nothing.</td>
+                                    <td className={PAPER_CELL}>Three drafts at the ceiling, each naming one candidate and the fields <Math>{"B"}</Math> treats as priced. <Math>{"B"}</Math> signs nothing.</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">3. Answer, within the window</td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{"S_1"}</Math> is busy and does not answer. <Math>{"S_2"}</Math> and <Math>{"S_3"}</Math> each sign their draft unchanged.</td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{"S_1"}</Math> re-prices its draft at {EX_QUOTE_HIGH} and signs it; <Math>{"S_2"}</Math> re-prices at {EX_P} and signs; <Math>{"S_3"}</Math> does not answer.</td>
+                                    <td className={PAPER_CELL}>3. Answer, within the window</td>
+                                    <td className={PAPER_CELL}><Math>{"S_1"}</Math> is busy and does not answer. <Math>{"S_2"}</Math> and <Math>{"S_3"}</Math> each sign their draft unchanged.</td>
+                                    <td className={PAPER_CELL}><Math>{"S_1"}</Math> re-prices its draft at {EX_QUOTE_HIGH} and signs it; <Math>{"S_2"}</Math> re-prices at {EX_P} and signs; <Math>{"S_3"}</Math> does not answer.</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">4. Verify</td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{"B"}</Math> checks that each answer is the struct it drafted, hash for hash, and that the signature verifies against the terms as signed.</td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{"B"}</Math> rebuilds its own draft at each quoted figure and requires the answer to equal it, hash for hash. The attached agreement must hash to the agreement hash the answer carries, and the signature must verify against the terms as signed. <Math>{"B"}</Math> also checks that the figure lies between one unit and the ceiling.</td>
+                                    <td className={PAPER_CELL}>4. Verify</td>
+                                    <td className={PAPER_CELL}><Math>{"B"}</Math> checks that each answer is the struct it drafted, hash for hash, and that the signature verifies against the terms as signed.</td>
+                                    <td className={PAPER_CELL}><Math>{"B"}</Math> rebuilds its own draft at each quoted figure and requires the answer to equal it, hash for hash. The attached agreement must hash to the agreement hash the answer carries, and the signature must verify against the terms as signed. <Math>{"B"}</Math> also checks that the figure lies between one unit and the ceiling.</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">5. Select and sign, at the close</td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{"B"}</Math> signs <Math>{"S_2"}</Math>&rsquo;s answer at {EX_P}, the cheapest verified one.</td>
-                                    <td className="border border-default px-3 py-1.5"><Math>{"B"}</Math> signs <Math>{"S_2"}</Math>&rsquo;s answer at {EX_P}, the cheapest verified answer.</td>
+                                    <td className={PAPER_CELL}>5. Select and sign, at the close</td>
+                                    <td className={PAPER_CELL}><Math>{"B"}</Math> signs <Math>{"S_2"}</Math>&rsquo;s answer at {EX_P}, the cheapest verified one.</td>
+                                    <td className={PAPER_CELL}><Math>{"B"}</Math> signs <Math>{"S_2"}</Math>&rsquo;s answer at {EX_P}, the cheapest verified answer.</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">6. Admission</td>
-                                    <td className="border border-default px-3 py-1.5" colSpan={2}>The commitment, with both signatures, is submitted. The mechanism locks a bond from each party so the other can count on it: {EX.buyer_locks} from <Math>{"B"}</Math>, twice the payment, and {EX.seller_locks} from <Math>{"S_2"}</Math>, twice the cumulative value, {EX.held} held in all. The losing answer lapses at the deadline, having moved nothing.</td>
+                                    <td className={PAPER_CELL}>6. Admission</td>
+                                    <td className={PAPER_CELL} colSpan={2}>The commitment, with both signatures, is submitted. The mechanism locks a bond from each party so the other can count on it: {EX.buyer_locks} from <Math>{"B"}</Math>, twice the payment, and {EX.seller_locks} from <Math>{"S_2"}</Math>, twice the cumulative value, {EX.held} held in all. The losing answer lapses at the deadline, having moved nothing.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -533,80 +534,80 @@ export default function MarketsWithoutAVenuePaper() {
                             <thead>
                                 <tr>
                                     {["Property", "Without a venue", "Where"].map((h) => (
-                                        <th key={h} className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">{h}</th>
+                                        <th key={h} className={`${PAPER_CELL} text-left font-semibold text-ink-heading`}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Mutual exclusion</td>
-                                    <td className="border border-default px-3 py-1.5">Held: a buyer signing last, and signing one answer, is held to one commitment of its choosing at every position, save the fallback of &sect;5.4(4) at an opening position. A venue contract would have to hold or constrain a signature that is never in circulation.</td>
-                                    <td className="border border-default px-3 py-1.5">Proposition 3.1</td>
+                                    <td className={PAPER_CELL}>Mutual exclusion</td>
+                                    <td className={PAPER_CELL}>Held: a buyer signing last, and signing one answer, is held to one commitment of its choosing at every position, save the fallback of &sect;5.4(4) at an opening position. A venue contract would have to hold or constrain a signature that is never in circulation.</td>
+                                    <td className={PAPER_CELL}>Proposition 3.1</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Formation safety</td>
-                                    <td className="border border-default px-3 py-1.5">Held: an answer exposes its signer to the one trade it answered for, and to nothing the buyer can enlarge.</td>
-                                    <td className="border border-default px-3 py-1.5">&sect;3.2, the remark on one commitment whatever <Math>{"k"}</Math></td>
+                                    <td className={PAPER_CELL}>Formation safety</td>
+                                    <td className={PAPER_CELL}>Held: an answer exposes its signer to the one trade it answered for, and to nothing the buyer can enlarge.</td>
+                                    <td className={PAPER_CELL}>&sect;3.2, the remark on one commitment whatever <Math>{"k"}</Math></td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Anti-reneging bond</td>
-                                    <td className="border border-default px-3 py-1.5">Held in part, without a bid bond: the answer bonds its signer once the commitment is admitted, and a losing answer costs its signer nothing; a selected candidate that leaves itself unfunded before admission fails the commitment at no cost to itself. A venue&rsquo;s bid bond would price that withdrawal by giving the candidate&rsquo;s calculation a stake in the game that the mechanism&rsquo;s equilibrium does not cover, and losing would stop being free.</td>
-                                    <td className="border border-default px-3 py-1.5">&sect;&sect;2.1, 3.3, 5.4(4); Proposition 6.2</td>
+                                    <td className={PAPER_CELL}>Anti-reneging bond</td>
+                                    <td className={PAPER_CELL}>Held in part, without a bid bond: the answer bonds its signer once the commitment is admitted, and a losing answer costs its signer nothing; a selected candidate that leaves itself unfunded before admission fails the commitment at no cost to itself. A venue&rsquo;s bid bond would price that withdrawal by giving the candidate&rsquo;s calculation a stake in the game that the mechanism&rsquo;s equilibrium does not cover, and losing would stop being free.</td>
+                                    <td className={PAPER_CELL}>&sect;&sect;2.1, 3.3, 5.4(4); Proposition 6.2</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Discovery</td>
-                                    <td className="border border-default px-3 py-1.5">Held as a public read of the members&rsquo; published terms, where an empty result means absence. A venue&rsquo;s list is a roster, where an entry means admission by someone and an empty result means the roster is incomplete. Discovery at scale is outside the model.</td>
-                                    <td className="border border-default px-3 py-1.5">&sect;&sect;2.5, 3.3</td>
+                                    <td className={PAPER_CELL}>Discovery</td>
+                                    <td className={PAPER_CELL}>Held as a public read of the members&rsquo; published terms, where an empty result means absence. A venue&rsquo;s list is a roster, where an entry means admission by someone and an empty result means the roster is incomplete. Discovery at scale is outside the model.</td>
+                                    <td className={PAPER_CELL}>&sect;&sect;2.5, 3.3</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">No interval between award and contract</td>
-                                    <td className="border border-default px-3 py-1.5">Held: no state exists in which the buyer has selected and not committed, so terms cannot be reopened.</td>
-                                    <td className="border border-default px-3 py-1.5">&sect;4.3</td>
+                                    <td className={PAPER_CELL}>No interval between award and contract</td>
+                                    <td className={PAPER_CELL}>Held: no state exists in which the buyer has selected and not committed, so terms cannot be reopened.</td>
+                                    <td className={PAPER_CELL}>&sect;4.3</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Stability</td>
-                                    <td className="border border-default px-3 py-1.5">Held for the race at one position, among the candidates that answered, under the default rule or any override complete over them; the residual failures are thickness and congestion, priced by the buyer&rsquo;s own <Math>{"k"}</Math> and window. No stability result is stated for the request for quotes.</td>
-                                    <td className="border border-default px-3 py-1.5">Proposition 4.1</td>
+                                    <td className={PAPER_CELL}>Stability</td>
+                                    <td className={PAPER_CELL}>Held for the race at one position, among the candidates that answered, under the default rule or any override complete over them; the residual failures are thickness and congestion, priced by the buyer&rsquo;s own <Math>{"k"}</Math> and window. No stability result is stated for the request for quotes.</td>
+                                    <td className={PAPER_CELL}>Proposition 4.1</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Commensurable answers</td>
-                                    <td className="border border-default px-3 py-1.5">Held: an answer moves the price and nothing else.</td>
-                                    <td className="border border-default px-3 py-1.5">Proposition 5.1</td>
+                                    <td className={PAPER_CELL}>Commensurable answers</td>
+                                    <td className={PAPER_CELL}>Held: an answer moves the price and nothing else.</td>
+                                    <td className={PAPER_CELL}>Proposition 5.1</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Participation known in advance</td>
-                                    <td className="border border-default px-3 py-1.5">Held: the balance a commitment requires is stated in the draft.</td>
-                                    <td className="border border-default px-3 py-1.5">&sect;5.4</td>
+                                    <td className={PAPER_CELL}>Participation known in advance</td>
+                                    <td className={PAPER_CELL}>Held: the balance a commitment requires is stated in the draft.</td>
+                                    <td className={PAPER_CELL}>&sect;5.4</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">The mechanism&rsquo;s equilibrium for the commitments formed</td>
-                                    <td className="border border-default px-3 py-1.5">Held: inherited without re-derivation.</td>
-                                    <td className="border border-default px-3 py-1.5">Proposition 6.2</td>
+                                    <td className={PAPER_CELL}>The mechanism&rsquo;s equilibrium for the commitments formed</td>
+                                    <td className={PAPER_CELL}>Held: inherited without re-derivation.</td>
+                                    <td className={PAPER_CELL}>Proposition 6.2</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Verifiable selection</td>
-                                    <td className="border border-default px-3 py-1.5">Lost: the buyer is bound by no rule, so a loser has nothing to audit.</td>
-                                    <td className="border border-default px-3 py-1.5">&sect;3.3</td>
+                                    <td className={PAPER_CELL}>Verifiable selection</td>
+                                    <td className={PAPER_CELL}>Lost: the buyer is bound by no rule, so a loser has nothing to audit.</td>
+                                    <td className={PAPER_CELL}>&sect;3.3</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Second-price payment; a strategy-proof request for quotes</td>
-                                    <td className="border border-default px-3 py-1.5">Impossible: first price is forced.</td>
-                                    <td className="border border-default px-3 py-1.5">Proposition 5.2</td>
+                                    <td className={PAPER_CELL}>Second-price payment; a strategy-proof request for quotes</td>
+                                    <td className={PAPER_CELL}>Impossible: first price is forced.</td>
+                                    <td className={PAPER_CELL}>Proposition 5.2</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Selection evidenced in the data</td>
-                                    <td className="border border-default px-3 py-1.5">Absent: the data cannot tell a raced commitment from one arranged by hand, and the buyer shows how it chose only by its own attestation.</td>
-                                    <td className="border border-default px-3 py-1.5">&sect;6.2</td>
+                                    <td className={PAPER_CELL}>Selection evidenced in the data</td>
+                                    <td className={PAPER_CELL}>Absent: the data cannot tell a raced commitment from one arranged by hand, and the buyer shows how it chose only by its own attestation.</td>
+                                    <td className={PAPER_CELL}>&sect;6.2</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Stability across several positions</td>
-                                    <td className="border border-default px-3 py-1.5">Not established: a sequence of stable one-position matches is not in general a stable many-to-many match.</td>
-                                    <td className="border border-default px-3 py-1.5">&sect;4.4</td>
+                                    <td className={PAPER_CELL}>Stability across several positions</td>
+                                    <td className={PAPER_CELL}>Not established: a sequence of stable one-position matches is not in general a stable many-to-many match.</td>
+                                    <td className={PAPER_CELL}>&sect;4.4</td>
                                 </tr>
                                 <tr>
-                                    <td className="border border-default px-3 py-1.5">Efficiency</td>
-                                    <td className="border border-default px-3 py-1.5">Not claimed.</td>
-                                    <td className="border border-default px-3 py-1.5">&sect;5.3, the remark on efficiency</td>
+                                    <td className={PAPER_CELL}>Efficiency</td>
+                                    <td className={PAPER_CELL}>Not claimed.</td>
+                                    <td className={PAPER_CELL}>&sect;5.3, the remark on efficiency</td>
                                 </tr>
                             </tbody>
                         </table>

@@ -39,7 +39,7 @@ const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
     },
     {
         line: "What is proved and what is checked is stated bench by bench.",
-        body: "The page sets out seven independent verification benches, what each covers and what it cannot reach, and how the code is secured, bench by bench, with the bounty beside them.",
+        body: "The page sets out a verification stack of independent benches, each from a different angle: what each covers and what it cannot reach, and how the code is secured, bench by bench, with the bounty beside them.",
         cta: "Security",
         href: "/security",
     },

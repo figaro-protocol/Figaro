@@ -30,7 +30,7 @@ export interface LayeredDefenseFigureProps extends BaseFigureProps {
 // /faq's own ranked list and wording ("the smart contract", "the data", "reach into the
 // smart contract", "the losing party's other assets") — the default's sole consumer.
 const FAQ_LAYERS: NonNullable<LayeredDefenseFigureProps["layers"]> = [
-    { label: "1 · The chain", note: "Ethereum's consensus — the data nothing can rewrite" },
+    { label: "1 · The chain", note: "the chain's consensus — the data nothing can rewrite" },
     { label: "2 · The smart contract (FigaroCore)", note: "holds each bond on the direct path; only the buyer's resolveProcess moves them" },
     { label: "3 · The other sellers", note: "all-or-nothing resolution gives every co-seller a bond-backed reason to help remedy" },
     { label: "4 · Arbitration (e.g. Kleros)", note: "weighs the on-chain data from outside the trade" },
@@ -41,8 +41,8 @@ const FAQ_BOUNDARY = "data only below this line — nothing here moves a bonded 
 const FAQ_RING_LABEL = "reach boundary";
 const FAQ_TITLE = "The layered defense stack, nested inside-out";
 const FAQ_DESC =
-    "Five concentric layers. Layer one, the chain, is Ethereum's immutable " +
-    "ledger. Layer two, the smart contract, is FigaroCore holding every party's " +
+    "Five concentric layers. Layer one, the chain, is the ledger nobody can " +
+    "rewrite. Layer two, the smart contract, is FigaroCore holding every party's " +
     "bond — nothing leaves it until the buyer signs the close. Layer three is " +
     "the other bonded sellers, whose bond-backed interest in remedy comes from " +
     "the same smart contract's all-or-nothing resolution and from nothing held apart. A " +
