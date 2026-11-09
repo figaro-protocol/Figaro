@@ -5,6 +5,7 @@ import type { Abi } from "viem";
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
 import { simulateWrite } from "@/lib/shared/contractWrite";
+import { activeChain } from "@/lib/shared/chains";
 
 function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x${string}` | undefined; owner?: `0x${string}` | undefined; spender: `0x${string}` }) {
     const { data: allowance, isFetched: allowanceKnown, isRefetching: isAllowanceRefetching, refetch: refetchAllowance } = useReadContract({
@@ -59,7 +60,9 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
     }, [allowance]);
 
     // Simulate, then send: the one write sequence every other write follows
-    // (`simulateWriteVerify`); the receipt is verified by the query above.
+    // (`simulateWriteVerify`), naming the build's chain (`chainId`), so the
+    // write refuses a mismatch in the page, before the wallet prompt; the
+    // receipt is verified by the query above.
     const approve = useCallback(async (amount: bigint) => {
         if (!tokenAddress) return;
         setSimulateError(false);
@@ -78,6 +81,7 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
             abi: ERC20_ABI,
             functionName: "approve",
             args: [spender, amount],
+            chainId: activeChain.id,
         });
     }, [tokenAddress, owner, spender, writeApprove, client]);
 

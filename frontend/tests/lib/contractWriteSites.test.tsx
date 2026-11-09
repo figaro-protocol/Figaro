@@ -2,7 +2,7 @@
  * Every on-chain write goes through the one simulate → send → verify helper:
  * each write site simulates exactly the call it then sends — the contract,
  * the function and its arguments (and the stake, where one is sent) — sends
- * it with `chain: activeChain`, and waits for a `success` receipt, in that
+ * it with `chainId: activeChain.id`, and waits for a `success` receipt, in that
  * order; a simulate-time revert reaches the caller translated by the
  * contract's error name, before the wallet opens.
  *
@@ -418,14 +418,14 @@ describe("every write site — one simulate → send → verify", () => {
     });
 
     for (const { site, prepare, writes, errorName, message } of SITES) {
-        it(`${site} simulates, then sends with chain: activeChain, exactly the calls it writes, and waits for each success receipt`, async () => {
+        it(`${site} simulates, then sends with chainId: activeChain.id, exactly the calls it writes, and waits for each success receipt`, async () => {
             const call = await prepare();
             const caught = await invokeCaught(call);
             expect(caught).toBeUndefined();
             const expected = writes();
             const sent = w.write.mock.calls.map(([config]) => config);
             expect(sent.map(writtenOf)).toEqual(expected);
-            for (const config of sent) expect(config.chain).toBe(activeChain);
+            for (const config of sent) expect(config.chainId).toBe(activeChain.id);
             // The call simulated is the call sent, each simulated before it is
             // sent and its receipt read after.
             expect(simulate().mock.calls.map(([config]) => writtenOf(config))).toEqual(expected);

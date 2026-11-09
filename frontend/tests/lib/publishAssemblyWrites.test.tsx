@@ -75,7 +75,7 @@ import { createSyntheticRootOrder, createSyntheticSubOrder, startSyntheticSessio
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 
-type Call = { address: string; functionName: string; args: readonly unknown[]; value?: bigint; chain?: unknown };
+type Call = { address: string; functionName: string; args: readonly unknown[]; value?: bigint; chainId?: number };
 const shape = ({ address, functionName, args, value }: Call) => ({ address: address.toLowerCase(), functionName, args, value });
 
 beforeAll(async () => {
@@ -143,7 +143,7 @@ describe("usePublishAgreement — one order's agreement registered on its own", 
         expect(s.write.mock.calls.map(([c]) => shape(c))).toEqual([
             { address: AGREEMENT_REGISTRY, functionName: "registerAgreement", args: [key, "ipfs://pin-1"], value: AGREEMENT_STAKE },
         ]);
-        expect(s.write.mock.calls[0][0].chain).toBe(activeChain);
+        expect(s.write.mock.calls[0][0].chainId).toBe(activeChain.id);
         expect(s.calls).toEqual(["pin:1", "simulate:registerAgreement", "write:registerAgreement", "receipt"]);
         expect(outcome).toEqual({ agreementHash: key, hash: TX, ipfsURI: "ipfs://pin-1" });
     });
@@ -172,7 +172,7 @@ describe("usePublishAssembly — the agreements, then the assembly", () => {
             { address: AGREEMENT_REGISTRY, functionName: "registerAgreement", args: [keys[1], "ipfs://pin-3"], value: AGREEMENT_STAKE },
             { address: ASSEMBLY_REGISTRY, functionName: "registerAssembly", args: [assemblyHash, "ipfs://pin-1"], value: ASSEMBLY_STAKE },
         ]);
-        for (const [c] of s.write.mock.calls) expect(c.chain).toBe(activeChain);
+        for (const [c] of s.write.mock.calls) expect(c.chainId).toBe(activeChain.id);
         expect(s.calls).toEqual([
             "pin:1", "simulate:registerAssembly",
             "pin:2", "simulate:registerAgreement",

@@ -308,10 +308,6 @@ The same three values the `.card` / `.section-card` class applies, so the compon
 
 Section-card shape lifted off the page. `ModalChrome` is the owning primitive — backdrop with click-to-dismiss, escape-to-dismiss, tab focus trap, initial focus + restoration, body scroll lock, `role="dialog"`/`aria-modal` ARIA — with panel styling caller-supplied (`panelClassName`); do not re-inline any of those concerns in a modal. Backdrop `rgba(58, 50, 42, 0.4)` (40% `ink.primary`) — tinted from ink, not pure black.
 
-### Toast (`components/ui/toast.ts`)
-
-The one notification helper over sonner — success (optional tx-hash description), error (contract reverts, wallet rejections, RPC failures decoded via `extractErrorMessage`, the same logic inline error displays use). Feature call sites import this module, never `sonner` directly; the `<Toaster>` mount lives in `app/providers.tsx`.
-
 ### Nav current state ("you are here")
 
 Three ORTHOGONAL channels, so no two interaction states are confusable:
