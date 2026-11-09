@@ -162,7 +162,9 @@ contract FlorinTokenTest is Test {
         address owner = vm.addr(pk);
         florin.mint(owner, 1000 ether);
         uint256 nonce = florin.nonces(owner);
-        uint256 deadline = block.timestamp;
+        // Read through the cheatcode: the via-IR build re-reads `block.timestamp`
+        // after `vm.warp`, which would move the deadline with the warp.
+        uint256 deadline = vm.getBlockTimestamp();
         // A valid signature by the owner: only the deadline is wrong.
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, _permitDigest(owner, bob, 500 ether, nonce, deadline));
         vm.warp(deadline + 1);
