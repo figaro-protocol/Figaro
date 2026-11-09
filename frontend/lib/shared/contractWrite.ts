@@ -1,11 +1,17 @@
 /**
  * contractWrite — the ONE on-chain write sequence every frontend write uses:
  * simulate the call to surface a typed revert BEFORE the wallet opens, send
- * it with `chain: activeChain` (wallets that enforce chain-matching —
- * Coinbase Wallet, WalletConnect v2 — refuse a write without it), then wait
+ * it on the build's chain (`chainId: activeChain.id`), then wait
  * for the receipt and verify it landed `success`. A revert reaches the
  * caller translated by the contract's error name: the site's own revert
  * table first, then the FigaroCore wording, then the bare error name.
+ *
+ * The send names the build's chain as `chainId: activeChain.id`. wagmi's
+ * `writeContract` reads the chain only from `chainId`: it sets viem's `chain`
+ * itself, and only when `chainId` is given does it set `assertChainId: true`,
+ * so viem reads the wallet's chain (`eth_chainId`) and throws
+ * `ChainMismatchError` on a mismatch. The write refuses a mismatch in the
+ * page, before the wallet prompt opens.
  *
  * The client and `writeContractAsync` are injected (`usePublicClient`,
  * `useWriteContract`), so each hook keeps its own wagmi state and this stays
@@ -43,7 +49,7 @@ interface WriteClient extends SimulateClient {
 
 /** The wagmi `writeContractAsync` shape this sequence sends through. */
 export type WriteContractAsync = (
-    config: Omit<ContractCall, "revertMessage"> & { chain: typeof activeChain },
+    config: Omit<ContractCall, "revertMessage"> & { chainId: typeof activeChain.id },
 ) => Promise<Hex>;
 
 function translate(err: unknown, revertMessage: RevertMessage | undefined): Error {
@@ -65,7 +71,7 @@ export async function simulateWrite(client: SimulateClient, call: ContractCall):
     }
 }
 
-/** Simulate → send (with `chain: activeChain`) → verify. Returns the
+/** Simulate → send (with `chainId: activeChain.id`) → verify. Returns the
  *  confirmed transaction hash; throws a revert translated by error name, or
  *  `failureMessage` for a mined-but-reverted transaction. */
 export async function simulateWriteVerify(config: ContractCall & {
@@ -78,7 +84,7 @@ export async function simulateWriteVerify(config: ContractCall & {
     await simulateWrite(client, call);
     let txHash: Hex;
     try {
-        txHash = await writeContractAsync({ ...callOf(call), chain: activeChain });
+        txHash = await writeContractAsync({ ...callOf(call), chainId: activeChain.id });
     } catch (err) {
         throw translate(err, call.revertMessage);
     }

@@ -37,7 +37,7 @@ function fakes(receiptStatus = "success") {
         simulateContract: vi.fn(async () => { calls.push("simulate"); return {}; }),
         waitForTransactionReceipt: vi.fn(async () => { calls.push("receipt"); return { status: receiptStatus }; }),
     };
-    type WriteConfig = { functionName: string; args: readonly unknown[]; value?: bigint; chain?: unknown };
+    type WriteConfig = { functionName: string; args: readonly unknown[]; value?: bigint; chainId?: number };
     const writeContractAsync = vi.fn(async (_config: WriteConfig) => { calls.push("write"); return `0x${"77".repeat(32)}` as const; });
     const ipfs = { publishJSON: vi.fn(async (_data: unknown) => { calls.push("pin"); return { cid: "bafy", uri: "ipfs://bafy", path: "/ipfs/bafy", gatewayUrl: "http://127.0.0.1:8080/ipfs/bafy" }; }) };
     return { calls, client, writeContractAsync, ipfs };
@@ -56,7 +56,7 @@ describe("registerAgreement", () => {
         expect(write.functionName).toBe("registerAgreement");
         expect(write.args).toEqual([KEY, "ipfs://bafy"]);
         expect(write.value).toBe(STAKE);
-        expect(write.chain).toBe(activeChain);
+        expect(write.chainId).toBe(activeChain.id);
         // The pinned document is the canonical form of the designer's document,
         // its words included — the key is over the clauses alone.
         expect(ipfs.publishJSON.mock.calls[0][0]).toEqual(DOC);

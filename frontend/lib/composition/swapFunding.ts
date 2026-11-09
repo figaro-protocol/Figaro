@@ -141,6 +141,8 @@ export async function quoteFundingLeg(
         // randomness — the SDK's salt generator, which is the same draw.
         nonce: generateSalt(),
         deadline: args.deadline,
+        // The build's chain (the caller's `useChainId()`), never the
+        // wallet's: it is the witness's EIP-712 domain `chainId`.
         chainId: args.chainId,
         permit2: contracts.permit2,
         coordinator: contracts.coordinator,

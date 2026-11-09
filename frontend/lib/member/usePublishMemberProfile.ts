@@ -21,7 +21,7 @@
  *      time, `updateProfile` for re-pin) BEFORE opening the wallet,
  *      so a wrong-deposit / unauthorized revert surfaces as a typed
  *      error instead of a silent on-chain failure post-submission.
- *   6. Submit, with `chain: activeChain`.
+ *   6. Submit, with `chainId: activeChain.id`.
  *   7. Explicitly wait for the receipt + verify status === "success".
  *
  *   Steps 5–7 are the shared `simulateWriteVerify`; a revert is reported by

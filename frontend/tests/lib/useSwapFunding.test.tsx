@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { maxUint256 } from "viem";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
+import { activeChain } from "@/lib/shared/chains";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 
 // The wagmi surface `useTokenApproval` reads (the shape
@@ -87,13 +88,13 @@ describe("useSwapFunding — the Permit2 authorization of the chosen token", () 
         });
     });
 
-    it("authorize sends approve(permit2, maxUint256) on the chosen token", async () => {
+    it("authorize sends approve(permit2, maxUint256) on the chosen token, on the build's chain", async () => {
         const { result } = render();
         act(() => result.current.setFundingToken(TOKEN_B));
         await act(async () => { await result.current.authorize(); });
         expect(wagmiState.writeContract).toHaveBeenCalledTimes(1);
         expect(wagmiState.writeContract).toHaveBeenCalledWith({
-            address: TOKEN_B, abi: ERC20_ABI, functionName: "approve", args: [PERMIT2, maxUint256],
+            address: TOKEN_B, abi: ERC20_ABI, functionName: "approve", args: [PERMIT2, maxUint256], chainId: activeChain.id,
         });
     });
 
