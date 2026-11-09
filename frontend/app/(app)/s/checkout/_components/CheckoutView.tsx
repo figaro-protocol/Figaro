@@ -51,6 +51,7 @@ import {
 } from "@/lib/composition/swapFunding";
 import { SwapFundingPanel } from "./SwapFundingPanel";
 import { useSwapFunding, fundingBlocksTheAct } from "@/lib/composition/useSwapFunding";
+import { useFundingMargin, marginBlocksTheAct } from "@/lib/composition/useFundingMargin";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 import { FieldControl } from "@/components/runtime/FieldControl";
@@ -209,6 +210,14 @@ export function CheckoutView({ sellerAddress }: Props) {
     });
     const swapFundingContracts = swapFunding.contracts;
     const { candidates: fundingCandidates, fundingToken } = swapFunding;
+    // The slippage margin the buyer sets in the chooser, before the quote its
+    // signature binds; the bond it quotes for is known below (`marginFor`).
+    const fundingMargins = useFundingMargin({
+        party: buyer ?? undefined,
+        currency: currency ?? undefined,
+        fundingToken,
+        fundingSymbol: fundingCandidates.find((t) => hexEqual(t.address, fundingToken))?.symbol ?? "",
+    });
     const [translationQuotes, setTranslationQuotes] = useState<
         { key: string; byPrice: Record<string, { result: ListedPriceTranslation | null; failed: boolean }> } | null
     >(null);
@@ -580,6 +589,13 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Where the chosen funding token stands with Permit2 — the one derived
     // state the funding panel shows and the place-order button obeys.
     const buyerFunding = swapFunding.authorizationFor(lockedTotal);
+    // The margin against the whole locked total: every order's leg draws on
+    // the same funding token, and each is quoted again at its own sign.
+    const buyerMargin = fundingMargins.marginFor(lockedTotal);
+    const marginHeld = !!fundingToken && marginBlocksTheAct(buyerMargin);
+    const buyerFundingRequest = fundingToken
+        ? { inputToken: fundingToken, ...(buyerMargin.bps !== null ? { slippageBps: buyerMargin.bps } : {}) }
+        : undefined;
 
     // Every order in the assembly — root + sub-orders — surfaced for review:
     // the buyer signs and bonds ALL of them. Each clause renders its COMPOSED
@@ -745,14 +761,14 @@ export function CheckoutView({ sellerAddress }: Props) {
                     // The buyer's funding choice binds here: every order the
                     // walk signs (root and sub-orders alike) carries its own
                     // witness-signed swap leg when a funding token is chosen.
-                    signRoot: (p) => signRoot(p, fundingToken ? { inputToken: fundingToken } : undefined),
+                    signRoot: (p) => signRoot(p, buyerFundingRequest),
                     // An AGENT winner (declared services.rest) also receives the
                     // commit-ready payload at its endpoint — a wallet with no
                     // browser open still gets its order and broadcasts itself.
                     // The channel relay still goes out; dual delivery is
                     // harmless and the endpoint failing never blocks checkout.
                     signAndShare: async (p, opts) => {
-                        const payload = await signAndShare(p, fundingToken ? { inputToken: fundingToken } : undefined, opts);
+                        const payload = await signAndShare(p, buyerFundingRequest, opts);
                         if (opts?.sellerSig && raceOutcome?.endpoint && hexEqual(p.commitment.seller, raceOutcome.selection.seller)) {
                             await postToAgentEndpoint(raceOutcome.endpoint, payload).catch(() => undefined);
                         }
@@ -784,6 +800,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             setCheckoutError("Authorize the funding token first — the one-time Permit2 approval below.");
             return;
         }
+        if (marginHeld) return;
         setCheckoutError(null);
         try {
             runWithApproval(lockedTotal, () => void executeCheckout());
@@ -1218,6 +1235,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 onSelect={swapFunding.setFundingToken}
                                 authorization={buyerFunding}
                                 onAuthorize={swapFunding.authorize}
+                                margin={buyerMargin}
                             />
                         )}
                         {swapFunding.authorizeFailed && (
@@ -1272,6 +1290,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 || !orderReady
                                 || !termsReady
                                 || fundingBlocksTheAct(buyerFunding)
+                                || marginHeld
                             }
                             data-testid="btn-place-order"
                             className="w-full"
@@ -1286,6 +1305,8 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             ? "Authorize the funding token first"
                                         : fundingBlocksTheAct(buyerFunding)
                                             ? "Checking the funding authorization…"
+                                        : marginHeld
+                                            ? "Fix the slippage margin first"
                                         : !currency
                                             ? "Seller hasn't set a denomination"
                                             : !orderReady

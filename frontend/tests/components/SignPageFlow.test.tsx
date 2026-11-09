@@ -34,6 +34,8 @@ const m = vi.hoisted(() => ({
     flow: undefined as unknown as { step: Step; error: string | null; acceptOrder: (...a: unknown[]) => Promise<unknown>; reset: () => void },
     inbox: { entries: [] as unknown[], status: "listening" as "idle" | "listening" | "error", error: null as string | null },
     swap: undefined as unknown as { fundingToken: Hex | null; authorization: string },
+    // What the seller typed in the chooser's slippage margin field (null: untouched).
+    marginText: null as string | null,
 }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(m.search) }));
 vi.mock("wagmi", () => ({ useAccount: () => ({ address: m.address }) }));
@@ -52,6 +54,20 @@ vi.mock("@/lib/composition/useSwapFunding", async (importOriginal) => ({
         authorizationFor: () => m.swap.authorization, authorize: () => {}, authorizeFailed: false,
     }),
 }));
+// The margin's chain reads (the venue quote) are the hook's own; here the venue's
+// margin is 1% and its quote 1000, and the real `fundingMargin` derives the rest.
+vi.mock("@/lib/composition/useFundingMargin", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/composition/useFundingMargin")>();
+    return {
+        ...actual,
+        useFundingMargin: () => ({
+            marginFor: () => ({
+                ...actual.fundingMargin({ text: m.marginText, defaultBps: 100, quotedInput: 1_000n, balance: 10n ** 30n }),
+                venue: "uniswap-v3", decimals: 6, symbol: "AAA", onChange: () => {},
+            }),
+        }),
+    };
+});
 vi.mock("@/hooks/useTokenBalance", () => ({ default: () => ({ read: { status: "present", value: 10n ** 30n }, refetch: () => {} }) }));
 vi.mock("@/hooks/useTokenDecimals", () => ({ default: () => ({ decimals: 6, ready: true, loading: false }) }));
 vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: "TKN" }) }));
@@ -96,6 +112,7 @@ beforeEach(() => {
     m.flow = { step: "idle", error: null, acceptOrder: vi.fn(async () => `0x${"cc".repeat(32)}`), reset: vi.fn() };
     m.inbox = { entries: [], status: "listening", error: null };
     m.swap = { fundingToken: null, authorization: "none" };
+    m.marginText = null;
 });
 
 describe("/sign — the coordination-channel inbox", () => {
@@ -179,7 +196,25 @@ describe("/sign — the seller's counter-signature and the flow's step", () => {
         m.swap = { fundingToken: FUNDING_TOKEN, authorization: "ready" };
         await reviewing();
         await act(async () => { fireEvent.click(screen.getByTestId("btn-counter-sign")); });
-        expect(m.flow.acceptOrder).toHaveBeenCalledWith(expect.anything(), { inputToken: FUNDING_TOKEN });
+        // Untouched, the margin is the venue's own, and the leg is quoted with it.
+        expect(m.flow.acceptOrder).toHaveBeenCalledWith(expect.anything(), { inputToken: FUNDING_TOKEN, slippageBps: 100 });
+    });
+
+    it("counter-signs with the slippage margin the seller set in the chooser", async () => {
+        m.swap = { fundingToken: FUNDING_TOKEN, authorization: "ready" };
+        m.marginText = "2.5";
+        await reviewing();
+        await act(async () => { fireEvent.click(screen.getByTestId("btn-counter-sign")); });
+        expect(m.flow.acceptOrder).toHaveBeenCalledWith(expect.anything(), { inputToken: FUNDING_TOKEN, slippageBps: 250 });
+    });
+
+    it("holds the counter-signature while the slippage margin is refused", async () => {
+        m.swap = { fundingToken: FUNDING_TOKEN, authorization: "ready" };
+        m.marginText = "11";
+        await reviewing();
+        const button = screen.getByTestId("btn-counter-sign") as HTMLButtonElement;
+        expect(button.textContent).toBe("Fix the slippage margin first");
+        expect(button.disabled).toBe(true);
     });
 
     it("holds the counter-signature while the chosen funding token still needs its authorization", async () => {

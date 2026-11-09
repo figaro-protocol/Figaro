@@ -69,6 +69,13 @@ export interface SwapConfirmationDetails {
     currency: string;
     /** The maximum input the swap may consume — the figure being authorized. */
     maxInput: bigint;
+    /** The slippage margin `maxInput` carries over the venue's quote, in basis
+     *  points: set by the party in the funding-token chooser before the quote,
+     *  shown here read-only so what is reviewed is what is signed. */
+    slippageBps: number;
+    /** The signing party, whose input-token balance the modal shows against
+     *  `maxInput` (the coordinator pulls the whole cap through Permit2). */
+    party: string;
 }
 
 export interface PendingPreview {

@@ -30,6 +30,7 @@ import { specSource } from "@/lib/shared/clauseSpecSource";
 import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
 import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
 import { useSwapFunding, fundingBlocksTheAct } from "@/lib/composition/useSwapFunding";
+import { useFundingMargin, marginBlocksTheAct } from "@/lib/composition/useFundingMargin";
 import useTokenBalance from "@/hooks/useTokenBalance";
 import { useMemberProfile } from "@/lib/member/useMembersRegistry";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
@@ -146,7 +147,9 @@ function SignPageContent() {
             // above). A chosen funding token adds the seller's witness-signed
             // on-ramp leg — swapped into the process denomination in the same
             // atomic swapAndCommit.
-            await acceptOrder(parsed, sellerFundingToken ? { inputToken: sellerFundingToken } : undefined);
+            await acceptOrder(parsed, sellerFundingToken
+                ? { inputToken: sellerFundingToken, ...(sellerMargin.bps !== null ? { slippageBps: sellerMargin.bps } : {}) }
+                : undefined);
         } catch {
             // Error state handled by the order commitment flow.
         }
@@ -241,6 +244,15 @@ function SignPageContent() {
     // counter-sign with a funding leg broadcasts swapAndCommit, which pulls
     // the token through Permit2 and reverts on an allowance that is short.
     const sellerFunding = swapFunding.authorizationFor(myBondAmount);
+    // The slippage margin the seller sets in the chooser, before the quote
+    // its accept signature binds.
+    const sellerMargin = useFundingMargin({
+        party: isSeller ? address : undefined,
+        currency: approvalCurrency,
+        fundingToken: sellerFundingToken,
+        fundingSymbol: sellerFundingCandidates.find((t) => hexEqual(t.address, sellerFundingToken))?.symbol ?? "",
+    }).marginFor(myBondAmount);
+    const marginHeld = !!sellerFundingToken && marginBlocksTheAct(sellerMargin);
     // A seller short of the denomination has no other way through accept —
     // insufficiency auto-opens the collapsed on-ramp.
     const sellerShortOfDenomination = isSeller
@@ -521,6 +533,7 @@ function SignPageContent() {
                                     onSelect={setSellerFundingToken}
                                     authorization={sellerFunding}
                                     onAuthorize={swapFunding.authorize}
+                                    margin={sellerMargin}
                                 />
                             )}
                             {fundingOpen && swapFunding.authorizeFailed && (
@@ -573,7 +586,7 @@ function SignPageContent() {
                     ) : (
                         <Button
                             onClick={handleCounterSign}
-                            disabled={step === "signing" || step === "committing" || !address || fundingBlocksTheAct(sellerFunding)}
+                            disabled={step === "signing" || step === "committing" || !address || fundingBlocksTheAct(sellerFunding) || marginHeld}
                             data-testid="btn-counter-sign"
                             className="w-full"
                         >
@@ -581,6 +594,7 @@ function SignPageContent() {
                                 : step === "committing" ? "Submitting…"
                                 : sellerFunding === "needed" ? "Authorize the funding token first"
                                 : fundingBlocksTheAct(sellerFunding) ? "Checking the funding authorization…"
+                                : marginHeld ? "Fix the slippage margin first"
                                 : "Counter-Sign & Submit"}
                         </Button>
                     ))}

@@ -76,6 +76,12 @@ vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ loade
 vi.mock("@/components/runtime/DispatchRacePanel", () => ({ DispatchRacePanel: () => null }));
 vi.mock("@/components/runtime/SellerCatalogPicker", () => ({ SellerCatalogPicker: () => null }));
 vi.mock("@/components/runtime/CommitmentSharePanel", () => ({ CommitmentSharePanel: () => null }));
+vi.mock("@/lib/composition/useFundingMargin", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/composition/useFundingMargin")>()),
+    useFundingMargin: () => ({
+        marginFor: () => ({ text: "", bps: null, quotedInput: null, maxInput: null, refusal: null, venue: null, decimals: undefined, symbol: "", onChange: () => {} }),
+    }),
+}));
 vi.mock("@/app/(app)/s/checkout/_components/SwapFundingPanel", () => ({
     SwapFundingPanel: () => null,
 }));

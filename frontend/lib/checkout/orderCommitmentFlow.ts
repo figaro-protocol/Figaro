@@ -73,6 +73,9 @@ import { profileReaderForChain } from "@/lib/member/profileFetcher";
  *  witness-signed leg. */
 export interface BuyerFundingRequest {
     inputToken: Hex;
+    /** The slippage margin the buyer set in the funding-token chooser, in
+     *  basis points; absent, the venue's own. */
+    slippageBps?: number;
 }
 
 /** The seller's accept-time choice to fund their bond by swap: which token
@@ -80,6 +83,9 @@ export interface BuyerFundingRequest {
  *  at accept, riding the same atomic `swapAndCommit`. */
 export interface SellerFundingRequest {
     inputToken: Hex;
+    /** The slippage margin the seller set in the funding-token chooser, in
+     *  basis points; absent, the venue's own. */
+    slippageBps?: number;
 }
 
 export type OrderFlowStep =
@@ -94,13 +100,15 @@ export type OrderFlowStep =
     | "done"
     | "error";
 
-/** Project a funding quote to the confirm-gate's swap summary (null passes
- *  through — no swap leg, no swap clause in the modal). */
+/** Project a funding quote to the confirm-gate's swap summary, with the
+ *  signing party whose balance the modal reads (null passes through — no
+ *  swap leg, no swap clause in the modal). */
 function swapDetails(
-    quote: { inputToken: string; currency: string; maxInput: bigint } | null,
+    quote: { inputToken: string; currency: string; maxInput: bigint; slippageBps: number } | null,
+    party: string,
 ): SwapConfirmationDetails | null {
     if (!quote) return null;
-    return { inputToken: quote.inputToken, currency: quote.currency, maxInput: quote.maxInput };
+    return { inputToken: quote.inputToken, currency: quote.currency, maxInput: quote.maxInput, slippageBps: quote.slippageBps, party };
 }
 
 /** Quote one party's swap-funded bond leg for `commitment`: the venue quote
@@ -112,7 +120,7 @@ function swapDetails(
 function quoteBondFundingLeg(
     publicClient: QuoteFundingLegArgs["publicClient"] | undefined,
     chainId: number,
-    inputToken: Hex,
+    funding: BuyerFundingRequest | SellerFundingRequest,
     commitment: Commitment,
     party: PartyRole,
 ): Promise<FundingQuote> {
@@ -121,10 +129,11 @@ function quoteBondFundingLeg(
     return quoteFundingLeg({
         publicClient,
         chainId,
-        inputToken,
+        inputToken: funding.inputToken,
         currency: commitment.currency as Hex,
         bondAmount: party === "buyer" ? bonds.buyerBond : bonds.sellerBond,
         deadline: commitment.deadline,
+        slippageBps: funding.slippageBps,
     });
 }
 
@@ -290,9 +299,9 @@ export function useOrderCommitmentFlow() {
             // (one approval, both signatures); it is then witness-signed against
             // that exact quote so the relayer is untrusted by construction.
             const fundingQuote = funding
-                ? await quoteBondFundingLeg(publicClient, chainId, funding.inputToken, preview.commitment, "buyer")
+                ? await quoteBondFundingLeg(publicClient, chainId, funding, preview.commitment, "buyer")
                 : null;
-            const buyerSig = await signAs(preview.commitment, preview.agreement, swapDetails(fundingQuote));
+            const buyerSig = await signAs(preview.commitment, preview.agreement, swapDetails(fundingQuote, preview.commitment.buyer));
             const buyerFunding: CommitmentPayload["buyerFunding"] = fundingQuote ? await signLeg(fundingQuote) : undefined;
             setStep("awaiting-seller");
             return {
@@ -410,9 +419,9 @@ export function useOrderCommitmentFlow() {
         // maxInput shows in the same confirm as the agreement.
         // 2·expectedCumulativeValue is FigaroCore's seller pull.
         const sellerQuote = funding && role === "seller"
-            ? await quoteBondFundingLeg(publicClient, chainId, funding.inputToken, incoming.commitment, "seller")
+            ? await quoteBondFundingLeg(publicClient, chainId, funding, incoming.commitment, "seller")
             : null;
-        const sig = await signAs(incoming.commitment, incoming.agreement, swapDetails(sellerQuote));
+        const sig = await signAs(incoming.commitment, incoming.agreement, swapDetails(sellerQuote, incoming.commitment.seller));
 
         const payload: CommitmentPayload = {
             ...incoming,

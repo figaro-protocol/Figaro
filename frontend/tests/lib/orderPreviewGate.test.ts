@@ -59,7 +59,7 @@ describe("orderPreview confirm gate", () => {
     it("carries swap details into the pending preview (item 1)", async () => {
         const seen: unknown[] = [];
         const unsubscribe = subscribeToPendingSign((p) => seen.push(p?.swap ?? null));
-        const swap = { inputToken: "0x" + "11".repeat(20), currency: COMMITMENT.currency, maxInput: 4200n };
+        const swap = { inputToken: "0x" + "11".repeat(20), currency: COMMITMENT.currency, maxInput: 4200n, slippageBps: 100, party: COMMITMENT.buyer };
         const promise = requestSignConfirmation(COMMITMENT, AGREEMENT, swap);
         // The latest emitted pending preview carries the swap leg for the modal.
         expect(seen.at(-1)).toEqual(swap);

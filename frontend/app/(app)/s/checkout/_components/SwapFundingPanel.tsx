@@ -8,16 +8,75 @@
  * accepted set). The coordinator swaps the chosen token at commit time and
  * the Core pulls the bond as always — the order stays denominated in the
  * one process token; only the funding source changes. Selection + the
- * one-time Permit2 authorization are held by `useSwapFunding`; the witness
- * signing itself rides the sign/accept step.
+ * one-time Permit2 authorization are held by `useSwapFunding`; the slippage
+ * margin, set here before the quote the signature binds, by
+ * `useFundingMargin`; the witness signing itself rides the sign/accept step.
  */
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { FormField } from "@/components/ui/FormField";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 import { tokenFigure } from "@/lib/shared/utils";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useTokenBalance from "@/hooks/useTokenBalance";
 import { hexEqual } from "@/lib/shared/evm";
 import type { FundingAuthorization } from "@/lib/composition/useSwapFunding";
+import type { FundingMarginField } from "@/lib/composition/useFundingMargin";
+import { spendsWholeCap } from "@/lib/composition/swapVenue";
+
+const MARGIN_REFUSAL: Record<"range" | "balance", string> = {
+    range: "Enter a margin from 0% to 10%.",
+    balance: "Your balance is below the max input at this margin.",
+};
+
+/** The slippage margin the party sets before the quote its signature binds:
+ *  the max input the swap may spend is the quote plus this margin. */
+function FundingMarginInput({ margin }: { margin: FundingMarginField }) {
+    const error = margin.refusal ? MARGIN_REFUSAL[margin.refusal] : null;
+    return (
+        <div className="space-y-1" data-testid="funding-margin">
+            <FormField label="Slippage margin (%)" inputId="funding-margin-input">
+                <Input
+                    id="funding-margin-input"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    max="10"
+                    step="0.01"
+                    value={margin.text}
+                    onChange={(e) => margin.onChange(e.target.value)}
+                    hasError={!!error}
+                    errorId={error ? "funding-margin-error" : undefined}
+                    data-testid="funding-margin-input"
+                />
+            </FormField>
+            {error && (
+                <p id="funding-margin-error" role="alert" className="text-xs text-error-fg" data-testid="funding-margin-error">
+                    {error}
+                </p>
+            )}
+            {margin.maxInput !== null && margin.decimals !== undefined && (
+                <p className="text-[11px] text-ink-muted tabular-nums" data-testid="funding-margin-max-input">
+                    Max input: {tokenFigure(margin.maxInput, margin.decimals)} {margin.symbol}
+                </p>
+            )}
+            {/* The coordinator returns the input the swap did not use
+                (`WitnessSwapAndCommitCoordinator.sol`, step 4); an
+                exact-input route spends the whole cap, so it says so below. */}
+            {margin.maxInput !== null && !spendsWholeCap(margin.venue) && (
+                <p className="text-[11px] text-ink-muted" data-testid="funding-margin-returned">
+                    The swap takes at most this much; any unused input is returned to you.
+                </p>
+            )}
+            {/* An exact-input route spends the whole cap. */}
+            {spendsWholeCap(margin.venue) && (
+                <p className="text-[11px] text-ink-muted" data-testid="funding-margin-exact-input">
+                    This venue spends the whole max input.
+                </p>
+            )}
+        </div>
+    );
+}
 
 function FundingTokenOption({
     token,
@@ -64,6 +123,7 @@ export function SwapFundingPanel({
     onSelect,
     authorization,
     onAuthorize,
+    margin,
 }: {
     candidates: AcceptedTokenMetadata[];
     /** The wallet funding its bond — buyer at checkout, seller at accept. */
@@ -74,6 +134,8 @@ export function SwapFundingPanel({
     /** Where the chosen token stands with Permit2 (`fundingAuthorization`). */
     authorization: FundingAuthorization;
     onAuthorize: () => void;
+    /** The slippage margin field (`useFundingMargin`); shown once a token is chosen. */
+    margin: FundingMarginField | null;
 }) {
     return (
         <div
@@ -100,6 +162,7 @@ export function SwapFundingPanel({
                     />
                 ))}
             </div>
+            {fundingToken && margin && <FundingMarginInput margin={margin} />}
             {(authorization === "needed" || authorization === "authorizing") && (
                 <Button
                     onClick={onAuthorize}
