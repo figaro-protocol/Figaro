@@ -1295,10 +1295,16 @@ contract FigaroBatchVerifierTest is Test {
             pr.callData = abi.encodeWithSelector(this.landWith.selector, uint256(0), pv, positions, events, usage);
         }
 
-        // Two hundred probes between a full run and half of it: the band, where
-        // it exists, sits above the gas at which the accrual alone can finish.
+        // Steps of a two-hundredth of a full run, from a full run down to half of
+        // it: the band, where it exists, sits above the gas at which the accrual
+        // alone can finish. The walk goes on below half until it has passed the
+        // gas at which the call reverts whole by ten steps, since that gas is
+        // sixty-four times the tail and the tail's share of a run is the build's:
+        // the coverage build (no optimizer, instrumented) puts it below half at
+        // sixty-four uses, and the walk must still see the band end above it.
         uint256 step = pr.full / 200 == 0 ? 1 : pr.full / 200;
-        for (uint256 g = pr.full + step; g > pr.full / 2; g -= step) {
+        for (uint256 g = pr.full + step; g > step; g -= step) {
+            if (g <= pr.full / 2 && pr.revertedHi != 0 && g + 10 * step < pr.revertedHi) break;
             _probeOnce(pr, g);
         }
         emit log_named_uint("uses in the batch", pr.uses);
