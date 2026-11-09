@@ -220,7 +220,7 @@ export async function executeAssemblyCheckout(
     // per-clause cursor); a node the profile leaves unbound takes the buyer's
     // checkout-time choice.
     const boundSellerByNode = new Map(
-        planSubOrderSellers(bound).map(({ node, seller }) => [node.nodeId, seller]),
+        planSubOrderSellers(bound).map(({ node, seller, itemId }) => [node.nodeId, { seller, itemId }]),
     );
 
     // Per-node state the realization callbacks share: the sub's line items are
@@ -301,7 +301,9 @@ function checkoutNodes(
     params: AssemblyCheckoutParams,
     ctx: {
         rootId: string;
-        boundSellerByNode: Map<string, `0x${string}` | null>;
+        /** Each sub-order's bound co-seller and the item the binding names
+         *  for it in that co-seller's own catalog (null when none). */
+        boundSellerByNode: Map<string, { seller: `0x${string}` | null; itemId: string | null }>;
         compositionByNode: Map<string, { interface: string; fieldValues: Record<string, unknown> }>;
         specs: SpecSource;
     },
@@ -337,7 +339,8 @@ function checkoutNodes(
             };
         }
 
-        const boundSeller = boundSellerByNode.get(planned.nodeId) ?? null;
+        const bound = boundSellerByNode.get(planned.nodeId);
+        const boundSeller = bound?.seller ?? null;
         const composition = boundSeller ? undefined : params.subOrderCompositions?.[planned.nodeId];
         if (composition) compositionByNode.set(planned.nodeId, composition);
         const selection = boundSeller ? undefined : subOrderSelections?.[planned.nodeId];
@@ -356,7 +359,16 @@ function checkoutNodes(
                 node: { clauses: nodeClauses },
                 seller: subSeller, sellerCatalogs, tokenDecimals, specs,
                 checkoutQuantity: params.subOrderQuantities?.[planned.nodeId],
+                itemId: bound?.itemId ?? undefined,
             });
+        // The item the binding names is gone from the co-seller's catalog
+        // (deleted, re-added under a new id, or marked unavailable): refuse,
+        // never price another item in its place nor commit a payment of zero.
+        if (pricing?.issue === "named-item-not-offered") {
+            throw new Error(
+                `The seller named the item "${bound?.itemId}" from ${subSeller} for this order, and that catalog no longer offers it.`,
+            );
+        }
         if (pricing?.issue === "unresolvable-quantity") {
             throw new Error(
                 `"${pricing.item?.name}" prices by rate but its quantity can't be resolved on this order — the quantity source ("${pricing.item?.rateQuantitySource}") found no value.`,
@@ -436,7 +448,7 @@ export async function planAssemblyOrders(
         assembly.agreements[0]?.id;
     if (rootId === undefined) throw new Error("This assembly has no root order.");
     const boundSellerByNode = new Map(
-        planSubOrderSellers(params.assembly).map(({ node, seller }) => [node.nodeId, seller]),
+        planSubOrderSellers(params.assembly).map(({ node, seller, itemId }) => [node.nodeId, { seller, itemId }]),
     );
     const specs = specSource();
     return reconstructOrdersFromAssembly(hydrated, {

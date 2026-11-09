@@ -100,7 +100,7 @@ export function deriveKitBreakdown(args: {
     }
     const rows = [
         { name: nameOf(args.leadAddress), payment: args.cartTotal },
-        ...plan.map(({ node, seller }) => {
+        ...plan.map(({ node, seller, itemId }) => {
             if (seller) {
                 // The buyer's checkout fills join the node BEFORE pricing —
                 // a rate source (order-geodistance) derives from clause
@@ -111,6 +111,9 @@ export function deriveKitBreakdown(args: {
                     seller, sellerCatalogs: args.sellerCatalogs, tokenDecimals: args.tokenDecimals,
                     specs: specSource(),
                     checkoutQuantity: args.subOrderQuantities[node.nodeId],
+                    // The item the seller's binding names for this co-seller;
+                    // gone from its catalog, the row carries the refusal.
+                    itemId: itemId ?? undefined,
                 });
                 // The buyer's translated amount per unit replaces the listed
                 // one; the billed quantity stands.

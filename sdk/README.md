@@ -2244,9 +2244,13 @@ import {
   agreement's own clauses, `agreementClauses`) via a per-clause binding cursor — a clause shared by sibling orders
   draws distinct wallets by commit order, so the ordering must match the
   checkout's commit order (throws on a cyclic topology; `topologicalOrder` is the
-  underlying pure math). `seller` is `null` when no counterparty is bound.
+  underlying pure math). `seller` is `null` when no counterparty is bound;
+  `itemId` is the item the binding names for that seller (`itemIds`), or `null`.
 - **Pricing**: `resolveSubOrderPricing` prices a sub-order from its contributor's
-  OWN catalog (`billedQuantity × unitPrice = payment` always holds, so the
+  OWN catalog — the named `itemId` when given, else the first available item; a
+  named item the catalog no longer offers yields payment `0n` with
+  `issue: "named-item-not-offered"`, which the surface refuses
+  (`billedQuantity × unitPrice = payment` always holds, so the
   committed line item replays the payment with no reference back to the mutable
   catalog); `profileValuesFor` looks up a seller's profile-filled clause
   values for the profile fold.
@@ -2371,12 +2375,19 @@ registration at all.
     never stored. A seller accepts an order only under an assembly this list
     binds (`checkSellerBindsAssembly`), and every seller in a process must have
     bound it, the designated sub-order co-sellers included. Each
-    `coSellerBindings` entry is `{ clauseKey, addresses[] }`: the wallets the
+    `coSellerBindings` entry is `{ clauseKey, addresses[], itemIds? }`: the wallets the
     seller designates for a sub-order carrying that process clause (e.g. a
     courier-process clause → the courier wallets checkout fills the courier
     sub-order from; order is significant — checkout takes the first reachable, or
     surfaces the list). Without this field the cart has nowhere to read a
-    sub-order co-seller's wallet from. The seller's ROLE in the assembly is
+    sub-order co-seller's wallet from. `itemIds` optionally names, per designated
+    wallet, ONE item id in that wallet's own catalog, keyed by the wallet's
+    address lowercased; the parser refuses a key that is not one of `addresses`.
+    Item ids are unique only inside one member's catalog, so an id is read
+    against the keyed wallet's catalog alone. Checkout prices that co-seller's
+    sub-order from the named item and refuses the order when the catalog no
+    longer offers it (deleted, re-added under a new id, or marked unavailable);
+    a wallet with no entry prices from its first available item. The seller's ROLE in the assembly is
     event-derived, never declared here.
   - `buyerAssemblies` is an array of `BuyerAssemblySubscription` — the buyer's
     assembly SUBSCRIPTIONS, `{ assemblyHash }` each: which registered

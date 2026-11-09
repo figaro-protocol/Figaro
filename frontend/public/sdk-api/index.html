@@ -1888,9 +1888,13 @@ from the adopting seller's co-seller bindings (matched against the order
 agreement's own clauses, <code>agreementClauses</code>) via a per-clause binding cursor — a clause shared by sibling orders
 draws distinct wallets by commit order, so the ordering must match the
 checkout's commit order (throws on a cyclic topology; <code>topologicalOrder</code> is the
-underlying pure math). <code>seller</code> is <code>null</code> when no counterparty is bound.</li>
+underlying pure math). <code>seller</code> is <code>null</code> when no counterparty is bound;
+<code>itemId</code> is the item the binding names for that seller (<code>itemIds</code>), or <code>null</code>.</li>
 <li><strong>Pricing</strong>: <code>resolveSubOrderPricing</code> prices a sub-order from its contributor's
-OWN catalog (<code>billedQuantity × unitPrice = payment</code> always holds, so the
+OWN catalog — the named <code>itemId</code> when given, else the first available item; a
+named item the catalog no longer offers yields payment <code>0n</code> with
+<code>issue: &quot;named-item-not-offered&quot;</code>, which the surface refuses
+(<code>billedQuantity × unitPrice = payment</code> always holds, so the
 committed line item replays the payment with no reference back to the mutable
 catalog); <code>profileValuesFor</code> looks up a seller's profile-filled clause
 values for the profile fold.</li>
@@ -1968,12 +1972,19 @@ carry; a slug shown anywhere is derived from it (<code>deriveAssemblySlug</code>
 never stored. A seller accepts an order only under an assembly this list
 binds (<code>checkSellerBindsAssembly</code>), and every seller in a process must have
 bound it, the designated sub-order co-sellers included. Each
-<code>coSellerBindings</code> entry is <code>{ clauseKey, addresses[] }</code>: the wallets the
+<code>coSellerBindings</code> entry is <code>{ clauseKey, addresses[], itemIds? }</code>: the wallets the
 seller designates for a sub-order carrying that process clause (e.g. a
 courier-process clause → the courier wallets checkout fills the courier
 sub-order from; order is significant — checkout takes the first reachable, or
 surfaces the list). Without this field the cart has nowhere to read a
-sub-order co-seller's wallet from. The seller's ROLE in the assembly is
+sub-order co-seller's wallet from. <code>itemIds</code> optionally names, per designated
+wallet, ONE item id in that wallet's own catalog, keyed by the wallet's
+address lowercased; the parser refuses a key that is not one of <code>addresses</code>.
+Item ids are unique only inside one member's catalog, so an id is read
+against the keyed wallet's catalog alone. Checkout prices that co-seller's
+sub-order from the named item and refuses the order when the catalog no
+longer offers it (deleted, re-added under a new id, or marked unavailable);
+a wallet with no entry prices from its first available item. The seller's ROLE in the assembly is
 event-derived, never declared here.</li>
 <li><code>buyerAssemblies</code> is an array of <code>BuyerAssemblySubscription</code> — the buyer's
 assembly SUBSCRIPTIONS, <code>{ assemblyHash }</code> each: which registered

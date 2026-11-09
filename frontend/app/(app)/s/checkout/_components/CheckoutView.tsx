@@ -962,10 +962,21 @@ export function CheckoutView({ sellerAddress }: Props) {
                                         <div key={i}>
                                             <div className="flex justify-between">
                                                 <span className="text-ink-body">{row.name}</span>
-                                                <span className="text-ink-primary tabular-nums">
-                                                    {tokenFigure(row.payment, tokenDecimals)}
-                                                </span>
+                                                {/* An order whose named item is gone has no
+                                                    payment: the walk refuses it, so no figure
+                                                    (a zero) stands for it. */}
+                                                {row.pricing?.issue !== "named-item-not-offered" && (
+                                                    <span className="text-ink-primary tabular-nums" data-testid={`kit-row-payment-${row.nodeId ?? "lead"}`}>
+                                                        {tokenFigure(row.payment, tokenDecimals)}
+                                                    </span>
+                                                )}
                                             </div>
+                                            {row.pricing?.issue === "named-item-not-offered" && (
+                                                <p className="text-xs text-error-fg" data-testid={`named-item-not-offered-${row.nodeId}`}>
+                                                    The seller named an item from {row.name} for this order, and {row.name} no
+                                                    longer offers it. This order cannot be placed.
+                                                </p>
+                                            )}
                                             {/* Rate derivation — the P&L shows HOW the figure was
                                                 priced before the buyer signs it. Billed per started
                                                 unit; the same numbers commit as the line item. */}
