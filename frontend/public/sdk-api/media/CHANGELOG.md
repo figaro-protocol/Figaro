@@ -14,6 +14,21 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **A clause spec declares the measures it reads from the catalog item; every clause is
+  re-keyed.** `block.checkout.catalogueMeasures` maps a content field to the catalog-item field it
+  is read from and how the order's lines combine it (`"sum"`, or `"single-unit"` for a one-unit
+  order). The SDK's `fillCatalogueMeasures` reads the names from the spec and replaces
+  `fillCargoClause`, which named the cargo fields in code; `missingCatalogueMeasures` names a
+  required measure the items do not supply, and the checkout refuses that order before it is
+  signed. `AssemblyCheckoutLineItem` carries the item as `catalogItem` in place of its five
+  measure fields. `figaro-cargo` declares its mass and volume as sums and its packaged dimensions
+  as single-unit measures, and drops its default of 1 g and 1 ml, so a missing measure stays
+  missing. Every other shipped spec writes `"catalogueMeasures": {}`, since the corpus expresses
+  every attribute. So all 27 keys in `test/fixtures/clause-keys.json` move with the bytes, and
+  so do the hashes of every reference agreement and assembly and the frozen vectors that carry
+  them; the Sepolia registrations are still to come. `fillDimweightClause` no longer bills a weight while
+  the gross mass is missing.
+
 - **Designer rewards: one tally, route-blind.** `UsageCounter` keeps one tally per (kind, key,
   period): a use counts the same whether its process resolved through `FigaroCore` or in a proved
   batch, so `c` counts a process once and `d` a seller once across both routes, and `scoreOf` reads

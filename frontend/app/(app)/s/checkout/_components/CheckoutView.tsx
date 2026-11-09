@@ -663,11 +663,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                 // the committed unit price is the buyer's amount in the
                 // process denomination.
                 unitPrice: cartUnitAmount(item)!.toString(),
-                massGrams: item.massGrams,
-                volumeMl: item.volumeMl,
-                lengthMm: item.lengthMm,
-                widthMm: item.widthMm,
-                heightMm: item.heightMm,
+                // The catalog item as the seller lists it now: a composed
+                // clause's declared catalog measures read from it.
+                catalogItem: memberCatalog.items.find((m) => m.id === item.catalogItemId),
                 clauseValues: item.clauseValues,
             })),
             assembly: pickedAssembly,

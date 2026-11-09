@@ -158,7 +158,7 @@ One line reads `<assemblyHash> 6 Containerized import chain`. Its six agreements
 | `agreement-4` follows 3 | customs agent | `figaro-consent` (the filing terms, affixed by content hash), `figaro-merchant-process` |
 | `agreement-5` follows 4 | destination drayage | `figaro-courier-process`, `figaro-freight-class`, `figaro-geolocation`, `figaro-handoff`, `figaro-proximity-policy` |
 
-The table is this deployment's design, read back from the chain; print it yourself with `agreementClauses(hydrated, entry)` over `hydrated.assembly.agreements`. Who fills each field is declared by the spec: a field in `block.design.fills` is the designer's (the property-transfer clause's anticipated events, the customs filing terms), a field in `block.checkout.catalogueFills` comes from the seller's catalog item (the cold-chain window, the freight class), and every other field is the importer's at checkout.
+The table is this deployment's design, read back from the chain; print it yourself with `agreementClauses(hydrated, entry)` over `hydrated.assembly.agreements`. Who fills each field is declared by the spec: a field in `block.design.fills` is the designer's (the property-transfer clause's anticipated events, the customs filing terms), a field in `block.checkout.catalogueFills` comes from the seller's catalog item (the cold-chain window, the freight class), a field in `block.checkout.catalogueMeasures` is read from the catalog item's own measures (the cargo's mass and volume, summed over the order), and every other field is the importer's at checkout.
 
 ## 4. Fund the wallets
 
@@ -364,7 +364,7 @@ for (const planned of planAssemblyOrders(hydrated)) {
     const item = parseMemberCatalogDocument(await readIpfs(profile.catalogURI)).items[0];
     const payment = parseEther(item.price);
     const line = { itemId: item.id, name: item.name, quantity: 1, unitPrice: payment.toString(),
-                   massGrams: item.massGrams, volumeMl: item.volumeMl, clauseValues: item.clauseValues };
+                   catalogItem: item, clauseValues: item.clauseValues };
     // Catalog-sourced and derived values (cargo measures, the cold-chain window,
     // the freight class) fold from the item, profile-sourced ones from the
     // seller's profile; the buyer adds its particulars

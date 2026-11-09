@@ -38,6 +38,7 @@
  */
 
 import { parseFieldSpec, type SpecParseError, type FieldSpec } from "@figaro-protocol/sdk/clauses";
+import type { CatalogueMeasure } from "@figaro-protocol/sdk";
 
 /** Drawer article a clause composes into on the designer canvas. A free-form
  *  string read straight from the spec — the set of articles and their grouping
@@ -106,6 +107,13 @@ interface ClauseBlockCheckout {
      *  sold, profile = who sells. ANY registered clause opts in by declaring
      *  a non-empty list. */
     profileFills: readonly string[];
+    /** The content fields (by name, the map's keys) read from each order
+     *  line's CATALOG ITEM — the item's own attributes (its mass, its
+     *  dimensions), not per-clause values — and combined at checkout as each
+     *  entry declares (`CatalogueMeasure`: summed over the lines, or taken
+     *  from a one-unit order). Seller-sourced like `catalogueFills`, so never
+     *  the buyer's. */
+    catalogueMeasures: Readonly<Record<string, CatalogueMeasure>>;
 }
 
 /** The `runtime` section — read by the capability rail while the process runs. */
@@ -157,6 +165,35 @@ function parseFieldNameList(
         return null;
     }
     return raw as string[];
+}
+
+/** A `checkout.catalogueMeasures` map: absent is `{}`; present, every entry
+ *  names its catalog-item field (`from`) and a known combinator, or the map
+ *  is malformed — the rule of `clause-spec.schema.json`. */
+function parseCatalogueMeasures(
+    raw: unknown,
+    path: string,
+    errors: SpecParseError[],
+): Readonly<Record<string, CatalogueMeasure>> | null {
+    if (raw === undefined) return {};
+    if (!isObject(raw)) {
+        errors.push({ path, message: "must be an object mapping content field names to { from, combine } when present" });
+        return null;
+    }
+    const out: Record<string, CatalogueMeasure> = {};
+    for (const [field, entry] of Object.entries(raw)) {
+        const where = `${path}.${field}`;
+        if (!isObject(entry) || typeof entry.from !== "string" || entry.from.length === 0) {
+            errors.push({ path: where, message: "must name the catalog-item field it is read from (a non-empty from)" });
+            return null;
+        }
+        if (entry.combine !== "sum" && entry.combine !== "single-unit") {
+            errors.push({ path: `${where}.combine`, message: 'combine must be "sum" or "single-unit"' });
+            return null;
+        }
+        out[field] = { from: entry.from, combine: entry.combine };
+    }
+    return out;
 }
 
 /**
@@ -245,6 +282,7 @@ export function parseBlockBinding(
     // ── checkout ────────────────────────────────────────────────────────
     let catalogueFills: readonly string[] = [];
     let profileFills: readonly string[] = [];
+    let catalogueMeasures: Readonly<Record<string, CatalogueMeasure>> = {};
     if (raw.checkout !== undefined) {
         if (!isObject(raw.checkout)) {
             errors.push({ path: `${path}.checkout`, message: "checkout section must be an object when present" });
@@ -256,6 +294,9 @@ export function parseBlockBinding(
         const parsedProfile = parseFieldNameList(raw.checkout.profileFills, `${path}.checkout.profileFills`, errors);
         if (parsedProfile === null) return null;
         profileFills = parsedProfile;
+        const parsedMeasures = parseCatalogueMeasures(raw.checkout.catalogueMeasures, `${path}.checkout.catalogueMeasures`, errors);
+        if (parsedMeasures === null) return null;
+        catalogueMeasures = parsedMeasures;
     }
 
     // ── runtime ─────────────────────────────────────────────────────────
@@ -296,7 +337,7 @@ export function parseBlockBinding(
 
     return {
         design: { article: rawDesign.article as ClauseArticle, scope, nestsUnder, fills: designFills, composes },
-        checkout: { catalogueFills, profileFills },
+        checkout: { catalogueFills, profileFills, catalogueMeasures },
         runtime: { interaction, fields: runtimeFields },
     };
 }

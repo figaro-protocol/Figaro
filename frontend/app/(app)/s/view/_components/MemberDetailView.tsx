@@ -125,11 +125,6 @@ export function MemberDetailView({ sellerAddress }: Props) {
             price: catalogItem.price,
             quantity: 1,
             imageURI: catalogItem.image || undefined,
-            massGrams: catalogItem.massGrams,
-            volumeMl: catalogItem.volumeMl,
-            lengthMm: catalogItem.lengthMm,
-            widthMm: catalogItem.widthMm,
-            heightMm: catalogItem.heightMm,
             clauseValues: catalogItem.clauseValues,
         });
     };

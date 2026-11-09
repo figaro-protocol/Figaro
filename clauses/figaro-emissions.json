@@ -44,7 +44,8 @@
         },
         "checkout": {
             "catalogueFills": [],
-            "profileFills": []
+            "profileFills": [],
+            "catalogueMeasures": {}
         },
         "runtime": {
             "interaction": null,

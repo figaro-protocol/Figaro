@@ -66,6 +66,14 @@ describe("buyerAuthoredFields — the ONE list the form renders and the gate che
         expect(buyerAuthoredFields(`0x${"ee".repeat(32)}`)).toEqual([]);
     });
 
+    it("withholds every field a catalog measure reads from the catalog item, and offers the rest", () => {
+        const names = buyerAuthoredFields(keyOf("figaro-cargo")).map((f) => f.name);
+        for (const measured of ["massGrams", "volumeMl", "lengthMm", "widthMm", "heightMm"]) {
+            expect(names).not.toContain(measured);
+        }
+        expect(names).toContain("packagingType");
+    });
+
     it("the required field a sibling reads its format from is offered despite its default", () => {
         const fields = buyerAuthoredFields(keyOf("figaro-geolocation"));
         const standard = fields.find((f) => f.name === "geocodeStandard")!;
@@ -117,8 +125,6 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
         const all = demanded("tradelens.json");
         // Defaulted: the agreement build applies the spec default.
         expect(all).not.toContain("figaro-geolocation.geocodeStandard");
-        expect(all).not.toContain("figaro-cargo.massGrams");
-        expect(all).not.toContain("figaro-cargo.volumeMl");
         // Optional: absence is a valid committed state.
         expect(all).not.toContain("figaro-acceptance-criteria.criteriaUri");
         expect(all).not.toContain("figaro-chain-of-custody.unitIdentifier");
@@ -134,6 +140,11 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
         // Seller-sourced: the carrier's catalog fills the cold chain.
         expect(all).not.toContain("figaro-cold-chain.tempClass");
         expect(all).not.toContain("figaro-freight-class.nmfcClass");
+        // Seller-sourced: the cargo measures are read from the shipper's
+        // catalog items (`block.checkout.catalogueMeasures`), never asked of
+        // the buyer; a missing one refuses the order in the walk.
+        expect(all).not.toContain("figaro-cargo.massGrams");
+        expect(all).not.toContain("figaro-cargo.volumeMl");
     });
 
     it("a fill clears exactly its own order's demand", () => {

@@ -75,7 +75,8 @@
                 "nmfcClass",
                 "nmfcItem"
             ],
-            "profileFills": []
+            "profileFills": [],
+            "catalogueMeasures": {}
         },
         "runtime": {
             "interaction": null,

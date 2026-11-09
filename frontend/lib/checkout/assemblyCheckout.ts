@@ -31,6 +31,7 @@ import {
     fillCommerceClause,
     fillDerivedClauses,
     generateSalt,
+    missingCatalogueMeasures,
     planSubOrderSellers,
     reconstructOrdersFromAssembly,
     resolveSubOrderPricing,
@@ -98,6 +99,23 @@ function changedClauses(filled: ClauseFields, original: ClauseFields): ClauseFie
         if (data !== original[clauseId]) out[clauseId] = data;
     }
     return out;
+}
+
+/** Refuse an order whose catalog items do not supply a REQUIRED measure a
+ *  composed clause reads from them (`block.checkout.catalogueMeasures`): the
+ *  measure stays missing, nothing invents it, and the buyer reads which
+ *  measure is missing — the same refusal as a rate quantity that does not
+ *  resolve, before any signature. Named from the clause's own spec. */
+function refuseMissingMeasures(filled: ClauseFields, specs: SpecSource): void {
+    const [missing] = missingCatalogueMeasures(filled, specs);
+    if (!missing) return;
+    const spec = specs.get(missing.clauseKey);
+    const field = spec?.fields.find((f) => f.name === missing.field);
+    throw new Error(
+        `This order's "${spec?.title ?? missing.clauseKey}" term needs "${field?.label ?? missing.field}", `
+        + `which it reads from each catalog item's "${missing.from}" — and the items on this order don't supply it. `
+        + `The seller's catalog must state it before this order can be placed.`,
+    );
 }
 
 /** The buyer-side checkout inputs — ONE shape shared by the effectful walk
@@ -332,6 +350,7 @@ function checkoutNodes(
                 ),
                 payment, currency, specs, lineItems,
             );
+            refuseMissingMeasures(filled, specs);
             return {
                 seller: leadSellerAddress,
                 payment,
@@ -396,11 +415,7 @@ function checkoutNodes(
                     name: pricing!.item.name,
                     quantity: pricing!.billedQuantity,
                     unitPrice: unitPrice.toString(),
-                    massGrams: pricing!.item.massGrams,
-                    volumeMl: pricing!.item.volumeMl,
-                    lengthMm: pricing!.item.lengthMm,
-                    widthMm: pricing!.item.widthMm,
-                    heightMm: pricing!.item.heightMm,
+                    catalogItem: pricing!.item,
                     clauseValues: pricing!.item.clauseValues,
                 }]
                 : undefined;
@@ -418,6 +433,7 @@ function checkoutNodes(
             ),
             subPayment, currency, specs, subLineItems,
         );
+        refuseMissingMeasures(filled, specs);
         return {
             seller: subSeller,
             payment: subPayment,

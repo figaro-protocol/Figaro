@@ -13,15 +13,6 @@ interface CartItem {
     price: string;
     quantity: number;
     imageURI?: string;
-    /** Physical attributes copied from the catalog item at add-to-cart —
-     *  checkout folds them onto the order's cargo leaf (`figaro-cargo`).
-     *  Optional: virtual, service, or un-annotated items omit them. Parcel
-     *  dimensions (L/W/D) ride along for dimensional-weight derivation. */
-    massGrams?: number;
-    volumeMl?: number;
-    lengthMm?: number;
-    widthMm?: number;
-    heightMm?: number;
     /** Catalog-sourced clause values (freight class, hazmat, cold-chain,
      *  a data product's license terms, …), copied from the catalog item —
      *  the checkout fold lands them on the matching clause leaves. Keyed by

@@ -8,8 +8,8 @@
  * root hashes) or the payment figures the commitments sign, so a second
  * frontend must reproduce it exactly. No clause is ever named: clauses are
  * found by their DECLARED FIELDS (`lineItems`, `follows`,
- * `massGrams`, `billedMassGrams`) or their spec hints (`catalogueFills`)
- * through the caller's `SpecSource` — ANY registered clause carrying the
+ * `massGrams`, `billedMassGrams`) or their spec hints (`catalogueFills`,
+ * `catalogueMeasures`) through the caller's `SpecSource` — ANY registered clause carrying the
  * field participates, including clauses this code has never seen. A fill
  * whose clause isn't composed is a no-op, so the same call serves the root
  * and every sub-order.
@@ -22,8 +22,10 @@ import {
     specDeclaresDesignFill,
     specDeclaresField,
     specCatalogFills,
+    specCatalogueMeasures,
     specProfileFills,
     withSpecDefaults,
+    type CatalogueMeasure,
     type ProjectionSpecView,
     type SpecSource,
 } from "./projection.js";
@@ -42,15 +44,11 @@ export interface AssemblyCheckoutLineItem {
     quantity: number;
     /** Decimal string, smallest unit (matches the commerce clause's bigint field). */
     unitPrice: string;
-    /** Physical attributes from the catalog item — folded onto THIS order's
-     *  cargo leaf at checkout (mass/volume sum × quantity; packaged dimensions
-     *  only when the order is a single parcel — dims don't sum). Optional:
-     *  services / un-annotated items omit them. */
-    massGrams?: number;
-    volumeMl?: number;
-    lengthMm?: number;
-    widthMm?: number;
-    heightMm?: number;
+    /** The catalog item this line sells, as the seller lists it. A composed
+     *  clause's declared catalog measures (`block.checkout.catalogueMeasures`)
+     *  read their `from` fields here (`fillCatalogueMeasures`). Absent for a
+     *  line with no catalog item behind it: every measure is then missing. */
+    catalogItem?: Readonly<Partial<CatalogItemMetadata>>;
     /** Catalog-sourced clause values (freight class / hazmat / cold-chain, …)
      *  folded onto their leaves. Keyed by clause key → field values. */
     clauseValues?: Record<string, Record<string, unknown>>;
@@ -237,37 +235,97 @@ export function writeTopologyClause(
     };
 }
 
+/** One catalog measure as a number: the line's catalog-item field, when it
+ *  is a finite, non-negative number. Anything else is a missing measure. */
+function lineMeasure(line: AssemblyCheckoutLineItem, from: string): number | undefined {
+    const value = (line.catalogItem as Record<string, unknown> | undefined)?.[from];
+    return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
+/** The value a declared measure takes over the order's lines, or undefined
+ *  when it is missing. `"sum"`: Σ item value × quantity, missing when any line
+ *  lacks the item value (a partial sum would understate the order).
+ *  `"single-unit"`: the item's value when the order is one unit (one line,
+ *  quantity 1), missing otherwise. No line, no value: nothing is invented. */
+function combineMeasure(lines: readonly AssemblyCheckoutLineItem[], measure: CatalogueMeasure): number | undefined {
+    if (lines.length === 0) return undefined;
+    if (measure.combine === "single-unit") {
+        return lines.length === 1 && lines[0].quantity === 1 ? lineMeasure(lines[0], measure.from) : undefined;
+    }
+    let sum = 0;
+    for (const line of lines) {
+        const value = lineMeasure(line, measure.from);
+        if (value === undefined) return undefined;
+        sum += value * line.quantity;
+    }
+    return sum;
+}
+
 /**
- * Fold the order's physical measure onto its cargo leaf, found by its declared
- * `massGrams` field (never by clause id; skipped when no cargo clause is
- * composed — services have no cargo, G7). Mass and volume SUM across the order's
- * lines (× quantity — both additive). Packaged dimensions do NOT sum (packing),
- * so they are written only when the order is a single parcel (one line, quantity
- * 1) — a multi-line order's packaged dimension is a per-order input this fold
- * does not fabricate; dimensional weight then falls back to actual mass.
+ * Fold the order's catalog measures onto every composed clause that
+ * declares them (`block.checkout.catalogueMeasures`, read from the spec each
+ * composed key names, never a clause id or a field name). Each declared
+ * clause field is read from its declared catalog-item field (`from`) on each
+ * line's `catalogItem` and combined as declared (`CatalogueMeasure`). A
+ * measure the lines cannot supply stays MISSING: the field is not written,
+ * and nothing invents a number for it — a required one is then named by
+ * `missingCatalogueMeasures`, and the checkout refuses the order. A no-op for
+ * a clause declaring no measure, so the same call serves the root and every
+ * sub-order.
  */
-export function fillCargoClause(
+export function fillCatalogueMeasures(
     clauses: ClauseFields,
-    lines: AssemblyCheckoutLineItem[],
+    lines: readonly AssemblyCheckoutLineItem[],
     specs: SpecSource,
 ): ClauseFields {
-    const cargoId = composedClauseDeclaring(clauses, "massGrams", specs);
-    if (!cargoId) return clauses;
-    const massGrams = lines.reduce((s, li) => s + (li.massGrams ?? 0) * li.quantity, 0);
-    const volumeMl = lines.reduce((s, li) => s + (li.volumeMl ?? 0) * li.quantity, 0);
-    const single = lines.length === 1 && lines[0].quantity === 1 ? lines[0] : undefined;
-    const dims = single && single.lengthMm && single.widthMm && single.heightMm
-        ? { lengthMm: single.lengthMm, widthMm: single.widthMm, heightMm: single.heightMm }
-        : {};
-    return {
-        ...clauses,
-        [cargoId]: {
-            ...clauses[cargoId],
-            ...(massGrams > 0 ? { massGrams } : {}),
-            ...(volumeMl > 0 ? { volumeMl } : {}),
-            ...dims,
-        },
-    };
+    let out = clauses;
+    for (const clauseKey of Object.keys(clauses) as Hex[]) {
+        const spec = specs.get(clauseKey);
+        if (!spec) continue;
+        const written: Record<string, number> = {};
+        for (const [field, measure] of Object.entries(specCatalogueMeasures(spec))) {
+            const value = combineMeasure(lines, measure);
+            if (value !== undefined) written[field] = value;
+        }
+        if (Object.keys(written).length === 0) continue;
+        out = { ...out, [clauseKey]: { ...out[clauseKey], ...written } };
+    }
+    return out;
+}
+
+/** A required catalog measure the order's lines could not supply: the
+ *  clause, its field, and the catalog-item field it is read from. */
+export interface MissingCatalogueMeasure {
+    clauseKey: Hex;
+    field: string;
+    from: string;
+}
+
+/**
+ * Every REQUIRED field a composed clause declares as a catalog measure that
+ * is still empty after the fill — a measure no item supplied. The checkout
+ * walk refuses an order with any, naming the measure instead of a spec path,
+ * as it refuses a rate item whose quantity does not resolve (the sign gate's
+ * validator would refuse the required field anyway). An optional measure is
+ * never named: its absence is a valid committed state.
+ */
+export function missingCatalogueMeasures(
+    clauses: ClauseFields,
+    specs: SpecSource,
+): MissingCatalogueMeasure[] {
+    const missing: MissingCatalogueMeasure[] = [];
+    for (const clauseKey of Object.keys(clauses) as Hex[]) {
+        const spec = specs.get(clauseKey);
+        if (!spec) continue;
+        for (const [field, measure] of Object.entries(specCatalogueMeasures(spec))) {
+            const declared = spec.fields.find((f) => f.name === field);
+            const value = clauses[clauseKey]?.[field];
+            if (declared?.required && (value === undefined || value === null || value === "")) {
+                missing.push({ clauseKey, field, from: measure.from });
+            }
+        }
+    }
+    return missing;
 }
 
 /**
@@ -360,8 +418,9 @@ export function fillProfileClauses(
  * dimension). Reads the cargo leaf just filled and the divisor the PROFILE fold
  * just wrote onto this same leaf (the seller's shipping convention, a
  * profile-sourced value); skipped when the order composes no dimweight clause,
- * has no packaged dimensions, or the seller declares no divisor — dimensional
- * weight then simply does not apply.
+ * has no packaged dimensions or no gross mass (the greater of two weights is
+ * unknown while one is missing), or the seller declares no divisor —
+ * dimensional weight then simply does not apply.
  */
 export function fillDimweightClause(
     clauses: ClauseFields,
@@ -376,6 +435,7 @@ export function fillDimweightClause(
     const l = Number(cargo?.lengthMm ?? 0), w = Number(cargo?.widthMm ?? 0), h = Number(cargo?.heightMm ?? 0);
     if (!(l > 0 && w > 0 && h > 0)) return clauses;
     const gross = Number(cargo?.massGrams ?? 0);
+    if (!(gross > 0)) return clauses;
     const roundCm = (mm: number) => Math.ceil(mm / 10) * 10;
     const volMm3 = roundCm(l) * roundCm(w) * roundCm(h);
     const volumetric = Math.ceil(volMm3 / divisor);
@@ -383,10 +443,10 @@ export function fillDimweightClause(
 }
 
 /**
- * Fill every derivable LOGISTICS clause on an order, wherever composed — cargo
- * (physical measure), the class leaves (catalog-sourced), the profile leaves
- * (seller master data), then the derived dimweight (reads the cargo and the
- * profile-folded divisor it just wrote). Each fill is a no-op when its clause
+ * Fill every derivable LOGISTICS clause on an order, wherever composed — the
+ * catalog measures each spec declares, the class leaves (catalog-sourced),
+ * the profile leaves (seller master data), then the derived dimweight (reads
+ * the measures and the profile-folded divisor just written). Each fill is a no-op when its clause
  * isn't composed, so the same call serves the root and every sub-order.
  */
 export function fillDerivedClauses(
@@ -398,7 +458,7 @@ export function fillDerivedClauses(
     return fillDimweightClause(
         fillProfileClauses(
             fillClassClauses(
-                fillCargoClause(clauses, lines, specs),
+                fillCatalogueMeasures(clauses, lines, specs),
                 lines,
                 specs,
             ),

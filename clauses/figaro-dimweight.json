@@ -34,7 +34,8 @@
             "catalogueFills": [],
             "profileFills": [
                 "divisor"
-            ]
+            ],
+            "catalogueMeasures": {}
         },
         "runtime": {
             "interaction": null,

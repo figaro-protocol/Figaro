@@ -37,7 +37,7 @@ change it, and register the fork under your own key; the fork is yours (RPGF rew
 - **You do not depend on any UI.** A UI surfaces assemblies *from the registry events*, so
   registering makes it discoverable everywhere that reads the registry — no frontend to
   satisfy. Most of a clause's `block` shapes presentation and affects neither validity nor
-  discoverability — but **five hints in it are hash-load-bearing and three of them decide
+  discoverability — but **six hints in it are hash-load-bearing and three of them decide
   what YOUR assembly contains**: `design.article: "mandatory"` (never selected on its own:
   the DAO wallet's live registrations carrying it are written into every agreement —
   `mandatoryClauses` — before anything you compose), `design.scope: "assembly"` (composed once for the whole

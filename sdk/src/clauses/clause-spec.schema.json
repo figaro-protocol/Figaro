@@ -18,7 +18,7 @@
         "fields": {
             "type": "array",
             "items": { "$ref": "#/$defs/field" },
-            "description": "The clause's content fields — the terms-and-conditions blanks. Filled in for a transaction, they become one CLAUSE of the signed agreement (a merkle leaf under the on-chain checkoutHash). This is the committed content: stage 0. WHO fills each blank is declared by the block phase sections' `fills` lists; any field named in no list is the buyer's, authored at checkout (the default — always derived as the complement, never stored)."
+            "description": "The clause's content fields — the terms-and-conditions blanks. Filled in for a transaction, they become one CLAUSE of the signed agreement (a merkle leaf under the on-chain checkoutHash). This is the committed content: stage 0. WHO fills each blank is declared by the block phase sections' `fills` lists and `checkout.catalogueMeasures`; any field named in none of them is the buyer's, authored at checkout (the default — always derived as the complement, never stored)."
         },
         "stages": {
             "type": "object",
@@ -73,7 +73,7 @@
         },
         "block": {
             "type": "object",
-            "description": "The UI half of the spec — instructions to frontends about how the clause presents and composes, organized into PHASE SECTIONS, each named for its reader: `design` (the designer's canvas/drawer), `checkout` (the checkout fold), `runtime` (the capability rail). Nothing on-chain reads any of it; any frontend could present the same clause differently. An attribute read in two phases is declared in the section of its FIRST reader. The one verb `fills` recurs across sections and always means the same thing: the content fields (by name) whose values that phase's actor authors; the buyer owns every content field named in no fills list.",
+            "description": "The UI half of the spec — instructions to frontends about how the clause presents and composes, organized into PHASE SECTIONS, each named for its reader: `design` (the designer's canvas/drawer), `checkout` (the checkout fold), `runtime` (the capability rail). Nothing on-chain reads any of it; any frontend could present the same clause differently. An attribute read in two phases is declared in the section of its FIRST reader. The one verb `fills` recurs across sections and always means the same thing: the content fields (by name) whose values that phase's actor authors; the buyer owns every content field named in no fills list and no `checkout.catalogueMeasures` entry.",
             "required": ["design"],
             "additionalProperties": true,
             "properties": {
@@ -119,7 +119,7 @@
         },
         "blockCheckout": {
             "type": "object",
-            "description": "Read by the checkout fold: where declared values come from before the buyer signs. Any content field named in neither list — and not in design.fills — is the buyer's, authored at checkout (the default case; derived as the complement, never stored).",
+            "description": "Read by the checkout fold: where declared values come from before the buyer signs. Any content field named in none of its lists — and not in design.fills — is the buyer's, authored at checkout (the default case; derived as the complement, never stored).",
             "additionalProperties": true,
             "properties": {
                 "catalogueFills": {
@@ -131,6 +131,18 @@
                     "type": "array",
                     "items": { "type": "string", "minLength": 1 },
                     "description": "The content fields (by name) authored ONCE on the member's PROFILE (the member's master data: a dim-weight divisor, a declared credential id) and folded onto the matching leaf at checkout. The seller-level sibling of catalogueFills (catalog = what is sold, profile = who sells). Express as [] when no field is profile-authored."
+                },
+                "catalogueMeasures": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "required": ["from", "combine"],
+                        "properties": {
+                            "from": { "type": "string", "minLength": 1, "description": "The catalog-item field the measure is read from (a field of the item the seller lists, e.g. massGrams)." },
+                            "combine": { "enum": ["sum", "single-unit"], "description": "How the order's lines combine it. \"sum\": the item's value × the line's quantity, added over every line. \"single-unit\": the item's value, only when the order is one unit (one line, quantity 1) — a measure that does not add across units, such as a packaged dimension." }
+                        }
+                    },
+                    "description": "The content fields (by name, the map's keys) read from each order line's CATALOG ITEM and combined at checkout: the item's own attributes (its mass, volume, dimensions), as opposed to catalogueFills' per-clause values. A measure the order's lines cannot supply — a line whose item lacks the field, or a single-unit measure on an order of several units — stays missing: nothing is invented, and a REQUIRED one refuses the order before it is signed. Absent is read as {}."
                 }
             }
         },

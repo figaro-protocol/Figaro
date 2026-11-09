@@ -23,8 +23,9 @@ dimension rounded up to the next whole centimeter first (carriers round per
 dimension). Reads the cargo leaf just filled and the divisor the PROFILE fold
 just wrote onto this same leaf (the seller's shipping convention, a
 profile-sourced value); skipped when the order composes no dimweight clause,
-has no packaged dimensions, or the seller declares no divisor — dimensional
-weight then simply does not apply.</p>
+has no packaged dimensions or no gross mass (the greater of two weights is
+unknown while one is missing), or the seller declares no divisor —
+dimensional weight then simply does not apply.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -33,7 +34,7 @@ weight then simply does not apply.</p>
 <li><span><span class="tsd-kind-parameter">specs</span>: <a href="../interfaces/index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">ClauseFields</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L366">checkoutPlan.ts:366</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L425">checkoutPlan.ts:425</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
