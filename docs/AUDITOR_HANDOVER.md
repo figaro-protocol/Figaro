@@ -356,7 +356,7 @@ these rows summarize.
 | Halmos | `FigaroCore`, `MembersRegistry`, `UsageCounter`, the three registries | 41 of 41 proved | `1d39092c` |
 | Certora | `FigaroCore`, `TokenOpsVerification`, `AttestationCoordinator`, `FlorinToken`, `RpgfMinterAuthor` | every rule verified | `1d39092c` |
 | Certora | `RpgfMinter` (built without via-IR) | 11 of 11 rules verified | `98a1e953` |
-| Certora | `BatchVerifierTokenOps`, `BatchVerifierStateRoot`, each narrowed to the step it is about | 4 of 4 and 3 of 3 rules verified, each mutation-checked | uncommitted, over `a2bc9e39` |
+| Certora | `BatchVerifierTokenOps`, `BatchVerifierStateRoot`, each narrowed to the step it is about | 4 of 4 and 3 of 3 rules verified, each mutation-checked | `7e0b3b43` |
 | Echidna | `FigaroCore`, `FlorinToken` | 15 of 15 properties hold | `1d39092c` |
 | TLA+ | five models in seven configurations (the Core, the florin, the swap coordinator, the two paths composed, the relay) | no error | `1d39092c` |
 | Lean 4 | the best responses over the A-8/A-9 payoff table | builds | `1d39092c` |
