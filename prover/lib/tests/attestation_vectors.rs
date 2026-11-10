@@ -160,7 +160,6 @@ fn a_hash_only_batched_attestation_emits_the_coordinator_s_event_bytes() {
         },
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
     let (pv, _positions, events) = apply_batch(&input).expect("the hash-only attestations apply");
 

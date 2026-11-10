@@ -23,10 +23,6 @@ pub struct ProveResult {
     pub operations_bytes: Vec<u8>,
     /// Post-batch mirror state for advancing the state mirror.
     pub post_state: KernelState,
-    /// The provenance leaf's key the batch proved assembly claims
-    /// against. Echoed from the input because it is calldata the
-    /// verifier hash-checks, not something the guest returns.
-    pub provenance_leaf: alloy_primitives::B256,
 }
 
 /// Prove a batch.
@@ -39,10 +35,11 @@ pub struct ProveResult {
 /// receives the proof — a LIVENESS dependency only: the proof still verifies
 /// against the program vkey, so no prover can forge a resolving proof. Whoever
 /// requests a proof pays for it (the relay operator) — never the protocol,
-/// never its users. The inputs it submits are the whole batch input, so the
-/// spec, content and clauseData of an attestation sent in the plaintext form
-/// reach the network's provers; a hash-only attestation carries its
-/// fingerprints alone. The proof FORM is `SP1_PROOF_MODE`:
+/// never its users. The inputs it submits are the batch's operations, its
+/// usage claims and the witness of the state entries it touches (never the
+/// whole state), so the spec, content and clauseData of an attestation sent
+/// in the plaintext form reach the network's provers; a hash-only
+/// attestation carries its fingerprints alone. The proof FORM is `SP1_PROOF_MODE`:
 /// `groth16` (default) or `plonk` — it must match the SP1 verifier gateway
 /// `FigaroBatchVerifier` was deployed against (Succinct runs one gateway per
 /// form; a proof of the other form is `RouteNotFound` on-chain).
@@ -61,9 +58,19 @@ pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
         "Kernel execution succeeded"
     );
 
+    // The guest reads only the entries the batch touches, proved against the
+    // previous root. Its run, natively, must reach the native run's public
+    // values before any proving time is spent.
+    let guest = figaro_kernel::kernel::guest_input(batch).map_err(|e| format!("the witness could not be built: {e}"))?;
+    let (guest_pv, _, _) =
+        figaro_kernel::kernel::apply_guest(&guest).map_err(|e| format!("the guest's run refused the witness: {e}"))?;
+    if guest_pv.abi_encode() != pv.abi_encode() {
+        return Err("the guest's run reached other public values than the native run".to_string());
+    }
+
     let elf = sp1_sdk::include_elf!("figaro-prover");
     let mut stdin = SP1Stdin::new();
-    stdin.write(batch);
+    stdin.write(&guest);
 
     let proof_bytes = if real_prover_selected() {
         prove_wrapped(elf, stdin, &pv, proof_mode()?).await?
@@ -84,7 +91,6 @@ pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
             &batch.usage_claims,
         ),
         post_state,
-        provenance_leaf: batch.provenance_leaf,
     })
 }
 

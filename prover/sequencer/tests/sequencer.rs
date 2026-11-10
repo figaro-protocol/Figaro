@@ -305,12 +305,12 @@ async fn mempool_refuses_a_seller_attestation_not_signed_by_the_targets_seller()
 
 // ── State mirror ──────────────────────────────────────────────────
 
+/// The empty state's root is the state tree's over no entries, zero — the
+/// root `FigaroBatchVerifier.genesisRoot()` starts every verifier on.
 #[tokio::test]
-async fn state_mirror_genesis_root_is_deterministic_and_nonzero() {
+async fn state_mirror_genesis_root_is_the_empty_trees() {
     let a = StateMirror::genesis().state_root().await;
-    let b = StateMirror::genesis().state_root().await;
-    assert_eq!(a, b);
-    assert_ne!(a, B256::ZERO);
+    assert_eq!(a, B256::ZERO);
     assert_eq!(a, KernelState::new().compute_root());
 }
 
@@ -627,7 +627,6 @@ fn claim_filter_quarantines_a_poison_claim_without_dropping_the_valid_one() {
         1000,
         &empty_snapshot(),
         &input.operations,
-        input.provenance_leaf,
         vec![valid, poison],
     );
     assert_eq!(kept.len(), 1, "the valid claim survives: {dropped:?}");
@@ -652,7 +651,6 @@ fn claim_filter_drops_an_intra_batch_duplicate() {
         1000,
         &empty_snapshot(),
         &input.operations,
-        input.provenance_leaf,
         vec![claim.clone(), claim],
     );
     assert_eq!(kept.len(), 1, "the process is carried once: {dropped:?}");
@@ -995,7 +993,6 @@ async fn a_claims_only_batch_is_a_valid_state_transition() {
         UsageContext {
             claims: input.usage_claims.clone(),
             period: input.usage_period,
-            provenance_leaf: input.provenance_leaf,
         },
     );
     let (pv, positions, events, _) =
@@ -1721,6 +1718,14 @@ fn the_spec_an_attestation_carries_is_what_the_registry_check_reads() {
     assert!(attestation_spec(&ops[2]).is_none());
     assert!(attestation_spec(&ops[0]).is_none());
     assert!(attestation_spec(&ops[3]).is_none());
+    // The wallet-code form commits the plaintext form's spec binding too, so
+    // the verifier's registry check reads it: the relay reads the same spec.
+    let wallet_code = wallet_code_attestation("Seller", b"session-key-approval");
+    assert_eq!(
+        attestation_spec(&wallet_code),
+        attestation_spec(&ops[1]),
+        "a plaintext wallet-code attestation carries its spec to the registry check"
+    );
 }
 
 // ── The state is rebuilt from the chain, never served ───────────────────
@@ -1877,13 +1882,13 @@ fn the_published_stream_rebuilds_the_root_the_batch_committed() {
     let (pv, _, _, _) = apply_batch_with_state(&input).unwrap();
     let stream = encode_operation_stream(&input.operations, &input.usage_claims);
     assert_eq!(pv.operations_hash, keccak256(&stream), "word nine is the stream's hash");
-    let (operations, claims) = decode_operation_stream(&stream).expect("the published stream decodes");
+    let (operations, _, claims) = decode_operation_stream(&stream).expect("the published stream decodes");
     assert!(operations.len() < input.operations.len(), "the attestations are not in the stream");
     let mut state = KernelState::from_snapshot(&input.prev_state);
     assert_eq!(state.compute_root(), pv.prev_state_root);
     apply_operations(&mut state, input.chain_id, input.verifying_contract, input.block_timestamp, &operations)
         .expect("the stream's operations apply from the previous state");
-    apply_claims(&state, input.chain_id, input.verifying_contract, &claims, &input.provenance_leaf)
+    apply_claims(&state, input.chain_id, input.verifying_contract, &claims)
         .expect("the stream's claims prove against the post-state");
     assert_eq!(state.compute_root(), pv.new_state_root, "the replay lands on the committed root");
 }
@@ -1914,12 +1919,11 @@ fn a_two_order_resolve_replays_from_its_stream_to_the_same_root() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
     let (pv, _, _, _) = apply_batch_with_state(&input).expect("the two-order batch resolves");
     let stream = encode_operation_stream(&input.operations, &input.usage_claims);
     assert_eq!(pv.operations_hash, keccak256(&stream), "word nine is the stream's hash");
-    let (operations, _) = decode_operation_stream(&stream).expect("the stream decodes");
+    let (operations, _, _) = decode_operation_stream(&stream).expect("the stream decodes");
     match &operations[2] {
         KernelOp::Resolve { cumulative_value, .. } => {
             assert_eq!(*cumulative_value, root.payment + sub.payment, "the sum of the listed payments");
@@ -1942,7 +1946,7 @@ fn the_canonical_batch_is_planned_from_its_own_execution_and_fits_a_block() {
     assert_eq!(items.attestations, 2, "the two attestations are re-emitted");
     assert_eq!(items.uses, input.usage_claims.len(), "a claim is a use");
     let operations = figaro_kernel::operation_stream::encode_operation_stream(&input.operations, &input.usage_claims);
-    let calldata = settle_calldata(&positions, &events, input.provenance_leaf, &pv.abi_encode(), 356, &operations);
+    let calldata = settle_calldata(&positions, &events, &pv.abi_encode(), 356, &operations);
     // The calldata is the settle call: its selector, the proof placeholder
     // and the public values, then the items.
     assert!(calldata.len() > 4 + 356 + pv.abi_encode().len());
@@ -1951,7 +1955,7 @@ fn the_canonical_batch_is_planned_from_its_own_execution_and_fits_a_block() {
     assert!(planned < gas::settle_gas_budget(30_000_000, gas::DEFAULT_SETTLE_GAS_CAP), "the canonical batch fits one transaction under the cap");
     // The same batch with the proof's bytes absent (the mock verifier) plans
     // for fewer calldata bytes and nothing else.
-    let without_proof = settle_calldata(&positions, &events, input.provenance_leaf, &pv.abi_encode(), 0, &operations);
+    let without_proof = settle_calldata(&positions, &events, &pv.abi_encode(), 0, &operations);
     assert_eq!(
         planned - gas::settle_gas_estimate(&without_proof, items),
         gas::calldata_gas(&calldata) - gas::calldata_gas(&without_proof)
@@ -3175,12 +3179,11 @@ async fn a_wallet_code_resolve_is_admitted_from_the_wire_and_replays_to_the_same
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
     let (pv, positions, events, _) = apply_batch_with_state(&input).expect("the wallet-code resolve applies");
     let stream = encode_operation_stream(&input.operations, &[]);
     assert_eq!(pv.operations_hash, keccak256(&stream));
-    let (operations, _) = decode_operation_stream(&stream).expect("decodes");
+    let (operations, _, _) = decode_operation_stream(&stream).expect("decodes");
     let mut state = KernelState::from_snapshot(&input.prev_state);
     apply_operations(&mut state, input.chain_id, input.verifying_contract, input.block_timestamp, &operations)
         .expect("the replay applies");
@@ -3415,4 +3418,119 @@ async fn admission_refuses_a_commit_whose_bonds_it_cannot_read() {
     assert!(error.contains("bonds could not be read"), "{error}");
     assert!(!error.contains("secret-key") && !error.contains("127.0.0.1"), "{error}");
     assert_eq!(state.mempool.len().await, 0);
+}
+
+// ── An attestation authorized by the party's wallet code ──────────
+
+/// The canonical seller attestation (`canonical_ops()[1]`) in the
+/// wallet-code form under `role`, carrying `authorization`, as the SDK's
+/// wire sends it (`SequencerClient.submitAttestByWalletCode`).
+fn wallet_code_attestation(role: &str, authorization: &[u8]) -> KernelOp {
+    let KernelOp::AttestAsSeller { target, clause_id, stage, content_ref, proof, .. } = canonical_ops()[1].clone() else {
+        panic!("canonical ops[1] is the seller's attestation")
+    };
+    serde_json::from_value(serde_json::json!({
+        "AttestByWalletCode": {
+            "role": role,
+            "target": target,
+            "clause_id": clause_id,
+            "stage": stage,
+            "content_ref": content_ref,
+            "authorization": alloy_primitives::Bytes::copy_from_slice(authorization),
+            "proof": proof,
+        }
+    }))
+    .expect("the wire form deserializes")
+}
+
+/// The relay asks the role's party, from the verifier's domain, the
+/// `AttestSeller` or `AttestBuyer` digest over the target's ids the verifier
+/// derives from the entry's commitment.
+#[test]
+fn the_relay_asks_the_attesting_party_s_code_the_verifier_s_question() {
+    use figaro_sequencer::submitter::wallet_code_question;
+    let verifier = Address::repeat_byte(0x77);
+    let domain = domain_separator(CHAIN_ID, verifier);
+    for role in ["Seller", "Buyer"] {
+        let op = wallet_code_attestation(role, b"session-key-approval");
+        let KernelOp::AttestByWalletCode { target, clause_id, stage, content_ref, .. } = &op else { unreachable!() };
+        let (order_hash, process_id) = derive_commitment_ids(&domain, target);
+        let (party, digest, bytes) = wallet_code_question(CHAIN_ID, verifier, &op).expect("a wallet-code attestation");
+        let (expected_party, struct_hash) = if role == "Seller" {
+            (target.seller, attest_seller_struct_hash(&order_hash, clause_id, *stage, content_ref))
+        } else {
+            (target.buyer, attest_buyer_struct_hash(&process_id, &order_hash, clause_id, *stage, content_ref))
+        };
+        assert_eq!(party, expected_party, "the role's party is asked");
+        assert_eq!(digest, typed_data_hash(&domain, &struct_hash), "the role's digest, under the verifier's domain");
+        assert_eq!(bytes.as_ref(), b"session-key-approval");
+    }
+}
+
+/// The bytes are the party's code's to judge: they are in the identity
+/// key, so other bytes for the same attestation are another operation and
+/// the same bytes are a duplicate; bytes longer than the relay plans are
+/// refused.
+#[tokio::test]
+async fn a_wallet_code_attestation_s_identity_key_carries_its_bytes() {
+    let pool = mempool();
+    let first = pool.submit(wallet_code_attestation("Seller", b"one")).await.expect("admitted");
+    assert!(!first.duplicate);
+    let again = pool.submit(wallet_code_attestation("Seller", b"one")).await.expect("admitted");
+    assert!(again.duplicate && again.id == first.id, "the same bytes are a duplicate");
+    let other = pool.submit(wallet_code_attestation("Seller", b"two")).await.expect("admitted");
+    assert!(!other.duplicate && other.id != first.id, "other bytes are another operation");
+    let buyer = pool.submit(wallet_code_attestation("Buyer", b"one")).await.expect("admitted");
+    assert!(!buyer.duplicate, "the other role is another operation");
+    match pool.submit(wallet_code_attestation("Seller", &vec![1u8; gas::MAX_WALLET_AUTHORIZATION_BYTES + 1])).await {
+        Err(SubmitError::Invalid(why)) => assert!(why.contains("longer than"), "{why}"),
+        other => panic!("expected a refusal, got {other:?}"),
+    }
+}
+
+/// The gas plan counts each `0x05` entry with the check and the wallet's
+/// own execution, and the guest leaves its event out of the attestations.
+#[test]
+fn the_plan_counts_a_wallet_code_attestation_entry() {
+    use figaro_kernel::operation_stream::encode_operation_stream;
+    let mut ops = canonical_ops();
+    ops[1] = wallet_code_attestation("Seller", b"session-key-approval");
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: ops,
+        prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+    };
+    let (_, positions, events, _) = apply_batch_with_state(&input).expect("the batch applies");
+    let stream = encode_operation_stream(&input.operations, &[]);
+    let items = SettleItems::of(&positions, &events).with_stream(stream.len(), &input.operations, 0);
+    assert_eq!(items.stream_wallet_code_attestations, 1);
+    assert_eq!(items.attestations, 1, "the buyer's signed attestation alone is in public value 6");
+    let without = SettleItems { stream_wallet_code_attestations: 0, ..items };
+    assert_eq!(
+        gas::settle_gas_estimate(&[], items) - gas::settle_gas_estimate(&[], without),
+        gas::SETTLE_GAS_PER_STREAM_WALLET_CODE_ATTESTATION + gas::WALLET_CODE_EXECUTION_GAS
+    );
+}
+
+/// Nobody named after a refused batch: a wallet-code attestation is
+/// dead-lettered alone, as a wallet-code resolve is (its code can still burn
+/// the call's gas), and the attesting party is counted by the adversarial
+/// signal.
+#[test]
+fn an_unnamed_refusal_dead_letters_a_wallet_code_attestation_and_names_its_party() {
+    use figaro_sequencer::submitter::classify_deterministic_revert;
+    let op = wallet_code_attestation("Seller", b"session-key-approval");
+    let KernelOp::AttestByWalletCode { target, .. } = &op else { unreachable!() };
+    let seller = target.seller;
+    let attestation = PendingOp { id: 80, key: B256::with_last_byte(80), op, deferred_since: None, behind: Vec::new() };
+    let (_, _, root, _, _, _) = two_order_process();
+    let verdict = classify_deterministic_revert(vec![commit_from(&root, 81, 10), attestation], vec![], vec![], vec![]);
+    assert!(!verdict.whole);
+    assert_eq!(verdict.requeue.iter().map(|p| p.id).collect::<Vec<_>>(), vec![81]);
+    assert_eq!(verdict.dead.len(), 1);
+    assert_eq!((verdict.dead[0].0.id, verdict.dead[0].2), (80, Some(seller)), "the attesting party is named");
 }

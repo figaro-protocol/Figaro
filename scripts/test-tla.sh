@@ -1,7 +1,7 @@
 #!/bin/bash
 # test-tla.sh — Reproducible TLA+ model checking for FigaroCore invariants.
 #
-# Runs TLC (TLA+ model checker) against five models, the fifth in three
+# Runs TLC (TLA+ model checker) against five models, the fifth in four
 # configurations:
 #
 #   1. FigaroCore — via formal/MC.tla + formal/MC.cfg
@@ -82,6 +82,12 @@
 #      ResolveBoundToState FALSE (a signature over the process id alone)
 #      MUST fail the first, and VerifierChecksWalletCode FALSE (the
 #      wallet-code form taken on the guest's word) MUST fail the second.
+#      Its fourth spec, AttestSpec (formal/RelayStateAttest.cfg), models an
+#      attestation on the batch path: OnlyPartyAttests (every attestation the
+#      batch path emits was authorized by the party's key or by the code its
+#      wallet installed while it held the key, the wallet-code form asked by
+#      the verifier, which skips it otherwise); its switch
+#      VerifierChecksAttestationCode FALSE MUST fail it.
 #
 # All five models complete exhaustive state exploration in under 20 minutes
 # total with -workers auto on a modern laptop.
@@ -100,8 +106,9 @@
 #   TLA2TOOLS=/path/to/tla2tools.jar ./scripts/test-tla.sh
 #
 # Exit codes:
-#   0  — all 69 invariants (and RelayState's two action properties) hold across the
-#        explored state space (five models, seven configurations)
+#   0  — all 71 invariants, each configuration's type invariant counted (and
+#        RelayState's two action properties), hold across the
+#        explored state space (five models, eight configurations)
 #   >0 — an invariant violation was found OR the environment is misconfigured
 
 set -e
@@ -134,7 +141,7 @@ echo ""
 # without fragile absolute paths.
 cd formal
 
-echo "▶ Pass 1/7 — FigaroCore (9 invariants)"
+echo "▶ Pass 1/8 — FigaroCore (9 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config MC.cfg \
@@ -144,7 +151,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 2/7 — FlorinToken (8 invariants)"
+echo "▶ Pass 2/8 — FlorinToken (8 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config FlorinToken.cfg \
@@ -154,7 +161,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 3/7 — WitnessSwapAndCommitCoordinator (10 invariants)"
+echo "▶ Pass 3/8 — WitnessSwapAndCommitCoordinator (10 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config WitnessSwapAndCommitCoordinator.cfg \
@@ -164,7 +171,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 4/7 — Composed resolution universes (21 invariants)"
+echo "▶ Pass 4/8 — Composed resolution universes (21 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config ResolutionUniverses.cfg \
@@ -174,7 +181,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 5/7 — The relay's state lifecycle (8 invariants + 2 action properties)"
+echo "▶ Pass 5/8 — The relay's state lifecycle (8 invariants + 2 action properties)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config RelayState.cfg \
@@ -184,7 +191,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 6/7 — The relay's deferral at batch formation (10 invariants)"
+echo "▶ Pass 6/8 — The relay's deferral at batch formation (10 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config RelayStateDeferral.cfg \
@@ -194,10 +201,20 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 7/7 — The batch path's resolve authorization (3 invariants)"
+echo "▶ Pass 7/8 — The batch path's resolve authorization (3 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config RelayStateResolve.cfg \
+    -workers auto \
+    -cleanup \
+    RelayState.tla \
+    "$@"
+
+echo ""
+echo "▶ Pass 8/8 — The batch path's attestation authorization (2 invariants: RTypeOK, OnlyPartyAttests)"
+echo ""
+java -cp "../$TLA2TOOLS" tlc2.TLC \
+    -config RelayStateAttest.cfg \
     -workers auto \
     -cleanup \
     RelayState.tla \

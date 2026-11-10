@@ -55,13 +55,19 @@ pub const SETTLE_GAS_PER_STREAM_CLAIM: u64 = 2_000;
 /// the payments summed, the digest derived, the buyer's code size read and
 /// its `isValidSignature` called, with a minimal wallet's validation.
 pub const SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK: u64 = 15_000;
+/// A wallet-code attestation entry beyond its stream bytes: the role read,
+/// the target's ids derived, the role's digest, the party's code size read
+/// and its `isValidSignature` called with a minimal wallet's validation, and
+/// the `Attestation` event the verifier emits on the magic value (the event is
+/// not among the batch's attestation events, `SETTLE_GAS_PER_ATTESTATION`).
+pub const SETTLE_GAS_PER_STREAM_WALLET_CODE_ATTESTATION: u64 = 24_000;
 
 /// The most gas this relay plans for a buyer's own `isValidSignature` in a
 /// wallet-code resolve, beside `SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK`:
 /// enough for a wallet that verifies a P-256 signature in contract code. It
 /// is this relay's plan, never the protocol's: the verifier forwards the
 /// call all the gas left, and the relay's off-chain check
-/// (`submitter::check_wallet_code_resolve`) runs the call under this much
+/// (`submitter::check_wallet_code`) runs the call under this much
 /// gas, so a wallet whose code needs more is refused at this relay's door
 /// with the reason and can resolve through a relay that plans more, or a
 /// batch it submits itself.
@@ -164,6 +170,9 @@ pub struct SettleItems {
     /// The stream's wallet-code resolutions, each a check of the buyer's
     /// code, planned with the wallet's own execution.
     pub stream_wallet_code_checks: usize,
+    /// The stream's wallet-code attestations (`0x05`), each a check of the
+    /// party's code and its event, planned with the wallet's own execution.
+    pub stream_wallet_code_attestations: usize,
 }
 
 impl SettleItems {
@@ -180,6 +189,7 @@ impl SettleItems {
             stream_resolutions: 0,
             stream_claims: 0,
             stream_wallet_code_checks: 0,
+            stream_wallet_code_attestations: 0,
         }
     }
 
@@ -200,6 +210,7 @@ impl SettleItems {
                     self.stream_resolved_orders += commitments.len();
                     self.stream_wallet_code_checks += 1;
                 }
+                KernelOp::AttestByWalletCode { .. } => self.stream_wallet_code_attestations += 1,
                 _ => {}
             }
         }
@@ -230,6 +241,8 @@ pub fn settle_gas_estimate(calldata: &[u8], items: SettleItems) -> u64 {
         + items.stream_resolutions as u64 * SETTLE_GAS_PER_STREAM_RESOLUTION
         + items.stream_claims as u64 * SETTLE_GAS_PER_STREAM_CLAIM
         + items.stream_wallet_code_checks as u64 * (SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK + WALLET_CODE_EXECUTION_GAS)
+        + items.stream_wallet_code_attestations as u64
+            * (SETTLE_GAS_PER_STREAM_WALLET_CODE_ATTESTATION + WALLET_CODE_EXECUTION_GAS)
 }
 
 /// The gas a batch may plan on in a block with this limit, under the
@@ -402,10 +415,10 @@ mod tests {
 
     #[test]
     fn the_estimate_is_the_sum_of_its_parts() {
-        let items = SettleItems { positions: 2, attestations: 1, spec_bindings: 1, uses: 1, stream_words: 0, stream_commits: 0, stream_resolved_orders: 0, stream_resolutions: 0, stream_claims: 0, stream_wallet_code_checks: 1 };
+        let items = SettleItems { positions: 2, attestations: 1, spec_bindings: 1, uses: 1, stream_words: 0, stream_commits: 0, stream_resolved_orders: 0, stream_resolutions: 0, stream_claims: 0, stream_wallet_code_checks: 1, stream_wallet_code_attestations: 1 };
         assert_eq!(
             settle_gas_estimate(&[1], items),
-            21_016 + 300_000 + 105_000 + 120_000 + 6_000 + 4_500 + SETTLE_GAS_PER_USE + 15_000 + 500_000
+            21_016 + 300_000 + 105_000 + 120_000 + 6_000 + 4_500 + SETTLE_GAS_PER_USE + 15_000 + 500_000 + 24_000 + 500_000
         );
     }
 

@@ -367,6 +367,28 @@ impl Mempool {
                 buf.extend_from_slice(content_ref.as_slice());
                 witness_key(&mut buf, proof);
             }
+            KernelOp::AttestByWalletCode {
+                role,
+                target,
+                clause_id,
+                stage,
+                content_ref,
+                authorization,
+                proof,
+            } => {
+                // The party's code judges the bytes, at resolution: they are
+                // in the key, as a wallet-code resolve's are, so bytes the
+                // code refuses never make bytes it validates a duplicate.
+                let (order_hash, _) = derive_commitment_ids(&domain, target);
+                buf.extend_from_slice(b"attest-by-wallet-code");
+                buf.push(role.code());
+                buf.extend_from_slice(order_hash.as_slice());
+                buf.extend_from_slice(clause_id.as_slice());
+                buf.push(*stage);
+                buf.extend_from_slice(content_ref.as_slice());
+                buf.extend_from_slice(keccak256(authorization).as_slice());
+                witness_key(&mut buf, proof);
+            }
         }
         keccak256(&buf)
     }
@@ -566,6 +588,7 @@ impl Mempool {
             KernelOp::Resolve { process_id, .. } | KernelOp::ResolveByWalletCode { process_id, .. } => vec![*process_id],
             KernelOp::AttestAsSeller { target, .. } => vec![process(target)],
             KernelOp::AttestAsBuyer { target, .. } => vec![process(target)],
+            KernelOp::AttestByWalletCode { target, .. } => vec![process(target)],
         }
     }
 
@@ -860,7 +883,9 @@ impl Mempool {
                 }
                 Ok(())
             }
-            KernelOp::AttestAsSeller { target, .. } | KernelOp::AttestAsBuyer { target, .. } => {
+            KernelOp::AttestAsSeller { target, .. }
+            | KernelOp::AttestAsBuyer { target, .. }
+            | KernelOp::AttestByWalletCode { target, .. } => {
                 let order_hash = derive_commitment_ids(&domain, target).0;
                 if held.order_active(&order_hash).await {
                     return Ok(());
@@ -944,7 +969,7 @@ impl Mempool {
                 // The bytes are the buyer's code's to judge, at resolution;
                 // the relay asks the same code against the chain at its door
                 // and again at batch formation
-                // (`submitter::check_wallet_code_resolve`). Here: the length
+                // (`submitter::check_wallet_code`). Here: the length
                 // this relay plans for, and the listing.
                 if authorization.len() > crate::gas::MAX_WALLET_AUTHORIZATION_BYTES {
                     return Err(format!(
@@ -1016,6 +1041,37 @@ impl Mempool {
                     .map_err(|e| format!("invalid attest-buyer signature: {e}"))?;
                 if recovered != target.buyer {
                     return Err("attest-buyer sig does not match target.buyer".into());
+                }
+                validate_attestation_witness(
+                    proof,
+                    content_ref,
+                    clause_id,
+                    *stage,
+                    &target.checkout_hash,
+                )
+                .map_err(|e| format!("attestation witness gates rejected: {e}"))?;
+                Ok(())
+            }
+            KernelOp::AttestByWalletCode {
+                target,
+                clause_id,
+                stage,
+                content_ref,
+                authorization,
+                proof,
+                ..
+            } => {
+                // The bytes are the party's code's to judge, at resolution;
+                // the relay asks the same code at its door and again at batch
+                // formation (`submitter::check_wallet_code`). Here: the
+                // length this relay plans for, and the witness gates the
+                // guest runs, as for the signed form.
+                if authorization.len() > crate::gas::MAX_WALLET_AUTHORIZATION_BYTES {
+                    return Err(format!(
+                        "wallet-code authorization of {} bytes is longer than the {} this relay plans an attestation for",
+                        authorization.len(),
+                        crate::gas::MAX_WALLET_AUTHORIZATION_BYTES
+                    ));
                 }
                 validate_attestation_witness(
                     proof,

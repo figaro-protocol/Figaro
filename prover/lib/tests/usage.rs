@@ -15,7 +15,7 @@ use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::{
-    apply_batch_with_state, compute_usage_accrual_hash, derive_commitment_ids,
+    apply_batch_with_state, apply_guest, compute_usage_accrual_hash, derive_commitment_ids, guest_input,
     ASSEMBLY_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY,
 };
 use figaro_kernel::types::*;
@@ -220,7 +220,6 @@ fn batch(
         prev_state,
         usage_claims: claims,
         usage_period: PERIOD,
-        provenance_leaf: provenance_key(),
     }
 }
 
@@ -347,6 +346,32 @@ fn a_claim_presented_in_a_later_batch_yields_the_same_use() {
     );
     let (_, _, again_events, _) = apply_batch_with_state(&again).expect("the claim proves again");
     assert_eq!(again_events.uses, first_events.uses, "the same (kind, key, process, seller)");
+}
+
+/// The guest proves a claim against the post-state it reads from its witness:
+/// a claim batch whose witness leaves out the claimed order is refused, never
+/// read as an order that did not resolve.
+#[test]
+fn the_guest_refuses_a_claim_whose_order_the_witness_leaves_out() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
+    let clause_data_hash = keccak256(b"clause-bytes");
+    let (order, ops) = settled_order(&buyer, &seller, &clause_or_assembly, &clause_data_hash, 1);
+    let (_, _, _, post) = apply_batch_with_state(&batch(ops, vec![], empty_snapshot())).expect("the order settles");
+    let claim_batch = batch(
+        vec![],
+        vec![clause_claim(&order, clause_or_assembly, clause_data_hash)],
+        post.to_snapshot(),
+    );
+
+    let honest = guest_input(&claim_batch).expect("the claim batch's witness");
+    assert_eq!(honest.prev_witness.orders.len(), 1, "the witness carries the claimed order");
+    assert!(apply_guest(&honest).is_ok());
+
+    let mut missing = honest.clone();
+    missing.prev_witness.orders.clear();
+    assert!(matches!(apply_guest(&missing).unwrap_err(), KernelError::UnwitnessedKey));
 }
 
 /// The same claim twice in one batch is one use: the guest gives each
@@ -518,6 +543,65 @@ fn rejects_an_agreement_claim_with_the_wrong_assembly_hash() {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
     }
+}
+
+/// A key other than the format's provenance leaf: the one a prover could
+/// name when the guest took the provenance leaf's key as a batch input
+/// (blind audit F-7). No batch input carries it now.
+fn forged_provenance_key() -> B256 {
+    keccak256(b"figaro-modalities")
+}
+
+/// The agreement leg proves against the guest's own constant: an order
+/// whose agreement carries the provenance bytes under any other key opens
+/// no agreement claim, on the relay's run and on the guest's.
+#[test]
+fn an_agreement_claim_opens_only_under_the_guest_s_provenance_key() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let agreement = keccak256(b"an-agreement");
+    let composition = keccak256(b"a-composition");
+    let clause_data_hash = provenance_leaf_data_hash(&agreement, &composition);
+
+    let (order, ops) = settled_order(&buyer, &seller, &forged_provenance_key(), &clause_data_hash, 1);
+    let claim = UsageClaim {
+        order,
+        clause_or_assembly: agreement,
+        kind: UsageClaimKind::Agreement { assembly_hash: composition },
+        inclusion_proof: vec![],
+    };
+    let input = batch(ops, vec![claim], empty_snapshot());
+
+    match apply_batch_with_state(&input).map(|_| ()) {
+        Err(KernelError::UsageInvalidInclusionProof) => {}
+        other => panic!("the relay's run: expected UsageInvalidInclusionProof, got {other:?}"),
+    }
+    match guest_input(&input).map(|_| ()) {
+        Err(KernelError::UsageInvalidInclusionProof) => {}
+        other => panic!("the guest's input: expected UsageInvalidInclusionProof, got {other:?}"),
+    }
+}
+
+/// The usage hash the chain checks commits the guest's own provenance key,
+/// so a batch the guest proved carries no other key to the counter's
+/// `ProvenanceLeafMismatch`: no batch input names one.
+#[test]
+fn the_usage_hash_commits_the_guest_s_provenance_key() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
+    let clause_data_hash = keccak256(b"clause-bytes");
+    let (order, ops) = settled_order(&buyer, &seller, &clause_or_assembly, &clause_data_hash, 1);
+    let input = batch(ops, vec![clause_claim(&order, clause_or_assembly, clause_data_hash)], empty_snapshot());
+
+    let (pv, _, events, _) = apply_batch_with_state(&input).expect("batch applies");
+    assert_eq!(
+        pv.usage_accrual_hash,
+        compute_usage_accrual_hash(PERIOD, &PROVENANCE_LEAF_KEY, &events.uses),
+        "the relay's run commits the format's key"
+    );
+    let (guest_pv, _, _) = apply_guest(&guest_input(&input).expect("the witness builds")).expect("the guest applies");
+    assert_eq!(guest_pv.usage_accrual_hash, pv.usage_accrual_hash, "the guest's run commits the same key");
 }
 
 // ── The assembly leg ──────────────────────────────────────────────

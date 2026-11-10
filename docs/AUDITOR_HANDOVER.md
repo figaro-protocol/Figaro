@@ -14,8 +14,8 @@ the patterns that look like vulnerabilities and are intended: read it first.
 | Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | none: no audit is engaged (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 14 contract files, 1,598 lines of code (3,850 physical); 3 deploy scripts, 398 lines of code (842 physical) |
-| Rust in scope | 4 crates, 23 files under `src/`, 7,032 lines of code (9,985 physical) net of their inline test modules |
+| Solidity in scope | 14 contract files, 1,597 lines of code (3,849 physical); 3 deploy scripts, 398 lines of code (838 physical) |
+| Rust in scope | 4 crates, 24 files under `src/`, 7,464 lines of code (10,574 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, the routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the testnet scripts, `frontend/`, `sdk/` |
@@ -58,13 +58,13 @@ processes under one SP1 proof, in four parts:
 |---|---|---|
 | `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` | 164 (306), 36 (67) |
 | `src/core/attestation/` | `AttestationCoordinator.sol` | 77 (197) |
-| `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 497 (903), 7 (23) |
+| `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 496 (903), 7 (23) |
 | `src/build/registries/` | `ClauseRegistry.sol`, `AgreementRegistry.sol`, `AssemblyRegistry.sol` | 49 (196), 53 (202), 47 (189) |
 | `src/build/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol` | 296 (884), 147 (344) |
 | `src/build/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` | 51 (83), 4 (9) |
 | `src/app/` | `MembersRegistry.sol`, `WitnessSwapAndCommitCoordinator.sol` | 60 (210), 110 (239) |
-| `script/Deploy.s.sol` | The devnet deploy | 198 (435) |
-| `script/DeployMainnet.s.sol` | The mainnet deploy: the audited mainnet surface | 169 (349) |
+| `script/Deploy.s.sol` | The devnet deploy | 198 (432) |
+| `script/DeployMainnet.s.sol` | The mainnet deploy: the audited mainnet surface | 169 (348) |
 | `script/DeploySwapCoordinator.s.sol` | The swap coordinator alone, onto a live stack | 31 (58) |
 
 ### In scope — Rust
@@ -74,10 +74,10 @@ in scope.
 
 | Crate | Package | Files, lines of code (physical) | What it is | What a defect costs |
 |---|---|---|---|---|
-| `prover/program/` | `figaro-prover` | 1, 9 (13) | The guest's entry point: reads the batch input, runs the mirror, commits the public values | A batch the chain resolves wrongly |
-| `prover/lib/` | `figaro-kernel` | 7, 1,558 (2,472) | The mirror of `FigaroCore`'s commit and resolve, the witness gates, the operation stream, the public values, the state root, the usage claims | A batch the chain resolves wrongly |
+| `prover/program/` | `figaro-prover` | 1, 9 (13) | The guest's entry point: reads the batch and the witness of the entries it touches, runs the mirror, commits the public values | A batch the chain resolves wrongly |
+| `prover/lib/` | `figaro-kernel` | 8, 1,983 (3,046) | The mirror of `FigaroCore`'s commit and resolve, the witness gates, the operation stream, the public values, the state tree and the witness the guest reads, the usage claims | A batch the chain resolves wrongly |
 | `prover/clause/` | `figaro-clause` | 4, 1,588 (1,939) | The generic clause engine: parses any clause spec supplied as witness input, validates content against it, encodes it | An attestation the batch path reads differently from the party who signed it |
-| `prover/sequencer/` | `figaro-sequencer` | 11, 3,877 (5,561) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, rebuilds its state from the chain | Liveness and griefing |
+| `prover/sequencer/` | `figaro-sequencer` | 11, 3,884 (5,576) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, rebuilds its state from the chain | Liveness and griefing |
 
 The figures count the files under each crate's `src/`, net of their inline
 test modules.
@@ -183,9 +183,9 @@ every noun; the ones this document uses:
 - **Payment** P_i is what order i moves from buyer to seller. **Cumulative value** G_i (`expectedCumulativeValue`) is the total payment through order i; each later order extends the process's accumulator by exactly its payment.
 - `commit` pulls the **bonds** into `FigaroCore` in the process's one ERC-20: the buyer 2·P_i, the seller 2·G_i. **Resolution** is one call by the buyer over every active order: each seller receives 2·G_i + P_i and the buyer P_i per order, every payment made and every bond refunded, atomically. Nothing else moves a bond.
 - A **clause** is a reusable term, registered in `ClauseRegistry` under the keccak256 of its spec's canonical bytes. An **agreement** is the clauses composed for one order, every field filled; its merkle root is the commitment's `checkoutHash`. A **registered agreement** (`AgreementRegistry`) and an **assembly** (`AssemblyRegistry`, a merkle root over registered agreements) are value-free designs. A **designer** registers any of the three under a stake.
-- An **attestation** is a party's signed statement about a clause of its own open order, bound by merkle proof to the agreement: through `AttestationCoordinator` on the direct path, inside the proof on the batch path, hash-only by default or with the spec and content in plaintext at the party's choice.
+- An **attestation** is a party's statement about a clause of its own open order, bound by merkle proof to the agreement: through `AttestationCoordinator` on the direct path, authorized by `msg.sender`; inside the proof on the batch path, authorized by the party's ECDSA signature or by bytes its own wallet code validates (ERC-1271, asked by the verifier, which skips the attestation on any other answer); hash-only by default or with the spec and content in plaintext at the party's choice.
 - A **member** is a wallet staked in `MembersRegistry`, with a withdrawal cooldown. **Designer rewards**: `UsageCounter` scores each clause, registered agreement and assembly by use alone (c distinct processes, d distinct staked sellers, `icbrt(c·d²·1e18)`) per annual period, in one tally both paths feed; `RpgfMinter` mints each closed period's budget of **florins** (`FlorinToken`, one billion cap) pro rata to the designers of record.
-- **The batch path.** The guest runs inside the zkVM over a stream of signed operations and commits ten public-value words. The relay collects operations, proves, and calls `settleBatch`, which is permissionless: it checks the proof, the public values (previous state root, chain id, its own address, a batch timestamp within `MAX_BATCH_STALENESS`) and five calldata hashes, anchors every witness spec to `ClauseRegistry`, asks a buyer's wallet code about a wallet-code resolve, moves the tokens (every pull before any payout), re-emits the Core's events, hands the uses to `UsageCounter` inside a try/catch, and advances the root. The two paths share no state: a process opened on one resolves on it, and `UsageCounter` is where they meet.
+- **The batch path.** The guest runs inside the zkVM over a stream of signed operations and commits ten public-value words. The relay collects operations, proves, and calls `settleBatch`, which is permissionless: it checks the proof, the public values (previous state root, chain id, its own address, a batch timestamp within `MAX_BATCH_STALENESS`) and five calldata hashes, anchors every witness spec to `ClauseRegistry`, asks a buyer's wallet code about a wallet-code resolve (reverting on a refusal) and an attesting party's wallet code about a wallet-code attestation (emitting it on the magic value, skipping it otherwise), moves the tokens (every pull before any payout), re-emits the Core's events, hands the uses to `UsageCounter` inside a try/catch, and advances the root. The two paths share no state: a process opened on one resolves on it, and `UsageCounter` is where they meet.
 - `WitnessSwapAndCommitCoordinator` sources a commit's bonds through a Permit2 witness transfer and a SwapRouter02 swap in the same transaction, then calls `FigaroCore.commit`.
 
 `docs/SCALING_STRATEGY.md` draws the batch path; `docs/CONTRACTS.md` lists every
@@ -307,7 +307,7 @@ have refused.
 5. Does the Permit2 witness in `swapAndCommit` bind every field a signer would want bound, so a relayer cannot substitute a route?
 6. Can any operation stream make the guest commit public values `settleBatch` accepts that `FigaroCore` would have refused?
 7. Does the state root bind everything the next batch depends on?
-8. Is the `ResolveProcess(processId, cumulativeValue)` authorization (`DESIGN_DECISIONS.md` #21) replayable, or applicable to orders the buyer did not accept? In its wallet-code form (`_resolveByWalletCode`, `_checkWalletCode`), can a stream make the verifier ask another code, about another digest than the guest applied, or reach state the batch then reads?
+8. Is the `ResolveProcess(processId, cumulativeValue)` authorization (`DESIGN_DECISIONS.md` #21) replayable, or applicable to orders the buyer did not accept? In its wallet-code form (`_resolveByWalletCode`, `_checkWalletCode`), and in the wallet-code attestation (`_attestByWalletCode`, `_askAttesterCode`, `_askCode`), can a stream make the verifier ask another code, about another digest than the guest applied, emit an `Attestation` for a party whose code did not validate it, skip one the code validates (a starved call is `WalletCodeAttestationStarved`), or reach state the batch then reads?
 9. Can one client stall the relay, or exhaust its re-queue, at a cost below its own rate-limit budget?
 
 **Intended behaviour.** `docs/DESIGN_DECISIONS.md` is the catalogue; the
@@ -332,7 +332,7 @@ neither covers:
 |---|---|---|
 | 1 | A buyer's lost key locks its active processes' bonds for good, unless code its wallet installed while it held the key resolves for it | `DESIGN_DECISIONS.md` #4 |
 | 2 | A process's order count is bounded by the gas one transaction may spend; larger designs compose across processes | `FigaroCore.resolveProcess` NatSpec; `docs/SCALING_STRATEGY.md` |
-| 3 | A party who revokes its allowance between the relay's funding check and `settleBatch` sinks that batch once; the relay names it, dead-letters its operations, re-queues the rest, and each refusal costs the others one re-queue. A buyer's wallet code that answers the relay's `eth_call` otherwise than the transaction does the same at no cost; the relay then dead-letters the batch's wallet-code resolves alone | `prover/sequencer/src/submitter.rs`, `classify_deterministic_revert`; `formal/RelayState.tla` |
+| 3 | A party who revokes its allowance between the relay's funding check and `settleBatch` sinks that batch once; the relay names it, dead-letters its operations, re-queues the rest, and each refusal costs the others one re-queue. A buyer's wallet code that answers the relay's `eth_call` otherwise than the transaction does the same at no cost, and any party's wallet code, a wallet-code attestation's included, can do it by burning the gas the verifier forwards it; the relay then dead-letters the batch's wallet-code operations alone | `prover/sequencer/src/submitter.rs`, `classify_deterministic_revert`; `formal/RelayState.tla` |
 | 4 | Fee-on-transfer tokens are refused at the pull; rebasing tokens are not detected; a token that blocklists, pauses or is upgraded against a party or the Core holds every process that party sits in, since resolution is atomic | `DESIGN_DECISIONS.md` #9 |
 | 5 | A commitment can be bonded on the batch path up to `MAX_BATCH_STALENESS` (one hour) after its deadline, since the guest checks deadlines against the batch timestamp; both parties signed and fund it | `FigaroBatchVerifier.settleBatch` |
 | 6 | The state behind the verifier's root is not stored on chain: every landed batch logs its operation stream (`BatchOperations`) and the Core's events, and a relay started with `REBUILD_FROM_CHAIN=1` rebuilds it; history expiry would reach these logs as it reaches the Core's events | `prover/sequencer/src/rebuild.rs`; `prover/sequencer/README.md` § "The state behind the root" |
@@ -340,7 +340,7 @@ neither covers:
 | 8 | A batched attestation's witness form is not signed: a relay holding a plaintext operation can submit it hash-only, and the event is the same | `DESIGN_DECISIONS.md` #26 |
 | 9 | The batch path's resolve authorization carries no nonce and no deadline | `DESIGN_DECISIONS.md` #21 |
 | 10 | A state-neutral batch's proof can land twice | `DESIGN_DECISIONS.md` #27 |
-| 11 | The Rust carries no formal proof: the mirror is held to the Core by vectors and the differential fuzz, not by a proof of equivalence | `docs/VERIFICATION_MAP.md` § 14 |
+| 11 | The Rust carries no formal proof: the mirror is held to the Core by vectors and the differential fuzz, not by a proof of equivalence; the batch state tree (`prover/lib/src/state_tree.rs`), new, is held by hand-computed vectors, a refusal test per check and two property tests (random histories, and honest witnesses mutated at random), not by a proof | `docs/VERIFICATION_MAP.md` § 14 |
 | 12 | The relay is not mutation-tested; mutation testing covers the guest's two crates | `docs/VERIFICATION_MAP.md` § 14 |
 | 13 | The Sepolia verifier pins an earlier guest's key; this tree's guest is not deployed | `docs/VERIFICATION_MAP.md` § 14 |
 

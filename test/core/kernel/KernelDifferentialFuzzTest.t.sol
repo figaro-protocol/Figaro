@@ -52,6 +52,20 @@ import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 ///         hashes, buyer and count it published are recorded, and the sentinel's event must come last.
 ///         The mirror asserts its own encoder and decoder agree with them.
 ///
+///         About half the attestations are drawn in the wallet-code form as
+///         well, the batch path's `0x05` entry, whose judgment is the
+///         attesting party's code, asked by `FigaroBatchVerifier`. The
+///         coordinator still answers the step (its `msg.sender` check admits
+///         the party's code as it admits the key); beside it the entry is built
+///         to the guest's format, followed by a sentinel `0x05` entry whose
+///         party's code validates it, and read by the verifier's reader with
+///         the role's party carrying code that validates exactly that
+///         authorization for the role's digest (when the caller is the party:
+///         the party's code refuses what the party did not authorize). The
+///         reader's answer (the entry's `Attestation` emitted, or the entry
+///         skipped), the hash of the bytes it read and the event it emitted
+///         are recorded, and the sentinel's event must come last.
+///
 ///         The generator asserts nothing about WHICH error a malformed
 ///         operation earns: FigaroCore's answer is the oracle, recorded as it
 ///         comes.
@@ -121,6 +135,7 @@ contract KernelDifferentialFuzzTest is Test {
         vm.serializeString(header, "seed", vm.toString(seed));
         vm.serializeString(header, "chainId", vm.toString(block.chainid));
         vm.serializeAddress(header, "verifyingContract", address(core));
+        vm.serializeAddress(header, "readerContract", address(reader));
         vm.writeLine(STREAM, vm.serializeString(header, "stepCount", vm.toString(steps)));
 
         uint256 accepted;
@@ -468,6 +483,103 @@ contract KernelDifferentialFuzzTest is Test {
         vm.serializeString(key, "walletCodeCount", vm.toString(abi.decode(logs[n].data, (uint256))));
     }
 
+    // ── The wallet-code attestation: the verifier's reader as the codec's oracle ──
+
+    address internal constant SENTINEL_PARTY = address(0x5E57);
+    bytes32 internal constant SENTINEL_CLAUSE = keccak256("figaro-fuzz-sentinel-clause");
+
+    /// The guest's `0x05` entry (`prover/lib/src/operation_stream.rs`):
+    /// role(1), the target, clauseId, stage, contentRef, len(2), authorization.
+    function _attestEntry(
+        bool asSeller,
+        CommitmentTypes.Commitment memory c,
+        bytes32 clauseId,
+        uint8 stage,
+        bytes32 contentRef,
+        bytes memory authorization
+    ) internal pure returns (bytes memory) {
+        return bytes.concat(
+            hex"05",
+            asSeller ? bytes1(0x00) : bytes1(0x01),
+            abi.encodePacked(
+                c.processId,
+                c.buyer,
+                c.seller,
+                c.currency,
+                c.payment,
+                c.expectedCumulativeValue,
+                c.checkoutHash,
+                c.salt,
+                c.deadline
+            ),
+            clauseId,
+            bytes1(stage),
+            contentRef,
+            bytes2(uint16(authorization.length)),
+            authorization
+        );
+    }
+
+    /// The sentinel: a seller's `0x05` entry on a fixed order, with no
+    /// authorization, whose seller's code validates it.
+    function _sentinelTarget() internal pure returns (CommitmentTypes.Commitment memory c) {
+        c.processId = SENTINEL_PROCESS_ID;
+        c.buyer = address(0xB0B5);
+        c.seller = SENTINEL_PARTY;
+    }
+
+    /// Read the step's wallet-code attestation entry with the verifier's own
+    /// reader, on a state snapshot reverted after, and record what it read.
+    function _readWalletCodeAttestation(
+        string memory key,
+        Attest memory a,
+        bytes memory authorization,
+        bytes32 fillSeed
+    ) internal {
+        CommitmentTypes.Commitment memory sentinel = _sentinelTarget();
+        bytes memory stream = bytes.concat(
+            _attestEntry(a.asSeller, a.target, a.clauseId, a.stage, a.contentRef, authorization),
+            _attestEntry(true, sentinel, SENTINEL_CLAUSE, 0, bytes32(0), "")
+        );
+        vm.serializeString(key, "form", "walletCode");
+        vm.serializeBytes32(key, "authorizationSeed", fillSeed);
+        vm.serializeString(key, "authorizationLength", vm.toString(authorization.length));
+        vm.serializeBytes32(key, "walletCodeStreamHash", keccak256(stream));
+
+        uint256 readState = vm.snapshotState();
+        address party = a.asSeller ? a.target.seller : a.target.buyer;
+        vm.etch(party, type(MockERC1271Wallet).runtimeCode);
+        if (a.caller == party) {
+            MockERC1271Wallet(party)
+                .approve(reader.attestDigest(a.asSeller, a.target, a.clauseId, a.stage, a.contentRef), authorization);
+        }
+        vm.etch(SENTINEL_PARTY, type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(SENTINEL_PARTY)
+            .approve(reader.attestDigest(true, sentinel, SENTINEL_CLAUSE, 0, bytes32(0)), "");
+        vm.recordLogs();
+        try reader.walk(stream, false) {
+            Vm.Log[] memory logs = vm.getRecordedLogs();
+            assertGe(logs.length, 1, "the sentinel's Attestation is emitted");
+            assertLe(logs.length, 2, "at most the entry's Attestation and the sentinel's");
+            assertEq(logs[logs.length - 1].topics[2], SENTINEL_PROCESS_ID, "the reader stopped exactly past the entry");
+            assertEq(logs[logs.length - 1].topics[3], bytes32(uint256(uint160(SENTINEL_PARTY))), "the sentinel's party");
+            // The publishing walk skips every 0x05 entry: no event, no refusal.
+            vm.recordLogs();
+            reader.walk(stream, true);
+            assertEq(vm.getRecordedLogs().length, 0, "the publishing walk emits nothing for a 0x05 entry");
+            if (logs.length == 2) {
+                vm.serializeBytes32(key, "walletCodeTopics", logs[0].topics);
+                vm.serializeBytes(key, "walletCodeData", logs[0].data);
+                vm.serializeString(key, "walletCodeOutcome", "emitted");
+            } else {
+                vm.serializeString(key, "walletCodeOutcome", "skipped");
+            }
+        } catch (bytes memory reason) {
+            vm.serializeString(key, "walletCodeOutcome", _readerErrorName(reason));
+        }
+        vm.revertToState(readState);
+    }
+
     function _readerErrorName(bytes memory reason) internal pure returns (string memory) {
         if (reason.length >= 4) {
             bytes4 sel = bytes4(reason);
@@ -610,6 +722,10 @@ contract KernelDifferentialFuzzTest is Test {
         vm.serializeBytes32(key, "clauseDataHash", a.clauseDataHash);
         vm.serializeBytes32(key, "inclusionProof", a.proof);
         vm.serializeBytes32(key, "contentRef", a.contentRef);
+        if (_next() % 2 == 0) {
+            (bytes memory authorization, bytes32 fillSeed) = _authorization();
+            _readWalletCodeAttestation(key, a, authorization, fillSeed);
+        }
         return _runAttest(key, a);
     }
 
@@ -793,14 +909,56 @@ contract KernelDifferentialFuzzTest is Test {
 
 /// @dev `FigaroBatchVerifier`'s stream reader, called directly: the walk
 ///      `settleBatch` runs at its steps 4 (`publish` false, the buyer's code
-///      asked about every `0x04` entry) and 6 (`publish` true, the Core's
-///      events), and the `ResolveProcess` digest under this verifier's domain.
+///      asked about every `0x04` entry and the attesting party's code about
+///      every `0x05` entry) and 6 (`publish` true, the Core's events), and the
+///      `ResolveProcess` and attestation digests under this verifier's domain.
 ///      The registry and counter are never reached by the walk.
 contract StreamReader is FigaroBatchVerifier {
     constructor(address sp1, address counter) FigaroBatchVerifier(sp1, bytes32(uint256(1)), address(1), counter) {}
 
     function walk(bytes calldata s, bool publish) external {
         _walkOperations(s, publish);
+    }
+
+    /// The role's attestation digest under this reader's domain, derived as
+    /// `_attestByWalletCode` derives it, written apart from it.
+    function attestDigest(
+        bool asSeller,
+        CommitmentTypes.Commitment memory c,
+        bytes32 clauseId,
+        uint8 stage,
+        bytes32 contentRef
+    ) external view returns (bytes32) {
+        bytes32 structHash = CommitmentTypes.hashStruct(c);
+        bytes32 processId = c.processId == bytes32(0) ? _hashTypedDataV4(structHash) : c.processId;
+        bytes32 orderHash = keccak256(abi.encodePacked(processId, structHash));
+        if (asSeller) {
+            return _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        keccak256("AttestSeller(bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)"),
+                        orderHash,
+                        clauseId,
+                        stage,
+                        contentRef
+                    )
+                )
+            );
+        }
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    keccak256(
+                        "AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)"
+                    ),
+                    processId,
+                    orderHash,
+                    clauseId,
+                    stage,
+                    contentRef
+                )
+            )
+        );
     }
 
     function resolveDigest(bytes32 processId, uint256 cumulativeValue) external view returns (bytes32) {

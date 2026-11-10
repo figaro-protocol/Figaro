@@ -30,7 +30,7 @@ async fn main() {
     // and the public values match the mirror's expected output.
     let mock_client = ProverClient::builder().mock().build().await;
     let mut stdin = SP1Stdin::new();
-    stdin.write(&input);
+    stdin.write(&figaro_kernel::kernel::guest_input(&input).expect("the canonical batch's witness"));
     println!("── Stage 1/2 — Mock execution (no proof) ──");
     let (public_values, report) =
         mock_client.execute(elf.clone(), stdin.clone()).await.unwrap();

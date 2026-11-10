@@ -806,6 +806,328 @@ contract FigaroBatchVerifierTest is Test {
         _settleWalletResolve(bytes("guardian-approval"));
     }
 
+    // ── An attestation authorized by the party's wallet code (ERC-1271) ──
+    //
+    // On AttestationCoordinator an attestation is `msg.sender == target.seller`
+    // (or `target.buyer`), so code the party's wallet installed while it held
+    // its key attests after the key is lost. The batch path's wallet-code form
+    // is the stream's `0x05` entry: the verifier derives the target's ids and
+    // the `AttestSeller` / `AttestBuyer` digest from the entry, asks the role's
+    // party's code, and emits the coordinator's `Attestation` only on the magic
+    // value. Any other answer, or no code, skips the entry and the batch lands.
+
+    bytes32 constant ATT_CLAUSE = keccak256("wallet-attested-clause");
+    uint8 constant ATT_STAGE = 2;
+    bytes32 constant ATT_CONTENT = keccak256("wallet-attested-content");
+
+    /// The guest's `0x05` entry: role(1), commitment, clauseId, stage, contentRef, len(2), authorization.
+    function _attestEntry(uint8 role, CommitmentTypes.Commitment memory c, bytes memory authorization)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return bytes.concat(
+            hex"05",
+            bytes1(role),
+            abi.encodePacked(
+                c.processId,
+                c.buyer,
+                c.seller,
+                c.currency,
+                c.payment,
+                c.expectedCumulativeValue,
+                c.checkoutHash,
+                c.salt,
+                c.deadline
+            ),
+            ATT_CLAUSE,
+            bytes1(ATT_STAGE),
+            ATT_CONTENT,
+            bytes2(uint16(authorization.length)),
+            authorization
+        );
+    }
+
+    function _verifierDomain() internal view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256("FigaroCore"),
+                keccak256("3"),
+                block.chainid,
+                address(verifier)
+            )
+        );
+    }
+
+    /// The target's process id: its own for an extension order, its EIP-712
+    /// digest under the verifier's domain for a root order.
+    function _attestProcessId(CommitmentTypes.Commitment memory c) internal view returns (bytes32) {
+        if (c.processId != bytes32(0)) return c.processId;
+        return keccak256(abi.encodePacked("\x19\x01", _verifierDomain(), CommitmentTypes.hashStruct(c)));
+    }
+
+    /// The target's order hash, as FigaroCore derives it.
+    function _attestOrderHash(CommitmentTypes.Commitment memory c) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(_attestProcessId(c), CommitmentTypes.hashStruct(c)));
+    }
+
+    /// The digest the role's party's code is asked about, written apart from the verifier.
+    function _attestDigest(uint8 role, CommitmentTypes.Commitment memory c) internal view returns (bytes32) {
+        bytes32 orderHash = _attestOrderHash(c);
+        bytes32 structHash = role == 0
+            ? keccak256(
+                abi.encode(
+                    keccak256("AttestSeller(bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)"),
+                    orderHash,
+                    ATT_CLAUSE,
+                    ATT_STAGE,
+                    ATT_CONTENT
+                )
+            )
+            : keccak256(
+                abi.encode(
+                    keccak256(
+                        "AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)"
+                    ),
+                    _attestProcessId(c),
+                    orderHash,
+                    ATT_CLAUSE,
+                    ATT_STAGE,
+                    ATT_CONTENT
+                )
+            );
+        return keccak256(abi.encodePacked("\x19\x01", _verifierDomain(), structHash));
+    }
+
+    /// Land a batch whose stream is `operations` and which moves nothing;
+    /// return the `Attestation` logs it emitted.
+    function _settleAttestEntry(bytes memory operations) internal returns (Vm.Log[] memory attestations) {
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes memory pv = _pvWithOperations(positions, events, keccak256("attest-root"), operations);
+        vm.recordLogs();
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), operations);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        uint256 n;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == FigaroBatchVerifier.Attestation.selector) n++;
+        }
+        attestations = new Vm.Log[](n);
+        n = 0;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == FigaroBatchVerifier.Attestation.selector) attestations[n++] = logs[i];
+        }
+        assertEq(verifier.stateRoot(), keccak256("attest-root"), "the batch lands");
+    }
+
+    function test_settleBatch_walletCodeAttestation_emitsTheAttestationWhenTheCodeValidates() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        bytes memory authorization = bytes("session-key-approval");
+        uint256 fresh = vm.snapshotState();
+        for (uint8 role = 0; role < 2; role++) {
+            vm.revertToState(fresh);
+            address party = role == 0 ? seller : buyer;
+            vm.etch(party, type(MockERC1271Wallet).runtimeCode);
+            MockERC1271Wallet(party).approve(_attestDigest(role, c), authorization);
+            vm.expectEmit(true, true, true, true, address(verifier));
+            emit FigaroBatchVerifier.Attestation(
+                _attestOrderHash(c), c.processId, party, ATT_CLAUSE, ATT_STAGE, ATT_CONTENT
+            );
+            assertEq(_settleAttestEntry(_attestEntry(role, c, authorization)).length, 1, "one Attestation");
+        }
+    }
+
+    function test_settleBatch_walletCodeAttestation_isSkippedWhenTheCodeRefuses() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        vm.etch(seller, type(MockERC1271Wallet).runtimeCode);
+        // The code validates other bytes for the digest, not these.
+        MockERC1271Wallet(seller).approve(_attestDigest(0, c), bytes("session-key-approval"));
+        Vm.Log[] memory emitted = _settleAttestEntry(_attestEntry(0, c, bytes("a stranger's bytes")));
+        assertEq(emitted.length, 0, "a refused attestation emits nothing, and the batch still lands");
+    }
+
+    function test_settleBatch_walletCodeAttestation_isSkippedWhenThePartyHasNoCode() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        assertEq(seller.code.length, 0);
+        Vm.Log[] memory emitted = _settleAttestEntry(_attestEntry(0, c, bytes("session-key-approval")));
+        assertEq(emitted.length, 0, "an account with no code is skipped, and the batch still lands");
+    }
+
+    function test_settleBatch_walletCodeAttestation_isSkippedWhenTheCodeReverts() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        vm.etch(seller, type(MockERC20).runtimeCode); // code with no isValidSignature
+        Vm.Log[] memory emitted = _settleAttestEntry(_attestEntry(0, c, bytes("session-key-approval")));
+        assertEq(emitted.length, 0, "code that reverts answers no");
+    }
+
+    /// One wallet that is both the buyer and the seller of an order: its code
+    /// validates the bytes for the seller's digest only. The entry's role byte
+    /// selects the digest, so the same bytes under the buyer's role byte are
+    /// asked about the `AttestBuyer` digest and skipped.
+    function test_settleBatch_walletCodeAttestation_theRoleByteSelectsTheDigest() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        c.seller = c.buyer;
+        bytes memory authorization = bytes("session-key-approval");
+        vm.etch(c.buyer, type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(c.buyer).approve(_attestDigest(0, c), authorization);
+        uint256 fresh = vm.snapshotState();
+        Vm.Log[] memory asBuyer = _settleAttestEntry(_attestEntry(1, c, authorization));
+        assertEq(asBuyer.length, 0, "the wrong role byte asks the other digest and is skipped");
+        vm.revertToState(fresh);
+        Vm.Log[] memory asSeller = _settleAttestEntry(_attestEntry(0, c, authorization));
+        assertEq(asSeller.length, 1, "the seller's role byte is validated");
+        assertEq(address(uint160(uint256(asSeller[0].topics[3]))), c.seller, "the attester is the role's party");
+    }
+
+    /// A root order (processId zero): the verifier derives the process id
+    /// under its own domain, as FigaroCore does at commit, and the event names it.
+    function test_settleBatch_walletCodeAttestation_onARootOrderNamesTheDerivedProcess() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        c.processId = bytes32(0);
+        bytes memory authorization = bytes("session-key-approval");
+        vm.etch(seller, type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(seller).approve(_attestDigest(0, c), authorization);
+        bytes32 processId = keccak256(abi.encodePacked("\x19\x01", _verifierDomain(), CommitmentTypes.hashStruct(c)));
+        vm.expectEmit(true, true, true, true, address(verifier));
+        emit FigaroBatchVerifier.Attestation(
+            keccak256(abi.encodePacked(processId, CommitmentTypes.hashStruct(c))),
+            processId,
+            seller,
+            ATT_CLAUSE,
+            ATT_STAGE,
+            ATT_CONTENT
+        );
+        assertEq(_settleAttestEntry(_attestEntry(0, c, authorization)).length, 1);
+    }
+
+    /// An answer shorter than a word is a no, whatever its bytes.
+    function test_settleBatch_walletCodeAttestation_isSkippedOnAShortAnswer() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        bytes memory authorization = bytes("session-key-approval");
+        vm.etch(seller, type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(seller).approve(_attestDigest(0, c), authorization);
+        MockERC1271Wallet(seller).setAnswerShape(1);
+        assertEq(_settleAttestEntry(_attestEntry(0, c, authorization)).length, 0, "four bytes are no answer");
+    }
+
+    /// A huge answer is read for its first word only: the magic word followed
+    /// by 64 KiB is a yes, and the 64 KiB is never copied.
+    function test_settleBatch_walletCodeAttestation_readsOneWordOfAHugeAnswer() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        bytes memory authorization = bytes("session-key-approval");
+        vm.etch(seller, type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(seller).approve(_attestDigest(0, c), authorization);
+        MockERC1271Wallet(seller).setAnswerShape(2);
+        uint256 g0 = gasleft();
+        assertEq(_settleAttestEntry(_attestEntry(0, c, authorization)).length, 1, "the first word is the magic value");
+        assertLt(g0 - gasleft(), 400_000, "the 64 KiB is not copied into memory");
+    }
+
+    /// Code that burns every unit of gas it is given starves at any limit: the
+    /// verifier tells the starved call from a refusal and refuses the batch by
+    /// name, rather than skipping an attestation its code may have validated.
+    function test_settleBatch_walletCodeAttestation_aGasBurningWalletRevertsTheBatchByName() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        vm.etch(seller, type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(seller).setAnswerShape(3);
+        bytes memory operations = _attestEntry(0, c, bytes("session-key-approval"));
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes memory pv = _pvWithOperations(positions, events, keccak256("attest-root"), operations);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                FigaroBatchVerifier.WalletCodeAttestationStarved.selector, _attestOrderHash(c), seller
+            )
+        );
+        verifier.settleBatch{gas: 5_000_000}(hex"", pv, positions, events, _emptyUsage(), operations);
+    }
+
+    /// THE STARVATION PROBE. A validation that costs 4,000,000 gas, under
+    /// limits walked down from a full run to half of it: a submitter who picks
+    /// a limit that starves the validation while the kept 1/64 still finishes
+    /// the batch would drop a validated attestation. At every limit the batch
+    /// either lands WITH the attestation or reverts; the starved band reverts
+    /// by name.
+    function test_settleBatch_walletCodeAttestation_gasStarvationProbe() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        bytes memory authorization = bytes("session-key-approval");
+        vm.etch(seller, type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(seller).approve(_attestDigest(0, c), authorization);
+        MockERC1271Wallet(seller).setValidationGas(4_000_000);
+        bytes memory operations = _attestEntry(0, c, authorization);
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes memory pv = _pvWithOperations(positions, events, keccak256("attest-root"), operations);
+        bytes memory callData =
+            abi.encodeWithSelector(this.landAttestWith.selector, uint256(0), pv, positions, events, operations);
+
+        uint256 snap = vm.snapshotState();
+        uint256 g0 = gasleft();
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), operations);
+        uint256 full = g0 - gasleft();
+        vm.revertToState(snap);
+
+        uint256 landedWith;
+        uint256 starved;
+        uint256 step = full / 50;
+        for (uint256 g = full + step; g > full / 2; g -= step) {
+            snap = vm.snapshotState();
+            assembly {
+                mstore(add(callData, 36), g)
+            }
+            vm.recordLogs();
+            (bool ok, bytes memory reason) = address(this).call(callData);
+            if (ok) {
+                Vm.Log[] memory logs = vm.getRecordedLogs();
+                uint256 n;
+                for (uint256 i = 0; i < logs.length; i++) {
+                    if (logs[i].topics[0] == FigaroBatchVerifier.Attestation.selector) n++;
+                }
+                assertEq(n, 1, "a batch that lands under any limit carries the validated attestation");
+                landedWith++;
+            } else if (
+                reason.length >= 4 && bytes4(reason) == FigaroBatchVerifier.WalletCodeAttestationStarved.selector
+            ) {
+                starved++;
+            }
+            vm.revertToState(snap);
+        }
+        emit log_named_uint("full run gas", full);
+        emit log_named_uint("limits landing with the attestation", landedWith);
+        emit log_named_uint("limits refused as a starved validation", starved);
+        assertGt(landedWith, 0, "the walk starts above the gas the batch needs");
+        assertGt(starved, 0, "the walk reaches the band where the validation starves");
+    }
+
+    function landAttestWith(
+        uint256 g,
+        bytes calldata pv,
+        FigaroBatchVerifier.NetPosition[] calldata positions,
+        FigaroBatchVerifier.BatchEventData calldata events,
+        bytes calldata operations
+    ) external {
+        require(msg.sender == address(this), "probe");
+        verifier.settleBatch{gas: g}(hex"", pv, positions, events, _emptyUsage(), operations);
+    }
+
+    function test_settleBatch_walletCodeAttestation_refusesAnUnknownRoleByte() public {
+        bytes memory operations = _attestEntry(2, _walletOrder(), bytes("x"));
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes memory pv = _pvWithOperations(positions, events, keccak256("attest-root"), operations);
+        vm.expectRevert(FigaroBatchVerifier.MalformedOperationStream.selector);
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), operations);
+    }
+
     function test_settleBatch_refusesOperationsWhoseHashIsNotCommitted() public {
         (
             bytes memory pv,

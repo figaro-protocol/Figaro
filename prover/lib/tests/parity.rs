@@ -255,7 +255,6 @@ fn test_full_batch_commit_and_state() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
 
     let (pv, positions, _events) = apply_batch(&input).unwrap();
@@ -326,7 +325,6 @@ fn test_full_batch_commit_resolve_payouts() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
 
     let (_pv, positions, _events) = apply_batch(&input).unwrap();
@@ -484,7 +482,6 @@ fn run_attest_batch(
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
     apply_batch(&input)
 }
@@ -745,7 +742,6 @@ fn attest_wrong_inclusion_proof_fails() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
 
     match apply_batch(&input) {
@@ -900,7 +896,6 @@ fn attest_on_resolved_order_fails() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
 
     match apply_batch(&input) {
@@ -963,7 +958,6 @@ fn attest_as_seller_against_another_sellers_order_fails() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
 
     match apply_batch(&input) {
@@ -989,7 +983,6 @@ fn commit_at(timestamp: u64) -> Result<(PublicValues, Vec<NetPosition>, BatchEve
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
     apply_batch(&input)
 }
@@ -1021,7 +1014,6 @@ fn an_attestation_on_an_order_nobody_committed_is_an_unknown_order() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
     match apply_batch(&input) {
         Err(KernelError::UnknownOrder) => {}
@@ -1142,7 +1134,6 @@ fn a_bond_accumulation_overflow_is_rejected_not_a_panic() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
     let result = apply_batch(&input);
     assert!(
@@ -1214,7 +1205,6 @@ fn claims_batch(ops: Vec<KernelOp>, claims: Vec<UsageClaim>) -> BatchInput {
         prev_state: empty_snapshot(),
         usage_claims: claims,
         usage_period: 0,
-        provenance_leaf: keccak256(b"figaro-agreement-provenance"),
     }
 }
 
@@ -1400,7 +1390,6 @@ fn two_commits_then_resolve(signed_value: U256) -> BatchInput {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     }
 }
 
@@ -1485,7 +1474,7 @@ fn a_wallet_code_resolve_is_accepted_and_published_in_the_operation_stream() {
     assert_eq!(s2.payout, U256::from(350u64) * ether, "the second seller is paid");
     let stream = figaro_kernel::operation_stream::encode_operation_stream(&input.operations, &[]);
     assert_eq!(pv.operations_hash, keccak256(&stream), "the stream the guest commits carries the entry");
-    let (ops, _) = figaro_kernel::operation_stream::decode_operation_stream(&stream).expect("decodes");
+    let (ops, _, _) = figaro_kernel::operation_stream::decode_operation_stream(&stream).expect("decodes");
     match &ops[2] {
         KernelOp::ResolveByWalletCode { process_id, cumulative_value, authorization: a, .. } => {
             assert_eq!(*process_id, PROCESS_ID);
@@ -1506,4 +1495,100 @@ fn a_wallet_code_resolve_for_a_passed_value_is_refused() {
         Err(KernelError::StaleResolveAuthorization { signed: s, .. }) => assert_eq!(s, signed),
         other => panic!("expected StaleResolveAuthorization, got {other:?}"),
     }
+}
+
+// ── The wallet-code attestation: bytes the party's own code validates ──
+//
+// On the direct path an attestation is `msg.sender == target.seller` (or
+// `target.buyer`), so code the party's wallet installed while it held its key
+// attests after the key is lost. The batch path's wallet-code form carries
+// bytes the party's code validates for the signed form's digest: the guest
+// runs every check of the signed form but the recovery, keeps the attestation
+// out of the attestation events, and publishes one `0x05` entry the verifier
+// asks the party's code about.
+
+fn wallet_code_attest_op(f: &AttestFixture, role: AttesterRole, authorization: &[u8]) -> (KernelOp, B256) {
+    let (proof, content_ref) = runtime_witness_proof(f);
+    (
+        KernelOp::AttestByWalletCode {
+            role,
+            target: f.root.clone(),
+            clause_id: f.clause_key,
+            stage: 0,
+            content_ref,
+            authorization: alloy_primitives::Bytes::copy_from_slice(authorization),
+            proof: AttestationWitness::Plaintext(proof),
+        },
+        content_ref,
+    )
+}
+
+/// Each `0x05` entry the guest publishes is one wallet-code attestation, and
+/// the party its role byte names is the role's party of the target order:
+/// the seller for the seller's form, the buyer for the buyer's.
+#[test]
+fn each_wallet_code_attestation_is_one_0x05_entry_naming_the_role_s_party() {
+    let f = attest_fixture();
+    for (role, party) in [(AttesterRole::Seller, SELLER1), (AttesterRole::Buyer, BUYER)] {
+        let authorization = b"guardian-approval".to_vec();
+        let (op, content_ref) = wallet_code_attest_op(&f, role, &authorization);
+        let ops = vec![
+            KernelOp::Commit {
+                commitment: f.root.clone(),
+                buyer_sig: sign_commitment(&f.root, &domain_separator(CHAIN_ID, CORE), &make_signing_key(BUYER_KEY)),
+                seller_sig: sign_commitment(&f.root, &domain_separator(CHAIN_ID, CORE), &make_signing_key(SELLER1_KEY)),
+            },
+            op,
+        ];
+        let (pv, _positions, events) = run_attest_batch(&f, ops[1].clone()).expect("the wallet-code form applies");
+        assert!(events.attestations.is_empty(), "public value 6 carries the signed attestations only");
+        assert_eq!(events.spec_bindings.len(), 1, "the plaintext form's spec binding is still committed");
+
+        let stream = figaro_kernel::operation_stream::encode_operation_stream(&ops, &[]);
+        assert_eq!(pv.operations_hash, keccak256(&stream), "public value 9 binds the entry");
+        let (decoded_ops, entries, claims) =
+            figaro_kernel::operation_stream::decode_operation_stream(&stream).expect("decodes");
+        assert_eq!(decoded_ops.len(), 1, "the commit");
+        assert!(claims.is_empty());
+        assert_eq!(entries.len(), 1, "one 0x05 entry for one wallet-code attestation");
+        let e = &entries[0];
+        assert_eq!(e.role, role);
+        assert_eq!(e.role.party(&e.target), party, "the role's party is the attester");
+        assert_eq!(commitment_struct_hash(&e.target), commitment_struct_hash(&f.root));
+        assert_eq!((e.clause_id, e.stage, e.content_ref), (f.clause_key, 0, content_ref));
+        assert_eq!(e.authorization.as_ref(), authorization.as_slice(), "the bytes the verifier hands the code");
+        assert_eq!(
+            figaro_kernel::operation_stream::encode_stream_parts(&decoded_ops, &entries, &claims),
+            stream,
+            "decoding and re-encoding gives back the same bytes"
+        );
+    }
+}
+
+/// The wallet-code form runs every gate of the signed form but the
+/// recovery: an order nobody committed, and content the clause does not
+/// admit, are refused as they are under a signature.
+#[test]
+fn a_wallet_code_attestation_runs_the_signed_form_s_gates() {
+    let f = attest_fixture();
+    let (op, _) = wallet_code_attest_op(&f, AttesterRole::Seller, b"guardian-approval");
+    let input = BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: vec![op],
+        prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+    };
+    match apply_batch(&input) {
+        Err(KernelError::UnknownOrder) => {}
+        other => panic!("an attestation on an order nobody committed: expected UnknownOrder, got {other:?}"),
+    }
+
+    let (mut op, _) = wallet_code_attest_op(&f, AttesterRole::Buyer, b"guardian-approval");
+    if let KernelOp::AttestByWalletCode { content_ref, .. } = &mut op {
+        *content_ref = keccak256(b"content the witness does not carry");
+    }
+    assert!(run_attest_batch(&f, op).is_err(), "a content reference the witness does not open is refused");
 }

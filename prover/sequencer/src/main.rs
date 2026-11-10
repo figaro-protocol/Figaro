@@ -605,12 +605,13 @@ async fn batch_loop(
             warn!(id = p.id, %reason, "Dropped attestation at batch formation");
             failures.record(1, reason.clone()).await;
         }
-        // A wallet-code resolve whose buyer's code does not validate it, as
-        // the verifier will ask, reverts the whole batch on chain: dropped
+        // A wallet-code operation whose party's code does not validate it, as
+        // the verifier will ask, reverts the whole batch on chain (a resolve)
+        // or is skipped there for the bytes it cost (an attestation): dropped
         // here, alone, as an unanchored attestation is.
-        let (mut valid, unvalidated) = submitter::filter_wallet_code_resolves(funding.as_ref(), valid).await;
+        let (mut valid, unvalidated) = submitter::filter_wallet_code_ops(funding.as_ref(), valid).await;
         for (p, reason) in &unvalidated {
-            warn!(id = p.id, %reason, "Dropped wallet-code resolve at batch formation");
+            warn!(id = p.id, %reason, "Dropped wallet-code operation at batch formation");
             failures.record(1, reason.clone()).await;
         }
         unanchored.extend(unvalidated);
@@ -666,8 +667,8 @@ async fn batch_loop(
             "Assembling batch"
         );
 
-        // The period and provenance leaf's key are CHAIN facts — asked of the
-        // counter, never derived from the sequencer's clock. If there is no
+        // The period is a CHAIN fact — asked of the counter, never derived
+        // from the sequencer's clock. If there is no
         // counter, or accrual has closed, the batch resolves crediting nothing.
         let mut usage = match submitter::read_usage_context(
             &submitter_config.rpc_url,
@@ -675,10 +676,9 @@ async fn batch_loop(
         )
         .await
         {
-            Some((period, provenance_leaf)) => assembler::UsageContext {
+            Some(period) => assembler::UsageContext {
                 claims: usage_claims,
                 period,
-                provenance_leaf,
             },
             None => {
                 if !usage_claims.is_empty() {
@@ -729,7 +729,6 @@ async fn batch_loop(
             let calldata = submitter::settle_calldata(
                 &positions,
                 &events,
-                input.provenance_leaf,
                 &pv.abi_encode(),
                 proof_len,
                 &stream,
@@ -786,7 +785,6 @@ async fn batch_loop(
                 timestamp,
                 &prev_state,
                 &all_ops,
-                usage.provenance_leaf,
                 std::mem::take(&mut usage.claims),
             );
             api::record_dropped_claims(&failures, &dropped, "batch formation — it would abort the batch proof, or repeats a use the batch already carries").await;
@@ -882,7 +880,6 @@ async fn batch_loop(
                 timestamp,
                 &batch.prev_state,
                 &batch.operations,
-                batch.provenance_leaf,
                 std::mem::take(&mut batch.usage_claims),
             );
             if !stranded.is_empty() {
@@ -1000,23 +997,24 @@ async fn batch_loop(
                         .into_iter()
                         .partition(|(_, why, _)| !submitter::is_unverifiable_drop(why));
                     // The other cause a party controls at no cost to anyone
-                    // else's bond: a wallet-code resolve whose buyer's code
-                    // answered yes at formation and no at resolution. Its
-                    // code is asked again; only a verdict names it, a read
-                    // failure re-queues with the rest.
+                    // else's bond: a wallet-code operation whose party's code
+                    // answered yes at formation and no at resolution (a
+                    // resolve), or burned the gas forwarded to it. Its code is
+                    // asked again; only a verdict names it, a read failure
+                    // re-queues with the rest.
                     let (kept, code_dropped) =
-                        submitter::filter_wallet_code_resolves(funding.as_ref(), std::mem::take(&mut still_funded)).await;
+                        submitter::filter_wallet_code_ops(funding.as_ref(), std::mem::take(&mut still_funded)).await;
                     still_funded = kept;
                     let (code_unread, code_refused): (Vec<_>, Vec<_>) = code_dropped
                         .into_iter()
-                        .partition(|(_, why)| why.starts_with("the buyer's code could not be asked"));
+                        .partition(|(_, why)| why.starts_with(submitter::WALLET_CODE_UNREAD));
                     still_funded.extend(code_unread.into_iter().map(|(op, _)| op));
                     // A named party's operations are dead-lettered and the
                     // rest re-queued; nobody named, a batch carrying a
-                    // wallet-code resolve dead-letters those resolves alone
-                    // (its buyer's code may answer an eth_call otherwise than
-                    // the transaction, for free); only a batch with neither
-                    // dead-letters whole (`classify_deterministic_revert`).
+                    // wallet-code operation dead-letters those operations
+                    // alone (its party's code may answer an eth_call otherwise
+                    // than the transaction, or burn the forwarded gas, for
+                    // free); only a batch with neither dead-letters whole (`classify_deterministic_revert`).
                     let named_revoker = !revoked.is_empty();
                     let verdict = submitter::classify_deterministic_revert(
                         still_funded,
@@ -1051,7 +1049,7 @@ async fn batch_loop(
                         let reason = if named_revoker {
                             "the batch was refused for a revoked approval"
                         } else {
-                            "the batch was refused by a buyer's wallet code"
+                            "the batch was refused by a party's wallet code"
                         };
                         failures.record_claims(batch.usage_claims.len() as u64, reason.to_string()).await;
                         for who in signaled {

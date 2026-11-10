@@ -5,6 +5,7 @@ import {FigaroBatchVerifierTest} from "test/core/verifier/FigaroBatchVerifierTes
 import "src/core/verifier/FigaroBatchVerifier.sol";
 import {IUsageCounter} from "src/core/verifier/FigaroBatchVerifier.sol";
 import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 /// @title Batch gas ceiling anchors — the empirical per-item cost of `settleBatch`
 /// @notice What a batch costs the chain is what it PUBLISHES — the net positions
@@ -72,12 +73,25 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     /// @dev A resolution in the wallet-code form beyond the same resolution
     ///      in the signature form: the payments summed, the digest derived,
     ///      the buyer's code size read (a cold account) and its
-    ///      `isValidSignature` called, with the mock's own validation (a cold
-    ///      slot). The wallet's own code costs what its arrangement costs; the
-    ///      relay plans an allowance for it apart (`gas.rs`). Measured 8,829
+    ///      `isValidSignature` called, with the mock's own validation (three
+    ///      cold slots: its approval, its answer shape and its validation
+    ///      gas). The wallet's own code costs what its arrangement costs; the
+    ///      relay plans an allowance for it apart (`gas.rs`). Measured 13,369
     ///      (`test_Gas_settleStreamWalletCodeCheck`); the ceiling carries the
     ///      allowance for the post-fork repricing of its cold reads.
     uint256 internal constant SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK = 15_000;
+    /// @dev A wallet-code attestation entry beyond its stream bytes: the role
+    ///      read, the target's ids derived (the commitment's struct hash and
+    ///      the order hash), the role's digest, the party's code size read (a
+    ///      cold account), its `isValidSignature` called with the mock's own
+    ///      validation (three cold slots), the starvation check, and the
+    ///      `Attestation` event. The
+    ///      entry's bytes (`1 + 1 + 252 + 32 + 1 + 32 + 2 + len`) are priced by
+    ///      the word anchor; the wallet's own code is planned apart, as for the
+    ///      resolve (`gas.rs` `WALLET_CODE_EXECUTION_GAS`). Measured 18,420
+    ///      (`test_Gas_settleStreamWalletCodeAttestation`); the ceiling carries
+    ///      the allowance for the post-fork repricing of its cold reads.
+    uint256 internal constant SETTLE_GAS_PER_STREAM_WALLET_CODE_ATTESTATION = 24_000;
     /// @dev The proof's verification, which the mock verifier does not
     ///      perform: read from the five Groth16 batches settled on Sepolia.
     ///      Receipt gas less the calldata's intrinsic cost and the items
@@ -429,6 +443,37 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         assertGe(marginal, 2_000, "a wallet-code check dropped unexpectedly (verifier change?)");
         assertLe(
             marginal, SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK, "a wallet-code check rose past its anchor (re-measure)"
+        );
+    }
+
+    /// @dev A wallet-code attestation entry whose code validates it, against
+    ///      an empty stream: the difference less the entry's words is the
+    ///      check and the event.
+    function test_Gas_settleStreamWalletCodeAttestation() public {
+        _settleCallGas(hex"");
+        uint256 g0 = _settleCallGas(hex"");
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        bytes memory authorization = _signature(999);
+        vm.etch(c.seller, type(MockERC1271Wallet).runtimeCode);
+        MockERC1271Wallet(c.seller).approve(_attestDigest(0, c), authorization);
+        vm.cool(c.seller);
+        bytes memory entry = _attestEntry(0, c, authorization);
+        vm.recordLogs();
+        uint256 g1 = _settleCallGas(entry);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        uint256 emitted;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == FigaroBatchVerifier.Attestation.selector) emitted++;
+        }
+        assertEq(emitted, 1, "the measured entry is validated and emitted");
+        uint256 words = (entry.length + 31) / 32;
+        uint256 marginal = g1 - g0 - words * SETTLE_GAS_PER_STREAM_WORD;
+        emit log_named_uint("settle_gas_per_stream_wallet_code_attestation", marginal);
+        assertGe(marginal, 2_000, "a wallet-code attestation dropped unexpectedly (verifier change?)");
+        assertLe(
+            marginal,
+            SETTLE_GAS_PER_STREAM_WALLET_CODE_ATTESTATION,
+            "a wallet-code attestation rose past its anchor (re-measure)"
         );
     }
 

@@ -158,11 +158,10 @@ contract DeployWiringTest is Test {
     uint256 internal constant DEPLOYER_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
     bytes32 internal constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
 
-    /// The genesis root both scripts derive: one keccak256("") per state map
-    /// of the mirror.
+    /// The genesis root: the guest's state tree over no entries
+    /// (`prover/lib/src/state_tree.rs`), zero.
     function _genesisRoot() internal pure returns (bytes32) {
-        bytes32 emptyMap = keccak256("");
-        return keccak256(abi.encodePacked(emptyMap, emptyMap, emptyMap));
+        return bytes32(0);
     }
 
     struct MainnetInputs {

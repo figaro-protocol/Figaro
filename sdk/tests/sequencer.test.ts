@@ -180,6 +180,41 @@ describe("SequencerClient", () => {
         });
     });
 
+    it("submitAttestByWalletCode posts the wallet-code form with its role and authorization bytes", async () => {
+        let captured: unknown;
+        const client = new SequencerClient({
+            url: "http://localhost:3001",
+            fetch: (async (_input: RequestInfo | URL, init?: RequestInit) => {
+                captured = JSON.parse(init?.body as string);
+                return new Response(JSON.stringify({ id: 6 }), { status: 200 });
+            }) as typeof globalThis.fetch,
+        });
+        const authorization = "0x73657373696f6e2d6b6579" as const;
+        const clauseDataHash = keccak256(stringToHex(testProof.clause_data));
+        const result = await client.submitAttestByWalletCode({
+            role: "Seller",
+            target: testCommitment,
+            clauseId: ZERO_HASH,
+            stage: 1,
+            contentRef: ZERO_HASH,
+            authorization,
+            clauseDataHash,
+            inclusionProof: [],
+        });
+        expect(result.id).toBe(6);
+        const body = captured as { operation: Record<string, Record<string, unknown>> };
+        expect(Object.keys(body.operation)).toEqual(["AttestByWalletCode"]);
+        expect(body.operation.AttestByWalletCode).toEqual({
+            role: "Seller",
+            target: toSequencerCommitment(testCommitment),
+            clause_id: ZERO_HASH,
+            stage: 1,
+            content_ref: ZERO_HASH,
+            authorization,
+            proof: { HashOnly: { clause_data_hash: clauseDataHash, inclusion_proof: [] } },
+        });
+    });
+
     it("submitAttestAsBuyer posts the plaintext form only when checkContentInProof is set", async () => {
         let captured: unknown;
         const client = new SequencerClient({

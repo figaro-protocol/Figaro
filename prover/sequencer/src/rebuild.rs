@@ -2,7 +2,7 @@
 //!
 //! Every batch `FigaroBatchVerifier.settleBatch` lands logs its operation
 //! stream in `BatchOperations` (bound to public value 9 before it is logged)
-//! with the clock, usage period and provenance leaf its replay needs, and
+//! with the clock and usage period its replay needs, and
 //! names its previous and new root in `BatchSettled`, both in the same
 //! transaction. So the state behind any root the verifier holds is a replay
 //! of the verifier's own logs: from the empty state, each landed batch's
@@ -95,11 +95,14 @@ pub async fn rebuild_from_chain(
                     settled.batchId, settled.prevStateRoot
                 ));
             }
-            let (operations, claims) = decode_operation_stream(&ops.operations)
+            // A wallet-code attestation's entry moves no state, and the
+            // replay applies nothing for it: the entries are parsed (a
+            // malformed one fails the rebuild) and set aside.
+            let (operations, _wallet_code_attestations, claims) = decode_operation_stream(&ops.operations)
                 .map_err(|e| format!("batch {} in {tx}: operation stream: {e}", settled.batchId))?;
             apply_operations(&mut state, chain_id, verifier, ops.blockTimestamp, &operations)
                 .map_err(|e| format!("batch {} in {tx}: the operations do not apply: {e:?}", settled.batchId))?;
-            apply_claims(&state, chain_id, verifier, &claims, &ops.provenanceLeaf)
+            apply_claims(&state, chain_id, verifier, &claims)
                 .map_err(|e| format!("batch {} in {tx}: the claims do not prove: {e:?}", settled.batchId))?;
             let reached = state.compute_root();
             if reached != settled.newStateRoot {
@@ -200,7 +203,7 @@ mod tests {
             batchId: 1,
             blockTimestamp: input.block_timestamp,
             usagePeriod: input.usage_period,
-            provenanceLeaf: input.provenance_leaf,
+            provenanceLeaf: figaro_kernel::kernel::PROVENANCE_LEAF_KEY,
             operations: encode_operation_stream(&input.operations, &input.usage_claims).into(),
         };
         let landed = IFigaroBatchVerifier::BatchSettled {

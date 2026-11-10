@@ -230,10 +230,76 @@ pub enum KernelOp {
         buyer_sig: Signature,
         proof: AttestationWitness,
     },
-    // These are the coordinator's two attestation modes, as on the
-    // direct path: a party attests for itself, and its signature here
-    // proves the caller the direct path reads from `msg.sender`. No
-    // other party files an attestation on an order.
+
+    /// An attestation authorized by the attesting party's wallet code: the
+    /// batched equivalent of an `attestAsSeller` or `attestAsBuyer` call
+    /// that code installed on the party's wallet makes from the party's
+    /// address, which can attest after the key is lost. `role` names the
+    /// party (`target.seller` or `target.buyer`); `authorization` is bytes
+    /// that party's own account code validates (ERC-1271
+    /// `isValidSignature`) for the same `AttestSeller` / `AttestBuyer`
+    /// digest the signed form signs. The guest cannot run the code: it runs
+    /// every check of the signed form but the signer's recovery, commits
+    /// the spec binding of the plaintext form, leaves the attestation OUT
+    /// of the attestation events (public value 6 carries the signed
+    /// attestations only), and publishes the entry in the operation stream
+    /// (`0x05`, public value 9). `FigaroBatchVerifier.settleBatch` asks the
+    /// party's code and emits the coordinator's `Attestation` event only on
+    /// the magic value; on any other answer, or when the party's account
+    /// has no code, the attestation is skipped and the batch lands, as a
+    /// reverted `attestAsSeller` call drops alone on the direct path.
+    AttestByWalletCode {
+        role: AttesterRole,
+        target: Commitment,
+        clause_id: B256,
+        stage: u8,
+        content_ref: B256,
+        authorization: Bytes,
+        proof: AttestationWitness,
+    },
+    // These are the coordinator's two attestation modes, as on the direct
+    // path: a party attests for itself. The signed forms carry the party's
+    // ECDSA signature in place of the `msg.sender` the direct path reads;
+    // the wallet-code form carries bytes the party's own code validates, in
+    // place of a call that code makes from the party's address. No other
+    // party files an attestation on an order.
+}
+
+/// The party a wallet-code attestation speaks for, the role byte of the
+/// stream's `0x05` entry: the target order's seller (`0x00`) or its buyer
+/// (`0x01`). A wallet that is both on one order attests once per role, each
+/// under its own digest type.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AttesterRole {
+    Seller,
+    Buyer,
+}
+
+impl AttesterRole {
+    /// The role byte the stream carries.
+    pub fn code(self) -> u8 {
+        match self {
+            AttesterRole::Seller => 0x00,
+            AttesterRole::Buyer => 0x01,
+        }
+    }
+
+    /// The role a stream byte names; `None` for any other byte.
+    pub fn from_code(b: u8) -> Option<Self> {
+        match b {
+            0x00 => Some(AttesterRole::Seller),
+            0x01 => Some(AttesterRole::Buyer),
+            _ => None,
+        }
+    }
+
+    /// The party of `target` this role names.
+    pub fn party(self, target: &Commitment) -> Address {
+        match self {
+            AttesterRole::Seller => target.seller,
+            AttesterRole::Buyer => target.buyer,
+        }
+    }
 }
 
 // ── Usage accrual (the RPGF bridge) ───────────────────────────────
@@ -329,10 +395,12 @@ pub struct BatchUse {
     pub seller: Address,
 }
 
-// ── State snapshot (deterministic, sorted) ────────────────────────
+// ── State snapshot ────────────────────────────────────────────────
 
-/// Serializable state snapshot — the FigaroCore mappings. Entries must be
-/// sorted by key for deterministic root computation.
+/// Serializable state snapshot — the FigaroCore mappings, the relay's whole
+/// state. Its root is the state tree's over every entry
+/// (`KernelState::compute_root`), whatever the entries' order; the guest
+/// never receives it, only a `StateWitness` of the entries a batch touches.
 ///
 /// No usage state lives here: `UsageCounter` holds the one counted-process
 /// set and the one seller set for both routes, and skips a use whose process
@@ -345,9 +413,10 @@ pub struct KernelStateSnapshot {
     pub order_process_id: Vec<(B256, B256)>,
 }
 
-// ── SP1 I/O types ─────────────────────────────────────────────────
+// ── Batch inputs ──────────────────────────────────────────────────
 
-/// Input to the SP1 prover program.
+/// The relay's native batch input, with the whole previous state; the guest
+/// reads `GuestInput`, the same batch with a witness in its place.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BatchInput {
     pub chain_id: u64,
@@ -367,18 +436,33 @@ pub struct BatchInput {
     /// resolved just after is rejected and must be re-proven: loud, and
     /// far better than silently paying the wrong tranche.
     pub usage_period: u8,
-    /// The reserved provenance leaf's key, a constant of the agreement
-    /// format (`keccak256("figaro-agreement-provenance")`) mirrored by
-    /// `UsageCounter.provenanceLeaf()`; the guest takes it as witness and
-    /// the chain checks it. It is the leaf key an assembly claim proves
-    /// against, COMMITTED in the usage hash, so a prover cannot nominate
-    /// some clause whose clause happens to equal the provenance bytes.
-    /// The attestation path does not read it: an attestation of the
-    /// provenance leaf is recognized by the guest's own constant
-    /// (`kernel::PROVENANCE_LEAF_KEY`), because the chain's check of this
-    /// witness sits inside the verifier's accrual try/catch and cannot
-    /// refuse a batch's attestations.
-    pub provenance_leaf: B256,
+}
+
+/// The entries a batch reads or writes, with their values before the batch,
+/// and the previous tree's proof for them (`crate::state_tree`). The guest
+/// computes each entry's path from its key itself.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StateWitness {
+    /// Process id → its state, `None` when absent.
+    pub processes: Vec<(B256, Option<ProcessState>)>,
+    /// Order hash → (status, process id), `None` when absent.
+    pub orders: Vec<(B256, Option<(u8, B256)>)>,
+    /// The previous tree's items for these entries, in descent order.
+    pub proof: Vec<crate::state_tree::ProofItem>,
+}
+
+/// What the guest program reads: a batch with the witness of the entries it
+/// touches in place of the whole previous state (`BatchInput`, the relay's
+/// native input, carries the whole state).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GuestInput {
+    pub chain_id: u64,
+    pub verifying_contract: Address,
+    pub block_timestamp: u64,
+    pub operations: Vec<KernelOp>,
+    pub prev_witness: StateWitness,
+    pub usage_claims: Vec<UsageClaim>,
+    pub usage_period: u8,
 }
 
 /// Public values committed by the SP1 program.
@@ -608,6 +692,13 @@ pub enum KernelError {
     /// ever a clause, an agreement or an assembly, so no claim is credited
     /// under it — the guest's mirror of the counter's refusal of both.
     ReservedKeyIsNotARegistration(B256),
+    /// The guest's batch read or wrote an entry its witness does not carry:
+    /// an entry left out is refused, never taken as absent.
+    UnwitnessedKey,
+    /// The witness carries one entry twice.
+    DuplicateWitnessEntry,
+    /// The witness does not prove its entries against the previous root.
+    Witness(crate::state_tree::TreeError),
 }
 
 impl core::fmt::Display for KernelError {
