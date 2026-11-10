@@ -45,7 +45,5 @@
             "figaro-topology": "daoVault"
         }
     },
-    "links": {
-        "rpgfMinter.members": "absent"
-    }
+    "links": {}
 }
