@@ -29,17 +29,20 @@ contract MockERC1271Wallet {
     /// @notice digest => keccak256(signature bytes) => validated.
     mapping(bytes32 => mapping(bytes32 => bool)) public approved;
 
+    // The three fields every validation reads share one storage slot, so the
+    // mock adds one cold read to the gas a test measures, not three: the
+    // anchors in BatchGasCeilingTest measure the verifier, not this mock.
+
     /// @notice The token whose balance the answer depends on; zero for none.
     address public ceilingToken;
-    /// @notice The most of `ceilingToken` this account may hold and still answer yes.
-    uint256 public balanceCeiling;
-
     /// @notice Gas the validation spends before it answers.
-    uint256 public validationGas;
-
+    uint64 public validationGas;
     /// @notice The answer's shape: 0 one word, 1 four bytes, 2 the word and
     ///         64 KiB after it, 3 no answer (every unit of gas burned).
     uint8 public answerShape;
+
+    /// @notice The most of `ceilingToken` this account may hold and still answer yes.
+    uint256 public balanceCeiling;
 
     /// @notice Validate `signature` for `digest` from now on.
     function approve(bytes32 digest, bytes calldata signature) external {
@@ -54,7 +57,7 @@ contract MockERC1271Wallet {
 
     /// @notice Spend `gasUnits` gas in every validation before answering.
     function setValidationGas(uint256 gasUnits) external {
-        validationGas = gasUnits;
+        validationGas = uint64(gasUnits);
     }
 
     /// @notice Answer in `shape` from now on (see `answerShape`).

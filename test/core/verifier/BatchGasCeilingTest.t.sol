@@ -73,10 +73,12 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     /// @dev A resolution in the wallet-code form beyond the same resolution
     ///      in the signature form: the payments summed, the digest derived,
     ///      the buyer's code size read (a cold account) and its
-    ///      `isValidSignature` called, with the mock's own validation (three
-    ///      cold slots: its approval, its answer shape and its validation
-    ///      gas). The wallet's own code costs what its arrangement costs; the
-    ///      relay plans an allowance for it apart (`gas.rs`). Measured 13,369
+    ///      `isValidSignature` called, with the mock's own validation (two
+    ///      cold slots: its approval, and the one slot holding its ceiling
+    ///      token, answer shape and validation gas). The wallet's own code
+    ///      costs what its arrangement costs; the relay plans an allowance
+    ///      for it apart (`gas.rs`). Measured 9,408, and 12,566 under
+    ///      `forge coverage`
     ///      (`test_Gas_settleStreamWalletCodeCheck`); the ceiling carries the
     ///      allowance for the post-fork repricing of its cold reads.
     uint256 internal constant SETTLE_GAS_PER_STREAM_WALLET_CODE_CHECK = 15_000;
@@ -84,11 +86,12 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     ///      read, the target's ids derived (the commitment's struct hash and
     ///      the order hash), the role's digest, the party's code size read (a
     ///      cold account), its `isValidSignature` called with the mock's own
-    ///      validation (three cold slots), the starvation check, and the
+    ///      validation (two cold slots), the starvation check, and the
     ///      `Attestation` event. The
     ///      entry's bytes (`1 + 1 + 252 + 32 + 1 + 32 + 2 + len`) are priced by
     ///      the word anchor; the wallet's own code is planned apart, as for the
-    ///      resolve (`gas.rs` `WALLET_CODE_EXECUTION_GAS`). Measured 18,420
+    ///      resolve (`gas.rs` `WALLET_CODE_EXECUTION_GAS`). Measured 14,461,
+    ///      and 21,533 under `forge coverage`
     ///      (`test_Gas_settleStreamWalletCodeAttestation`); the ceiling carries
     ///      the allowance for the post-fork repricing of its cold reads.
     uint256 internal constant SETTLE_GAS_PER_STREAM_WALLET_CODE_ATTESTATION = 24_000;
