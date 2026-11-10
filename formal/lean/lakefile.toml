@@ -1,5 +1,9 @@
 name = "figaro-equilibrium"
-defaultTargets = ["FigaroEquilibrium"]
+defaultTargets = ["FigaroEquilibrium", "FigaroData"]
 
 [[lean_lib]]
 name = "FigaroEquilibrium"
+
+[[lean_lib]]
+name = "FigaroData"
+roots = ["FigaroKeccak", "FigaroMerkle", "FigaroStateTree"]
