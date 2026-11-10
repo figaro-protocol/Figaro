@@ -14,8 +14,8 @@ the patterns that look like vulnerabilities and are intended: read it first.
 | Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | none: no audit is engaged (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 14 contract files, 1,597 lines of code (3,849 physical); 3 deploy scripts, 398 lines of code (838 physical) |
-| Rust in scope | 4 crates, 24 files under `src/`, 7,464 lines of code (10,574 physical) net of their inline test modules |
+| Solidity in scope | 14 contract files, 1,671 lines of code (4,006 physical); 3 deploy scripts, 398 lines of code (838 physical) |
+| Rust in scope | 4 crates, 24 files under `src/`, 7,625 lines of code (10,843 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, the routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the testnet scripts, `frontend/`, `sdk/` |
@@ -56,9 +56,9 @@ processes under one SP1 proof, in four parts:
 
 | Directory / file | Contents | Lines of code (physical) |
 |---|---|---|
-| `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` | 164 (306), 36 (67) |
+| `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` | 164 (303), 36 (67) |
 | `src/core/attestation/` | `AttestationCoordinator.sol` | 77 (197) |
-| `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 496 (903), 7 (23) |
+| `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 570 (1,060), 7 (23) |
 | `src/build/registries/` | `ClauseRegistry.sol`, `AgreementRegistry.sol`, `AssemblyRegistry.sol` | 49 (196), 53 (202), 47 (189) |
 | `src/build/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol` | 296 (884), 147 (344) |
 | `src/build/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` | 51 (83), 4 (9) |
@@ -75,9 +75,9 @@ in scope.
 | Crate | Package | Files, lines of code (physical) | What it is | What a defect costs |
 |---|---|---|---|---|
 | `prover/program/` | `figaro-prover` | 1, 9 (13) | The guest's entry point: reads the batch and the witness of the entries it touches, runs the mirror, commits the public values | A batch the chain resolves wrongly |
-| `prover/lib/` | `figaro-kernel` | 8, 1,983 (3,046) | The mirror of `FigaroCore`'s commit and resolve, the witness gates, the operation stream, the public values, the state tree and the witness the guest reads, the usage claims | A batch the chain resolves wrongly |
+| `prover/lib/` | `figaro-kernel` | 8, 2,068 (3,191) | The mirror of `FigaroCore`'s commit and resolve, the witness gates, the operation stream, the public values, the state tree and the witness the guest reads, the usage claims | A batch the chain resolves wrongly |
 | `prover/clause/` | `figaro-clause` | 4, 1,588 (1,939) | The generic clause engine: parses any clause spec supplied as witness input, validates content against it, encodes it | An attestation the batch path reads differently from the party who signed it |
-| `prover/sequencer/` | `figaro-sequencer` | 11, 3,884 (5,576) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, rebuilds its state from the chain | Liveness and griefing |
+| `prover/sequencer/` | `figaro-sequencer` | 11, 3,960 (5,700) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, rebuilds its state from the chain | Liveness and griefing |
 
 The figures count the files under each crate's `src/`, net of their inline
 test modules.
@@ -317,7 +317,7 @@ attestation window), #7 and #14–#20a (registries and rewards), #21 and #23–#
 relay's behaviour, each with its test, is `prover/sequencer/README.md`. What
 neither covers:
 
-- `FigaroCore` accepts a signature with `v` of 27 or 28 only, as OpenZeppelin's `ECDSA` does; the mirror refuses any other `v` itself (`eip712.rs`, `recover_signer`), and the differential fuzz feeds both sides high-s and 0/1 recovery-id signatures.
+- `FigaroCore` accepts a signature with `v` of 27 or 28 only, as OpenZeppelin's `ECDSA` does; the mirror refuses any other `v` itself (`eip712.rs`, `recover_signer`), and the differential fuzz feeds both sides high-s and 0/1 recovery-id signatures. The high-s twin `(r, n − s, v')` of a valid signature is refused by name natively (`prover/lib/tests/signature_malleability.rs`) and inside the zkVM, where the guest runs on SP1's patched `ecdsa`/`k256` (`prover/script/tests/guest_program.rs`, `guest_program_rejects_the_high_s_twin_of_the_buyer_signature`; on the host the twin recovers the same buyer, so the abort is the s check's).
 - The Core's parties are recovered ECDSA signers: a contract wallet transacts through a key it controls (`DESIGN_DECISIONS.md` #4 covers code a buyer's wallet installed).
 - `resolveProcess`'s `CumulativeValueOverflow` guard is unreachable while the token keeps the Core's balance: the process's bonds already held total at least four times the value.
 - `FlorinToken.renounceDeployerMint` emits no event; `deployerMintRenounced` is the state.

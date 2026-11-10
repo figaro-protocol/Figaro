@@ -414,12 +414,16 @@ passing as an agreement, the reserved provenance leaf attestable without a
 spec (and refused on an uncommitted key, a foreign contentRef or non-canonical
 bytes), a clause and an assembly on the same key accruing apart, and the usage-hash vector (each
 use `key ‖ kind ‖ processId ‖ seller`) asserted verbatim on the Solidity side; bincode roundtrips
-fence the SP1 stdin landmines), `figaro-prover` (the SP1 guest program itself,
+fence the SP1 stdin landmines; `recover_signer` refuses the high-s twin `(r, n − s, v')` of a valid
+signature as `InvalidSignature`, as `ECDSA.recover` refuses it,
+`signature_malleability.rs` `recover_signer_refuses_the_high_s_twin_of_a_valid_signature`), `figaro-prover` (the SP1 guest program itself,
 exercised through the next crate), `figaro-prove-test` (SP1 mock-executor guest tests — the guest's committed
 bytes must equal the host's `PublicValues.abi_encode` byte-for-byte — the exact
 words the on-chain verifier hashes against the proof's digest — and decode back
 field-for-field against host `apply_batch`; in-VM Gate-S
-rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof;
+rejection; the guest on SP1's patched `ecdsa`/`k256` aborts on the high-s twin of the canonical
+batch's buyer signature, which on the host recovers the same buyer
+(`guest_program_rejects_the_high_s_twin_of_the_buyer_signature`); `SP1_REAL_PROOF=1` generates + verifies a real local Core proof;
 `prover/script/tests/clause_keys.rs` canonicalizes every `clauses/*.json` and
 asserts it hashes to the SDK's key in `test/fixtures/clause-keys.json`),
 and `figaro-sequencer` (mempool runs the mirror's own witness gates at the
@@ -450,7 +454,14 @@ op after the third transient failure and a fresh admission starts it over;
 HTTP API incl. the per-address submit rate limit (`429`, another address
 still served) and arrival-order draining across clients; mempool→assemble→mirror→advance pipeline; and the operation stream a batch
 publishes — re-applied from the previous state, it lands on the root the proof
-committed, `the_published_stream_rebuilds_the_root_the_batch_committed`).
+committed, `the_published_stream_rebuilds_the_root_the_batch_committed`;
+the rebuild from the chain, `rebuild_from_chain` against the RPC double,
+refuses a reorg between the log read and the `stateRoot()` read, replays a
+batch on each side of a log-query boundary exactly once, and refuses a
+`BatchOperations` without its `BatchSettled` naming the batch: the tests
+the blind audit found missing, and the informed audit's test that the rebuild
+refuses missing logs, which found an unpaired `BatchOperations` dropped
+silently and refused only later under another reason, now refused by name).
 
 `sdk/tests/batch-e2e.test.ts` is the cross-language lock: TS signs + builds
 a plaintext attestation witness, the Rust sequencer binary proves + submits, the Solidity
@@ -685,6 +696,26 @@ same deposits, payouts, accumulators and active counts. The Rust half is `#[igno
 (it needs the stream) and fails, never skips, when run without one.
 `prover-ci`'s `cross-impl-fuzz` job runs four rounds on every push, seeded
 from the run id; a divergence prints the seed and the step.
+
+**The operation stream over generated streams — each reader alone.**
+`prover/lib/tests/operation_stream.rs`
+(`every_generated_stream_decodes_to_what_was_encoded`) draws 2,000 seeded
+streams of every operation kind (commits, signed and wallet-code resolves,
+wallet-code attestations of either role, and the signed attestations the
+stream skips) and every usage-claim kind, proofs of zero to four words, and
+asserts the guest's decoder gives back what was encoded, field for field,
+that re-encoding gives back the bytes, and that the stream one byte short or
+long is refused; the run asserts it met every entry kind it writes, a kind-2
+(agreement) claim and a claim with an inclusion proof among them. `OperationStreamVectorsTest`
+draws streams of the same format from a fuzzed seed and lands each through
+`settleBatch` (`testFuzz_everyGeneratedStreamLandsAndEmitsItsEntries`: the
+Core's events for every commit and resolve, in stream order, each wallet-code
+resolve's buyer carrying `MockERC1271Wallet`), and refuses a cut at a fuzzed
+point inside an entry as `MalformedOperationStream`
+(`testFuzz_aGeneratedStreamCutInsideAnEntryIsRefused`);
+`test_theGeneratedStreamsMeetEveryEntryKind` asserts the generator meets every
+kind. The two generators are written apart; the cross-language lock remains
+`test/fixtures/operation-stream-vectors.json`.
 
 **Packer vectors — the batch verifier's four hand-packed hashes.** The usage
 packer's Rust-generated vector is asserted against the contract's assembly

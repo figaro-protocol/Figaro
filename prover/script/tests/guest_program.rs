@@ -126,6 +126,60 @@ async fn guest_program_rejects_corrupt_buyer_signature_on_commit() {
     );
 }
 
+/// ECDSA public-key recovery written out, `Q = r⁻¹ · (s · R − z · G)`, with
+/// `R` the curve point whose x is `r` and whose y parity is `v − 27`: no
+/// library refusal of a high `s` stands in the path. Returns the address of `Q`.
+fn recover_without_s_check(digest: &B256, sig: &figaro_kernel::types::Signature) -> alloy_primitives::Address {
+    use k256::elliptic_curve::{ops::Reduce, point::DecompressPoint, sec1::ToEncodedPoint, subtle::Choice, PrimeField};
+    use k256::{AffinePoint, FieldBytes, ProjectivePoint, Scalar};
+    let r = Scalar::from_repr(FieldBytes::clone_from_slice(sig.r.as_slice())).expect("r below n");
+    let s = Scalar::from_repr(FieldBytes::clone_from_slice(sig.s.as_slice())).expect("s below n");
+    let z = <Scalar as Reduce<k256::U256>>::reduce_bytes(&FieldBytes::clone_from_slice(digest.as_slice()));
+    let big_r = AffinePoint::decompress(&FieldBytes::clone_from_slice(sig.r.as_slice()), Choice::from(sig.v - 27))
+        .expect("r is a point's x");
+    let q = (ProjectivePoint::from(big_r) * s - ProjectivePoint::GENERATOR * z) * r.invert().expect("r is not zero");
+    let encoded = q.to_affine().to_encoded_point(false);
+    alloy_primitives::Address::from_slice(&keccak256(&encoded.as_bytes()[1..])[12..])
+}
+
+#[tokio::test]
+async fn guest_program_rejects_the_high_s_twin_of_the_buyer_signature() {
+    // `(r, n − s, v')`, with `v'` the other recovery id, recovers the same
+    // buyer as the valid `(r, s, v)`. FigaroCore's `ECDSA.recover` refuses it
+    // (`ECDSAInvalidSignatureS`), so the guest, running on SP1's patched
+    // `ecdsa`/`k256`, must refuse it too: a guest that accepted it would
+    // commit exactly the canonical batch's public values.
+    use k256::elliptic_curve::scalar::IsHigh;
+    let mut input = figaro_kernel::kernel::guest_input(&build_canonical_batch_input()).expect("the canonical batch's witness");
+    if let KernelOp::Commit { buyer_sig, .. } = &mut input.operations[0] {
+        let mut rs = [0u8; 64];
+        rs[..32].copy_from_slice(buyer_sig.r.as_slice());
+        rs[32..].copy_from_slice(buyer_sig.s.as_slice());
+        let low = k256::ecdsa::Signature::from_slice(&rs).expect("the canonical signature parses");
+        assert!(bool::from(!low.s().is_high()), "the canonical signature is low-s");
+        let high_s = -*low.s().as_ref();
+        assert!(bool::from(high_s.is_high()), "its twin is high-s");
+        buyer_sig.s = B256::from_slice(&high_s.to_bytes());
+        buyer_sig.v = 55 - buyer_sig.v;
+    } else {
+        panic!("expected first op to be Commit");
+    }
+    // The positive control: recovered by hand, with no check on s, the twin
+    // names the canonical buyer, so the guest's abort below is the s check's
+    // and nothing else's.
+    if let KernelOp::Commit { commitment, buyer_sig, .. } = &input.operations[0] {
+        let digest = typed_data_hash(&domain_separator(CHAIN_ID, CORE), &commitment_struct_hash(commitment));
+        assert_eq!(recover_without_s_check(&digest, buyer_sig), BUYER, "the twin recovers the canonical buyer");
+    }
+
+    let pv_bytes = execute_guest_input(&input).await;
+    assert!(
+        pv_bytes.as_slice().is_empty(),
+        "the high-s twin must abort the guest before any commitment; got {} bytes",
+        pv_bytes.as_slice().len(),
+    );
+}
+
 #[tokio::test]
 async fn guest_program_rejects_substituted_witness_spec() {
     // Gate S inside the VM: swapping the witness spec for a different
