@@ -77,6 +77,34 @@ second equilibrium and the co-sellers' selection are argued in `/papers/asymmetr
 are not claimed by the file. `lake build` in `formal/lean/` checks it with core Lean 4 and `omega`,
 no network beyond the pinned toolchain.
 
+## The data lemmas (Lean)
+
+Two lemmas about the data, in the same `lake build`. Each is a model of the code it names, with
+keccak a parameter, and each assumes what `lean/FigaroKeccak.lean` states once.
+
+- `lean/FigaroMerkle.lean`, `merkle_binding`: if `verify(proof, root, leaf)` holds and
+  `root = buildMerkleRoot(leaves)`, with the leaves nonempty and every leaf a digest of an input
+  that is not 64 bytes long, then `leaf ∈ leaves`. `clause_binding` specializes it: a clause opens
+  against an agreement's `checkoutHash` only if its key and data hash are one of the agreement's
+  clauses. It models `sdk/src/agreement.ts` (`hashPair`, `buildMerkleRoot`), OpenZeppelin's
+  `MerkleProof.verify`, `CommitmentTypes.clauseLeaf` and `prover/lib/src/merkle.rs`. The tree
+  separates leaves from nodes by length: a leaf is double-hashed, so its outer input is 32 bytes and
+  a node's is 64. The assumption is `CollisionFree keccak`.
+- `lean/FigaroStateTree.lean`, `state_tree_update`: when `verifyAndUpdate` accepts a witness for a
+  previous root that is the root of a state S, its new root is the root of S updated by the batch's
+  writes. It models `prover/lib/src/state_tree.rs` whole: the `0x00` and `0x01` prefixes, the lone
+  leaf that rises, the empty root zero, the descent over Empty, Leaf, Node and Descend, the refusal
+  of a Descend at depth 256 and of an unconsumed proof. The assumptions are `CollisionFree keccak`
+  and `ZeroUnreached keccak`; the second is needed because an empty subtree's hash is the zero word.
+
+Each has an `_or_collision` form with no assumption: the conclusion, or an exhibited keccak
+collision (or a keccak preimage of zero). Two places differ from the code, both stated in the file:
+the model splits by filtering on the bit where the code splits a sorted slice, and it refuses where
+the code would read bit 256 and panic, which strictly increasing paths never reach. The shared
+vectors (`test/fixtures/merkle-vectors.json`, `prover/lib/tests/state_tree.rs`) tie the models to
+the code. Four mutations each fail the build: a single-hashed clause leaf, the state tree without its
+prefixes, without the rise, and without the depth check.
+
 ## Files
 
 | File | Purpose |
@@ -85,6 +113,9 @@ no network beyond the pinned toolchain.
 | `MC.tla` | Model-checking configuration (constants, model values) |
 | `MC.cfg` | TLC configuration (specification, constant bindings, invariant list) |
 | `lean/FigaroEquilibrium.lean` | The best-response inequalities, machine-checked (above) |
+| `lean/FigaroKeccak.lean` | The one cryptographic assumption, stated once (above) |
+| `lean/FigaroMerkle.lean` | Merkle binding for the agreement and assembly trees (above) |
+| `lean/FigaroStateTree.lean` | The state tree's update, for the batch path (above) |
 
 ## How to Run
 

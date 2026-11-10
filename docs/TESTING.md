@@ -330,6 +330,28 @@ by design: core Lean 4 + `omega`, no Mathlib — `lake build` from
 margin result `deterrent_gap`). Optional
 credibility asset, not release path.
 
+The same `lake build` checks two lemmas about the data, each a model of
+the code it names, with keccak a parameter. `FigaroKeccak.lean` states the
+assumption once: `CollisionFree keccak` (equal digests come from equal
+inputs). `FigaroMerkle.lean` models the agreement and assembly tree
+(`sdk/src/agreement.ts` `buildMerkleRoot`, OpenZeppelin `MerkleProof.verify`,
+`CommitmentTypes.clauseLeaf`) and proves `merkle_binding`: if
+`verify(proof, root, leaf)` and `root = buildMerkleRoot(leaves)`, the
+leaves nonempty and each a digest of an input that is not 64 bytes long,
+then `leaf ∈ leaves`; `clause_binding` specializes it to the clause key and
+data hash. `FigaroStateTree.lean` models `prover/lib/src/state_tree.rs`
+whole and proves `state_tree_update`: when `verifyAndUpdate` accepts a
+witness for a previous root that is the root of a state S, its new root is
+the root of S updated by the batch's writes. That lemma also assumes
+`ZeroUnreached keccak`, because the tree writes the zero word for an empty
+subtree. Each lemma has an `_or_collision` form that assumes nothing: the
+conclusion, or an exhibited keccak collision (or, for the state tree, a
+keccak preimage of zero). The shared vectors
+(`test/fixtures/merkle-vectors.json`, `prover/lib/tests/state_tree.rs`) tie
+the models to the code. Mutation-checked: a single-hashed clause leaf, the
+state tree without its leaf and node prefixes, without the lone leaf's rise,
+or without the depth-256 refusal each fails the build.
+
 ## Rust — the proof apparatus (`prover/`)
 
 `cargo test` from `prover/` — five crates, one suite. Prereq: three of the five
