@@ -32,14 +32,14 @@ export default function CoercionVariablePaper() {
             }
             references={
                 <>
-                    <li>Austin, John. 1832. <em>The Province of Jurisprudence Determined</em>. London: John Murray.</li>
+                    <li>Austin, John. 1832. <em>The Province of Jurisprudence Determined</em>. London: John Murray. https://www.koeblergerhard.de/Fontes/AustinJohnTheprovinceofjurisprudencedetermined1832.pdf.</li>
                     <li>Elster, Jon. 1979. <em>Ulysses and the Sirens: Studies in Rationality and Irrationality</em>. Cambridge: Cambridge University Press.</li>
                     <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for N-Party Coordination Among Strangers.&rdquo; Preprint. Accessed October 18, 2026. https://figaroprotocol.com/papers/asymmetric-bonding/.</li>
                     <li>Hart, H. L. A. 1961. <em>The Concept of Law</em>. Oxford: Clarendon Press.</li>
-                    <li>Hobbes, Thomas. 1651. <em>Leviathan, or The Matter, Forme, and Power of a Common-Wealth Ecclesiasticall and Civill</em>. London: Andrew Crooke.</li>
+                    <li>Hobbes, Thomas. 1651. <em>Leviathan, or The Matter, Forme, and Power of a Common-Wealth Ecclesiasticall and Civill</em>. London: Andrew Crooke. Project Gutenberg. https://www.gutenberg.org/files/3207/3207-h/3207-h.htm.</li>
                     <li>Nakamoto, Satoshi, aceat64, and ribuck. 2010. &ldquo;Escrow.&rdquo; Forum thread, <em>Bitcointalk</em>, topic 750, August 7&ndash;11, 2010: messages 8140 (Nakamoto, August 7), 8213 (aceat64, August 8), 8734 and 8742 (ribuck, August 11). Accessed October 18, 2026. https://bitcointalk.org/index.php?topic=750.0.</li>
                     <li>Nozick, Robert. 1969. &ldquo;Coercion.&rdquo; In <em>Philosophy, Science, and Method: Essays in Honor of Ernest Nagel</em>, edited by Sidney Morgenbesser, Patrick Suppes, and Morton White, 440&ndash;472. New York: St. Martin&rsquo;s Press.</li>
-                    <li>Olson, Mancur. 1965. <em>The Logic of Collective Action: Public Goods and the Theory of Groups</em>. Cambridge, MA: Harvard University Press.</li>
+                    <li>Olson, Mancur. 1965. <em>The Logic of Collective Action: Public Goods and the Theory of Groups</em>. Cambridge, MA: Harvard University Press. https://doi.org/10.4159/9780674041660.</li>
                     <li>Pettit, Philip. 1997. <em>Republicanism: A Theory of Freedom and Government</em>. Oxford: Clarendon Press.</li>
                     <li>Pettit, Philip. 2012. <em>On the People&rsquo;s Terms: A Republican Theory and Model of Democracy</em>. Cambridge: Cambridge University Press. https://doi.org/10.1017/CBO9781139017428.</li>
                     <li>Schmitt, Carl. (1922) 1985. <em>Political Theology: Four Chapters on the Concept of Sovereignty</em>. Translated by George Schwab. Cambridge, MA: MIT Press.</li>
