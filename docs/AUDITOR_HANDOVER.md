@@ -369,7 +369,7 @@ these rows summarize.
 | Mutation, `cargo-mutants` (`scripts/cargo-mutants-run.sh`) | `figaro-kernel`, `figaro-clause` | 617 mutants: 550 caught, 26 timed out, 29 unviable, 12 survived, each read as equivalent | `f62b71cf` |
 | Static analysis | Slither 0.11.3, Semgrep (`p/smart-contracts`, `p/rust`), Clippy, `cargo audit` | Slither's High and Medium results equal the triaged set below; Semgrep no WARNING or ERROR; Clippy clean; `cargo audit` fails on no advisory but the five set aside | every push (`foundry-ci`, `prover-ci`, `guards-ci`) |
 | Real proof | two Groth16 proofs through Succinct's gateway, resolved by a `FigaroBatchVerifier` deployed with the guest's key | both accepted; bonds, payouts, re-emitted attestation and state root read from the chain | `cf6ba4ab`, on a Sepolia fork |
-| Guest build, `scripts/prover-box/build-guest.sh` | the ELF and key the Sepolia verifier pins | ELF `e98d22aed98ea087f9c34a5115d2cf3364328ed6c128580b8531bb34f4ca9ac7`, key `0x00d74a88d7c774fb211bc2ade8ed502fbd33c42b64d081b1bb4bea66d9c31e39` | `eeb903b7` |
+| Guest build, `scripts/prover-box/build-guest.sh` | the ELF and key the Sepolia verifier pins | ELF `36de7f99f3c06cb807316ad0c295e21e0e46fe2e84aa4cc55dd97885e4846de4`, key `0x00569b319e52c0a8c173cd333a88177ea189879df483b9003b8b31f1429447d9` | `2fd6a376` |
 
 ### Static analysis
 
