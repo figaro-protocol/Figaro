@@ -1,0 +1,14 @@
+{
+  "subjectAddress": "0xaB6002468376875CcD4323857E972FB2aFdA647c",
+  "name": "Figaro Batch Rehearsal Seller",
+  "description": "The deployer's wallet, registered as a member so it can act as the test seller of the Sepolia batch rehearsal: one order resolved through the batch verifier, with its usage claim credited. It sells nothing outside that rehearsal.",
+  "specialty": "test seller for the batch rehearsal",
+  "acceptedTokens": [
+    {
+      "address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      "symbol": "USDC",
+      "name": "USD Coin (Sepolia)"
+    }
+  ],
+  "defaultTokenAddress": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+}
