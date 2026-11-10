@@ -16,6 +16,8 @@ registers it from its owner's wallet — every member from its own balance
   lands later on the same profile.
 - `dao.json` — the DAO's identity, registered under its EIP-7702 OPERATOR EOA,
   never the vault address (`DAO.md` § "Who holds the treasury").
+- `deployer.json` — the deployer's wallet as the test seller of the Sepolia batch
+  rehearsal: a member so its usage claim credits; it sells nothing outside that rehearsal.
 
 A registered profile evolves by `updateProfile` — the member's own runtime act,
 not seeding; these files are the genesis content, not a mirror of live state.
