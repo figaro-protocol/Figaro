@@ -7,20 +7,19 @@ use figaro_kernel::types::{BatchInput, KernelError, KernelOp, KernelStateSnapsho
 
 use crate::mempool::PendingOp;
 
-/// The RPGF context a batch resolves under — the claims to credit, the
-/// period they land in, and the provenance leaf's key assembly claims
-/// prove against.
+/// The designer-rewards context a batch resolves under — the claims to credit and the
+/// period they land in. The provenance leaf's key is no part of it: the
+/// guest proves agreement and assembly claims against its own constant
+/// (`kernel::PROVENANCE_LEAF_KEY`).
 ///
-/// PERIOD AND PROVENANCE ARE CHAIN FACTS, read from `UsageCounter`
-/// (`currentPeriod()`, `provenanceLeaf()`), never guessed from a local
-/// clock: the counter re-checks both at resolution and rejects the batch
-/// on a mismatch. A batch assembled just before a period boundary and
+/// THE PERIOD IS A CHAIN FACT, read from `UsageCounter.currentPeriod()`,
+/// never guessed from a local clock: the counter re-checks it at
+/// resolution and skips the batch's accrual on a mismatch. A batch assembled just before a period boundary and
 /// resolved just after it must be re-proven for the new period.
 #[derive(Clone, Debug, Default)]
 pub struct UsageContext {
     pub claims: Vec<UsageClaim>,
     pub period: u8,
-    pub provenance_leaf: B256,
 }
 
 /// Configuration for batch assembly triggers.
@@ -55,7 +54,6 @@ pub fn assemble_batch(
         prev_state,
         usage_claims: usage.claims,
         usage_period: usage.period,
-        provenance_leaf: usage.provenance_leaf,
     }
 }
 
@@ -189,6 +187,9 @@ pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bo
         KernelError::UsageOrderNotResolved(_)
         | KernelError::UsageInvalidInclusionProof
         | KernelError::ReservedKeyIsNotARegistration(_) => false,
+        // The guest's witnessed run's refusals; the relay runs every batch on
+        // the full state, where no key is unwitnessed, and never meets them.
+        KernelError::UnwitnessedKey | KernelError::DuplicateWitnessEntry | KernelError::Witness(_) => false,
     }
 }
 
@@ -288,6 +289,7 @@ fn referenced_ids(domain: &B256, op: &KernelOp) -> Vec<B256> {
         }
         KernelOp::AttestAsSeller { target, .. } => vec![order(target)],
         KernelOp::AttestAsBuyer { target, .. } => vec![order(target)],
+        KernelOp::AttestByWalletCode { target, .. } => vec![order(target)],
     }
 }
 
@@ -410,7 +412,6 @@ pub fn filter_applicable_claims(
     block_timestamp: u64,
     prev_state: &KernelStateSnapshot,
     valid_ops: &[KernelOp],
-    provenance_leaf: B256,
     claims: Vec<UsageClaim>,
 ) -> (Vec<UsageClaim>, Vec<(UsageClaim, String)>) {
     if claims.is_empty() {
@@ -439,7 +440,6 @@ pub fn filter_applicable_claims(
             chain_id,
             verifying_contract,
             std::slice::from_ref(&claim),
-            &provenance_leaf,
         ) {
             Ok(uses) => match uses.first() {
                 Some(u) if carried.insert((u.kind, u.clause_or_assembly, u.process_id)) => valid.push(claim),

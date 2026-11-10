@@ -1,7 +1,8 @@
 /// Local state mirror — tracks the guest state by replaying batches.
 ///
 /// The sequencer maintains a local copy of the guest state so it can:
-/// 1. Supply `prev_state` to the prover
+/// 1. Build each batch's witness for the prover (the guest receives only the
+///    entries the batch touches, proved against the previous root)
 /// 2. Perform state-dependent pre-checks
 /// 3. Detect divergence from on-chain state root
 ///
@@ -65,12 +66,12 @@ impl StateMirror {
 
     /// The root buyer of a process the state holds.
     pub async fn root_buyer(&self, process_id: &B256) -> Option<alloy_primitives::Address> {
-        self.inner.read().await.state.processes.get(process_id).map(|p| p.root_buyer)
+        self.inner.read().await.state.process(process_id).ok().flatten().map(|p| p.root_buyer)
     }
 
     /// Whether the state holds the order committed and not yet resolved.
     pub async fn order_active(&self, order_hash: &B256) -> bool {
-        self.inner.read().await.state.order_status.get(order_hash).copied() == Some(1)
+        self.inner.read().await.state.order_status_of(order_hash).ok() == Some(1)
     }
 
     /// Advance the local state by applying a batch.

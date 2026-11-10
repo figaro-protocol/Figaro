@@ -301,6 +301,5 @@ pub fn build_canonical_batch_input() -> BatchInput {
             inclusion_proof: vec![],
         }],
         usage_period: 0,
-        provenance_leaf: keccak256(b"figaro-agreement-provenance"),
     }
 }

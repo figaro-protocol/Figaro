@@ -133,9 +133,10 @@ content for one sent in the plaintext form) and the usage bridge, translated to 
 Five `KernelOp` variants — `Commit`, `Resolve`, `ResolveByWalletCode`,
 `AttestAsSeller`, `AttestAsBuyer` (registry mutations never enter a batch);
 the two resolves are one rule under two forms of the buyer's authorization. Three-member state
-(processes, orderStatus, orderProcessId), hashed flat into one root (no
-per-order inclusion proof exists; a reader checks anything against the root
-only with the whole preimage); a usage claim moves no state. EIP-712 signature
+(processes, orderStatus, orderProcessId), committed as one sparse merkle tree with a leaf per
+process and a leaf per order (`prover/lib/src/state_tree.rs`); the guest reads only the entries a
+batch touches, proved against the previous root, so its work grows with the batch and with the
+logarithm of the state, not with the state; a usage claim moves no state. EIP-712 signature
 verification with byte-exact parity to the Solidity.
 
 **Generic clause engine** (`prover/clause/`): parse + validate + encode over
@@ -144,7 +145,8 @@ off-chain module (`@figaro-protocol/sdk/clauses`), conformance-locked against
 the TypeScript side. No per-clause code, by design ("Prover Clause
 Architecture" below).
 
-**SP1 guest program** (`prover/program/`): executes `apply_batch()` in the SP1
+**SP1 guest program** (`prover/program/`): reads the batch with the witness of
+the state entries it touches (`GuestInput`), executes `apply_guest()` in the SP1
 zkVM and commits `PublicValues` — ten fields: prev/new state roots, chain
 binding (chainId + verifyingContract), five commitment hashes (token
 positions, attestation events, spec bindings, the uses, and the
@@ -152,7 +154,11 @@ operation stream: every commit and resolve the batch applied, whole — a
 wallet-code resolve with its authorization bytes — and every usage claim,
 `prover/lib/src/operation_stream.rs`), and the clock the
 guest checked deadlines against. The canonical
-batch (all four op kinds) proves in ~1.2M cycles with the k256 SP1 precompile.
+batch (all four op kinds) executes in 1,212,320 cycles with the k256 SP1
+precompile on an otherwise empty state, 1,611,935 beside 1,000 stored orders
+and 1,663,155 beside 10,000 (`prover/script/tests/guest_cycles.rs`, run with
+`--ignored`): the witness grows with the logarithm of the state, not with the
+state.
 
 **On-chain verifier** (`src/core/verifier/FigaroBatchVerifier.sol`):
 accepts SP1 proofs, verifies state-root continuity and chain binding,
@@ -293,11 +299,13 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
 
 1. **Proof system**: SP1 (Succinct) — a RISC-V zkVM. Chosen for Rust
    compatibility, a mature toolchain, and a mock prover for development.
-2. **State representation**: BTree-based mirror state with six members; a
-   deterministic `compute_root()` hashes sorted key-value pairs into a bytes32
-   root, and the on-chain root chain prevents fabricated transitions. Known
-   cost, accepted: `compute_root()` rehashes the entire state every batch; a
-   merkle/incremental successor takes the usage members along.
+2. **State representation**: the mirror's three maps, committed as a compact
+   sparse merkle tree over keccak256 (`prover/lib/src/state_tree.rs`): a leaf
+   per process and a leaf per order (its status and process id), a lone leaf
+   its own subtree, the empty state's root zero. The guest receives a witness
+   of the entries a batch reads or writes, proved against the previous root,
+   refuses any access outside it, and computes both roots by one descent; the
+   on-chain root chain prevents fabricated transitions.
 3. **Sequencing**: a single-instance sequencer per deployment. It collects
    signed operations, runs advisory pre-checks, assembles `BatchInput`, runs
    the prover, and submits. It cannot fabricate, steal, or violate invariants;
@@ -564,8 +572,9 @@ trigger — every N seconds, or at M operations, whichever comes first —
 together with the sequencer's local state snapshot, the usage claims for
 batch-resolved orders (kind 0 a clause, 1 an assembly with its agreement's
 `agreementHash`, `slotContentHash` and membership proof, 2 a registered
-agreement with its assembly's `assemblyHash`), the period, and the
-provenance leaf key the relay reads from `UsageCounter.provenanceLeaf()`. The
+agreement with its assembly's `assemblyHash`) and the period. The provenance
+leaf's key is no input: the guest proves agreement and assembly claims under
+its own constant and commits it in the usage hash. The
 relay's pre-filter checks each claim against its own kind's registry —
 `AgreementRegistry.bindings` for kind 2 — its seller's member stake and the
 counter's `processCounted` for its process, and drops a claim keyed on either

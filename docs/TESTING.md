@@ -85,7 +85,7 @@ bytes resolves the process and pays out, code that refuses them or reverts
 reverts the batch (`WalletCodeAuthorizationRefused`), and a buyer with no
 code is refused (`BuyerHasNoCode`). `OperationStreamVectorsTest` lands each
 harvested stream, the wallet-code one included, and `BatchGasCeilingTest`
-measures the wallet-code check (`test_Gas_settleStreamWalletCodeCheck`).
+measures the wallet-code check (`test_Gas_settleStreamWalletCodeCheck`) and the wallet-code attestation entry (`test_Gas_settleStreamWalletCodeAttestation`).
 
 `CoreBatchEquivalenceTest` is the model-based differential run behind
 `VERIFICATION_MAP.md` § "E-13 — the two paths, operation by observable". It
@@ -173,7 +173,7 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 69 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 8 + its deferral 10 + its resolve authorization 3)
+## TLA+ (`formal/`) — 71 invariants across 5 models in 8 configurations, each configuration's type invariant counted (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 8 + its deferral 10 + its resolve authorization 3 + its attestation authorization 2, `RTypeOK` and `OnlyPartyAttests`, `formal/RelayStateAttest.cfg`)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -345,7 +345,21 @@ stage-scoped witnesses, tuple[] arrays, top-level bytes32 and address words, ope
 the transition replay — `prover/lib/tests/transition_vectors.rs` replays
 `test/fixtures/kernel-transition-vectors.json`, harvested from the live `FigaroCore`
 by `KernelTransitionVectorsTest`, and asserts every id, bond, payout,
-accumulator and active count; the three packer vectors (`packers.rs`) and the
+accumulator and active count, and that the guest's witnessed run
+(`apply_guest` on `guest_input`) reaches the native run's public values in
+every scenario, refuses a witness that leaves out an entry the batch reads
+(`UnwitnessedKey`) and one whose entry the tree does not hold; the batch state
+tree (`prover/lib/tests/state_tree.rs`, `prover/lib/src/state_tree.rs`) —
+hand-computed root vectors, a refusal test for each check the root alone does
+not give (a present leaf read as absent, a leaf off its position in both
+relocation forms, an absence proof for a present entry, a wrong value, unsorted
+or doubled entries, a node at a witnessed position, a descend past the last
+bit, a short or surplus proof, a removed leaf), a property test that the
+descent reaches the root of the true post-state over random histories, and
+one that mutates honest proofs at random and requires every accepted one to
+reach it; the guest's cycles beside a growing stored state
+(`prover/script/tests/guest_cycles.rs`, ignored by default, run with
+`--ignored`); the three packer vectors (`packers.rs`) and the
 Merkle leg of the agreement-tree lock (`merkle_parity.rs`), both asserted on
 the Solidity side too +
 the witness-gate suite: spec-identity substitution (Gate S,
@@ -366,7 +380,10 @@ usage bridge in
 same use (the counter's `processCounted` skips it), claims moving no state root, each
 use naming its process and seller, the agreement leg via the two-key provenance reproduction
 (`credits_an_agreement_through_the_provenance_leaf`, refused on a wrong
-`agreementHash` or `assemblyHash`), the assembly leg via the same leaf plus
+`agreementHash` or `assemblyHash`, and under any key but the guest's own
+constant, which the usage hash commits, since no batch input names one:
+`an_agreement_claim_opens_only_under_the_guest_s_provenance_key`,
+`the_usage_hash_commits_the_guest_s_provenance_key`, blind audit F-7), the assembly leg via the same leaf plus
 the agreement's membership proof (refused on another agreement's hash, a proof
 under another root, or the wrong agreement content), one provenance leaf crediting
 the agreement and the assembly apart, both reserved keys refused on every kind

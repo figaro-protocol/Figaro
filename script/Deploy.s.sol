@@ -180,10 +180,9 @@ contract Deploy is Script {
         // MockSP1Verifier accepts any proof; the real deployment wires
         // Succinct's SP1 verifier gateway + the program vkey from
         // `SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`
-        // (DeployMainnet.s.sol). The genesis root is DERIVED — one
-        // keccak256("") per mirror state map (processes, orderStatus,
-        // orderProcessId), matching the Rust KernelState::compute_root
-        // on the empty state. ClauseRegistry is the witness-spec anchor:
+        // (DeployMainnet.s.sol). The genesis root is the contract's own
+        // (`genesisRoot()`, zero: the guest's state tree over no entries).
+        // ClauseRegistry is the witness-spec anchor:
         // the clause key IS the spec hash, so settleBatch requires each
         // proof's binding to carry one word twice and the key registered.
         // Note: FigaroBatchVerifier is NOT a florin minter and never will be.
@@ -292,9 +291,7 @@ contract Deploy is Script {
 
         _deployUsageCounter(core, members, predictedVerifier);
 
-        // Genesis root is DERIVED — one keccak256("") per mirror state map
-        // (processes, orderStatus, orderProcessId), matching the Rust
-        // KernelState::compute_root on the empty state.
+        // The genesis root is the contract's own (`genesisRoot()`, zero).
         // The guest fingerprint the verifier pins: the sequencer this tree
         // built reports its own (`sequencer --vkey`, exported by the deploy
         // wrapper when the binary is present), so a relay can start against

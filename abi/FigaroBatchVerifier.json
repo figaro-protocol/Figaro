@@ -857,6 +857,22 @@
   },
   {
     "type": "error",
+    "name": "WalletCodeAttestationStarved",
+    "inputs": [
+      {
+        "name": "orderHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "attester",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "WalletCodeAuthorizationRefused",
     "inputs": [
       {

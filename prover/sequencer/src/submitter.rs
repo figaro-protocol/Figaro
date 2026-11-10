@@ -314,13 +314,15 @@ pub async fn filter_funded_commits(
 /// A plaintext attestation's clause key and the hash of the witness spec
 /// bytes it carries — the guest requires them equal (Gate S) and the
 /// verifier requires the key `registered(clauseKey)`; either failing
-/// reverts the WHOLE batch. `None` for a hash-only attestation, which
+/// reverts the WHOLE batch, in either authorization form (the wallet-code
+/// form commits the binding too). `None` for a hash-only attestation, which
 /// commits no spec binding (the verifier checks no registry for it, as the
 /// coordinator checks none), and for every other op.
 pub fn attestation_spec(op: &KernelOp) -> Option<(alloy::primitives::B256, alloy::primitives::B256)> {
     match op {
         KernelOp::AttestAsSeller { clause_id, proof: AttestationWitness::Plaintext(proof), .. }
-        | KernelOp::AttestAsBuyer { clause_id, proof: AttestationWitness::Plaintext(proof), .. } => {
+        | KernelOp::AttestAsBuyer { clause_id, proof: AttestationWitness::Plaintext(proof), .. }
+        | KernelOp::AttestByWalletCode { clause_id, proof: AttestationWitness::Plaintext(proof), .. } => {
             Some((*clause_id, alloy::primitives::keccak256(proof.spec_json.as_bytes())))
         }
         _ => None,
@@ -397,21 +399,27 @@ pub async fn filter_anchored_attestations(
     (valid, dropped)
 }
 
-// ── Wallet-code resolves: the buyer's code must validate, or the batch reverts ──
+// ── Wallet-code operations: the party's code must validate ─────────
 //
-// A resolve in the wallet-code form carries bytes the buyer's own account
-// code validates (ERC-1271). The guest cannot run that code; the verifier
-// asks it at resolution and reverts the WHOLE batch on any answer but the
-// magic value. The relay therefore asks the same code the same question
-// against the latest block — at the door and again at batch formation — as
-// it reads a commit's funding: a liveness aid, never the gate. The question
-// is the verifier's: `isValidSignature(digest, bytes)` from the verifier's
-// address, the digest `ResolveProcess` under the verifier's domain over the
-// process and the listed payments, the buyer the listed orders'. The call
-// runs under `gas::WALLET_CODE_EXECUTION_GAS`, the gas this relay plans for
-// the wallet's own code. The residual window is the proving time: code whose
-// answer changes inside it reverts the batch, which the deterministic-revert
-// arm names and dead-letters alone (`filter_wallet_code_resolves`).
+// A resolve or an attestation in the wallet-code form carries bytes the
+// party's own account code validates (ERC-1271). The guest cannot run that
+// code; the verifier asks it at resolution. For a resolve it reverts the
+// WHOLE batch on any answer but the magic value; for an attestation it skips
+// the entry and emits nothing, and the batch lands. The relay asks the same
+// code the same question against the latest block — at the door and again at
+// batch formation — as it reads a commit's funding: a liveness aid, never the
+// gate, so a resolve the code refuses never reverts a batch and an
+// attestation it refuses never costs a batch its bytes. The question is the
+// verifier's: `isValidSignature(digest, bytes)` from the verifier's address,
+// under the verifier's domain; for a resolve the digest `ResolveProcess` over
+// the process and the listed payments, the buyer the listed orders'; for an
+// attestation the `AttestSeller` / `AttestBuyer` digest over the target's ids
+// derived from its commitment, the party the role names. The call runs under
+// `gas::WALLET_CODE_EXECUTION_GAS`, the gas this relay plans for the wallet's
+// own code. The residual window is the proving time: a resolve's code whose
+// answer changes inside it reverts the batch, and any wallet code can revert
+// it by burning the gas the verifier forwards; the deterministic-revert arm
+// names and dead-letters those operations alone (`filter_wallet_code_ops`).
 
 sol! {
     #[sol(rpc)]
@@ -423,37 +431,66 @@ sol! {
 /// ERC-1271's magic value.
 const ERC1271_MAGIC_VALUE: [u8; 4] = [0x16, 0x26, 0xba, 0x7e];
 
-/// What the verifier asks the buyer's code about a wallet-code resolve: the
-/// buyer (the listed orders'), the digest under the verifier's domain, and
-/// the bytes. `None` for every other op, and for a resolve listing no order
-/// (the guest refuses it).
+/// What the verifier asks a wallet-code operation's party: the party, the
+/// digest under the verifier's domain, and the bytes. For a resolve, the
+/// buyer (the listed orders') and `ResolveProcess` over the process and the
+/// listed payments; for an attestation, the role's party of the target and
+/// `AttestSeller` / `AttestBuyer` over the target's ids, derived from its
+/// commitment (`derive_commitment_ids`) as the verifier derives them. `None`
+/// for every other op, and for a resolve listing no order (the guest refuses
+/// it).
 pub fn wallet_code_question(
     chain_id: u64,
     verifier: Address,
     op: &KernelOp,
 ) -> Option<(Address, B256, Bytes)> {
-    let KernelOp::ResolveByWalletCode { process_id, commitments, authorization, .. } = op else {
-        return None;
+    use figaro_kernel::eip712::{
+        attest_buyer_struct_hash, attest_seller_struct_hash, domain_separator, resolve_struct_hash, typed_data_hash,
     };
-    let buyer = commitments.first()?.buyer;
-    // The value the verifier derives: the listed payments' sum.
-    let value = figaro_kernel::operation_stream::resolved_cumulative_value(commitments)?;
-    let domain = figaro_kernel::eip712::domain_separator(chain_id, verifier);
-    let digest = figaro_kernel::eip712::typed_data_hash(
-        &domain,
-        &figaro_kernel::eip712::resolve_struct_hash(process_id, &value),
-    );
-    Some((buyer, digest, authorization.clone()))
+    use figaro_kernel::types::AttesterRole;
+    let domain = domain_separator(chain_id, verifier);
+    match op {
+        KernelOp::ResolveByWalletCode { process_id, commitments, authorization, .. } => {
+            let buyer = commitments.first()?.buyer;
+            // The value the verifier derives: the listed payments' sum.
+            let value = figaro_kernel::operation_stream::resolved_cumulative_value(commitments)?;
+            let digest = typed_data_hash(&domain, &resolve_struct_hash(process_id, &value));
+            Some((buyer, digest, authorization.clone()))
+        }
+        KernelOp::AttestByWalletCode { role, target, clause_id, stage, content_ref, authorization, .. } => {
+            let (order_hash, process_id) = figaro_kernel::kernel::derive_commitment_ids(&domain, target);
+            let struct_hash = match role {
+                AttesterRole::Seller => attest_seller_struct_hash(&order_hash, clause_id, *stage, content_ref),
+                AttesterRole::Buyer => attest_buyer_struct_hash(&process_id, &order_hash, clause_id, *stage, content_ref),
+            };
+            Some((role.party(target), typed_data_hash(&domain, &struct_hash), authorization.clone()))
+        }
+        _ => None,
+    }
 }
 
-/// Ask a wallet-code resolve's buyer code, as the verifier will. The outer
+/// How a report names a wallet-code operation's party, and what the verifier
+/// does with the operation when the party's code refuses it.
+fn wallet_code_terms(op: &KernelOp) -> (&'static str, &'static str) {
+    match op {
+        KernelOp::AttestByWalletCode { role: figaro_kernel::types::AttesterRole::Seller, .. } => {
+            ("seller", "the verifier would skip the attestation (no Attestation event)")
+        }
+        KernelOp::AttestByWalletCode { .. } => ("buyer", "the verifier would skip the attestation (no Attestation event)"),
+        _ => ("buyer", "the verifier would revert the batch"),
+    }
+}
+
+/// Ask a wallet-code operation's party code, as the verifier will: the
+/// buyer's for a resolve, the role's party's for an attestation. The outer
 /// `Err` is a read failure (the chain could not be asked); the inner `Err`
 /// is a verdict: the account has no code, or its code does not answer with
 /// the magic value under the gas this relay plans. Any other op passes.
-pub async fn check_wallet_code_resolve(gate: &FundingGate, op: &KernelOp) -> Result<Result<(), String>, String> {
-    if !matches!(op, KernelOp::ResolveByWalletCode { .. }) {
+pub async fn check_wallet_code(gate: &FundingGate, op: &KernelOp) -> Result<Result<(), String>, String> {
+    if !matches!(op, KernelOp::ResolveByWalletCode { .. } | KernelOp::AttestByWalletCode { .. }) {
         return Ok(Ok(()));
     }
+    let (party, refusal) = wallet_code_terms(op);
     let url = gate.rpc_url.parse().map_err(|e| format!("invalid RPC_URL: {e}"))?;
     let provider = ProviderBuilder::new().connect_http(url);
     let Some((buyer, digest, authorization)) = wallet_code_question(gate.chain_id, gate.verifier, op) else {
@@ -464,8 +501,9 @@ pub async fn check_wallet_code_resolve(gate: &FundingGate, op: &KernelOp) -> Res
         .await
         .map_err(|e| format!("code read of {buyer} failed: {}", without_urls(&e.to_string())))?;
     if code.is_empty() {
+        let named = if matches!(op, KernelOp::ResolveByWalletCode { .. }) { " (BuyerHasNoCode)" } else { "" };
         return Ok(Err(format!(
-            "buyer {buyer} has no account code to validate a wallet-code resolve — the verifier would revert the batch (BuyerHasNoCode)"
+            "{party} {buyer} has no account code to validate a wallet-code operation — {refusal}{named}"
         )));
     }
     let answer = IERC1271WalletCode::new(buyer, &provider)
@@ -477,22 +515,23 @@ pub async fn check_wallet_code_resolve(gate: &FundingGate, op: &KernelOp) -> Res
     match answer {
         Ok(magic) if magic.0 == ERC1271_MAGIC_VALUE => Ok(Ok(())),
         Ok(other) => Ok(Err(format!(
-            "buyer {buyer}'s code answered {other} for digest {digest}, not the ERC-1271 magic value — the verifier would revert the batch (WalletCodeAuthorizationRefused)"
+            "{party} {buyer}'s code answered {other} for digest {digest}, not the ERC-1271 magic value — {refusal} (WalletCodeAuthorizationRefused)"
         ))),
         Err(e) if is_deterministic_send_error(&e.to_string()) => Ok(Err(format!(
-            "buyer {buyer}'s code reverted for digest {digest} under {} gas — the verifier would revert the batch (WalletCodeAuthorizationRefused)",
+            "{party} {buyer}'s code reverted for digest {digest} under {} gas — {refusal} (WalletCodeAuthorizationRefused)",
             crate::gas::WALLET_CODE_EXECUTION_GAS
         ))),
         Err(e) => Err(format!("isValidSignature read of {buyer} failed: {}", without_urls(&e.to_string()))),
     }
 }
 
-/// Drop every wallet-code resolve whose buyer's code does not validate it,
-/// against the latest block, before proving: one such op reverts the whole
-/// batch on chain. A read failure drops conservatively; a dropped resolve is
-/// re-submittable. `None` (no verifier configured — a prove-only dry run)
-/// passes everything through.
-pub async fn filter_wallet_code_resolves(
+/// Drop every wallet-code operation whose party's code does not validate it,
+/// against the latest block, before proving: such a resolve reverts the
+/// whole batch on chain, and such an attestation is skipped there and costs
+/// the batch its bytes for nothing. A read failure drops conservatively
+/// (`WALLET_CODE_UNREAD`); a dropped operation is re-submittable. `None` (no
+/// verifier configured — a prove-only dry run) passes everything through.
+pub async fn filter_wallet_code_ops(
     gate: Option<&FundingGate>,
     pending: Vec<PendingOp>,
 ) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
@@ -502,20 +541,25 @@ pub async fn filter_wallet_code_resolves(
     let mut valid = Vec::with_capacity(pending.len());
     let mut dropped = Vec::new();
     for op in pending {
-        match check_wallet_code_resolve(gate, &op.op).await {
+        match check_wallet_code(gate, &op.op).await {
             Ok(Ok(())) => valid.push(op),
             Ok(Err(refused)) => dropped.push((op, refused)),
-            Err(read) => dropped.push((op, format!("the buyer's code could not be asked, dropped conservatively: {read}"))),
+            Err(read) => dropped.push((op, format!("{WALLET_CODE_UNREAD}, dropped conservatively: {read}"))),
         }
     }
     (valid, dropped)
 }
 
-/// The buyer a wallet-code resolve names: its listed orders' buyer. `None`
-/// for every other op.
-pub fn wallet_code_buyer(op: &KernelOp) -> Option<Address> {
+/// The prefix of a drop whose party's code could not be asked: a read
+/// failure, never a verdict.
+pub const WALLET_CODE_UNREAD: &str = "the party's code could not be asked";
+
+/// The party a wallet-code operation names: a resolve's listed orders'
+/// buyer, an attestation's role's party. `None` for every other op.
+pub fn wallet_code_party(op: &KernelOp) -> Option<Address> {
     match op {
         KernelOp::ResolveByWalletCode { commitments, .. } => commitments.first().map(|c| c.buyer),
+        KernelOp::AttestByWalletCode { role, target, .. } => Some(role.party(target)),
         _ => None,
     }
 }
@@ -534,18 +578,21 @@ pub struct RevertVerdict {
 
 /// Decide the refused batch's fate. `still` is what the re-reads did not
 /// name, `revoked` the operations of a verified revoker, `unverifiable` those
-/// whose funding could not be read, `code_refused` the wallet-code resolves
-/// whose buyer's code refused at the re-ask.
+/// whose funding could not be read, `code_refused` the wallet-code
+/// operations whose party's code refused at the re-ask.
 ///
 /// A named party's operations are dead-lettered and the rest re-queued. When
-/// nobody is named and the batch carries a wallet-code resolve, those resolves
-/// are dead-lettered alone: a wallet's code can answer yes to every eth_call
-/// and no in the transaction (branching on `tx.origin`, `gasleft()`, a block
-/// field or its own balance) at no cost and with no state change, so the
-/// re-ask names nobody, and dead-lettering the whole batch would let it sink
-/// every co-batched party's operations again with fresh bytes. Its buyer is
-/// counted by the adversarial signal. Only a batch with no wallet-code resolve
-/// is dead-lettered whole.
+/// nobody is named and the batch carries a wallet-code operation, those
+/// operations are dead-lettered alone: a wallet's code can answer yes to every
+/// eth_call and no in the transaction (branching on `tx.origin`, `gasleft()`,
+/// a block field or its own balance) at no cost and with no state change,
+/// which reverts a batch through a wallet-code resolve; and any wallet's code
+/// can revert a batch by burning the gas the verifier forwards it, which a
+/// wallet-code attestation can do too. The re-ask names nobody, and
+/// dead-lettering the whole batch would let the wallet sink every co-batched
+/// party's operations again with fresh bytes. Its party is counted by the
+/// adversarial signal. Only a batch with no wallet-code operation is
+/// dead-lettered whole.
 pub fn classify_deterministic_revert(
     still: Vec<PendingOp>,
     revoked: Vec<(PendingOp, String, Address)>,
@@ -554,15 +601,15 @@ pub fn classify_deterministic_revert(
 ) -> RevertVerdict {
     let mut verdict = RevertVerdict::default();
     if revoked.is_empty() && code_refused.is_empty() {
-        if still.iter().any(|p| wallet_code_buyer(&p.op).is_some()) {
+        if still.iter().any(|p| wallet_code_party(&p.op).is_some()) {
             let (by_code, rest): (Vec<_>, Vec<_>) =
-                still.into_iter().partition(|p| wallet_code_buyer(&p.op).is_some());
+                still.into_iter().partition(|p| wallet_code_party(&p.op).is_some());
             for op in by_code {
-                let buyer = wallet_code_buyer(&op.op);
+                let party = wallet_code_party(&op.op);
                 verdict.dead.push((
                     op,
-                    "the batch was refused on chain and nobody was named; a wallet-code resolve's buyer code may answer the relay's check otherwise than the transaction — dead-lettered, re-submittable".to_string(),
-                    buyer,
+                    "the batch was refused on chain and nobody was named; a wallet-code operation's party code may answer the relay's check otherwise than the transaction, or burn the gas the verifier forwards it — dead-lettered, re-submittable".to_string(),
+                    party,
                 ));
             }
             verdict.requeue = rest.into_iter().chain(unverifiable).collect();
@@ -576,8 +623,8 @@ pub fn classify_deterministic_revert(
         verdict.dead.push((op, format!("revoked after the funding check: {why}"), Some(who)));
     }
     for (op, why) in code_refused {
-        let buyer = wallet_code_buyer(&op.op);
-        verdict.dead.push((op, format!("refused by the buyer's code after the check: {why}"), buyer));
+        let party = wallet_code_party(&op.op);
+        verdict.dead.push((op, format!("refused by the party's code after the check: {why}"), party));
     }
     verdict.requeue = still.into_iter().chain(unverifiable).collect();
     verdict
@@ -667,8 +714,8 @@ sol! {
     }
 }
 
-// The UsageCounter facts a batch's uses must agree with: the open period and
-// the provenance leaf, and whether a process is already counted under a key.
+// The UsageCounter facts a batch's uses must agree with: the open period, and
+// whether a process is already counted under a key.
 // All are re-checked by the counter at resolution, so reading them here is an
 // optimization (don't prove what the counter would not count), never a
 // source of authority.
@@ -676,7 +723,6 @@ sol! {
     #[sol(rpc)]
     interface IUsageCounter {
         function currentPeriod() external view returns (uint8);
-        function provenanceLeaf() external view returns (bytes32);
         function processCounted(uint8 kind, bytes32 clauseOrAssembly, bytes32 processId) external view returns (bool);
     }
 }
@@ -744,7 +790,8 @@ pub struct SubmitterConfig {
     pub private_key: String,
 }
 
-/// Read the accrual period and provenance leaf's key a batch must commit to.
+/// Read the accrual period a batch must commit to. The provenance leaf's key
+/// is the guest's own constant (`kernel::PROVENANCE_LEAF_KEY`), never read.
 ///
 /// Returns `None` when there is no counter configured, or when accrual has
 /// CLOSED (`currentPeriod()` reverts `AccrualClosed` after the last period).
@@ -753,15 +800,13 @@ pub struct SubmitterConfig {
 pub async fn read_usage_context(
     rpc_url: &str,
     usage_counter: Address,
-) -> Option<(u8, alloy::primitives::B256)> {
+) -> Option<u8> {
     if usage_counter == Address::ZERO {
         return None;
     }
     let provider = ProviderBuilder::new().connect_http(rpc_url.parse().ok()?);
     let contract = IUsageCounter::new(usage_counter, &provider);
-    let period = contract.currentPeriod().call().await.ok()?;
-    let provenance = contract.provenanceLeaf().call().await.ok()?;
-    Some((period, provenance))
+    contract.currentPeriod().call().await.ok()
 }
 
 /// Drop usage claims the `UsageCounter` would not count at resolution, BEFORE
@@ -931,7 +976,7 @@ pub async fn submit_batch(
         );
 
     let (positions, events_call, usage_call) =
-        settle_call_args(&result.positions, &result.events, result.provenance_leaf);
+        settle_call_args(&result.positions, &result.events);
 
     let contract = IFigaroBatchVerifier::new(config.verifier_address, &provider);
 
@@ -990,7 +1035,6 @@ pub async fn submit_batch(
 pub fn settle_call_args(
     positions: &[NetPosition],
     events: &BatchEvents,
-    provenance_leaf: B256,
 ) -> (
     Vec<IFigaroBatchVerifier::NetPositionCall>,
     IFigaroBatchVerifier::BatchEventDataCall,
@@ -1033,10 +1077,11 @@ pub fn settle_call_args(
     };
     // The uses the proof committed. An empty array is normal and resolves
     // fine — the counter treats it as a no-op, which is what lets trade keep
-    // resolving after the reward's last period ends.
+    // resolving after the reward's last period ends. The provenance leaf's
+    // key is the one the guest committed in the usage hash, its own constant.
     let usage_call = IFigaroBatchVerifier::BatchUsageDataCall {
         period: events.usage_period,
-        provenanceLeaf: provenance_leaf,
+        provenanceLeaf: figaro_kernel::kernel::PROVENANCE_LEAF_KEY,
         uses: events
             .uses
             .iter()
@@ -1058,13 +1103,12 @@ pub fn settle_call_args(
 pub fn settle_calldata(
     positions: &[NetPosition],
     events: &BatchEvents,
-    provenance_leaf: B256,
     public_values: &[u8],
     proof_len: usize,
     operations: &[u8],
 ) -> Vec<u8> {
     use alloy::sol_types::SolCall;
-    let (positions, events, usage) = settle_call_args(positions, events, provenance_leaf);
+    let (positions, events, usage) = settle_call_args(positions, events);
     IFigaroBatchVerifier::settleBatchCall {
         proof: Bytes::from(vec![0xffu8; proof_len]),
         publicValues: Bytes::copy_from_slice(public_values),
@@ -1663,7 +1707,7 @@ mod tests {
         let gate = gate(double.url.clone());
 
         let op = wallet_code_resolve(yes);
-        assert_eq!(check_wallet_code_resolve(&gate, &op).await, Ok(Ok(())));
+        assert_eq!(check_wallet_code(&gate, &op).await, Ok(Ok(())));
         let asked = double.calls_to("eth_call");
         assert_eq!(asked.len(), 1);
         let (_, digest, bytes) = wallet_code_question(31337, VERIFIER, &op).unwrap();
@@ -1678,11 +1722,11 @@ mod tests {
             "under the gas the relay plans"
         );
 
-        let refused = check_wallet_code_resolve(&gate, &wallet_code_resolve(other)).await.unwrap().unwrap_err();
+        let refused = check_wallet_code(&gate, &wallet_code_resolve(other)).await.unwrap().unwrap_err();
         assert!(refused.contains("not the ERC-1271 magic value"), "{refused}");
-        let refused = check_wallet_code_resolve(&gate, &wallet_code_resolve(reverts)).await.unwrap().unwrap_err();
+        let refused = check_wallet_code(&gate, &wallet_code_resolve(reverts)).await.unwrap().unwrap_err();
         assert!(refused.contains("reverted"), "{refused}");
-        let refused = check_wallet_code_resolve(&gate, &wallet_code_resolve(codeless)).await.unwrap().unwrap_err();
+        let refused = check_wallet_code(&gate, &wallet_code_resolve(codeless)).await.unwrap().unwrap_err();
         assert!(refused.contains("BuyerHasNoCode"), "{refused}");
     }
 
@@ -1693,8 +1737,8 @@ mod tests {
     async fn a_wallet_code_check_reads_only_for_its_form_and_its_errors_carry_no_url() {
         let gate = gate("http://127.0.0.1:1/v2/SECRETKEY".to_string());
         let commit = figaro_prove_test::build_canonical_batch_input().operations[0].clone();
-        assert_eq!(check_wallet_code_resolve(&gate, &commit).await, Ok(Ok(())));
-        let err = check_wallet_code_resolve(&gate, &wallet_code_resolve(Address::repeat_byte(0xA1))).await.unwrap_err();
+        assert_eq!(check_wallet_code(&gate, &commit).await, Ok(Ok(())));
+        let err = check_wallet_code(&gate, &wallet_code_resolve(Address::repeat_byte(0xA1))).await.unwrap_err();
         assert!(err.starts_with("code read of"), "{err}");
         assert!(!err.contains("SECRETKEY") && !err.contains("127.0.0.1"), "{err}");
     }
@@ -1709,22 +1753,71 @@ mod tests {
         let commit = figaro_prove_test::build_canonical_batch_input().operations[0].clone();
         let ops = || vec![pending(1, wallet_code_resolve(yes)), pending(2, wallet_code_resolve(no)), pending(3, commit.clone())];
 
-        let (valid, dropped) = filter_wallet_code_resolves(Some(&gate(double.url.clone())), ops()).await;
+        let (valid, dropped) = filter_wallet_code_ops(Some(&gate(double.url.clone())), ops()).await;
         assert_eq!(valid.iter().map(|p| p.id).collect::<Vec<_>>(), vec![1, 3]);
         assert_eq!(dropped.len(), 1);
         assert_eq!(dropped[0].0.id, 2);
         assert!(dropped[0].1.contains("WalletCodeAuthorizationRefused"), "{}", dropped[0].1);
 
-        let (valid, dropped) = filter_wallet_code_resolves(Some(&gate("http://127.0.0.1:1".to_string())), ops()).await;
+        let (valid, dropped) = filter_wallet_code_ops(Some(&gate("http://127.0.0.1:1".to_string())), ops()).await;
         assert_eq!(valid.iter().map(|p| p.id).collect::<Vec<_>>(), vec![3]);
         assert_eq!(dropped.len(), 2);
         for (_, why) in &dropped {
             assert!(why.contains("dropped conservatively"), "{why}");
         }
 
-        let (valid, dropped) = filter_wallet_code_resolves(None, ops()).await;
+        let (valid, dropped) = filter_wallet_code_ops(None, ops()).await;
         assert_eq!(valid.len(), 3);
         assert!(dropped.is_empty());
+    }
+
+    /// The canonical seller attestation in the wallet-code form, its seller
+    /// set to `seller`.
+    fn wallet_code_attestation(seller: Address) -> KernelOp {
+        let KernelOp::AttestAsSeller { mut target, clause_id, stage, content_ref, proof, .. } =
+            figaro_prove_test::build_canonical_batch_input().operations[1].clone()
+        else {
+            panic!("the canonical batch's second op is the seller's attestation");
+        };
+        target.seller = seller;
+        KernelOp::AttestByWalletCode {
+            role: figaro_kernel::types::AttesterRole::Seller,
+            target,
+            clause_id,
+            stage,
+            content_ref,
+            authorization: Bytes::from_static(b"session-key-approval"),
+            proof,
+        }
+    }
+
+    // The door and the formation ask the attesting party's code the
+    // verifier's question: a refusal would not revert the batch (the verifier
+    // skips the entry), but an attestation the code refuses never reaches
+    // proving, where it would cost the batch its bytes for nothing.
+    #[tokio::test]
+    async fn a_wallet_code_attestation_passes_the_door_and_the_formation_only_on_the_magic_value() {
+        let (yes, other, codeless) = (Address::repeat_byte(0xC1), Address::repeat_byte(0xC2), Address::repeat_byte(0xC4));
+        let double = wallet_code_double(vec![(yes, WalletCode::Magic), (other, WalletCode::Other)]).await;
+        let gate = gate(double.url.clone());
+
+        let op = wallet_code_attestation(yes);
+        assert_eq!(check_wallet_code(&gate, &op).await, Ok(Ok(())));
+        let asked = double.calls_to("eth_call");
+        let (_, digest, _) = wallet_code_question(31337, VERIFIER, &op).unwrap();
+        let (to, input) = crate::rpc_double::call_of(&asked[0]);
+        assert_eq!(to, yes, "the seller's own account is asked");
+        assert_eq!(&input[4..36], digest.as_slice(), "the digest is the verifier's");
+
+        let refused = check_wallet_code(&gate, &wallet_code_attestation(other)).await.unwrap().unwrap_err();
+        assert!(refused.contains("seller") && refused.contains("skip"), "{refused}");
+        let refused = check_wallet_code(&gate, &wallet_code_attestation(codeless)).await.unwrap().unwrap_err();
+        assert!(refused.contains("no account code"), "{refused}");
+
+        let ops = vec![pending(1, wallet_code_attestation(yes)), pending(2, wallet_code_attestation(other))];
+        let (valid, dropped) = filter_wallet_code_ops(Some(&gate), ops).await;
+        assert_eq!(valid.iter().map(|p| p.id).collect::<Vec<_>>(), vec![1]);
+        assert_eq!(dropped.iter().map(|(p, _)| p.id).collect::<Vec<_>>(), vec![2]);
     }
 
     // ── The chain write: `submit_batch` against a chain double ────────
@@ -1800,7 +1893,6 @@ mod tests {
             proof_bytes: vec![0xAB; 7],
             operations_bytes: figaro_kernel::operation_stream::encode_operation_stream(&input.operations, &input.usage_claims),
             post_state,
-            provenance_leaf: input.provenance_leaf,
         }
     }
 
@@ -1837,7 +1929,7 @@ mod tests {
             result.positions.iter().map(|p| (p.token, p.user, p.deposit, p.payout)).collect::<Vec<_>>()
         );
         assert_eq!(call.events.attestations.len(), result.events.attestations.len());
-        assert_eq!(call.usage.provenanceLeaf, result.provenance_leaf);
+        assert_eq!(call.usage.provenanceLeaf, figaro_kernel::kernel::PROVENANCE_LEAF_KEY);
         assert_eq!(call.usage.uses.len(), result.events.uses.len());
     }
 

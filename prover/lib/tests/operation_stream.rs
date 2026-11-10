@@ -6,12 +6,12 @@
 use alloy_primitives::{keccak256, Address, B256, U256};
 use figaro_kernel::kernel::apply_batch;
 use figaro_kernel::operation_stream::{
-    compute_operations_hash, decode_operation_stream, encode_operation_stream, COMMITMENT_BYTES,
-    SIGNATURE_BYTES,
+    compute_operations_hash, decode_operation_stream, encode_operation_stream, encode_stream_parts,
+    COMMITMENT_BYTES, SIGNATURE_BYTES,
 };
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
-    AttestationContentProof, AttestationWitness, BatchInput, Commitment, ContentKind, KernelOp, Signature, UsageClaim,
+    AttestationContentProof, AttestationWitness, AttesterRole, BatchInput, Commitment, ContentKind, KernelOp, Signature, UsageClaim,
     UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE,
 };
 
@@ -121,7 +121,7 @@ fn the_stream_round_trips_and_skips_attestations() {
         bytes.len(),
         2 * commit_len + resolve_len + claim_clause + claim_agreement + claim_assembly
     );
-    let (ops2, claims2) = decode_operation_stream(&bytes).expect("decodes");
+    let (ops2, _, claims2) = decode_operation_stream(&bytes).expect("decodes");
     assert_eq!(ops2.len(), 3, "the attestation is not in the stream");
     assert_eq!(claims2.len(), 3);
     assert_eq!(encode_operation_stream(&ops2, &claims2), bytes, "re-encoding is the identity");
@@ -188,7 +188,6 @@ fn a_batch_of_nothing_commits_the_empty_stream_hash_as_word_nine() {
         prev_state: KernelState::new().to_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
     let (pv, _, _) = apply_batch(&input).expect("an empty batch applies");
     assert_eq!(pv.operations_hash, keccak256([]));
@@ -211,7 +210,7 @@ fn a_wallet_code_resolve_round_trips_with_its_authorization() {
     let bytes = encode_operation_stream(&ops, &[]);
     assert_eq!(bytes.len(), 1 + 32 + 2 + 97 + 2 + 2 * COMMITMENT_BYTES);
     assert_eq!(bytes[0], 0x04, "the wallet-code resolve's tag");
-    let (ops2, _) = decode_operation_stream(&bytes).expect("decodes");
+    let (ops2, _, _) = decode_operation_stream(&bytes).expect("decodes");
     assert_eq!(encode_operation_stream(&ops2, &[]), bytes, "re-encoding is the identity");
     match &ops2[0] {
         KernelOp::ResolveByWalletCode { cumulative_value, authorization, .. } => {
@@ -222,4 +221,67 @@ fn a_wallet_code_resolve_round_trips_with_its_authorization() {
     }
     // A short authorization length is refused, never re-split.
     assert!(decode_operation_stream(&bytes[..1 + 32 + 2 + 50]).is_err());
+}
+
+fn wallet_code_attestation(seed: u8, role: AttesterRole, len: usize) -> KernelOp {
+    KernelOp::AttestByWalletCode {
+        role,
+        target: commitment(seed),
+        clause_id: B256::repeat_byte(0x72),
+        stage: 2,
+        content_ref: B256::repeat_byte(0x73),
+        authorization: alloy_primitives::Bytes::from(vec![0xcd; len]),
+        proof: AttestationWitness::HashOnly { clause_data_hash: B256::repeat_byte(0x74), inclusion_proof: vec![] },
+    }
+}
+
+/// A wallet-code attestation is its own entry, `0x05 role(1) commitment
+/// clauseId(32) stage(1) contentRef(32) len(2) authorization`, written after
+/// every commit and resolve and before every usage claim; the decoder returns
+/// the entries as their own list, and re-encoding the three lists gives back
+/// the same bytes. No fingerprint of the witness enters the stream.
+#[test]
+fn a_wallet_code_attestation_round_trips_as_its_own_list() {
+    let (mut ops, claims) = sample();
+    ops.insert(1, wallet_code_attestation(1, AttesterRole::Seller, 97));
+    ops.push(wallet_code_attestation(2, AttesterRole::Buyer, 0));
+    let bytes = encode_operation_stream(&ops, &claims);
+    let (ops2, entries, claims2) = decode_operation_stream(&bytes).expect("decodes");
+    assert_eq!(ops2.len(), 3, "the commits and the resolve");
+    assert_eq!(claims2.len(), claims.len());
+    assert_eq!(entries.len(), 2);
+    assert_eq!((entries[0].role, entries[0].authorization.len()), (AttesterRole::Seller, 97));
+    assert_eq!((entries[1].role, entries[1].authorization.len()), (AttesterRole::Buyer, 0));
+    assert_eq!(entries[0].stage, 2);
+    assert_eq!(encode_stream_parts(&ops2, &entries, &claims2), bytes, "re-encoding is the identity");
+
+    let entry_len = |auth: usize| 1 + 1 + COMMITMENT_BYTES + 32 + 1 + 32 + 2 + auth;
+    let without = encode_operation_stream(&sample().0, &[]);
+    let with = encode_operation_stream(&ops, &[]);
+    assert_eq!(with.len(), without.len() + entry_len(97) + entry_len(0));
+    assert_eq!(with[without.len()], 0x05, "the entries follow every commit and resolve");
+    assert_eq!(with[without.len() + 1], 0x00, "the seller's role byte");
+    assert_eq!(with[without.len() + entry_len(97) + 1], 0x01, "the buyer's role byte");
+    assert!(
+        !with.windows(32).any(|w| w == B256::repeat_byte(0x74).as_slice()),
+        "the witness's clauseDataHash is never published"
+    );
+}
+
+/// The decoder's order rule: no `0x05` after a usage claim, no commit or
+/// resolve after a `0x05`, and a role byte other than the two refused.
+#[test]
+fn the_decoder_refuses_a_0x05_out_of_place_or_with_an_unknown_role() {
+    let (ops, claims) = sample();
+    let entry = encode_operation_stream(&[wallet_code_attestation(1, AttesterRole::Seller, 3)], &[]);
+    let mut after_claim = encode_operation_stream(&[], &claims[..1]);
+    after_claim.extend(&entry);
+    assert!(decode_operation_stream(&after_claim).is_err(), "a 0x05 after a claim");
+    let mut op_after = entry.clone();
+    op_after.extend(encode_operation_stream(&ops[..1], &[]));
+    assert!(decode_operation_stream(&op_after).is_err(), "a commit after a 0x05");
+    let mut bad_role = entry.clone();
+    bad_role[1] = 0x02;
+    assert!(decode_operation_stream(&bad_role).is_err(), "role byte 0x02");
+    assert!(decode_operation_stream(&entry[..entry.len() - 1]).is_err(), "one byte short");
 }

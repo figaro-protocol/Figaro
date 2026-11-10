@@ -1,6 +1,7 @@
 //! The batch's operation stream: the canonical bytes of every operation that
-//! moved the state and every usage claim the batch applied, in the order the
-//! guest applied them. The guest commits `keccak256` of these bytes as a
+//! moved the state, in the order the guest applied them, then every
+//! attestation authorized by a party's wallet code and every usage claim the
+//! batch applied. The guest commits `keccak256` of these bytes as a
 //! public value (`PublicValues::operations_hash`); `FigaroBatchVerifier.settleBatch`
 //! takes the bytes as calldata and refuses a batch whose bytes do not hash to
 //! the committed word. So a batch cannot land without publishing, in its own
@@ -29,9 +30,21 @@
 //! - every usage claim, whole: a claim moves no state, but the uses the
 //!   verifier hands the counter are proved from the claims, so a replay of
 //!   the stream re-derives the batch's usage hash (public value 7);
-//! - no attestation: an attestation moves no state (`apply_operations` writes
-//!   nothing to the state for it), and its evidence is already bound by
-//!   `attestation_events_hash` and re-emitted by the verifier.
+//! - every `AttestByWalletCode`, as its own entry after every commit and
+//!   resolve: the role byte naming the party, the target commitment whole,
+//!   the clause id, the stage, the content reference and the bytes the
+//!   party's code validates. `FigaroBatchVerifier` derives the target's ids
+//!   and the `AttestSeller` / `AttestBuyer` digest under its own domain from
+//!   the commitment, takes the attester from the role, asks that account's
+//!   `isValidSignature` (ERC-1271), and emits the coordinator's `Attestation`
+//!   event only on the magic value; it skips the entry otherwise. No
+//!   fingerprint of the witness enters the entry: the clause data hash, the
+//!   inclusion proof and any plaintext stay with the relay and the prover;
+//! - no signed attestation: an attestation moves no state (`apply_operations`
+//!   writes nothing to the state for it), and a signed one's evidence is
+//!   already bound by `attestation_events_hash` and re-emitted by the
+//!   verifier. The rebuild reads the `0x05` entries and replays nothing for
+//!   them.
 //!
 //! The format is fixed by the verification key like every other byte the
 //! guest commits; a change here is a new key.
@@ -43,6 +56,11 @@
 //!           | 0x03 commitment key(32) kind proof           (UsageClaim)
 //!           | 0x04 processId(32) len(2) authorization count(2) commitment*
 //!                                                   (ResolveByWalletCode)
+//!           | 0x05 role(1) commitment clauseId(32) stage(1) contentRef(32)
+//!                len(2) authorization              (AttestByWalletCode)
+//! role     := 0x00 the target's seller | 0x01 the target's buyer
+//! order    := the 0x01, 0x02 and 0x04 entries in the order applied, then
+//!             every 0x05, then every 0x03
 //! commitment := processId(32) buyer(20) seller(20) currency(20) payment(32)
 //!               expectedCumulativeValue(32) checkoutHash(32) salt(32) deadline(32)
 //! sig      := r(32) s(32) v(1)
@@ -59,23 +77,69 @@
 use alloy_primitives::{keccak256, Address, Bytes, B256, U256};
 
 use crate::types::{
-    Commitment, KernelOp, Signature, UsageClaim, UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY,
-    USAGE_KIND_CLAUSE,
+    AttesterRole, Commitment, KernelOp, Signature, UsageClaim, UsageClaimKind, USAGE_KIND_AGREEMENT,
+    USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE,
 };
 
 const TAG_COMMIT: u8 = 0x01;
 const TAG_RESOLVE: u8 = 0x02;
 const TAG_USAGE_CLAIM: u8 = 0x03;
 const TAG_RESOLVE_BY_WALLET_CODE: u8 = 0x04;
+const TAG_ATTEST_BY_WALLET_CODE: u8 = 0x05;
+
+/// One `0x05` entry: a wallet-code attestation as the stream publishes it,
+/// without its witness.
+#[derive(Clone, Debug)]
+pub struct WalletCodeAttestation {
+    pub role: AttesterRole,
+    pub target: Commitment,
+    pub clause_id: B256,
+    pub stage: u8,
+    pub content_ref: B256,
+    pub authorization: Bytes,
+}
+
+/// The `0x05` entries `operations` publish: one per `AttestByWalletCode`, in
+/// the order applied.
+pub fn wallet_code_attestations(operations: &[KernelOp]) -> Vec<WalletCodeAttestation> {
+    operations
+        .iter()
+        .filter_map(|op| match op {
+            KernelOp::AttestByWalletCode { role, target, clause_id, stage, content_ref, authorization, .. } => {
+                Some(WalletCodeAttestation {
+                    role: *role,
+                    target: target.clone(),
+                    clause_id: *clause_id,
+                    stage: *stage,
+                    content_ref: *content_ref,
+                    authorization: authorization.clone(),
+                })
+            }
+            _ => None,
+        })
+        .collect()
+}
 
 /// The packed width of one commitment.
 pub const COMMITMENT_BYTES: usize = 32 + 20 + 20 + 20 + 32 + 32 + 32 + 32 + 32;
 /// The packed width of one signature.
 pub const SIGNATURE_BYTES: usize = 65;
 
-/// Encode the stream of `operations` (attestations skipped) followed by
-/// `claims`, in their given order.
+/// Encode the stream of `operations` (signed attestations skipped, each
+/// wallet-code attestation an entry after the commits and resolves) followed
+/// by `claims`, in their given order.
 pub fn encode_operation_stream(operations: &[KernelOp], claims: &[UsageClaim]) -> Vec<u8> {
+    encode_stream_parts(operations, &wallet_code_attestations(operations), claims)
+}
+
+/// Encode a stream from its three lists, as `decode_operation_stream`
+/// returns them: the commits and resolves of `operations` (any attestation
+/// in it skipped), then `attestations` as `0x05` entries, then `claims`.
+pub fn encode_stream_parts(
+    operations: &[KernelOp],
+    attestations: &[WalletCodeAttestation],
+    claims: &[UsageClaim],
+) -> Vec<u8> {
     let mut out = Vec::new();
     for op in operations {
         match op {
@@ -118,8 +182,18 @@ pub fn encode_operation_stream(operations: &[KernelOp], claims: &[UsageClaim]) -
                     put_commitment(&mut out, c);
                 }
             }
-            KernelOp::AttestAsSeller { .. } | KernelOp::AttestAsBuyer { .. } => {}
+            KernelOp::AttestAsSeller { .. } | KernelOp::AttestAsBuyer { .. } | KernelOp::AttestByWalletCode { .. } => {}
         }
+    }
+    for a in attestations {
+        out.push(TAG_ATTEST_BY_WALLET_CODE);
+        out.push(a.role.code());
+        put_commitment(&mut out, &a.target);
+        out.extend_from_slice(a.clause_id.as_slice());
+        out.push(a.stage);
+        out.extend_from_slice(a.content_ref.as_slice());
+        put_count(&mut out, a.authorization.len());
+        out.extend_from_slice(&a.authorization);
     }
     for claim in claims {
         out.push(TAG_USAGE_CLAIM);
@@ -153,17 +227,24 @@ pub fn compute_operations_hash(stream: &[u8]) -> B256 {
     keccak256(stream)
 }
 
-/// Decode a stream back into the operations and the claims it carries.
-/// Strict: an unknown tag, a short read or a trailing byte is an error.
-pub fn decode_operation_stream(stream: &[u8]) -> Result<(Vec<KernelOp>, Vec<UsageClaim>), String> {
+/// What a stream decodes to: the commits and resolves, the wallet-code
+/// attestations' entries, and the usage claims.
+pub type DecodedStream = (Vec<KernelOp>, Vec<WalletCodeAttestation>, Vec<UsageClaim>);
+
+/// Decode a stream back into its three lists; `encode_stream_parts` of them
+/// gives back the same bytes. Strict: an unknown tag or role, a short read,
+/// a trailing byte, or an entry out of its place (a commit or resolve after
+/// a `0x05` or a `0x03`, a `0x05` after a `0x03`) is an error.
+pub fn decode_operation_stream(stream: &[u8]) -> Result<DecodedStream, String> {
     let mut r = Reader { data: stream, pos: 0 };
     let mut operations = Vec::new();
+    let mut attestations: Vec<WalletCodeAttestation> = Vec::new();
     let mut claims = Vec::new();
     while !r.done() {
         match r.u8()? {
             TAG_COMMIT => {
-                if !claims.is_empty() {
-                    return Err("a commit after a usage claim".into());
+                if !claims.is_empty() || !attestations.is_empty() {
+                    return Err("a commit after a usage claim or a wallet-code attestation".into());
                 }
                 operations.push(KernelOp::Commit {
                     commitment: r.commitment()?,
@@ -172,8 +253,8 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<(Vec<KernelOp>, Vec<Usag
                 });
             }
             TAG_RESOLVE => {
-                if !claims.is_empty() {
-                    return Err("a resolve after a usage claim".into());
+                if !claims.is_empty() || !attestations.is_empty() {
+                    return Err("a resolve after a usage claim or a wallet-code attestation".into());
                 }
                 let process_id = r.b256()?;
                 let buyer_sig = r.signature()?;
@@ -192,8 +273,8 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<(Vec<KernelOp>, Vec<Usag
                 });
             }
             TAG_RESOLVE_BY_WALLET_CODE => {
-                if !claims.is_empty() {
-                    return Err("a resolve after a usage claim".into());
+                if !claims.is_empty() || !attestations.is_empty() {
+                    return Err("a resolve after a usage claim or a wallet-code attestation".into());
                 }
                 let process_id = r.b256()?;
                 let len = r.count()?;
@@ -211,6 +292,21 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<(Vec<KernelOp>, Vec<Usag
                     commitments,
                     authorization,
                 });
+            }
+            TAG_ATTEST_BY_WALLET_CODE => {
+                if !claims.is_empty() {
+                    return Err("a wallet-code attestation after a usage claim".into());
+                }
+                let role_byte = r.u8()?;
+                let role = AttesterRole::from_code(role_byte)
+                    .ok_or_else(|| format!("unknown attester role 0x{role_byte:02x}"))?;
+                let target = r.commitment()?;
+                let clause_id = r.b256()?;
+                let stage = r.u8()?;
+                let content_ref = r.b256()?;
+                let len = r.count()?;
+                let authorization = Bytes::copy_from_slice(r.take(len)?);
+                attestations.push(WalletCodeAttestation { role, target, clause_id, stage, content_ref, authorization });
             }
             TAG_USAGE_CLAIM => {
                 let order = r.commitment()?;
@@ -240,7 +336,7 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<(Vec<KernelOp>, Vec<Usag
             t => return Err(format!("unknown stream tag 0x{t:02x} at byte {}", r.pos - 1)),
         }
     }
-    Ok((operations, claims))
+    Ok((operations, attestations, claims))
 }
 
 /// The cumulative value a resolve listing `commitments` signs when it

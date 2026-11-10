@@ -17,7 +17,7 @@ use alloy_primitives::{keccak256, Address, B256, U256};
 use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::{apply_batch_with_state, apply_operations, derive_commitment_ids};
+use figaro_kernel::kernel::{apply_batch_with_state, apply_guest, apply_operations, derive_commitment_ids, guest_input};
 use figaro_kernel::operation_stream::resolved_cumulative_value;
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
@@ -181,10 +181,33 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
             prev_state: empty_snapshot(),
             usage_claims: vec![],
             usage_period: 0,
-            provenance_leaf: B256::ZERO,
         };
-        let (_pv, positions, _events, state) =
+        let (pv, positions, _events, state) =
             apply_batch_with_state(&input).unwrap_or_else(|e| panic!("{name}: {e:?}"));
+
+        // ── The guest's witnessed run reaches the same public values ──
+        // The guest reads only the entries the batch touches, proved against
+        // the previous root; its public values are the native run's.
+        let guest = guest_input(&input).unwrap_or_else(|e| panic!("{name}: the witness: {e:?}"));
+        let (guest_pv, _, _) = apply_guest(&guest).unwrap_or_else(|e| panic!("{name}: the guest: {e:?}"));
+        // Every public value, the positions' hash among them.
+        assert_eq!(guest_pv.abi_encode(), pv.abi_encode(), "{name}: the guest's public values are the native run's");
+
+        // A second batch on the post-state: one process's resolve replayed
+        // is refused on both paths alike.
+        if resolve {
+            let replay = BatchInput {
+                operations: vec![input.operations.last().unwrap().clone()],
+                prev_state: state.to_snapshot(),
+                ..input.clone()
+            };
+            assert!(apply_batch_with_state(&replay).is_err(), "{name}: a resolve replayed is refused");
+            let replay_guest = guest_input(&replay);
+            assert!(
+                replay_guest.is_err() || apply_guest(&replay_guest.unwrap()).is_err(),
+                "{name}: the guest refuses the replayed resolve too"
+            );
+        }
 
         // ── The relay's trial path reaches the batch's own state ──
         // One operation at a time on a running state, as `trial_apply`
@@ -245,7 +268,8 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
             let p = &sc[format!("pr{pr}")];
             let pid = b256(&p["processId"]);
             let ps = state
-                .processes
+                .full_processes()
+                .unwrap()
                 .get(&pid)
                 .unwrap_or_else(|| panic!("{name}: process {pr} missing from the mirror"));
             assert_eq!(
@@ -259,5 +283,77 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
                 "{name}: active order count"
             );
         }
+    }
+}
+
+/// The guest's witnessed state: an entry left out of the witness cannot be
+/// read as absent, and an entry carried with a wrong value fails the proof.
+#[test]
+fn the_guest_refuses_a_witness_missing_an_entry_or_carrying_a_wrong_value() {
+    let fx = fixture();
+    let chain_id: u64 = s(&fx["chainId"]).parse().unwrap();
+    let core = addr(&fx["verifyingContract"]);
+    let domain = domain_separator(chain_id, core);
+    let keys = keyring();
+    let sc = &fx["s0"];
+    let c = commitment(&sc["o0"]);
+    let digest = typed_data_hash(&domain, &commitment_struct_hash(&c));
+    let commit = KernelOp::Commit {
+        commitment: c.clone(),
+        buyer_sig: sign_digest(&keys[&c.buyer], &digest),
+        seller_sig: sign_digest(&keys[&c.seller], &digest),
+    };
+    let first = BatchInput {
+        chain_id,
+        verifying_contract: core,
+        block_timestamp: BLOCK_TIMESTAMP,
+        operations: vec![commit.clone()],
+        prev_state: empty_snapshot(),
+        usage_claims: vec![],
+        usage_period: 0,
+    };
+    let (_, _, _, state) = apply_batch_with_state(&first).unwrap();
+
+    // Drop the order's entry from the witness of the first batch: the guest
+    // refuses the read instead of taking the order as absent.
+    let mut missing = guest_input(&first).unwrap();
+    missing.prev_witness.orders.clear();
+    assert!(matches!(apply_guest(&missing).unwrap_err(), KernelError::UnwitnessedKey));
+
+    // One entry carried twice, even with the same value: refused.
+    let mut doubled = guest_input(&first).unwrap();
+    let entry = doubled.prev_witness.orders[0];
+    doubled.prev_witness.orders.push(entry);
+    assert!(matches!(apply_guest(&doubled).unwrap_err(), KernelError::DuplicateWitnessEntry));
+
+    // An order entry carried with a process id the tree does not hold: the
+    // mirror never reads it, so only the witness's check can refuse it.
+    let mut wrong = guest_input(&again_resolvable(&first, &state)).unwrap();
+    let Some((_, Some((_, process_id)))) = wrong.prev_witness.orders.first_mut() else {
+        panic!("the resolve's witness carries its order");
+    };
+    *process_id = B256::repeat_byte(0x77);
+    assert!(matches!(apply_guest(&wrong).unwrap_err(), KernelError::Witness(_)));
+    // The honest witness of the same batch is accepted.
+    assert!(apply_guest(&guest_input(&again_resolvable(&first, &state)).unwrap()).is_ok());
+}
+
+/// A batch on `state` that reads the process `first` opened: its resolve.
+fn again_resolvable(first: &BatchInput, state: &KernelState) -> BatchInput {
+    let keys = keyring();
+    let domain = domain_separator(first.chain_id, first.verifying_contract);
+    let KernelOp::Commit { commitment, .. } = &first.operations[0] else { unreachable!() };
+    let (_, process_id) = derive_commitment_ids(&domain, commitment);
+    let cumulative_value = commitment.expected_cumulative_value;
+    let digest = typed_data_hash(&domain, &resolve_struct_hash(&process_id, &cumulative_value));
+    BatchInput {
+        operations: vec![KernelOp::Resolve {
+            process_id,
+            cumulative_value,
+            commitments: vec![commitment.clone()],
+            buyer_sig: sign_digest(&keys[&commitment.buyer], &digest),
+        }],
+        prev_state: state.to_snapshot(),
+        ..first.clone()
     }
 }

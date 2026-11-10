@@ -129,13 +129,13 @@ fn apply_commit(
     // ── Root vs sub-order ──
     if c.process_id == B256::ZERO {
         // Root order: create new process.
-        if state.processes.contains_key(&process_id) {
+        if state.process(&process_id)?.is_some() {
             return Err(KernelError::ProcessAlreadyExists);
         }
         if c.expected_cumulative_value != c.payment {
             return Err(KernelError::InvalidRootCumulativeValue);
         }
-        state.processes.insert(
+        state.insert_process(
             process_id,
             ProcessState {
                 root_buyer: c.buyer,
@@ -143,12 +143,11 @@ fn apply_commit(
                 cumulative_value: c.payment,
                 active_order_count: 1,
             },
-        );
+        )?;
     } else {
         // Sub-order: extend existing process.
         let ps = state
-            .processes
-            .get_mut(&process_id)
+            .process_mut(&process_id)?
             .ok_or(KernelError::UnknownProcess)?;
         if ps.active_order_count == 0 {
             return Err(KernelError::ProcessAlreadyResolved);
@@ -175,11 +174,10 @@ fn apply_commit(
 
     // ── Order hash and nullifier ──
     let order_hash = compute_order_hash(&process_id, &struct_hash);
-    if state.order_status.get(&order_hash).copied().unwrap_or(0) != 0 {
+    if state.order_status_of(&order_hash)? != 0 {
         return Err(KernelError::DuplicateCommitment);
     }
-    state.order_status.insert(order_hash, 1);
-    state.order_process_id.insert(order_hash, process_id);
+    state.insert_order(order_hash, 1, process_id)?;
 
     // ── Token flows ──
     // Buyer bond = 2 × payment.
@@ -219,8 +217,7 @@ fn apply_resolve(
     tracker: &mut TokenTracker,
 ) -> Result<(), KernelError> {
     let ps = state
-        .processes
-        .get(process_id)
+        .process(process_id)?
         .ok_or(KernelError::UnknownProcess)?;
 
     // ── Buyer authorization via EIP-712 signature ──
@@ -267,7 +264,7 @@ fn apply_resolve(
         let struct_hash = commitment_struct_hash(c);
         let order_hash = compute_order_hash(process_id, &struct_hash);
 
-        if state.order_status.get(&order_hash).copied().unwrap_or(0) != 1 {
+        if state.order_status_of(&order_hash)? != 1 {
             return Err(KernelError::OrderNotCommitted(order_hash));
         }
 
@@ -276,11 +273,11 @@ fn apply_resolve(
         tracker.payout(currency, c.seller, seller_payout)?;
         tracker.payout(currency, buyer, buyer_payout)?;
 
-        state.order_status.insert(order_hash, 2);
+        state.set_order_status(order_hash, 2)?;
     }
 
     // ── Finalize process ──
-    let ps = state.processes.get_mut(process_id).unwrap();
+    let ps = state.process_mut(process_id)?.ok_or(KernelError::UnknownProcess)?;
     ps.active_order_count = 0;
 
     Ok(())
@@ -334,7 +331,7 @@ fn require_known_active_commitment(
     c: &Commitment,
 ) -> Result<(B256, B256), KernelError> {
     let (order_hash, process_id) = derive_commitment_ids(domain, c);
-    match state.order_status.get(&order_hash).copied().unwrap_or(0) {
+    match state.order_status_of(&order_hash)? {
         0 => Err(KernelError::UnknownOrder),
         1 => Ok((order_hash, process_id)),
         _ => Err(KernelError::OrderResolved),
@@ -595,22 +592,31 @@ pub fn validate_attestation_witness(
     }
 }
 
-// ── attestAsSeller ────────────────────────────────────────────────
+// ── attestAsSeller / attestAsBuyer ─────────────────────────────────
 
-/// Apply a seller attestation. Matches the authorization logic in
-/// `AttestationCoordinator.attestAsSeller()` with msg.sender replaced
-/// by EIP-712 signature verification: the attester must be
-/// `target.seller` — a seller attests about a clause of its own order —
-/// and the inclusion proof opens against the target's checkoutHash.
+/// Apply an attestation. Matches the authorization logic of
+/// `AttestationCoordinator.attestAsSeller()` (the attester must be
+/// `target.seller`) and `attestAsBuyer()` (`target.buyer`, the process's
+/// root buyer by commit invariant), and its inclusion gate: the leaf opens
+/// against the target's signed checkoutHash, mandatory as on the direct path.
+///
+/// `signature` is the signed form's ECDSA signature over the role's digest
+/// (`AttestSeller` or `AttestBuyer`), recovered here in place of the direct
+/// path's `msg.sender`; the attestation's event is committed in public value
+/// 6. `None` is the wallet-code form (`KernelOp::AttestByWalletCode`): every
+/// gate but the recovery runs, the attester is the role's party, and no event
+/// is committed here: `FigaroBatchVerifier` asks the party's code about the
+/// stream's `0x05` entry and emits the event only on the magic value.
 #[allow(clippy::too_many_arguments)]
-fn apply_attest_as_seller(
+fn apply_attestation(
     state: &KernelState,
     domain: &B256,
+    role: AttesterRole,
     target: &Commitment,
     clause_id: &B256,
     stage: u8,
     content_ref: &B256,
-    seller_sig: &Signature,
+    signature: Option<&Signature>,
     proof: &AttestationWitness,
     events: &mut Vec<AttestationEventData>,
     bindings: &mut BTreeSet<SpecBinding>,
@@ -618,14 +624,21 @@ fn apply_attest_as_seller(
     // ── Target must be committed and active ──
     let (target_order_hash, target_process_id) =
         require_known_active_commitment(state, domain, target)?;
+    let attester = role.party(target);
 
-    // ── Recover signer (replaces msg.sender); must be target.seller ──
-    let struct_hash =
-        attest_seller_struct_hash(&target_order_hash, clause_id, stage, content_ref);
-    let digest = typed_data_hash(domain, &struct_hash);
-    let attester = recover_signer(&digest, seller_sig)?;
-    if target.seller != attester {
-        return Err(KernelError::NotAuthorized);
+    // ── The signed form: recover the signer (replaces msg.sender); it must
+    //    be the role's party ──
+    if let Some(sig) = signature {
+        let struct_hash = match role {
+            AttesterRole::Seller => attest_seller_struct_hash(&target_order_hash, clause_id, stage, content_ref),
+            AttesterRole::Buyer => {
+                attest_buyer_struct_hash(&target_process_id, &target_order_hash, clause_id, stage, content_ref)
+            }
+        };
+        let digest = typed_data_hash(domain, &struct_hash);
+        if recover_signer(&digest, sig)? != attester {
+            return Err(KernelError::NotAuthorized);
+        }
     }
 
     // ── Witness gates: agreement inclusion; spec identity and content
@@ -634,69 +647,16 @@ fn apply_attest_as_seller(
         validate_attestation_witness(proof, content_ref, clause_id, stage, &target.checkout_hash)?;
     bindings.extend(binding);
 
-    events.push(AttestationEventData {
-        order_hash: target_order_hash,
-        process_id: target_process_id,
-        attester,
-        clause_id: *clause_id,
-        stage,
-        content_ref: *content_ref,
-    });
-
-    Ok(())
-}
-
-// ── attestAsBuyer ─────────────────────────────────────────────────
-
-/// Apply a buyer attestation. Matches the authorization logic in
-/// `AttestationCoordinator.attestAsBuyer()`: the attester must be
-/// `target.buyer` (== the process rootBuyer by commit invariant), and
-/// the inclusion proof opens against the target's checkoutHash —
-/// mandatory, exactly as on the direct path.
-#[allow(clippy::too_many_arguments)]
-fn apply_attest_as_buyer(
-    state: &KernelState,
-    domain: &B256,
-    target: &Commitment,
-    clause_id: &B256,
-    stage: u8,
-    content_ref: &B256,
-    buyer_sig: &Signature,
-    proof: &AttestationWitness,
-    events: &mut Vec<AttestationEventData>,
-    bindings: &mut BTreeSet<SpecBinding>,
-) -> Result<(), KernelError> {
-    // ── Target must be committed and active ──
-    let (target_order_hash, target_process_id) =
-        require_known_active_commitment(state, domain, target)?;
-
-    // ── Recover signer; must be target.buyer ──
-    let struct_hash = attest_buyer_struct_hash(
-        &target_process_id,
-        &target_order_hash,
-        clause_id,
-        stage,
-        content_ref,
-    );
-    let digest = typed_data_hash(domain, &struct_hash);
-    let attester = recover_signer(&digest, buyer_sig)?;
-    if target.buyer != attester {
-        return Err(KernelError::NotAuthorized);
+    if signature.is_some() {
+        events.push(AttestationEventData {
+            order_hash: target_order_hash,
+            process_id: target_process_id,
+            attester,
+            clause_id: *clause_id,
+            stage,
+            content_ref: *content_ref,
+        });
     }
-
-    // ── Witness gates ──
-    let binding =
-        validate_attestation_witness(proof, content_ref, clause_id, stage, &target.checkout_hash)?;
-    bindings.extend(binding);
-
-    events.push(AttestationEventData {
-        order_hash: target_order_hash,
-        process_id: target_process_id,
-        attester,
-        clause_id: *clause_id,
-        stage,
-        content_ref: *content_ref,
-    });
 
     Ok(())
 }
@@ -838,7 +798,6 @@ fn apply_usage_claims(
     state: &KernelState,
     domain: &B256,
     claims: &[UsageClaim],
-    provenance_leaf: &B256,
 ) -> Result<Vec<BatchUse>, KernelError> {
     let mut seen: BTreeSet<(u8, B256, B256)> = BTreeSet::new();
     let mut uses: Vec<BatchUse> = Vec::new();
@@ -865,22 +824,23 @@ fn apply_usage_claims(
 
         // 1. RESOLVED, not merely known. Usage is what a finished process
         //    leaves behind; an open process has not yet added value.
-        if state.order_status.get(&order_hash).copied().unwrap_or(0) != 2 {
+        if state.order_status_of(&order_hash)? != 2 {
             return Err(KernelError::UsageOrderNotResolved(order_hash));
         }
 
         // 2. The key was committed in the signed agreement. A clause
         //    proves its own leaf; an agreement and an assembly prove the
         //    PROVENANCE leaf, whose clause content is reproduced from the
-        //    agreementHash and the assemblyHash together.
+        //    agreementHash and the assemblyHash together, under the format's
+        //    own key: no batch input names it (blind audit F-7).
         let (leaf_key, clause_data_hash) = match &claim.kind {
             UsageClaimKind::Clause { clause_data_hash } => (claim.clause_or_assembly, *clause_data_hash),
             UsageClaimKind::Agreement { assembly_hash } => (
-                *provenance_leaf,
+                PROVENANCE_LEAF_KEY,
                 keccak256(provenance_leaf_bytes(&claim.clause_or_assembly, assembly_hash)),
             ),
             UsageClaimKind::Assembly { agreement_hash, .. } => (
-                *provenance_leaf,
+                PROVENANCE_LEAF_KEY,
                 keccak256(provenance_leaf_bytes(agreement_hash, &claim.clause_or_assembly)),
             ),
         };
@@ -956,8 +916,9 @@ pub struct OperationEffects {
 }
 
 /// Apply `operations` to `state`, in order, under the Core's rules, with no
-/// root computed before or after. The one home of the rules: the proof
-/// path (`apply_batch`) runs its operations through it and then hashes, and
+/// root computed before or after. The one home of the rules: the guest
+/// (`apply_guest`) and the relay's native run (`apply_batch`) run their
+/// operations through it (`execute`) and then compute the roots, and
 /// the relay's trials run through it on a CLONE of their running state — a
 /// trial that fails leaves the clone to be dropped, a trial that passes
 /// replaces the running state with it — so a trial costs one operation,
@@ -1032,14 +993,15 @@ pub fn apply_operations(
                 seller_sig,
                 proof,
             } => {
-                apply_attest_as_seller(
+                apply_attestation(
                     state,
                     &domain,
+                    AttesterRole::Seller,
                     target,
                     clause_id,
                     *stage,
                     content_ref,
-                    seller_sig,
+                    Some(seller_sig),
                     proof,
                     &mut attestations,
                     &mut spec_bindings,
@@ -1053,14 +1015,38 @@ pub fn apply_operations(
                 buyer_sig,
                 proof,
             } => {
-                apply_attest_as_buyer(
+                apply_attestation(
                     state,
                     &domain,
+                    AttesterRole::Buyer,
                     target,
                     clause_id,
                     *stage,
                     content_ref,
-                    buyer_sig,
+                    Some(buyer_sig),
+                    proof,
+                    &mut attestations,
+                    &mut spec_bindings,
+                )?;
+            }
+            KernelOp::AttestByWalletCode {
+                role,
+                target,
+                clause_id,
+                stage,
+                content_ref,
+                proof,
+                ..
+            } => {
+                apply_attestation(
+                    state,
+                    &domain,
+                    *role,
+                    target,
+                    clause_id,
+                    *stage,
+                    content_ref,
+                    None,
                     proof,
                     &mut attestations,
                     &mut spec_bindings,
@@ -1084,73 +1070,171 @@ pub fn apply_claims(
     chain_id: u64,
     verifying_contract: Address,
     claims: &[UsageClaim],
-    provenance_leaf: &B256,
 ) -> Result<Vec<BatchUse>, KernelError> {
     let domain = domain_separator(chain_id, verifying_contract);
-    apply_usage_claims(state, &domain, claims, provenance_leaf)
+    apply_usage_claims(state, &domain, claims)
 }
 
-/// Internal batch execution returning (PublicValues, positions, events, state).
-/// Both public entry points delegate to this.
+/// What a batch's execution leaves, before any root.
+struct Executed {
+    positions: Vec<NetPosition>,
+    events: BatchEvents,
+    positions_hash: B256,
+    attestation_events_hash: B256,
+    spec_bindings_hash: B256,
+    usage_accrual_hash: B256,
+    operations_hash: B256,
+}
+
+/// Run a batch's operations, then its usage claims against the post-state,
+/// on `state` — full (the relay) or witnessed (the guest).
+#[allow(clippy::too_many_arguments)]
+fn execute(
+    state: &mut KernelState,
+    chain_id: u64,
+    verifying_contract: Address,
+    block_timestamp: u64,
+    operations: &[KernelOp],
+    usage_claims: &[UsageClaim],
+    usage_period: u8,
+) -> Result<Executed, KernelError> {
+    let effects = apply_operations(state, chain_id, verifying_contract, block_timestamp, operations)?;
+
+    // ── Designer-reward uses ─────────────────────────────────────
+    // Proved AFTER every operation, against the post-state, so a process
+    // resolved by this very batch can be credited in the same batch.
+    let uses = apply_claims(state, chain_id, verifying_contract, usage_claims)?;
+
+    let positions = effects.positions;
+    let attestation_events = effects.attestations;
+    let positions_hash = compute_positions_hash(&positions);
+    let operations_hash = crate::operation_stream::compute_operations_hash(
+        &crate::operation_stream::encode_operation_stream(operations, usage_claims),
+    );
+    let attestation_events_hash = compute_attestation_events_hash(&attestation_events);
+    let bindings: Vec<SpecBinding> = effects.spec_bindings.into_iter().collect();
+    let spec_bindings_hash = compute_spec_bindings_hash(&bindings);
+    let usage_accrual_hash = compute_usage_accrual_hash(usage_period, &PROVENANCE_LEAF_KEY, &uses);
+    Ok(Executed {
+        positions,
+        events: BatchEvents {
+            attestations: attestation_events,
+            spec_bindings: bindings,
+            uses,
+            usage_period,
+        },
+        positions_hash,
+        attestation_events_hash,
+        spec_bindings_hash,
+        usage_accrual_hash,
+        operations_hash,
+    })
+}
+
+fn public_values(
+    prev_state_root: B256,
+    new_state_root: B256,
+    chain_id: u64,
+    verifying_contract: Address,
+    block_timestamp: u64,
+    ex: &Executed,
+) -> PublicValues {
+    PublicValues {
+        prev_state_root,
+        new_state_root,
+        chain_id,
+        verifying_contract,
+        token_ops_hash: ex.positions_hash,
+        attestation_events_hash: ex.attestation_events_hash,
+        spec_bindings_hash: ex.spec_bindings_hash,
+        usage_accrual_hash: ex.usage_accrual_hash,
+        block_timestamp,
+        operations_hash: ex.operations_hash,
+    }
+}
+
+/// Internal batch execution on the whole previous state, returning
+/// (PublicValues, positions, events, post-state). The relay's native run.
 fn apply_batch_inner(
     input: &BatchInput,
 ) -> Result<(PublicValues, Vec<NetPosition>, BatchEvents, KernelState), KernelError> {
     let mut state = KernelState::from_snapshot(&input.prev_state);
     let prev_root = state.compute_root();
-
-    let effects = apply_operations(
+    let ex = execute(
         &mut state,
         input.chain_id,
         input.verifying_contract,
         input.block_timestamp,
         &input.operations,
+        &input.usage_claims,
+        input.usage_period,
     )?;
+    let new_root = state.compute_root();
+    let pv = public_values(prev_root, new_root, input.chain_id, input.verifying_contract, input.block_timestamp, &ex);
+    Ok((pv, ex.positions, ex.events, state))
+}
 
-    // ── Designer-reward uses ─────────────────────────────────────
-    // Proved AFTER every operation, against the post-state, so a process
-    // resolved by this very batch can be credited in the same batch.
-    let uses = apply_claims(
-        &state,
+/// The guest's batch: run on the witnessed entries only, and both roots
+/// computed from the witness by one descent (`state_tree::roots`). An entry
+/// the batch touches outside the witness is refused; the previous root is
+/// committed, and the chain holds it to the root it keeps.
+pub fn apply_guest(input: &GuestInput) -> Result<(PublicValues, Vec<NetPosition>, BatchEvents), KernelError> {
+    let mut state = KernelState::from_witness(&input.prev_witness)?;
+    let keys: Vec<(u8, B256)> = input
+        .prev_witness
+        .processes
+        .iter()
+        .map(|(k, _)| (crate::state::PROCESS_TAG, *k))
+        .chain(input.prev_witness.orders.iter().map(|(k, _)| (crate::state::ORDER_TAG, *k)))
+        .collect();
+    let before: Vec<Option<B256>> = keys.iter().map(|(t, k)| state.leaf_value_hash(*t, k)).collect();
+    let ex = execute(
+        &mut state,
         input.chain_id,
         input.verifying_contract,
+        input.block_timestamp,
+        &input.operations,
         &input.usage_claims,
-        &input.provenance_leaf,
+        input.usage_period,
     )?;
+    let mut leaves: Vec<crate::state_tree::WitnessedLeaf> = keys
+        .iter()
+        .zip(before)
+        .map(|((t, k), before)| crate::state_tree::WitnessedLeaf {
+            path: crate::state::leaf_path(*t, k),
+            before,
+            after: state.leaf_value_hash(*t, k),
+        })
+        .collect();
+    leaves.sort_by(|a, b| a.path.cmp(&b.path));
+    let (prev_root, new_root) =
+        crate::state_tree::roots(&leaves, &input.prev_witness.proof).map_err(KernelError::Witness)?;
+    let pv = public_values(prev_root, new_root, input.chain_id, input.verifying_contract, input.block_timestamp, &ex);
+    Ok((pv, ex.positions, ex.events))
+}
 
-    let new_root = state.compute_root();
-    let positions = effects.positions;
-    let attestation_events = effects.attestations;
-    let positions_hash = compute_positions_hash(&positions);
-    let operations_hash = crate::operation_stream::compute_operations_hash(
-        &crate::operation_stream::encode_operation_stream(&input.operations, &input.usage_claims),
-    );
-    let att_hash = compute_attestation_events_hash(&attestation_events);
-    let bindings: Vec<SpecBinding> = effects.spec_bindings.into_iter().collect();
-    let bindings_hash = compute_spec_bindings_hash(&bindings);
-    let usage_hash = compute_usage_accrual_hash(input.usage_period, &input.provenance_leaf, &uses);
-
-    let batch_events = BatchEvents {
-        attestations: attestation_events,
-        spec_bindings: bindings,
-        uses,
+/// The guest's input for a batch: the batch run natively on the whole
+/// previous state to learn the entries it touches, then the witness of those
+/// entries against the previous state. Refuses what the native run refuses.
+pub fn guest_input(input: &BatchInput) -> Result<GuestInput, KernelError> {
+    let prev = KernelState::from_snapshot(&input.prev_state);
+    let mut state = prev.clone();
+    execute(
+        &mut state,
+        input.chain_id,
+        input.verifying_contract,
+        input.block_timestamp,
+        &input.operations,
+        &input.usage_claims,
+        input.usage_period,
+    )?;
+    Ok(GuestInput {
+        chain_id: input.chain_id,
+        verifying_contract: input.verifying_contract,
+        block_timestamp: input.block_timestamp,
+        operations: input.operations.clone(),
+        prev_witness: prev.witness_for(&state.touched()),
+        usage_claims: input.usage_claims.clone(),
         usage_period: input.usage_period,
-    };
-
-    Ok((
-        PublicValues {
-            prev_state_root: prev_root,
-            new_state_root: new_root,
-            chain_id: input.chain_id,
-            verifying_contract: input.verifying_contract,
-            token_ops_hash: positions_hash,
-            attestation_events_hash: att_hash,
-            spec_bindings_hash: bindings_hash,
-            usage_accrual_hash: usage_hash,
-            block_timestamp: input.block_timestamp,
-            operations_hash,
-        },
-        positions,
-        batch_events,
-        state,
-    ))
+    })
 }

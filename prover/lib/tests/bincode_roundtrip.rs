@@ -101,7 +101,6 @@ fn bincode_roundtrip_full_batchinput() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
 
     let bytes = bincode::serialize(&input).expect("serialize");
@@ -167,7 +166,6 @@ fn bincode_roundtrip_single_attest_seller() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
     let bytes = bincode::serialize(&input).expect("serialize");
     eprintln!("serialized {} bytes", bytes.len());
@@ -188,7 +186,6 @@ fn bincode_roundtrip_single_commit() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_leaf: B256::ZERO,
     };
     let bytes = bincode::serialize(&input).expect("serialize");
     eprintln!("serialized {} bytes", bytes.len());
@@ -277,7 +274,6 @@ fn bincode_roundtrip_every_usage_claim_kind() {
             }),
         ],
         usage_period: 2,
-        provenance_leaf: keccak256(b"figaro-agreement-provenance"),
     };
     let bytes = bincode::serialize(&input).expect("serialize");
     let decoded: BatchInput = bincode::deserialize(&bytes).expect("deserialize");

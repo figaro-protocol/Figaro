@@ -31,8 +31,10 @@
 //                        (the wallet-code questions and the Core's events).
 //                        None writes the verifier's storage: the first moves
 //                        tokens, the second reads, the third emits and makes
-//                        static calls. Each can only revert the call, which
-//                        every rule allows; summarized, `settleBatch` is
+//                        static calls (a refused wallet-code resolve reverts;
+//                        a wallet-code attestation is emitted or skipped,
+//                        which moves no storage either). Each can only revert
+//                        the call or emit, which every rule allows; summarized, `settleBatch` is
 //                        reduced to its state-root step, which a run over the
 //                        whole function did not reach within the prover's
 //                        global timeout.

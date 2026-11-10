@@ -169,7 +169,8 @@ The proof-based path that resolves batches of processes beside the direct
   batch and its resolution. It also refuses a usage counter whose immutable
   `batchVerifier` is not this contract (`UsageCounterNotBoundToThis`), so a
   pair that would count no use cannot be deployed. The state root starts at `genesisRoot()`, the
-  empty state's, computed by the contract and never supplied.
+  empty state's — zero, the state tree's root over no entries — computed by the contract and never
+  supplied.
 
 The two paths share no state: a batch-resolved process never acquires `FigaroCore`
 status (`core.orderStatus` stays 0 for it), so every reader folds both
@@ -610,8 +611,11 @@ deploy script wires and under which environment variable.
   at a buyer's address, it stands in for code the buyer's EOA carries through
   an EIP-7702 delegation installed while it held its key (a commit recovers the
   buyer by ECDSA, so a contract wallet is never a buyer) for
-  `FigaroBatchVerifier`'s wallet-code resolve; `setBalanceCeiling` makes its
-  answer depend on its own token balance. Foundry tests only.
+  `FigaroBatchVerifier`'s wallet-code resolve and wallet-code attestation;
+  `setBalanceCeiling` makes its answer depend on its own token balance,
+  `setValidationGas` makes its validation spend a fixed amount of gas, and
+  `setAnswerShape` answers in four bytes, with 64 KiB after the word, or not
+  at all (every unit of gas burned). Foundry tests only.
 - `MockReentrantToken.sol` — a malicious ERC-20 that re-enters on transfer;
   proves the `nonReentrant` guards on `commit`, `resolveProcess`, and
   `settleBatch` fire under a live attempt. Foundry tests only.

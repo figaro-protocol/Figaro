@@ -1259,7 +1259,8 @@ await seq.submitResolve(processId, cumulativeValue, commitments, buyerSig);
 // digest (ERC-1271) — what code the buyer's EOA carries through an EIP-7702
 // delegation installed while it held its key resolves with after the key is
 // lost (a commit recovers the buyer by ECDSA, so a contract wallet is never one).
-// The wallet's code produces them, never signTypedData; the proof publishes
+// The wallet's code validates the bytes; the wallet's signer or its session
+// key produces them, never this SDK's signTypedData. The proof publishes
 // them and FigaroBatchVerifier asks the buyer's code at resolution, reverting
 // the batch on any answer but the magic value. The relay asks the same code at
 // its door (a 400 with the reason) and plans WALLET_CODE_EXECUTION_GAS and
@@ -1274,6 +1275,16 @@ await seq.submitResolveByWalletCode(processId, cumulativeValue, commitments, wal
 // Network when the relay proves there (SP1_PROVER=network). Its clause_data must
 // hash to clauseDataHash.
 await seq.submitAttestAsSeller({ target, clauseId, stage, contentRef, sellerSig, clauseDataHash, inclusionProof });
+// An attestation's second form, for either party: bytes the party's own account
+// code validates (ERC-1271) for the AttestSeller / AttestBuyer digest under the
+// verifier's domain, as the seller attests after its key is lost through code
+// its wallet installed while it held the key. The wallet's code validates the
+// bytes; the wallet's signer or its session key produces them. The proof runs
+// every check of the signed form but the signer's recovery and publishes the
+// bytes; FigaroBatchVerifier asks the party's code and emits the Attestation
+// only on the magic value, skipping it on any other answer (the batch lands).
+// The relay asks the same code at its door and refuses bytes it does not validate.
+await seq.submitAttestByWalletCode({ role: "Seller", target, clauseId, stage, contentRef, authorization: walletCodeBytes, clauseDataHash, inclusionProof });
 await seq.submitUsageClaim(claim);  // the usage-claim leg — build with buildUsageClaims
 await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches_settled, … }
 
@@ -1359,7 +1370,7 @@ should build them.
 
 | Route | Request | `200` body | Client method |
 |---|---|---|---|
-| `POST /submit` | `{ "operation": { "Commit" \| "Resolve" \| "ResolveByWalletCode" \| "AttestAsSeller" \| "AttestAsBuyer": {…} } }` — a serde externally-tagged enum | `{ "id": n }` — a queue receipt, **not** resolution | `submitCommit` · `submitResolve` · `submitResolveByWalletCode` · `submitAttestAsSeller` · `submitAttestAsBuyer` |
+| `POST /submit` | `{ "operation": { "Commit" \| "Resolve" \| "ResolveByWalletCode" \| "AttestAsSeller" \| "AttestAsBuyer" \| "AttestByWalletCode": {…} } }` — a serde externally-tagged enum | `{ "id": n }` — a queue receipt, **not** resolution | `submitCommit` · `submitResolve` · `submitResolveByWalletCode` · `submitAttestAsSeller` · `submitAttestAsBuyer` · `submitAttestByWalletCode` |
 | `POST /submit-usage` | `{ "claim": <UsageClaim> }` | `{ "pending": n }` | `submitUsageClaim` |
 | `GET /health` | — | `{ status, pending_ops, pending_usage_claims, batches_settled }` | none — `isAvailable()` probes `/status` instead |
 | `GET /status` | — | the `/health` fields plus `state_root`, `dead_lettered_ops`, `last_settle_error`, `dropped_usage_claims`, `last_dropped_claim_error` (usage claims dropped without landing, counted apart from the operations), | `status()` |

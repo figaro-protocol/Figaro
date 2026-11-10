@@ -39,6 +39,22 @@
 //! with the reader's (the buyer's code refuses an authorization the buyer
 //! did not give) must be FigaroCore's.
 //!
+//! An attestation comes in two forms likewise. The signed form is in public
+//! value 6. The wallet-code form is the `0x05` entry's, whose check is the
+//! attesting party's code, asked by `FigaroBatchVerifier`: the Foundry half
+//! builds the entry (the role, the target, the clause id, the stage, the
+//! content reference, the u16 length, the authorization) followed by a
+//! sentinel `0x05` entry its party's code validates, hands them to the
+//! verifier's reader with the role's party carrying code that validates
+//! exactly the authorization for the role's digest when the caller is the
+//! party, and writes down the reader's answer (the entry's `Attestation`
+//! emitted, or the entry skipped) and the event it emitted. Here each such
+//! step asserts the guest's encoder writes bytes of the same hash, its decoder
+//! reads back the same entries, re-encoding them gives back the bytes, the
+//! emitted event is the one the mirror derives under the reader's domain, and
+//! the mirror's outcome joined with the reader's (the party's code refuses an
+//! authorization the party did not give) is the coordinator's.
+//!
 //! The commit signatures are the stream's own bytes, so a signature form the
 //! FigaroCore refuses (high-s, a 0/1 recovery id, zero bytes) reaches the mirror
 //! as FigaroCore saw it. A resolution has no signature on the direct path
@@ -57,7 +73,7 @@ use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::{apply_batch_with_state, derive_commitment_ids};
-use figaro_kernel::operation_stream::{decode_operation_stream, encode_operation_stream};
+use figaro_kernel::operation_stream::{decode_operation_stream, encode_operation_stream, encode_stream_parts};
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::*;
 
@@ -197,6 +213,75 @@ fn authorization(step: &serde_json::Value) -> Vec<u8> {
     out
 }
 
+/// The Foundry half's sentinel `0x05` entry: a seller's attestation on a
+/// fixed order with no authorization, which its seller's code validates.
+fn sentinel_attestation() -> KernelOp {
+    KernelOp::AttestByWalletCode {
+        role: AttesterRole::Seller,
+        target: Commitment {
+            process_id: sentinel_process_id(),
+            buyer: Address::from_str("0x000000000000000000000000000000000000b0b5").unwrap(),
+            seller: Address::from_str("0x0000000000000000000000000000000000005e57").unwrap(),
+            currency: Address::ZERO,
+            payment: U256::ZERO,
+            expected_cumulative_value: U256::ZERO,
+            checkout_hash: B256::ZERO,
+            salt: U256::ZERO,
+            deadline: U256::ZERO,
+        },
+        clause_id: keccak256(b"figaro-fuzz-sentinel-clause"),
+        stage: 0,
+        content_ref: B256::ZERO,
+        authorization: Default::default(),
+        proof: AttestationWitness::HashOnly { clause_data_hash: B256::ZERO, inclusion_proof: vec![] },
+    }
+}
+
+/// The codec of one wallet-code attestation step against the verifier's
+/// reading of the same bytes (see the module doc), and the event the reader
+/// emitted against the one the mirror derives under the reader's domain.
+fn check_wallet_code_attestation_codec(
+    i: usize,
+    step: &serde_json::Value,
+    op: &KernelOp,
+    reader_domain: &B256,
+    divergences: &mut Vec<String>,
+) {
+    let ops = vec![op.clone(), sentinel_attestation()];
+    let bytes = encode_operation_stream(&ops, &[]);
+    if keccak256(&bytes) != b256(&step["walletCodeStreamHash"]) {
+        divergences.push(format!("step {i}: the guest's encoder writes other attestation bytes than the verifier read"));
+        return;
+    }
+    match decode_operation_stream(&bytes) {
+        Ok((decoded, entries, claims)) => {
+            if !decoded.is_empty() || !claims.is_empty() || entries.len() != 2 {
+                divergences.push(format!("step {i}: the guest's decoder read other entries than the entry and its sentinel"));
+            } else if encode_stream_parts(&decoded, &entries, &claims) != bytes {
+                divergences.push(format!("step {i}: re-encoding the decoded entries gives other bytes"));
+            }
+        }
+        Err(e) => divergences.push(format!("step {i}: the guest's decoder refused the verifier's bytes: {e}")),
+    }
+    let KernelOp::AttestByWalletCode { role, target, clause_id, stage, content_ref, .. } = op else {
+        unreachable!("a wallet-code attestation")
+    };
+    if s(&step["walletCodeOutcome"]) == "emitted" {
+        let (order_hash, process_id) = derive_commitment_ids(reader_domain, target);
+        let expected = encode_log(&AttestationEventData {
+            order_hash,
+            process_id,
+            attester: role.party(target),
+            clause_id: *clause_id,
+            stage: *stage,
+            content_ref: *content_ref,
+        });
+        if expected != (words(&step["walletCodeTopics"]), hex_bytes(&step["walletCodeData"])) {
+            divergences.push(format!("step {i}: the verifier emitted another Attestation than the mirror derives"));
+        }
+    }
+}
+
 /// The codec of one wallet-code resolve step against the verifier's reading
 /// of the same bytes (see the module doc). Returns the decoded cumulative
 /// value, the listed payments' sum.
@@ -236,9 +321,9 @@ fn check_wallet_code_codec(
     }
     let sum = u256(&step["walletCodeSum"]);
     let decoded = match decode_operation_stream(&bytes) {
-        Ok((ops, claims)) if claims.is_empty() => ops,
+        Ok((ops, entries, claims)) if claims.is_empty() && entries.is_empty() => ops,
         Ok(_) => {
-            divergences.push(format!("step {i}: the guest's decoder read a usage claim"));
+            divergences.push(format!("step {i}: the guest's decoder read a usage claim or a wallet-code attestation"));
             return None;
         }
         Err(e) => {
@@ -360,6 +445,8 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
     let mut divergences: Vec<String> = Vec::new();
     let (mut accepted, mut rejected, mut attestations) = (0usize, 0usize, 0usize);
     let (mut wallet_code_accepted, mut wallet_code_refused) = (0usize, 0usize);
+    let mut wallet_code_attestations = 0usize;
+    let reader_domain = domain_separator(chain_id, addr(&header["readerContract"]));
 
     for step in steps {
         let i = count(&step["index"]);
@@ -367,6 +454,7 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
         let outcome = s(&step["outcome"]);
 
         let wallet_code = kind == "resolve" && step.get("form").map(s) == Some("walletCode");
+        let wallet_code_attest = kind.starts_with("attest") && step.get("form").map(s) == Some("walletCode");
         let mut wallet_code_value: Option<U256> = None;
         let mut applied_value = U256::ZERO;
         let op = match kind {
@@ -385,7 +473,8 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                 // cumulative value in the mirror's state (zero for a
                 // process the mirror never saw).
                 let cumulative_value = state
-                    .processes
+                    .full_processes()
+                    .unwrap()
                     .get(&process_id)
                     .map(|p| p.cumulative_value)
                     .unwrap_or(U256::ZERO);
@@ -421,7 +510,19 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                     clause_data_hash: b256(&step["clauseDataHash"]),
                     inclusion_proof: words(&step["inclusionProof"]),
                 };
-                if kind == "attestAsSeller" {
+                if wallet_code_attest {
+                    let op = KernelOp::AttestByWalletCode {
+                        role: if kind == "attestAsSeller" { AttesterRole::Seller } else { AttesterRole::Buyer },
+                        target,
+                        clause_id,
+                        stage,
+                        content_ref,
+                        authorization: authorization(step).into(),
+                        proof,
+                    };
+                    check_wallet_code_attestation_codec(i, step, &op, &reader_domain, &mut divergences);
+                    op
+                } else if kind == "attestAsSeller" {
                     let h = attest_seller_struct_hash(&order_hash, &clause_id, stage, &content_ref);
                     KernelOp::AttestAsSeller {
                         target,
@@ -454,19 +555,34 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
             prev_state: state.to_snapshot(),
             usage_claims: vec![],
             usage_period: 0,
-            provenance_leaf: B256::ZERO,
         };
 
         // A wallet-code resolve the mirror applies lands only if the
         // verifier's reader, asking the buyer's code, accepts its entry.
-        let verifier = if wallet_code { s(&step["walletCodeOutcome"]) } else { "ok" };
+        // A wallet-code attestation the mirror applies is emitted only if the
+        // verifier's reader, asking the party's code, emits it.
+        let verifier = if wallet_code {
+            s(&step["walletCodeOutcome"])
+        } else if wallet_code_attest {
+            match s(&step["walletCodeOutcome"]) {
+                "emitted" => "ok",
+                other => other,
+            }
+        } else {
+            "ok"
+        };
         match (apply_batch_with_state(&input), outcome) {
             (Ok(_), kernel_error) if verifier != "ok" => {
                 rejected += 1;
                 wallet_code_refused += 1;
-                if kernel_error != "NotProcessBuyer" || verifier != "WalletCodeAuthorizationRefused" {
+                let joined = if wallet_code_attest {
+                    kernel_error == "NotAuthorized" && verifier == "skipped"
+                } else {
+                    kernel_error == "NotProcessBuyer" && verifier == "WalletCodeAuthorizationRefused"
+                };
+                if !joined {
                     divergences.push(format!(
-                        "step {i} (wallet-code resolve): the kernel answered {kernel_error}, the verifier's reader refused with {verifier}"
+                        "step {i} ({kind}, wallet-code form): the kernel answered {kernel_error}, the verifier's reader answered {verifier}"
                     ));
                 }
             }
@@ -482,7 +598,13 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                     }
                 }
                 accepted += 1;
-                if kind.starts_with("attest") {
+                if wallet_code_attest {
+                    attestations += 1;
+                    wallet_code_attestations += 1;
+                    if !events.attestations.is_empty() {
+                        divergences.push(format!("step {i} ({kind}): the wallet-code form put an event in public value 6"));
+                    }
+                } else if kind.starts_with("attest") {
                     attestations += 1;
                     match events.attestations.as_slice() {
                         [e] => {
@@ -547,7 +669,7 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
     for process in lines.iter().filter(|l| s(&l["type"]) == "process") {
         processes += 1;
         let pid = b256(&process["processId"]);
-        match state.processes.get(&pid) {
+        match state.full_processes().unwrap().get(&pid) {
             None => divergences.push(format!("process {pid}: missing from the mirror")),
             Some(ps) => {
                 if ps.cumulative_value != u256(&process["cumulativeValue"]) {
@@ -559,10 +681,10 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
             }
         }
     }
-    if state.processes.len() != processes {
+    if state.full_processes().unwrap().len() != processes {
         divergences.push(format!(
             "the mirror holds {} processes, the kernel {processes}",
-            state.processes.len()
+            state.full_processes().unwrap().len()
         ));
     }
 
@@ -573,12 +695,16 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
         "seed {seed}: the stream holds accepted wallet-code resolves (0x04)"
     );
     assert!(
+        wallet_code_attestations > 0,
+        "seed {seed}: the stream holds accepted wallet-code attestations (0x05)"
+    );
+    assert!(
         divergences.is_empty(),
         "seed {seed}: {} divergences between the kernel and its mirror:\n{}",
         divergences.len(),
         divergences.join("\n")
     );
     println!(
-        "seed {seed}: {accepted} accepted ({attestations} attestations, {wallet_code_accepted} wallet-code resolves), {rejected} rejected ({wallet_code_refused} by the buyer's code), {processes} processes — no divergence"
+        "seed {seed}: {accepted} accepted ({attestations} attestations, {wallet_code_attestations} in the wallet-code form, {wallet_code_accepted} wallet-code resolves), {rejected} rejected ({wallet_code_refused} by the party's code), {processes} processes — no divergence"
     );
 }

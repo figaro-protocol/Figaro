@@ -81,7 +81,8 @@ interface IUsageCounter {
 ///           7: usageAccrualHash  (bytes32)
 ///           8: blockTimestamp    (uint64, left-padded to 32 bytes)
 ///           9: operationsHash    (bytes32) — keccak256 of the batch's operation
-///              stream: every commit and resolve the batch applied, whole, and
+///              stream: every commit and resolve the batch applied, whole,
+///              every attestation authorized by a party's wallet code, and
 ///              every usage claim. `settleBatch` takes the stream as calldata
 ///              and refuses a batch whose bytes do not hash to this word, so a
 ///              batch cannot land without publishing, in its own transaction,
@@ -104,6 +105,28 @@ interface IUsageCounter {
 ///         root already holds the resolve, so the entry cannot be dropped
 ///         alone. On both paths only the buyer's wallet, by its key or by its
 ///         code, resolves.
+///
+///         An attestation comes in the same two forms, as
+///         `AttestationCoordinator`'s `msg.sender == target.seller` (or
+///         `target.buyer`) admits the party's key and any code its wallet
+///         installed while it held the key. The signed form the guest
+///         recovers, and its event is bound by public value 6. The second,
+///         bytes the party's own account code validates for the same
+///         `AttestSeller` / `AttestBuyer` digest, the guest applies with every
+///         check but the recovery and publishes in the stream's `0x05` entry,
+///         outside public value 6. `settleBatch` derives the target's ids and
+///         the digest under this contract's domain from the entry's
+///         commitment, takes the attester from its role byte, asks that
+///         account's `isValidSignature` before any token moves, and emits the
+///         coordinator's `Attestation` event only on the magic value. Any
+///         other answer, or an account with no code, skips the entry and the
+///         batch lands: an attestation moves no token and no state, so it
+///         drops alone, as a reverted `attestAsSeller` call does on the direct
+///         path. A call that ran out of gas is no answer: it fails with at
+///         most the 1/64 the call keeps left, and the batch reverts by name
+///         (`WalletCodeAttestationStarved`), so no submitter's gas limit
+///         drops an attestation the code validates; code that burns all the
+///         gas it is given therefore reverts any batch carrying its attestation.
 contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
     using CommitmentTypes for CommitmentTypes.Commitment;
@@ -296,6 +319,12 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///      bytes with the ERC-1271 magic value (it answered otherwise,
     ///      reverted, or returned no word).
     error WalletCodeAuthorizationRefused(bytes32 processId, address buyer);
+    /// @dev A wallet-code attestation's question failed with at most the
+    ///      1/64 the call keeps left (EIP-150): the attesting party's code ran
+    ///      out of the gas it was given, so the answer is unknown, never a
+    ///      refusal. Skipping it would let a submitter's gas limit drop an
+    ///      attestation the code validates; the batch is refused instead.
+    error WalletCodeAttestationStarved(bytes32 orderHash, address attester);
 
     // ── Constructor ───────────────────────────────────────────────
 
@@ -335,12 +364,11 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         stateRoot = genesisRoot();
     }
 
-    /// @notice The root of the empty mirror state: one `keccak256("")` per
-    ///         map (processes, order status, order → process), hashed flat, as
-    ///         the guest's `KernelState::compute_root` does on nothing.
+    /// @notice The root of the empty mirror state: the guest's state tree over
+    ///         no entries is zero (`prover/lib/src/state_tree.rs`; a set's root
+    ///         is a function of the set, and the empty set's is zero).
     function genesisRoot() public pure returns (bytes32) {
-        bytes32 emptyMap = keccak256("");
-        return keccak256(abi.encodePacked(emptyMap, emptyMap, emptyMap));
+        return bytes32(0);
     }
 
     // ── Internal decode struct (avoids stack-too-deep) ─────────
@@ -372,9 +400,11 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///                     public value 9): every commit and resolve it applied,
     ///                     whole, and every usage claim, in the guest's canonical
     ///                     bytes (`prover/lib/src/operation_stream.rs`). The
-    ///                     contract reads it for the Core's events and asks the
-    ///                     buyer's code about each `0x04` entry, before any
-    ///                     token moves; it is published so that anyone can
+    ///                     contract reads it for the Core's events, asks the
+    ///                     buyer's code about each `0x04` entry and the
+    ///                     attesting party's code about each `0x05` entry
+    ///                     (emitting its `Attestation` on the magic value),
+    ///                     before any token moves; it is published so that anyone can
     ///                     rebuild the state behind the new root from this
     ///                     transaction and the ones before it.
     function settleBatch(
@@ -433,9 +463,11 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
         // ── 4. Anchor every witness spec to the live registry ─────
         _checkSpecBindings(events.specBindings);
-        //    and ask the buyer's code about every wallet-code resolve,
-        //    against the state before the batch moves a token: the state the
-        //    relay's own check read, never a payout's.
+        //    and ask the buyer's code about every wallet-code resolve (any
+        //    refusal reverts the batch) and the attesting party's code about
+        //    every wallet-code attestation (a yes emits its `Attestation`, any
+        //    other answer skips it), against the state before the batch moves
+        //    a token: the state the relay's own check read, never a payout's.
         _walkOperations(operations, false);
 
         // ── 5. Execute token transfers ────────────────────────────
@@ -523,7 +555,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             address user = positions[i].user;
             uint256 dep = positions[i].deposit;
             uint256 pay = positions[i].payout;
-            assembly {
+            assembly ("memory-safe") {
                 let dst := add(add(packed, 32), offset)
                 mstore(dst, shl(96, token))
                 mstore(add(dst, 20), shl(96, user))
@@ -548,7 +580,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             bytes32 clauseId = attestations[i].clauseId;
             uint8 stage = attestations[i].stage;
             bytes32 contentRef = attestations[i].contentRef;
-            assembly {
+            assembly ("memory-safe") {
                 let dst := add(add(packed, 32), offset)
                 mstore(dst, orderHash)
                 mstore(add(dst, 32), processId)
@@ -572,7 +604,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         for (uint256 i = 0; i < len; i++) {
             bytes32 clauseId = bindings[i].clauseId;
             bytes32 specHash = bindings[i].specHash;
-            assembly {
+            assembly ("memory-safe") {
                 let dst := add(add(packed, 32), offset)
                 mstore(dst, clauseId)
                 mstore(add(dst, 32), specHash)
@@ -600,7 +632,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
         uint8 period = usage.period;
         bytes32 provenance = usage.provenanceLeaf;
-        assembly {
+        assembly ("memory-safe") {
             let dst := add(packed, 32)
             mstore8(dst, period)
             mstore(add(dst, 1), provenance)
@@ -613,7 +645,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
             uint8 kind = usage.uses[i].kind;
             bytes32 processId = usage.uses[i].processId;
             address seller = usage.uses[i].seller;
-            assembly {
+            assembly ("memory-safe") {
                 let dst := add(add(packed, 32), offset)
                 mstore(dst, clauseOrAssembly)
                 mstore8(add(dst, 32), kind)
@@ -624,7 +656,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         }
 
         // Drop the slack so keccak covers exactly the packed span.
-        assembly {
+        assembly ("memory-safe") {
             mstore(packed, span)
         }
         return keccak256(packed);
@@ -653,8 +685,10 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
      * @dev BATCH RESOLUTION DOS RISK
      * Two causes revert the entire batch after its proof: a user who revokes approval before settleBatch
      * executes, and a buyer whose wallet code refuses its wallet-code resolve at step 4 though it validated
-     * the bytes when the relay asked.
-     * Mitigation: Sequencer MUST verify approvals and ask each buyer's code immediately before proof submission.
+     * the bytes when the relay asked. A wallet-code attestation's refusal does not revert the batch (the
+     * entry is skipped); its code reverts it only by running out of the gas the call forwards
+     * (`WalletCodeAttestationStarved`).
+     * Mitigation: Sequencer MUST verify approvals and ask each party's code immediately before proof submission.
      * Users SHOULD maintain approvals, and wallet code its answer, until batch resolution is confirmed.
      */
 
@@ -693,12 +727,16 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     // `0x01 commitment sig sig` for a commit, `0x02 processId sig count
     // commitment*` for a resolution, `0x03 commitment key kind … proof` for a
     // usage claim, `0x04 processId len authorization count commitment*` for a
-    // resolution authorized by the buyer's wallet code; a commitment is 252
+    // resolution authorized by the buyer's wallet code, `0x05 role commitment
+    // clauseId stage contentRef len authorization` for an attestation
+    // authorized by the attesting party's wallet code; a commitment is 252
     // packed bytes, a signature 65, a count or a length a big-endian uint16.
     // A proven batch's stream is well-formed by construction (the proof bound
     // its hash); the refusal below is the decoder's, never a judgment. The
-    // one judgment the stream carries to this contract is the wallet-code
-    // resolve's, and it is the buyer's code's, asked in `_checkWalletCode`.
+    // judgments the stream carries to this contract are the wallet code's:
+    // the buyer's code on a wallet-code resolve (`_checkWalletCode`, a
+    // refusal reverts the batch) and the attesting party's code on a
+    // wallet-code attestation (`_attestByWalletCode`, a refusal skips it).
 
     uint256 private constant COMMITMENT_BYTES = 252;
     uint256 private constant SIGNATURE_BYTES = 65;
@@ -707,12 +745,21 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///      `resolve_struct_hash` hashes (`prover/lib/src/eip712.rs`).
     bytes32 private constant RESOLVE_PROCESS_TYPEHASH =
         keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)");
+    /// @dev The coordinator's two attestation authorizations, the types the
+    ///      guest's `attest_seller_struct_hash` / `attest_buyer_struct_hash`
+    ///      hash (`prover/lib/src/eip712.rs`).
+    bytes32 private constant ATTEST_SELLER_TYPEHASH =
+        keccak256("AttestSeller(bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)");
+    bytes32 private constant ATTEST_BUYER_TYPEHASH =
+        keccak256("AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)");
     /// @dev ERC-1271's magic value, `isValidSignature(bytes32,bytes)`'s selector.
     bytes4 private constant ERC1271_MAGIC_VALUE = 0x1626ba7e;
 
-    /// @dev Walk the stream. With `publish` false, ask the buyer's code about
-    ///      every `0x04` entry and emit nothing (step 4); with `publish` true,
-    ///      emit the Core's events for every commit and resolution (step 6).
+    /// @dev Walk the stream. With `publish` false (step 4), ask the buyer's
+    ///      code about every `0x04` entry and the attesting party's code about
+    ///      every `0x05` entry, emitting the `Attestation` of each `0x05` its
+    ///      code validates and nothing else; with `publish` true (step 6), emit
+    ///      the Core's events for every commit and resolution.
     function _walkOperations(bytes calldata s, bool publish) internal {
         uint256 p = 0;
         uint256 n = s.length;
@@ -739,6 +786,8 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
                 p += count * COMMITMENT_BYTES;
             } else if (tag == 0x04) {
                 p = _resolveByWalletCode(s, p, publish);
+            } else if (tag == 0x05) {
+                p = _attestByWalletCode(s, p, publish);
             } else if (tag == 0x03) {
                 p += COMMITMENT_BYTES + 32; // the order and the key
                 uint256 kind = _byteAt(s, p);
@@ -789,6 +838,88 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         return p;
     }
 
+    /// @dev A `0x05` entry from its role byte on: `role(1) commitment(252)
+    ///      clauseId(32) stage(1) contentRef(32) len(2) authorization`. With
+    ///      `publish` false the target's ids are derived under this contract's
+    ///      domain as `_emitCommitted` derives them, the attester is the
+    ///      role's party of the commitment (`0x00` its seller, `0x01` its
+    ///      buyer; any other byte is malformed), and that account is asked
+    ///      about the role's digest; the coordinator's `Attestation` is emitted
+    ///      only on the magic value, an account with no code or any other
+    ///      answer skips the entry, and a call that ran out of gas reverts the
+    ///      batch. With `publish` true the entry is skipped.
+    ///      Returns the offset past the entry.
+    function _attestByWalletCode(bytes calldata s, uint256 p, bool publish) private returns (uint256 end) {
+        uint256 role = _byteAt(s, p);
+        if (role > 1) revert MalformedOperationStream();
+        uint256 at = p + 1;
+        uint256 len = _countAt(s, at + COMMITMENT_BYTES + 65);
+        end = at + COMMITMENT_BYTES + 67 + len;
+        if (end > s.length) revert MalformedOperationStream();
+        if (!publish) _askAttesterCode(s, at, role == 0, s[end - len:end]);
+    }
+
+    /// @dev The `0x05` entry's question, in its own frame so its locals fit
+    ///      the stack under coverage's un-optimized build: `at` is the
+    ///      commitment's offset. Emits the `Attestation` on the magic value,
+    ///      skips the entry on a no or an account with no code, and refuses
+    ///      the batch when the code starved (`WalletCodeAttestationStarved`):
+    ///      a submitter's gas limit must not drop an attestation the code
+    ///      would have validated.
+    function _askAttesterCode(bytes calldata s, uint256 at, bool asSeller, bytes calldata authorization) private {
+        (bytes32 processId, bytes32 orderHash, address attester) = _attestTarget(s, at, asSeller);
+        if (attester.code.length == 0) return;
+        bytes32 digest = _attestDigest(s, at + COMMITMENT_BYTES, asSeller, processId, orderHash);
+        (bool yes, bool starved) = _askCode(attester, digest, authorization);
+        if (starved) revert WalletCodeAttestationStarved(orderHash, attester);
+        if (yes) _emitAttestationAt(s, at + COMMITMENT_BYTES, orderHash, processId, attester);
+    }
+
+    /// @dev The `0x05` entry's target, from the commitment at `at`: its ids,
+    ///      derived under this contract's domain as `_emitCommitted` derives
+    ///      them, and the role's party.
+    function _attestTarget(bytes calldata s, uint256 at, bool asSeller)
+        private
+        view
+        returns (bytes32 processId, bytes32 orderHash, address attester)
+    {
+        CommitmentTypes.Commitment memory c = _readCommitment(s, at);
+        bytes32 structHash = c.hashStruct();
+        processId = c.processId == bytes32(0) ? _hashTypedDataV4(structHash) : c.processId;
+        orderHash = keccak256(abi.encodePacked(processId, structHash));
+        attester = asSeller ? c.seller : c.buyer;
+    }
+
+    /// @dev The coordinator's `Attestation` for a validated `0x05` entry, its
+    ///      clauseId, stage and contentRef read at `q`.
+    function _emitAttestationAt(bytes calldata s, uint256 q, bytes32 orderHash, bytes32 processId, address attester)
+        private
+    {
+        bytes32 clauseId = _wordAt(s, q);
+        uint8 stage = uint8(_byteAt(s, q + 32));
+        emit Attestation(orderHash, processId, attester, clauseId, stage, _wordAt(s, q + 33));
+    }
+
+    /// @dev The role's attestation digest under this contract's domain, from
+    ///      the entry's clauseId, stage and contentRef at `q`: `AttestSeller`
+    ///      for the seller, `AttestBuyer` for the buyer, as the guest hashes them.
+    function _attestDigest(bytes calldata s, uint256 q, bool asSeller, bytes32 processId, bytes32 orderHash)
+        private
+        view
+        returns (bytes32)
+    {
+        bytes32 clauseId = _wordAt(s, q);
+        uint8 stage = uint8(_byteAt(s, q + 32));
+        bytes32 contentRef = _wordAt(s, q + 33);
+        if (asSeller) {
+            return
+                _hashTypedDataV4(keccak256(abi.encode(ATTEST_SELLER_TYPEHASH, orderHash, clauseId, stage, contentRef)));
+        }
+        return _hashTypedDataV4(
+            keccak256(abi.encode(ATTEST_BUYER_TYPEHASH, processId, orderHash, clauseId, stage, contentRef))
+        );
+    }
+
     /// @dev The sum of the listed orders' payments: the process's cumulative
     ///      value as the guest left it. Its own frame keeps the resolve
     ///      entry's locals within the stack under coverage's un-optimized build.
@@ -799,28 +930,53 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     }
 
     /// @dev Ask the buyer's account code whether `authorization` authorizes
-    ///      resolving `processId` at `cumulativeValue`: the ERC-1271 call,
-    ///      a STATICCALL with the gas left, reading one word of the answer
-    ///      (a longer answer is never copied). An account with no code is
-    ///      refused by name; the whole answer word is compared with the magic
-    ///      value left-aligned and zero-padded, as OpenZeppelin's
-    ///      `SignatureChecker` compares it, and any other word refuses the
-    ///      batch.
+    ///      resolving `processId` at `cumulativeValue` (`_askCode`). An
+    ///      account with no code is refused by name, and any answer but the
+    ///      magic value refuses the batch.
     function _checkWalletCode(bytes32 processId, address buyer, uint256 cumulativeValue, bytes calldata authorization)
         private
         view
     {
         if (buyer.code.length == 0) revert BuyerHasNoCode(processId, buyer);
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(RESOLVE_PROCESS_TYPEHASH, processId, cumulativeValue)));
+        (bool yes,) = _askCode(buyer, digest, authorization);
+        if (!yes) revert WalletCodeAuthorizationRefused(processId, buyer);
+    }
+
+    /// @dev The ERC-1271 question: a STATICCALL of `account`'s
+    ///      `isValidSignature(digest, authorization)` with the gas left,
+    ///      reading one word of the answer (a longer answer is never copied).
+    ///      The whole answer word is compared with the magic value left-aligned
+    ///      and zero-padded, as OpenZeppelin's `SignatureChecker` compares it;
+    ///      a revert, a short answer or any other word is a no. No gas cap is
+    ///      set: the call receives 63/64 of what is left (EIP-150). `starved`
+    ///      is a call that failed with at most 1/64 of the gas before it left:
+    ///      the code ran out of the gas it was given, so its answer is unknown.
+    ///      The resolve reverts on any no, starved or not; the attestation
+    ///      reverts on a starved call and skips a no.
+    function _askCode(address account, bytes32 digest, bytes calldata authorization)
+        private
+        view
+        returns (bool yes, bool starved)
+    {
         bytes memory query = abi.encodeWithSelector(ERC1271_MAGIC_VALUE, digest, authorization);
         bool ok;
         bytes32 answer;
+        uint256 before;
+        uint256 left;
         assembly ("memory-safe") {
-            ok := staticcall(gas(), buyer, add(query, 32), mload(query), 0, 32)
-            if lt(returndatasize(), 32) { ok := 0 }
+            before := gas()
+            ok := staticcall(gas(), account, add(query, 32), mload(query), 0, 32)
+            left := gas()
             answer := mload(0)
         }
-        if (!ok || answer != bytes32(ERC1271_MAGIC_VALUE)) revert WalletCodeAuthorizationRefused(processId, buyer);
+        starved = !ok && left <= before / 64;
+        // A short answer is a no whatever its bytes.
+        uint256 size;
+        assembly ("memory-safe") {
+            size := returndatasize()
+        }
+        yes = ok && size >= 32 && answer == bytes32(ERC1271_MAGIC_VALUE);
     }
 
     // The stream is read with `calldataload` at an offset into `s`: a word,

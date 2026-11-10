@@ -577,6 +577,9 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     // its `isValidSignature` did not answer with the ERC-1271 magic value.
     "error BuyerHasNoCode(bytes32 processId, address buyer)",
     "error WalletCodeAuthorizationRefused(bytes32 processId, address buyer)",
+    // A wallet-code attestation whose code was asked with too little gas to
+    // answer: the batch reverts rather than read starvation as a refusal.
+    "error WalletCodeAttestationStarved(bytes32 orderHash, address attester)",
     // The settle's own checks on its inputs: the proof's public values, the
     // batch's timestamp window, the published operation stream.
     "error PublicValuesLengthMismatch(uint256 expected, uint256 actual)",

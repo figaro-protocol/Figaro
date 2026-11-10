@@ -12,7 +12,6 @@
 
 import { expect } from "vitest";
 import {
-    encodePacked,
     getContractAddress,
     keccak256,
     parseAbi,
@@ -75,17 +74,12 @@ export function loadSpecJson(name: string): string {
     return canonicalize(JSON.parse(fs.readFileSync(path.join(repoRoot, "clauses", `${name}.json`), "utf-8")));
 }
 
-// ── Genesis state root computation ──────────────────────────────────────────
-// The Rust mirror computes:
-//   root = keccak256(keccak256("") × 3)
-// — one empty-hash per state sub-map (processes, order_status,
-// order_process_id); an empty BTreeMap hashes to keccak256("").
-// See prover/lib/src/state.rs `compute_root`.
+// ── Genesis state root ───────────────────────────────────────────────────────
+// The root of the empty state: zero, the state tree's root over no entries.
 
 export function computeGenesisRoot(): Hex {
-    const emptyHash = keccak256("0x"); // keccak256("") = 0xc5d2460186...
-    const packed = encodePacked(["bytes32", "bytes32", "bytes32"], [emptyHash, emptyHash, emptyHash]);
-    return keccak256(packed);
+    // The guest's state tree over no entries (`prover/lib/src/state_tree.rs`).
+    return `0x${"00".repeat(32)}`;
 }
 
 // ── The stack ───────────────────────────────────────────────────────────────

@@ -203,6 +203,30 @@
 (*                              which checked nothing about the bytes      *)
 (*                              (fails `OnlyBuyerWalletResolves`: a        *)
 (*                              stranger's bytes resolve the process)      *)
+(*                                                                         *)
+(* THE ATTESTATION AUTHORIZATION (the fourth spec, `AttestSpec`, checked  *)
+(* by RelayStateAttest.cfg; the others hold its variables still). It       *)
+(* models an attestation by one party of the order (its                    *)
+(* seller or its buyer; the role selects the party and the digest type,   *)
+(* so one party stands for either). On the Core `attestAsSeller` reads     *)
+(* `msg.sender == target.seller`, admitting the party's key and any code   *)
+(* its wallet installed while it held the key. On the batch path the      *)
+(* signed form carries the party's ECDSA signature, which the guest        *)
+(* recovers; the wallet-code form carries bytes the party's own code       *)
+(* validates, which the guest publishes unchecked in the stream's `0x05`   *)
+(* entry, and the verifier asks the party's code: it emits the attestation *)
+(* on the magic value and skips it otherwise, the batch landing either     *)
+(* way. Anyone may submit bytes in the second form.                        *)
+(* `OnlyPartyAttests`: every attestation the batch path emits was          *)
+(* authorized by the party's key or by the code its wallet installed. The  *)
+(* design switch:                                                          *)
+(*   VerifierChecksAttestationCode — TRUE: a wallet-code attestation is    *)
+(*                              emitted only if the party's account has    *)
+(*                              code and the code validates the digest,   *)
+(*                              and skipped otherwise. FALSE: the verifier *)
+(*                              emits it on the guest's word (fails       *)
+(*                              `OnlyPartyAttests`: a stranger's bytes     *)
+(*                              attest for the party)                      *)
 (***************************************************************************)
 EXTENDS Naturals, Sequences, FiniteSets
 
@@ -231,8 +255,10 @@ CONSTANTS
     DeferDependentEdge,
     AdmitRefusesDoubleListing,
     ResolveBoundToState, \* the resolve authorization signs the cumulative value
-    VerifierChecksWalletCode \* the verifier calls the buyer's code on a
-                             \* wallet-code resolve
+    VerifierChecksWalletCode, \* the verifier calls the buyer's code on a
+                              \* wallet-code resolve
+    VerifierChecksAttestationCode \* the verifier calls the attesting
+                                  \* party's code on a wallet-code attestation
 
 Genesis == 0
 Roots == 0..MaxBatches
@@ -877,7 +903,17 @@ VARIABLES
     rBy         \* ghost: who authorized the applied resolve — "key", "code"
                 \* (the wallet's installed code) or "other"
 
-rvars == <<rSeq, rPay, rCv, rResolved, rAuths, rPaid, rSigned, rKey, rCode, rCodeAuths, rBy>>
+VARIABLES
+    aKey,       \* the attesting party's wallet holds its key
+    aCode,      \* the party's wallet carries code it installed with its key
+    aSigned,    \* the party signed the attestation with its key
+    aCodeAuth,  \* the installed code validates the attestation's digest
+    aBy         \* ghost: who authorized each attestation the batch path
+                \* emitted — "key", "code" or "other"
+
+resolveVars == <<rSeq, rPay, rCv, rResolved, rAuths, rPaid, rSigned, rKey, rCode, rCodeAuths, rBy>>
+avars == <<aKey, aCode, aSigned, aCodeAuth, aBy>>
+rvars == <<resolveVars, avars>>
 everyvars == <<allvars, rvars>>
 
 \* The cumulative value of the first k orders the process committed.
@@ -897,6 +933,11 @@ RTypeOK ==
     /\ rCode \in BOOLEAN
     /\ rCodeAuths \subseteq 0..RMaxCv
     /\ rBy \in {"none", "key", "code", "other"}
+    /\ aKey \in BOOLEAN
+    /\ aCode \in BOOLEAN
+    /\ aSigned \in BOOLEAN
+    /\ aCodeAuth \in BOOLEAN
+    /\ aBy \subseteq {"key", "code", "other"}
 
 RInit ==
     /\ rSeq = <<>>
@@ -910,6 +951,11 @@ RInit ==
     /\ rCode = FALSE
     /\ rCodeAuths = {}
     /\ rBy = "none"
+    /\ aKey = TRUE
+    /\ aCode = FALSE
+    /\ aSigned = FALSE
+    /\ aCodeAuth = FALSE
+    /\ aBy = {}
 
 \* A commit, the buyer's and its seller's signatures both on it: the root
 \* order creates the process, each later one extends it while it is open.
@@ -983,7 +1029,57 @@ RApplyCode(v) ==
     /\ rBy' = IF rCode /\ v \in rCodeAuths THEN "code" ELSE "other"
     /\ UNCHANGED <<rSeq, rPay, rCv, rAuths, rKey, rCode, rCodeAuths>>
 
-RNext ==
+(***************************************************************************)
+(* THE ATTESTATION AUTHORIZATION (kernel.rs's `apply_attestation`,         *)
+(* FigaroBatchVerifier's `_attestByWalletCode`).                           *)
+(***************************************************************************)
+
+\* The party signs the attestation with its key.
+ASign ==
+    /\ aKey
+    /\ aSigned' = TRUE
+    /\ UNCHANGED <<aKey, aCode, aCodeAuth, aBy>>
+
+\* The party's wallet installs its own code, which needs the key.
+AInstall ==
+    /\ aKey
+    /\ ~aCode
+    /\ aCode' = TRUE
+    /\ UNCHANGED <<aKey, aSigned, aCodeAuth, aBy>>
+
+\* The party loses its key; whatever its wallet installed stays.
+ALoseKey ==
+    /\ aKey
+    /\ aKey' = FALSE
+    /\ UNCHANGED <<aCode, aSigned, aCodeAuth, aBy>>
+
+\* The installed code validates the attestation, with the key or without it.
+ACodeSign ==
+    /\ aCode
+    /\ aCodeAuth' = TRUE
+    /\ UNCHANGED <<aKey, aCode, aSigned, aBy>>
+
+\* A batch applies the signed form: the guest recovers the party's
+\* signature, unforgeable here, and the event is in public value 6.
+AApply ==
+    /\ aSigned
+    /\ aBy' = aBy \cup {"key"}
+    /\ UNCHANGED <<aKey, aCode, aSigned, aCodeAuth>>
+
+\* A batch carries a wallet-code attestation: bytes anyone submitted. The
+\* guest checks nothing about the bytes; under the design the verifier asks
+\* the party's code and emits the attestation only on the magic value,
+\* skipping it otherwise while the batch lands.
+AApplyCode ==
+    /\ LET validated == aCode /\ aCodeAuth IN
+        aBy' = IF validated THEN aBy \cup {"code"}
+               ELSE IF VerifierChecksAttestationCode THEN aBy
+               ELSE aBy \cup {"other"}
+    /\ UNCHANGED <<aKey, aCode, aSigned, aCodeAuth>>
+
+ANext == ASign \/ AInstall \/ ALoseKey \/ ACodeSign \/ AApply \/ AApplyCode
+
+RResolveNext ==
     \/ \E o \in ROrders, p \in RPayments : RCommit(o, p)
     \/ \E v \in 0..RMaxCv : RSign(v)
     \/ \E v \in rAuths : RApply(v)
@@ -992,11 +1088,15 @@ RNext ==
     \/ \E v \in 0..RMaxCv : RCodeSign(v)
     \/ \E v \in 0..RMaxCv : RApplyCode(v)
 
+RNext == RResolveNext /\ UNCHANGED avars
+
 Spec == Init /\ DInit /\ RInit /\ [][Next /\ UNCHANGED <<dvars, rvars>>]_everyvars
 
 DeferSpec == Init /\ DInit /\ RInit /\ [][DNext /\ UNCHANGED <<vars, rvars>>]_everyvars
 
 ResolveSpec == Init /\ DInit /\ RInit /\ [][RNext /\ UNCHANGED <<vars, dvars>>]_everyvars
+
+AttestSpec == Init /\ DInit /\ RInit /\ [][ANext /\ UNCHANGED <<vars, dvars, resolveVars>>]_everyvars
 
 \* Every applied resolve pays exactly the prefix of the process's commits
 \* whose cumulative value the buyer signed: some prefix sums to the signed
@@ -1014,6 +1114,12 @@ ResolvePaysSignedPrefix ==
 \* batch path.
 OnlyBuyerWalletResolves ==
     rResolved => rBy \in {"key", "code"}
+
+\* Only the attesting party attests, by its key or by the code its wallet
+\* installed while it held the key: the coordinator's `msg.sender ==
+\* target.seller` (or `target.buyer`), read on the batch path.
+OnlyPartyAttests ==
+    aBy \subseteq {"key", "code"}
 
 (***************************************************************************)
 (* The deferral's invariants.                                              *)

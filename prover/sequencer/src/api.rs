@@ -401,7 +401,7 @@ fn submit_error(route: &'static str, kind: &'static str, e: SubmitError) -> Resp
     // An attestation's refusal can quote its content (a value outside a
     // spec's bounds), so the relay logs the refusal without its reason; the
     // reason goes to the sender alone, whose content it is.
-    if matches!(kind, "AttestAsSeller" | "AttestAsBuyer") {
+    if matches!(kind, "AttestAsSeller" | "AttestAsBuyer" | "AttestByWalletCode") {
         warn!(route, kind, %status, "submission rejected");
     } else {
         warn!(route, kind, %status, %error, "submission rejected");
@@ -422,6 +422,7 @@ fn op_kind(op: &KernelOp) -> &'static str {
         KernelOp::ResolveByWalletCode { .. } => "ResolveByWalletCode",
         KernelOp::AttestAsSeller { .. } => "AttestAsSeller",
         KernelOp::AttestAsBuyer { .. } => "AttestAsBuyer",
+        KernelOp::AttestByWalletCode { .. } => "AttestByWalletCode",
     }
 }
 
@@ -470,27 +471,31 @@ async fn submit_op(
             }
         }
     }
-    // A wallet-code resolve is asked of the buyer's code at the door, as the
-    // verifier will ask it at resolution: bytes the code refuses would revert
-    // a whole batch. Code that could not be asked is unverified, and the
-    // resolve is refused, with a retry.
-    if let (Some(gate), KernelOp::ResolveByWalletCode { .. }) = (&state.funding, &req.operation) {
-        match submitter::check_wallet_code_resolve(gate, &req.operation).await {
+    // A wallet-code resolve or attestation is asked of its party's code at
+    // the door (the buyer's for a resolve, the role's party's for an
+    // attestation), as the verifier will ask it at resolution: bytes the code
+    // refuses would revert a whole batch (a resolve) or be skipped on chain
+    // for the bytes they cost (an attestation). Code that could not be asked
+    // is unverified, and the operation is refused, with a retry.
+    if let (Some(gate), KernelOp::ResolveByWalletCode { .. } | KernelOp::AttestByWalletCode { .. }) =
+        (&state.funding, &req.operation)
+    {
+        match submitter::check_wallet_code(gate, &req.operation).await {
             Ok(Ok(())) => {}
             Ok(Err(refused)) => {
-                warn!(route = "/submit", kind, %refused, "wallet-code resolve refused");
+                warn!(route = "/submit", kind, %refused, "wallet-code operation refused");
                 return (
                     StatusCode::BAD_REQUEST,
                     Json(ErrorResponse {
-                        error: format!("wallet-code resolve refused: {refused}"),
+                        error: format!("wallet-code operation refused: {refused}"),
                     }),
                 )
                     .into_response();
             }
             Err(read) => {
                 let read = without_urls(&read);
-                warn!(route = "/submit", kind, %read, "the buyer's code could not be asked at the door; refused");
-                return unverifiable(format!("the buyer's code could not be asked; retry: {read}"));
+                warn!(route = "/submit", kind, %read, "the party's code could not be asked at the door; refused");
+                return unverifiable(format!("the party's code could not be asked; retry: {read}"));
             }
         }
     }

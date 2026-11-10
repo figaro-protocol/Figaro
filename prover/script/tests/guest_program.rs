@@ -25,10 +25,15 @@ use figaro_prove_test::{
 use sp1_sdk::{Prover, ProverClient, SP1Stdin};
 
 async fn execute_guest(input: &figaro_kernel::types::BatchInput) -> sp1_sdk::SP1PublicValues {
+    execute_guest_input(&figaro_kernel::kernel::guest_input(input).expect("the batch's witness")).await
+}
+
+/// Run the guest on a given input — one a dishonest prover may have altered.
+async fn execute_guest_input(guest: &figaro_kernel::types::GuestInput) -> sp1_sdk::SP1PublicValues {
     let elf = sp1_sdk::include_elf!("figaro-prover");
     let client = ProverClient::builder().mock().build().await;
     let mut stdin = SP1Stdin::new();
-    stdin.write(input);
+    stdin.write(guest);
     let (public_values, _report) = client
         .execute(elf, stdin)
         .await
@@ -90,7 +95,7 @@ async fn guest_output_matches_host_apply_batch_exactly() {
 
 #[tokio::test]
 async fn guest_program_rejects_corrupt_buyer_signature_on_commit() {
-    // The guest's `apply_batch(&input).expect("invalid batch")` panics
+    // The guest's `apply_guest(&input).expect("invalid batch")` panics
     // when the mirror rejects an op (here: ECDSA recovery on a zeroed
     // `r`). SP1's mock executor catches the guest panic — `execute()`
     // returns Ok with the report from before the panic, but
@@ -98,7 +103,9 @@ async fn guest_program_rejects_corrupt_buyer_signature_on_commit() {
     // `commit()` call). A corrupt batch therefore surfaces as empty
     // public-values bytes; this assertion is the host-side regression
     // gate at the guest layer.
-    let mut input = build_canonical_batch_input();
+    // The witness is built from the valid batch; the guest's input is then
+    // corrupted, as a dishonest prover would hand it over.
+    let mut input = figaro_kernel::kernel::guest_input(&build_canonical_batch_input()).expect("the canonical batch's witness");
     if let KernelOp::Commit { buyer_sig, .. } = &mut input.operations[0] {
         buyer_sig.r = B256::ZERO;
     } else {
@@ -124,7 +131,7 @@ async fn guest_program_rejects_substituted_witness_spec() {
     // Gate S inside the VM: swapping the witness spec for a different
     // clause's spec (a permissive-spec substitution) must kill the batch —
     // the spec's bytes no longer hash to the op's clause key.
-    let mut input = build_canonical_batch_input();
+    let mut input = figaro_kernel::kernel::guest_input(&build_canonical_batch_input()).expect("the canonical batch's witness");
     let wrong_spec = load_spec_json("figaro-handoff");
     match &mut input.operations[1] {
         KernelOp::AttestAsSeller { proof: AttestationWitness::Plaintext(proof), .. } => proof.spec_json = wrong_spec,
@@ -245,7 +252,6 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
             },
         ],
         usage_period: 0,
-        provenance_leaf: provenance_key,
     }
 }
 
@@ -269,7 +275,11 @@ async fn guest_credits_an_agreement_and_an_assembly_as_the_host_does() {
 async fn guest_refuses_an_assembly_claim_whose_membership_proof_is_under_another_root() {
     let input = provenance_batch(false);
     assert!(apply_batch(&input).is_err(), "the host refuses it");
-    let pv_bytes = execute_guest(&input).await;
+    // The witness of the valid twin batch (the same entries), carrying the
+    // claim whose membership proof is under another root.
+    let mut guest = figaro_kernel::kernel::guest_input(&provenance_batch(true)).expect("the twin batch's witness");
+    guest.usage_claims = input.usage_claims;
+    let pv_bytes = execute_guest_input(&guest).await;
     assert!(
         pv_bytes.as_slice().is_empty(),
         "a failed membership proof aborts the guest before any commitment"

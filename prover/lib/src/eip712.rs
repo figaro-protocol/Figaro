@@ -82,7 +82,10 @@ pub fn resolve_struct_hash(process_id: &B256, cumulative_value: &U256) -> B256 {
 // ── Attestation authorization ─────────────────────────────────────
 //
 // Batched equivalent of msg.sender checks in AttestationCoordinator.
-// The attester signs an EIP-712 typed message proving their identity.
+// The attester proves its identity over an EIP-712 typed message in one of
+// two forms: its ECDSA signature, which the guest recovers, or bytes its own
+// account code validates for the same digest (ERC-1271), which
+// FigaroBatchVerifier asks that code about (the stream's `0x05` entry).
 // Replay protection: attestations are idempotent events, not state
 // transitions, so replaying is harmless (same event re-emitted).
 

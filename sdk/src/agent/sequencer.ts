@@ -113,6 +113,20 @@ export type SequencerOp =
         content_ref: Hex;
         buyer_sig: SequencerSignature;
         proof: SequencerAttestationWitness;
+    }
+    | {
+        type: "AttestByWalletCode";
+        /** The attesting party: the target's seller or its buyer. */
+        role: "Seller" | "Buyer";
+        target: SequencerCommitment;
+        clause_id: Hex;
+        stage: number;
+        content_ref: Hex;
+        /** Bytes the party's own account code validates for the role's
+         *  `AttestSeller` / `AttestBuyer` digest under the verifier's domain
+         *  (ERC-1271). */
+        authorization: Hex;
+        proof: SequencerAttestationWitness;
     };
 
 /** Commitment in the sequencer's wire format (snake_case, string-encoded bigints). */
@@ -356,7 +370,8 @@ export class SequencerClient {
      * `hashResolveProcess(processId, cumulativeValue, { chainId, core:
      * verifier })` through ERC-1271's `isValidSignature` — the form a wallet
      * whose key is lost resolves with, through code it installed while it held
-     * the key. The wallet's code produces the bytes, never `signTypedData`. The
+     * the key. The wallet's code validates the bytes; the wallet's signer or
+     * its session key produces them, never this SDK's `signTypedData`. The
      * proof checks the process, the value and the order list and publishes the
      * bytes; `FigaroBatchVerifier` asks the buyer's code at resolution and
      * reverts the batch on any answer but the magic value. The relay asks the
@@ -429,6 +444,47 @@ export class SequencerClient {
             stage: args.stage,
             content_ref: args.contentRef,
             buyer_sig: toSequencerSig(args.buyerSig),
+            proof: attestationWitness(args),
+        });
+    }
+
+    /**
+     * Submit an attestation authorized by the attesting party's wallet code:
+     * `authorization` is bytes the party's own account code validates for the
+     * role's digest (`AttestSeller(orderHash, clauseId, stage, contentRef)` for
+     * the seller, `AttestBuyer(processId, orderHash, clauseId, stage,
+     * contentRef)` for the buyer, under the verifier's domain) through
+     * ERC-1271's `isValidSignature` — the form a wallet whose key is lost
+     * attests with, through code it installed while it held the key. The
+     * wallet's code validates the bytes; the wallet's signer or its session
+     * key produces them, never this SDK's `signTypedData`. The proof runs
+     * every check of the signed form but the signer's recovery and publishes
+     * the bytes; `FigaroBatchVerifier` asks the party's code and emits the
+     * `Attestation` only on the magic value, and skips the attestation on any
+     * other answer; a call that ran out of gas reverts the batch instead, so no
+     * gas limit drops a validated attestation. The relay asks the same code at its door and refuses bytes
+     * the code does not validate. The witness forms are those of
+     * {@link SequencerClient.submitAttestAsSeller}.
+     */
+    async submitAttestByWalletCode(args: {
+        role: "Seller" | "Buyer";
+        target: Commitment;
+        clauseId: Hex;
+        stage: number;
+        contentRef: Hex;
+        authorization: Hex;
+        clauseDataHash: Hex;
+        inclusionProof: Hex[];
+        checkContentInProof?: Omit<SequencerContentProof, "inclusion_proof">;
+    }): Promise<SubmitResult> {
+        return this.submit({
+            type: "AttestByWalletCode",
+            role: args.role,
+            target: toSequencerCommitment(args.target),
+            clause_id: args.clauseId,
+            stage: args.stage,
+            content_ref: args.contentRef,
+            authorization: args.authorization,
             proof: attestationWitness(args),
         });
     }
