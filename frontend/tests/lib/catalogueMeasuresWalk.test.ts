@@ -7,7 +7,7 @@
  * cargo spec, read from `clauses/`; no rule names it.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
+import { checkoutMeasureRefusals, planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
 import { hydrateAuthored, keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 
@@ -25,6 +25,16 @@ const shipment = (): BoundAssembly => ({
     name: "Shipment",
     hydratedAssembly: hydrateAuthored({ agreements: [{ clauses: { "figaro-cargo": {} } }] }),
     coSellerBindings: [],
+});
+
+const inputs = (catalogItem: Record<string, unknown> | undefined) => ({
+    leadSellerAddress: LEAD,
+    currency: TOKEN,
+    payment: 10n,
+    lineItems: [{ itemId: "crate", name: "Crate", quantity: 2, unitPrice: "5", ...(catalogItem ? { catalogItem } : {}) }],
+    assembly: shipment(),
+    sellerCatalogs: [{ address: LEAD, name: "Shipper", items: [] }] as never,
+    tokenDecimals: 0,
 });
 
 const plan = (catalogItem: Record<string, unknown> | undefined) => planAssemblyOrders(
@@ -57,5 +67,12 @@ describe("the checkout walk over a clause's declared catalog measures", () => {
             /needs "[^"]+", which it reads from each catalog item's "massGrams"/,
         );
         await expect(plan(undefined)).rejects.toThrow(/reads from each catalog item's/);
+    });
+
+    it("the page reads the same refusal before the click: the walk's own sentence, and none when supplied", () => {
+        expect(checkoutMeasureRefusals(inputs({ volumeMl: 1000 }))).toEqual([
+            expect.stringMatching(/needs "[^"]+", which it reads from each catalog item's "massGrams"/),
+        ]);
+        expect(checkoutMeasureRefusals(inputs({ massGrams: 500, volumeMl: 1000 }))).toEqual([]);
     });
 });

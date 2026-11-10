@@ -32,6 +32,7 @@ import {
     fillDerivedClauses,
     generateSalt,
     missingCatalogueMeasures,
+    planAssemblyOrders as planAssemblyNodes,
     planSubOrderSellers,
     reconstructOrdersFromAssembly,
     resolveSubOrderPricing,
@@ -105,17 +106,57 @@ function changedClauses(filled: ClauseFields, original: ClauseFields): ClauseFie
  *  composed clause reads from them (`block.checkout.catalogueMeasures`): the
  *  measure stays missing, nothing invents it, and the buyer reads which
  *  measure is missing — the same refusal as a rate quantity that does not
- *  resolve, before any signature. Named from the clause's own spec. */
-function refuseMissingMeasures(filled: ClauseFields, specs: SpecSource): void {
+ *  resolve, before any signature. Named from the clause's own spec. With a
+ *  `report` sink (the page's read before the click, `checkoutMeasureRefusals`)
+ *  the sentence goes to the sink and the walk resolves on. */
+function refuseMissingMeasures(filled: ClauseFields, specs: SpecSource, report?: (refusal: string) => void): void {
     const [missing] = missingCatalogueMeasures(filled, specs);
     if (!missing) return;
     const spec = specs.get(missing.clauseKey);
     const field = spec?.fields.find((f) => f.name === missing.field);
-    throw new Error(
-        `This order's "${spec?.title ?? missing.clauseKey}" term needs "${field?.label ?? missing.field}", `
+    const refusal = `This order's "${spec?.title ?? missing.clauseKey}" term needs "${field?.label ?? missing.field}", `
         + `which it reads from each catalog item's "${missing.from}" — and the items on this order don't supply it. `
-        + `The seller's catalog must state it before this order can be placed.`,
-    );
+        + `The seller's catalog must state it before this order can be placed.`;
+    if (report) report(refusal);
+    else throw new Error(refusal);
+}
+
+/**
+ * The walk's missing-measure refusals, read before the click: the SAME
+ * per-node resolution as `executeAssemblyCheckout` (`checkoutNodes`), run
+ * over the assembly's planned orders with no signature, collecting each
+ * order's sentence instead of throwing. A node the walk cannot resolve for
+ * another reason contributes nothing here: its refusal is the breakdown
+ * row's (`deriveKitBreakdown`) or the co-seller pick the button already
+ * waits for. Empty when every required measure is supplied.
+ */
+export function checkoutMeasureRefusals(params: Omit<AssemblyCheckoutParams, "buyer">): string[] {
+    const hydrated = params.assembly.hydratedAssembly;
+    const assembly = hydrated.assembly;
+    const rootId =
+        assembly.agreements.find((o) => assemblyFollows(o).length === 0)?.id ??
+        assembly.agreements[0]?.id;
+    if (rootId === undefined) return [];
+    let planned: PlannedAssemblyOrder[];
+    let boundSellerByNode: Map<string, { seller: `0x${string}` | null; itemId: string | null }>;
+    try {
+        planned = planAssemblyNodes(hydrated);
+        boundSellerByNode = new Map(
+            planSubOrderSellers(params.assembly).map(({ node, seller, itemId }) => [node.nodeId, { seller, itemId }]),
+        );
+    } catch {
+        // An assembly the walk cannot plan is refused by the walk itself.
+        return [];
+    }
+    const refusals: string[] = [];
+    const nodes = checkoutNodes(params, {
+        rootId, boundSellerByNode, compositionByNode: new Map(), specs: specSource(),
+        onMissingMeasure: (refusal) => refusals.push(refusal),
+    });
+    for (const order of planned) {
+        try { nodes(order); } catch { /* another refusal, shown where it is owned */ }
+    }
+    return refusals;
 }
 
 /** The buyer-side checkout inputs — ONE shape shared by the effectful walk
@@ -316,7 +357,7 @@ export async function executeAssemblyCheckout(
  * realized order are the same struct by construction.
  */
 function checkoutNodes(
-    params: AssemblyCheckoutParams,
+    params: Omit<AssemblyCheckoutParams, "buyer">,
     ctx: {
         rootId: string;
         /** Each sub-order's bound co-seller and the item the binding names
@@ -324,9 +365,12 @@ function checkoutNodes(
         boundSellerByNode: Map<string, { seller: `0x${string}` | null; itemId: string | null }>;
         compositionByNode: Map<string, { interface: string; fieldValues: Record<string, unknown> }>;
         specs: SpecSource;
+        /** Collects a missing-measure refusal instead of throwing it
+         *  (`checkoutMeasureRefusals`); absent on every signing walk. */
+        onMissingMeasure?: (refusal: string) => void;
     },
 ): (planned: PlannedAssemblyOrder) => ReconstructNodeSpec {
-    const { rootId, boundSellerByNode, compositionByNode, specs } = ctx;
+    const { rootId, boundSellerByNode, compositionByNode, specs, onMissingMeasure } = ctx;
     const { leadSellerAddress, currency, payment, lineItems, sellerCatalogs, tokenDecimals, subOrderSelections } = params;
     const hydrated = params.assembly.hydratedAssembly;
     return (planned) => {
@@ -350,7 +394,7 @@ function checkoutNodes(
                 ),
                 payment, currency, specs, lineItems,
             );
-            refuseMissingMeasures(filled, specs);
+            refuseMissingMeasures(filled, specs, onMissingMeasure);
             return {
                 seller: leadSellerAddress,
                 payment,
@@ -393,6 +437,14 @@ function checkoutNodes(
                 `"${pricing.item?.name}" prices by rate but its quantity can't be resolved on this order — the quantity source ("${pricing.item?.rateQuantitySource}") found no value.`,
             );
         }
+        // No item to price the order from: the co-seller's catalog was not
+        // read, or it offers no available item. Refuse here, never commit a
+        // payment of zero for the sign gate to catch.
+        if (pricing?.issue === "no-item") {
+            throw new Error(
+                `The co-seller ${subSeller} offers no available catalog item to price this order, or its catalog could not be read.`,
+            );
+        }
         const translatedUnit = pricing?.item && !pricing.issue ? params.subOrderUnitPrices?.[planned.nodeId] : undefined;
         const unitPrice = translatedUnit ?? pricing?.unitPrice ?? 0n;
         const subPayment = selection
@@ -433,7 +485,7 @@ function checkoutNodes(
             ),
             subPayment, currency, specs, subLineItems,
         );
-        refuseMissingMeasures(filled, specs);
+        refuseMissingMeasures(filled, specs, onMissingMeasure);
         return {
             seller: subSeller,
             payment: subPayment,

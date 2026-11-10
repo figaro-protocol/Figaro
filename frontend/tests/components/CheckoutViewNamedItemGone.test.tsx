@@ -84,7 +84,7 @@ import { CheckoutView } from "@/app/(app)/s/checkout/_components/CheckoutView";
 describe("CheckoutView — the item a seller named for a co-seller is no longer offered", () => {
     it("the courier's row says the named item is no longer offered and shows no payment", async () => {
         render(<CheckoutView sellerAddress={SELLER} />);
-        const notice = await screen.findByTestId("named-item-not-offered-agreement-1");
+        const notice = await screen.findByTestId("kit-row-refusal-agreement-1");
         expect(notice.textContent).toBe(
             "The seller named an item from Courier for this order, and Courier no longer offers it. This order cannot be placed.",
         );

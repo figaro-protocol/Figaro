@@ -31,7 +31,7 @@ import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import { assemblyHashOf, planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses } from "@figaro-protocol/sdk";
-import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
+import { checkoutMeasureRefusals, executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import {
     deriveAgreementGroups,
     deriveKitBreakdown,
@@ -580,7 +580,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     // — the star shape): 2× payment locked per order, payment to that
     // order's seller + an equal refundable bond. Aggregate over the WHOLE
     // plan — a root-only figure under-reports every multi-order checkout.
-    // Null while any amount is unknown: nothing is shown or locked on it.
+    // Null while any amount is unknown or any breakdown row is refused:
+    // nothing is shown or locked on it.
     const planTotal: bigint | null = kitBreakdown ? kitBreakdown.total : cartTotal;
     const lockedTotal: bigint | null = planTotal === null
         ? null
@@ -631,9 +632,10 @@ export function CheckoutView({ sellerAddress }: Props) {
     // ONE walk-params construction — the race's dry draft walks and the final
     // commit walk MUST build from identical inputs (the walk's digest
     // assertion refuses a drift), so both read this single builder. Null until
-    // the prerequisites the checkout guards on are present.
-    const buildWalkParams = (): AssemblyCheckoutParams | null => {
-        if (!buyer || !pickedAssembly || !currency || tokenDecimals === undefined) return null;
+    // the prerequisites the checkout guards on are present. The inputs carry
+    // no buyer: the page reads the walk's refusals before any wallet connects.
+    const walkInputs = (): Omit<AssemblyCheckoutParams, "buyer"> | null => {
+        if (!pickedAssembly || !currency || tokenDecimals === undefined || cartTotal === null) return null;
         const manualSelections = buyerChoosesCoSeller && sellerSelection
             ? Object.fromEntries(buyerPickSubOrders.map(({ node }) => [
                 node.nodeId,
@@ -651,10 +653,9 @@ export function CheckoutView({ sellerAddress }: Props) {
             ...(raceOutcome ? { [raceOutcome.nodeId]: raceOutcome.selection } : {}),
         };
         return {
-            buyer,
             leadSellerAddress: memberCatalog.address as `0x${string}`,
             currency,
-            payment: cartTotal!,
+            payment: cartTotal,
             lineItems: cartItems.map((item) => ({
                 itemId: item.catalogItemId,
                 name: item.name,
@@ -683,6 +684,19 @@ export function CheckoutView({ sellerAddress }: Props) {
             clauseFills: expandedClauseFills,
         };
     };
+    const buildWalkParams = (): AssemblyCheckoutParams | null => {
+        const inputs = walkInputs();
+        return buyer && inputs ? { ...inputs, buyer } : null;
+    };
+    // Every refusal the checkout walk would make, read before the click: a
+    // breakdown row that cannot be priced (its own sentence) and a required
+    // catalog measure the order's items do not supply (the walk's sentence,
+    // from the walk's own resolution). Any one holds the place-order button.
+    const walkInputsNow = walkInputs();
+    const checkoutRefusals = [
+        ...(kitBreakdown?.refusals ?? []),
+        ...(walkInputsNow ? checkoutMeasureRefusals(walkInputsNow) : []),
+    ];
 
     // Start the race for the first unbound sub-order — the raced position.
     // Racing several positions is sequential: each winner enters the
@@ -953,26 +967,27 @@ export function CheckoutView({ sellerAddress }: Props) {
                             </div>
                         )}
 
-                        {planTotal !== null && lockedTotal !== null && <div className="border-t border-default pt-3 space-y-1.5 text-sm">
+                        {/* The rows show while any is refused (each says why);
+                            the total and the locked figure do not. */}
+                        {(kitBreakdown || (planTotal !== null && lockedTotal !== null)) && <div className="border-t border-default pt-3 space-y-1.5 text-sm">
                             {kitBreakdown ? (
                                 <div className="space-y-1" data-testid="cart-contributor-breakdown">
                                     {kitBreakdown.rows.map((row, i) => (
                                         <div key={i}>
                                             <div className="flex justify-between">
                                                 <span className="text-ink-body">{row.name}</span>
-                                                {/* An order whose named item is gone has no
-                                                    payment: the walk refuses it, so no figure
-                                                    (a zero) stands for it. */}
-                                                {row.pricing?.issue !== "named-item-not-offered" && (
+                                                {/* A refused order has no payment: the walk
+                                                    refuses it, so no figure (a zero) stands
+                                                    for it. */}
+                                                {!row.refusal && (
                                                     <span className="text-ink-primary tabular-nums" data-testid={`kit-row-payment-${row.nodeId ?? "lead"}`}>
                                                         {tokenFigure(row.payment, tokenDecimals)}
                                                     </span>
                                                 )}
                                             </div>
-                                            {row.pricing?.issue === "named-item-not-offered" && (
-                                                <p className="text-xs text-error-fg" data-testid={`named-item-not-offered-${row.nodeId}`}>
-                                                    The seller named an item from {row.name} for this order, and {row.name} no
-                                                    longer offers it. This order cannot be placed.
+                                            {row.refusal && (
+                                                <p className="text-xs text-error-fg" data-testid={`kit-row-refusal-${row.nodeId}`}>
+                                                    {row.refusal}
                                                 </p>
                                             )}
                                             {/* Rate derivation — the P&L shows HOW the figure was
@@ -1014,23 +1029,18 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                     />
                                                 </label>
                                             )}
-                                            {row.pricing?.issue === "unresolvable-quantity" &&
-                                                row.pricing.item?.rateQuantitySource !== "checkout-quantity" && (
-                                                <p className="text-xs text-error-fg" data-testid={`rate-unresolvable-${row.nodeId}`}>
-                                                    Priced by rate ({row.pricing.item?.rateUnit ?? "unit"}), but this order
-                                                    carries no value its quantity source can read.
-                                                </p>
-                                            )}
                                         </div>
                                     ))}
-                                    <div className="flex justify-between border-t border-default pt-1.5 font-medium">
-                                        <span className="text-ink-body">Total to all sellers</span>
-                                        <span className="text-ink-primary tabular-nums" data-testid="cart-kit-total">
-                                            {tokenFigure(kitBreakdown.total, tokenDecimals)}
-                                        </span>
-                                    </div>
+                                    {kitBreakdown.total !== null && (
+                                        <div className="flex justify-between border-t border-default pt-1.5 font-medium">
+                                            <span className="text-ink-body">Total to all sellers</span>
+                                            <span className="text-ink-primary tabular-nums" data-testid="cart-kit-total">
+                                                {tokenFigure(kitBreakdown.total, tokenDecimals)}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
-                            ) : (
+                            ) : planTotal !== null && (
                                 <div className="flex justify-between">
                                     <span className="text-ink-body">Payment to seller</span>
                                     <span className="text-ink-primary tabular-nums">
@@ -1046,19 +1056,21 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 words (the payment TRANSFERS, the bond is
                                 REFUNDED). The total keeps its own testid as a
                                 bare number — specs read it. */}
-                            <div className="flex justify-between border-t border-default pt-1.5 font-semibold">
-                                <span className="text-ink-primary">Locked at commit</span>
-                                <span className="text-ink-primary tabular-nums" data-testid="checkout-locked-total">
-                                    {tokenFigure(lockedTotal, tokenDecimals)}
-                                </span>
-                            </div>
-                            <p className="text-xs text-ink-body leading-relaxed" data-testid="checkout-bond-arithmetic">
-                                {tokenFigure(lockedTotal, tokenDecimals)}{tokenSymbol ? ` ${tokenSymbol}` : ""} = twice the
-                                {kitBreakdown ? " total" : " payment"}: {tokenFigure(planTotal, tokenDecimals)} transfers to
-                                {kitBreakdown ? " the sellers" : " the seller"} when you resolve, and{" "}
-                                {tokenFigure(planTotal, tokenDecimals)} is your bond, refunded to you in the same
-                                transaction.
-                            </p>
+                            {planTotal !== null && lockedTotal !== null && <>
+                                <div className="flex justify-between border-t border-default pt-1.5 font-semibold">
+                                    <span className="text-ink-primary">Locked at commit</span>
+                                    <span className="text-ink-primary tabular-nums" data-testid="checkout-locked-total">
+                                        {tokenFigure(lockedTotal, tokenDecimals)}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-ink-body leading-relaxed" data-testid="checkout-bond-arithmetic">
+                                    {tokenFigure(lockedTotal, tokenDecimals)}{tokenSymbol ? ` ${tokenSymbol}` : ""} = twice the
+                                    {kitBreakdown ? " total" : " payment"}: {tokenFigure(planTotal, tokenDecimals)} transfers to
+                                    {kitBreakdown ? " the sellers" : " the seller"} when you resolve, and{" "}
+                                    {tokenFigure(planTotal, tokenDecimals)} is your bond, refunded to you in the same
+                                    transaction.
+                                </p>
+                            </>}
                             <p className="text-[11px] text-ink-muted pt-1.5 leading-relaxed" data-testid="checkout-bond-rationale">
                                 Both you and the seller lock a bond against this trade, so performing is the
                                 seller&apos;s best move as long as you resolve once it has performed and not
@@ -1290,6 +1302,15 @@ export function CheckoutView({ sellerAddress }: Props) {
                             </p>
                         )}
 
+                        {/* Why the order cannot be placed, beside the button
+                            it holds: each refusal the checkout walk would
+                            make, in the sentence the buyer already reads. */}
+                        {checkoutRefusals.length > 0 && (
+                            <p className="text-xs text-error-fg" data-testid="checkout-refusals">
+                                {checkoutRefusals.join(" ")}
+                            </p>
+                        )}
+
                         <Button
                             onClick={handlePlaceOrder}
                             disabled={
@@ -1298,6 +1319,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 || cartItems.length === 0
                                 || !orderReady
                                 || !termsReady
+                                || checkoutRefusals.length > 0
                                 || fundingBlocksTheAct(buyerFunding)
                                 || marginHeld
                             }
@@ -1318,6 +1340,8 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             ? "Fix the slippage margin first"
                                         : !currency
                                             ? "Seller hasn't set a denomination"
+                                            : checkoutRefusals.length > 0
+                                                ? "This order cannot be placed"
                                             : !orderReady
                                                 ? "Select an option to order"
                                                 : !clauseSpecsLoaded

@@ -88,6 +88,29 @@ describe("the buyer's breakdown row for a co-seller's named item", () => {
         expect(row.pricing?.item).toBeNull();
     });
 
+    it("a refused row: the breakdown names the refusal and sums no total", () => {
+        const kit = breakdown(bound({ [COURIER]: "ride-long" }), [ITEMS[0]!])!;
+        expect(kit.total).toBeNull();
+        expect(kit.refusals).toEqual([
+            "The seller named an item from Courier for this order, and Courier no longer offers it. This order cannot be placed.",
+        ]);
+    });
+
+    it("no available item: the row carries its own refusal and the breakdown sums no total", () => {
+        const kit = breakdown(bound(), [])!;
+        expect(kit.rows[1]!.pricing?.issue).toBe("no-item");
+        expect(kit.total).toBeNull();
+        expect(kit.refusals).toEqual([
+            "Courier offers no available item for this order, or its catalog could not be read. This order cannot be placed.",
+        ]);
+    });
+
+    it("every row priced: the total sums every row and nothing is refused", () => {
+        const kit = breakdown(bound(), ITEMS)!;
+        expect(kit.total).toBe(12n);
+        expect(kit.refusals).toEqual([]);
+    });
+
     it("unnamed: the row prices the co-seller's first available item", () => {
         const row = breakdown(bound(), ITEMS)!.rows[1]!;
         expect(row.pricing?.item?.id).toBe("ride-short");
@@ -108,6 +131,12 @@ describe("the checkout walk for a co-seller's named item", () => {
     it("named and no longer offered: the walk refuses, naming the item, and commits nothing", async () => {
         await expect(plan(bound({ [COURIER]: "ride-long" }), [ITEMS[0]!])).rejects.toThrow(
             `The seller named the item "ride-long" from ${COURIER} for this order, and that catalog no longer offers it.`,
+        );
+    });
+
+    it("no available item: the walk refuses, naming the co-seller, and commits nothing", async () => {
+        await expect(plan(bound(), [])).rejects.toThrow(
+            `The co-seller ${COURIER} offers no available catalog item to price this order, or its catalog could not be read.`,
         );
     });
 
