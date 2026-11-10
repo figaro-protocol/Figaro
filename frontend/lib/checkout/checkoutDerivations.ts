@@ -59,8 +59,37 @@ function clauseValueSummary(fields: unknown): string {
 }
 
 export interface KitBreakdown {
-    rows: Array<{ name: string; payment: bigint; nodeId?: string; pricing?: SubOrderPricing }>;
-    total: bigint;
+    /** `refusal`: the sentence the buyer reads for a row the checkout walk
+     *  refuses (its pricing carries an `issue`); such a row has no payment. */
+    rows: Array<{ name: string; payment: bigint; nodeId?: string; pricing?: SubOrderPricing; refusal?: string }>;
+    /** The sum of every row, or null while any row is refused: a sum would
+     *  count the refused row as zero. */
+    total: bigint | null;
+    /** Every row's refusal, in row order; empty when every row is priced. */
+    refusals: string[];
+}
+
+/**
+ * The sentence the buyer reads for a sub-order whose pricing carries an
+ * `issue` (`resolveSubOrderPricing`): the order cannot be placed, and the
+ * checkout walk refuses it. Null for a priced row. `name` is the co-seller
+ * as the breakdown names it.
+ */
+function pricingRefusal(name: string, pricing: SubOrderPricing): string | null {
+    const unit = pricing.item?.rateUnit ?? "unit";
+    switch (pricing.issue) {
+        case undefined:
+            return null;
+        case "named-item-not-offered":
+            return `The seller named an item from ${name} for this order, and ${name} no longer offers it. This order cannot be placed.`;
+        case "no-item":
+            return `${name} offers no available item for this order, or its catalog could not be read. This order cannot be placed.`;
+        case "unresolvable-quantity":
+            // The buyer enters this quantity: the input is beside the row.
+            return pricing.item?.rateQuantitySource === "checkout-quantity"
+                ? `Enter the number of ${unit}s ${name} bills for this order.`
+                : `Priced by rate (${unit}), but this order carries no value its quantity source can read.`;
+    }
 }
 
 /**
@@ -99,7 +128,7 @@ export function deriveKitBreakdown(args: {
     } catch {
         return null;
     }
-    const rows = [
+    const rows: KitBreakdown["rows"] = [
         { name: nameOf(args.leadAddress), payment: args.cartTotal },
         ...plan.map(({ node, seller, itemId }) => {
             if (seller) {
@@ -122,7 +151,9 @@ export function deriveKitBreakdown(args: {
                 const pricing = unitPrice === undefined
                     ? listed
                     : { ...listed, unitPrice, payment: unitPrice * BigInt(listed.billedQuantity) };
-                return { name: nameOf(seller), payment: pricing.payment, nodeId: node.nodeId, pricing };
+                const name = nameOf(seller);
+                const refusal = pricingRefusal(name, pricing);
+                return { name, payment: pricing.payment, nodeId: node.nodeId, pricing, ...(refusal ? { refusal } : {}) };
             }
             // Unbound node: the buyer's checkout-time choice fills it — the
             // shown figure is the SAME selection the commit will use. A
@@ -137,7 +168,12 @@ export function deriveKitBreakdown(args: {
                 : { name: "(choose below)", payment: 0n };
         }),
     ];
-    return { rows, total: rows.reduce((s, r) => s + r.payment, 0n) };
+    const refusals = rows.flatMap((r) => (r.refusal ? [r.refusal] : []));
+    return {
+        rows,
+        total: refusals.length > 0 ? null : rows.reduce((s, r) => s + r.payment, 0n),
+        refusals,
+    };
 }
 
 export interface AgreementGroup {
