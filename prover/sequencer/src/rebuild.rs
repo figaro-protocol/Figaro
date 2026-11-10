@@ -78,7 +78,9 @@ pub async fn rebuild_from_chain(
             if log.topic0() == Some(&IFigaroBatchVerifier::BatchOperations::SIGNATURE_HASH) {
                 let ops = IFigaroBatchVerifier::BatchOperations::decode_log(&log.inner)
                     .map_err(|e| format!("{tx}: a BatchOperations log does not decode: {e}"))?;
-                pending = Some((tx, ops.data));
+                if let Some((lone_tx, lone)) = pending.replace((tx, ops.data)) {
+                    return Err(unsettled(lone.batchId, lone_tx));
+                }
                 continue;
             }
             let settled = IFigaroBatchVerifier::BatchSettled::decode_log(&log.inner)
@@ -114,6 +116,11 @@ pub async fn rebuild_from_chain(
             root = reached;
             batches += 1;
         }
+        // The verifier logs the two in one transaction, so a query never
+        // ends between them.
+        if let Some((lone_tx, lone)) = pending {
+            return Err(unsettled(lone.batchId, lone_tx));
+        }
         from = to + 1;
     }
 
@@ -132,6 +139,12 @@ pub async fn rebuild_from_chain(
         root,
         batches,
     })
+}
+
+/// The refusal of a `BatchOperations` log with no `BatchSettled` after it in
+/// its transaction: the logs read are not the chain's.
+fn unsettled(batch_id: u64, tx: B256) -> String {
+    format!("batch {batch_id} in {tx} has no BatchSettled log after its BatchOperations")
 }
 
 #[cfg(test)]
@@ -278,6 +291,78 @@ mod tests {
             let double = verifier_double(6, logs, held).await;
             let err = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID).await.err().expect("refused");
             assert!(err.contains(refusal), "expected {refusal:?}: {err}");
+        }
+    }
+
+    // A reorg between the log read and the `stateRoot()` read: the logs show
+    // the batch, and the chain the root is read from no longer holds it (the
+    // verifier is back on the batch's previous root) or holds another batch
+    // in its place. The replay is never taken as the verifier's state.
+    #[tokio::test]
+    async fn a_reorg_between_the_log_read_and_the_root_read_is_refused() {
+        let (logs, prev, _) = landed_canonical_batch(5, B256::repeat_byte(0x7a));
+        for held in [prev, B256::repeat_byte(0x99)] {
+            let double = verifier_double(6, logs.clone(), held).await;
+            let err = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID).await.err().expect("refused");
+            assert!(err.contains("the verifier holds"), "{err}");
+            assert_eq!(double.calls_to("eth_call").len(), 1, "the root is read after the logs");
+        }
+    }
+
+    // A batch on each side of a chunk boundary: the canonical batch in the
+    // last block of the first query, a batch of nothing in the first block of
+    // the second, which is the head. Each is replayed exactly once.
+    #[tokio::test]
+    async fn the_batches_on_either_side_of_a_chunk_boundary_are_each_replayed_once() {
+        let (mut logs, _, reached) = landed_canonical_batch(LOG_CHUNK - 1, B256::repeat_byte(0x7a));
+        let tx = B256::repeat_byte(0x7c);
+        let nothing = IFigaroBatchVerifier::BatchOperations {
+            batchId: 2,
+            blockTimestamp: build_canonical_batch_input().block_timestamp,
+            usagePeriod: 0,
+            provenanceLeaf: figaro_kernel::kernel::PROVENANCE_LEAF_KEY,
+            operations: Vec::new().into(),
+        };
+        let settled = IFigaroBatchVerifier::BatchSettled {
+            batchId: 2,
+            prevStateRoot: reached,
+            newStateRoot: reached,
+            positionCount: alloy::primitives::U256::ZERO,
+        };
+        logs.push(Logged { block: LOG_CHUNK, tx, data: nothing.encode_log_data() });
+        logs.push(Logged { block: LOG_CHUNK, tx, data: settled.encode_log_data() });
+        let double = verifier_double(LOG_CHUNK, logs, reached).await;
+
+        let rebuilt = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID).await.expect("the replay lands");
+        assert_eq!((rebuilt.batches, rebuilt.root), (2, reached), "each batch replayed once");
+        let ranges: Vec<(String, String)> = double
+            .calls_to("eth_getLogs")
+            .iter()
+            .map(|p| (p[0]["fromBlock"].as_str().unwrap().to_string(), p[0]["toBlock"].as_str().unwrap().to_string()))
+            .collect();
+        assert_eq!(
+            ranges,
+            vec![
+                ("0x0".to_string(), format!("0x{:x}", LOG_CHUNK - 1)),
+                (format!("0x{LOG_CHUNK:x}"), format!("0x{LOG_CHUNK:x}")),
+            ],
+            "two queries meeting at the boundary, neither overlapping nor leaving a gap"
+        );
+    }
+
+    // A `BatchOperations` without its `BatchSettled` is refused naming the
+    // batch: alone at the end of a query, or followed by another batch's
+    // `BatchOperations`. The verifier logs the two in one transaction, so a
+    // lone one means the logs read are not the chain's.
+    #[tokio::test]
+    async fn a_batch_operations_without_its_batch_settled_is_refused_naming_the_batch() {
+        let (logs, _, reached) = landed_canonical_batch(5, B256::repeat_byte(0x7a));
+        let alone = vec![logs[0].clone()];
+        let followed = vec![logs[0].clone(), Logged { tx: B256::repeat_byte(0x7b), ..logs[0].clone() }, logs[1].clone()];
+        for logs in [alone, followed] {
+            let double = verifier_double(6, logs, reached).await;
+            let err = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID).await.err().expect("refused");
+            assert!(err.contains("batch 1") && err.contains("has no BatchSettled"), "{err}");
         }
     }
 

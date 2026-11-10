@@ -315,6 +315,246 @@ contract OperationStreamVectorsTest is Test {
         verifier.settleBatch(hex"", pv, positions, events, usage, other);
     }
 
+    // ── The stream walk over generated streams ─────────────────────────
+    //
+    // The vectors above are the guest's encoder's bytes; these streams are
+    // drawn from a fuzzed seed, in the format of `prover/lib/src/operation_stream.rs`:
+    // zero to six commits and resolves (`0x01`, `0x02`, `0x04`), then zero to
+    // three wallet-code attestations (`0x05`), then zero to four usage claims
+    // (`0x03`) of the three kinds, with proofs of zero to four words. Each one
+    // goes through `settleBatch`, so the verifier's walk reads it twice: at
+    // step 4 and at step 6.
+
+    /// @dev One draw from the seed: a word for each `(seed, tag, i)`.
+    function _draw(uint256 seed, bytes32 tag, uint256 i) internal pure returns (uint256) {
+        return uint256(keccak256(abi.encode(seed, tag, i)));
+    }
+
+    /// @dev A commitment from the draw `h`. Its payment and expected cumulative
+    ///      value stay below 2^128, so a resolve's listed payments sum without
+    ///      overflow.
+    function _drawCommitment(uint256 h, address buyer) internal pure returns (CommitmentTypes.Commitment memory c) {
+        c.processId = h % 4 == 0 ? bytes32(0) : keccak256(abi.encode(h, 0));
+        c.buyer = buyer;
+        c.seller = address(uint160(uint256(keccak256(abi.encode(h, 2)))));
+        c.currency = address(uint160(uint256(keccak256(abi.encode(h, 3)))));
+        c.payment = uint128(uint256(keccak256(abi.encode(h, 4))));
+        c.expectedCumulativeValue = uint128(uint256(keccak256(abi.encode(h, 5))));
+        c.checkoutHash = keccak256(abi.encode(h, 6));
+        c.salt = uint256(keccak256(abi.encode(h, 7)));
+        c.deadline = uint256(keccak256(abi.encode(h, 8)));
+    }
+
+    function _packCommitment(CommitmentTypes.Commitment memory c) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            c.processId,
+            c.buyer,
+            c.seller,
+            c.currency,
+            c.payment,
+            c.expectedCumulativeValue,
+            c.checkoutHash,
+            c.salt,
+            c.deadline
+        );
+    }
+
+    /// @dev A 65-byte signature `r ‖ s ‖ v` drawn from `(h, who)`; the walk
+    ///      reads none of it.
+    function _signature(uint256 h, bytes32 who) internal pure returns (bytes memory) {
+        return abi.encodePacked(keccak256(abi.encode(h, who, "r")), keccak256(abi.encode(h, who, "s")), uint8(h >> 40));
+    }
+
+    /// @dev `n` words from the draw `h`, count-prefixed.
+    function _packWords(uint256 h, uint256 n) internal pure returns (bytes memory w) {
+        w = abi.encodePacked(uint16(n));
+        for (uint256 i = 0; i < n; i++) {
+            w = bytes.concat(w, keccak256(abi.encode(h, "word", i)));
+        }
+    }
+
+    /// @dev Generate the stream of `seed` and the offset where each entry ends.
+    ///      With `expect` false, the code of every wallet-code resolve's buyer
+    ///      is etched to validate the entry's bytes; with `expect` true, the
+    ///      events the walk must emit at step 6 are expected, in stream order.
+    function _generate(uint256 seed, bool expect) internal returns (bytes memory s, uint256[] memory ends) {
+        uint256 ops = seed % 7;
+        uint256 atts = (seed >> 8) % 4;
+        uint256 claims = (seed >> 16) % 5;
+        ends = new uint256[](ops + atts + claims);
+        for (uint256 i = 0; i < ops; i++) {
+            uint256 h = _draw(seed, "op", i);
+            if (h % 3 == 0) {
+                CommitmentTypes.Commitment memory c = _drawCommitment(h, address(uint160(h >> 96)));
+                s = bytes.concat(s, hex"01", _packCommitment(c), _signature(h, "buyer"), _signature(h, "seller"));
+                if (expect) _expectCommitted(c);
+            } else {
+                s = bytes.concat(s, _resolveEntry(h, h % 3 == 2, expect));
+            }
+            ends[i] = s.length;
+        }
+        for (uint256 i = 0; i < atts; i++) {
+            uint256 h = _draw(seed, "attestation", i);
+            bytes memory authorization = _authorization(h);
+            // The party has no code, so the walk asks nothing and skips it.
+            s = bytes.concat(
+                s,
+                abi.encodePacked(hex"05", uint8(h % 2), _packCommitment(_drawCommitment(h, address(uint160(h >> 96))))),
+                abi.encodePacked(
+                    keccak256(abi.encode(h, "clause")), uint8(h >> 8), keccak256(abi.encode(h, "content"))
+                ),
+                abi.encodePacked(uint16(authorization.length), authorization)
+            );
+            ends[ops + i] = s.length;
+        }
+        for (uint256 i = 0; i < claims; i++) {
+            uint256 h = _draw(seed, "claim", i);
+            uint256 kind = h % 3;
+            bytes memory claim = abi.encodePacked(
+                hex"03",
+                _packCommitment(_drawCommitment(h, address(uint160(h >> 96)))),
+                keccak256(abi.encode(h, "key")),
+                uint8(kind),
+                keccak256(abi.encode(h, "first"))
+            );
+            if (kind == 1) {
+                claim = bytes.concat(claim, keccak256(abi.encode(h, "slot")), _packWords(h, (h >> 8) % 5));
+            }
+            s = bytes.concat(s, claim, _packWords(h >> 1, (h >> 16) % 5));
+            ends[ops + atts + i] = s.length;
+        }
+    }
+
+    /// @dev Authorization bytes of 0, 1, 17 or 300 bytes from the draw `h`.
+    function _authorization(uint256 h) internal pure returns (bytes memory a) {
+        uint256[4] memory lengths = [uint256(0), 1, 17, 300];
+        a = new bytes(lengths[(h >> 32) % 4]);
+        for (uint256 i = 0; i < a.length; i++) {
+            a[i] = bytes1(uint8(uint256(keccak256(abi.encode(h, "auth", i)))));
+        }
+    }
+
+    /// @dev A signed resolve (`0x02`, zero to three orders) or a wallet-code
+    ///      resolve (`0x04`, one to three orders) from the draw `h`, every
+    ///      listed order its process's buyer's.
+    function _resolveEntry(uint256 h, bool byWalletCode, bool expect) internal returns (bytes memory e) {
+        bytes32 processId = keccak256(abi.encode(h, "process"));
+        address buyer = address(uint160(uint256(keccak256(abi.encode(h, "buyer")))));
+        uint256 count = byWalletCode ? 1 + (h >> 8) % 3 : (h >> 8) % 4;
+        bytes memory listed;
+        uint256 sum;
+        for (uint256 j = 0; j < count; j++) {
+            CommitmentTypes.Commitment memory c = _drawCommitment(uint256(keccak256(abi.encode(h, "listed", j))), buyer);
+            listed = bytes.concat(listed, _packCommitment(c));
+            sum += c.payment;
+            if (expect) _expectResolved(processId, c);
+        }
+        if (expect) {
+            vm.expectEmit(true, true, true, true, address(verifier));
+            emit FigaroBatchVerifier.ProcessResolved(processId, count == 0 ? address(0) : buyer, count);
+        }
+        if (!byWalletCode) {
+            return bytes.concat(hex"02", processId, _signature(h, "resolve"), abi.encodePacked(uint16(count)), listed);
+        }
+        bytes memory authorization = _authorization(h);
+        if (!expect) {
+            vm.etch(buyer, type(MockERC1271Wallet).runtimeCode);
+            MockERC1271Wallet(buyer).approve(_resolveDigest(processId, sum), authorization);
+        }
+        return bytes.concat(
+            hex"04",
+            processId,
+            abi.encodePacked(uint16(authorization.length)),
+            authorization,
+            abi.encodePacked(uint16(count)),
+            listed
+        );
+    }
+
+    function _resolveDigest(bytes32 processId, uint256 cumulativeValue) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                _domainSeparator(),
+                keccak256(
+                    abi.encode(
+                        keccak256("ResolveProcess(bytes32 processId,uint256 cumulativeValue)"),
+                        processId,
+                        cumulativeValue
+                    )
+                )
+            )
+        );
+    }
+
+    /// Every generated stream lands, and the walk emits the Core's events for
+    /// each commit and resolve entry, in stream order, with the ids derived
+    /// under this verifier's domain.
+    function testFuzz_everyGeneratedStreamLandsAndEmitsItsEntries(uint256 seed) public {
+        (bytes memory stream,) = _generate(seed, false);
+        _generate(seed, true);
+        _settle(stream);
+        assertEq(verifier.stateRoot(), nextRoot, "the generated stream landed");
+    }
+
+    /// A generated stream cut inside any entry is refused by name
+    /// (`MalformedOperationStream`), the proof committing the cut bytes.
+    function testFuzz_aGeneratedStreamCutInsideAnEntryIsRefused(uint256 seed, uint256 cut) public {
+        (bytes memory stream, uint256[] memory ends) = _generate(seed, false);
+        vm.assume(stream.length > 1);
+        cut = bound(cut, 1, stream.length - 1);
+        for (uint256 i = 0; i < ends.length; i++) {
+            // A cut on an entry's end is a whole stream; one byte on is
+            // inside the next entry, which is at least two bytes long.
+            if (ends[i] == cut) cut += 1;
+        }
+        bytes memory prefix = new bytes(cut);
+        for (uint256 i = 0; i < cut; i++) {
+            prefix[i] = stream[i];
+        }
+        (bool ok, bytes memory reason) =
+            address(verifier).call(_settleCalldata(verifier.stateRoot(), keccak256("cut"), prefix));
+        assertFalse(ok, "a cut stream never lands");
+        assertEq(bytes4(reason), FigaroBatchVerifier.MalformedOperationStream.selector, "refused as malformed");
+    }
+
+    /// The generated streams meet every entry kind: a kind-2 (agreement)
+    /// claim and a claim carrying a non-empty inclusion proof among them.
+    function test_theGeneratedStreamsMeetEveryEntryKind() public {
+        uint256[8] memory seen;
+        for (uint256 seed = 0; seed < 64; seed++) {
+            (bytes memory s, uint256[] memory ends) = _generate(uint256(keccak256(abi.encode(seed))), false);
+            uint256 start = 0;
+            for (uint256 i = 0; i < ends.length; i++) {
+                uint8 tag = uint8(s[start]);
+                if (tag == 0x03) {
+                    uint8 kind = uint8(s[start + 1 + 252 + 32]);
+                    seen[4 + kind]++;
+                    // The inclusion proof's count is the entry's last words' prefix.
+                    uint256 proofAt = start + 1 + 252 + 32 + 1 + 32 + (kind == 1 ? 32 : 0);
+                    if (kind == 1) proofAt += 2 + 32 * (uint256(uint8(s[proofAt])) << 8 | uint8(s[proofAt + 1]));
+                    if ((uint256(uint8(s[proofAt])) << 8 | uint8(s[proofAt + 1])) > 0) seen[7]++;
+                } else {
+                    seen[tag == 0x01 ? 0 : tag == 0x02 ? 1 : tag == 0x04 ? 2 : 3]++;
+                }
+                start = ends[i];
+            }
+        }
+        string[8] memory names = [
+            "commit",
+            "signed resolve",
+            "wallet-code resolve",
+            "wallet-code attestation",
+            "clause claim",
+            "assembly claim",
+            "agreement claim (kind 2)",
+            "claim with an inclusion proof"
+        ];
+        for (uint256 i = 0; i < 8; i++) {
+            assertGt(seen[i], 0, names[i]);
+        }
+    }
+
     function test_theGenesisRootIsTheEmptyStatesAndNeverSupplied() public view {
         // The guest's state tree over no entries (`prover/lib/src/state_tree.rs`).
         assertEq(verifier.genesisRoot(), bytes32(0));

@@ -1,13 +1,13 @@
 //! The operation stream: the bytes a batch publishes in the transaction that
 //! lands it, so the state behind its root is rebuilt from the chain alone.
 //! Round trip, the hash the guest commits, the kind byte, and the decoder's
-//! refusals.
+//! refusals; the round trip also as a property over generated streams.
 
 use alloy_primitives::{keccak256, Address, B256, U256};
 use figaro_kernel::kernel::apply_batch;
 use figaro_kernel::operation_stream::{
     compute_operations_hash, decode_operation_stream, encode_operation_stream, encode_stream_parts,
-    COMMITMENT_BYTES, SIGNATURE_BYTES,
+    resolved_cumulative_value, wallet_code_attestations, COMMITMENT_BYTES, SIGNATURE_BYTES,
 };
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
@@ -284,4 +284,218 @@ fn the_decoder_refuses_a_0x05_out_of_place_or_with_an_unknown_role() {
     bad_role[1] = 0x02;
     assert!(decode_operation_stream(&bad_role).is_err(), "role byte 0x02");
     assert!(decode_operation_stream(&entry[..entry.len() - 1]).is_err(), "one byte short");
+}
+
+// ── The round trip as a property: decode(encode(x)) == x over generated streams ──
+
+/// A seeded generator (splitmix64), so a failing case is reproduced by its
+/// seed alone; the workspace carries no property-testing crate.
+struct Gen(u64);
+
+impl Gen {
+    fn u64(&mut self) -> u64 {
+        self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        let mut z = self.0;
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        z ^ (z >> 31)
+    }
+    fn below(&mut self, n: u64) -> u64 {
+        self.u64() % n
+    }
+    fn bytes(&mut self, n: usize) -> Vec<u8> {
+        (0..n).map(|_| self.u64() as u8).collect()
+    }
+    fn b256(&mut self) -> B256 {
+        B256::from_slice(&self.bytes(32))
+    }
+    fn address(&mut self) -> Address {
+        Address::from_slice(&self.bytes(20))
+    }
+    fn u256(&mut self) -> U256 {
+        U256::from_be_slice(&self.bytes(32))
+    }
+    fn words(&mut self, max: u64) -> Vec<B256> {
+        (0..self.below(max + 1)).map(|_| self.b256()).collect()
+    }
+    /// A commitment with every field drawn; `payment` below 2^128 when
+    /// `bounded`, so a resolve's listed payments sum without overflow.
+    fn commitment(&mut self, bounded: bool) -> Commitment {
+        let payment = if bounded { (U256::from(self.u64()) << 64) | U256::from(self.u64()) } else { self.u256() };
+        Commitment {
+            process_id: if self.below(4) == 0 { B256::ZERO } else { self.b256() },
+            buyer: self.address(),
+            seller: self.address(),
+            currency: self.address(),
+            payment,
+            expected_cumulative_value: self.u256(),
+            checkout_hash: self.b256(),
+            salt: self.u256(),
+            deadline: self.u256(),
+        }
+    }
+    fn signature(&mut self) -> Signature {
+        Signature { v: self.u64() as u8, r: self.b256(), s: self.b256() }
+    }
+    fn listed(&mut self) -> Vec<Commitment> {
+        (0..self.below(4)).map(|_| self.commitment(true)).collect()
+    }
+    fn witness(&mut self) -> AttestationWitness {
+        AttestationWitness::HashOnly { clause_data_hash: self.b256(), inclusion_proof: self.words(3) }
+    }
+    fn role(&mut self) -> AttesterRole {
+        if self.below(2) == 0 {
+            AttesterRole::Seller
+        } else {
+            AttesterRole::Buyer
+        }
+    }
+    /// One operation of any of the six kinds a batch carries: the three the
+    /// stream writes in place (commit, signed resolve, wallet-code resolve),
+    /// the wallet-code attestation it writes after them, and the two signed
+    /// attestations it skips.
+    fn op(&mut self) -> KernelOp {
+        match self.below(6) {
+            0 => KernelOp::Commit { commitment: self.commitment(false), buyer_sig: self.signature(), seller_sig: self.signature() },
+            1 => {
+                let commitments = self.listed();
+                KernelOp::Resolve {
+                    process_id: self.b256(),
+                    cumulative_value: resolved_cumulative_value(&commitments).expect("bounded payments sum"),
+                    commitments,
+                    buyer_sig: self.signature(),
+                }
+            }
+            2 => {
+                let commitments = self.listed();
+                let len = [0, 1, 17, 65, 300][self.below(5) as usize];
+                KernelOp::ResolveByWalletCode {
+                    process_id: self.b256(),
+                    cumulative_value: resolved_cumulative_value(&commitments).expect("bounded payments sum"),
+                    commitments,
+                    authorization: self.bytes(len).into(),
+                }
+            }
+            3 => {
+                let len = [0, 1, 65, 300][self.below(4) as usize];
+                KernelOp::AttestByWalletCode {
+                    role: self.role(),
+                    target: self.commitment(false),
+                    clause_id: self.b256(),
+                    stage: self.u64() as u8,
+                    content_ref: self.b256(),
+                    authorization: self.bytes(len).into(),
+                    proof: self.witness(),
+                }
+            }
+            4 => KernelOp::AttestAsSeller {
+                target: self.commitment(false),
+                clause_id: self.b256(),
+                stage: self.u64() as u8,
+                content_ref: self.b256(),
+                seller_sig: self.signature(),
+                proof: self.witness(),
+            },
+            _ => KernelOp::AttestAsBuyer {
+                target: self.commitment(false),
+                clause_id: self.b256(),
+                stage: self.u64() as u8,
+                content_ref: self.b256(),
+                buyer_sig: self.signature(),
+                proof: self.witness(),
+            },
+        }
+    }
+    /// A usage claim of any of the three kinds, its inclusion proof (and an
+    /// assembly claim's membership proof) of zero to four words.
+    fn claim(&mut self) -> UsageClaim {
+        let kind = match self.below(3) {
+            0 => UsageClaimKind::Clause { clause_data_hash: self.b256() },
+            1 => UsageClaimKind::Assembly {
+                agreement_hash: self.b256(),
+                slot_content_hash: self.b256(),
+                membership_proof: self.words(4),
+            },
+            _ => UsageClaimKind::Agreement { assembly_hash: self.b256() },
+        };
+        UsageClaim { order: self.commitment(false), clause_or_assembly: self.b256(), kind, inclusion_proof: self.words(4) }
+    }
+}
+
+/// For 2,000 generated streams of up to eight operations of every kind and up
+/// to five usage claims of every kind: decoding the encoded stream gives back
+/// the commits and resolves (the signed attestations skipped), every
+/// wallet-code attestation as its own entry and every claim, field for field;
+/// re-encoding the three lists gives back the bytes; and the stream one byte
+/// short or one byte long is refused. The run asserts it met every entry
+/// kind, a kind-2 (agreement) claim and a claim with a non-empty inclusion
+/// proof among them. The types carry no `PartialEq`, so "field for field" is
+/// their `Debug` text, which prints every field.
+#[test]
+fn every_generated_stream_decodes_to_what_was_encoded() {
+    let mut seen = [0u32; 10];
+    for seed in 0..2_000u64 {
+        let mut g = Gen(seed);
+        let ops: Vec<KernelOp> = (0..g.below(9)).map(|_| g.op()).collect();
+        let claims: Vec<UsageClaim> = (0..g.below(6)).map(|_| g.claim()).collect();
+        let bytes = encode_operation_stream(&ops, &claims);
+
+        let written: Vec<KernelOp> = ops
+            .iter()
+            .filter(|op| matches!(op, KernelOp::Commit { .. } | KernelOp::Resolve { .. } | KernelOp::ResolveByWalletCode { .. }))
+            .cloned()
+            .collect();
+        let entries = wallet_code_attestations(&ops);
+        let (ops2, entries2, claims2) =
+            decode_operation_stream(&bytes).unwrap_or_else(|e| panic!("seed {seed}: the stream does not decode: {e}"));
+        assert_eq!(format!("{ops2:?}"), format!("{written:?}"), "seed {seed}: the commits and resolves");
+        assert_eq!(format!("{entries2:?}"), format!("{entries:?}"), "seed {seed}: the wallet-code attestations");
+        assert_eq!(format!("{claims2:?}"), format!("{claims:?}"), "seed {seed}: the usage claims");
+        assert_eq!(encode_stream_parts(&ops2, &entries2, &claims2), bytes, "seed {seed}: re-encoding is the identity");
+        if !bytes.is_empty() {
+            assert!(decode_operation_stream(&bytes[..bytes.len() - 1]).is_err(), "seed {seed}: one byte short");
+        }
+        let mut long = bytes.clone();
+        long.push(g.u64() as u8);
+        assert!(decode_operation_stream(&long).is_err(), "seed {seed}: one byte long");
+
+        for op in &written {
+            seen[match op {
+                KernelOp::Commit { .. } => 0,
+                KernelOp::Resolve { .. } => 1,
+                _ => 2,
+            }] += 1;
+        }
+        for e in &entries {
+            seen[if e.role == AttesterRole::Seller { 3 } else { 4 }] += 1;
+        }
+        for c in &claims {
+            seen[match c.kind {
+                UsageClaimKind::Clause { .. } => 5,
+                UsageClaimKind::Assembly { .. } => 6,
+                UsageClaimKind::Agreement { .. } => 7,
+            }] += 1;
+            if !c.inclusion_proof.is_empty() {
+                seen[8] += 1;
+            }
+            if matches!(&c.kind, UsageClaimKind::Assembly { membership_proof, .. } if !membership_proof.is_empty()) {
+                seen[9] += 1;
+            }
+        }
+    }
+    let names = [
+        "commit",
+        "signed resolve",
+        "wallet-code resolve",
+        "seller's wallet-code attestation",
+        "buyer's wallet-code attestation",
+        "clause claim",
+        "assembly claim",
+        "agreement claim (kind 2)",
+        "claim with an inclusion proof",
+        "assembly claim with a membership proof",
+    ];
+    for (n, name) in seen.iter().zip(names) {
+        assert!(*n > 50, "the generated streams met too few of: {name} ({n})");
+    }
 }
