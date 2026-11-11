@@ -145,8 +145,7 @@ spending covenant could add to that, and none exists. Each act is judgment, case
 by case — the meter that pays by measured activity belongs to the
 designer-rewards tier, never to the treasury.
 
-Academic form: `/papers/substrate-broadening-rpgf` §4, "Why the clauses every
-order carries earn".
+Academic form: `/papers/substrate-broadening-rpgf` §4, "Why shared terms earn."
 
 ---
 

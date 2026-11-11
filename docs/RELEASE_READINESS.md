@@ -18,10 +18,14 @@ Kleros courts are live on Ethereum mainnet.
 ## Current Verdict
 
 There are two finish lines, in order. **Public on testnet** is the launch flip: the site
-leaves noindex, and strangers read it and trade on Sepolia; it is blocked on the six
-items below. **Mainnet** is blocked on the in-house security program's pass over the
-audit scope (Task 2), which stands in place of an external audit. Everything else
-under Open Tasks is deploy-day work or sequenced behind that gate. Work that blocks
+leaves noindex, and strangers read it and trade on Sepolia; it is blocked on the seven
+items below. The seventh is every security matter: the in-house security program's pass
+over the audit scope (Task 2), which stands in place of an external audit, the frontend's
+delivery integrity (Task 11) and the hardening (Task 14). Security comes before the
+testnet because the contracts and the guest cannot be changed once deployed: what the
+testnet shows wrong is fixed on the testnet, and nothing is left to fix on mainnet.
+**Mainnet** is the deploy and the work that changes no deployed code; no security task
+stands behind it. Everything else under Open Tasks is deploy-day work. Work that blocks
 neither line does not delay either.
 
 ## Public on testnet
@@ -95,6 +99,10 @@ neither line does not delay either.
      the stranger crawl finds it;
    - [maintainer] the SDK's next major version published with the redeploy — check:
      `npm view @figaro-protocol/sdk version` equals the version the deployment record names.
+
+7. **Every security matter is closed.** Tasks 2, 11 and 14 below, each to its own check.
+   No security task waits for mainnet: deployed code cannot be changed, so a finding
+   made after the mainnet deploy could not be fixed there.
 
 ## Open Tasks
 

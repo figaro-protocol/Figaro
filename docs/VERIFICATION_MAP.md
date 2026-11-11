@@ -79,7 +79,7 @@ Each component's status — every bench's result and the commit it ran at — is
 - `A-5` **Active count**: per-process $activeCount = count(committed\ orders)$
 - `A-6` **Resolution always possible**: contract can always pay out every active process
 - `A-7` **Fee-on-transfer rejection**: `_pullExact` reverts if received ≠ amount
-- `A-8` **Deterrent deposit magnitudes**: held deposits = 2×payment (buyer) + 2×cumulativeValue (seller) for every committed order — the bond is the *deterrent* the equilibrium argument reasons over, not merely enough to pay out
+- `A-8` **Deterrent bond magnitudes**: held bonds = 2×payment (buyer) + 2×cumulativeValue (seller) for every committed order — the bond is the *deterrent* the equilibrium argument reasons over, not merely enough to pay out
 - `A-9` **Net positions at resolution**: resolution moves exactly `payment` from buyer to seller per order and returns both bonds whole
 - `A-8`/`A-9` are the PAYOFF TABLE the equilibrium proof reasons over; the choosing itself — the best-response inequalities at each position and their instantiation along the chain — is machine-checked in Lean 4 over that table; subgame perfection, the second equilibrium, and co-seller selection are argued in the paper, not machine-checked (`formal/lean/FigaroEquilibrium.lean`; `TESTING.md` § Lean 4)
 

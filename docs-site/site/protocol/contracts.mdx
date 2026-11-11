@@ -45,7 +45,7 @@ Both are `nonReentrant`. `commit` verifies both EIP-712 signatures over `c`, the
 
 ### Calling it from the chain
 
-The denomination is an ordinary ERC-20 named in `c.currency`; approve `FigaroCore` for the full bond before you commit. With the SDK doing the EIP-712 signing:
+The process's token is an ordinary ERC-20 named in `c.currency`; approve `FigaroCore` for the full bond before you commit. With the SDK doing the EIP-712 signing:
 
 ```ts
 import { createWalletClient, http } from "viem";
