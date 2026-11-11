@@ -48,7 +48,7 @@
 //! verifier's reader with the role's party carrying code that validates
 //! exactly the authorization for the role's digest when the caller is the
 //! party, and writes down the reader's answer (the entry's `Attestation`
-//! emitted, or the entry skipped) and the event it emitted. Here each such
+//! emitted, or the walk refused by name) and the event it emitted. Here each such
 //! step asserts the guest's encoder writes bytes of the same hash, its decoder
 //! reads back the same entries, re-encoding them gives back the bytes, the
 //! emitted event is the one the mirror derives under the reader's domain, and
@@ -576,7 +576,7 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
                 rejected += 1;
                 wallet_code_refused += 1;
                 let joined = if wallet_code_attest {
-                    kernel_error == "NotAuthorized" && verifier == "skipped"
+                    kernel_error == "NotAuthorized" && verifier == "WalletCodeAttestationRefused"
                 } else {
                     kernel_error == "NotProcessBuyer" && verifier == "WalletCodeAuthorizationRefused"
                 };

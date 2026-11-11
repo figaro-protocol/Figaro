@@ -86,7 +86,7 @@
 #      attestation on the batch path: OnlyPartyAttests (every attestation the
 #      batch path emits was authorized by the party's key or by the code its
 #      wallet installed while it held the key, the wallet-code form asked by
-#      the verifier, which skips it otherwise); its switch
+#      the verifier, which reverts the batch otherwise); its switch
 #      VerifierChecksAttestationCode FALSE MUST fail it.
 #      Its fifth spec, IsolateSpec (formal/RelayStateIsolate.cfg), models a
 #      batch the chain refuses naming nobody: its operations are split into

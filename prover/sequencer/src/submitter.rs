@@ -403,22 +403,22 @@ pub async fn filter_anchored_attestations(
 //
 // A resolve or an attestation in the wallet-code form carries bytes the
 // party's own account code validates (ERC-1271). The guest cannot run that
-// code; the verifier asks it at resolution. For a resolve it reverts the
-// WHOLE batch on any answer but the magic value; for an attestation it skips
-// the entry and emits nothing, and the batch lands. The relay asks the same
+// code; the verifier asks it at resolution, and reverts the WHOLE batch on
+// any answer but the magic value, for a resolve and for an attestation
+// alike. The relay asks the same
 // code the same question against the latest block — at the door and again at
 // batch formation — as it reads a commit's funding: a liveness aid, never the
-// gate, so a resolve the code refuses never reverts a batch and an
-// attestation it refuses never costs a batch its bytes. The question is the
+// gate, so a resolve or an attestation the code refuses never reverts a
+// batch. The question is the
 // verifier's: `isValidSignature(digest, bytes)` from the verifier's address,
 // under the verifier's domain; for a resolve the digest `ResolveProcess` over
 // the process and the listed payments, the buyer the listed orders'; for an
 // attestation the `AttestSeller` / `AttestBuyer` digest over the target's ids
 // derived from its commitment, the party the role names. The call runs under
 // `gas::WALLET_CODE_EXECUTION_GAS`, the gas this relay plans for the wallet's
-// own code. The residual window is the proving time: a resolve's code whose
-// answer changes inside it reverts the batch, and any wallet code can revert
-// it by burning the gas the verifier forwards; the deterministic-revert arm
+// own code. The residual window is the proving time: code whose answer
+// changes inside it reverts the batch, a resolve's or an attestation's, as
+// does code that burns the gas the verifier forwards; the deterministic-revert arm
 // names and dead-letters those operations alone (`filter_wallet_code_ops`).
 
 sol! {
@@ -469,15 +469,16 @@ pub fn wallet_code_question(
     }
 }
 
-/// How a report names a wallet-code operation's party, and what the verifier
-/// does with the operation when the party's code refuses it.
-fn wallet_code_terms(op: &KernelOp) -> (&'static str, &'static str) {
+/// How a report names a wallet-code operation's party, and the two errors
+/// the verifier reverts the batch with when the party's account has no code
+/// and when its code refuses the operation.
+fn wallet_code_terms(op: &KernelOp) -> (&'static str, &'static str, &'static str) {
     match op {
         KernelOp::AttestByWalletCode { role: figaro_kernel::types::AttesterRole::Seller, .. } => {
-            ("seller", "the verifier would skip the attestation (no Attestation event)")
+            ("seller", "AttesterHasNoCode", "WalletCodeAttestationRefused")
         }
-        KernelOp::AttestByWalletCode { .. } => ("buyer", "the verifier would skip the attestation (no Attestation event)"),
-        _ => ("buyer", "the verifier would revert the batch"),
+        KernelOp::AttestByWalletCode { .. } => ("buyer", "AttesterHasNoCode", "WalletCodeAttestationRefused"),
+        _ => ("buyer", "BuyerHasNoCode", "WalletCodeAuthorizationRefused"),
     }
 }
 
@@ -490,7 +491,7 @@ pub async fn check_wallet_code(gate: &FundingGate, op: &KernelOp) -> Result<Resu
     if !matches!(op, KernelOp::ResolveByWalletCode { .. } | KernelOp::AttestByWalletCode { .. }) {
         return Ok(Ok(()));
     }
-    let (party, refusal) = wallet_code_terms(op);
+    let (party, no_code, refused) = wallet_code_terms(op);
     let url = gate.rpc_url.parse().map_err(|e| format!("invalid RPC_URL: {e}"))?;
     let provider = ProviderBuilder::new().connect_http(url);
     let Some((buyer, digest, authorization)) = wallet_code_question(gate.chain_id, gate.verifier, op) else {
@@ -501,9 +502,8 @@ pub async fn check_wallet_code(gate: &FundingGate, op: &KernelOp) -> Result<Resu
         .await
         .map_err(|e| format!("code read of {buyer} failed: {}", without_urls(&e.to_string())))?;
     if code.is_empty() {
-        let named = if matches!(op, KernelOp::ResolveByWalletCode { .. }) { " (BuyerHasNoCode)" } else { "" };
         return Ok(Err(format!(
-            "{party} {buyer} has no account code to validate a wallet-code operation — {refusal}{named}"
+            "{party} {buyer} has no account code to validate a wallet-code operation — the verifier would revert the batch ({no_code})"
         )));
     }
     let answer = IERC1271WalletCode::new(buyer, &provider)
@@ -515,10 +515,10 @@ pub async fn check_wallet_code(gate: &FundingGate, op: &KernelOp) -> Result<Resu
     match answer {
         Ok(magic) if magic.0 == ERC1271_MAGIC_VALUE => Ok(Ok(())),
         Ok(other) => Ok(Err(format!(
-            "{party} {buyer}'s code answered {other} for digest {digest}, not the ERC-1271 magic value — {refusal} (WalletCodeAuthorizationRefused)"
+            "{party} {buyer}'s code answered {other} for digest {digest}, not the ERC-1271 magic value — the verifier would revert the batch ({refused})"
         ))),
         Err(e) if is_deterministic_send_error(&e.to_string()) => Ok(Err(format!(
-            "{party} {buyer}'s code reverted for digest {digest} under {} gas — {refusal} (WalletCodeAuthorizationRefused)",
+            "{party} {buyer}'s code reverted for digest {digest} under {} gas — the verifier would revert the batch ({refused})",
             crate::gas::WALLET_CODE_EXECUTION_GAS
         ))),
         Err(e) => Err(format!("isValidSignature read of {buyer} failed: {}", without_urls(&e.to_string()))),
@@ -526,9 +526,8 @@ pub async fn check_wallet_code(gate: &FundingGate, op: &KernelOp) -> Result<Resu
 }
 
 /// Drop every wallet-code operation whose party's code does not validate it,
-/// against the latest block, before proving: such a resolve reverts the
-/// whole batch on chain, and such an attestation is skipped there and costs
-/// the batch its bytes for nothing. A read failure drops conservatively
+/// against the latest block, before proving: such a resolve or attestation
+/// reverts the whole batch on chain. A read failure drops conservatively
 /// (`WALLET_CODE_UNREAD`); a dropped operation is re-submittable. `None` (no
 /// verifier configured — a prove-only dry run) passes everything through.
 pub async fn filter_wallet_code_ops(
@@ -612,9 +611,8 @@ impl RevertVerdict {
 /// operations are dead-lettered alone: a wallet's code can answer yes to every
 /// eth_call and no in the transaction (branching on `tx.origin`, `gasleft()`,
 /// a block field or its own balance) at no cost and with no state change,
-/// which reverts a batch through a wallet-code resolve; and any wallet's code
-/// can revert a batch by burning the gas the verifier forwards it, which a
-/// wallet-code attestation can do too. The re-ask names nobody, and
+/// which reverts a batch through a wallet-code resolve or a wallet-code
+/// attestation alike. The re-ask names nobody, and
 /// dead-lettering the whole batch would let the wallet sink every co-batched
 /// party's operations again with fresh bytes. Its party is counted by the
 /// adversarial signal. A batch with no wallet-code operation goes to the
@@ -1842,9 +1840,8 @@ mod tests {
     }
 
     // The door and the formation ask the attesting party's code the
-    // verifier's question: a refusal would not revert the batch (the verifier
-    // skips the entry), but an attestation the code refuses never reaches
-    // proving, where it would cost the batch its bytes for nothing.
+    // verifier's question: a refusal reverts the whole batch on chain, so an
+    // attestation the code refuses never reaches proving.
     #[tokio::test]
     async fn a_wallet_code_attestation_passes_the_door_and_the_formation_only_on_the_magic_value() {
         let (yes, other, codeless) = (Address::repeat_byte(0xC1), Address::repeat_byte(0xC2), Address::repeat_byte(0xC4));
@@ -1860,9 +1857,9 @@ mod tests {
         assert_eq!(&input[4..36], digest.as_slice(), "the digest is the verifier's");
 
         let refused = check_wallet_code(&gate, &wallet_code_attestation(other)).await.unwrap().unwrap_err();
-        assert!(refused.contains("seller") && refused.contains("skip"), "{refused}");
+        assert!(refused.contains("seller") && refused.contains("WalletCodeAttestationRefused"), "{refused}");
         let refused = check_wallet_code(&gate, &wallet_code_attestation(codeless)).await.unwrap().unwrap_err();
-        assert!(refused.contains("no account code"), "{refused}");
+        assert!(refused.contains("no account code") && refused.contains("AttesterHasNoCode"), "{refused}");
 
         let ops = vec![pending(1, wallet_code_attestation(yes)), pending(2, wallet_code_attestation(other))];
         let (valid, dropped) = filter_wallet_code_ops(Some(&gate), ops).await;
@@ -2211,9 +2208,9 @@ mod tests {
     /// though the node estimates `estimate`: a party's wallet code that costs
     /// more at inclusion than at the estimate. The receipt lands iff the
     /// transaction's gas limit covers the inclusion cost. On chain, below it
-    /// the verifier's starved-call arm reverts the whole batch, where a limit
-    /// that covers the code lets it answer and the verifier skip the entry
-    /// it refuses — the verifier's half, tested on the Forge side
+    /// the code runs out of gas and the verifier reverts the whole batch,
+    /// where a limit that covers the code lets it answer — the verifier's
+    /// half, tested on the Forge side
     /// (`FigaroBatchVerifierTest.test_settleBatch_walletCodeAttestation_gasStarvationProbe`).
     async fn rising_cost_double(estimate: u64, inclusion: u64) -> (crate::rpc_double::RpcDouble, std::sync::Arc<std::sync::Mutex<u64>>) {
         use crate::rpc_double::{serve, unserved};

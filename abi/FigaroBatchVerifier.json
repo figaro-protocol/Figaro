@@ -657,6 +657,22 @@
   },
   {
     "type": "error",
+    "name": "AttesterHasNoCode",
+    "inputs": [
+      {
+        "name": "orderHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "attester",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "BatchTimestampOutOfRange",
     "inputs": [
       {
@@ -857,7 +873,7 @@
   },
   {
     "type": "error",
-    "name": "WalletCodeAttestationStarved",
+    "name": "WalletCodeAttestationRefused",
     "inputs": [
       {
         "name": "orderHash",

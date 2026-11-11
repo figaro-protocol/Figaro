@@ -146,9 +146,9 @@ wallet's code validates the bytes; the wallet's signer or its session
 key produces them, never this SDK's <code>signTypedData</code>. The proof runs
 every check of the signed form but the signer's recovery and publishes
 the bytes; <code>FigaroBatchVerifier</code> asks the party's code and emits the
-<code>Attestation</code> only on the magic value, and skips the attestation on any
-other answer; a call that ran out of gas reverts the batch instead, so no
-gas limit drops a validated attestation. The relay asks the same code at its door and refuses bytes
+<code>Attestation</code> on the magic value; any other answer, a call that ran out
+of gas included, reverts the whole batch, so a batch that lands carries
+the attestation. The relay asks the same code at its door and refuses bytes
 the code does not validate. The witness forms are those of
 <a href="#submitattestasseller" class="tsd-kind-method">SequencerClient.submitAttestAsSeller</a>.</p>
 </div>

@@ -1282,7 +1282,7 @@ await seq.submitAttestAsSeller({ target, clauseId, stage, contentRef, sellerSig,
 // bytes; the wallet's signer or its session key produces them. The proof runs
 // every check of the signed form but the signer's recovery and publishes the
 // bytes; FigaroBatchVerifier asks the party's code and emits the Attestation
-// only on the magic value, skipping it on any other answer (the batch lands).
+// on the magic value; any other answer reverts the whole batch.
 // The relay asks the same code at its door and refuses bytes it does not validate.
 await seq.submitAttestByWalletCode({ role: "Seller", target, clauseId, stage, contentRef, authorization: walletCodeBytes, clauseDataHash, inclusionProof });
 await seq.submitUsageClaim(claim);  // the usage-claim leg — build with buildUsageClaims

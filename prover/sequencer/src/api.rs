@@ -479,8 +479,8 @@ async fn submit_op(
     // A wallet-code resolve or attestation is asked of its party's code at
     // the door (the buyer's for a resolve, the role's party's for an
     // attestation), as the verifier will ask it at resolution: bytes the code
-    // refuses would revert a whole batch (a resolve) or be skipped on chain
-    // for the bytes they cost (an attestation). Code that could not be asked
+    // refuses would revert a whole batch, a resolve's and an attestation's
+    // alike. Code that could not be asked
     // is unverified, and the operation is refused, with a retry.
     if let (Some(gate), KernelOp::ResolveByWalletCode { .. } | KernelOp::AttestByWalletCode { .. }) =
         (&state.funding, &req.operation)

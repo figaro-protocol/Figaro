@@ -110,23 +110,24 @@ interface IUsageCounter {
 ///         `AttestationCoordinator`'s `msg.sender == target.seller` (or
 ///         `target.buyer`) admits the party's key and any code its wallet
 ///         installed while it held the key. The signed form the guest
-///         recovers, and its event is bound by public value 6. The second,
+///         recovers, and its event is bound by public value 5. The second,
 ///         bytes the party's own account code validates for the same
 ///         `AttestSeller` / `AttestBuyer` digest, the guest applies with every
 ///         check but the recovery and publishes in the stream's `0x05` entry,
-///         outside public value 6. `settleBatch` derives the target's ids and
+///         outside public value 5. `settleBatch` derives the target's ids and
 ///         the digest under this contract's domain from the entry's
 ///         commitment, takes the attester from its role byte, asks that
 ///         account's `isValidSignature` before any token moves, and emits the
-///         coordinator's `Attestation` event only on the magic value. Any
-///         other answer, or an account with no code, skips the entry and the
-///         batch lands: an attestation moves no token and no state, so it
-///         drops alone, as a reverted `attestAsSeller` call does on the direct
-///         path. A call that ran out of gas is no answer: it fails with at
-///         most the 1/64 the call keeps left, and the batch reverts by name
-///         (`WalletCodeAttestationStarved`), so no submitter's gas limit
-///         drops an attestation the code validates; code that burns all the
-///         gas it is given therefore reverts any batch carrying its attestation.
+///         coordinator's `Attestation` event on the magic value. Any other
+///         answer, or an account with no code, reverts the batch by name
+///         (`WalletCodeAttestationRefused`, `AttesterHasNoCode`), as a
+///         wallet-code resolve's refusal does: a batch that lands carries the
+///         `Attestation` of every `0x05` entry in its stream, so the stream
+///         it publishes says what happened, and no submitter's gas limit
+///         lands a batch without an attestation the code validates. A call
+///         that ran out of gas is a refusal like any other; no reading of
+///         the gas left tells one from the other when the code runs a call
+///         frame below the account, as a proxy's does.
 contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
     using CommitmentTypes for CommitmentTypes.Commitment;
@@ -319,12 +320,13 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///      bytes with the ERC-1271 magic value (it answered otherwise,
     ///      reverted, or returned no word).
     error WalletCodeAuthorizationRefused(bytes32 processId, address buyer);
-    /// @dev A wallet-code attestation's question failed with at most the
-    ///      1/64 the call keeps left (EIP-150): the attesting party's code ran
-    ///      out of the gas it was given, so the answer is unknown, never a
-    ///      refusal. Skipping it would let a submitter's gas limit drop an
-    ///      attestation the code validates; the batch is refused instead.
-    error WalletCodeAttestationStarved(bytes32 orderHash, address attester);
+    /// @dev A wallet-code attestation names an attesting party whose account
+    ///      has no code: nothing can validate its bytes.
+    error AttesterHasNoCode(bytes32 orderHash, address attester);
+    /// @dev The attesting party's account code did not validate the
+    ///      attestation's bytes with the ERC-1271 magic value (it answered
+    ///      otherwise, reverted, ran out of gas, or returned no word).
+    error WalletCodeAttestationRefused(bytes32 orderHash, address attester);
 
     // ── Constructor ───────────────────────────────────────────────
 
@@ -398,12 +400,14 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///                     array for a batch that credits no usage.
     /// @param operations   The batch's operation stream (hash-verified against
     ///                     public value 9): every commit and resolve it applied,
-    ///                     whole, and every usage claim, in the guest's canonical
+    ///                     whole, every attestation authorized by a party's
+    ///                     wallet code, and every usage claim, in the guest's canonical
     ///                     bytes (`prover/lib/src/operation_stream.rs`). The
     ///                     contract reads it for the Core's events, asks the
     ///                     buyer's code about each `0x04` entry and the
     ///                     attesting party's code about each `0x05` entry
-    ///                     (emitting its `Attestation` on the magic value),
+    ///                     (emitting its `Attestation` on the magic value,
+    ///                     reverting on any other answer),
     ///                     before any token moves; it is published so that anyone can
     ///                     rebuild the state behind the new root from this
     ///                     transaction and the ones before it.
@@ -463,10 +467,10 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
         // ── 4. Anchor every witness spec to the live registry ─────
         _checkSpecBindings(events.specBindings);
-        //    and ask the buyer's code about every wallet-code resolve (any
-        //    refusal reverts the batch) and the attesting party's code about
-        //    every wallet-code attestation (a yes emits its `Attestation`, any
-        //    other answer skips it), against the state before the batch moves
+        //    and ask the buyer's code about every wallet-code resolve and the
+        //    attesting party's code about every wallet-code attestation (a
+        //    yes emits its `Attestation`); any refusal of either reverts the
+        //    batch. Both are asked against the state before the batch moves
         //    a token: the state the relay's own check read, never a payout's.
         _walkOperations(operations, false);
 
@@ -684,10 +688,8 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     /**
      * @dev BATCH RESOLUTION DOS RISK
      * Two causes revert the entire batch after its proof: a user who revokes approval before settleBatch
-     * executes, and a buyer whose wallet code refuses its wallet-code resolve at step 4 though it validated
-     * the bytes when the relay asked. A wallet-code attestation's refusal does not revert the batch (the
-     * entry is skipped); its code reverts it only by running out of the gas the call forwards
-     * (`WalletCodeAttestationStarved`).
+     * executes, and a party whose wallet code refuses its wallet-code resolve or its wallet-code attestation
+     * at step 4 though it validated the bytes when the relay asked.
      * Mitigation: Sequencer MUST verify approvals and ask each party's code immediately before proof submission.
      * Users SHOULD maintain approvals, and wallet code its answer, until batch resolution is confirmed.
      */
@@ -734,9 +736,9 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     // A proven batch's stream is well-formed by construction (the proof bound
     // its hash); the refusal below is the decoder's, never a judgment. The
     // judgments the stream carries to this contract are the wallet code's:
-    // the buyer's code on a wallet-code resolve (`_checkWalletCode`, a
-    // refusal reverts the batch) and the attesting party's code on a
-    // wallet-code attestation (`_attestByWalletCode`, a refusal skips it).
+    // the buyer's code on a wallet-code resolve (`_checkWalletCode`) and the
+    // attesting party's code on a wallet-code attestation
+    // (`_attestByWalletCode`); a refusal of either reverts the batch.
 
     uint256 private constant COMMITMENT_BYTES = 252;
     uint256 private constant SIGNATURE_BYTES = 65;
@@ -845,9 +847,9 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///      role's party of the commitment (`0x00` its seller, `0x01` its
     ///      buyer; any other byte is malformed), and that account is asked
     ///      about the role's digest; the coordinator's `Attestation` is emitted
-    ///      only on the magic value, an account with no code or any other
-    ///      answer skips the entry, and a call that ran out of gas reverts the
-    ///      batch. With `publish` true the entry is skipped.
+    ///      on the magic value, and an account with no code or any other
+    ///      answer reverts the batch. With `publish` true the entry is passed
+    ///      over: its event was emitted at step 4.
     ///      Returns the offset past the entry.
     function _attestByWalletCode(bytes calldata s, uint256 p, bool publish) private returns (uint256 end) {
         uint256 role = _byteAt(s, p);
@@ -861,18 +863,16 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
     /// @dev The `0x05` entry's question, in its own frame so its locals fit
     ///      the stack under coverage's un-optimized build: `at` is the
-    ///      commitment's offset. Emits the `Attestation` on the magic value,
-    ///      skips the entry on a no or an account with no code, and refuses
-    ///      the batch when the code starved (`WalletCodeAttestationStarved`):
-    ///      a submitter's gas limit must not drop an attestation the code
-    ///      would have validated.
+    ///      commitment's offset. Emits the `Attestation` on the magic value.
+    ///      An account with no code is refused by name, and any answer but
+    ///      the magic value refuses the batch: a landed batch carries the
+    ///      `Attestation` of every `0x05` entry in its stream.
     function _askAttesterCode(bytes calldata s, uint256 at, bool asSeller, bytes calldata authorization) private {
         (bytes32 processId, bytes32 orderHash, address attester) = _attestTarget(s, at, asSeller);
-        if (attester.code.length == 0) return;
+        if (attester.code.length == 0) revert AttesterHasNoCode(orderHash, attester);
         bytes32 digest = _attestDigest(s, at + COMMITMENT_BYTES, asSeller, processId, orderHash);
-        (bool yes, bool starved) = _askCode(attester, digest, authorization);
-        if (starved) revert WalletCodeAttestationStarved(orderHash, attester);
-        if (yes) _emitAttestationAt(s, at + COMMITMENT_BYTES, orderHash, processId, attester);
+        if (!_askCode(attester, digest, authorization)) revert WalletCodeAttestationRefused(orderHash, attester);
+        _emitAttestationAt(s, at + COMMITMENT_BYTES, orderHash, processId, attester);
     }
 
     /// @dev The `0x05` entry's target, from the commitment at `at`: its ids,
@@ -939,8 +939,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     {
         if (buyer.code.length == 0) revert BuyerHasNoCode(processId, buyer);
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(RESOLVE_PROCESS_TYPEHASH, processId, cumulativeValue)));
-        (bool yes,) = _askCode(buyer, digest, authorization);
-        if (!yes) revert WalletCodeAuthorizationRefused(processId, buyer);
+        if (!_askCode(buyer, digest, authorization)) revert WalletCodeAuthorizationRefused(processId, buyer);
     }
 
     /// @dev The ERC-1271 question: a STATICCALL of `account`'s
@@ -948,35 +947,19 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     ///      reading one word of the answer (a longer answer is never copied).
     ///      The whole answer word is compared with the magic value left-aligned
     ///      and zero-padded, as OpenZeppelin's `SignatureChecker` compares it;
-    ///      a revert, a short answer or any other word is a no. No gas cap is
-    ///      set: the call receives 63/64 of what is left (EIP-150). `starved`
-    ///      is a call that failed with at most 1/64 of the gas before it left:
-    ///      the code ran out of the gas it was given, so its answer is unknown.
-    ///      The resolve reverts on any no, starved or not; the attestation
-    ///      reverts on a starved call and skips a no.
-    function _askCode(address account, bytes32 digest, bytes calldata authorization)
-        private
-        view
-        returns (bool yes, bool starved)
-    {
+    ///      a revert, a call that ran out of gas, a short answer or any other
+    ///      word is a no. No gas cap is set: the call receives 63/64 of what
+    ///      is left (EIP-150). Both callers revert the batch on a no.
+    function _askCode(address account, bytes32 digest, bytes calldata authorization) private view returns (bool yes) {
         bytes memory query = abi.encodeWithSelector(ERC1271_MAGIC_VALUE, digest, authorization);
         bool ok;
         bytes32 answer;
-        uint256 before;
-        uint256 left;
         assembly ("memory-safe") {
-            before := gas()
             ok := staticcall(gas(), account, add(query, 32), mload(query), 0, 32)
-            left := gas()
+            if lt(returndatasize(), 32) { ok := 0 }
             answer := mload(0)
         }
-        starved = !ok && left <= before / 64;
-        // A short answer is a no whatever its bytes.
-        uint256 size;
-        assembly ("memory-safe") {
-            size := returndatasize()
-        }
-        yes = ok && size >= 32 && answer == bytes32(ERC1271_MAGIC_VALUE);
+        yes = ok && answer == bytes32(ERC1271_MAGIC_VALUE);
     }
 
     // The stream is read with `calldataload` at an offset into `s`: a word,

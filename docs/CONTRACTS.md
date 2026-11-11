@@ -141,6 +141,13 @@ The proof-based path that resolves batches of processes beside the direct
   reverting the whole batch on any answer word but the magic value's
   (`WalletCodeAuthorizationRefused`), since the proven root already holds the
   resolve and the entry cannot be dropped alone;
+- asks the attesting party's account code about every attestation the stream
+  carries in the wallet-code form (`0x05`), in the same walk: it derives the
+  target's ids and the role's `AttestSeller` / `AttestBuyer` digest under its
+  own domain, refuses a party with no code (`AttesterHasNoCode`), emits the
+  coordinator's `Attestation` on the magic value, and reverts the whole batch
+  on any other answer (`WalletCodeAttestationRefused`), so a batch that lands
+  carries the `Attestation` of every `0x05` entry its stream publishes;
 - checks every spec binding, one per clause a plaintext attestation names (a
   hash-only attestation commits none, as the coordinator consults no
   registry): the clause key is the hash of the witness spec,
@@ -616,6 +623,13 @@ deploy script wires and under which environment variable.
   `setValidationGas` makes its validation spend a fixed amount of gas, and
   `setAnswerShape` answers in four bytes, with 64 KiB after the word, or not
   at all (every unit of gas burned). Foundry tests only.
+- `MockDelegatingWallet.sol` — account code that DELEGATECALLs every call to an
+  implementation and hands back its answer or its revert, as the proxy most
+  smart wallets are; etched at a party's address over a `MockERC1271Wallet`
+  implementation, it runs the validation one call frame below the account, so
+  a validation that runs out of gas leaves the verifier more than the 1/64 a
+  call starved in its own frame leaves (`FigaroBatchVerifierTest`'s
+  starvation probe through a delegating wallet). Foundry tests only.
 - `MockReentrantToken.sol` — a malicious ERC-20 that re-enters on transfer;
   proves the `nonReentrant` guards on `commit`, `resolveProcess`, and
   `settleBatch` fire under a live attempt. Foundry tests only.

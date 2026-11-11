@@ -84,7 +84,15 @@ wallet code (`test_settleBatch_walletCodeResolve_*`): with
 `MockERC1271Wallet` etched at the buyer, code that validates the digest and
 bytes resolves the process and pays out, code that refuses them or reverts
 reverts the batch (`WalletCodeAuthorizationRefused`), and a buyer with no
-code is refused (`BuyerHasNoCode`). `OperationStreamVectorsTest` lands each
+code is refused (`BuyerHasNoCode`); and the attestation authorized by the
+party's wallet code (`test_settleBatch_walletCodeAttestation_*`): code that
+validates the bytes emits the `Attestation`, code that refuses them, reverts,
+answers short or burns its gas reverts the batch
+(`WalletCodeAttestationRefused`), a party with no code is refused
+(`AttesterHasNoCode`), and two probes walk the gas limit down over a
+validation of 4,000,000 gas, in the account's own frame and through
+`MockDelegatingWallet` one frame below it, requiring that every batch that
+lands carries the attestation. `OperationStreamVectorsTest` lands each
 harvested stream, the wallet-code one included, and `BatchGasCeilingTest`
 measures the wallet-code check (`test_Gas_settleStreamWalletCodeCheck`) and the wallet-code attestation entry (`test_Gas_settleStreamWalletCodeAttestation`).
 `BatchVerifierStepsWriteNoStorageTest` holds the premise under which
@@ -750,8 +758,9 @@ long is refused; the run asserts it met every entry kind it writes, a kind-2
 (agreement) claim and a claim with an inclusion proof among them. `OperationStreamVectorsTest`
 draws streams of the same format from a fuzzed seed and lands each through
 `settleBatch` (`testFuzz_everyGeneratedStreamLandsAndEmitsItsEntries`: the
-Core's events for every commit and resolve, in stream order, each wallet-code
-resolve's buyer carrying `MockERC1271Wallet`), and refuses a cut at a fuzzed
+`Attestation` of every wallet-code attestation and the Core's events for every
+commit and resolve, in stream order, each wallet-code resolve's buyer and each
+wallet-code attestation's party carrying `MockERC1271Wallet`), and refuses a cut at a fuzzed
 point inside an entry as `MalformedOperationStream`
 (`testFuzz_aGeneratedStreamCutInsideAnEntryIsRefused`);
 `test_theGeneratedStreamsMeetEveryEntryKind` asserts the generator meets every

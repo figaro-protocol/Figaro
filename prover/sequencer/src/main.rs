@@ -606,9 +606,9 @@ async fn batch_loop(
             failures.record(1, reason.clone()).await;
         }
         // A wallet-code operation whose party's code does not validate it, as
-        // the verifier will ask, reverts the whole batch on chain (a resolve)
-        // or is skipped there for the bytes it cost (an attestation): dropped
-        // here, alone, as an unanchored attestation is.
+        // the verifier will ask, reverts the whole batch on chain, a resolve
+        // and an attestation alike: dropped here, alone, as an unanchored
+        // attestation is.
         let (mut valid, unvalidated) = submitter::filter_wallet_code_ops(funding.as_ref(), valid).await;
         for (p, reason) in &unvalidated {
             warn!(id = p.id, %reason, "Dropped wallet-code operation at batch formation");
@@ -1002,8 +1002,8 @@ async fn batch_loop(
                         .partition(|(_, why, _)| !submitter::is_unverifiable_drop(why));
                     // The other cause a party controls at no cost to anyone
                     // else's bond: a wallet-code operation whose party's code
-                    // answered yes at formation and no at resolution (a
-                    // resolve), or burned the gas forwarded to it. Its code is
+                    // answered yes at formation and no at resolution, or
+                    // burned the gas forwarded to it. Its code is
                     // asked again; only a verdict names it, a read failure
                     // re-queues with the rest.
                     let (kept, code_dropped) =

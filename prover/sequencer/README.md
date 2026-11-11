@@ -399,8 +399,8 @@ of losing the batch:
   isolated (see Mempool bounds). The gas and the length are this
   relay's plan, never the protocol's: the verifier bounds neither. Code
   whose cost rises between the node's estimate and inclusion would starve
-  under a limit set at the estimate and revert the batch where the verifier
-  would skip the entry, so the `settleBatch` call is sent with `SETTLE_GAS_HEADROOM_PCT`
+  under a limit set at the estimate and revert the batch, so the
+  `settleBatch` call is sent with `SETTLE_GAS_HEADROOM_PCT`
   (25 percent) over the estimate, capped at the tick's budget, unless the
   node's estimate itself exceeds it, when the limit is the estimate
   (`gas::settle_gas_limit`); gas a transaction does not use is not charged.
