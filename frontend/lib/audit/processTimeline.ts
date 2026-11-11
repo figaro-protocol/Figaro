@@ -57,7 +57,7 @@ export interface ProcessTimeline {
     /** FigaroCore contract address. */
     coreAddress: string;
     /** The AttestationCoordinator whose attestations were scanned — the site's
-     *  for the site's own deployment, the one the link names otherwise; null
+     *  for the page's deployment, the one the link names otherwise; null
      *  when none was named, so no attestation was scanned. */
     coordinatorAddress: `0x${string}` | null;
     /** The first block the scans read from. */
@@ -122,7 +122,7 @@ export async function buildProcessTimeline(
     /** `sharedCache: false` for a client the site did not configure (an RPC a
      *  link names): its logs are read directly and never written into the
      *  event cache every other page reads. `coordinatorAddress` is the
-     *  AttestationCoordinator the link names for a core other than the site's
+     *  AttestationCoordinator the link names for a core other than the page's deployment's
      *  (the Core holds no pointer to its coordinator, so only the link can
      *  name it); `fromBlock` is the block the link names its deployment at.
      *  Neither given, an outside core is scanned from genesis for FigaroCore
@@ -134,7 +134,7 @@ export async function buildProcessTimeline(
 
     const chainId = await client.getChainId();
     const sharedCache = options.sharedCache ?? true;
-    // The site's own deployment is read from its deployment block with its
+    // The page's deployment is read from its deployment block with its
     // own coordinator; any other core is read from the block the link names
     // (else genesis) with the coordinator the link names (else none) — the
     // site's coordinator address means nothing on another deployment.

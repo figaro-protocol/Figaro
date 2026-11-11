@@ -326,6 +326,8 @@ Addresses are deploy-time configuration, published in a per-chain deployment rec
 | Local Anvil | `31337` | the local run's own deployment record, handed to you by the run |
 | Ethereum Sepolia | `11155111` | the committed public deployment record: [`deployments/11155111.json`](https://github.com/figaro-protocol/Figaro/blob/main/deployments/11155111.json) |
 
+A deployment is one set of the contracts on one chain, and its identity is the pair `chainId` and `figaroCore`: the pair every EIP-712 domain of the deployment is bound to. The site serves every deployment record its build carries, one deployment per page, and a link to the site names the one it shows with two query parameters, `chainID` and `coreAddress` (for Sepolia, `?chainID=11155111&coreAddress=<figaroCore>`). A link that names neither shows the site's default deployment; a link that names a deployment the site does not carry shows none. The deployment record also carries `rpcUrl`, a keyless public JSON-RPC endpoint for the chain, and `deploymentBlock`, where an event scan of the deployment starts.
+
 Fetch the public deployment record and hash it to confirm the site and the repository serve the same bytes:
 
 ```bash

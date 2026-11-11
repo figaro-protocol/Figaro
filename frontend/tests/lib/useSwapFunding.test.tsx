@@ -88,7 +88,7 @@ describe("useSwapFunding — the Permit2 authorization of the chosen token", () 
         });
     });
 
-    it("authorize sends approve(permit2, maxUint256) on the chosen token, on the build's chain", async () => {
+    it("authorize sends approve(permit2, maxUint256) on the chosen token, on the page's chain", async () => {
         const { result } = render();
         act(() => result.current.setFundingToken(TOKEN_B));
         await act(async () => { await result.current.authorize(); });

@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { activeChain } from "@/lib/shared/chains";
+import { CONTRACTS } from "@/lib/kernel/contracts";
 
 /** A line in the buyer's cart — items selected from a seller's catalog.
  *  Internal to the store; consumers receive it structurally via `useCartStore`
@@ -90,6 +92,9 @@ export const useCartStore = create<CartStore>()(
 
             clearCart: () => set({ items: [] }),
         }),
-        { name: "figaro-seller-cart" }
+        // A cart line names a seller of ONE deployment (its catalog is read
+        // through that deployment's MembersRegistry), so the cart is kept per
+        // deployment: a line picked on one never reaches another's checkout.
+        { name: `figaro-seller-cart:${activeChain.id}:${CONTRACTS.core.toLowerCase()}` }
     )
 );

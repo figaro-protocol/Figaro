@@ -7,7 +7,7 @@
  */
 import { createConfig } from "wagmi";
 import { createPublicClient } from "viem";
-import { localAnvil, hardhat, activeChain, chains } from "./chains";
+import { activeChain, pageRecord } from "./chains";
 import { connectors } from "./connectors";
 import { mockAwareHttp, connectorFirstTransport } from "./mockTransport";
 import { readUserEndpoints } from "./userEndpoints";
@@ -19,7 +19,6 @@ import {
 
 // Re-export chain primitives so existing imports from this module keep working.
 export {   activeChain,  };
-// localAnvil (id=31337) supersedes the standalone hardhat export for local dev.
 
 // ---------------------------------------------------------------------------
 // Viem public client — used directly by hooks and window.figaroPublicClient
@@ -28,16 +27,19 @@ export {   activeChain,  };
 // The RPC transport points straight at the chain endpoint in every
 // environment — the static export has no server to proxy through, and the
 // browser reaches a CORS-permissive local Anvil / a public gateway directly.
-// NEXT_PUBLIC_RPC_URL is only the DEFAULT —
-// the user's runtime override (their own provider key, member endpoints) wins, so a
-// hosted deploy never bills every visitor's reads to the operator's key.
+// The page's deployment record names the DEFAULT endpoint (`rpcUrl`: a
+// published deployment record's keyless public endpoint, or the build's own
+// NEXT_PUBLIC_RPC_URL) —
+// the user's runtime override for the page's chain (their own provider key)
+// wins, so a hosted deploy never bills every visitor's reads to the operator's
+// key. With neither, the chain's own default endpoint is read.
 // wagmi's config is created once at module load, so an override change
 // applies on the next reload.
 const userRpcOverride = readUserEndpoints().rpcUrl;
-/** The RPC this site reads: the viewer's own override, else the deployment's default. */
+/** The RPC this page reads: the viewer's own override for the page's chain, else its deployment's default. */
 export const siteRpcUrl =
     userRpcOverride ??
-    process.env.NEXT_PUBLIC_RPC_URL ??
+    pageRecord()?.rpcUrl ??
     activeChain.rpcUrls.default.http[0];
 
 export const publicClient = createPublicClient({
@@ -48,8 +50,8 @@ export const publicClient = createPublicClient({
 // ---------------------------------------------------------------------------
 // wagmi config
 // ---------------------------------------------------------------------------
-// activeChain.id is a type union (localAnvil | sepolia) — TS can't narrow
-// computed property keys from unions, so the `transports` map appears incomplete.
+// One chain, the page's deployment's (`lib/shared/chains.ts`): every hook
+// that reads wagmi's chain reads that one, whatever network the wallet is on.
 export const config = createConfig({
     chains: [activeChain],
     transports: {

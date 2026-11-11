@@ -213,9 +213,14 @@ NEXT_PUBLIC_ANALYST_URL=
 # connector; there is no WalletConnect project id to configure.
 NEXT_PUBLIC_ENABLE_TEST_HELPERS=true   # devnet only
 
-# Chain reads — public networks only. NEXT_PUBLIC_CHAIN selects the target chain
-# ("sepolia" → Sepolia; unset → the local Anvil devnet — lib/shared/chains.ts);
-# a public-network build MUST set it or the export targets Anvil.
+# Chain reads — public networks only. NEXT_PUBLIC_CHAIN names the build's own
+# chain, the default a page shows when its address names no deployment: a key
+# of viem's chain registry ("mainnet", "sepolia", "polygon", "polygonAmoy", …;
+# unset → the local Anvil devnet — lib/shared/chains.ts). A name the registry
+# does not hold stops the build; a public-network build MUST set it or the
+# export targets Anvil. The NEXT_PUBLIC_* addresses beside it are the build's
+# own deployment record; a public build also lists every record under
+# deployments/ (docs/FRONTEND.md § "One site, several deployments").
 # NEXT_PUBLIC_RPC_URL is the DEFAULT read
 # endpoint (a connected wallet's provider takes over); NEXT_PUBLIC_DEPLOYMENT_BLOCK
 # is where every event scan starts (the deployment record's `deploymentBlock`) —

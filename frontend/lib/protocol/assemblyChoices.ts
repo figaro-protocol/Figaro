@@ -17,7 +17,7 @@ import { clauseIsProcessLog, getClauseSpec } from "@/lib/shared/clauseSpecSource
 import { truncateHex } from "@/lib/shared/formatHex";
 import { agreementClauses, assemblyComposedClauseKeys, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { assemblyFollows } from "@/lib/shared/assembly";
-import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
+import { chainById } from "@/lib/shared/chains";
 import { scheduleContentRetry } from "@/lib/shared/ipfsService";
 import {
     usePublishedAssemblies,
@@ -25,21 +25,13 @@ import {
 import { mapRead, type NetworkRead } from "@/lib/shared/networkRead";
 
 /**
- * Synthesize a `networkTargets` value for an on-chain-registered assembly
- * based on the chain its registry lives on. Derived rather than stored —
- * the AssemblyRegistry is per-chain, so the chain IS the network target.
+ * The `networkTargets` value of an on-chain-registered assembly: the name of
+ * the chain its registry lives on, from viem's registry of EVM networks
+ * (`chainById`), never a list this build keeps. Derived rather than stored —
+ * the AssemblyRegistry is per-deployment, so its chain IS the network target.
  */
 function chainIdToNetworkTarget(chainId: number): string {
-    switch (chainId) {
-        case DEVNET_CHAIN_ID:
-            return "local-anvil";
-        case 11155111:
-            return "sepolia";
-        case 1:
-            return "mainnet";
-        default:
-            return `evm-${chainId}`;
-    }
+    return chainById(chainId)?.name ?? `chain ${chainId}`;
 }
 
 
@@ -141,7 +133,7 @@ export function useAssemblyChoices(
 ): { read: NetworkRead<AssemblyChoice[]>; refetch: () => void } {
     const { read: eventsRead, refetch } = usePublishedAssemblies(registeredBy, opts);
     const events = eventsRead.status === "present" ? eventsRead.value : null;
-    // `activeChain` is env-determined; the read uses the standalone public
+    // `activeChain` is the page's deployment's chain; the read uses the standalone public
     // client bound to it. Wagmi's `useChainId` would reflect the connected
     // wallet's chain, which is irrelevant for a read against a fixed chain
     // — and undefined on the marketing tier where no provider is mounted.

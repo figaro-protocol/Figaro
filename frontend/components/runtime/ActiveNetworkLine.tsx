@@ -15,18 +15,21 @@
 
 import { useConnection } from "wagmi";
 import type { Chain } from "viem";
-import { activeChain, chainById } from "@/lib/shared/chains";
+import { activeChain, chainById, pageDeployment } from "@/lib/shared/chains";
 import { useMounted } from "@/hooks/useMounted";
 
 /**
  * The chain the connected wallet is on, from wagmi's connection; with no
- * wallet connected, the chain this build runs on. `useChainId()` is not the
+ * wallet connected, the page's chain. `useChainId()` is not the
  * wallet's chain: the wagmi config lists one chain (`lib/shared/wagmi.ts`),
- * so it always returns the build's chain whatever network the wallet is on.
+ * so it always returns the page's chain whatever network the wallet is on.
  */
 export function useWalletChain(): Chain | undefined {
     const { chainId } = useConnection();
-    return chainById(chainId ?? activeChain.id);
+    if (chainId !== undefined) return chainById(chainId);
+    // An address naming an unlisted deployment shows no deployment: with no
+    // wallet there is no chain to name (`PageDeploymentNotice` says why).
+    return pageDeployment.kind === "unlisted" ? undefined : chainById(activeChain.id);
 }
 
 export function ActiveNetworkLine() {
