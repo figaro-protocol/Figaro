@@ -198,6 +198,12 @@ export interface SequencerStatus {
     dropped_usage_claims?: number;
     /** The most recent claim drop's reason, verbatim; null while clean. */
     last_dropped_claim_error?: string | null;
+    /** Operations waiting in the isolation: a refused batch whose revert
+     *  named nobody is split until the operation that reverts alone is
+     *  found, and the queue waits meanwhile. A non-zero figure means the
+     *  relay is isolating, not stalled for another reason. Absent on a relay
+     *  predating the isolation. */
+    isolating_ops?: number;
 }
 
 export function toSequencerCommitment(c: Commitment): SequencerCommitment {

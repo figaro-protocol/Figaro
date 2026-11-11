@@ -395,9 +395,15 @@ of losing the batch:
   reverts the batch at no cost, and an `eth_call` re-ask may name nobody, so
   on any refused batch the relay dead-letters the batch's wallet-code
   resolves alone (re-submittable, each buyer counted in the adversarial
-  signal) and re-queues the rest; only a batch with no wallet-code resolve
-  dead-letters whole. The gas and the length are this
-  relay's plan, never the protocol's: the verifier bounds neither.
+  signal) and re-queues the rest; a batch with no wallet-code operation is
+  isolated (see Mempool bounds). The gas and the length are this
+  relay's plan, never the protocol's: the verifier bounds neither. Code
+  whose cost rises between the node's estimate and inclusion would starve
+  under a limit set at the estimate and revert the batch where the verifier
+  would skip the entry, so the `settleBatch` call is sent with `SETTLE_GAS_HEADROOM_PCT`
+  (25 percent) over the estimate, capped at the tick's budget, unless the
+  node's estimate itself exceeds it, when the limit is the estimate
+  (`gas::settle_gas_limit`); gas a transaction does not use is not charged.
 
 Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
 no funding is read; the chain id is read at startup in every mode. A read failure at the door refuses the submission (`503`,
@@ -413,8 +419,21 @@ dropped: it stays queued until a batch drains it, and a resolve failure is
 CLASSIFIED — transport trouble re-queues the ops (cap-exempt) for the next
 tick, while a **deterministic revert** (the chain evaluated the transaction
 and refused — an `execution reverted` on send, or a mined-but-reverted
-receipt) **dead-letters them immediately** rather than re-proving the
-identical batch for the same refusal, and the drop surfaces on `/status`
+receipt) is never re-sent as the same batch. A refusal whose re-reads name
+a party dead-letters that party's operations and re-queues the rest. A
+refusal that names nobody dead-letters, within the split budget, no
+operation for a revert it may not have caused: the batch's operations wait
+apart, ahead of the queue, in halves of the batch's order, each half tried
+alone as a batch of its own (`Mempool::isolate`), so the operation that
+reverts alone is dead-lettered alone and, within the budget, every other
+lands, unless its deadline or deferral window passes while the queue waits.
+`/status` reports the operations waiting in the isolation (`isolating_ops`);
+an operation that enters it from a fresh refused batch more than
+`MAX_ISOLATION_ROUNDS` (3) times is dead-lettered with that reason. A split
+budget of ⌈log2 n⌉ +
+`ISOLATION_SPLIT_SLACK` (8) splits bounds the extra `settleBatch` calls at the batch and
+two per split; past it a set refused again is dead-lettered unattributed,
+its reason starting `ISOLATION CAP`. Every drop surfaces on `/status`
 (`dead_lettered_ops`, `last_settle_error`). Idempotency spans the pending
 window; after a batch resolves, a re-submission is dropped by the stateful
 assembler filter instead.

@@ -322,6 +322,11 @@ pub struct StatusResponse {
     pub dead_lettered_ops: u64,
     /// The most recent dead-letter reason, its URLs taken out; null while clean.
     pub last_settle_error: Option<String>,
+    /// Operations waiting in the isolation of a batch the chain refused
+    /// naming nobody (`Mempool::isolate`), counted in `pending_ops` too:
+    /// above zero, the relay is trying halves of a refused batch, and the
+    /// queue waits behind them.
+    pub isolating_ops: usize,
     /// Cumulative usage claims dropped without landing — counted apart from
     /// the operations: a claim credits a designer, it resolves nothing.
     pub dropped_usage_claims: u64,
@@ -553,6 +558,7 @@ async fn health(State(state): State<AppState>) -> impl IntoResponse {
 async fn status(State(state): State<AppState>) -> impl IntoResponse {
     let root = state.state_mirror.state_root().await;
     let pending = state.mempool.len().await;
+    let isolating_ops = state.mempool.isolating_len().await;
     let pending_usage = state.mempool.usage_len().await;
     let batches = *state.batch_count.read().await;
     let (dead_lettered_ops, last_settle_error) = state.failures.snapshot().await;
@@ -565,6 +571,7 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
         batches_settled: batches,
         dead_lettered_ops,
         last_settle_error,
+        isolating_ops,
         dropped_usage_claims,
         last_dropped_claim_error,
     })
@@ -598,6 +605,7 @@ mod failure_tests {
             batches_settled: 0,
             dead_lettered_ops: 0,
             last_settle_error: None,
+            isolating_ops: 0,
             dropped_usage_claims: 0,
             last_dropped_claim_error: None,
         })

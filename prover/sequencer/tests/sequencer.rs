@@ -3244,16 +3244,198 @@ fn an_unnamed_refusal_dead_letters_the_wallet_code_resolves_alone() {
     };
     let other_partys_commit = commit_from(&root, 91, 10);
     // The re-reads name no revoker, and the re-ask (an eth_call) answers yes.
-    let verdict = classify_deterministic_revert(vec![other_partys_commit, resolve], vec![], vec![], vec![]);
-    assert!(!verdict.whole, "a batch carrying a wallet-code resolve is never dead-lettered whole on an unnamed refusal");
+    let verdict = classify_deterministic_revert(&[], vec![other_partys_commit, resolve], vec![], vec![], vec![]);
+    assert!(verdict.isolate.is_empty(), "a batch carrying a wallet-code resolve dead-letters that resolve alone on an unnamed refusal");
     assert_eq!(verdict.requeue.iter().map(|p| p.id).collect::<Vec<_>>(), vec![91], "the other party's commit is re-queued");
     assert_eq!(verdict.dead.len(), 1);
     assert_eq!(verdict.dead[0].0.id, 90, "the wallet-code resolve alone is dead-lettered");
     assert_eq!(verdict.dead[0].2, Some(root.buyer), "its buyer is counted by the adversarial signal");
 
-    // A batch with no wallet-code resolve still dead-letters whole.
-    let verdict = classify_deterministic_revert(vec![commit_from(&root, 92, 10)], vec![], vec![], vec![]);
-    assert!(verdict.whole);
+    // A batch with no wallet-code operation dead-letters nothing on an
+    // unnamed refusal: every operation goes to the isolation, which tries it
+    // in smaller batches until the one that reverts alone is found
+    // (`Mempool::isolate`; the relay's run against the chain double is
+    // `submitter::tests::an_unnamed_revert_dead_letters_the_offender_alone_and_every_honest_operation_lands`).
+    let verdict = classify_deterministic_revert(
+        &[],
+        vec![commit_from(&root, 92, 10), commit_from(&root, 93, 10)],
+        vec![],
+        vec![commit_from(&root, 94, 10)],
+        vec![],
+    );
+    assert!(verdict.dead.is_empty(), "no operation is dead-lettered for a revert nobody was named for");
+    assert!(verdict.requeue.is_empty());
+    assert_eq!(verdict.isolate.iter().map(|p| p.id).collect::<Vec<_>>(), vec![92, 93, 94], "the unread wallet too");
+}
+
+// ── The isolation of a batch refused naming nobody ─────────────────────
+
+/// A commit whose funding re-read failed after the refusal keeps its place in
+/// the batch's order, ahead of the sub-order built on it: halved in that
+/// order, the sub-order is never tried before its commit. The re-queue of the
+/// wallet-code arm keeps the order too.
+#[test]
+fn what_the_refusal_leaves_to_retry_keeps_the_batch_s_order() {
+    use figaro_sequencer::submitter::classify_deterministic_revert;
+    let (_, _, root, sub, process_id, _) = two_order_process();
+    let commit = commit_from(&root, 1, 1);
+    let built_on_it = sub_order_of(&commit, 2);
+    let other = commit_from(&root, 3, 1);
+    let order = vec![commit.key, built_on_it.key, other.key];
+    let ids = |v: &[PendingOp]| v.iter().map(|p| p.id).collect::<Vec<_>>();
+
+    // The commit's funding could not be read again; nobody is named.
+    let verdict = classify_deterministic_revert(&order, vec![built_on_it.clone(), other.clone()], vec![], vec![commit.clone()], vec![]);
+    assert_eq!(ids(&verdict.isolate), vec![1, 2, 3], "the commit ahead of what was built on it");
+
+    // With a wallet-code operation in the batch, the rest re-queue in order.
+    let resolve = PendingOp {
+        id: 4,
+        key: B256::with_last_byte(4),
+        op: wallet_code_resolve_from_the_wire(process_id, sub.expected_cumulative_value, &[root.clone(), sub.clone()]),
+        deferred_since: None,
+        behind: Vec::new(),
+    };
+    let order = vec![commit.key, built_on_it.key, resolve.key, other.key];
+    let verdict = classify_deterministic_revert(&order, vec![built_on_it, resolve, other], vec![], vec![commit], vec![]);
+    assert_eq!(ids(&verdict.requeue), vec![1, 2, 3]);
+}
+
+/// The isolation in progress is visible: the operations waiting in it are
+/// counted apart (`/status` reports them as `isolating_ops`), and among the
+/// pending operations.
+#[tokio::test]
+async fn the_operations_waiting_in_the_isolation_are_counted() {
+    let mp = queued_commits(1..=4).await;
+    let batch = mp.drain_up_to(100).await;
+    assert_eq!(mp.isolating_len().await, 0);
+    assert!(mp.isolate(batch).await.is_empty());
+    assert_eq!(mp.isolating_len().await, 4, "both halves wait");
+    assert_eq!(mp.len().await, 4);
+    mp.drain_up_to(100).await;
+    assert_eq!(mp.isolating_len().await, 2, "the half in flight is not counted");
+}
+
+/// A set the isolation drains can leave it without landing (given back when
+/// the tick's gas budget cuts it) and join a fresh refused batch with a fresh
+/// budget. Past `MAX_ISOLATION_ROUNDS` such rounds the operation is
+/// dead-lettered, so no operation re-enters the isolation forever.
+#[tokio::test]
+async fn an_operation_enters_the_isolation_from_at_most_max_isolation_rounds_batches() {
+    use figaro_sequencer::mempool::MAX_ISOLATION_ROUNDS;
+    let mp = queued_commits(1..=2).await;
+    for round in 1..=MAX_ISOLATION_ROUNDS {
+        let batch = mp.drain_up_to(100).await;
+        assert_eq!(batch.len(), 2, "round {round}: a fresh batch of both");
+        assert!(mp.isolate(batch).await.is_empty(), "round {round}: split, none dead-lettered");
+        // Each half drained on its own tick, and given back on that tick by
+        // the gas budget's cut.
+        for _ in 0..2 {
+            let half = mp.drain_up_to(100).await;
+            assert_eq!(half.len(), 1, "round {round}: one half alone");
+            mp.give_back(half).await;
+        }
+    }
+    let batch = mp.drain_up_to(100).await;
+    let dead = mp.isolate(batch).await;
+    assert_eq!(dead.len(), 2, "both past the rounds");
+    for (_, why) in &dead {
+        assert!(why.contains("refused batches without landing"), "{why}");
+    }
+    assert_eq!(mp.len().await, 0);
+}
+
+/// A refused batch that carried claims and no operation names nobody: its
+/// claims are dropped with the chain's refusal, never with a reason that
+/// blames a party's wallet code.
+#[test]
+fn a_refused_batch_of_claims_alone_is_dropped_with_the_chain_s_refusal() {
+    use figaro_sequencer::submitter::classify_deterministic_revert;
+    let refusal = "settleBatch mined but REVERTED: 0xabc";
+    let verdict = classify_deterministic_revert(&[], vec![], vec![], vec![], vec![]);
+    assert!(!verdict.named());
+    assert_eq!(verdict.claims_reason(false, refusal), refusal);
+}
+
+/// The batch loop over the mempool alone: each drain is a `settleBatch` call, refused
+/// naming nobody when it carries one of `bad`, landed otherwise; a refused
+/// one goes to `Mempool::isolate`. Returns the ids landed, the ids
+/// dead-lettered with their reasons, and the `settleBatch` calls tried.
+async fn isolate_until_empty(mp: &Mempool, bad: &[u64]) -> (Vec<u64>, Vec<(u64, String)>, usize) {
+    let (mut landed, mut dead, mut tries) = (Vec::new(), Vec::new(), 0);
+    loop {
+        let ops = mp.drain_up_to(1000).await;
+        if ops.is_empty() {
+            break;
+        }
+        tries += 1;
+        assert!(tries <= 1000, "the isolation ends");
+        if ops.iter().any(|p| bad.contains(&p.id)) {
+            for (op, why) in mp.isolate(ops).await {
+                dead.push((op.id, why));
+            }
+        } else {
+            landed.extend(ops.iter().map(|p| p.id));
+        }
+    }
+    landed.sort_unstable();
+    dead.sort_unstable_by_key(|(id, _)| *id);
+    (landed, dead, tries)
+}
+
+async fn queued_commits(ids: impl IntoIterator<Item = u64>) -> Mempool {
+    let (_, _, root, _, _, _) = two_order_process();
+    let mp = mempool();
+    mp.give_back(ids.into_iter().map(|id| commit_from(&root, id, 10)).collect()).await;
+    mp
+}
+
+/// Two offenders in a full batch of `MAX_BATCH_OPS` (100): the split budget,
+/// ⌈log2 100⌉ + 8 = 15, covers every split they need, so each is
+/// dead-lettered alone and the 98 others land, in at most the batch and two
+/// `settleBatch` calls per split.
+#[tokio::test]
+async fn the_split_budget_isolates_two_offenders_in_a_full_batch() {
+    let mp = queued_commits(1..=100).await;
+    let (landed, dead, tries) = isolate_until_empty(&mp, &[37, 81]).await;
+    assert_eq!(dead.iter().map(|(id, _)| *id).collect::<Vec<_>>(), vec![37, 81]);
+    for (_, why) in &dead {
+        assert!(why.contains("reverts on its own"), "{why}");
+    }
+    assert_eq!(landed.len(), 98, "every other operation lands");
+    assert!(tries <= 2 * 15 + 1, "{tries} settles");
+}
+
+/// Past the budget a set refused again is dead-lettered unattributed, with
+/// the reason an operator reads on /status: 32 operations that all revert
+/// need 31 splits, past the budget of ⌈log2 32⌉ + 8 = 13. The extra work
+/// stays bounded: the batch and two `settleBatch` calls per split.
+#[tokio::test]
+async fn past_the_split_budget_a_refused_set_is_dead_lettered_unattributed_with_the_reason() {
+    let mp = queued_commits(1..=32).await;
+    let all: Vec<u64> = (1..=32).collect();
+    let (landed, dead, tries) = isolate_until_empty(&mp, &all).await;
+    assert!(landed.is_empty());
+    assert_eq!(dead.len(), 32, "each operation dead-lettered once");
+    assert!(dead.iter().any(|(_, why)| why.starts_with("ISOLATION CAP")), "the budget ran out");
+    assert!(dead.iter().any(|(_, why)| why.contains("reverts on its own")), "some were tried alone first");
+    assert!(tries <= 2 * 13 + 1, "{tries} settles");
+}
+
+/// The isolation's sets are drained alone, ahead of the queue: an operation
+/// queued meanwhile waits, so a refusal of a set names only that set.
+#[tokio::test]
+async fn an_isolated_set_is_drained_alone_ahead_of_the_queue() {
+    let (_, _, root, _, _, _) = two_order_process();
+    let mp = queued_commits(1..=4).await;
+    let batch = mp.drain_up_to(100).await;
+    assert!(mp.isolate(batch).await.is_empty(), "four operations are split, none dead-lettered");
+    mp.give_back(vec![commit_from(&root, 9, 10)]).await;
+    let ids = |v: Vec<PendingOp>| v.into_iter().map(|p| p.id).collect::<Vec<_>>();
+    assert_eq!(ids(mp.drain_up_to(100).await), vec![1, 2], "the first half alone");
+    assert_eq!(mp.len().await, 3, "the second half and the queued operation wait");
+    assert_eq!(ids(mp.drain_up_to(100).await), vec![3, 4], "then the second half alone");
+    assert_eq!(ids(mp.drain_up_to(100).await), vec![9], "then the queue");
 }
 
 // ── The capacity filter counts each process under its derived id ──────
@@ -3528,8 +3710,8 @@ fn an_unnamed_refusal_dead_letters_a_wallet_code_attestation_and_names_its_party
     let seller = target.seller;
     let attestation = PendingOp { id: 80, key: B256::with_last_byte(80), op, deferred_since: None, behind: Vec::new() };
     let (_, _, root, _, _, _) = two_order_process();
-    let verdict = classify_deterministic_revert(vec![commit_from(&root, 81, 10), attestation], vec![], vec![], vec![]);
-    assert!(!verdict.whole);
+    let verdict = classify_deterministic_revert(&[], vec![commit_from(&root, 81, 10), attestation], vec![], vec![], vec![]);
+    assert!(verdict.isolate.is_empty());
     assert_eq!(verdict.requeue.iter().map(|p| p.id).collect::<Vec<_>>(), vec![81]);
     assert_eq!(verdict.dead.len(), 1);
     assert_eq!((verdict.dead[0].0.id, verdict.dead[0].2), (80, Some(seller)), "the attesting party is named");

@@ -96,6 +96,31 @@ pub const SETTLE_PROOF_VERIFY_GAS: u64 = 300_000;
 /// premiums a first batch pays (the same figure the SDK's ceilings keep).
 pub const GAS_HEADROOM_PCT: u64 = 95;
 
+/// The headroom a `settleBatch` call's gas limit carries over the node's estimate, in
+/// percent. A party's wallet code can cost more at inclusion than in the
+/// estimate's run (a storage slot the run found warm read cold, a branch on a block
+/// field or on `gasleft()`); under a limit set at the estimate the code runs
+/// out of the gas forwarded to it, and the verifier, which cannot tell its
+/// answer, reverts the whole batch (`WalletCodeAttestationStarved`) where it
+/// would have skipped the entry. A quarter over the estimate is at least
+/// `WALLET_CODE_EXECUTION_GAS` for any `settleBatch` call of two million gas or more,
+/// unless the cap at the budget cuts it.
+/// Gas a transaction does not use is not charged, so the headroom costs only
+/// the block space it reserves; it is capped at the budget the batch was
+/// planned against (`settle_gas_limit`).
+pub const SETTLE_GAS_HEADROOM_PCT: u64 = 25;
+
+/// The gas limit a `settleBatch` call is sent with: the node's `estimate` with
+/// `SETTLE_GAS_HEADROOM_PCT` over it, capped at `ceiling` (the tick's budget,
+/// `settle_gas_budget`, under the chain's cap on one transaction), unless the
+/// estimate itself exceeds `ceiling`, when the limit is the estimate.
+pub fn settle_gas_limit(estimate: u64, ceiling: u64) -> u64 {
+    estimate
+        .saturating_add(estimate / 100 * SETTLE_GAS_HEADROOM_PCT)
+        .min(ceiling)
+        .max(estimate)
+}
+
 /// The most gas one transaction may take, by default: EIP-7825's cap of
 /// 2^24, which mainnet enforces. A chain without it (Sepolia carries larger
 /// transactions) is told so by the operator (`SETTLE_GAS_CAP`).

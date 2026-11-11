@@ -567,17 +567,43 @@ pub fn wallet_code_party(op: &KernelOp) -> Option<Address> {
 /// What the deterministic-revert arm does with a batch the chain refused, from
 /// what its re-reads named: the operations it dead-letters, each with its
 /// reason and, for an address the adversarial signal counts, that address;
-/// the operations it re-queues; and whether no one was named, so the whole
-/// batch is dead-lettered.
+/// the operations it re-queues; and, when no one was named and no operation
+/// is a wallet-code one, the operations it isolates by splitting
+/// (`Mempool::isolate`), within the split budget none dead-lettered for a
+/// revert it may not have caused. What it re-queues or isolates keeps the
+/// batch's order.
 #[derive(Debug, Default)]
 pub struct RevertVerdict {
     pub dead: Vec<(PendingOp, String, Option<Address>)>,
     pub requeue: Vec<PendingOp>,
-    pub whole: bool,
+    pub isolate: Vec<PendingOp>,
 }
 
-/// Decide the refused batch's fate. `still` is what the re-reads did not
-/// name, `revoked` the operations of a verified revoker, `unverifiable` those
+impl RevertVerdict {
+    /// Whether the re-reads or the re-ask named anyone: a revoker, a party
+    /// whose code refused, or a wallet-code operation's party. Nobody named
+    /// leaves the batch's operations, if any, to the isolation.
+    pub fn named(&self) -> bool {
+        !self.dead.is_empty() || !self.requeue.is_empty()
+    }
+
+    /// Why the refused batch's usage claims are dropped: the chain's refusal
+    /// when nobody was named, a batch of claims alone included; else the
+    /// named cause.
+    pub fn claims_reason(&self, named_revoker: bool, refusal: &str) -> String {
+        if !self.named() {
+            return refusal.to_string();
+        }
+        if named_revoker {
+            "the batch was refused for a revoked approval".to_string()
+        } else {
+            "the batch was refused by a party's wallet code".to_string()
+        }
+    }
+}
+
+/// Decide the refused batch's fate. `order` is the batch's keys in its
+/// execution order, `still` what the re-reads did not name, `revoked` the operations of a verified revoker, `unverifiable` those
 /// whose funding could not be read, `code_refused` the wallet-code
 /// operations whose party's code refused at the re-ask.
 ///
@@ -591,9 +617,27 @@ pub struct RevertVerdict {
 /// wallet-code attestation can do too. The re-ask names nobody, and
 /// dead-lettering the whole batch would let the wallet sink every co-batched
 /// party's operations again with fresh bytes. Its party is counted by the
-/// adversarial signal. Only a batch with no wallet-code operation is
-/// dead-lettered whole.
+/// adversarial signal. A batch with no wallet-code operation goes to the
+/// isolation whole, the unread wallets' operations with it: nothing named
+/// any of them.
 pub fn classify_deterministic_revert(
+    order: &[B256],
+    still: Vec<PendingOp>,
+    revoked: Vec<(PendingOp, String, Address)>,
+    unverifiable: Vec<PendingOp>,
+    code_refused: Vec<(PendingOp, String)>,
+) -> RevertVerdict {
+    let mut verdict = classify_unordered(still, revoked, unverifiable, code_refused);
+    // An unread wallet's operations were split off the rest; put everything
+    // back in the batch's order, so a half never holds an operation ahead of
+    // one it was built on.
+    let at = |p: &PendingOp| order.iter().position(|k| *k == p.key).unwrap_or(usize::MAX);
+    verdict.requeue.sort_by_key(at);
+    verdict.isolate.sort_by_key(at);
+    verdict
+}
+
+fn classify_unordered(
     still: Vec<PendingOp>,
     revoked: Vec<(PendingOp, String, Address)>,
     unverifiable: Vec<PendingOp>,
@@ -615,8 +659,7 @@ pub fn classify_deterministic_revert(
             verdict.requeue = rest.into_iter().chain(unverifiable).collect();
             return verdict;
         }
-        verdict.whole = true;
-        verdict.dead = still.into_iter().chain(unverifiable).map(|op| (op, String::new(), None)).collect();
+        verdict.isolate = still.into_iter().chain(unverifiable).collect();
         return verdict;
     }
     for (op, why, who) in revoked {
@@ -951,10 +994,14 @@ fn names_a_reserved_key(claim: &UsageClaim) -> bool {
         || matches!(&claim.kind, UsageClaimKind::Assembly { agreement_hash, .. } if is_reserved_key(agreement_hash))
 }
 
-/// Submit a proved batch to the on-chain FigaroBatchVerifier.
+/// Submit a proved batch to the on-chain FigaroBatchVerifier, its gas limit
+/// the node's estimate with headroom, capped at `gas_ceiling`, the budget the
+/// batch was planned against, unless the node's estimate itself exceeds it,
+/// when the limit is the estimate (`gas::settle_gas_limit`).
 pub async fn submit_batch(
     config: &SubmitterConfig,
     result: &ProveResult,
+    gas_ceiling: u64,
 ) -> Result<alloy::primitives::B256, SettleError> {
     let transient = |message: String| SettleError { message, deterministic: false };
     // Build provider with signer
@@ -962,6 +1009,7 @@ pub async fn submit_batch(
         .private_key
         .parse()
         .map_err(|e| transient(format!("invalid private key: {e}")))?;
+    let from = signer.address();
     let wallet = EthereumWallet::from(signer);
 
     // alloy 1.x: the recommended fillers (nonce, gas, chain id) are the
@@ -989,20 +1037,22 @@ pub async fn submit_batch(
         Bytes::from(result.operations_bytes.clone()),
     );
 
-    info!(verifier = ?config.verifier_address, "Submitting settleBatch transaction");
+    // A send-path revert is the chain's evaluated refusal (the node
+    // simulates before accepting) — deterministic, never retried.
+    let refused = |e: String| {
+        let msg = format!("tx submission failed: {}", without_urls(&e));
+        eprintln!("SUBMIT_ERROR: {msg}");
+        SettleError { deterministic: is_deterministic_send_error(&msg), message: msg }
+    };
+    let tx = tx.from(from);
+    let estimate = tx.estimate_gas().await.map_err(|e| refused(e.to_string()))?;
+    let tx = tx.gas(crate::gas::settle_gas_limit(estimate, gas_ceiling));
+
+    info!(verifier = ?config.verifier_address, %estimate, "Submitting settleBatch transaction");
 
     let pending = match tx.send().await {
         Ok(p) => p,
-        Err(e) => {
-            let msg = format!("tx submission failed: {}", without_urls(&e.to_string()));
-            eprintln!("SUBMIT_ERROR: {msg}");
-            // A send-path revert is the chain's evaluated refusal (the node
-            // simulates before accepting) — deterministic, never retried.
-            return Err(SettleError {
-                deterministic: is_deterministic_send_error(&msg),
-                message: msg,
-            });
-        }
+        Err(e) => return Err(refused(e.to_string())),
     };
 
     let receipt = match pending.get_receipt().await {
@@ -1909,7 +1959,7 @@ mod tests {
 
         let double = submit_double(Chain::Lands).await;
         let result = proved_canonical_batch();
-        let hash = submit_batch(&submit_config(double.url.clone()), &result).await.expect("the batch lands");
+        let hash = submit_batch(&submit_config(double.url.clone()), &result, u64::MAX).await.expect("the batch lands");
 
         let sent = double.calls_to("eth_sendRawTransaction");
         assert_eq!(sent.len(), 1, "one transaction is sent");
@@ -1938,7 +1988,7 @@ mod tests {
     #[tokio::test]
     async fn a_mined_but_reverted_batch_is_a_deterministic_failure() {
         let double = submit_double(Chain::MinedReverted).await;
-        let err = submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch()).await.unwrap_err();
+        let err = submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch(), u64::MAX).await.unwrap_err();
         assert!(err.deterministic, "{}", err.message);
         assert!(err.message.contains("REVERTED"), "{}", err.message);
     }
@@ -1949,16 +1999,263 @@ mod tests {
     #[tokio::test]
     async fn a_send_path_revert_is_deterministic_and_transport_trouble_is_not() {
         let double = submit_double(Chain::RefusesAtEstimate).await;
-        let err = submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch()).await.unwrap_err();
+        let err = submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch(), u64::MAX).await.unwrap_err();
         assert!(err.deterministic, "{}", err.message);
         assert!(double.calls_to("eth_sendRawTransaction").is_empty(), "nothing is sent");
         assert!(!err.message.contains(&double.url), "{}", err.message);
 
-        let err = submit_batch(&submit_config("http://127.0.0.1:1/v2/SECRETKEY".to_string()), &proved_canonical_batch())
+        let err = submit_batch(&submit_config("http://127.0.0.1:1/v2/SECRETKEY".to_string()), &proved_canonical_batch(), u64::MAX)
             .await
             .unwrap_err();
         assert!(!err.deterministic, "{}", err.message);
         assert!(err.message.starts_with("tx submission failed"), "{}", err.message);
         assert!(!err.message.contains("SECRETKEY") && !err.message.contains("127.0.0.1"), "{}", err.message);
+    }
+
+    // ── A revert that names nobody: isolation by splitting ────────────
+
+    /// A root commit of its own process, the canonical order's with `salt`,
+    /// signed by both parties: commits of distinct salts apply together.
+    fn signed_root_commit(salt: u64) -> KernelOp {
+        use figaro_kernel::eip712::domain_separator;
+        use figaro_prove_test::{make_signing_key, sign_commitment, BUYER_KEY, CHAIN_ID, CORE, SELLER1_KEY};
+        let KernelOp::Commit { commitment, .. } = figaro_prove_test::build_canonical_batch_input().operations[0].clone() else {
+            panic!("the canonical batch opens with a commit")
+        };
+        let c = Commitment { salt: U256::from(salt), ..commitment };
+        let domain = domain_separator(CHAIN_ID, CORE);
+        KernelOp::Commit {
+            buyer_sig: sign_commitment(&c, &domain, &make_signing_key(BUYER_KEY)),
+            seller_sig: sign_commitment(&c, &domain, &make_signing_key(SELLER1_KEY)),
+            commitment: c,
+        }
+    }
+
+    fn salt_of(op: &KernelOp) -> u64 {
+        match op {
+            KernelOp::Commit { commitment, .. } => commitment.salt.to::<u64>(),
+            other => panic!("a commit, got {other:?}"),
+        }
+    }
+
+    fn landed_receipt(hash: &serde_json::Value, status: bool) -> serde_json::Value {
+        serde_json::json!({
+            "transactionHash": hash,
+            "transactionIndex": "0x0",
+            "blockHash": B256::repeat_byte(0x0b),
+            "blockNumber": "0x2",
+            "from": Address::repeat_byte(0x0f),
+            "to": VERIFIER,
+            "cumulativeGasUsed": "0x5208",
+            "gasUsed": "0x5208",
+            "effectiveGasPrice": "0x3b9aca01",
+            "contractAddress": null,
+            "logs": [],
+            "logsBloom": format!("0x{}", "00".repeat(256)),
+            "type": "0x2",
+            "status": if status { "0x1" } else { "0x0" },
+        })
+    }
+
+    /// The answers a signed send needs besides the estimate and the receipt.
+    fn send_answers(method: &str, params: &serde_json::Value) -> Option<crate::rpc_double::Answer> {
+        match method {
+            "eth_chainId" => Some(Ok(serde_json::json!("0x7a69"))),
+            "eth_getTransactionCount" => Some(Ok(serde_json::json!("0x0"))),
+            "eth_feeHistory" => Some(Ok(serde_json::json!({
+                "oldestBlock": "0x1",
+                "baseFeePerGas": ["0x3b9aca00", "0x3b9aca00"],
+                "gasUsedRatio": [0.5],
+                "reward": [["0x1"]],
+            }))),
+            "eth_sendRawTransaction" => {
+                let raw = alloy::primitives::hex::decode(params[0].as_str().unwrap()).unwrap();
+                Some(Ok(serde_json::json!(alloy::primitives::keccak256(&raw))))
+            }
+            "eth_blockNumber" => Some(Ok(serde_json::json!("0x2"))),
+            _ => None,
+        }
+    }
+
+    /// A chain double whose verifier refuses, at the estimate and naming
+    /// nobody, every `settleBatch` call whose operation stream carries a commit of one of
+    /// the `offenders`' salts: an operation that reverts the `settleBatch` call wherever
+    /// it rides, for a reason no re-read names. Every other `settleBatch` call lands.
+    async fn refusing_double(offenders: Vec<u64>) -> crate::rpc_double::RpcDouble {
+        use crate::rpc_double::{reverted, serve, unserved};
+        use alloy::sol_types::SolCall;
+        serve(move |method, params| match method {
+            "eth_estimateGas" => {
+                let (_, input) = crate::rpc_double::call_of(params);
+                let call = IFigaroBatchVerifier::settleBatchCall::abi_decode(&input).expect("a settleBatch call");
+                let (ops, _, _) = figaro_kernel::operation_stream::decode_operation_stream(&call.operations).unwrap();
+                if ops.iter().any(|op| offenders.contains(&salt_of(op))) {
+                    reverted()
+                } else {
+                    Ok(serde_json::json!("0x100000"))
+                }
+            }
+            "eth_getTransactionReceipt" => Ok(landed_receipt(&params[0], true)),
+            other => send_answers(other, params).unwrap_or_else(|| unserved(other)),
+        })
+        .await
+    }
+
+    /// What the relay's batch loop does with the mempool, the submit and a
+    /// refusal, against the double: drain, execute, send; on a deterministic
+    /// refusal naming nobody, `classify_deterministic_revert` and
+    /// `Mempool::isolate`, as `main.rs` does. Returns the salts landed, the
+    /// salts dead-lettered with their reasons, and the number of `settleBatch` calls sent.
+    async fn run_until_empty(
+        mempool: &crate::mempool::Mempool,
+        rpc_url: String,
+    ) -> (Vec<u64>, Vec<(u64, String)>, usize) {
+        use figaro_kernel::types::BatchInput;
+        use figaro_prove_test::{CHAIN_ID, CORE};
+        let config = submit_config(rpc_url);
+        let mut state = figaro_kernel::state::KernelState::new().to_snapshot();
+        let (mut landed, mut dead, mut tries) = (Vec::new(), Vec::new(), 0);
+        loop {
+            let ops = mempool.drain_up_to(100).await;
+            if ops.is_empty() {
+                break;
+            }
+            tries += 1;
+            assert!(tries <= 200, "the isolation ends");
+            let input = BatchInput {
+                chain_id: CHAIN_ID,
+                verifying_contract: CORE,
+                block_timestamp: 1000,
+                operations: ops.iter().map(|p| p.op.clone()).collect(),
+                prev_state: state.clone(),
+                usage_claims: vec![],
+                usage_period: 0,
+            };
+            let (pv, positions, events, post) =
+                figaro_kernel::kernel::apply_batch_with_state(&input).expect("the drained commits apply");
+            let result = ProveResult {
+                public_values_bytes: pv.abi_encode(),
+                public_values: pv,
+                positions,
+                events,
+                proof_bytes: vec![0xAB; 7],
+                operations_bytes: figaro_kernel::operation_stream::encode_operation_stream(&input.operations, &[]),
+                post_state: post,
+            };
+            match submit_batch(&config, &result, u64::MAX).await {
+                Ok(_) => {
+                    landed.extend(ops.iter().map(|p| salt_of(&p.op)));
+                    state = result.post_state.to_snapshot();
+                }
+                Err(e) if e.deterministic => {
+                    let order: Vec<B256> = ops.iter().map(|p| p.key).collect();
+                    let verdict = classify_deterministic_revert(&order, ops, vec![], vec![], vec![]);
+                    assert!(verdict.dead.is_empty() && verdict.requeue.is_empty(), "nobody is named");
+                    for (op, why) in mempool.isolate(verdict.isolate).await {
+                        dead.push((salt_of(&op.op), why));
+                    }
+                }
+                Err(e) => panic!("transient: {}", e.message),
+            }
+        }
+        landed.sort_unstable();
+        dead.sort_unstable_by_key(|(salt, _)| *salt);
+        (landed, dead, tries)
+    }
+
+    async fn queued(salts: impl IntoIterator<Item = u64>) -> crate::mempool::Mempool {
+        let mempool = crate::mempool::Mempool::new(figaro_prove_test::CHAIN_ID, figaro_prove_test::CORE);
+        for salt in salts {
+            mempool.submit(signed_root_commit(salt)).await.expect("admitted");
+        }
+        mempool
+    }
+
+    // The blind audit's finding: a batch the chain refuses naming nobody
+    // was dead-lettered whole, so one operation that reverts sank every
+    // honest operation beside it. Every honest operation lands, and the
+    // offender alone is dead-lettered, with the reason.
+    #[tokio::test]
+    async fn an_unnamed_revert_dead_letters_the_offender_alone_and_every_honest_operation_lands() {
+        let double = refusing_double(vec![105]).await;
+        let mempool = queued(100..110).await;
+        let (landed, dead, tries) = run_until_empty(&mempool, double.url.clone()).await;
+        assert_eq!(landed, (100..110).filter(|s| *s != 105).collect::<Vec<_>>(), "every honest operation lands");
+        assert_eq!(dead.iter().map(|(s, _)| *s).collect::<Vec<_>>(), vec![105], "the offender alone is dead-lettered");
+        assert!(dead[0].1.contains("alone"), "{}", dead[0].1);
+        // One offender among ten: the batch, then two halves at each of the
+        // ⌈log2 10⌉ = 4 levels at most — never more than 9 `settleBatch` calls.
+        assert!(tries <= 9, "{tries} settles");
+        assert_eq!(mempool.len().await, 0, "nothing is left waiting");
+    }
+
+    // Every operation reverts alone: each is dead-lettered alone, with the
+    // reason that it reverted alone, none by the split budget, which a batch
+    // of four never exhausts.
+    #[tokio::test]
+    async fn a_batch_whose_every_operation_reverts_dead_letters_each_alone_under_the_cap() {
+        let double = refusing_double(vec![1, 2, 3, 4]).await;
+        let mempool = queued(1..=4).await;
+        let (landed, dead, tries) = run_until_empty(&mempool, double.url.clone()).await;
+        assert!(landed.is_empty());
+        assert_eq!(dead.iter().map(|(s, _)| *s).collect::<Vec<_>>(), vec![1, 2, 3, 4]);
+        for (_, why) in &dead {
+            assert!(why.contains("alone") && !why.contains("split budget"), "{why}");
+        }
+        assert_eq!(tries, 7, "the batch, two halves, four singles");
+    }
+
+    // ── The `settleBatch` call's gas headroom ─────────────────────────────────────
+
+    /// A chain double whose `settleBatch` call costs `inclusion` gas when it is mined,
+    /// though the node estimates `estimate`: a party's wallet code that costs
+    /// more at inclusion than at the estimate. The receipt lands iff the
+    /// transaction's gas limit covers the inclusion cost. On chain, below it
+    /// the verifier's starved-call arm reverts the whole batch, where a limit
+    /// that covers the code lets it answer and the verifier skip the entry
+    /// it refuses — the verifier's half, tested on the Forge side
+    /// (`FigaroBatchVerifierTest.test_settleBatch_walletCodeAttestation_gasStarvationProbe`).
+    async fn rising_cost_double(estimate: u64, inclusion: u64) -> (crate::rpc_double::RpcDouble, std::sync::Arc<std::sync::Mutex<u64>>) {
+        use crate::rpc_double::{serve, unserved};
+        let sent_limit = std::sync::Arc::new(std::sync::Mutex::new(0u64));
+        let seen = sent_limit.clone();
+        let double = serve(move |method, params| match method {
+            "eth_estimateGas" => Ok(serde_json::json!(format!("0x{estimate:x}"))),
+            "eth_sendRawTransaction" => {
+                use alloy::consensus::{Transaction, TxEnvelope};
+                use alloy::eips::eip2718::Decodable2718;
+                let raw = alloy::primitives::hex::decode(params[0].as_str().unwrap()).unwrap();
+                let tx = TxEnvelope::decode_2718(&mut raw.as_slice()).unwrap();
+                *seen.lock().unwrap() = tx.gas_limit();
+                Ok(serde_json::json!(alloy::primitives::keccak256(&raw)))
+            }
+            "eth_getTransactionReceipt" => Ok(landed_receipt(&params[0], *seen.lock().unwrap() >= inclusion)),
+            other => send_answers(other, params).unwrap_or_else(|| unserved(other)),
+        })
+        .await;
+        (double, sent_limit)
+    }
+
+    // A `settleBatch` call whose wallet code costs an eighth more at inclusion than at
+    // the estimate lands: the relay sends it with headroom over the estimate.
+    #[tokio::test]
+    async fn a_settle_whose_code_cost_rises_after_the_estimate_lands() {
+        let estimate = 1_000_000;
+        let (double, limit) = rising_cost_double(estimate, estimate + estimate / 8).await;
+        let landed = submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch(), 16_777_216).await;
+        assert!(landed.is_ok(), "{:?} under a limit of {}", landed.err(), limit.lock().unwrap());
+        assert!(*limit.lock().unwrap() > estimate, "the limit carries headroom over the estimate");
+    }
+
+    // The headroom never takes the limit above the ceiling the relay plans
+    // the batch against, and never takes it below the node's estimate.
+    #[tokio::test]
+    async fn the_settles_headroom_stops_at_the_planned_ceiling() {
+        let estimate = 1_000_000;
+        let (double, limit) = rising_cost_double(estimate, estimate).await;
+        submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch(), estimate + 1_000).await.unwrap();
+        assert_eq!(*limit.lock().unwrap(), estimate + 1_000, "capped at the ceiling");
+        submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch(), estimate - 1_000).await.unwrap();
+        assert_eq!(*limit.lock().unwrap(), estimate, "never below the node's estimate");
     }
 }

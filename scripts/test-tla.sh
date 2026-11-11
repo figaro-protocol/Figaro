@@ -1,7 +1,7 @@
 #!/bin/bash
 # test-tla.sh — Reproducible TLA+ model checking for FigaroCore invariants.
 #
-# Runs TLC (TLA+ model checker) against five models, the fifth in four
+# Runs TLC (TLA+ model checker) against five models, the fifth in five
 # configurations:
 #
 #   1. FigaroCore — via formal/MC.tla + formal/MC.cfg
@@ -88,6 +88,14 @@
 #      wallet installed while it held the key, the wallet-code form asked by
 #      the verifier, which skips it otherwise); its switch
 #      VerifierChecksAttestationCode FALSE MUST fail it.
+#      Its fifth spec, IsolateSpec (formal/RelayStateIsolate.cfg), models a
+#      batch the chain refuses naming nobody: its operations are split into
+#      halves, each tried alone, until the one that reverts alone is
+#      dead-lettered alone, under a split budget of log2 of the batch plus a
+#      constant. 3 invariants, the load-bearing one
+#      HonestNeverDroppedForAnother; its switch WholeBatchOnUnnamedRevert,
+#      the one whose TRUE restores the defect (the old whole-batch
+#      dead-letter), MUST fail it when TRUE.
 #
 # All five models complete exhaustive state exploration in under 20 minutes
 # total with -workers auto on a modern laptop.
@@ -106,9 +114,9 @@
 #   TLA2TOOLS=/path/to/tla2tools.jar ./scripts/test-tla.sh
 #
 # Exit codes:
-#   0  — all 71 invariants, each configuration's type invariant counted (and
+#   0  — all 74 invariants, each configuration's type invariant counted (and
 #        RelayState's two action properties), hold across the
-#        explored state space (five models, eight configurations)
+#        explored state space (five models, nine configurations)
 #   >0 — an invariant violation was found OR the environment is misconfigured
 
 set -e
@@ -141,7 +149,7 @@ echo ""
 # without fragile absolute paths.
 cd formal
 
-echo "▶ Pass 1/8 — FigaroCore (9 invariants)"
+echo "▶ Pass 1/9 — FigaroCore (9 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config MC.cfg \
@@ -151,7 +159,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 2/8 — FlorinToken (8 invariants)"
+echo "▶ Pass 2/9 — FlorinToken (8 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config FlorinToken.cfg \
@@ -161,7 +169,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 3/8 — WitnessSwapAndCommitCoordinator (10 invariants)"
+echo "▶ Pass 3/9 — WitnessSwapAndCommitCoordinator (10 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config WitnessSwapAndCommitCoordinator.cfg \
@@ -171,7 +179,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 4/8 — Composed resolution universes (21 invariants)"
+echo "▶ Pass 4/9 — Composed resolution universes (21 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config ResolutionUniverses.cfg \
@@ -181,7 +189,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 5/8 — The relay's state lifecycle (8 invariants + 2 action properties)"
+echo "▶ Pass 5/9 — The relay's state lifecycle (8 invariants + 2 action properties)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config RelayState.cfg \
@@ -191,7 +199,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 6/8 — The relay's deferral at batch formation (10 invariants)"
+echo "▶ Pass 6/9 — The relay's deferral at batch formation (10 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config RelayStateDeferral.cfg \
@@ -201,7 +209,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 7/8 — The batch path's resolve authorization (3 invariants)"
+echo "▶ Pass 7/9 — The batch path's resolve authorization (3 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config RelayStateResolve.cfg \
@@ -211,7 +219,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 8/8 — The batch path's attestation authorization (2 invariants: RTypeOK, OnlyPartyAttests)"
+echo "▶ Pass 8/9 — The batch path's attestation authorization (2 invariants: RTypeOK, OnlyPartyAttests)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config RelayStateAttest.cfg \
@@ -219,6 +227,36 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     -cleanup \
     RelayState.tla \
     "$@"
+
+echo ""
+echo "▶ Pass 9/9 — The relay's isolation of a batch refused naming nobody (3 invariants: ITypeOK, HonestNeverDroppedForAnother, IsolationBounded)"
+echo ""
+java -cp "../$TLA2TOOLS" tlc2.TLC \
+    -config RelayStateIsolate.cfg \
+    -workers auto \
+    -cleanup \
+    RelayState.tla \
+    "$@"
+
+echo ""
+echo "▶ Witness — the isolation's split budget can run out (IsolationCapWitness MUST be violated)"
+echo ""
+if cap_out=$(java -cp "../$TLA2TOOLS" tlc2.TLC \
+    -config RelayStateIsolateCap.cfg \
+    -workers auto \
+    -cleanup \
+    RelayState.tla \
+    "$@" 2>&1); then
+    echo "$cap_out"
+    echo "❌ IsolationCapWitness held: the model no longer reaches the budget's dead-letter of an honest operation"
+    exit 1
+fi
+if ! echo "$cap_out" | grep -q "Invariant IsolationCapWitness is violated"; then
+    echo "$cap_out"
+    echo "❌ TLC failed for a reason other than the witness"
+    exit 1
+fi
+echo "✓ IsolationCapWitness reached: past the budget an honest operation is dead-lettered (limitation 3)"
 
 echo ""
 echo "✅ TLA+ model-checking run finished. Review output above for invariant results."

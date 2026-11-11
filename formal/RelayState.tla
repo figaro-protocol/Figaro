@@ -38,8 +38,9 @@
 (* `knownRevoked` is an ABSTRACTION: the model assumes a refusal at the    *)
 (* batch's previous root names the revoker. In the code the naming is a    *)
 (* fresh funding read, which a party that re-approves before the re-read   *)
-(* defeats — the code then dead-letters the whole batch, an outcome        *)
-(* `NotLanded` covers. `Revoke` is permanent here, so re-approval is out   *)
+(* defeats — the code then isolates the batch's operations by splitting    *)
+(* (`IsolateSpec` below), an outcome `NotLanded` covers here. `Revoke` is  *)
+(* permanent here, so re-approval is out                                   *)
 (* of scope, and `SendsExcludeKnownRevoked` checks the relay's discipline  *)
 (* GIVEN the knowledge, never the funding read itself.                     *)
 (*                                                                         *)
@@ -227,6 +228,31 @@
 (*                              emits it on the guest's word (fails       *)
 (*                              `OnlyPartyAttests`: a stranger's bytes     *)
 (*                              attest for the party)                      *)
+(*                                                                         *)
+(* THE ISOLATION (the fifth spec, `IsolateSpec`, checked by                *)
+(* RelayStateIsolate.cfg; the others hold its variables still). A batch    *)
+(* the chain refuses while no re-read names a party and no operation is a  *)
+(* wallet-code one is never dead-lettered whole: its operations wait       *)
+(* apart, in halves, each tried alone as a batch of its own, until the     *)
+(* operation that reverts alone is dead-lettered alone. A split budget of  *)
+(* ⌈log2 n⌉ plus a constant bounds the extra settles; past it a set        *)
+(* refused again is dead-lettered unattributed, with the reason. Any of    *)
+(* the four operations may be an offender, which reverts any settle it     *)
+(* rides in or lets it land. `HonestNeverDroppedForAnother`: no operation  *)
+(* outside the offenders is dead-lettered; `IsolationBounded`: the settles *)
+(* sent are at most the batch and two per split. With ISlack = 0 the       *)
+(* budget runs out and dead-letters an honest operation                    *)
+(* (`IsolationCapWitness`, RelayStateIsolateCap.cfg, must be violated).    *)
+(* The model's gaps: it has no time, so no deadline or deferral window     *)
+(* expires while the queue waits; no operation joins the queue during the  *)
+(* isolation; and a set splits into any two halves of its size, where the  *)
+(* relay halves the batch's order. The switch, the one here whose TRUE     *)
+(* restores the defect:                                                    *)
+(*   WholeBatchOnUnnamedRevert — TRUE: the refused batch is dead-lettered  *)
+(*                              whole, the old relay (fails                *)
+(*                              `HonestNeverDroppedForAnother`: an honest  *)
+(*                              operation batched beside an offender is    *)
+(*                              dead-lettered)                             *)
 (***************************************************************************)
 EXTENDS Naturals, Sequences, FiniteSets
 
@@ -257,8 +283,11 @@ CONSTANTS
     ResolveBoundToState, \* the resolve authorization signs the cumulative value
     VerifierChecksWalletCode, \* the verifier calls the buyer's code on a
                               \* wallet-code resolve
-    VerifierChecksAttestationCode \* the verifier calls the attesting
-                                  \* party's code on a wallet-code attestation
+    VerifierChecksAttestationCode, \* the verifier calls the attesting
+                                   \* party's code on a wallet-code attestation
+    WholeBatchOnUnnamedRevert, \* TRUE restores the old relay: a batch refused
+                               \* naming nobody is dead-lettered whole
+    ISlack    \* what the split budget adds to ⌈log2 n⌉
 
 Genesis == 0
 Roots == 0..MaxBatches
@@ -914,7 +943,20 @@ VARIABLES
 resolveVars == <<rSeq, rPay, rCv, rResolved, rAuths, rPaid, rSigned, rKey, rCode, rCodeAuths, rBy>>
 avars == <<aKey, aCode, aSigned, aCodeAuth, aBy>>
 rvars == <<resolveVars, avars>>
-everyvars == <<allvars, rvars>>
+
+VARIABLES
+    iBad,       \* the operations that revert any settle they ride in, naming
+                \* nobody; the adversary's choice, made at the start
+    iQueue,     \* the operations queued, drained together as one batch
+    iSets,      \* the isolation (`Mempool::isolate`): sets waiting apart,
+                \* oldest first, each tried alone as a batch of its own
+    iBudget,    \* the splits left to the batch the sets came from
+    iLanded,    \* operations a settle landed
+    iDead,      \* why each operation was dead-lettered ("no": it was not)
+    iTries      \* ghost: the settles sent
+
+ivars == <<iBad, iQueue, iSets, iBudget, iLanded, iDead, iTries>>
+everyvars == <<allvars, rvars, ivars>>
 
 \* The cumulative value of the first k orders the process committed.
 RECURSIVE PrefixSum(_)
@@ -1090,13 +1132,113 @@ RResolveNext ==
 
 RNext == RResolveNext /\ UNCHANGED avars
 
-Spec == Init /\ DInit /\ RInit /\ [][Next /\ UNCHANGED <<dvars, rvars>>]_everyvars
+(***************************************************************************)
+(* THE ISOLATION of a batch the chain refused naming nobody (submitter.rs's *)
+(* `classify_deterministic_revert`, mempool.rs's `isolate` and             *)
+(* `drain_up_to`, main.rs's deterministic arm).                            *)
+(***************************************************************************)
+IOps == {"o1", "o2", "o3", "o4"}
+\* `ISlack`, the constant the split budget adds to the batch's log2: 1 is
+\* the least that covers every split four operations can need (three, when
+\* all four revert); 0 lets the budget run out (`IsolationCapWitness`). The
+\* relay's `ISOLATION_SPLIT_SLACK` is 8, sized for a batch of `MAX_BATCH_OPS`
+\* carrying two offenders.
+CeilLog2(n) == CHOOSE k \in 0..n : 2^k >= n /\ (k = 0 \/ 2^(k - 1) < n)
+IBudgetOf(n) == CeilLog2(n) + ISlack
+IReasons == {"no", "alone", "cap", "whole"}
 
-DeferSpec == Init /\ DInit /\ RInit /\ [][DNext /\ UNCHANGED <<vars, rvars>>]_everyvars
+ITypeOK ==
+    /\ iBad \subseteq IOps
+    /\ iQueue \subseteq IOps
+    /\ iSets \in Seq(SUBSET IOps)
+    /\ iBudget \in 0..IBudgetOf(Cardinality(IOps))
+    /\ iLanded \subseteq IOps
+    /\ iDead \in [IOps -> IReasons]
+    /\ iTries \in Nat
 
-ResolveSpec == Init /\ DInit /\ RInit /\ [][RNext /\ UNCHANGED <<vars, dvars>>]_everyvars
+\* The other specs hold the isolation still, with no offender.
+IInit ==
+    /\ iBad = {}
+    /\ iQueue = IOps
+    /\ iSets = <<>>
+    /\ iBudget = 0
+    /\ iLanded = {}
+    /\ iDead = [o \in IOps |-> "no"]
+    /\ iTries = 0
 
-AttestSpec == Init /\ DInit /\ RInit /\ [][ANext /\ UNCHANGED <<vars, dvars, resolveVars>>]_everyvars
+\* The isolation's own start: any set of the operations are offenders.
+IInitAny ==
+    /\ iBad \in SUBSET IOps
+    /\ iQueue = IOps
+    /\ iSets = <<>>
+    /\ iBudget = 0
+    /\ iLanded = {}
+    /\ iDead = [o \in IOps |-> "no"]
+    /\ iTries = 0
+
+\* A tick's batch: the isolation's oldest set alone, when one waits (the
+\* queue waits behind it); else the queue, a fresh batch with a fresh
+\* budget. A settle carrying an offender may be refused, naming nobody; an
+\* offender may also let a settle land. A refused set of one is
+\* dead-lettered: it reverts alone. A larger one is split into halves that
+\* wait apart at the front, in some order (the relay halves the execution
+\* order), spending one split; with no split left it is dead-lettered
+\* unattributed. WholeBatchOnUnnamedRevert = TRUE restores the old relay:
+\* the refused batch is dead-lettered whole.
+ITry ==
+    /\ iQueue # {} \/ iSets # <<>>
+    /\ LET fromSet == iSets # <<>>
+           S == IF fromSet THEN Head(iSets) ELSE iQueue
+           rest == IF fromSet THEN Tail(iSets) ELSE <<>>
+           budget == IF fromSet THEN iBudget ELSE IBudgetOf(Cardinality(S))
+       IN
+        /\ iQueue' = IF fromSet THEN iQueue ELSE {}
+        /\ iTries' = iTries + 1
+        /\ \E refused \in (IF S \cap iBad # {} THEN BOOLEAN ELSE {FALSE}) :
+            IF ~refused
+            THEN /\ iLanded' = iLanded \cup S
+                 /\ iSets' = rest
+                 /\ iBudget' = budget
+                 /\ UNCHANGED <<iBad, iDead>>
+            ELSE IF WholeBatchOnUnnamedRevert \/ Cardinality(S) = 1 \/ budget = 0
+            THEN /\ iDead' = [o \in IOps |->
+                                IF o \in S
+                                THEN (IF WholeBatchOnUnnamedRevert THEN "whole"
+                                      ELSE IF Cardinality(S) = 1 THEN "alone"
+                                      ELSE "cap")
+                                ELSE iDead[o]]
+                 /\ iSets' = rest
+                 /\ iBudget' = budget
+                 /\ UNCHANGED <<iBad, iLanded>>
+            ELSE \E A \in SUBSET S :
+                    /\ Cardinality(A) = (Cardinality(S) + 1) \div 2
+                    /\ iSets' = <<A, S \ A>> \o rest
+                    /\ iBudget' = budget - 1
+                    /\ UNCHANGED <<iBad, iLanded, iDead>>
+
+\* No honest operation is dead-lettered because another operation's revert
+\* was unattributable: whatever operations are offenders, and whether or not
+\* each offender lets a settle land.
+HonestNeverDroppedForAnother == \A o \in IOps \ iBad : iDead[o] = "no"
+
+\* The extra work is bounded: the batch and two settles per split.
+IsolationBounded == iTries <= 2 * IBudgetOf(Cardinality(IOps)) + 1
+
+\* A reachability witness, checked as an invariant that must be VIOLATED
+\* (RelayStateIsolateCap.cfg, ISlack = 0): the budget runs out and
+\* dead-letters an honest operation beside an offender, unattributed. The
+\* residual the handover's limitation 3 states is reachable.
+IsolationCapWitness == ~(\E o \in IOps \ iBad : iDead[o] = "cap")
+
+Spec == Init /\ DInit /\ RInit /\ IInit /\ [][Next /\ UNCHANGED <<dvars, rvars, ivars>>]_everyvars
+
+DeferSpec == Init /\ DInit /\ RInit /\ IInit /\ [][DNext /\ UNCHANGED <<vars, rvars, ivars>>]_everyvars
+
+ResolveSpec == Init /\ DInit /\ RInit /\ IInit /\ [][RNext /\ UNCHANGED <<vars, dvars, ivars>>]_everyvars
+
+AttestSpec == Init /\ DInit /\ RInit /\ IInit /\ [][ANext /\ UNCHANGED <<vars, dvars, resolveVars, ivars>>]_everyvars
+
+IsolateSpec == Init /\ DInit /\ RInit /\ IInitAny /\ [][ITry /\ UNCHANGED <<vars, dvars, rvars>>]_everyvars
 
 \* Every applied resolve pays exactly the prefix of the process's commits
 \* whose cumulative value the buyer signed: some prefix sums to the signed
