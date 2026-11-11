@@ -5,22 +5,27 @@
  * Not core. `lib/composition/` may import from `lib/kernel/` (e.g. event-cache
  * primitives); `lib/kernel/` must NEVER import from here.
  *
- * Addresses come from env (deploy-local.sh writes them) — an address is not
+ * Addresses come from the page's deployment record (`lib/shared/chains.ts`,
+ * `pageRecord`) — an address is not
  * prior knowledge the way an ABI is. STEP-2 TARGET: a composed contract's
  * address + ABI come from its registered clause/assembly spec at runtime, so
  * the terminal needs none of this bundled.
  */
 import { isValidAddress } from "@/lib/shared/evm";
+import { pageRecord } from "@/lib/shared/chains";
 import { getUsageCounter as getKernelUsageCounter, getBatchVerifier as getKernelBatchVerifier } from "@/lib/kernel/contracts";
 
+const record = pageRecord();
+const addressOf = (value: string | undefined) => (value || "") as `0x${string}`;
+
 const COMPOSITION_CONTRACTS = {
-    attestationCoordinator: (process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR || "") as `0x${string}`,
-    witnessSwapAndCommitCoordinator: (process.env.NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR || "") as `0x${string}`,
-    permit2: (process.env.NEXT_PUBLIC_PERMIT2 || "") as `0x${string}`,
-    swapRouter: (process.env.NEXT_PUBLIC_SWAP_ROUTER || "") as `0x${string}`,
-    swapQuoter: (process.env.NEXT_PUBLIC_SWAP_QUOTER || "") as `0x${string}`,
-    rpgfMinter: (process.env.NEXT_PUBLIC_RPGF_MINTER || "") as `0x${string}`,
-    multisender: (process.env.NEXT_PUBLIC_MULTISENDER || "") as `0x${string}`,
+    attestationCoordinator: addressOf(record?.attestationCoordinator),
+    witnessSwapAndCommitCoordinator: addressOf(record?.witnessSwapAndCommitCoordinator),
+    permit2: addressOf(record?.permit2),
+    swapRouter: addressOf(record?.swapRouter),
+    swapQuoter: addressOf(record?.swapQuoter),
+    rpgfMinter: addressOf(record?.rpgfMinter),
+    multisender: addressOf(record?.multisender),
 };
 
 function resolveAddress(addr: `0x${string}`): `0x${string}` | null {
@@ -72,8 +77,8 @@ export function getRpgfMinter(): `0x${string}` | null {
  *  happens. The minter rewards from its periods; this resolver is what the
  *  rewards surface reads accrual (c, d, score) and period-closure from.
  *  Resolved-empty: null = accrual is unreadable on this network. Delegates to
- *  FigaroCore's validated accessor (the canonical env parse for
- *  `NEXT_PUBLIC_USAGE_COUNTER`) rather than re-reading the env itself — one
+ *  FigaroCore's validated accessor (the canonical parse of the deployment record's
+ *  `usageCounter`) rather than re-reading the deployment record itself — one
  *  source, one behavior for a malformed address. */
 export function getUsageCounter(): `0x${string}` | null {
     return getKernelUsageCounter();

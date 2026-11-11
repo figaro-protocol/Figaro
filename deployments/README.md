@@ -23,9 +23,14 @@ One file per network, named `<chainId>.json`, in the same shape
   "rpgfMinter": "0x...",
   "batchVerifier": "0x...",
   "programVKey": "0x...",
-  "deploymentBlock": 0
+  "deploymentBlock": 0,
+  "rpcUrl": "https://..."
 }
 ```
+
+`chainId` and `figaroCore` together are the deployment's identity: the pair
+every EIP-712 domain of the deployment is bound to, and the pair a link to the
+site names (`chainID`, `coreAddress`).
 
 `programVKey` is the guest fingerprint the batch verifier pins, read back
 from the chain at deploy. A relay's guest must hash to exactly this value or
@@ -37,6 +42,21 @@ broadcasting — at or below every contract's creation block. Frontends and
 agents start their event scans there (`NEXT_PUBLIC_DEPLOYMENT_BLOCK`): public
 RPC gateways cap an `eth_getLogs` range (1 000 / 10 000 / 50 000 blocks by
 gateway), so a from-genesis scan of a real network never completes.
+
+`rpcUrl` is a keyless public JSON-RPC endpoint for the chain: what a reader
+with no provider of its own reads through. The site reads a page of this
+deployment through it unless the visitor has set an endpoint of their own for
+the chain. It never carries a provider key: the record is public. The deploy
+scripts write it from `PUBLIC_RPC_URL`, keep the one the record already
+carried when that is unset, and refuse the deploy's own endpoint.
+
+## Who reads the records
+
+The site compiles every `<chainId>.json` here into its build
+(`frontend/lib/shared/deploymentRecords.ts`) and serves each as one
+deployment; a link names the one it shows. A network is added to the site by
+adding its record here and its import there
+(`frontend/tests/lib/pageDeployment.test.ts` fails while the two differ).
 
 A public deployment's record carries the contracts
 `script/DeployMainnet.s.sol` actually deploys and the canonical externals it
@@ -50,10 +70,10 @@ this shape as part of a mainnet deploy.
 Sepolia is LIVE: `11155111.json` is the committed record — every address
 Etherscan-verified, the site and the e2e suites read from it, and both
 resolution universes have resolved on the public chain (the direct-path specs
-and real Groth16 batches through `FigaroBatchVerifier`). The `/spec` page's
-"Canonical deployments" section renders its Sepolia rows from this record at
-build time. Ethereum mainnet remains "Pending external audit" — no mainnet
-record exists yet.
+and real Groth16 batches through `FigaroBatchVerifier`). The site serves this
+deployment from this record (§ "Who reads the records"), and the builders'
+manual names the record (`/docs/protocol/contracts`). Ethereum mainnet remains
+"Pending external audit" — no mainnet record exists yet.
 
 ## Verifying the record independently
 
@@ -61,8 +81,7 @@ Do not take this directory's word for an address — the record is designed to b
 checked from outside it:
 
 - Every address in `11155111.json` resolves on the block explorer:
-  `https://sepolia.etherscan.io/address/<address>` (verified source + ABI). The
-  `/spec` page renders the same per-address explorer links from this record.
+  `https://sepolia.etherscan.io/address/<address>` (verified source + ABI).
 - An agent whose fetch tool the explorer blocks can verify against any RPC
   instead: `eth_getCode` at the address must return non-empty bytecode, and the
   contract's events must appear from `deploymentBlock` forward.
@@ -100,7 +119,7 @@ check fails on it until it is decided.
 ## The record discipline
 
 This directory is the **source of truth** for public-network addresses,
-committed per deploy (`deployments/<chainId>.json`). `/spec` and any other
+committed per deploy (`deployments/<chainId>.json`). The site and any other
 surface that needs to publish or read canonical addresses reads from
 here rather than repeating them in prose — the same discipline
 `.deployments/local.json` already follows for the devnet (`docs/LOCAL_DEV.md`

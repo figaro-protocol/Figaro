@@ -79,7 +79,7 @@ DESIGN — it is the iframe target a recognized arbitration forum embeds (hence 
 forum-composed URL, never by navigation. It is excluded from `app/sitemap.ts` for
 the same reason. Reachability audits should not flag it. The URL names what the
 page reads — `processId`, `coreAddress`, `chainID`, `arbitrableJsonRpcUrl`, and for
-a core other than the site's, `coordinatorAddress` (the Core holds no pointer to
+a core other than the page's deployment's, `coordinatorAddress` (the Core holds no pointer to
 its coordinator, so attestations are read only when the link names one) and
 `fromBlock` (else genesis); the header states the coordinator and the first block
 it read (`lib/audit/processTimeline.ts`).
@@ -107,11 +107,65 @@ Consequences that shaped the code, and where each server-only feature moved:
 
 The `/assemblies/designer` tool is a composition surface (`TopologyCanvas` + `AgreementDrawer`) — it composes BOTH the DAG of orders AND each order's clauses; "just a DAG editor" under-states it. It is not a palette/canvas/inspector three-column tool, and is not to be rebuilt as one.
 
+## One site, several deployments
+
+A **deployment** is one set of Figaro's contracts on one chain. Its identity is
+the chain id and the Core's address, the pair every EIP-712 domain is bound to.
+One build serves every deployment it lists, and **a page shows one of them,
+resolved once when the page loads** (`lib/shared/chains.ts`, `pageDeployment`).
+Because it is resolved once, the wagmi config still lists one chain and every
+module still reads one address set: `activeChain`, `CONTRACTS`, the composition
+resolvers, `publicClient`, `deploymentBlock()`, `mandatoryClauseRegistrant()`
+and `deploymentFingerprint()` are the page's deployment's, and a signature is
+bound to its chain. Moving to another deployment is a navigation that loads the
+page again (`showDeployment`).
+
+**What a build lists** (`lib/shared/deploymentRecords.ts`, the one module that
+reads a Figaro contract's address from the environment): its own deployment record, from the
+`NEXT_PUBLIC_*` variables a deploy script writes, and the published deployment records,
+`deployments/<chainId>.json`, compiled in. A devnet build lists its own alone.
+A network is added by adding its deployment record and its import; a test fails while
+the two differ (`frontend/tests/lib/pageDeployment.test.ts`).
+
+**What names the page's deployment**, in this order:
+1. The address: `chainID`, and `coreAddress` to name it exactly, the two names
+   `/evidence-display` already reads. A chain id alone names the build's own
+   deployment when it is on that chain, else the published deployment record on it; a
+   Core address names a listed deployment exactly, with the chain id or alone.
+2. The wallet the browser restores at entry, when the address named none and
+   the build lists a deployment on the wallet's chain: the page moves there
+   (`PageDeploymentUrl`). A wallet the visitor connects later never moves the
+   page, since a form may be half filled; `ChainGuard` offers the move. On
+   `/evidence-display` the wallet never moves the page: its link is a forum's.
+3. The build's own deployment (`NEXT_PUBLIC_CHAIN`).
+
+**The address carries the deployment.** Under `<Providers>` (the `(app)` and
+`(tools)` tiers) `PageDeploymentUrl` keeps `chainID` and `coreAddress` in the
+address bar, so a copied link shows its reader the same deployment whatever
+their wallet is on and whatever a later build's default is. A clause's spec or
+an assembly's design is the same on every deployment; only its registration
+is one deployment's.
+
+**An address naming a deployment the build does not list** shows none: every
+address is empty, so nothing is read and nothing can be signed, and
+`PageDeploymentNotice` says so. A published deployment record on a chain viem's registry
+does not know is treated the same way. The Core holds no pointer to the registries,
+so a chain id and a Core cannot name the rest of a deployment; a deployment
+outside the build's list is read where a link names everything the page needs,
+on `/evidence-display`.
+
+**Per deployment in the browser.** The reader's RPC endpoint is stored per
+chain (`lib/shared/userEndpoints.ts`), the cart per deployment
+(`lib/checkout/cartStore.ts`), the onboarding draft per chain and wallet
+(`lib/member/onboardingState.ts`), the signed-and-unsent orders per wallet and
+chain, the event cache per chain and contract. The site's pin-service token
+serves the build's own deployment only (`lib/shared/ipfsService.ts`).
+
 ## Key Library Areas (`lib/`)
 
 Tiered, bottom to top; each tier imports only what sits below it (enforced by the maintainers' pre-commit guard battery).
 
-- **`shared/`** — the generic leaf: the section map (`sections.json` — which section owns which route, the one owner; `sections.ts` reads it for the chrome), EVM helpers (`evm.ts`), wagmi/chain config (`wagmi.ts`, `chains.ts`, `connectors.ts`), IPFS (`ipfsService.ts`), clause-spec cache source (`clauseSpecSource.ts`), assembly reading vocabulary (`assembly.ts`, `clauseFields.ts`), errors/formatting/json, web storage (`storage.ts`), the clipboard write (`clipboard.ts`), the in-tab "read it again" counter (`versionStore.ts`), the Tab focus trap (`focusTrap.ts`), and the one on-chain write sequence (`contractWrite.ts` — `simulateWriteVerify`: simulate, send with `chainId: activeChain.id`, verify the receipt, translate a revert by its error name through `errors.ts` `translateContractRevert`; every write in the frontend sends through it). Imports no other `lib/` layer; the one sanctioned exception is the runtime-services DI seam (`runtimeServices.ts` + `runtimeServicesContext.tsx`), which assembles feature-layer service implementations.
+- **`shared/`** — the generic leaf: the section map (`sections.json` — which section owns which route, the one owner; `sections.ts` reads it for the chrome), EVM helpers (`evm.ts`), wagmi/chain config (`wagmi.ts`, `chains.ts`, `connectors.ts`), the deployments a build lists and the one a page shows (`deploymentRecords.ts`, `chains.ts`; § "One site, several deployments"), IPFS (`ipfsService.ts`), clause-spec cache source (`clauseSpecSource.ts`), assembly reading vocabulary (`assembly.ts`, `clauseFields.ts`), errors/formatting/json, web storage (`storage.ts`), the clipboard write (`clipboard.ts`), the in-tab "read it again" counter (`versionStore.ts`), the Tab focus trap (`focusTrap.ts`), and the one on-chain write sequence (`contractWrite.ts` — `simulateWriteVerify`: simulate, send with `chainId: activeChain.id`, verify the receipt, translate a revert by its error name through `errors.ts` `translateContractRevert`; every write in the frontend sends through it). Imports no other `lib/` layer; the one sanctioned exception is the runtime-services DI seam (`runtimeServices.ts` + `runtimeServicesContext.tsx`), which assembles feature-layer service implementations.
 - **`kernel/`** — the FigaroCore seam: commit/resolve writes (`useFigaroActions.ts`, `orderCommitted.ts`), order-event reads (`indexer.ts`, `walletProcessQueries.ts`, `eventCache.ts`), the deployment-curried hash wrappers + agreement fetch (`signedCommitment.ts`, `agreementFetch.ts`), chain config (`contracts.ts` — the five core contract ABIs + ERC20, SDK-sourced), the `Order` domain types + UI store (`store.ts`). Imports only `shared/`. (The agreement projection itself — `buildOrderAgreement`, the off-chain sign gate, `clauseByField` — is `@figaro-protocol/sdk`; `sdk/README.md` owns it.)
 - **`protocol/`** — the registry tier: `useClauseRegistry.ts`, `useClauseSpecs.ts`, `useAgreementRegistry.ts`, `useAssemblyRegistry.ts`, `assemblyChoices.ts`, `membersRegistryIndexer.ts` (liveness fold delegated to the SDK's `reconstructDiscovery`), plus the shared factory shapes the clause/assembly readers are built from (`registryEventScan.ts` — the paired registered+withdrawn cached scan with the `failed` contract; `useWithdrawStake.ts` — the `withdrawDeposit` write hook and the noun-parameterized withdraw revert table). Reads ClauseRegistry / MembersRegistry / AgreementRegistry / AssemblyRegistry. `useAgreementRegistry.ts` has the shape of `useAssemblyRegistry.ts`: `getAgreementRegistry`, `usePublishedAgreements(registeredBy, { includeWithdrawn })`, `useWithdrawAgreement`, `agreementRegisterRevertMessage`, `readAgreementBinding(key)`, and `fetchRegisteredAgreement(key, contentURI?)`, which reads the binding whatever the stake, fetches the pinned document and anchors it with the SDK's `anchorRegisteredAgreement` — `null` on any failure, never a fallback; `hydrateAssembly(assembly)` runs the SDK's `hydrateAssembly` over that reader. `useAssemblyRegistry.ts` adds `fetchHydratedAssembly(contentURI, assemblyHash)`, `fetchAssemblyByHash(assemblyHash)` and `fetchHydratedAssemblyByHash(assemblyHash)` (the design the sign gate reads by an agreement's provenance); imports `kernel/` + `shared/`.
 - `lib/protocol/registryWrites.ts` — the one signal a registry write sends to the readers that derive from its events (`noteRegistryWrite` after a confirmed write; `useRegistryWriteVersion` in a read-at-edge panel, which refetches when it changes). Nothing stored; the chain stays the source.

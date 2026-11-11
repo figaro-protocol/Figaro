@@ -28,3 +28,33 @@ describe("userEndpoints — the analyst token", () => {
         expect(readUserEndpoints().analystToken).toBeUndefined();
     });
 });
+
+describe("userEndpoints — the RPC endpoint is one per chain", () => {
+    beforeEach(() => window.localStorage.clear());
+
+    it("an endpoint set on one chain is not read on another", () => {
+        writeUserEndpoints({ rpcUrl: "https://sepolia.example.com" }, 11155111);
+        expect(readUserEndpoints(11155111).rpcUrl).toBe("https://sepolia.example.com");
+        expect(readUserEndpoints(1).rpcUrl).toBeUndefined();
+    });
+
+    it("setting one chain's endpoint keeps another's, and clearing it clears that chain's only", () => {
+        writeUserEndpoints({ rpcUrl: "https://sepolia.example.com" }, 11155111);
+        writeUserEndpoints({ rpcUrl: "https://mainnet.example.com" }, 1);
+        expect(readUserEndpoints(11155111).rpcUrl).toBe("https://sepolia.example.com");
+        expect(readUserEndpoints(1).rpcUrl).toBe("https://mainnet.example.com");
+        writeUserEndpoints({}, 1);
+        expect(readUserEndpoints(1).rpcUrl).toBeUndefined();
+        expect(readUserEndpoints(11155111).rpcUrl).toBe("https://sepolia.example.com");
+    });
+
+    it("an endpoint stored before endpoints were kept per chain names no chain, and is not read", () => {
+        window.localStorage.setItem("figaro.user-endpoints", JSON.stringify({ rpcUrl: "https://old.example.com" }));
+        expect(readUserEndpoints(11155111).rpcUrl).toBeUndefined();
+    });
+
+    it("the other endpoints are the reader's on every chain", () => {
+        writeUserEndpoints({ ipfsGatewayUrl: "https://gateway.example.com", rpcUrl: "https://sepolia.example.com" }, 11155111);
+        expect(readUserEndpoints(1).ipfsGatewayUrl).toBe("https://gateway.example.com");
+    });
+});

@@ -63,7 +63,7 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         const forkSlug = `${slug}-fork`;
         await page.getByTestId(`published-fork-${slug}`).click();
 
-        await page.waitForURL(new RegExp(`/assemblies/designer/edit/?\\?slug=${forkSlug}(-\\d+)?$`), { timeout: 15000 });
+        await page.waitForURL(new RegExp(`/assemblies/designer/edit/?\\?slug=${forkSlug}(-\\d+)?(&|$)`), { timeout: 15000 });
         // The forked draft hydrated into an editable canvas — not just a URL change.
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
     });

@@ -321,6 +321,16 @@ fi
 echo ""
 echo "✍️  Writing $DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json ..."
 mkdir -p "$DEPLOY_DIR"
+# The record's `rpcUrl` is a KEYLESS public endpoint a reader with no provider
+# of its own reads the chain through (the site serves it to every visitor of
+# this deployment's pages). PUBLIC_RPC_URL names it; unset, the endpoint the
+# record already carried is kept. It is never the deploy's own endpoint, which
+# carries the deployer's provider key.
+RECORD_RPC_URL="${PUBLIC_RPC_URL:-$(jq -r '.rpcUrl // empty' "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" 2>/dev/null || true)}"
+if [ -n "$RECORD_RPC_URL" ] && [ "$RECORD_RPC_URL" = "${SEPOLIA_RPC_URL:-}" ]; then
+  echo "❌ PUBLIC_RPC_URL is the deploy's own SEPOLIA_RPC_URL — the record is public and must not carry a provider key."
+  exit 1
+fi
 cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
 {
   "chainId": $ACTUAL_CHAIN_ID,
@@ -344,6 +354,10 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "deploymentBlock": $DEPLOYMENT_BLOCK
 }
 EOF
+if [ -n "$RECORD_RPC_URL" ]; then
+  jq --arg url "$RECORD_RPC_URL" '. + {rpcUrl: $url}' "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json.tmp"
+  mv "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json.tmp" "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json"
+fi
 
 echo ""
 echo "✅ Deployment complete!"

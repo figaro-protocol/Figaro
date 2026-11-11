@@ -194,12 +194,12 @@ async function readSigningSpecs(agreement: Agreement, client: { getBlockNumber?:
 
 export function useOrderCommitmentFlow() {
     const { address } = useAccount();
-    // The build's chain, never the wallet's: wagmi's config lists one chain
+    // The page's chain, never the wallet's: wagmi's config lists one chain
     // (`lib/shared/wagmi.ts`), so `useChainId()` is always `activeChain.id`.
     // It is the `chainId` of every EIP-712 domain this flow signs (the
     // commitment's and, through the quote, the Permit2 swap witness's), and
     // wagmi's `signTypedData` takes no `chainId` of its own, so the domain is
-    // what binds a signature to this build's chain. Never build a domain from
+    // what binds a signature to the page's chain. Never build a domain from
     // the wallet's chain (`useConnection().chainId`).
     const chainId = useChainId();
     const publicClient = usePublicClient();

@@ -329,7 +329,22 @@ export interface FigaroAddresses {
  *  `clauseRegistry`, `membersRegistry`, `assemblyRegistry`. The rest are optional
  *  and pass through only when present. */
 export interface FigaroDeploymentRecord {
+    /** The chain the deployment is on. With `figaroCore` it is the
+     *  deployment's identity: the pair every EIP-712 domain is bound to. */
+    chainId?: number;
     figaroCore: Address;
+    /** The florin, the protocol's own token on this deployment. */
+    florinToken?: Address;
+    /** The swap venue's quoter (Uniswap QuoterV2), beside `swapRouter`. */
+    swapQuoter?: Address;
+    /** The guest fingerprint the batch verifier pins. */
+    programVKey?: `0x${string}`;
+    /** The block the deploy read just before broadcasting: an event scan of
+     *  this deployment starts here. */
+    deploymentBlock?: number;
+    /** A keyless public JSON-RPC endpoint for the chain, for a reader that
+     *  brings none of its own. Never an endpoint that carries a key. */
+    rpcUrl?: string;
     tokenAddress?: Address;
     attestationCoordinator?: Address;
     clauseRegistry?: Address;

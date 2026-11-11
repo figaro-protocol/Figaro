@@ -7,7 +7,7 @@
  *
  * Like every other write (`contractWriteSites.test.tsx`), the approve is
  * simulated before it is sent, and a simulation that reverts sends nothing and
- * is the approval's error; the send names the build's chain (`chainId`); the
+ * is the approval's error; the send names the page's chain (`chainId`); the
  * outcome of a sent approve is read from the mutation and receipt states below.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -64,7 +64,7 @@ describe("useTokenApproval — what it reads and writes", () => {
         expect(wagmiState.readConfigs.at(-1)).toMatchObject({ query: { enabled: false } });
     });
 
-    it("simulates approve(spender, amount) on the token, then sends it on the build's chain", async () => {
+    it("simulates approve(spender, amount) on the token, then sends it on the page's chain", async () => {
         const { result } = renderHook(() => useTokenApproval({ tokenAddress: TOKEN, owner: OWNER, spender: SPENDER }));
         await act(async () => { await result.current.approve(1234n); });
         const call = { address: TOKEN, abi: ERC20_ABI, functionName: "approve", args: [SPENDER, 1234n] };
@@ -72,7 +72,7 @@ describe("useTokenApproval — what it reads and writes", () => {
         // The simulation runs as the owner, the account the approve will be sent from.
         expect(wagmiState.simulateContract).toHaveBeenCalledWith(expect.objectContaining({ ...call, account: OWNER }));
         expect(wagmiState.writeContract).toHaveBeenCalledTimes(1);
-        // The send names the build's chain, so a mismatch is refused in the page, before the wallet prompt.
+        // The send names the page's chain, so a mismatch is refused in the page, before the wallet prompt.
         expect(wagmiState.writeContract).toHaveBeenCalledWith({ ...call, chainId: activeChain.id });
         const simulateOrder = (wagmiState.simulateContract as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
         const writeOrder = (wagmiState.writeContract as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];

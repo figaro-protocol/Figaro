@@ -22,7 +22,8 @@ import { useOnboardingState } from "@/lib/member/onboardingState";
  */
 
 const WALLET = "0x1cbd3b2770909d4e10f157cabc84c7264073c9ec" as `0x${string}`;
-const KEY = `figaro:onboarding:${WALLET}`;
+// A draft is one chain's and one wallet's; the suite's page is on the devnet (31337).
+const KEY = `figaro:onboarding:31337:${WALLET}`;
 
 /** Exactly the hydrate-once / persist-on-change contract every
  *  `Onboarding*Form` implements, with the form reduced to one field. */
@@ -79,7 +80,7 @@ describe("useOnboardingState — the draft outlives a reload", () => {
         expect(result.current.subject).toBe(WALLET);
         expect(result.current.name).toBe("Typed before connecting");
         expect(storedName()).toBe("Typed before connecting");
-        expect(localStorage.getItem("figaro:onboarding:draft")).toBeNull();
+        expect(localStorage.getItem("figaro:onboarding:31337:draft")).toBeNull();
     });
 
     it("reports loaded once a wallet is connected, with that wallet's draft", () => {

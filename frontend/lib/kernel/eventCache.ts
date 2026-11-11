@@ -18,6 +18,7 @@
 import { logReadRetry, type LogReadRetryKind } from "@figaro-protocol/sdk";
 import { getAbiItem, type Abi, type Hex, type PublicClient } from "viem";
 import { hexEqual } from "@/lib/shared/evm";
+import { pageRecord } from "@/lib/shared/chains";
 
 type PublicGetLogsParams = NonNullable<Parameters<PublicClient["getLogs"]>[0]>;
 
@@ -52,12 +53,10 @@ function cacheKey(chainId: number, contract: string, eventName: string): string 
     return `${chainId}:${contract.toLowerCase()}:${eventName}`;
 }
 
-/** The block the site's own deployment starts at; a scan of this deployment starts here. */
+/** The block the page's deployment starts at, from its deployment record; a scan of this deployment starts here. */
 export const deploymentBlock = (): bigint => {
-    if (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_DEPLOYMENT_BLOCK) {
-        return BigInt(process.env.NEXT_PUBLIC_DEPLOYMENT_BLOCK);
-    }
-    return 0n;
+    const block = pageRecord()?.deploymentBlock;
+    return block === undefined ? 0n : BigInt(block);
 };
 
 // ---------------------------------------------------------------------------

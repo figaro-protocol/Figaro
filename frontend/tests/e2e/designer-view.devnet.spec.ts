@@ -75,7 +75,7 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         // Fork DOES something: no prompt, a local draft under `<slug>-fork`,
         // and the editor open on it (beta r4: the founder's dead button).
         await page.getByTestId('view-fork-button').click();
-        await page.waitForURL(new RegExp(`/assemblies/designer/edit/?\\?slug=${slug}-fork(-\\d+)?$`), { timeout: 15000 });
+        await page.waitForURL(new RegExp(`/assemblies/designer/edit/?\\?slug=${slug}-fork(-\\d+)?(&|$)`), { timeout: 15000 });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
 
         // ── An unchanged fork reviewed for publish (beta r9: the founder reached

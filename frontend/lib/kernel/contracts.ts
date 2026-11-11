@@ -1,15 +1,14 @@
 // Figaro contract configuration — the core Figaro contracts only
 // (the Core + Clause/Members/Assembly/Agreement registries + florin token) plus the agnostic ERC-20.
-// Addresses are sourced from environment variables written by deploy-local.sh.
+// Addresses are the page's deployment's: the deployment record the URL names among the
+// deployments the build lists, else the build's own (`lib/shared/chains.ts`,
+// `pageRecord`). A page whose URL names an unlisted deployment has none.
 // ABIs are re-exported from the canonical SDK (@figaro-protocol/sdk).
 // Any contract the frontend merely COMPOSES with lives in lib/composition/, not here.
-//
-// NOTE: Next.js/SWC only statically inlines process.env.NEXT_PUBLIC_* with
-// dot-notation direct property access. Dynamic bracket access via a function
-// parameter (getEnvVar(key)) is NOT replaced and returns undefined in the
-// browser. Always use process.env.NEXT_PUBLIC_... directly.
 
 import { isValidAddress } from "@/lib/shared/evm";
+import { pageDeployment, pageRecord } from "@/lib/shared/chains";
+import { missingBuildRecordVariables } from "@/lib/shared/deploymentRecords";
 
 // The frontend imports these from here (the allowlisted core-ABI home). The
 // other core ABIs (FLORIN_TOKEN_ABI) are equally canonical but currently imported
@@ -46,15 +45,18 @@ export interface ChainConfig {
     batchVerifier: `0x${string}`;
 }
 
+const record = pageRecord();
+const addressOf = (value: string | undefined) => (value || "") as `0x${string}`;
+
 export const CONTRACTS: ChainConfig = {
-    core: (process.env.NEXT_PUBLIC_FIGARO_CORE || "") as `0x${string}`,
-    clauseRegistry: (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY || "") as `0x${string}`,
-    membersRegistry: (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY || "") as `0x${string}`,
-    assemblyRegistry: (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY || "") as `0x${string}`,
-    agreementRegistry: (process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY || "") as `0x${string}`,
-    florinToken: (process.env.NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS || "") as `0x${string}`,
-    usageCounter: (process.env.NEXT_PUBLIC_USAGE_COUNTER || "") as `0x${string}`,
-    batchVerifier: (process.env.NEXT_PUBLIC_BATCH_VERIFIER || "") as `0x${string}`,
+    core: addressOf(record?.figaroCore),
+    clauseRegistry: addressOf(record?.clauseRegistry),
+    membersRegistry: addressOf(record?.membersRegistry),
+    assemblyRegistry: addressOf(record?.assemblyRegistry),
+    agreementRegistry: addressOf(record?.agreementRegistry),
+    florinToken: addressOf(record?.florinToken),
+    usageCounter: addressOf(record?.usageCounter),
+    batchVerifier: addressOf(record?.batchVerifier),
 };
 
 /** The MembersRegistry address if it's a well-formed address, else null. */
@@ -64,10 +66,10 @@ export function getMembersRegistry(): `0x${string}` | null {
 }
 
 /** The UsageCounter address if it's a well-formed address, else null. The
- *  canonical parse of `NEXT_PUBLIC_USAGE_COUNTER` — `lib/composition/contracts.ts`'s
+ *  canonical parse of the deployment record's `usageCounter` — `lib/composition/contracts.ts`'s
  *  `getUsageCounter()` delegates here (composition may import from lib/kernel; the
  *  reverse never happens) instead of re-reading the env itself, and
- *  `useUsageRecorder` consumes this validated path so a malformed env var
+ *  `useUsageRecorder` consumes this validated path so a malformed address
  *  resolves null and fails loudly at the call site, never reaching a
  *  contract call with a garbage address. */
 export function getUsageCounter(): `0x${string}` | null {
@@ -77,20 +79,16 @@ export function getUsageCounter(): `0x${string}` | null {
 
 /** The FigaroBatchVerifier address if it's a well-formed address, else null:
  *  null means the batch path is unreadable on this network (absence, never
- *  "not resolved"). The canonical parse of `NEXT_PUBLIC_BATCH_VERIFIER`;
+ *  "not resolved"). The canonical parse of the deployment record's `batchVerifier`;
  *  `lib/composition/contracts.ts`'s `getBatchVerifier()` delegates here. */
 export function getBatchVerifier(): `0x${string}` | null {
     const a = CONTRACTS.batchVerifier;
     return isValidAddress(a) ? a : null;
 }
 
-// Runtime validation helper.
+/** The variables the build's own deployment record lacks for the Core and the four
+ *  registries. Empty on a page that shows a published deployment record, or names an
+ *  unlisted deployment: neither reads the build's variables. */
 export function getMissingContractEnv(): string[] {
-    const missing: string[] = [];
-    if (!process.env.NEXT_PUBLIC_FIGARO_CORE) missing.push("NEXT_PUBLIC_FIGARO_CORE");
-    if (!process.env.NEXT_PUBLIC_CLAUSE_REGISTRY) missing.push("NEXT_PUBLIC_CLAUSE_REGISTRY");
-    if (!process.env.NEXT_PUBLIC_MEMBERS_REGISTRY) missing.push("NEXT_PUBLIC_MEMBERS_REGISTRY");
-    if (!process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY) missing.push("NEXT_PUBLIC_ASSEMBLY_REGISTRY");
-    if (!process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY) missing.push("NEXT_PUBLIC_AGREEMENT_REGISTRY");
-    return missing;
+    return pageDeployment.kind === "build" ? missingBuildRecordVariables() : [];
 }

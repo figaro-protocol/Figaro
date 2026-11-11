@@ -296,7 +296,7 @@ async function onboardViaWizard(
     const receiptHref = await page.getByRole("link", { name: /View public profile/ }).getAttribute("href");
     expect(sameRoute(receiptHref ?? ""), "the receipt link is the route the review promised").toBe(sameRoute(promisedHref));
     await page.getByRole("button", { name: /Continue to dashboard/ }).click();
-    await page.waitForURL(/\/members\/manage\/?$/, { timeout: 15_000 });
+    await page.waitForURL(/\/members\/manage\/?(\?|$)/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { level: 1, name: SELLER.name })).toBeVisible({ timeout: 15_000 });
     // BOTH calls visible on the dashboard: the
     // profile view/edit above, and the onboarding wizard entry.

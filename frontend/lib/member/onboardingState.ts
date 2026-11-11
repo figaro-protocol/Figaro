@@ -17,6 +17,7 @@
 
 "use client";
 
+import { activeChain } from "@/lib/shared/chains";
 import { useCallback, useEffect, useState } from "react";
 import { readJsonStorage, removeStorage, writeJsonStorage } from "@/lib/shared/storage";
 import type {
@@ -88,11 +89,14 @@ const EMPTY_STATE: OnboardingState = {};
 // under one anonymous key; the moment a wallet connects, a draft that wallet
 // does not yet have is adopted from it (and the anonymous copy removed), so
 // nothing typed before connecting is lost. The wallet is a signer, not a login.
-const ANONYMOUS_KEY = "figaro:onboarding:draft";
+//
+// A draft is one chain's: the tokens it accepts and the assemblies it binds
+// are addresses and registrations of the page's chain, so a draft begun on
+// one network is not offered on another.
+const draftScope = () => `figaro:onboarding:${activeChain.id}`;
 
 function storageKeyFor(wallet: string | undefined): string {
-    if (!wallet) return ANONYMOUS_KEY;
-    return `figaro:onboarding:${wallet.toLowerCase()}`;
+    return `${draftScope()}:${wallet ? wallet.toLowerCase() : "draft"}`;
 }
 
 function isEmptyState(state: OnboardingState): boolean {

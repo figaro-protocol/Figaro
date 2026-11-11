@@ -7,6 +7,7 @@
 
 import { safeJsonFromResponse, safeJsonParse, type SafeJsonResponse } from "@/lib/shared/safeJson";
 import { readUserEndpoints } from "@/lib/shared/userEndpoints";
+import { pageDeployment } from "@/lib/shared/chains";
 import { readCappedBytes } from "@figaro-protocol/sdk";
 
 // Build-baked DEFAULTS only — a user's runtime endpoint override (their own
@@ -85,7 +86,8 @@ function gatewayAlternates(url: string): string[] {
  * When a JWT is baked into the deploy build, `add`/`unpin` target a service
  * speaking the Pinata-style pinning API instead of a Kubo node; gateway reads
  * are unaffected. A user's own runtime endpoint override still WINS — their
- * node, they pay. Dev and e2e builds carry no JWT and stay on Kubo (the JWT
+ * node, they pay. The service serves the build's own deployment only: a page
+ * that shows another deployment the build lists never uses it. Dev and e2e builds carry no JWT and stay on Kubo (the JWT
  * rides the deploy command only, never a checked-in env file —
  * `docs/LOCAL_DEV.md`). `pinKeccakRawBlock` has no service equivalent (Kubo
  * `block/put` with a keccak multihash); in service mode without a user node
@@ -94,6 +96,10 @@ function gatewayAlternates(url: string): string[] {
  */
 function activePinService(): { api: string; jwt: string } | null {
     if (readUserEndpoints().ipfsApiUrl) return null;
+    // The token is the build's own deployment's courtesy (`next.config.mjs`
+    // admits it in a build for Sepolia only). A page showing another listed
+    // deployment pins through the reader's own node, never the site's account.
+    if (pageDeployment.kind !== "build") return null;
     const jwt = process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT ?? "";
     if (!jwt) return null;
     // `||`, not `??`: an EMPTY env value (a devnet .env.local read by
