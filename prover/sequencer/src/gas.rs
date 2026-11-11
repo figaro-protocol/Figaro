@@ -21,9 +21,9 @@ use figaro_kernel::types::{BatchEvents, BatchInput, KernelOp, NetPosition, Usage
 /// its fresh balance storage slot priced as live Sepolia prices state creation
 /// (EIP-8037; `BatchGasCeilingTest`, measured on live Sepolia at blocks
 /// 12106894 and 12107045). A plain ERC-20's transfer: a token whose
-/// transfer costs more is the parties' choice, and a batch it over-runs
-/// fails at the send like any transient failure — re-proved, then
-/// dead-lettered with every operation batched beside it.
+/// transfer costs more is the parties' choice, and a batch whose node
+/// estimate it carries past the planned ceiling is refused before the send
+/// and isolated by splitting (`submitter::submit_batch`).
 pub const SETTLE_GAS_PER_POSITION: u64 = 120_000;
 /// Execution gas of one attestation event re-emitted.
 pub const SETTLE_GAS_PER_ATTESTATION: u64 = 6_000;
@@ -112,13 +112,10 @@ pub const SETTLE_GAS_HEADROOM_PCT: u64 = 25;
 
 /// The gas limit a `settleBatch` call is sent with: the node's `estimate` with
 /// `SETTLE_GAS_HEADROOM_PCT` over it, capped at `ceiling` (the tick's budget,
-/// `settle_gas_budget`, under the chain's cap on one transaction), unless the
-/// estimate itself exceeds `ceiling`, when the limit is the estimate.
+/// `settle_gas_budget`, under the chain's cap on one transaction). An
+/// estimate above `ceiling` is never sent (`submitter::submit_batch`).
 pub fn settle_gas_limit(estimate: u64, ceiling: u64) -> u64 {
-    estimate
-        .saturating_add(estimate / 100 * SETTLE_GAS_HEADROOM_PCT)
-        .min(ceiling)
-        .max(estimate)
+    estimate.saturating_add(estimate / 100 * SETTLE_GAS_HEADROOM_PCT).min(ceiling)
 }
 
 /// The most gas one transaction may take, by default: EIP-7825's cap of

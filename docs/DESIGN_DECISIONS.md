@@ -886,10 +886,15 @@ alone, attestations included, re-submittable, counting each party in the
 adversarial signal (`classify_deterministic_revert`). Code whose cost rises
 between the node's estimate and inclusion would starve under a limit set at the
 estimate, and revert the batch; the relay sends the `settleBatch` call with `SETTLE_GAS_HEADROOM_PCT` (25 percent)
-over the estimate, capped at the budget it planned the batch against, unless
-the node's estimate itself exceeds that budget, when the limit is the estimate
+over the estimate, capped at the budget it planned the batch against
 (`gas::settle_gas_limit`). Gas a transaction does not use is not charged, so
-the headroom costs only block space.
+the headroom costs only block space. A node's estimate above that budget is
+refused before anything is sent, as a deterministic refusal that names nobody,
+so code that answers the relay's check cheaply and burns enough in the
+estimate to pass the budget costs the relay no transaction and is
+dead-lettered alone. Under the budget the relay still pays what the code
+burns: the verifier forwards all the gas left, so code that burns it and
+then answers yes lands the batch at a cost up to the budget.
 
 ---
 
