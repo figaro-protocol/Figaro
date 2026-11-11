@@ -15,7 +15,7 @@ the patterns that look like vulnerabilities and are intended: read it first.
 | Baseline commit | none: no audit is engaged (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 14 contract files, 1,671 lines of code (4,006 physical); 3 deploy scripts, 398 lines of code (838 physical) |
-| Rust in scope | 4 crates, 24 files under `src/`, 7,625 lines of code (10,843 physical) net of their inline test modules |
+| Rust in scope | 4 crates, 24 files under `src/`, 7,625 lines of code (10,848 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, the routed on-chain verifier), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the testnet scripts, `frontend/`, `sdk/` |
@@ -77,7 +77,7 @@ in scope.
 | `prover/program/` | `figaro-prover` | 1, 9 (13) | The guest's entry point: reads the batch and the witness of the entries it touches, runs the mirror, commits the public values | A batch the chain resolves wrongly |
 | `prover/lib/` | `figaro-kernel` | 8, 2,068 (3,191) | The mirror of `FigaroCore`'s commit and resolve, the witness gates, the operation stream, the public values, the state tree and the witness the guest reads, the usage claims | A batch the chain resolves wrongly |
 | `prover/clause/` | `figaro-clause` | 4, 1,588 (1,939) | The generic clause engine: parses any clause spec supplied as witness input, validates content against it, encodes it | An attestation the batch path reads differently from the party who signed it |
-| `prover/sequencer/` | `figaro-sequencer` | 11, 3,960 (5,700) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, rebuilds its state from the chain | Liveness and griefing |
+| `prover/sequencer/` | `figaro-sequencer` | 11, 3,960 (5,705) | The relay: admits signed operations, forms batches, proves them, calls `settleBatch`, rebuilds its state from the chain | Liveness and griefing |
 
 The figures count the files under each crate's `src/`, net of their inline
 test modules.
@@ -369,6 +369,7 @@ these rows summarize.
 | Mutation, `cargo-mutants` (`scripts/cargo-mutants-run.sh`) | `figaro-kernel`, `figaro-clause` | 617 mutants: 550 caught, 26 timed out, 29 unviable, 12 survived, each read as equivalent | `f62b71cf` |
 | Static analysis | Slither 0.11.3, Semgrep (`p/smart-contracts`, `p/rust`), Clippy, `cargo audit` | Slither's High and Medium results equal the triaged set below; Semgrep no WARNING or ERROR; Clippy clean; `cargo audit` fails on no advisory but the five set aside | every push (`foundry-ci`, `prover-ci`, `guards-ci`) |
 | Real proof | two Groth16 proofs through Succinct's gateway, resolved by a `FigaroBatchVerifier` deployed with the guest's key | both accepted; bonds, payouts, re-emitted attestation and state root read from the chain | `cf6ba4ab`, on a Sepolia fork |
+| Batch gas anchors against live receipts | the relay's plan (`prover/sequencer/src/gas.rs` `settle_gas_estimate`, from each transaction's own calldata) against the receipts of the seven `settleBatch` transactions on `FigaroBatchVerifier` `0x417A316F9B942a7f699Ed27cd88237C9b3E41b1a`, Sepolia blocks 12106569 to 12107150 | under `1d94596e`'s anchors the first `settleBatch` (690,760) exceeded its plan (594,600) and the use's 270,000 sat under its live cost of about 366,000, both from EIP-8037's state-creation price; with a position at 120,000 and a use at 500,000 (`BatchGasCeilingTest`) every plan covers its receipt, the thinnest by 23,840 | `1d94596e`, blocks 12106569–12107150 |
 | Guest build, `scripts/prover-box/build-guest.sh` | the ELF and key the Sepolia verifier pins | ELF `36de7f99f3c06cb807316ad0c295e21e0e46fe2e84aa4cc55dd97885e4846de4`, key `0x00569b319e52c0a8c173cd333a88177ea189879df483b9003b8b31f1429447d9` | `2fd6a376` |
 
 ### Static analysis

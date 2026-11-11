@@ -489,7 +489,7 @@ operation queue never starves them. A batch-path process is kept within
 what one `settleBatch` call can resolve: a commit that would grow a process past that
 (`gas::max_orders_in_one_settle`, one position an order and one for the
 buyer, planned in the dearer of the resolve's two forms so the process
-resolves by its buyer's key or its buyer's wallet code alike — about 210
+resolves by its buyer's key or its buyer's wallet code alike — about 115
 orders under the default cap) is dropped at batch
 formation and dead-lettered with the reason, since such a process would
 have no resolve any relay on the chain could land and its bonds would
@@ -505,8 +505,8 @@ past that is a refusal to run, read against the block at startup or, when
 startup could not read it, on the first tick that does — and
 a limit that later falls below the cap holds such a batch until it
 returns. A tick whose block cannot be read plans under the cap alone. The budget is the
-chain's own: under the default cap a resolution plans on about 210 orders, each a position, a published commitment and its events; a
-chain without the cap gives about 930 at a 60M block and about 3,000 at
+chain's own: under the default cap a resolution plans on about 115 orders, each a position, a published commitment and its events; a
+chain without the cap gives about 410 at a 60M block and about 1,375 at
 Sepolia's 200M, and a rise in the limit flows through at the next tick
 with nothing set, while a fork that reprices the items is met by
 re-measuring them. The position constant assumes a plain ERC-20: a token
