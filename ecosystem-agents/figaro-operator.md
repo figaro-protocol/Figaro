@@ -237,7 +237,7 @@ field 'windowStart' is missing"*, and it refuses the signature until they are fi
 assembly composes far more than a commerce clause, and the loop above is only complete when
 the gate stops objecting.
 
-Two of them are not yours to write. The **denomination** — the `currency` leaf — is a TERM
+Two of them are not yours to write. The **token** — the `currency` leaf — is a TERM
 that the commitment struct MIRRORS: write the same address into both, or the gate refuses.
 And the **provenance** — the agreement's `agreementHash` and the assembly's
 `assemblyHash` — is written by the instantiation itself, with or without `specs`:

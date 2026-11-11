@@ -732,6 +732,84 @@ test("the analyst starts under the wrapper with keyed RPC endpoints, syncs throu
     }
 });
 
+test("figaro-fetch under the wrapper: a file read nobody granted is refused promptly; a granted one and a gateway read on the allowlist are served, and absent content is named as absence", { skip: !HAS_SANDBOX_EXEC }, async () => {
+    const rpc = await keyedRpcStub();
+    const gatewaySeen = [];
+    const ABSENT_CID = "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku";
+    const gateway = http.createServer((req, res) => {
+        gatewaySeen.push(req.url);
+        if (req.url.endsWith(ABSENT_CID)) { res.statusCode = 404; return res.end(); }
+        res.end("granted-content");
+    });
+    await new Promise((r) => gateway.listen(0, "127.0.0.1", r));
+    const gatewayOrigin = `http://127.0.0.1:${gateway.address().port}`;
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-ws-"));
+    const policyFile = path.join(workspace, "policy.json");
+    fs.writeFileSync(policyFile, JSON.stringify({ ...SBX_POLICY, egress: [rpc.origin, gatewayOrigin] }));
+    const signerDir = fs.mkdtempSync(path.join(os.homedir(), ".sbx-signer-"));
+    // The deployment record sits outside every default grant: readable only by --allow-read.
+    const recordDir = fs.realpathSync(fs.mkdtempSync(path.join(os.homedir(), ".sbx-record-")));
+    const record = path.join(recordDir, "deployment.json");
+    fs.writeFileSync(record, JSON.stringify({ clauseRegistry: "0x1111111111111111111111111111111111111111", deploymentBlock: 0 }));
+    const env = { ...process.env, RPC_URL: rpc.keyedUrl, IPFS_GATEWAY_URL: gatewayOrigin, DEPLOYMENT_RECORD: record };
+    for (const name of ["IPFS_FALLBACK_GATEWAY_URL", "DEPLOYMENT_BLOCK"]) delete env[name];
+
+    // A run past BOUND_MS is a hang: the launcher's process group is killed and the run fails.
+    const BOUND_MS = 20_000;
+    const fetchUnderWrapper = (launcherArgs, fetchArgs) => new Promise((resolve) => {
+        const child = spawn("node", [
+            path.join(__dirname, "..", "run-sandboxed.mjs"),
+            "--policy", policyFile, "--workspace", workspace,
+            "--signer-socket", path.join(signerDir, "signer.sock"), ...launcherArgs,
+            "--", process.execPath, path.join(__dirname, "..", "figaro-fetch.mjs"), ...fetchArgs,
+        ], { env, detached: true });
+        let stdout = "";
+        let stderr = "";
+        let hung = false;
+        const timer = setTimeout(() => { hung = true; try { process.kill(-child.pid, "SIGKILL"); } catch { /* gone */ } }, BOUND_MS);
+        child.stdout.on("data", (c) => (stdout += c));
+        child.stderr.on("data", (c) => (stderr += c));
+        child.on("close", (status) => { clearTimeout(timer); resolve({ status, stdout, stderr, hung }); });
+    });
+    const clauseKey = `0x${"11".repeat(32)}`;
+    try {
+        // A gateway read on the egress allowlist reaches the model framed.
+        const cid = "bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy";
+        const ipfs = await fetchUnderWrapper([], ["ipfs", cid]);
+        assert.ok(!ipfs.hung, `figaro-fetch ipfs hung under the wrapper:\n${ipfs.stderr}`);
+        assert.equal(ipfs.status, 0, ipfs.stderr);
+        assert.match(ipfs.stdout, new RegExp(`^⟦FIGARO-DATA [0-9a-f]{24} source=ipfs cid=${cid} `));
+        assert.match(ipfs.stdout, /\ngranted-content\n/);
+        assert.deepEqual(gatewaySeen, [`/ipfs/${cid}`]);
+
+        // Content no gateway holds is absence, named by what was asked for.
+        const absent = await fetchUnderWrapper([], ["ipfs", ABSENT_CID]);
+        assert.ok(!absent.hung, `figaro-fetch hung on absent content:\n${absent.stderr}`);
+        assert.notEqual(absent.status, 0);
+        assert.match(absent.stderr, new RegExp(`figaro-fetch: content \\S*${ABSENT_CID} is not published — absence, not an error`));
+
+        // The deployment record nobody granted: refused at the read, before the chain is asked anything.
+        const denied = await fetchUnderWrapper([], ["clause", clauseKey]);
+        assert.ok(!denied.hung, `figaro-fetch hung on a read nobody granted:\n${denied.stderr}`);
+        assert.notEqual(denied.status, 0);
+        assert.match(denied.stderr, /figaro-fetch: EPERM: operation not permitted, open/);
+        assert.deepEqual(rpc.seen, [], "the chain was read past a refused file read");
+
+        // The same record granted by --allow-read: read, and the registries asked through the relay.
+        const granted = await fetchUnderWrapper(["--allow-read", recordDir], ["clause", clauseKey]);
+        assert.ok(!granted.hung, `figaro-fetch hung on a granted read:\n${granted.stderr}`);
+        assert.doesNotMatch(granted.stderr, /EPERM/);
+        assert.match(granted.stderr, new RegExp(`figaro-fetch: clause ${clauseKey} is not live on the registry`));
+        assert.ok(rpc.seen.length > 0 && rpc.seen.every((p) => p === `/v3/${RPC_KEY}`), "the registries were not read through the relay");
+    } finally {
+        await rpc.close();
+        await new Promise((r) => gateway.close(r));
+        fs.rmSync(recordDir, { recursive: true, force: true });
+        fs.rmSync(signerDir, { recursive: true, force: true });
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
 test("the signer's directory is never writable; its socket stays connectable", { skip: !HAS_SANDBOX_EXEC }, async () => {
     // The spend journal bounds the period and the audit log is the owner's
     // record. Both sit beside the socket, in a directory the sandbox may not

@@ -2173,7 +2173,7 @@ const orders = await reconstructOrdersFromAssembly(assembly, {
   nodes: (node) => ({
     seller: sellerFor(node.nodeId),
     payment: paymentFor(node.nodeId),
-    // The denomination is a TERM (a merkle leaf on the commerce
+    // The token is a TERM (a merkle leaf on the commerce
     // clause) that the commitment's `currency` param above MIRRORS — write
     // the same address into both, or the sign gate refuses the agreement.
     // A pinned assembly's value comes from its denomination clause

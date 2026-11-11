@@ -50,7 +50,7 @@ async function fetchContent(uri) {
     } catch (e) {
         return fail(e instanceof Error ? e.message : String(e));
     }
-    if (text === null) fail(`content ${cid} is not published — absence, not an error`);
+    if (text === null) fail(`content ${uri} is not published — absence, not an error`);
     return text;
 }
 
