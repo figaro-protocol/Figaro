@@ -139,12 +139,40 @@ struct MempoolInner {
     /// The keys the latest drain took: operations in flight, in a batch not
     /// yet landed.
     in_flight: HashSet<B256>,
+    /// The isolation ([`Mempool::isolate`]): sets of a batch the chain
+    /// refused naming nobody, oldest first, each drained alone as a batch of
+    /// its own ahead of the queue; their keys stay in `index`.
+    isolating: VecDeque<Suspect>,
+    /// The splits left to each refused batch the isolation is splitting, by
+    /// the id [`Suspect::origin`] carries.
+    split_budgets: HashMap<u64, u32>,
+    /// The set the latest drain took from the isolation, if it took one: its
+    /// origin, so a refusal of it spends that batch's budget.
+    isolating_in_flight: Option<u64>,
+    next_origin: u64,
+    /// How many refused batches each key has entered the isolation from, a
+    /// fresh origin each ([`MAX_ISOLATION_ROUNDS`]). Kept, as `requeues`, for
+    /// a key still queued or just drained.
+    isolation_rounds: HashMap<B256, u32>,
     next_id: u64,
+}
+
+/// A set of operations whose batch the chain refused naming nobody, waiting
+/// to be tried alone.
+#[derive(Debug)]
+struct Suspect {
+    ops: Vec<PendingOp>,
+    /// The refused batch the set was split from.
+    origin: u64,
 }
 
 impl MempoolInner {
     fn deferred_len(&self) -> usize {
         self.deferred.iter().map(Vec::len).sum()
+    }
+
+    fn isolating_len(&self) -> usize {
+        self.isolating.iter().map(|s| s.ops.len()).sum()
     }
 }
 
@@ -172,6 +200,29 @@ pub const MAX_DEPENDENCY_RERUNS: usize = 32;
 /// one. Ten minutes covers a dependency queued past the drain's cut, or
 /// carried by a batch still in flight, at the defaults.
 pub const DEFAULT_DEFER_WINDOW: Duration = Duration::from_secs(600);
+
+/// What the isolation's split budget adds to the log2 of the refused
+/// batch's size ([`split_budget`]). Halving finds one operation that reverts
+/// alone in ⌈log2 n⌉ splits; two offenders in a batch of `MAX_BATCH_OPS` (100)
+/// need at most 13, under the budget of 15 this gives. Each split costs two
+/// `settleBatch` calls, each a proof, so the constant is the bound on the extra work a
+/// refusal naming nobody can cause: at most the batch and two `settleBatch` calls per
+/// split.
+pub const ISOLATION_SPLIT_SLACK: u32 = 8;
+
+/// How many refused batches one operation may enter the isolation from.
+/// A set the isolation drains can leave it without landing — given back
+/// when the tick's gas budget cuts it, deferred, or re-queued after a
+/// transient failure — and join a fresh batch, with a fresh split budget;
+/// past this many such rounds the operation is dead-lettered, so no
+/// operation re-enters the isolation forever.
+pub const MAX_ISOLATION_ROUNDS: u32 = 3;
+
+/// The splits the isolation may spend on a refused batch of `n` operations:
+/// ⌈log2 n⌉ + [`ISOLATION_SPLIT_SLACK`].
+pub fn split_budget(n: usize) -> u32 {
+    (n.max(1) as u64).next_power_of_two().trailing_zeros() + ISOLATION_SPLIT_SLACK
+}
 
 impl Mempool {
     pub fn new(chain_id: u64, verifying_contract: alloy_primitives::Address) -> Self {
@@ -208,6 +259,11 @@ impl Mempool {
                 deferred: VecDeque::new(),
                 queued_roots: HashMap::new(),
                 in_flight: HashSet::new(),
+                isolating: VecDeque::new(),
+                split_budgets: HashMap::new(),
+                isolating_in_flight: None,
+                next_origin: 1,
+                isolation_rounds: HashMap::new(),
                 next_id: 1,
             })),
             chain_id,
@@ -247,7 +303,7 @@ impl Mempool {
             });
         }
         // A deferred operation is still pending: the cap bounds both.
-        if inner.pending.len() + inner.deferred_len() >= self.max_pending_ops {
+        if inner.pending.len() + inner.deferred_len() + inner.isolating_len() >= self.max_pending_ops {
             return Err(SubmitError::Full);
         }
         let id = inner.next_id;
@@ -449,6 +505,18 @@ impl Mempool {
     /// drained ones leave the dedup index.
     pub async fn drain_up_to(&self, max: usize) -> Vec<PendingOp> {
         let mut inner = self.inner.lock().await;
+        // The isolation's oldest set goes alone, ahead of everything: mixed
+        // with other operations, a refusal would name nothing again.
+        inner.isolating_in_flight = None;
+        if let Some(mut suspect) = inner.isolating.pop_front() {
+            if suspect.ops.len() > max {
+                let rest = suspect.ops.split_off(max);
+                inner.isolating.push_front(Suspect { ops: rest, origin: suspect.origin });
+            }
+            inner.isolating_in_flight = Some(suspect.origin);
+            let drained = suspect.ops;
+            return Self::took(&mut inner, drained);
+        }
         let take = max.min(inner.pending.len());
         let mut drained: Vec<PendingOp> = inner.pending.drain(..take).collect();
         let mut room = max - take;
@@ -464,6 +532,12 @@ impl Mempool {
             }
             inner.deferred = waiting;
         }
+        Self::took(&mut inner, drained)
+    }
+
+    /// The drain's bookkeeping: the drained keys leave the dedup index and
+    /// become the ones in flight.
+    fn took(inner: &mut MempoolInner, drained: Vec<PendingOp>) -> Vec<PendingOp> {
         for op in &drained {
             inner.index.remove(&op.key);
         }
@@ -475,7 +549,13 @@ impl Mempool {
         let MempoolInner { requeues, index, queued_roots, .. } = &mut *inner;
         requeues.retain(|key, _| index.contains_key(key) || drained_keys.contains(key));
         queued_roots.retain(|_, (key, _)| index.contains_key(key) || drained_keys.contains(key));
-        inner.in_flight = drained_keys;
+        inner.in_flight = drained_keys.clone();
+        // A budget is kept while a set of its batch waits or is in flight.
+        let MempoolInner { split_budgets, isolating, isolating_in_flight, isolation_rounds, index, .. } = &mut *inner;
+        split_budgets.retain(|origin, _| {
+            *isolating_in_flight == Some(*origin) || isolating.iter().any(|s| s.origin == *origin)
+        });
+        isolation_rounds.retain(|key, _| index.contains_key(key) || drained_keys.contains(key));
         drained
     }
 
@@ -824,15 +904,116 @@ impl Mempool {
         dropped
     }
 
+    /// Isolate the operations of the latest drain's batch, which the chain
+    /// refused while nobody was named (`submitter::classify_deterministic_revert`):
+    /// within the split budget, no operation is dead-lettered for a revert it
+    /// may not have caused.
+    /// One operation refused alone reverts on its own, and is returned with
+    /// the reason for the caller to dead-letter. More are split into halves
+    /// of their order (the execution order, so a half never builds on the
+    /// one after it), which wait apart at the front, ahead of the queue, and
+    /// are each drained alone as a batch of its own ([`Mempool::drain_up_to`]),
+    /// spending one split of the refused batch's budget ([`split_budget`],
+    /// set from the size of the batch first refused). With no split left the
+    /// set is returned, each operation with the reason, dead-lettered
+    /// unattributed. Spends nothing of the re-queue's count; a copy
+    /// resubmitted meanwhile is dropped, as [`Mempool::give_back`] drops one.
+    pub async fn isolate(&self, ops: Vec<PendingOp>) -> Vec<(PendingOp, String)> {
+        if ops.is_empty() {
+            return Vec::new();
+        }
+        let mut inner = self.inner.lock().await;
+        let origin = match inner.isolating_in_flight.take() {
+            Some(origin) => origin,
+            None => {
+                // A fresh refused batch: each operation's round counts, and
+                // one past the rounds is dead-lettered before any split.
+                let mut past = Vec::new();
+                let mut kept = Vec::with_capacity(ops.len());
+                for op in ops {
+                    let rounds = {
+                        let r = inner.isolation_rounds.entry(op.key).or_insert(0);
+                        *r += 1;
+                        *r
+                    };
+                    if rounds > MAX_ISOLATION_ROUNDS {
+                        let why = format!(
+                            "entered the isolation from {rounds} refused batches without landing; dead-lettered, re-submittable"
+                        );
+                        inner.isolation_rounds.remove(&op.key);
+                        past.push((op, why));
+                    } else {
+                        kept.push(op);
+                    }
+                }
+                if !past.is_empty() {
+                    let mut rest = self.isolate_fresh(&mut inner, kept);
+                    past.append(&mut rest);
+                    return past;
+                }
+                return self.isolate_fresh(&mut inner, kept);
+            }
+        };
+        Self::split(&mut inner, origin, ops)
+    }
+
+    /// A fresh refused batch's operations: a new origin, its budget.
+    fn isolate_fresh(&self, inner: &mut MempoolInner, ops: Vec<PendingOp>) -> Vec<(PendingOp, String)> {
+        if ops.is_empty() {
+            return Vec::new();
+        }
+        let origin = inner.next_origin;
+        inner.next_origin += 1;
+        inner.split_budgets.insert(origin, split_budget(ops.len()));
+        Self::split(inner, origin, ops)
+    }
+
+    /// The refused set of `origin`: one operation dead-lettered alone, more
+    /// split while the budget lasts, the rest dead-lettered unattributed.
+    fn split(inner: &mut MempoolInner, origin: u64, mut ops: Vec<PendingOp>) -> Vec<(PendingOp, String)> {
+        if ops.len() == 1 {
+            let op = ops.pop().unwrap();
+            let why = "the chain refused a batch of this operation alone and named nobody: it reverts on its own — dead-lettered, re-submittable".to_string();
+            return vec![(op, why)];
+        }
+        let left = inner.split_budgets.get(&origin).copied().unwrap_or(0);
+        if left == 0 {
+            let n = ops.len();
+            let why = format!(
+                "ISOLATION CAP: the chain refused this operation's batch and named nobody, and the split budget ran out with this set of {n} still refused; dead-lettered unattributed, re-submittable — it may not be the operation that reverts"
+            );
+            return ops.into_iter().map(|op| (op, why.clone())).collect();
+        }
+        inner.split_budgets.insert(origin, left - 1);
+        let second = ops.split_off(ops.len().div_ceil(2));
+        for half in [second, ops] {
+            for op in &half {
+                if inner.index.contains_key(&op.key) {
+                    inner.pending.retain(|queued| queued.key != op.key);
+                }
+                inner.index.insert(op.key, op.id);
+            }
+            let half = half.into_iter().map(|mut op| { op.behind.clear(); op }).collect();
+            inner.isolating.push_front(Suspect { ops: half, origin });
+        }
+        Vec::new()
+    }
+
     /// How many keys the re-queue count is held for.
     pub async fn requeue_counts_held(&self) -> usize {
         self.inner.lock().await.requeues.len()
     }
 
-    /// Number of pending operations, the deferred among them.
+    /// Number of operations waiting in the isolation, a set in flight not
+    /// counted: what `/status` reports as `isolating_ops`.
+    pub async fn isolating_len(&self) -> usize {
+        self.inner.lock().await.isolating_len()
+    }
+
+    /// Number of pending operations, the deferred and the isolated among them.
     pub async fn len(&self) -> usize {
         let inner = self.inner.lock().await;
-        inner.pending.len() + inner.deferred_len()
+        inner.pending.len() + inner.deferred_len() + inner.isolating_len()
     }
 
     /// Refuse an operation whose process or order this relay can verify

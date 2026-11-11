@@ -180,7 +180,7 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 71 invariants across 5 models in 8 configurations, each configuration's type invariant counted (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 8 + its deferral 10 + its resolve authorization 3 + its attestation authorization 2, `RTypeOK` and `OnlyPartyAttests`, `formal/RelayStateAttest.cfg`)
+## TLA+ (`formal/`) — 74 invariants across 5 models in 9 configurations, each configuration's type invariant counted (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 8 + its deferral 10 + its resolve authorization 3 + its attestation authorization 2, `RTypeOK` and `OnlyPartyAttests`, `formal/RelayStateAttest.cfg` + its isolation 3, `ITypeOK`, `HonestNeverDroppedForAnother` and `IsolationBounded`, `formal/RelayStateIsolate.cfg`)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -317,6 +317,27 @@ value 2 names; `VerifierChecksWalletCode` FALSE (the wallet-code form taken
 on the guest's word) fails `OnlyBuyerWalletResolves` in 3 states — the root
 order commits and a stranger's bytes resolve it. `Spec` and
 `DeferSpec` hold its variables at their initial values.
+
+RelayState's fifth spec, `IsolateSpec` (`RelayState.tla` +
+`RelayStateIsolate.cfg`, the ninth pass of `scripts/test-tla.sh`): a batch
+the chain refuses while no re-read names a party and no operation is a
+wallet-code one (`prover/sequencer/src/submitter.rs`
+`classify_deterministic_revert`, `mempool.rs` `isolate` and `drain_up_to`)
+— four operations, any of them offenders chosen at the start, each
+reverting any `settleBatch` call it rides in, naming nobody, or letting it land; the
+refused set split into halves, each tried alone ahead of the queue, under a
+split budget of ⌈log2 4⌉ + 1. 3 invariants — `HonestNeverDroppedForAnother`
+(no operation outside the offenders is dead-lettered), `IsolationBounded`
+(the `settleBatch` calls sent are at most the batch and two per split) and `ITypeOK`:
+2,938 states / 1,718 distinct, depth 8, seconds. Mutation-checked:
+`WholeBatchOnUnnamedRevert` TRUE, the module's one switch whose TRUE restores
+the defect (the old relay's whole-batch dead-letter), fails
+`HonestNeverDroppedForAnother` in 2 states. A reachability witness,
+`IsolationCapWitness` (`RelayStateIsolateCap.cfg`, `ISlack` 0, run by the
+same script, which fails unless TLC reports the violation), is violated in 6
+states: the budget runs out and dead-letters an honest operation. The model
+has no time, no queue refill and splits into any two halves. The other specs
+hold its variables at their initial values, with no offender.
 
 ## Lean 4 (`formal/lean/`) — the equilibrium, machine-checked
 
@@ -458,6 +479,19 @@ unset or blank refuses at startup; the funding gate — both balance and
 allowance cover the bond, a commit the chain cannot be asked about is dropped
 conservatively, no verifier means no reads; the re-queue cap dead-letters an
 op after the third transient failure and a fresh admission starts it over;
+a batch the chain refuses naming nobody, run against the chain double
+(`rpc_double.rs`), dead-letters the offender alone while every honest
+operation lands, and dead-letters each of four operations that all revert
+alone, under the split budget; two offenders in a batch of 100 are each
+isolated within the budget, past it a set refused again is dead-lettered
+unattributed with an `ISOLATION CAP` reason, and an isolated set is drained
+alone ahead of the queue; the `settleBatch` call is sent with gas headroom over the
+node's estimate, capped at the planned budget unless the estimate itself
+exceeds it, and never below the estimate, so a `settleBatch` call whose wallet code costs
+more at inclusion lands; what a refusal leaves to retry keeps the batch's
+order; a refused batch of claims alone is recorded with the chain's refusal;
+`/status` counts the operations waiting in the isolation; an operation past
+`MAX_ISOLATION_ROUNDS` fresh isolations is dead-lettered;
 HTTP API incl. the per-address submit rate limit (`429`, another address
 still served) and arrival-order draining across clients; mempool→assemble→mirror→advance pipeline; and the operation stream a batch
 publishes — re-applied from the previous state, it lands on the root the proof

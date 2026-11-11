@@ -947,7 +947,7 @@ async fn batch_loop(
 
         // Submit on-chain (advance state mirror only on success)
         if !dry_run {
-            let outcome = submitter::submit_batch(&submitter_config, &result).await;
+            let outcome = submitter::submit_batch(&submitter_config, &result, budget).await;
             // The chain's root decides, not this transaction's fate alone:
             // the same batch sent on an earlier tick, its receipt unread,
             // may be what moved the root here. Asked only of a batch that
@@ -988,6 +988,10 @@ async fn batch_loop(
                     // fresh batch without the revoker; the refused batch
                     // itself is never re-sent. Repeated revocation from one
                     // address within the window is the adversarial signal.
+                    // The batch's own order: what the refusal leaves to
+                    // retry keeps it, so no operation is tried before one
+                    // it was built on.
+                    let order: Vec<B256> = valid.iter().map(|p| p.key).collect();
                     let (mut still_funded, unfunded) =
                         submitter::filter_funded_commits(funding.as_ref(), valid).await;
                     // Only a VERIFIED shortfall names a revoker; a wallet
@@ -1014,27 +1018,41 @@ async fn batch_loop(
                     // wallet-code operation dead-letters those operations
                     // alone (its party's code may answer an eth_call otherwise
                     // than the transaction, or burn the forwarded gas, for
-                    // free); only a batch with neither dead-letters whole (`classify_deterministic_revert`).
+                    // free); a batch with neither is isolated by splitting
+                    // (`classify_deterministic_revert`, `Mempool::isolate`).
                     let named_revoker = !revoked.is_empty();
                     let verdict = submitter::classify_deterministic_revert(
+                        &order,
                         still_funded,
                         revoked,
                         unverifiable.into_iter().map(|(op, _, _)| op).collect(),
                         code_refused,
                     );
-                    if verdict.whole {
-                        // No revoker named: some other deterministic cause,
-                        // or the re-read could not see one (a revoker who
+                    let claims_reason = verdict.claims_reason(named_revoker, &e.message);
+                    if !verdict.named() {
+                        // Nobody named: some other deterministic cause, or
+                        // the re-read could not see one (a revoker who
                         // re-approved before the re-read lands here — the
                         // residual the handover's limitation 3 states).
-                        // Retrying re-proves the identical batch (~minutes
-                        // each) for the same refusal. Dead-letter now,
-                        // loudly; the counter and the reason surface on
-                        // /status so a polling driver sees the death instead
-                        // of waiting it out.
-                        error!(error = %e, ops = op_count, "Deterministic resolve revert — dead-lettered, NOT re-proving");
-                        failures.record_claims(batch.usage_claims.len() as u64, e.message.clone()).await;
-                        failures.record(op_count as u64, e.message).await;
+                        // Within the split budget no operation is
+                        // dead-lettered for a revert it may not have caused:
+                        // the batch's operations wait apart, in halves of
+                        // its order, each tried alone in a batch of its own,
+                        // so the one that reverts alone is dead-lettered
+                        // alone and every other lands, unless its deadline or
+                        // deferral window passes while the queue waits. The
+                        // refused batch itself is never re-sent. Past the
+                        // budget the rest of a set refused again is
+                        // dead-lettered unattributed, with the reason, on
+                        // /status. A batch of claims alone isolates nothing.
+                        if !verdict.isolate.is_empty() {
+                            warn!(error = %e, ops = verdict.isolate.len(), "Deterministic resolve revert naming nobody — isolating the operations by splitting, NOT re-sending the batch");
+                            for (op, why) in mempool.isolate(verdict.isolate).await {
+                                error!(id = op.id, %why, "Dead-lettered by the isolation");
+                                failures.record(1, why).await;
+                            }
+                        }
+                        failures.record_claims(batch.usage_claims.len() as u64, claims_reason).await;
                     } else {
                         let mut signaled: Vec<Address> = Vec::new();
                         for (op, why, who) in &verdict.dead {
@@ -1046,12 +1064,7 @@ async fn batch_loop(
                                 }
                             }
                         }
-                        let reason = if named_revoker {
-                            "the batch was refused for a revoked approval"
-                        } else {
-                            "the batch was refused by a party's wallet code"
-                        };
-                        failures.record_claims(batch.usage_claims.len() as u64, reason.to_string()).await;
+                        failures.record_claims(batch.usage_claims.len() as u64, claims_reason).await;
                         for who in signaled {
                             let hits = revocations.record(who);
                             if hits > 1 {
@@ -1060,9 +1073,8 @@ async fn batch_loop(
                         }
                         // A wallet whose re-read failed re-queues with the
                         // rest: the next formation reads again and decides.
-                        // Re-queued ops re-prove at most to the re-queue cap
-                        // — "never re-proved" holds only for the whole-batch
-                        // dead-letter above.
+                        // Re-queued ops re-prove at most to the re-queue cap;
+                        // the refused batch itself is never re-sent.
                         if !verdict.requeue.is_empty() {
                             info!(ops = verdict.requeue.len(), "Re-queuing the other operations — the next batch is built without what the refusal named");
                             requeue_or_dead_letter(&mempool, &failures, verdict.requeue).await;

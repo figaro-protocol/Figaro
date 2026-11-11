@@ -827,9 +827,29 @@ to every `eth_call` and no in the transaction (branching on `tx.origin`,
 relay's re-ask after the revert may name nobody. The relay then dead-letters
 the refused batch's wallet-code resolves alone, re-submittable, counts each
 buyer in the adversarial signal, and re-queues every other operation
-(`classify_deterministic_revert`); only a batch carrying no wallet-code
-resolve is dead-lettered whole. Such a wallet's cost is its own resubmission;
-each co-batched operation it sinks spends one of its three re-queues. The relay's gas plan for
+(`classify_deterministic_revert`). Such a wallet's cost is its own
+resubmission; each co-batched operation it sinks spends one of its three
+re-queues. A batch carrying no wallet-code operation that the chain refuses
+while nobody is named — a revoker who re-approved before the re-read, a token
+whose transfer reverts, any cause no re-read sees — is not dead-lettered
+whole: within the split budget, no operation is dead-lettered for a revert it
+may not have caused. Its operations wait apart from the queue, in halves of
+the batch's order, each half tried alone as a batch of its own
+(`Mempool::isolate`, `drain_up_to`), so the operation that reverts alone is
+dead-lettered alone, re-submittable, and, within the budget, every other
+lands, unless its deadline or deferral window passes while the queue waits.
+`/status` counts the operations waiting in the isolation (`isolating_ops`),
+and an operation that enters the isolation from a fresh refused batch more
+than `MAX_ISOLATION_ROUNDS` (3) times is dead-lettered with that reason. A
+split budget of ⌈log2 n⌉ plus
+`ISOLATION_SPLIT_SLACK` (8, enough for two offenders in a batch of 100) bounds
+the extra `settleBatch` calls at the batch and two per split; past it a set refused again
+is dead-lettered unattributed with that reason on `/status`, so a batch carrying
+more offenders than the budget covers can still cost an honest operation its
+batch. The queue waits while the isolation runs, and a deferred operation's
+window keeps running (`formal/RelayState.tla` `IsolateSpec`:
+`HonestNeverDroppedForAnother`, which `WholeBatchOnUnnamedRevert` TRUE, the old
+relay, fails). The relay's gas plan for
 the wallet's own code (`WALLET_CODE_EXECUTION_GAS`) and for the bytes'
 length (`MAX_WALLET_AUTHORIZATION_BYTES`) is the relay's, never the protocol's:
 the verifier bounds neither, so code that needs more resolves through a relay
@@ -852,7 +872,14 @@ The relay plans the same `WALLET_CODE_EXECUTION_GAS` for the attestation's code
 as for the resolve's, asks the code at its door and at batch formation, and
 after a refused batch that names nobody dead-letters the wallet-code operations
 alone, attestations included, re-submittable, counting each party in the
-adversarial signal (`classify_deterministic_revert`).
+adversarial signal (`classify_deterministic_revert`). Code whose cost rises
+between the node's estimate and inclusion would starve under a limit set at the
+estimate, and revert the batch where the verifier would have skipped the
+entry; the relay sends the `settleBatch` call with `SETTLE_GAS_HEADROOM_PCT` (25 percent)
+over the estimate, capped at the budget it planned the batch against, unless
+the node's estimate itself exceeds that budget, when the limit is the estimate
+(`gas::settle_gas_limit`). Gas a transaction does not use is not charged, so
+the headroom costs only block space.
 
 ---
 
