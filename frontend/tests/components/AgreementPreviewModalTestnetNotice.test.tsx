@@ -13,7 +13,7 @@ import { render, screen } from "@testing-library/react";
 
 let chainId: number | undefined = 31337;
 // The notice reads the wallet's chain from wagmi's connection. `useChainId`
-// is the build's chain (the devnet here), and the notice must not read it.
+// is the page's chain (the devnet here), and the notice must not read it.
 vi.mock("wagmi", () => ({ useConnection: () => ({ chainId }), useChainId: () => 31337 }));
 vi.mock("@/components/runtime/AgreementReview", () => ({ AgreementReview: () => <div data-testid="review-stub" /> }));
 vi.mock("@/components/ui/ModalChrome", () => ({

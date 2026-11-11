@@ -10,11 +10,14 @@
  * config creation by wagmi (an RPC change applies on reload).
  */
 import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
+import { activeChain } from "@/lib/shared/chains";
 
 const STORAGE_KEY = "figaro.user-endpoints";
 
 export interface UserEndpointOverrides {
-    /** JSON-RPC endpoint for chain reads (the user's own provider key). */
+    /** JSON-RPC endpoint for chain reads (the user's own provider key), on
+     *  ONE chain: an endpoint serves the chain it is on and no other, so it
+     *  is stored under its chain id and read for the page's chain. */
     rpcUrl?: string;
     /** Kubo API endpoint pins land on (the user's own node — they pay, they erase). */
     ipfsApiUrl?: string;
@@ -60,10 +63,18 @@ function sanitizeBearerToken(value: unknown): string | undefined {
     return /^[\x21-\x7e]+$/.test(trimmed) ? trimmed : undefined;
 }
 
-export function readUserEndpoints(): UserEndpointOverrides {
-    const raw = readJsonStorage<UserEndpointOverrides>(STORAGE_KEY, {});
+/** What the browser stores: the reader's endpoints, the RPC ones by chain id. */
+type StoredEndpoints = Omit<UserEndpointOverrides, "rpcUrl"> & { rpcUrls?: Record<string, unknown> };
+
+function readStored(): StoredEndpoints {
+    return readJsonStorage<StoredEndpoints>(STORAGE_KEY, {});
+}
+
+/** The reader's endpoints, the RPC one being `chainId`'s (the page's chain by default). */
+export function readUserEndpoints(chainId: number = activeChain.id): UserEndpointOverrides {
+    const raw = readStored();
     return {
-        rpcUrl: sanitizeEndpointUrl(raw.rpcUrl),
+        rpcUrl: sanitizeEndpointUrl(raw.rpcUrls?.[String(chainId)]),
         ipfsApiUrl: sanitizeEndpointUrl(raw.ipfsApiUrl),
         ipfsGatewayUrl: sanitizeEndpointUrl(raw.ipfsGatewayUrl),
         geocodeUrl: sanitizeEndpointUrl(raw.geocodeUrl),
@@ -72,9 +83,18 @@ export function readUserEndpoints(): UserEndpointOverrides {
     };
 }
 
-export function writeUserEndpoints(next: UserEndpointOverrides): void {
+/** Store the reader's endpoints; `next.rpcUrl` is `chainId`'s (the page's chain
+ *  by default), and every other chain's RPC endpoint is kept as it was. */
+export function writeUserEndpoints(next: UserEndpointOverrides, chainId: number = activeChain.id): void {
+    const rpcUrls: Record<string, string> = {};
+    for (const [id, url] of Object.entries(readStored().rpcUrls ?? {})) {
+        const kept = sanitizeEndpointUrl(url);
+        if (kept && id !== String(chainId)) rpcUrls[id] = kept;
+    }
+    const rpcUrl = sanitizeEndpointUrl(next.rpcUrl);
+    if (rpcUrl) rpcUrls[String(chainId)] = rpcUrl;
     writeJsonStorage(STORAGE_KEY, {
-        rpcUrl: sanitizeEndpointUrl(next.rpcUrl),
+        rpcUrls,
         ipfsApiUrl: sanitizeEndpointUrl(next.ipfsApiUrl),
         ipfsGatewayUrl: sanitizeEndpointUrl(next.ipfsGatewayUrl),
         geocodeUrl: sanitizeEndpointUrl(next.geocodeUrl),

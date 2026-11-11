@@ -32,7 +32,7 @@ const CALL = {
 };
 
 describe("simulateWriteVerify — the chain a write names", () => {
-    it("sends the write with the build's chainId", async () => {
+    it("sends the write with the page's chainId", async () => {
         const writeContractAsync = vi.fn(async (_config: unknown) => TX);
         await simulateWriteVerify({ ...CALL, client: client(), writeContractAsync });
         expect(writeContractAsync).toHaveBeenCalledTimes(1);

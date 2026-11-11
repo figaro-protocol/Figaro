@@ -13,6 +13,7 @@ import { HandoffCleanupProvider } from "@/components/runtime/HandoffCleanupProvi
 import { CommitmentSignPreviewProvider } from "@/components/runtime/CommitmentSignPreviewProvider";
 import { ConfigurationBanner } from "@/components/runtime/ConfigurationBanner";
 import { ActiveNetworkLine } from "@/components/runtime/ActiveNetworkLine";
+import { PageDeploymentNotice, PageDeploymentUrl } from "@/components/runtime/PageDeployment";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
                     <CommerceProvider>
                         <ConfigurationBanner />
                         <ActiveNetworkLine />
+                        <PageDeploymentNotice />
+                        <PageDeploymentUrl />
                         <ClientInit />
                         <ClauseSpecsLoader />
                         <HandoffCleanupProvider />

@@ -54,7 +54,7 @@ describe("buildProcessTimeline through an outside RPC", () => {
     });
 });
 
-describe("buildProcessTimeline on a core other than the site's — the link names the coordinator and the first block", () => {
+describe("buildProcessTimeline on a core other than the page's deployment's — the link names the coordinator and the first block", () => {
     const scanned = (getLogs: ReturnType<typeof vi.fn>) =>
         (getLogs.mock.calls as unknown as [{ address: string; fromBlock: bigint }][]).map(([p]) => p);
 

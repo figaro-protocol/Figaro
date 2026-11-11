@@ -15,11 +15,11 @@
  *   - chainID:              Chain ID (e.g. 31337, 1, 100)
  *   - arbitrableJsonRpcUrl: RPC URL to read events from (the page errors without it)
  *   - coordinatorAddress:   (optional) the AttestationCoordinator of that core — a
- *                           core other than this site's has its attestations read
+ *                           core other than the page's deployment's has its attestations read
  *                           only when the link names its coordinator (the Core holds
- *                           no pointer to it); this site's own is read by default
+ *                           no pointer to it); the page's deployment's own is read by default
  *   - fromBlock:            (optional) the block that core was deployed at — a core
- *                           other than this site's is scanned from genesis without it
+ *                           other than the page's deployment's is scanned from genesis without it
  *   - disputeID:            (optional) a forum-side dispute reference, shown for context
  */
 

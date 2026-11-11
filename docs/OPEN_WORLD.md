@@ -84,8 +84,13 @@ marketing pages are event-driven too.
 
 Three legitimately bundled categories (do NOT flag):
 
-1. **Deployment config** — contract addresses from `NEXT_PUBLIC_*` env vars; you
-   can't read an address event-driven without already knowing one.
+1. **Deployment config** — the deployment records a build lists: the published
+   `deployments/<chainId>.json` compiled in, and the build's own from
+   `NEXT_PUBLIC_*` env vars (`frontend/lib/shared/deploymentRecords.ts`); you
+   can't read an address event-driven without already knowing one. The set
+   of deployments a build lists is fixed when it is built. A deployment record is
+   a place to read, never a list of what is there: every clause, agreement,
+   assembly and member of a deployment is still read from its chain.
 2. **Constructor-set protocol constants** — immutable values set at construction
    (the Core's 2× bond ratio, a token's max supply); bundle the constant, read
    live state for the variable part.

@@ -17,5 +17,6 @@
   "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   "multisender": "0xD152f549545093347A162Dce210e7293f1452150",
   "daoTreasury": "0x37b197AB88a144cf0d8C42B3C9A9d78EaCBec795",
-  "deploymentBlock": 12106154
+  "deploymentBlock": 12106154,
+  "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com"
 }

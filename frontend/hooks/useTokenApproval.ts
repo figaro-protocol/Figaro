@@ -60,7 +60,7 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
     }, [allowance]);
 
     // Simulate, then send: the one write sequence every other write follows
-    // (`simulateWriteVerify`), naming the build's chain (`chainId`), so the
+    // (`simulateWriteVerify`), naming the page's chain (`chainId`), so the
     // write refuses a mismatch in the page, before the wallet prompt; the
     // receipt is verified by the query above.
     const approve = useCallback(async (amount: bigint) => {

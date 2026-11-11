@@ -1,12 +1,12 @@
 /**
  * contractWrite — the ONE on-chain write sequence every frontend write uses:
  * simulate the call to surface a typed revert BEFORE the wallet opens, send
- * it on the build's chain (`chainId: activeChain.id`), then wait
+ * it on the page's chain (`chainId: activeChain.id`), then wait
  * for the receipt and verify it landed `success`. A revert reaches the
  * caller translated by the contract's error name: the site's own revert
  * table first, then the FigaroCore wording, then the bare error name.
  *
- * The send names the build's chain as `chainId: activeChain.id`. wagmi's
+ * The send names the page's chain as `chainId: activeChain.id`. wagmi's
  * `writeContract` reads the chain only from `chainId`: it sets viem's `chain`
  * itself, and only when `chainId` is given does it set `assertChainId: true`,
  * so viem reads the wallet's chain (`eth_chainId`) and throws

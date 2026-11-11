@@ -29,6 +29,7 @@ import { keccak256 } from "viem";
 import { DEFAULT_IPFS_SERVICE, fetchCappedBinary } from "@/lib/shared/ipfsService";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { hexEqual } from "@/lib/shared/evm";
+import { pageRecord } from "@/lib/shared/chains";
 
 /** A loaded clause spec: the SDK `ClauseSpec` (content-only — `fields`/`stages`),
  *  its frontend-parsed `block` slice (pure presentation the frontend owns —
@@ -172,11 +173,11 @@ export function _resetClauseSpecCache_TESTING_ONLY(): void {
 }
 
 /** The wallet whose registrations are the mandatory clauses: the DAO's
- *  treasury, from the chain's deployment record (`NEXT_PUBLIC_DAO_TREASURY`,
- *  written by the deploy). Read at call time, so a test may set it. Null when
- *  the site is not configured for a chain. */
+ *  treasury, from the page's deployment record (`daoTreasury`; the build's
+ *  own deployment record reads `NEXT_PUBLIC_DAO_TREASURY`, written by the deploy). Read
+ *  at call time, so a test may set it. Null when the deployment record names none. */
 export function mandatoryClauseRegistrant(): Hex | null {
-    const a = process.env.NEXT_PUBLIC_DAO_TREASURY ?? "";
+    const a = pageRecord()?.daoTreasury ?? "";
     return /^0x[0-9a-fA-F]{40}$/.test(a) ? (a as Hex) : null;
 }
 
