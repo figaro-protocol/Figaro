@@ -1149,14 +1149,21 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // Public values: 10 static ABI words, 320 bytes; the verifier refuses
         // any other length by name. prevRoot
         // must be the LIVE root (it advances every resolve — never hardcode
-        // genesis); newRoot is whatever the values say, because the mock
-        // accepts any proof — the devnet posture this leg is explicit about.
+        // genesis). newRoot is the SAME root: this batch carries an
+        // attestation and an empty operation stream, and an attestation
+        // moves no state, so the batch leaves the root where it found it, as
+        // a relay's own attestation-only batch does. The mock accepts any
+        // proof (the devnet posture this leg is explicit about), so a root
+        // made up here would land too — and no relay could then rebuild the
+        // devnet's state from the chain, since replaying an empty stream
+        // reaches the root it started from (`batch-events.devnet.spec.ts`
+        // starts such a relay).
         // The ninth word is the batch's clock, and it is the CHAIN's: the
         // verifier refuses one ahead of its block or more than an hour behind.
         const prevRoot = await publicClient.readContract({
             address: batchVerifier, abi: BATCH_VERIFIER_ABI, functionName: 'stateRoot',
         });
-        const newRoot = keccak256(encodePacked(['bytes32', 'bytes32'], [prevRoot, salt]));
+        const newRoot = prevRoot;
         const attestation = { orderHash, processId, attester: surveyor.address, clauseId: geoKey, stage, contentRef };
         // The packed layouts the contract re-derives and compares — the
         // resolve transaction itself is the byte-equality gate (a wrong
@@ -1195,7 +1202,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // ── OUT-OF-BAND: the resolve landed, in the batch universe ONLY. ──
         expect(await publicClient.readContract({
             address: batchVerifier, abi: BATCH_VERIFIER_ABI, functionName: 'stateRoot',
-        }), 'the state root advanced to the submitted newRoot').toBe(newRoot);
+        }), 'the state root stands where it was: an attestation moves no state').toBe(prevRoot);
         const settled = await publicClient.getContractEvents({
             address: batchVerifier, abi: BATCH_VERIFIER_ABI, eventName: 'BatchSettled', fromBlock: settleReceipt.blockNumber,
         });
