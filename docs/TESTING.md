@@ -494,9 +494,9 @@ alone, under the split budget; two offenders in a batch of 100 are each
 isolated within the budget, past it a set refused again is dead-lettered
 unattributed with an `ISOLATION CAP` reason, and an isolated set is drained
 alone ahead of the queue; the `settleBatch` call is sent with gas headroom over the
-node's estimate, capped at the planned budget unless the estimate itself
-exceeds it, and never below the estimate, so a `settleBatch` call whose wallet code costs
-more at inclusion lands; what a refusal leaves to retry keeps the batch's
+node's estimate, capped at the planned budget, so a `settleBatch` call whose wallet code costs
+more at inclusion lands; a node's estimate above the planned budget is refused before
+anything is sent, as a deterministic refusal that names nobody; what a refusal leaves to retry keeps the batch's
 order; a refused batch of claims alone is recorded with the chain's refusal;
 `/status` counts the operations waiting in the isolation; an operation past
 `MAX_ISOLATION_ROUNDS` fresh isolations is dead-lettered;

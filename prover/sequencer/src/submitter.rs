@@ -994,8 +994,13 @@ fn names_a_reserved_key(claim: &UsageClaim) -> bool {
 
 /// Submit a proved batch to the on-chain FigaroBatchVerifier, its gas limit
 /// the node's estimate with headroom, capped at `gas_ceiling`, the budget the
-/// batch was planned against, unless the node's estimate itself exceeds it,
-/// when the limit is the estimate (`gas::settle_gas_limit`).
+/// batch was planned against (`gas::settle_gas_limit`). An estimate above
+/// `gas_ceiling` is refused before anything is sent, as a deterministic
+/// refusal: a party's wallet code can answer the relay's check within
+/// `WALLET_CODE_EXECUTION_GAS` and burn far more in the node's estimate, and a
+/// limit set at that estimate would have the relay pay past its plan, or,
+/// above the most the node takes for one transaction, be refused at the send
+/// with an error that is not a revert and read as transient.
 pub async fn submit_batch(
     config: &SubmitterConfig,
     result: &ProveResult,
@@ -1044,6 +1049,13 @@ pub async fn submit_batch(
     };
     let tx = tx.from(from);
     let estimate = tx.estimate_gas().await.map_err(|e| refused(e.to_string()))?;
+    if estimate > gas_ceiling {
+        let msg = format!(
+            "tx submission refused: the node's estimate of {estimate} gas exceeds the planned ceiling of {gas_ceiling}"
+        );
+        eprintln!("SUBMIT_ERROR: {msg}");
+        return Err(SettleError { message: msg, deterministic: true });
+    }
     let tx = tx.gas(crate::gas::settle_gas_limit(estimate, gas_ceiling));
 
     info!(verifier = ?config.verifier_address, %estimate, "Submitting settleBatch transaction");
@@ -2212,7 +2224,14 @@ mod tests {
     /// where a limit that covers the code lets it answer — the verifier's
     /// half, tested on the Forge side
     /// (`FigaroBatchVerifierTest.test_settleBatch_walletCodeAttestation_gasStarvationProbe`).
-    async fn rising_cost_double(estimate: u64, inclusion: u64) -> (crate::rpc_double::RpcDouble, std::sync::Arc<std::sync::Mutex<u64>>) {
+    /// The node refuses a transaction whose gas limit exceeds `node_cap`,
+    /// the most it takes for one transaction (EIP-7825), with an error that
+    /// is not a revert.
+    async fn rising_cost_double(
+        estimate: u64,
+        inclusion: u64,
+        node_cap: u64,
+    ) -> (crate::rpc_double::RpcDouble, std::sync::Arc<std::sync::Mutex<u64>>) {
         use crate::rpc_double::{serve, unserved};
         let sent_limit = std::sync::Arc::new(std::sync::Mutex::new(0u64));
         let seen = sent_limit.clone();
@@ -2223,6 +2242,9 @@ mod tests {
                 use alloy::eips::eip2718::Decodable2718;
                 let raw = alloy::primitives::hex::decode(params[0].as_str().unwrap()).unwrap();
                 let tx = TxEnvelope::decode_2718(&mut raw.as_slice()).unwrap();
+                if tx.gas_limit() > node_cap {
+                    return Err((-32000, format!("transaction gas limit too high (cap: {node_cap}, tx: {})", tx.gas_limit())));
+                }
                 *seen.lock().unwrap() = tx.gas_limit();
                 Ok(serde_json::json!(alloy::primitives::keccak256(&raw)))
             }
@@ -2238,21 +2260,52 @@ mod tests {
     #[tokio::test]
     async fn a_settle_whose_code_cost_rises_after_the_estimate_lands() {
         let estimate = 1_000_000;
-        let (double, limit) = rising_cost_double(estimate, estimate + estimate / 8).await;
+        let (double, limit) = rising_cost_double(estimate, estimate + estimate / 8, u64::MAX).await;
         let landed = submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch(), 16_777_216).await;
         assert!(landed.is_ok(), "{:?} under a limit of {}", landed.err(), limit.lock().unwrap());
         assert!(*limit.lock().unwrap() > estimate, "the limit carries headroom over the estimate");
     }
 
     // The headroom never takes the limit above the ceiling the relay plans
-    // the batch against, and never takes it below the node's estimate.
+    // the batch against.
     #[tokio::test]
     async fn the_settles_headroom_stops_at_the_planned_ceiling() {
         let estimate = 1_000_000;
-        let (double, limit) = rising_cost_double(estimate, estimate).await;
+        let (double, limit) = rising_cost_double(estimate, estimate, u64::MAX).await;
         submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch(), estimate + 1_000).await.unwrap();
         assert_eq!(*limit.lock().unwrap(), estimate + 1_000, "capped at the ceiling");
-        submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch(), estimate - 1_000).await.unwrap();
-        assert_eq!(*limit.lock().unwrap(), estimate, "never below the node's estimate");
+    }
+
+    // A party's wallet code can answer the relay's check cheaply and cost
+    // far more in the node's estimate. A `settleBatch` call whose estimate
+    // exceeds the ceiling the batch was planned against is refused before
+    // anything is sent, as a deterministic refusal naming nobody: the relay
+    // never pays past its plan, and the refusal goes to the arm that
+    // dead-letters the batch's wallet-code operations alone.
+    #[tokio::test]
+    async fn a_settle_whose_estimate_exceeds_the_planned_ceiling_is_refused_unsent_and_deterministic() {
+        let estimate = 1_000_000;
+        let (double, _) = rising_cost_double(estimate, estimate, u64::MAX).await;
+        let err = submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch(), estimate - 1_000)
+            .await
+            .unwrap_err();
+        assert!(err.deterministic, "{}", err.message);
+        assert!(err.message.contains("exceeds the planned ceiling"), "{}", err.message);
+        assert!(double.calls_to("eth_sendRawTransaction").is_empty(), "nothing is sent");
+    }
+
+    // An estimate above the most the node takes for one transaction is
+    // refused the same way, before the send: the node's refusal of the send
+    // is not a revert, and would be read as transient, re-queued and
+    // re-proved until the re-queue cap dead-lettered every operation beside
+    // the wallet's.
+    #[tokio::test]
+    async fn a_settle_whose_estimate_exceeds_the_transaction_cap_is_refused_unsent_and_deterministic() {
+        let cap = crate::gas::DEFAULT_SETTLE_GAS_CAP;
+        let estimate = cap + 1_000_000;
+        let (double, _) = rising_cost_double(estimate, estimate, cap).await;
+        let err = submit_batch(&submit_config(double.url.clone()), &proved_canonical_batch(), cap).await.unwrap_err();
+        assert!(err.deterministic, "{}", err.message);
+        assert!(double.calls_to("eth_sendRawTransaction").is_empty(), "nothing is sent");
     }
 }
