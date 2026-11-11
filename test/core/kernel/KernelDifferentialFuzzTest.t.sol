@@ -559,21 +559,16 @@ contract KernelDifferentialFuzzTest is Test {
         vm.recordLogs();
         try reader.walk(stream, false) {
             Vm.Log[] memory logs = vm.getRecordedLogs();
-            assertGe(logs.length, 1, "the sentinel's Attestation is emitted");
-            assertLe(logs.length, 2, "at most the entry's Attestation and the sentinel's");
+            assertEq(logs.length, 2, "the entry's Attestation and the sentinel's: a walk that returns emitted both");
             assertEq(logs[logs.length - 1].topics[2], SENTINEL_PROCESS_ID, "the reader stopped exactly past the entry");
             assertEq(logs[logs.length - 1].topics[3], bytes32(uint256(uint160(SENTINEL_PARTY))), "the sentinel's party");
             // The publishing walk skips every 0x05 entry: no event, no refusal.
             vm.recordLogs();
             reader.walk(stream, true);
             assertEq(vm.getRecordedLogs().length, 0, "the publishing walk emits nothing for a 0x05 entry");
-            if (logs.length == 2) {
-                vm.serializeBytes32(key, "walletCodeTopics", logs[0].topics);
-                vm.serializeBytes(key, "walletCodeData", logs[0].data);
-                vm.serializeString(key, "walletCodeOutcome", "emitted");
-            } else {
-                vm.serializeString(key, "walletCodeOutcome", "skipped");
-            }
+            vm.serializeBytes32(key, "walletCodeTopics", logs[0].topics);
+            vm.serializeBytes(key, "walletCodeData", logs[0].data);
+            vm.serializeString(key, "walletCodeOutcome", "emitted");
         } catch (bytes memory reason) {
             vm.serializeString(key, "walletCodeOutcome", _readerErrorName(reason));
         }
@@ -587,6 +582,10 @@ contract KernelDifferentialFuzzTest is Test {
                 return "WalletCodeAuthorizationRefused";
             }
             if (sel == FigaroBatchVerifier.BuyerHasNoCode.selector) return "BuyerHasNoCode";
+            if (sel == FigaroBatchVerifier.WalletCodeAttestationRefused.selector) {
+                return "WalletCodeAttestationRefused";
+            }
+            if (sel == FigaroBatchVerifier.AttesterHasNoCode.selector) return "AttesterHasNoCode";
             if (sel == FigaroBatchVerifier.MalformedOperationStream.selector) return "MalformedOperationStream";
         }
         return _errorName(reason);

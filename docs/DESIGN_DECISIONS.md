@@ -154,13 +154,13 @@ the role, the target, the clause id, the stage, the content reference and the
 bytes in the operation stream's `0x05` entry. `FigaroBatchVerifier.settleBatch`
 derives the target's ids and the role's digest under its own domain, takes the
 attester from the role, and asks that account's code before any token moves;
-it emits the coordinator's `Attestation` only on the magic value, and skips the
-entry on any other answer or an account with no code, while the batch lands
-(`_attestByWalletCode`); a call that ran out of gas is no answer, and reverts
-the batch (§ 21). An attestation moves no token and no state, so a
-refused one drops alone, as a reverted `attestAsSeller` call drops alone on the
-Core; a resolve cannot drop alone (its root already holds it), which is why a
-refused wallet-code resolve reverts the batch instead. So after key loss the
+it emits the coordinator's `Attestation` on the magic value, and reverts the
+batch by name on any other answer (`WalletCodeAttestationRefused`) or an
+account with no code (`AttesterHasNoCode`), as a refused wallet-code resolve
+does (`_attestByWalletCode`; § 21). An attestation moves no token and no
+state, so the verifier could let a refused one drop alone; it does not,
+because the batch publishes its stream: a landed stream then says what
+happened, each `0x05` entry in it with its `Attestation`. So after key loss the
 delegated code attests on both paths, and only the party's wallet, by its key
 or by its code, attests (`formal/RelayState.tla` `AttestSpec`,
 `OnlyPartyAttests`).
@@ -856,26 +856,36 @@ the verifier bounds neither, so code that needs more resolves through a relay
 that plans more or a batch its wallet submits itself.
 
 **The wallet-code attestation's residual.** An attestation in the wallet-code
-form (§ 4) is skipped, never reverted, when the party's code refuses it: the
-verifier emits nothing for the entry and the batch lands. A call that runs out
-of gas is not a refusal. The verifier asks with all the gas left and sets no
-cap, so the call receives 63/64 of it (EIP-150) and the batch keeps 1/64. As
-§ 19 measures for the accrual, a large enough batch finishes on that 1/64, so a
-submitter could choose a gas limit that starves a validation the code would
-have passed, and land the batch without the attestation. The verifier therefore
-reads the gas before the call: a call that fails with at most 1/64 of that gas
-left starved, and the batch reverts by name (`WalletCodeAttestationStarved`)
-rather than skip it (`test_settleBatch_walletCodeAttestation_gasStarvationProbe`
-walks the limit down and finds every landing carries the attestation). So code
-that burns all the gas it is given reverts any batch carrying its attestation.
+form (§ 4) reverts the batch when the party's code refuses it, as a wallet-code
+resolve does. The verifier could skip a refused entry and let the batch land,
+since an attestation moves no token and no state, and it once did. A skip is
+unsound against the submitter's gas limit. The verifier asks with all the gas
+left and sets no cap, so the call receives 63/64 of it (EIP-150) and the batch
+keeps 1/64; as § 19 measures for the accrual, a large enough batch finishes on
+what it keeps. `settleBatch` is permissionless, so anyone holding the proof
+could choose a limit that starves a validation the code would have passed, and
+land the batch without the attestation. No reading of the gas left closes
+that: a call starved in the account's own frame leaves at most 1/64, but most
+smart wallets are a proxy that delegates to an implementation, and a
+validation starved one frame down hands the proxy back the 1/64 it kept, which
+reads as an ordinary refusal. A fixed gas amount forwarded to the code would
+close it and would put a gas figure in a contract nobody can change, which a
+repricing then makes wrong. So any answer but the magic value reverts the
+batch by name (`WalletCodeAttestationRefused`; `AttesterHasNoCode` for an
+account with no code): a batch that lands carries the `Attestation` of every
+`0x05` entry in its stream
+(`test_settleBatch_walletCodeAttestation_gasStarvationProbe` and
+`…_gasStarvationProbe_throughADelegatingWallet` walk the limit down, in the
+account's own frame and one frame below it, and find every landing carries the
+attestation). The cost is the resolve's: code that refuses in the transaction
+what it validated for the relay reverts any batch carrying its attestation.
 The relay plans the same `WALLET_CODE_EXECUTION_GAS` for the attestation's code
 as for the resolve's, asks the code at its door and at batch formation, and
 after a refused batch that names nobody dead-letters the wallet-code operations
 alone, attestations included, re-submittable, counting each party in the
 adversarial signal (`classify_deterministic_revert`). Code whose cost rises
 between the node's estimate and inclusion would starve under a limit set at the
-estimate, and revert the batch where the verifier would have skipped the
-entry; the relay sends the `settleBatch` call with `SETTLE_GAS_HEADROOM_PCT` (25 percent)
+estimate, and revert the batch; the relay sends the `settleBatch` call with `SETTLE_GAS_HEADROOM_PCT` (25 percent)
 over the estimate, capped at the budget it planned the batch against, unless
 the node's estimate itself exceeds that budget, when the limit is the estimate
 (`gas::settle_gas_limit`). Gas a transaction does not use is not charged, so
@@ -1112,7 +1122,7 @@ the root cannot land twice: its prev root is no longer current.
 | 1 | Resolved processId is permanently closed | Core-critical | Closure-less extension "sounds protocol-aligned" | The closure IS the institution dissolving; follow-on rounds sign a fresh root; the gate derives from existing state |
 | 2 | buyer == seller allowed | Core-critical | Self-dealing vector | Bond math balances; bilateral signature required |
 | 3 | No admin/pause | Core-critical | No incident response | Admin = trusted third party = breaks mechanism |
-| 4 | Buyer key loss is terminal | Core-critical | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium; code the party's wallet installed with its key resolves (the buyer) and attests (either party) on both paths (`msg.sender` on the Core, ERC-1271 asked by the verifier on the batch path: a refused resolve reverts the batch, a refused attestation is skipped) |
+| 4 | Buyer key loss is terminal | Core-critical | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium; code the party's wallet installed with its key resolves (the buyer) and attests (either party) on both paths (`msg.sender` on the Core, ERC-1271 asked by the verifier on the batch path: a refused resolve and a refused attestation each revert the batch) |
 | 5 | No prevrandao salt | Core-critical | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
 | 6 | Attestation reverts on resolved orders | evidence-layer | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed data |
 | 7 | Permissionless clause registry | registry/discovery | Namespace squatting | The key is the hash of the spec's pinned bytes: there is nothing to squat but bytes, two specs with one name are two clauses; integrity routes through the key, never the registry; garbage pollutes discovery only, priced by the stake |
@@ -1129,7 +1139,7 @@ the root cannot land twice: its prev root is no longer current.
 | 18 | Usage needs a live clause, agreement or assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
 | 19 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a skipped use stays uncounted and may be proved again in a later batch (conservative under-pay); the sequencer pre-filters what the counter would skip |
 | 20 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal stops resolved-but-uncounted trades counting — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is read when a use is counted; counting at resolution closes the normal window; an uncounted use counts in whichever period is open once its seller stakes again, lost only after the last period closes; residual grief is self-limiting (griefer forfeits own eligibility while unstaked) |
-| 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess(processId, cumulativeValue)` authorization, by the buyer's key or its wallet code | batch-path | The canonical EIP-712 replay shape | The authorization binds a cumulative value, so it pays exactly the prefix of the process that value names and a later commit invalidates it; resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; a wallet-code attestation's refusal is skipped, its starved call reverts the batch by name so no gas limit drops it, and the relay dead-letters it alone |
+| 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess(processId, cumulativeValue)` authorization, by the buyer's key or its wallet code | batch-path | The canonical EIP-712 replay shape | The authorization binds a cumulative value, so it pays exactly the prefix of the process that value names and a later commit invalidates it; resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; a wallet-code attestation's refusal reverts the batch by name, a call that ran out of gas included, so no gas limit lands a batch without it, and the relay dead-letters it alone |
 | 22 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
 | 23 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
 | 24 | The assembly root is a merkle tree over registered agreement hashes | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |

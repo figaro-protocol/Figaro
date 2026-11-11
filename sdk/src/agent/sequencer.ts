@@ -466,9 +466,9 @@ export class SequencerClient {
      * key produces them, never this SDK's `signTypedData`. The proof runs
      * every check of the signed form but the signer's recovery and publishes
      * the bytes; `FigaroBatchVerifier` asks the party's code and emits the
-     * `Attestation` only on the magic value, and skips the attestation on any
-     * other answer; a call that ran out of gas reverts the batch instead, so no
-     * gas limit drops a validated attestation. The relay asks the same code at its door and refuses bytes
+     * `Attestation` on the magic value; any other answer, a call that ran out
+     * of gas included, reverts the whole batch, so a batch that lands carries
+     * the attestation. The relay asks the same code at its door and refuses bytes
      * the code does not validate. The witness forms are those of
      * {@link SequencerClient.submitAttestAsSeller}.
      */

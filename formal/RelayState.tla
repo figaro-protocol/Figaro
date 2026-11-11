@@ -216,16 +216,17 @@
 (* recovers; the wallet-code form carries bytes the party's own code       *)
 (* validates, which the guest publishes unchecked in the stream's `0x05`   *)
 (* entry, and the verifier asks the party's code: it emits the attestation *)
-(* on the magic value and skips it otherwise, the batch landing either     *)
-(* way. Anyone may submit bytes in the second form.                        *)
+(* on the magic value and reverts the batch otherwise, so nothing of that  *)
+(* batch is emitted. Anyone may submit bytes in the second form.           *)
 (* `OnlyPartyAttests`: every attestation the batch path emits was          *)
 (* authorized by the party's key or by the code its wallet installed. The  *)
 (* design switch:                                                          *)
 (*   VerifierChecksAttestationCode — TRUE: a wallet-code attestation is    *)
 (*                              emitted only if the party's account has    *)
-(*                              code and the code validates the digest,   *)
-(*                              and skipped otherwise. FALSE: the verifier *)
-(*                              emits it on the guest's word (fails       *)
+(*                              code and the code validates the digest;   *)
+(*                              the batch reverts otherwise. FALSE: the    *)
+(*                              verifier emits it on the guest's word      *)
+(*                              (fails                                     *)
 (*                              `OnlyPartyAttests`: a stranger's bytes     *)
 (*                              attest for the party)                      *)
 (*                                                                         *)
@@ -1102,7 +1103,7 @@ ACodeSign ==
     /\ UNCHANGED <<aKey, aCode, aSigned, aBy>>
 
 \* A batch applies the signed form: the guest recovers the party's
-\* signature, unforgeable here, and the event is in public value 6.
+\* signature, unforgeable here, and the event is in public value 5.
 AApply ==
     /\ aSigned
     /\ aBy' = aBy \cup {"key"}
@@ -1110,8 +1111,8 @@ AApply ==
 
 \* A batch carries a wallet-code attestation: bytes anyone submitted. The
 \* guest checks nothing about the bytes; under the design the verifier asks
-\* the party's code and emits the attestation only on the magic value,
-\* skipping it otherwise while the batch lands.
+\* the party's code and emits the attestation only on the magic value;
+\* any other answer reverts the batch, which emits nothing.
 AApplyCode ==
     /\ LET validated == aCode /\ aCodeAuth IN
         aBy' = IF validated THEN aBy \cup {"code"}

@@ -375,13 +375,19 @@ contract OperationStreamVectorsTest is Test {
 
     /// @dev Generate the stream of `seed` and the offset where each entry ends.
     ///      With `expect` false, the code of every wallet-code resolve's buyer
-    ///      is etched to validate the entry's bytes; with `expect` true, the
-    ///      events the walk must emit at step 6 are expected, in stream order.
+    ///      and of every wallet-code attestation's party is etched to validate
+    ///      the entry's bytes; with `expect` true, the events the walk must
+    ///      emit are expected: each wallet-code attestation's `Attestation`
+    ///      (step 4), then the Core's events (step 6), each in stream order.
     function _generate(uint256 seed, bool expect) internal returns (bytes memory s, uint256[] memory ends) {
         uint256 ops = seed % 7;
         uint256 atts = (seed >> 8) % 4;
         uint256 claims = (seed >> 16) % 5;
         ends = new uint256[](ops + atts + claims);
+        // Step 4 emits before step 6, so the attestations are expected first.
+        for (uint256 i = 0; expect && i < atts; i++) {
+            _attestationEntry(_draw(seed, "attestation", i), true, false);
+        }
         for (uint256 i = 0; i < ops; i++) {
             uint256 h = _draw(seed, "op", i);
             if (h % 3 == 0) {
@@ -394,17 +400,7 @@ contract OperationStreamVectorsTest is Test {
             ends[i] = s.length;
         }
         for (uint256 i = 0; i < atts; i++) {
-            uint256 h = _draw(seed, "attestation", i);
-            bytes memory authorization = _authorization(h);
-            // The party has no code, so the walk asks nothing and skips it.
-            s = bytes.concat(
-                s,
-                abi.encodePacked(hex"05", uint8(h % 2), _packCommitment(_drawCommitment(h, address(uint160(h >> 96))))),
-                abi.encodePacked(
-                    keccak256(abi.encode(h, "clause")), uint8(h >> 8), keccak256(abi.encode(h, "content"))
-                ),
-                abi.encodePacked(uint16(authorization.length), authorization)
-            );
+            s = bytes.concat(s, _attestationEntry(_draw(seed, "attestation", i), false, !expect));
             ends[ops + i] = s.length;
         }
         for (uint256 i = 0; i < claims; i++) {
@@ -423,6 +419,57 @@ contract OperationStreamVectorsTest is Test {
             s = bytes.concat(s, claim, _packWords(h >> 1, (h >> 16) % 5));
             ends[ops + atts + i] = s.length;
         }
+    }
+
+    /// @dev A wallet-code attestation (`0x05`) from the draw `h`, by the
+    ///      order's seller or its buyer. With `expect` true its `Attestation`
+    ///      is expected; with `validate` true the party's code is etched to
+    ///      validate the entry's bytes for the role's digest.
+    function _attestationEntry(uint256 h, bool expect, bool validate) internal returns (bytes memory e) {
+        CommitmentTypes.Commitment memory c = _drawCommitment(h, address(uint160(h >> 96)));
+        bool asSeller = h % 2 == 0;
+        address party = asSeller ? c.seller : c.buyer;
+        bytes32 clauseId = keccak256(abi.encode(h, "clause"));
+        uint8 stage = uint8(h >> 8);
+        bytes32 contentRef = keccak256(abi.encode(h, "content"));
+        bytes memory authorization = _authorization(h);
+        (bytes32 orderHash, bytes32 processId) = _ids(c);
+        if (expect) {
+            vm.expectEmit(true, true, true, true, address(verifier));
+            emit FigaroBatchVerifier.Attestation(orderHash, processId, party, clauseId, stage, contentRef);
+        }
+        if (validate) {
+            bytes32 structHash = asSeller
+                ? keccak256(
+                    abi.encode(
+                        keccak256("AttestSeller(bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)"),
+                        orderHash,
+                        clauseId,
+                        stage,
+                        contentRef
+                    )
+                )
+                : keccak256(
+                    abi.encode(
+                        keccak256(
+                            "AttestBuyer(bytes32 processId,bytes32 orderHash,bytes32 clauseId,uint8 stage,bytes32 contentRef)"
+                        ),
+                        processId,
+                        orderHash,
+                        clauseId,
+                        stage,
+                        contentRef
+                    )
+                );
+            vm.etch(party, type(MockERC1271Wallet).runtimeCode);
+            MockERC1271Wallet(party)
+                .approve(keccak256(abi.encodePacked("\x19\x01", _domainSeparator(), structHash)), authorization);
+        }
+        return bytes.concat(
+            abi.encodePacked(hex"05", uint8(asSeller ? 0 : 1), _packCommitment(c)),
+            abi.encodePacked(clauseId, stage, contentRef),
+            abi.encodePacked(uint16(authorization.length), authorization)
+        );
     }
 
     /// @dev Authorization bytes of 0, 1, 17 or 300 bytes from the draw `h`.
@@ -487,9 +534,10 @@ contract OperationStreamVectorsTest is Test {
         );
     }
 
-    /// Every generated stream lands, and the walk emits the Core's events for
-    /// each commit and resolve entry, in stream order, with the ids derived
-    /// under this verifier's domain.
+    /// Every generated stream lands, and the walk emits the `Attestation` of
+    /// each wallet-code attestation and the Core's events for each commit and
+    /// resolve entry, in stream order, with the ids derived under this
+    /// verifier's domain.
     function testFuzz_everyGeneratedStreamLandsAndEmitsItsEntries(uint256 seed) public {
         (bytes memory stream,) = _generate(seed, false);
         _generate(seed, true);

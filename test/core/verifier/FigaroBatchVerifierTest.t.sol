@@ -21,6 +21,7 @@ import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
 import {RpgfMinter} from "src/build/rewards/RpgfMinter.sol";
 import {FlorinToken} from "src/build/florin/FlorinToken.sol";
 import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
+import {MockDelegatingWallet} from "src/mocks/MockDelegatingWallet.sol";
 
 /// @dev Unit tests for the realigned batch verifier: 8-word public values,
 ///      the spec-binding anchor check against the live ClauseRegistry,
@@ -813,8 +814,8 @@ contract FigaroBatchVerifierTest is Test {
     // its key attests after the key is lost. The batch path's wallet-code form
     // is the stream's `0x05` entry: the verifier derives the target's ids and
     // the `AttestSeller` / `AttestBuyer` digest from the entry, asks the role's
-    // party's code, and emits the coordinator's `Attestation` only on the magic
-    // value. Any other answer, or no code, skips the entry and the batch lands.
+    // party's code, and emits the coordinator's `Attestation` on the magic
+    // value. Any other answer, or no code, reverts the whole batch by name.
 
     bytes32 constant ATT_CLAUSE = keccak256("wallet-attested-clause");
     uint8 constant ATT_STAGE = 2;
@@ -923,6 +924,31 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(verifier.stateRoot(), keccak256("attest-root"), "the batch lands");
     }
 
+    /// Send a batch whose stream is `operations` and which moves nothing, and
+    /// require that the verifier refuses it with `revertData`.
+    function _refusesAttestEntry(bytes memory operations, bytes memory revertData) internal {
+        FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
+        FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
+            new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
+        );
+        bytes memory pv = _pvWithOperations(positions, events, keccak256("attest-root"), operations);
+        bytes32 before = verifier.stateRoot();
+        vm.expectRevert(revertData);
+        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), operations);
+        assertEq(verifier.stateRoot(), before, "the batch does not land");
+    }
+
+    /// The verifier's refusal of a wallet-code attestation of `c` by `attester`.
+    function _attestationRefused(CommitmentTypes.Commitment memory c, address attester)
+        internal
+        view
+        returns (bytes memory)
+    {
+        return abi.encodeWithSelector(
+            FigaroBatchVerifier.WalletCodeAttestationRefused.selector, _attestOrderHash(c), attester
+        );
+    }
+
     function test_settleBatch_walletCodeAttestation_emitsTheAttestationWhenTheCodeValidates() public {
         CommitmentTypes.Commitment memory c = _walletOrder();
         bytes memory authorization = bytes("session-key-approval");
@@ -940,43 +966,45 @@ contract FigaroBatchVerifierTest is Test {
         }
     }
 
-    function test_settleBatch_walletCodeAttestation_isSkippedWhenTheCodeRefuses() public {
+    /// A landed batch carries every wallet-code attestation in its stream:
+    /// any answer but the magic value refuses the whole batch by name, as a
+    /// wallet-code resolve's refusal does, so no entry of a landed stream is
+    /// without its `Attestation`.
+    function test_settleBatch_walletCodeAttestation_revertsTheBatchWhenTheCodeRefuses() public {
         CommitmentTypes.Commitment memory c = _walletOrder();
         vm.etch(seller, type(MockERC1271Wallet).runtimeCode);
         // The code validates other bytes for the digest, not these.
         MockERC1271Wallet(seller).approve(_attestDigest(0, c), bytes("session-key-approval"));
-        Vm.Log[] memory emitted = _settleAttestEntry(_attestEntry(0, c, bytes("a stranger's bytes")));
-        assertEq(emitted.length, 0, "a refused attestation emits nothing, and the batch still lands");
+        _refusesAttestEntry(_attestEntry(0, c, bytes("a stranger's bytes")), _attestationRefused(c, seller));
     }
 
-    function test_settleBatch_walletCodeAttestation_isSkippedWhenThePartyHasNoCode() public {
+    function test_settleBatch_walletCodeAttestation_revertsTheBatchWhenThePartyHasNoCode() public {
         CommitmentTypes.Commitment memory c = _walletOrder();
         assertEq(seller.code.length, 0);
-        Vm.Log[] memory emitted = _settleAttestEntry(_attestEntry(0, c, bytes("session-key-approval")));
-        assertEq(emitted.length, 0, "an account with no code is skipped, and the batch still lands");
+        _refusesAttestEntry(
+            _attestEntry(0, c, bytes("session-key-approval")),
+            abi.encodeWithSelector(FigaroBatchVerifier.AttesterHasNoCode.selector, _attestOrderHash(c), seller)
+        );
     }
 
-    function test_settleBatch_walletCodeAttestation_isSkippedWhenTheCodeReverts() public {
+    function test_settleBatch_walletCodeAttestation_revertsTheBatchWhenTheCodeReverts() public {
         CommitmentTypes.Commitment memory c = _walletOrder();
         vm.etch(seller, type(MockERC20).runtimeCode); // code with no isValidSignature
-        Vm.Log[] memory emitted = _settleAttestEntry(_attestEntry(0, c, bytes("session-key-approval")));
-        assertEq(emitted.length, 0, "code that reverts answers no");
+        _refusesAttestEntry(_attestEntry(0, c, bytes("session-key-approval")), _attestationRefused(c, seller));
     }
 
     /// One wallet that is both the buyer and the seller of an order: its code
     /// validates the bytes for the seller's digest only. The entry's role byte
     /// selects the digest, so the same bytes under the buyer's role byte are
-    /// asked about the `AttestBuyer` digest and skipped.
+    /// asked about the `AttestBuyer` digest and refused.
     function test_settleBatch_walletCodeAttestation_theRoleByteSelectsTheDigest() public {
         CommitmentTypes.Commitment memory c = _walletOrder();
         c.seller = c.buyer;
         bytes memory authorization = bytes("session-key-approval");
         vm.etch(c.buyer, type(MockERC1271Wallet).runtimeCode);
         MockERC1271Wallet(c.buyer).approve(_attestDigest(0, c), authorization);
-        uint256 fresh = vm.snapshotState();
-        Vm.Log[] memory asBuyer = _settleAttestEntry(_attestEntry(1, c, authorization));
-        assertEq(asBuyer.length, 0, "the wrong role byte asks the other digest and is skipped");
-        vm.revertToState(fresh);
+        // The wrong role byte asks the other digest, which the code refuses.
+        _refusesAttestEntry(_attestEntry(1, c, authorization), _attestationRefused(c, c.buyer));
         Vm.Log[] memory asSeller = _settleAttestEntry(_attestEntry(0, c, authorization));
         assertEq(asSeller.length, 1, "the seller's role byte is validated");
         assertEq(address(uint160(uint256(asSeller[0].topics[3]))), c.seller, "the attester is the role's party");
@@ -1004,13 +1032,13 @@ contract FigaroBatchVerifierTest is Test {
     }
 
     /// An answer shorter than a word is a no, whatever its bytes.
-    function test_settleBatch_walletCodeAttestation_isSkippedOnAShortAnswer() public {
+    function test_settleBatch_walletCodeAttestation_revertsTheBatchOnAShortAnswer() public {
         CommitmentTypes.Commitment memory c = _walletOrder();
         bytes memory authorization = bytes("session-key-approval");
         vm.etch(seller, type(MockERC1271Wallet).runtimeCode);
         MockERC1271Wallet(seller).approve(_attestDigest(0, c), authorization);
         MockERC1271Wallet(seller).setAnswerShape(1);
-        assertEq(_settleAttestEntry(_attestEntry(0, c, authorization)).length, 0, "four bytes are no answer");
+        _refusesAttestEntry(_attestEntry(0, c, authorization), _attestationRefused(c, seller));
     }
 
     /// A huge answer is read for its first word only: the magic word followed
@@ -1026,9 +1054,8 @@ contract FigaroBatchVerifierTest is Test {
         assertLt(g0 - gasleft(), 400_000, "the 64 KiB is not copied into memory");
     }
 
-    /// Code that burns every unit of gas it is given starves at any limit: the
-    /// verifier tells the starved call from a refusal and refuses the batch by
-    /// name, rather than skipping an attestation its code may have validated.
+    /// Code that burns every unit of gas it is given answers nothing: the
+    /// batch is refused by name, as on any answer but the magic value.
     function test_settleBatch_walletCodeAttestation_aGasBurningWalletRevertsTheBatchByName() public {
         CommitmentTypes.Commitment memory c = _walletOrder();
         vm.etch(seller, type(MockERC1271Wallet).runtimeCode);
@@ -1039,27 +1066,49 @@ contract FigaroBatchVerifierTest is Test {
             new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
         );
         bytes memory pv = _pvWithOperations(positions, events, keccak256("attest-root"), operations);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                FigaroBatchVerifier.WalletCodeAttestationStarved.selector, _attestOrderHash(c), seller
-            )
-        );
+        vm.expectRevert(_attestationRefused(c, seller));
         verifier.settleBatch{gas: 5_000_000}(hex"", pv, positions, events, _emptyUsage(), operations);
     }
 
     /// THE STARVATION PROBE. A validation that costs 4,000,000 gas, under
     /// limits walked down from a full run to half of it: a submitter who picks
-    /// a limit that starves the validation while the kept 1/64 still finishes
-    /// the batch would drop a validated attestation. At every limit the batch
-    /// either lands WITH the attestation or reverts; the starved band reverts
-    /// by name.
+    /// a limit that starves the validation while the gas the batch keeps still
+    /// finishes it would drop a validated attestation. At every limit the
+    /// batch either lands WITH the attestation or reverts; the band where the
+    /// validation starves reverts by name.
     function test_settleBatch_walletCodeAttestation_gasStarvationProbe() public {
         CommitmentTypes.Commitment memory c = _walletOrder();
         bytes memory authorization = bytes("session-key-approval");
         vm.etch(seller, type(MockERC1271Wallet).runtimeCode);
         MockERC1271Wallet(seller).approve(_attestDigest(0, c), authorization);
         MockERC1271Wallet(seller).setValidationGas(4_000_000);
-        bytes memory operations = _attestEntry(0, c, authorization);
+        _walkAttestationLimits(_attestEntry(0, c, authorization));
+    }
+
+    /// THE SAME PROBE ONE CALL FRAME DOWN. Most smart wallets are a proxy that
+    /// delegates to an implementation: a validation that runs out of gas there
+    /// hands the proxy back the 1/64 it kept, so the verifier's caller sees a
+    /// failed call with twice the gas left that a call starved in its own
+    /// frame leaves. No test on the gas left tells that from a refusal; the
+    /// verifier refuses the batch on either, so no limit lands the batch
+    /// without the attestation the code validates.
+    function test_settleBatch_walletCodeAttestation_gasStarvationProbe_throughADelegatingWallet() public {
+        CommitmentTypes.Commitment memory c = _walletOrder();
+        bytes memory authorization = bytes("session-key-approval");
+        MockDelegatingWallet proxy = new MockDelegatingWallet(address(new MockERC1271Wallet()));
+        vm.etch(seller, address(proxy).code);
+        MockERC1271Wallet(seller).approve(_attestDigest(0, c), authorization);
+        MockERC1271Wallet(seller).setValidationGas(4_000_000);
+        _walkAttestationLimits(_attestEntry(0, c, authorization));
+    }
+
+    /// Land `operations` (one validated wallet-code attestation, no token
+    /// moved) under gas limits walked down to half a full run's gas, in steps
+    /// of a two-hundredth of it, from a sixteenth above it (a validation one
+    /// call frame down needs 64/63 of its gas twice over): every landing
+    /// carries the `Attestation`, and the walk reaches both a landing and a
+    /// refusal by name.
+    function _walkAttestationLimits(bytes memory operations) internal {
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](0);
         FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
             new FigaroBatchVerifier.AttestationData[](0), new FigaroBatchVerifier.SpecBinding[](0)
@@ -1075,9 +1124,9 @@ contract FigaroBatchVerifierTest is Test {
         vm.revertToState(snap);
 
         uint256 landedWith;
-        uint256 starved;
-        uint256 step = full / 50;
-        for (uint256 g = full + step; g > full / 2; g -= step) {
+        uint256 refused;
+        uint256 step = full / 200;
+        for (uint256 g = full + full / 16; g > full / 2; g -= step) {
             snap = vm.snapshotState();
             assembly {
                 mstore(add(callData, 36), g)
@@ -1093,17 +1142,17 @@ contract FigaroBatchVerifierTest is Test {
                 assertEq(n, 1, "a batch that lands under any limit carries the validated attestation");
                 landedWith++;
             } else if (
-                reason.length >= 4 && bytes4(reason) == FigaroBatchVerifier.WalletCodeAttestationStarved.selector
+                reason.length >= 4 && bytes4(reason) == FigaroBatchVerifier.WalletCodeAttestationRefused.selector
             ) {
-                starved++;
+                refused++;
             }
             vm.revertToState(snap);
         }
         emit log_named_uint("full run gas", full);
         emit log_named_uint("limits landing with the attestation", landedWith);
-        emit log_named_uint("limits refused as a starved validation", starved);
+        emit log_named_uint("limits refused by name", refused);
         assertGt(landedWith, 0, "the walk starts above the gas the batch needs");
-        assertGt(starved, 0, "the walk reaches the band where the validation starves");
+        assertGt(refused, 0, "the walk reaches the band where the validation starves");
     }
 
     function landAttestWith(

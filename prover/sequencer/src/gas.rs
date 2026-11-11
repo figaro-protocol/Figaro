@@ -100,9 +100,9 @@ pub const GAS_HEADROOM_PCT: u64 = 95;
 /// percent. A party's wallet code can cost more at inclusion than in the
 /// estimate's run (a storage slot the run found warm read cold, a branch on a block
 /// field or on `gasleft()`); under a limit set at the estimate the code runs
-/// out of the gas forwarded to it, and the verifier, which cannot tell its
-/// answer, reverts the whole batch (`WalletCodeAttestationStarved`) where it
-/// would have skipped the entry. A quarter over the estimate is at least
+/// out of the gas forwarded to it, which the verifier reads as a refusal,
+/// and the whole batch reverts (`WalletCodeAuthorizationRefused`,
+/// `WalletCodeAttestationRefused`). A quarter over the estimate is at least
 /// `WALLET_CODE_EXECUTION_GAS` for any `settleBatch` call of two million gas or more,
 /// unless the cap at the budget cuts it.
 /// Gas a transaction does not use is not charged, so the headroom costs only

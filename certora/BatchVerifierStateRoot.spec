@@ -32,7 +32,7 @@
 //                        None writes the verifier's storage: the first moves
 //                        tokens, the second reads, the third emits and makes
 //                        static calls (a refused wallet-code resolve reverts;
-//                        a wallet-code attestation is emitted or skipped,
+//                        a wallet-code attestation is emitted or reverts,
 //                        which moves no storage either). Each can only revert
 //                        the call or emit, which every rule allows; summarized, `settleBatch` is
 //                        reduced to its state-root step, which a run over the
