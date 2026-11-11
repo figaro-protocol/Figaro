@@ -34,18 +34,33 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     // here. So each constant carries an allowance over its measurement —
     // at least twice for the items that write state (the position, the
     // use, the fixed execution), at least half again for the event and
-    // the registry read — and the relay's estimate is a ceiling until
-    // a wide batch lands on the live chain and the items are re-measured
-    // from its receipt, as the direct path's constants were. The allowance
-    // is a judgment, not a measurement: the five Sepolia receipts carry too
-    // few items to measure it (see SETTLE_PROOF_VERIFY_GAS). One position
+    // the registry read. One position
     // constant covers both kinds: a payout to a fresh balance is the dearer,
     // and it assumes a plain ERC-20 — a token whose transfer costs more is
     // the parties' choice, and a batch it over-runs fails at the send.
-    uint256 internal constant SETTLE_GAS_PER_POSITION = 60_000;
+    //
+    // Measured on live Sepolia at blocks 12106569 to 12107150: the seven
+    // settles against FigaroBatchVerifier 0x417A316F…3E41b1a, each planned
+    // by gas.rs from its own calldata and compared with its receipt. EIP-8037
+    // charges a storage slot set from zero 97,920 state gas, about five times the
+    // pre-fork 20,000, and the receipts show it: the settle at block 12106894
+    // re-created the verifier's emptied token balance and cost about 90,000
+    // more than the same items at block 12107045. So the two items that
+    // create state are re-anchored:
+    // - a position: the payout to a fresh balance, 26,335 here with its
+    //   20,000 storage slot, is about 104,000 live; the ceiling 120,000.
+    // - a use: the use at block 12106674 (a key, a seller and a process each
+    //   new to the counter, three fresh storage slots) cost about 366,000 live,
+    //   132,219 here plus three storage slots at 77,920 more each, which its receipt
+    //   bounds between 350,000 and 368,000. A use that also takes the score
+    //   and the period's total from zero (the seller that reaches
+    //   `minSellers`) writes four fresh storage slots and runs the cube root; the
+    //   ceiling 500,000 covers it.
+    // The other items create no state, and every receipt sits under its plan.
+    uint256 internal constant SETTLE_GAS_PER_POSITION = 120_000;
     uint256 internal constant SETTLE_GAS_PER_ATTESTATION = 6_000;
     uint256 internal constant SETTLE_GAS_PER_SPEC_BINDING = 4_500;
-    uint256 internal constant SETTLE_GAS_PER_USE = 270_000;
+    uint256 internal constant SETTLE_GAS_PER_USE = 500_000;
     uint256 internal constant SETTLE_FIXED_EXEC_GAS = 105_000;
     /// @dev The operation stream's execution: the calldata copy, the keccak
     ///      over it, the memory it expands into, and the `BatchOperations`

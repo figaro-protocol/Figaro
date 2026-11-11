@@ -262,8 +262,8 @@ path but one net position on the batch path. Netting is the batch path's
 structural advantage.
 
 **Why it is not "half of FigaroCore."** A naive comparison of the batch
-verifier's ceiling (about 210 orders in one resolution under the 2^24 transaction cap, about
-930 at a 60M block without it, as the relay plans a batch from its own
+verifier's ceiling (about 115 orders in one resolution under the 2^24 transaction cap, about
+410 at a 60M block without it, as the relay plans a batch from its own
 execution — `prover/sequencer/src/gas.rs`) against `resolveProcess`'s
 ceiling (about 550 orders under the transaction cap, about 920 at a 30M block without it) is misleading: that figure measures only the resolve step — the
 cheapest part of the direct lifecycle. The `commit()` calls that precede
@@ -275,7 +275,7 @@ land on-chain.
 **Ceilings.** The direct path's resolve ceiling is about 550 orders under the
 2^24 transaction cap (`maxOrdersResolvablePerProcess` reads it live); its
 commit rate is how many `commit()` transactions fit a block
-(`maxCommitsLandableInOneBlock`). The batch path's ceiling is about 210 orders
+(`maxCommitsLandableInOneBlock`). The batch path's ceiling is about 115 orders
 in one resolution under the 2^24 transaction cap (EIP-7825, mainnet), each one
 position, its commitment published in the operation stream and its events,
 planned in the dearer of the resolve's two forms (the wallet-code one, with

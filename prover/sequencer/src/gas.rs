@@ -10,28 +10,33 @@
 //! (`sdk/src/gasCeilings.ts` gives the direct path the same shape).
 //!
 //! The per-item constants mirror `test/core/verifier/BatchGasCeilingTest.t.sol`,
-//! where they are measured on the pre-fork EVM and the allowance over the
-//! measurement is stated; the maintainer's gate holds the two copies
-//! equal. Each is a ceiling on the chain's charge, never a mean.
+//! where they are measured on the pre-fork EVM, checked against live
+//! Sepolia receipts, and the allowance over the measurement is stated; the
+//! maintainer's gate holds the two copies equal. Each is a ceiling on the
+//! chain's charge, never a mean.
 
 use figaro_kernel::types::{BatchEvents, BatchInput, KernelOp, NetPosition, UsageClaim};
 
-/// Execution gas of one net position (the dearer kind, a payout to a fresh
-/// balance), with the fork allowance (`BatchGasCeilingTest`). A plain
-/// ERC-20's transfer: a token whose transfer costs more is the parties'
-/// choice, and a batch it over-runs fails at the send like any transient
-/// failure — re-proved, then dead-lettered with every operation batched
-/// beside it.
-pub const SETTLE_GAS_PER_POSITION: u64 = 60_000;
+/// Gas of one net position (the dearer kind, a payout to a fresh balance),
+/// its fresh balance storage slot priced as live Sepolia prices state creation
+/// (EIP-8037; `BatchGasCeilingTest`, measured on live Sepolia at blocks
+/// 12106894 and 12107045). A plain ERC-20's transfer: a token whose
+/// transfer costs more is the parties' choice, and a batch it over-runs
+/// fails at the send like any transient failure — re-proved, then
+/// dead-lettered with every operation batched beside it.
+pub const SETTLE_GAS_PER_POSITION: u64 = 120_000;
 /// Execution gas of one attestation event re-emitted.
 pub const SETTLE_GAS_PER_ATTESTATION: u64 = 6_000;
 /// Execution gas of one spec binding checked against the registry.
 pub const SETTLE_GAS_PER_SPEC_BINDING: u64 = 4_500;
-/// Execution gas of one use the counter counts — the dearest, a key, a
-/// seller and a process each new to the counter: its registry and member
+/// Gas of one use the counter counts — the dearest: its registry and member
 /// stake reads, the counted-process, seller, tally and score writes, the
-/// score's cube root and the `UsageRecorded` event.
-pub const SETTLE_GAS_PER_USE: u64 = 270_000;
+/// score's cube root and the `UsageRecorded` event. A key, a seller and a
+/// process each new to the counter measured about 366,000 on live Sepolia
+/// at block 12106674 (three fresh storage slots under EIP-8037); the ceiling also
+/// covers a use whose score and period total leave zero
+/// (`BatchGasCeilingTest`).
+pub const SETTLE_GAS_PER_USE: u64 = 500_000;
 /// The call's execution with nothing to publish.
 pub const SETTLE_FIXED_EXEC_GAS: u64 = 105_000;
 /// The operation stream's execution — the calldata copy, the keccak over it,
@@ -418,7 +423,7 @@ mod tests {
         let items = SettleItems { positions: 2, attestations: 1, spec_bindings: 1, uses: 1, stream_words: 0, stream_commits: 0, stream_resolved_orders: 0, stream_resolutions: 0, stream_claims: 0, stream_wallet_code_checks: 1, stream_wallet_code_attestations: 1 };
         assert_eq!(
             settle_gas_estimate(&[1], items),
-            21_016 + 300_000 + 105_000 + 120_000 + 6_000 + 4_500 + SETTLE_GAS_PER_USE + 15_000 + 500_000 + 24_000 + 500_000
+            21_016 + 300_000 + 105_000 + 2 * SETTLE_GAS_PER_POSITION + 6_000 + 4_500 + SETTLE_GAS_PER_USE + 15_000 + 500_000 + 24_000 + 500_000
         );
     }
 
@@ -440,10 +445,10 @@ mod tests {
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(1)), 1);
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(2)), 2);
         assert_eq!(max_orders_in_one_settle(resolve_settle_gas(7) - 1), 6);
-        assert_eq!(max_orders_in_one_settle(DEFAULT_SETTLE_GAS_CAP), 208);
-        assert!(resolve_settle_gas(208) <= DEFAULT_SETTLE_GAS_CAP && resolve_settle_gas(209) > DEFAULT_SETTLE_GAS_CAP);
+        assert_eq!(max_orders_in_one_settle(DEFAULT_SETTLE_GAS_CAP), 115);
+        assert!(resolve_settle_gas(115) <= DEFAULT_SETTLE_GAS_CAP && resolve_settle_gas(116) > DEFAULT_SETTLE_GAS_CAP);
         // The least cap admits a process of one order, and no less.
-        assert_eq!(MIN_SETTLE_GAS_CAP, 1_178_439);
+        assert_eq!(MIN_SETTLE_GAS_CAP, 1_298_439);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP), 1);
         assert_eq!(max_orders_in_one_settle(MIN_SETTLE_GAS_CAP - 1), 0);
     }
