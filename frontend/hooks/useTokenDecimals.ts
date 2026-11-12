@@ -1,7 +1,7 @@
 "use client";
 
 import { useReadContract } from "wagmi";
-import { ERC20_ABI } from "@/lib/kernel/contracts";
+import { ERC20_ABI } from "@/lib/core/contracts";
 
 /**
  * The token's on-chain `decimals()`. The read runs on the CONNECTED chain — it

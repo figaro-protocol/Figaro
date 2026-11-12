@@ -1,6 +1,6 @@
 "use client";
 
-import { getMissingContractEnv } from "@/lib/kernel/contracts";
+import { getMissingContractEnv } from "@/lib/core/contracts";
 
 export function ConfigurationBanner() {
     const missing = getMissingContractEnv();

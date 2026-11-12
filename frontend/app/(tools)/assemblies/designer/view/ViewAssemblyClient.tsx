@@ -53,7 +53,7 @@ import {
     loadNamedDraft,
     clearCurrentSession,
 } from "@/lib/designer/syntheticDesignStore";
-import { ASSEMBLY_REGISTRY_ABI } from "@/lib/kernel/contracts";
+import { ASSEMBLY_REGISTRY_ABI } from "@/lib/core/contracts";
 import {
     fetchHydratedAssembly,
     getAssemblyRegistry,
@@ -77,7 +77,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 import { fetchRegisteredAgreement, useRegisteredAgreementsVersion } from "@/lib/protocol/useAgreementRegistry";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import { hexEqual } from "@/lib/shared/evm";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 
 type ResolvedSource =

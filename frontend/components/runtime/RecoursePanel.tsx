@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/Button";
 import { useMounted } from "@/hooks/useMounted";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 import { buildAuditBundlePdfBlob } from "@/lib/audit/auditBundlePdf";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { describeClause, composesForumUrl } from "@/lib/shared/clauseSpecSource";

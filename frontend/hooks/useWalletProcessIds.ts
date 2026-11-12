@@ -14,10 +14,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { usePublicClient } from "wagmi";
 import type { CoreEvents } from "@figaro-protocol/sdk";
-import { CONTRACTS } from "@/lib/kernel/contracts";
-import { Order, OrderState, orderFromSdk, useOrderStore } from "@/lib/kernel/store";
-import { getCoreEvents, useWatchOrderEvents, walletOrders } from "@/lib/kernel/indexer";
-import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
+import { CONTRACTS } from "@/lib/core/contracts";
+import { Order, OrderState, orderFromSdk, useOrderStore } from "@/lib/core/store";
+import { getCoreEvents, useWatchOrderEvents, walletOrders } from "@/lib/core/indexer";
+import type { ProcessSummary } from "@/lib/core/walletProcessQueries";
 
 function summarize(orders: Order[]): ProcessSummary[] {
     const map = new Map<string, Order[]>();

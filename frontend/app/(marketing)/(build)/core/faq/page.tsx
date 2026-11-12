@@ -8,9 +8,9 @@ import { LayeredDefenseFigure } from "@/components/figures/LayeredDefenseFigure"
 import { LabelledListRow } from "@/components/shared/LabelledListRow";
 import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
 
-// The equilibrium's figures have one owner (sdk/src/equilibrium.json); this page
-// renders any it states from the module, never retypes them, and links /kernel
-// for the mechanism itself (scripts/lint-equilibrium-owner.sh).
+// The equilibrium's figures have one owner, the SDK module imported above; this
+// page renders any it states from the module, never retypes them, and links
+// /kernel for the mechanism itself.
 const EQ = KERNEL_EQUILIBRIUM;
 
 export const metadata: Metadata = withOg({

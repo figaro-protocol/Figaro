@@ -2,9 +2,9 @@
 pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
-import {ClauseRegistry} from "src/build/registries/ClauseRegistry.sol";
-import {AssemblyRegistry} from "src/build/registries/AssemblyRegistry.sol";
-import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
+import {ClauseRegistry} from "src/registries/ClauseRegistry.sol";
+import {AssemblyRegistry} from "src/registries/AssemblyRegistry.sol";
+import {AgreementRegistry} from "src/registries/AgreementRegistry.sol";
 
 /// @title HalmosClauseRegistry / HalmosAssemblyRegistry / HalmosAgreementRegistry
 ///        — the key-bound stake machines designer-of-record eligibility rests on

@@ -10,7 +10,7 @@
  * witness-signed Permit2 permit, swaps it at the immutable venue, forwards
  * the proceeds to that party, then calls FigaroCore's `commit`. Composition
  * layer — the coordinator is a contract the frontend composes with, never
- * core (`lib/kernel` carries only the five core ABIs).
+ * core (`lib/core` carries only the five core ABIs).
  */
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import type { Abi } from "viem";

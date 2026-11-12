@@ -51,7 +51,7 @@ import type {
     MemberCatalogMetadata,
     UnitSystem,
 } from "@/lib/member/memberCatalogMetadata";
-import { getMembersRegistry } from "@/lib/kernel/contracts";
+import { getMembersRegistry } from "@/lib/core/contracts";
 import { MEMBERS_REGISTRY_ABI } from "@figaro-protocol/sdk";
 
 export interface PublishMemberInput {

@@ -22,8 +22,8 @@ const reads = vi.hoisted(() => ({
     documents: new Map<string, string | null>(),
 }));
 
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, agreementRegistry: "0x00000000000000000000000000000000000a9e01" } };
 });
 vi.mock("@/lib/shared/wagmi", () => ({

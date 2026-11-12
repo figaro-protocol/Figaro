@@ -23,7 +23,7 @@ import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
 import { clauseWitnessStages, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 
 /**
  * Clause evidence — the on-page rendering of the same `clauseData` +

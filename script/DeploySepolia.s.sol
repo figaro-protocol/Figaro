@@ -6,14 +6,14 @@ import "forge-std/console.sol";
 
 import "../src/core/kernel/FigaroCore.sol";
 import "../src/core/attestation/AttestationCoordinator.sol";
-import {WitnessSwapAndCommitCoordinator} from "../src/app/WitnessSwapAndCommitCoordinator.sol";
-import "../src/build/registries/ClauseRegistry.sol";
-import "../src/app/MembersRegistry.sol";
-import "../src/build/florin/FlorinToken.sol";
-import {RpgfMinter} from "../src/build/rewards/RpgfMinter.sol";
-import {UsageCounter} from "../src/build/rewards/UsageCounter.sol";
-import {AssemblyRegistry} from "../src/build/registries/AssemblyRegistry.sol";
-import {AgreementRegistry} from "../src/build/registries/AgreementRegistry.sol";
+import {WitnessSwapAndCommitCoordinator} from "../src/composability/WitnessSwapAndCommitCoordinator.sol";
+import "../src/registries/ClauseRegistry.sol";
+import "../src/registries/MembersRegistry.sol";
+import "../src/rewards/FlorinToken.sol";
+import {RpgfMinter} from "../src/rewards/RpgfMinter.sol";
+import {UsageCounter} from "../src/rewards/UsageCounter.sol";
+import {AssemblyRegistry} from "../src/registries/AssemblyRegistry.sol";
+import {AgreementRegistry} from "../src/registries/AgreementRegistry.sol";
 import "../src/core/verifier/FigaroBatchVerifier.sol";
 import "../src/mocks/MockTreasuryMultisig.sol";
 

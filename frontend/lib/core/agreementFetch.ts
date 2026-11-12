@@ -24,9 +24,9 @@ import { anchorAgreement, computeCheckoutHash, parseClauseRegistryLogs, publicFo
 import { DEFAULT_IPFS_SERVICE, extractIpfsCid, fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { getClauseSpec, loadClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
-import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
+import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
-import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
+import { cachedGetContractEvents } from "@/lib/core/eventCache";
 import { readStorage, removeStorage, writeStorage } from "@/lib/shared/storage";
 import { hexEqual } from "@/lib/shared/evm";
 import { ABSENT, present, type NetworkRead } from "@/lib/shared/networkRead";
@@ -159,7 +159,7 @@ async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
     let registered;
     try {
         // Minimal ClauseRegistered read via the standalone client + SDK log
-        // parser (legal in lib/kernel — no protocol/ import). The withdraw fold is
+        // parser (legal in lib/core — no protocol/ import). The withdraw fold is
         // irrelevant here: a committed agreement resolves its clauses regardless
         // of whether the registration stake was later reclaimed — so this warm
         // states NO registration fact: the registry reader (`useClauseSpecs`)

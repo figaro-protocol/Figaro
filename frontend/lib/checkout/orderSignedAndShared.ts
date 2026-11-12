@@ -11,8 +11,8 @@
  * satisfied by the handoff HandoffMessagingService at the call site — so
  * checkout stays decoupled from the handoff layer's concrete transport.
  */
-import { publishAgreement } from "@/lib/kernel/agreementFetch";
-import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
+import { publishAgreement } from "@/lib/core/agreementFetch";
+import { commitmentOrderHash } from "@/lib/core/signedCommitment";
 import {
     serializeCommitmentPayload,
     MAX_COMMITMENT_PAYLOAD_BYTES,

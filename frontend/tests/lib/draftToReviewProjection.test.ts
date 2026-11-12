@@ -38,7 +38,7 @@ import {
 } from "@/lib/designer/syntheticProcess";
 import { deriveAssemblySlug } from "@/lib/shared/assembly";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 
 /** The clauses the beta tester composed, by scope — the files the cache is
  *  primed from; every read below locates a clause by `keyOf(name)`. */

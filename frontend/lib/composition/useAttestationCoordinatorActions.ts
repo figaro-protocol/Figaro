@@ -7,9 +7,9 @@ import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { ATTESTATION_COORDINATOR_ABI } from "@figaro-protocol/sdk";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { fetchAgreement } from "@/lib/kernel/agreementFetch";
-import { getAllOrderCommitted, getStringArg } from "@/lib/kernel/indexer";
-import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
+import { fetchAgreement } from "@/lib/core/agreementFetch";
+import { getAllOrderCommitted, getStringArg } from "@/lib/core/indexer";
+import { restoreSignedProcessId } from "@/lib/core/signedCommitment";
 import { keccak256 } from "viem";
 import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -21,7 +21,7 @@ import {
     type Commitment,
 } from "@figaro-protocol/sdk";
 import { publishWitnessContent } from "@/lib/composition/witnessContent";
-import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
+import type { PartyRole } from "@/lib/core/walletProcessQueries";
 
 type AttestationInput = {
     /** The order being attested — its `checkoutHash` anchors the inclusion

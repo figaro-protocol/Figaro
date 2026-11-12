@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 import { extractContract } from "@/lib/audit/contractExtract";
-import { OrderState, type Order } from "@/lib/kernel/store";
+import { OrderState, type Order } from "@/lib/core/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 
 // The evidence a forum reads states only what the evidence holds: an order's

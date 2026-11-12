@@ -13,7 +13,7 @@ import { pinSpec } from "./primeClauseSpecs";
 import { createCapabilityExecutors, type CapabilityExecutorDeps } from "@/lib/semantic/createCapabilityExecutors";
 import { publishWitnessContent } from "@/lib/composition/witnessContent";
 
-vi.mock("@/lib/kernel/signedCommitment", () => ({ restoreSignedProcessId: (c: Commitment) => c }));
+vi.mock("@/lib/core/signedCommitment", () => ({ restoreSignedProcessId: (c: Commitment) => c }));
 
 const CLAUSE = "test-versioned-ladder";
 

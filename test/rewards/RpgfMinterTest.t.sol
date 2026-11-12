@@ -2,12 +2,12 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import {RpgfMinter} from "src/build/rewards/RpgfMinter.sol";
-import {FlorinToken} from "src/build/florin/FlorinToken.sol";
-import {ClauseRegistry} from "src/build/registries/ClauseRegistry.sol";
-import {AssemblyRegistry} from "src/build/registries/AssemblyRegistry.sol";
-import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
-import {MembersRegistry} from "src/app/MembersRegistry.sol";
+import {RpgfMinter} from "src/rewards/RpgfMinter.sol";
+import {FlorinToken} from "src/rewards/FlorinToken.sol";
+import {ClauseRegistry} from "src/registries/ClauseRegistry.sol";
+import {AssemblyRegistry} from "src/registries/AssemblyRegistry.sol";
+import {AgreementRegistry} from "src/registries/AgreementRegistry.sol";
+import {MembersRegistry} from "src/registries/MembersRegistry.sol";
 
 /// @notice Stand-in for UsageCounter so payout maths can be exercised directly,
 ///         including shapes a real accrual would take many resolved processes to

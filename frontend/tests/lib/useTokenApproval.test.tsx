@@ -12,7 +12,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { ERC20_ABI } from "@/lib/kernel/contracts";
+import { ERC20_ABI } from "@/lib/core/contracts";
 import { activeChain } from "@/lib/shared/chains";
 
 // The wagmi surface the hook reads, driven per test: the allowance read, the

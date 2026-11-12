@@ -22,7 +22,7 @@ import {
     serializeCommitmentPayload,
     type CommitmentPayload,
 } from "@figaro-protocol/sdk/agent";
-import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
+import { commitmentOrderHash } from "@/lib/core/signedCommitment";
 import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 import { createVersionStore } from "@/lib/shared/versionStore";
 

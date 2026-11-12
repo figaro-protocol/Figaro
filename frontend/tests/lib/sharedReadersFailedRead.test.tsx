@@ -26,7 +26,7 @@ vi.mock("wagmi", () => ({
     useWriteContract: () => ({}),
     useWaitForTransactionReceipt: () => ({}),
 }));
-vi.mock("@/lib/kernel/eventCache", () => ({
+vi.mock("@/lib/core/eventCache", () => ({
     cachedGetContractEvents: (...a: unknown[]) => mocks.cachedGetContractEvents(...a),
 }));
 vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({
@@ -34,13 +34,13 @@ vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({
     getActiveMembers: (...a: unknown[]) => mocks.getActiveMembers(...a),
     getMemberState: (...a: unknown[]) => mocks.getMemberState(...a),
 }));
-vi.mock("@/lib/kernel/indexer", () => ({
+vi.mock("@/lib/core/indexer", () => ({
     getCoreEvents: (...a: unknown[]) => mocks.getCoreEvents(...a),
     useWatchOrderEvents: () => undefined,
     walletOrders: () => [],
 }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return {
         ...actual,
         CONTRACTS: {
@@ -58,9 +58,9 @@ import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import { useMemberProfile } from "@/lib/member/useMembersRegistry";
-import { fetchAgreement } from "@/lib/kernel/agreementFetch";
+import { fetchAgreement } from "@/lib/core/agreementFetch";
 import { useProcessOrders, useWalletOrders } from "@/hooks/useProcessOrders";
-import { useWalletProcessRows } from "@/lib/kernel/walletProcessQueries";
+import { useWalletProcessRows } from "@/lib/core/walletProcessQueries";
 import type { DiscoveryService } from "@/lib/member/discoveryService";
 
 const RPC_DOWN = new Error("fetch failed: RPC unreachable");

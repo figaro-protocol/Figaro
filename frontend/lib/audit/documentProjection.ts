@@ -18,12 +18,12 @@
 
 import { calculateResolution } from "@figaro-protocol/sdk";
 import type { Agreement } from "@figaro-protocol/sdk";
-import type { Order } from "@/lib/kernel/store";
-import { OrderState } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
+import { OrderState } from "@/lib/core/store";
 import { clauseDeclaresField } from "@/lib/shared/clauseSpecSource";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { topologyFollows } from "@/lib/semantic/processTopology";
-import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
+import type { PartyRole } from "@/lib/core/walletProcessQueries";
 
 // ── Layout DSL (declared data) ───────────────────────────────────────────────
 

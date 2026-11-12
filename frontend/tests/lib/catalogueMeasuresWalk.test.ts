@@ -11,8 +11,8 @@ import { checkoutMeasureRefusals, planAssemblyOrders } from "@/lib/checkout/asse
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
 import { hydrateAuthored, keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" } };
 });
 

@@ -2,7 +2,7 @@
  *  taxonomy for truth class, scope, and roles. */
 
 import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
-import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
+import type { PartyRole } from "@/lib/core/walletProcessQueries";
 
 type TruthClass =
     | "protocol-enforced"

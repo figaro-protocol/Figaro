@@ -32,10 +32,10 @@ import {
     type CommitmentPayload,
 } from "@figaro-protocol/sdk/agent";
 import { verifyCommitmentSignature, type CoreEvents } from "@figaro-protocol/sdk";
-import { CONTRACTS } from "@/lib/kernel/contracts";
-import { getCoreEvents, useWatchOrderEvents } from "@/lib/kernel/indexer";
-import { commitmentOrderHashes } from "@/lib/kernel/signedCommitment";
-import { publishAgreement } from "@/lib/kernel/agreementFetch";
+import { CONTRACTS } from "@/lib/core/contracts";
+import { getCoreEvents, useWatchOrderEvents } from "@/lib/core/indexer";
+import { commitmentOrderHashes } from "@/lib/core/signedCommitment";
+import { publishAgreement } from "@/lib/core/agreementFetch";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import type { RuntimeServices } from "@/lib/shared/runtimeServices";
