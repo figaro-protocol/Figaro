@@ -130,11 +130,11 @@ programs (sources in the commit that added it; an item marked *unverified* was
 read from a search summary, never the firm's own page):
 
 - **Repository controls, free.** Secret scanning with push protection, Dependabot
-  security updates and a ruleset on `main` are off today (read from the
-  repository settings); CodeQL's default setup covers TypeScript, Rust and
-  Actions on a public repository; `zizmor` audits the workflows and the OpenSSF
-  Scorecard scores the repository. All are the maintainer's switches or one CI
-  step each.
+  security updates and the protection of `main` are on (read from the
+  repository settings); CodeQL runs in advanced setup
+  (`.github/workflows/codeql.yml`) over the workflows, TypeScript and Rust. Still to
+  add, one CI step each: `zizmor` to audit the workflows and the OpenSSF Scorecard to
+  score the repository.
 - **The trusted dependency.** SP1 has published five high- or medium-rated
   advisories; RustSec carries none of them, so `cargo audit` cannot see them.
   `prover/Cargo.lock` pins `sp1-sdk` 6.8.1, past every fix. A CI check reads the
