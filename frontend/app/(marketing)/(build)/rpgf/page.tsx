@@ -5,10 +5,8 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 import { RpgfValueLoopFigure } from "@/components/figures/RpgfValueLoopFigure";
 
-// The designer-rewards page. Its route is an identifier and does not move —
-// two renames once buried this page. Hero + one terms
-// section + closer. Every claim traces to the minter under `src/build/rewards/` and
-// `src/build/rewards/UsageCounter.sol`. Beside it: Tokenomics owns THE TOKEN,
+// The designer-rewards page. Its route is an identifier and does not move.
+// Hero + one terms section + closer. Beside it: Tokenomics owns THE TOKEN,
 // The DAO owns THE BOOTSTRAP. Three concepts, three pages.
 export const metadata: Metadata = withOg({
     title: "Designer Rewards — Figaro",
