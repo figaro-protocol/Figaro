@@ -39,6 +39,7 @@ export const CORE_ABI = parseAbi([
     "event OrderCurrency(bytes32 indexed orderHash, address indexed currency)",
     "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
     "event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)",
+    "event EIP712DomainChanged()",
 
     // ── Errors (must mirror src/core/kernel/FigaroCore.sol) ──────────────────────
     // Carried in the ABI so viem can decode reverts by name rather than
@@ -359,6 +360,13 @@ export const FLORIN_TOKEN_ABI = parseAbi([
     "function deployerMintRenounced() view returns (bool)",
     "function deployer() view returns (address)",
 
+    // ── Events (every event abi/FlorinToken.json compiles;
+    //    sdk/tests/abiParity requires it) ─────────────────────────────
+    "event Transfer(address indexed from, address indexed to, uint256 value)",
+    "event Approval(address indexed owner, address indexed spender, uint256 value)",
+    "event MinterRegistered(address indexed minter, uint256 cap)",
+    "event EIP712DomainChanged()",
+
     // ── Errors (every error abi/FlorinToken.json compiles;
     //    sdk/tests/abiParity requires it) ─────────────────────────────
     // The token's own: minting, the deployer's renounced mint, the cap.
@@ -559,6 +567,10 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Events (Attestation shares its topic with the coordinator's —
     //    indexers filter by address) ─────────────────────────────────
     "event BatchSettled(uint64 indexed batchId, bytes32 indexed prevStateRoot, bytes32 indexed newStateRoot, uint256 positionCount)",
+    // A batch whose usage count the counter refused whole still lands; this
+    // event carries the counter's reason, and a later batch may present the uses again.
+    "event BatchAccrualSkipped(uint64 indexed batchId, bytes reason)",
+    "event EIP712DomainChanged()",
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
 
     // ── Errors (every error abi/FigaroBatchVerifier.json compiles;
