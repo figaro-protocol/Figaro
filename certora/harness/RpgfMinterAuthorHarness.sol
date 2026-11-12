@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import "src/build/rewards/RpgfMinter.sol";
+import "src/rewards/RpgfMinter.sol";
 
 /// @notice RpgfMinter as Certora reads it for `RpgfMinterAuthor.spec`: the
 ///         contract unchanged, plus one view that calls its own `_isAuthor`, so

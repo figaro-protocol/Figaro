@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
-import "src/app/WitnessSwapAndCommitCoordinator.sol";
+import "src/composability/WitnessSwapAndCommitCoordinator.sol";
 import "src/mocks/MockERC20.sol";
 import "src/mocks/MockSwapVenue.sol";
 import "src/mocks/MockWitnessPermit2.sol";

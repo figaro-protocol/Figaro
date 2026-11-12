@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import {UsageCounter} from "src/build/rewards/UsageCounter.sol";
+import {UsageCounter} from "src/rewards/UsageCounter.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
 
 /// @title MerkleParityTest — the Solidity leg of the three-way agreement-tree lock

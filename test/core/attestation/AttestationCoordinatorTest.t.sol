@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/core/attestation/AttestationCoordinator.sol";
-import "src/build/registries/ClauseRegistry.sol";
+import "src/registries/ClauseRegistry.sol";
 import "src/mocks/MockPermitToken.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
 

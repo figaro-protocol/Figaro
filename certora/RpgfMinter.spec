@@ -8,7 +8,7 @@
 // six properties that class of bug would have violated, two more on the
 // `claimable` view, and two on the designer-side membership gate (ten rules).
 //
-// Scope: only `src/build/rewards/RpgfMinter.sol` is in the verified scene. Every
+// Scope: only `src/rewards/RpgfMinter.sol` is in the verified scene. Every
 // dependency it calls through an interface — `IUsageCounter` (counter),
 // `IMemberStake` (members), `IFlorinMinter` (florin),
 // `IClauseAuthor`/`IAssemblyAuthor`/`IAgreementAuthor`
