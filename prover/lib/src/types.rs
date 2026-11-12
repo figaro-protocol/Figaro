@@ -246,8 +246,8 @@ pub enum KernelOp {
     /// (`0x05`, public value 9). `FigaroBatchVerifier.settleBatch` asks the
     /// party's code and emits the coordinator's `Attestation` event only on
     /// the magic value; on any other answer, or when the party's account
-    /// has no code, the attestation is skipped and the batch lands, as a
-    /// reverted `attestAsSeller` call drops alone on the direct path.
+    /// has no code, the whole batch reverts by name, so a batch that lands
+    /// carries the attestation of every `0x05` entry.
     AttestByWalletCode {
         role: AttesterRole,
         target: Commitment,

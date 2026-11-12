@@ -8,7 +8,7 @@ import { RegistryLifecycleFigure } from "@/components/figures/RegistryLifecycleF
 import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
 
 // The chain example — the mechanism page's trade shared by three sellers — has one
-// owner, sdk/src/equilibrium.json; the guard fails a commit that retypes it.
+// owner, the SDK module imported above; a guard fails a commit that retypes it.
 const CH = KERNEL_EQUILIBRIUM.example.chain;
 
 export const metadata: Metadata = withOg({

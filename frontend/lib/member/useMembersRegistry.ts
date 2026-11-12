@@ -16,7 +16,7 @@ import type { Abi } from "viem";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import type { RevertMessage } from "@/lib/shared/errors";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useChainId, useReadContract } from "wagmi";
-import { getMembersRegistry } from "@/lib/kernel/contracts";
+import { getMembersRegistry } from "@/lib/core/contracts";
 import { MEMBERS_REGISTRY_ABI } from "@figaro-protocol/sdk";
 import { getMemberState } from "@/lib/protocol/membersRegistryIndexer";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";

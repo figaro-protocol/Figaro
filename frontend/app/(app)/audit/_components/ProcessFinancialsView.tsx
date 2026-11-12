@@ -19,7 +19,7 @@ import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { projectAllFinancialStatements } from "@/lib/audit/documentProjection";
 import { DownloadAuditBundleButton } from "@/components/runtime/DownloadAuditBundleButton";
 import { DocumentView } from "./DocumentView";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 
 interface Props {
     processId: string;

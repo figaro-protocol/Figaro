@@ -8,12 +8,12 @@
  * fetch. The publish-build + assembly-enrichment orchestration lives one
  * layer up in `@/lib/protocol/assemblyChoices`; the member-profile
  * resolution lives in `@/lib/member/useMemberBoundAssemblies`. This file
- * imports only viem / wagmi / `@/lib/shared/*` / `@/lib/kernel/*`.
+ * imports only viem / wagmi / `@/lib/shared/*` / `@/lib/core/*`.
  */
 
 import { isValidAddress } from "@/lib/shared/evm";
 import { anchorAssembly, parseAssemblyRegistryLogs, type Anchored, type HydratedAssembly } from "@figaro-protocol/sdk";
-import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
+import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/core/contracts";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import {
     createUseWithdrawStake,

@@ -31,7 +31,7 @@ import {
 } from '@figaro-protocol/sdk';
 import { serializeCommitmentPayload } from '@figaro-protocol/sdk/agent';
 import { specSource } from '@/lib/shared/clauseSpecSource';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import {
     discoverAnchoredAssemblies,
     discoverMembers,

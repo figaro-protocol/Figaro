@@ -11,7 +11,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { maxUint256 } from "viem";
-import { ERC20_ABI } from "@/lib/kernel/contracts";
+import { ERC20_ABI } from "@/lib/core/contracts";
 import { activeChain } from "@/lib/shared/chains";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 

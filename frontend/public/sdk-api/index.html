@@ -183,7 +183,7 @@ the lower-level <code>resolveProcess(walletClient, core, processId, commitments)
 does NOT, and neither does hand-rolled <code>cast</code>.</p>
 <p><em><code>AccrualClosed()</code>.</em> <code>recordClauseUsage</code>, <code>recordAgreementUsage</code> and <code>recordAssemblyUsage</code> all open by
 calling <code>UsageCounter.currentPeriod()</code>, which reverts <code>AccrualClosed()</code> once the
-last accrual period has ended (<code>src/build/rewards/UsageCounter.sol:421-427</code>) —
+last accrual period has ended (<code>src/rewards/UsageCounter.sol:421-427</code>) —
 the nine annual periods are the reward's whole life, and after the ninth
 boundary usage is permanently unrecordable. Two consequences before that day: a recording is attributed to the period <strong>open when you call</strong>, not the one the
 process resolved in, so crossing a boundary between resolving and recording moves the
@@ -1127,7 +1127,7 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <p><em>Lost track of where a name below lives? → <a href="#synopsis--which-entry-point-is-each-export-from">Synopsis</a>.</em></p>
 <p>Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
 chain gas ceilings. Also home to the rewards mirror —
-<code>computeRpgfAllocations</code> (<code>src/build/rewards/formula.json</code>): a deterministic integer
+<code>computeRpgfAllocations</code> (<code>src/rewards/formula.json</code>): a deterministic integer
 pipeline that reproduces, off chain, what <code>UsageCounter</code> + <code>RpgfMinter</code> compute
 on chain for the 600M designer-rewards reserve. Usage is counted as the facts
 happen — recorded against a resolved order — so <strong>there is nothing to post,

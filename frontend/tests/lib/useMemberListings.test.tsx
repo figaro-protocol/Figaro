@@ -4,7 +4,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 // One client object across renders, as wagmi returns: the hook's effect is keyed on it.
 const client = {};
 vi.mock("wagmi", () => ({ usePublicClient: () => client, useChainId: () => 31337 }));
-vi.mock("@/lib/kernel/contracts", () => ({ CONTRACTS: { membersRegistry: `0x${"11".repeat(20)}` } }));
+vi.mock("@/lib/core/contracts", () => ({ CONTRACTS: { membersRegistry: `0x${"11".repeat(20)}` } }));
 const assembliesMock = vi.fn();
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({ usePublishedAssemblies: () => assembliesMock() }));
 const activeMembersMock = vi.fn();

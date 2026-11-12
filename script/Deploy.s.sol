@@ -6,24 +6,24 @@ import "forge-std/console.sol";
 
 import "../src/core/kernel/FigaroCore.sol";
 import "../src/core/attestation/AttestationCoordinator.sol";
-import "../src/build/registries/ClauseRegistry.sol";
-import "../src/app/MembersRegistry.sol";
-import "../src/build/florin/FlorinToken.sol";
+import "../src/registries/ClauseRegistry.sol";
+import "../src/registries/MembersRegistry.sol";
+import "../src/rewards/FlorinToken.sol";
 import "../src/mocks/MockPermitToken.sol";
 import "../src/mocks/MockERC20.sol";
 import "../src/mocks/MockWitnessPermit2.sol";
 import "../src/mocks/MockSwapVenue.sol";
 import "../src/mocks/MockTreasuryMultisig.sol";
-import {RpgfMinter} from "../src/build/rewards/RpgfMinter.sol";
-import {UsageCounter} from "../src/build/rewards/UsageCounter.sol";
+import {RpgfMinter} from "../src/rewards/RpgfMinter.sol";
+import {UsageCounter} from "../src/rewards/UsageCounter.sol";
 import "../src/mocks/MockSP1Verifier.sol";
 import "../src/core/verifier/FigaroBatchVerifier.sol";
 // Named import: the coordinator declares its own local-minimal `IFigaroCore`
 // (the coordinator exemplar), which would collide with AttestationCoordinator's.
-import {WitnessSwapAndCommitCoordinator} from "../src/app/WitnessSwapAndCommitCoordinator.sol";
+import {WitnessSwapAndCommitCoordinator} from "../src/composability/WitnessSwapAndCommitCoordinator.sol";
 import {MockDisperse} from "../src/mocks/MockDisperse.sol";
-import "../src/build/registries/AssemblyRegistry.sol";
-import "../src/build/registries/AgreementRegistry.sol";
+import "../src/registries/AssemblyRegistry.sol";
+import "../src/registries/AgreementRegistry.sol";
 
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,

@@ -2,14 +2,14 @@
  * lib/composition/indexer.ts — event readers for the contracts the frontend
  * COMPOSES with (the attestation coordinator).
  *
- * These read non-core contracts, so they live OUTSIDE `lib/kernel/indexer.ts`
+ * These read non-core contracts, so they live OUTSIDE `lib/core/indexer.ts`
  * (core must not reference composition addresses). They reuse the core
- * event-cache primitives (`lib/composition/` may import `lib/kernel/`; never the
+ * event-cache primitives (`lib/composition/` may import `lib/core/`; never the
  * reverse). Reads are clause-agnostic — clauseId is DATA off the event, never
  * hardcoded.
  */
 import { decodeFunctionData, getAbiItem, type Hex, type Log, type PublicClient } from "viem";
-import { cachedGetLogs } from "@/lib/kernel/eventCache";
+import { cachedGetLogs } from "@/lib/core/eventCache";
 import {
     cachedGetLogsMulti,
     getStringArg,
@@ -17,7 +17,7 @@ import {
     getOrderCommittedByBuyer,
     getAllOrderResolved,
     type IndexedLog,
-} from "@/lib/kernel/indexer";
+} from "@/lib/core/indexer";
 import { getAllMemberRegistered } from "@/lib/protocol/membersRegistryIndexer";
 import { hexEqual, isEmptyHex } from "@/lib/shared/evm";
 import {
@@ -197,7 +197,7 @@ export async function getAttestationsByProcess(
 //
 // Composes core reads (orders, registrations) WITH non-core reads
 // (attestations) into one address-keyed resolution history — which is why it lives here, not
-// in lib/kernel/indexer.ts. Every figure is recomputed from events; nothing is
+// in lib/core/indexer.ts. Every figure is recomputed from events; nothing is
 // stored, so the result is verifiable by anyone with chain access.
 
 /** Value a seller transacted as a seller, summed per currency. */
@@ -241,7 +241,7 @@ function getBigIntArg(log: IndexedLog, key: string): bigint {
  * Reconstruct a seller's full public-graph resolution history from the OrderCommitted
  * / OrderResolved process graph and the disclosure graph — all keyed to one
  * address. Every figure folds BOTH resolution paths: the order and process
- * readers (`lib/kernel/indexer`) read FigaroCore and FigaroBatchVerifier, which
+ * readers (`lib/core/indexer`) read FigaroCore and FigaroBatchVerifier, which
  * emits the same `OrderCommitted` / `OrderResolved` events for every batched
  * order, each stream address-filtered; the attestation tallies read the
  * coordinator and the verifier's re-emissions the same way (SCALING_STRATEGY.md

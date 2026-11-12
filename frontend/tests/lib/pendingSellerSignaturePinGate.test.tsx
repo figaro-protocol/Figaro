@@ -8,7 +8,7 @@ import {
 } from "@/lib/checkout/orderPendingSellerSignature";
 import { RuntimeServicesProvider } from "@/lib/shared/runtimeServicesContext";
 import type { RuntimeServices } from "@/lib/shared/runtimeServices";
-import { publishAgreement } from "@/lib/kernel/agreementFetch";
+import { publishAgreement } from "@/lib/core/agreementFetch";
 
 /**
  * Regression for the unsolicited-pin finding (frontend security audit,
@@ -36,7 +36,7 @@ vi.mock("wagmi", () => ({
 const CLIENT = { chain: { id: 31337 } };
 
 // The order history the committed-order filter reads: no order is on-chain yet.
-vi.mock("@/lib/kernel/indexer", () => ({
+vi.mock("@/lib/core/indexer", () => ({
     getCoreEvents: async () => ({ events: { orderCommitted: [], orderResolved: [], processResolved: [] }, committedLogs: [] }),
     useWatchOrderEvents: () => undefined,
 }));
@@ -45,8 +45,8 @@ vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 
 // A stable devnet core so the sig-verification gate has a domain (partial mock
 // — other modules import MEMBERS_REGISTRY_ABI etc. from here).
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return {
         ...actual,
         CONTRACTS: { ...actual.CONTRACTS, core: "0x00000000000000000000000000000000000000c0" },
@@ -66,7 +66,7 @@ vi.mock("@figaro-protocol/sdk", async (importOriginal) => {
 });
 
 // The pin — the side effect the gate must protect. We assert on its calls.
-vi.mock("@/lib/kernel/agreementFetch", () => ({
+vi.mock("@/lib/core/agreementFetch", () => ({
     publishAgreement: vi.fn().mockResolvedValue(undefined),
 }));
 

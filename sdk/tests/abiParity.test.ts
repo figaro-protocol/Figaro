@@ -8,8 +8,10 @@
  * encodes calls the contract refuses or decodes logs into nothing, and is
  * otherwise seen only on a live chain.
  *
- * And the reverse, for errors: every error a contract compiles is in the SDK's
- * ABI, so a refused call decodes by name instead of raw bytes.
+ * And the reverse, for errors and for events: every error a contract compiles
+ * is in the SDK's ABI, so a refused call decodes by name instead of raw bytes;
+ * every event a contract emits is there too, so no log a reader meets on the
+ * chain is one the SDK cannot decode.
  */
 
 import { describe, it, expect } from "vitest";
@@ -58,11 +60,11 @@ function shape(item: Abi[number]): string | null {
 const tokenErrors = (): Abi =>
     compiled("FlorinToken").filter((i) => i.type === "error" && i.name.startsWith("ERC20"));
 
-/** The compiled errors an SDK ABI lacks, as `error Name(types)`. */
-function missingErrors(sdkAbi: Abi, compiledAbi: Abi): string[] {
+/** The compiled errors or events an SDK ABI lacks, each in its `shape`. */
+function missing(kind: "error" | "event", sdkAbi: Abi, compiledAbi: Abi): string[] {
     const ours = new Set(sdkAbi.map(shape));
     return compiledAbi
-        .filter((i) => i.type === "error")
+        .filter((i) => i.type === kind)
         .map(shape)
         .filter((s): s is string => s !== null && !ours.has(s));
 }
@@ -89,7 +91,10 @@ describe("the SDK's ABIs are the contracts' ABIs", () => {
             expect(drifted, `${sdkName} fragments not in abi/${contract}.json`).toEqual([]);
         });
         it(`${sdkName} carries every error ${contract} compiles`, () => {
-            expect(missingErrors(sdkAbi, compiled(contract)), `abi/${contract}.json errors not in ${sdkName}`).toEqual([]);
+            expect(missing("error", sdkAbi, compiled(contract)), `abi/${contract}.json errors not in ${sdkName}`).toEqual([]);
+        });
+        it(`${sdkName} carries every event ${contract} emits`, () => {
+            expect(missing("event", sdkAbi, compiled(contract)), `abi/${contract}.json events not in ${sdkName}`).toEqual([]);
         });
     }
 
@@ -108,6 +113,13 @@ describe("the SDK's ABIs are the contracts' ABIs", () => {
     it("an error the SDK drops is caught", () => {
         // The reverse check reads what it claims to: one error removed is a miss.
         const dropped = BATCH_VERIFIER_ABI.filter((i) => !(i.type === "error" && i.name === "ZeroVerifier")) as Abi;
-        expect(missingErrors(dropped, compiled("FigaroBatchVerifier"))).toEqual(["error ZeroVerifier()"]);
+        expect(missing("error", dropped, compiled("FigaroBatchVerifier"))).toEqual(["error ZeroVerifier()"]);
+    });
+
+    it("an event the SDK drops is caught", () => {
+        const dropped = BATCH_VERIFIER_ABI.filter((i) => !(i.type === "event" && i.name === "BatchSettled")) as Abi;
+        expect(missing("event", dropped, compiled("FigaroBatchVerifier"))).toEqual([
+            "event BatchSettled(uint64 indexed,bytes32 indexed,bytes32 indexed,uint256)",
+        ]);
     });
 });

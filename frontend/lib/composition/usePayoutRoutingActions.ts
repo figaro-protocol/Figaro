@@ -16,7 +16,7 @@ import { useState } from "react";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import type { Abi, Hex } from "viem";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
-import { ERC20_ABI } from "@/lib/kernel/contracts";
+import { ERC20_ABI } from "@/lib/core/contracts";
 import { getMultisender } from "@/lib/composition/contracts";
 import { DISPERSE_ABI, payoutTotal, validatePayoutLegs, type PayoutLeg } from "@/lib/composition/payoutRouting";
 

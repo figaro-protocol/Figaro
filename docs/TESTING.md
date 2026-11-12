@@ -15,7 +15,7 @@ never a variant of success.
 
 ## Foundry (`test/`)
 
-The test tree mirrors `src/` (`test/core/{kernel,attestation,verifier}/`, `test/build/{registries,rewards,florin}/`, `test/app/`,
+The test tree mirrors `src/` (`test/core/{kernel,attestation,verifier}/`, `test/registries/`, `test/rewards/`, `test/composability/`,
 `test/mocks/`); audit by `find test -name '*.t.sol'`,
 not by this paragraph. Current: `FigaroCoreTest`, `FigaroCore_RevertBranch`,
 `FigaroCore_EventEmission`, `AttestationCoordinatorTest`, `ClauseRegistryTest`,
@@ -163,7 +163,7 @@ properties are mutation-checked: a deliberate recycling bug in
 any new property whose failure mode matters — "it proved" is not evidence that
 it *could* fail.
 
-## Certora (`certora/`) — 8 specs
+## Certora (`certora/`) — 9 specs
 
 | Spec | Rules | Covers |
 |---|---|---|
@@ -174,6 +174,7 @@ it *could* fail.
 | `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier's token step, `_executePositions`, alone, over two positions of any token addresses (each a standard ERC-20) and users, read through `certora/harness/FigaroBatchVerifierHarness.sol`'s `executePositions`: each user moves by payout−deposit, the verifier by the batch's pulls minus payouts per token, no other balance moves, and no payout asks the verifier for more than it holds once the batch's pulls are in (the two-pass order). The argument for longer lists is stated in the spec. Mutation-checked: all four, against five mutants over two runs (`VERIFICATION_MAP.md` §10). |
 | `BatchVerifierStateRoot.spec` | 3 | FigaroBatchVerifier's state root chains: a resolved batch's `prevRoot` is the root the verifier held and its `newRoot` the root it leaves; each resolved batch advances `batchCount` by one; no other function moves either. So the `BatchSettled` events form one unbroken, gap-free chain from the initial root. Read through `certora/harness/FigaroBatchVerifierHarness.sol` (the contract plus a pure `decodedRoots` view over its own `_decodePV`), with `_executePositions`, `_checkSpecBindings` and `_walkOperations` summarized, since none writes the verifier's storage. Mutation-checked: all three. A mutant writing `batchCount` inside the summarized `_walkOperations` survives the spec, since the summary hides the body; Foundry's `BatchVerifierStepsWriteNoStorageTest` checks that the three summarized steps write no verifier storage, and catches it (`VERIFICATION_MAP.md` §10). |
 | `RpgfMinter.spec` | 10 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor`, the gate on a live registration), the designer-side membership gate (a claimant with no live member stake reverts and mints nothing; `claimable` quotes it zero), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked: conservation, double-claim, eligibility. |
+| `SwapCoordinatorTokenOps.spec` | 1 | `WitnessSwapAndCommitCoordinator` keeps no token: across `swapAndCommit`, linked to `FigaroCore` and to stand-ins for Permit2 and the swap venue, the coordinator's balance of each token is what it was. |
 | `RpgfMinterAuthor.spec` | 2 | `RpgfMinter._isAuthor` as written — the kind selection `RpgfMinter.spec` summarizes to a ghost: for each of the three kinds the answer is the live designer of record in the one registry that kind names, whatever the other two hold at the same key, and a kind past the three reverts. Read through `certora/harness/RpgfMinterAuthorHarness.sol` (the contract plus a view calling `_isAuthor`) against `certora/harness/AuthorRegistryMocks.sol` (one getter contract per registry family, linked to the minter's three registry addresses). Compiled without via-IR: under via-IR the prover's call resolution fails on `_isAuthor`'s decoding of the dynamic `string` that `bindings` returns. Verified, both rules: https://prover.certora.com/output/9512759/f62a013cbdb44692b77bf04219670f75 |
 
 Companion: `certora/token-ops.inventory` — declarative inventory of every ERC20 transfer call site and every Permit2 pull (`permitTransferFrom` / `permitWitnessTransferFrom`) in `src/`; `scripts/lint-token-ops.sh` (lint-staged on any staged `.sol` or on the inventory, and the prelude of `./scripts/test-certora.sh`) fails a commit that adds a transfer call without an inventory entry.

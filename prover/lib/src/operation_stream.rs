@@ -37,7 +37,7 @@
 //!   and the `AttestSeller` / `AttestBuyer` digest under its own domain from
 //!   the commitment, takes the attester from the role, asks that account's
 //!   `isValidSignature` (ERC-1271), and emits the coordinator's `Attestation`
-//!   event only on the magic value; it skips the entry otherwise. No
+//!   event only on the magic value; any other answer reverts the batch. No
 //!   fingerprint of the witness enters the entry: the clause data hash, the
 //!   inclusion proof and any plaintext stay with the relay and the prover;
 //! - no signed attestation: an attestation moves no state (`apply_operations`

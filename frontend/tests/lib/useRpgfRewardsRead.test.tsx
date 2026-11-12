@@ -30,7 +30,7 @@ vi.mock("@/lib/composition/contracts", () => ({
     getRpgfMinter: () => "0x00000000000000000000000000000000000f1001",
     getUsageCounter: () => "0x00000000000000000000000000000000000c0c01",
 }));
-vi.mock("@/lib/kernel/eventCache", () => ({
+vi.mock("@/lib/core/eventCache", () => ({
     cachedGetContractEvents: async (_client: unknown, _chainId: number, { eventName }: { eventName: string }) => {
         if (eventName === "ClauseRegistered") return [{ args: { registeredBy: w.address, clauseKey: w.key } }];
         if (eventName === "UsageRecorded") return [{ args: { kind: 0, clauseOrAssembly: w.key, period: 0 } }];

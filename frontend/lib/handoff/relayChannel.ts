@@ -23,7 +23,7 @@ import {
     type CommitmentPayload,
     type CoordinationChannel,
 } from "@figaro-protocol/sdk/agent";
-import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
+import { commitmentOrderHash } from "@/lib/core/signedCommitment";
 import type { HandoffMessagingService, WalletMessageSigner } from "./handoffMessagingService";
 
 /** The two relay capabilities the pre-commit cell uses — structural, so the

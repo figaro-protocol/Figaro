@@ -243,7 +243,7 @@ does NOT, and neither does hand-rolled `cast`.
 
 *`AccrualClosed()`.* `recordClauseUsage`, `recordAgreementUsage` and `recordAssemblyUsage` all open by
 calling `UsageCounter.currentPeriod()`, which reverts `AccrualClosed()` once the
-last accrual period has ended (`src/build/rewards/UsageCounter.sol:421-427`) —
+last accrual period has ended (`src/rewards/UsageCounter.sol:421-427`) —
 the nine annual periods are the reward's whole life, and after the ninth
 boundary usage is permanently unrecordable. Two consequences before that day: a recording is attributed to the period **open when you call**, not the one the
 process resolved in, so crossing a boundary between resolving and recording moves the
@@ -483,7 +483,7 @@ definition) and `RPGF_*` constant is a **root** export.
 
 Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
 chain gas ceilings. Also home to the rewards mirror —
-`computeRpgfAllocations` (`src/build/rewards/formula.json`): a deterministic integer
+`computeRpgfAllocations` (`src/rewards/formula.json`): a deterministic integer
 pipeline that reproduces, off chain, what `UsageCounter` + `RpgfMinter` compute
 on chain for the 600M designer-rewards reserve. Usage is counted as the facts
 happen — recorded against a resolved order — so **there is nothing to post,

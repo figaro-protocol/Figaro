@@ -31,7 +31,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 import { Button } from "@/components/ui/Button";
 import {
     fetchRegisteredAgreement,

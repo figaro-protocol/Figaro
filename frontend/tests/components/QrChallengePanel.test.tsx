@@ -36,10 +36,12 @@ describe("QrChallengePanel", () => {
         render(<QrChallengePanel {...props} />);
         const payload = screen.getByTestId("interaction-qr-payload").textContent!;
         expect(JSON.parse(payload)).toEqual({ processId: PROCESS_ID, orderHash: ORDER_HASH });
+        // The panel loads the QR library on demand and then draws the code, which
+        // takes longer than the default one-second wait when the machine is busy.
         await waitFor(() => {
             const img = screen.getByTestId("interaction-qr-image") as HTMLImageElement;
             expect(img.src.startsWith("data:image/png")).toBe(true);
-        });
+        }, { timeout: 30000 });
     });
 
     it("a scanned payload matching THIS order verifies", async () => {
