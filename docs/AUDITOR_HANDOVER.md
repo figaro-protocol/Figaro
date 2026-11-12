@@ -162,7 +162,7 @@ and environment: `docs/LOCAL_DEV.md` § "Commands"; the harness inventory:
 |---|---|
 | `MAINNET_RPC_URL=<rpc> SEPOLIA_RPC_URL=<rpc> forge test --via-ir` | 0 failed, 0 skipped (without the URLs the three fork tests, against mainnet's Permit2 and Sepolia's SwapRouter02, skip) |
 | `./scripts/test-halmos.sh` | `✅ All 41 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 9 UsageCounter + 6 ClauseRegistry + 6 AssemblyRegistry + 6 AgreementRegistry).` |
-| `CERTORAKEY=<key> CERTORA_WAIT=1 ./scripts/test-certora.sh` | all 8 specs green; the results table is the authority (`Failed on rule_not_vacuous` alone is the vacuity heuristic). The script first checks `certora/token-ops.inventory` against every token-moving call site |
+| `CERTORAKEY=<key> CERTORA_WAIT=1 ./scripts/test-certora.sh` | all 9 specs green; the results table is the authority (`Failed on rule_not_vacuous` alone is the vacuity heuristic). The script first checks `certora/token-ops.inventory` against every token-moving call site |
 | `./scripts/test-echidna.sh` | every property holds on both harnesses (Core, FlorinToken) |
 | `./scripts/test-tla.sh` | all five models verify every invariant, TLC exit 0 (`ResolutionUniverses.cfg`'s two named assumptions set FALSE is an experiment expected to fail) |
 | `(cd formal/lean && lake build)` | the equilibrium proof builds with no error |

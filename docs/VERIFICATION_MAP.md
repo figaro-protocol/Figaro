@@ -661,7 +661,7 @@ Verified, both rules, on the non-via-IR build (under via-IR the prover's call re
 
 ### Status
 
-**Eight of eight specs green** with `--wait_for_results all`
+**Nine of nine specs green** with `--wait_for_results all`
 (exit 0 = every rule verified; every `Violated` line in the stream is the
 `rule_not_vacuous` healthy polarity). `BatchVerifierTokenOps` and
 `BatchVerifierStateRoot` run since each was narrowed to the step it is about:
@@ -828,6 +828,7 @@ One row per component and bench. The components are the tree's: every contract u
 | `FlorinToken` (the model) | the 8 invariants of `formal/FlorinToken.tla` | TLA+ pass 2 of 7: 1,030,818 states generated, 160,844 distinct, no error | pass | `1d39092c` |
 | `WitnessSwapAndCommitCoordinator` | the witness binding, zero retention, allowance hygiene, swap and commit atomic | Foundry `WitnessSwapAndCommitCoordinatorTest` | pass | `04611ead` |
 | `WitnessSwapAndCommitCoordinator` | the same against the live Permit2 and SwapRouter02 | Foundry fork suites, skipped: no `MAINNET_RPC_URL` or `SEPOLIA_RPC_URL` in the run | owed | `04611ead` |
+| `WitnessSwapAndCommitCoordinator` | the coordinator keeps no token across `swapAndCommit`: 1 declared rule and the envfree check | Certora `SwapCoordinatorTokenOps.spec`, the via-IR build: 2 of 2 verified, the rule with its vacuity check (job `d75ac860edee437bbfc7ddce4109325f`) | pass | `5a1a3f4c` |
 | `WitnessSwapAndCommitCoordinator` (the model) | the 10 invariants of `formal/WitnessSwapAndCommitCoordinator.tla` | TLA+ pass 3 of 7: 38,028,525 states generated, 1,979,101 distinct, depth 17, no error | pass | `1d39092c` |
 | the proof program (`prover/program`, `prover/lib`, `prover/clause`) | the guest's rules against the Core (`parity` 41, `usage` 33, `transition_vectors` 1, `attestation_vectors` 1, `merkle_parity` 8, `operation_stream` 5, `operation_stream_vectors` 1, `packers` 3, `eip712_vectors` 2, `bincode_roundtrip` 8, unit 6), the clause engine (`conformance` 37, `encode_conformance` 14, `engine_vectors` 5), the clause keys (1) and the guest run in the executor (`guest_program` 6); 3 ignored by design, run by the fuzz script | Rust, `cargo test` over the prover workspace | pass | `1d39092c` |
 | the proof program | that the guest implements the model, by proof | no formal proof of the Rust crates | owed | — |

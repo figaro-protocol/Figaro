@@ -88,7 +88,7 @@ fi
 if [ "$#" -gt 0 ]; then
     SPECS=("$@")
 else
-    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification FlorinToken BatchVerifierTokenOps BatchVerifierStateRoot RpgfMinter RpgfMinterAuthor)
+    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification FlorinToken BatchVerifierTokenOps BatchVerifierStateRoot RpgfMinter RpgfMinterAuthor SwapCoordinatorTokenOps)
 fi
 
 for spec in "${SPECS[@]}"; do
