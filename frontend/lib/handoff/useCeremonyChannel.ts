@@ -45,7 +45,7 @@ import {
 import { hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
-import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
+import type { PartyRole } from "@/lib/core/walletProcessQueries";
 
 export interface UseCeremonyChannelOptions<T> {
     /** The connected wallet; the ceremony idles while undefined. */

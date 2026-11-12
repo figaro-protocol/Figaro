@@ -29,8 +29,8 @@ import {
     type MemberRegisteredEvent,
 } from "@figaro-protocol/sdk";
 import { hexEqual } from "@/lib/shared/evm";
-import { CONTRACTS, MEMBERS_REGISTRY_ABI } from "@/lib/kernel/contracts";
-import { cachedGetLogsMulti } from "@/lib/kernel/indexer";
+import { CONTRACTS, MEMBERS_REGISTRY_ABI } from "@/lib/core/contracts";
+import { cachedGetLogsMulti } from "@/lib/core/indexer";
 
 // Event defs come from the canonical SDK ABI, like the clause/assembly readers.
 const EV_MEMBER_REGISTERED = getAbiItem({ abi: MEMBERS_REGISTRY_ABI, name: "MemberRegistered" });

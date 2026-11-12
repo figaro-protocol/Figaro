@@ -21,7 +21,7 @@ import useTokenBalance from "@/hooks/useTokenBalance";
 import { Button } from "@/components/ui/Button";
 import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
 import { useRpgfRewards, type RpgfPeriodState } from "@/lib/composition/useRpgfRewards";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";

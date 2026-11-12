@@ -26,7 +26,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
 import type { Abi } from "viem";
-import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
+import { cachedGetContractEvents } from "@/lib/core/eventCache";
 import { hexEqual } from "@/lib/shared/evm";
 import {
     AGREEMENT_REGISTRY_ABI,
@@ -41,7 +41,7 @@ import {
     type UsageKind,
 } from "@figaro-protocol/sdk";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { CONTRACTS, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
+import { CONTRACTS, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
 import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import { truncateHex } from "@/lib/shared/formatHex";

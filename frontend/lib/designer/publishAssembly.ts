@@ -43,7 +43,7 @@ import { specSource, mandatoryClausesForCanvas } from "@/lib/shared/clauseSpecSo
 import { deriveAssemblySlug } from "@/lib/shared/assembly";
 import { hexEqual } from "@/lib/shared/evm";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
-import { ASSEMBLY_REGISTRY_ABI } from "@/lib/kernel/contracts";
+import { ASSEMBLY_REGISTRY_ABI } from "@/lib/core/contracts";
 import {
     getAgreementRegistry,
     readAgreementBinding,

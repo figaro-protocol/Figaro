@@ -7,9 +7,9 @@ import "src/core/kernel/CommitmentTypes.sol";
 import "src/mocks/MockSP1Verifier.sol";
 import "src/mocks/MockERC20.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
-import "src/build/registries/ClauseRegistry.sol";
-import {MembersRegistry} from "src/app/MembersRegistry.sol";
-import "src/build/rewards/UsageCounter.sol";
+import "src/registries/ClauseRegistry.sol";
+import {MembersRegistry} from "src/registries/MembersRegistry.sol";
+import "src/rewards/UsageCounter.sol";
 import "src/core/kernel/FigaroCore.sol";
 import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 

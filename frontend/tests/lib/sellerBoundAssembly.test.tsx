@@ -50,8 +50,8 @@ vi.mock("wagmi", () => ({
     useSignTypedData: () => ({ signTypedDataAsync: async () => { callOrder.push("sign"); return `0x${"11".repeat(65)}`; } }),
 }));
 
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return {
         ...actual,
         CONTRACTS: {
@@ -116,8 +116,8 @@ vi.mock("@/lib/member/profileFetcher", async (importOriginal) => {
 });
 
 const commitSignedOrder = vi.fn(async () => { callOrder.push("broadcast"); return `0x${"cc".repeat(32)}` as Hex; });
-vi.mock("@/lib/kernel/orderCommitted", () => ({ commitSignedOrder: (...args: unknown[]) => commitSignedOrder(...(args as [])) }));
-vi.mock("@/lib/kernel/useFigaroActions", () => ({ useFigaroActions: () => ({ commit: vi.fn() }) }));
+vi.mock("@/lib/core/orderCommitted", () => ({ commitSignedOrder: (...args: unknown[]) => commitSignedOrder(...(args as [])) }));
+vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ commit: vi.fn() }) }));
 vi.mock("@/lib/composition/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit: vi.fn() }) }));
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({ useRuntimeServices: () => ({}) }));
 const relayed = vi.fn(async () => undefined);

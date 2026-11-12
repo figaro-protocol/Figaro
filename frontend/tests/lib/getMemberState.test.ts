@@ -16,15 +16,15 @@ import { getMemberState } from '@/lib/protocol/membersRegistryIndexer';
 
 const cachedGetLogsMock = vi.fn();
 
-vi.mock('@/lib/kernel/eventCache', () => ({
+vi.mock('@/lib/core/eventCache', () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),
 }));
 
 // Provide a non-null membersRegistry so the event fetchers don't short-circuit.
 // The indexer reads it from core's CONTRACTS (core/ never imports mechanisms/).
 // Everything else (MEMBERS_REGISTRY_ABI) passes through from the real barrel.
-vi.mock('@/lib/kernel/contracts', async (importOriginal) => ({
-    ...(await importOriginal<typeof import('@/lib/kernel/contracts')>()),
+vi.mock('@/lib/core/contracts', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/lib/core/contracts')>()),
     CONTRACTS: {
         membersRegistry: '0x1111111111111111111111111111111111111111',
     },

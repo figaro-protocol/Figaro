@@ -48,7 +48,7 @@ import {
     primeRegisteredClauseSpecs,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 // anvil[0] — the fixture's default buyer.

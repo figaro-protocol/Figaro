@@ -13,7 +13,7 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 
 const specs = vi.hoisted(() => ({ state: { loaded: false, failed: false, version: 0 }, client: { chain: { id: 31337 } } }));
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => specs.state }));

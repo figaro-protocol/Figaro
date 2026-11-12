@@ -32,7 +32,7 @@ import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import { calculateBonds, computeClauseLeaf } from '@figaro-protocol/sdk';
 import type { Page } from '@playwright/test';
 

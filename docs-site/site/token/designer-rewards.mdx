@@ -9,7 +9,7 @@ Read the [whole model](/) first, and [The contracts](/protocol/contracts/) for t
 
 ## Who earns
 
-A **designer of record** is the wallet that wrote and registered a clause, an agreement or an assembly — and it holds that standing for exactly as long as its registration stake in that entry's own registry stays live. Clauses, registered agreements and assemblies earn on the same terms, from the same pool, through the same call, with no seniority between them, and the reward keeps the three families apart: every count, score and claim is keyed by `(kind, key)` — kind `0` a clause key, kind `1` an assembly `assemblyHash`, kind `2` a registered agreement's `agreementHash` — and each kind is checked against its own registry only (`src/build/rewards/UsageCounter.sol:165-171`). A registry takes any bytes32 but its reserved keys, so a wallet can register an existing assembly's `assemblyHash` as a clause key or an agreement hash; that registration earns nothing of the assembly's reward.
+A **designer of record** is the wallet that wrote and registered a clause, an agreement or an assembly — and it holds that standing for exactly as long as its registration stake in that entry's own registry stays live. Clauses, registered agreements and assemblies earn on the same terms, from the same pool, through the same call, with no seniority between them, and the reward keeps the three families apart: every count, score and claim is keyed by `(kind, key)` — kind `0` a clause key, kind `1` an assembly `assemblyHash`, kind `2` a registered agreement's `agreementHash` — and each kind is checked against its own registry only (`src/rewards/UsageCounter.sol:165-171`). A registry takes any bytes32 but its reserved keys, so a wallet can register an existing assembly's `assemblyHash` as a clause key or an agreement hash; that registration earns nothing of the assembly's reward.
 
 Two consequences people expect to be otherwise:
 
@@ -28,14 +28,14 @@ where `c` is the count of distinct resolved processes that used it and `d` the n
 
 **There is no tag, category, weight, per-wallet cap, match round, or quadratic component, and none may be added.** A per-clause multiplier would say some kinds of contribution are worth more than their use — a judgment the mechanism exists to avoid. That judgment lives at a different tier, in the DAO treasury.
 
-`icbrt(c · d² · 1e18)` is the formula in `UsageCounter._score` (`src/build/rewards/UsageCounter.sol:804`), and the on-chain `icbrt` (`:820`) mirrors the SDK's so an off-chain recompute agrees exactly.
+`icbrt(c · d² · 1e18)` is the formula in `UsageCounter._score` (`src/rewards/UsageCounter.sol:804`), and the on-chain `icbrt` (`:820`) mirrors the SDK's so an off-chain recompute agrees exactly.
 
 ## Neutrality comes from the stake
 
 What keeps the meter honest against a wallet that manufactures usage is not a cap on what it can earn but a **two-sided live ETH stake** any manufactured trade must carry, in the base chain's own currency, at the moment it counts:
 
-- **Seller side.** Usage counts only for a seller of record whose `MembersRegistry` stake is live. `UsageCounter` gates every use on `MembersRegistry.registered(seller)`, on either route: a direct call reverts and a batch skips that one use (`src/build/rewards/UsageCounter.sol:756`, `:706`). A seller enters a period's breadth once, whichever route carried their trade.
-- **Designer side.** A claim rewards only entries whose registry stake is live and registered by the claimant. `RpgfMinter._isAuthor(kind, key, account)` verifies each entry against the one registry its kind names and never another — `ClauseRegistry.depositOf` for kind `0`, `AssemblyRegistry.bindings` for kind `1`, `AgreementRegistry.bindings` for kind `2` — requiring `registeredBy == caller` and the stake un-withdrawn (`src/build/rewards/RpgfMinter.sol:297`).
+- **Seller side.** Usage counts only for a seller of record whose `MembersRegistry` stake is live. `UsageCounter` gates every use on `MembersRegistry.registered(seller)`, on either route: a direct call reverts and a batch skips that one use (`src/rewards/UsageCounter.sol:756`, `:706`). A seller enters a period's breadth once, whichever route carried their trade.
+- **Designer side.** A claim rewards only entries whose registry stake is live and registered by the claimant. `RpgfMinter._isAuthor(kind, key, account)` verifies each entry against the one registry its kind names and never another — `ClauseRegistry.depositOf` for kind `0`, `AssemblyRegistry.bindings` for kind `1`, `AgreementRegistry.bindings` for kind `2` — requiring `registeredBy == caller` and the stake un-withdrawn (`src/rewards/RpgfMinter.sol:297`).
 
 The stake is reclaimable, and use counts only while the stake is live. A designer who withdraws de-surfaces the entry for new compositions and stops earning on it, while every order already committed against it still resolves.
 

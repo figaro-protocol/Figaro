@@ -8,7 +8,7 @@
  * refused unpin keeps the pointer, so a retry reaches the same CID.
  */
 import { describe, expect, it, vi } from "vitest";
-import { fetchAgreement, publishAgreement, unpinAgreement } from "@/lib/kernel/agreementFetch";
+import { fetchAgreement, publishAgreement, unpinAgreement } from "@/lib/core/agreementFetch";
 import type { Agreement } from "@figaro-protocol/sdk";
 
 const AGREEMENT: Agreement = {

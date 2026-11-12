@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {IFlorinMinter} from "src/build/florin/IFlorinMinter.sol";
+import {IFlorinMinter} from "src/rewards/IFlorinMinter.sol";
 
 /// @notice The accrual surface this minter pays from. Local-minimal binding.
 interface IUsageCounter {

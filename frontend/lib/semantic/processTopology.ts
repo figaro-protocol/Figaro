@@ -15,7 +15,7 @@
  * `useProcessAgreements`); this module never fetches.
  */
 import type { Agreement } from "@figaro-protocol/sdk";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 import { clauseByField } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 

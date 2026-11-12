@@ -27,7 +27,7 @@ import path from 'path';
 import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { createPublicClient, formatUnits, http, keccak256, parseUnits, stringToHex, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { CORE_ABI, ERC20_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI, ERC20_ABI } from '@/lib/core/contracts';
 import { E2E_CHAIN, LOCAL_ANVIL, RPC_URL, readLocalDeploymentConfig, scanContractEvents, waitForConnected } from './devnet-helpers';
 import { attachLocalSigner } from './local-signer';
 import { gotoAsWallet } from './devnet-multi-test';

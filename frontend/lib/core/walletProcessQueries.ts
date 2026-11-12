@@ -22,8 +22,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { OrderState, type Address, type Order } from "@figaro-protocol/sdk";
 import { projectProcessGraph, walletRecord } from "@figaro-protocol/sdk/derive";
-import { getCoreEvents, useWatchOrderEvents } from "@/lib/kernel/indexer";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { getCoreEvents, useWatchOrderEvents } from "@/lib/core/indexer";
+import { CONTRACTS } from "@/lib/core/contracts";
 import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 
 /** The two roles in a Figaro order commitment. */

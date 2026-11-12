@@ -15,7 +15,7 @@ never a variant of success.
 
 ## Foundry (`test/`)
 
-The test tree mirrors `src/` (`test/core/{kernel,attestation,verifier}/`, `test/build/{registries,rewards,florin}/`, `test/app/`,
+The test tree mirrors `src/` (`test/core/{kernel,attestation,verifier}/`, `test/registries/`, `test/rewards/`, `test/composability/`,
 `test/mocks/`); audit by `find test -name '*.t.sol'`,
 not by this paragraph. Current: `FigaroCoreTest`, `FigaroCore_RevertBranch`,
 `FigaroCore_EventEmission`, `AttestationCoordinatorTest`, `ClauseRegistryTest`,

@@ -13,7 +13,7 @@
 import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { readProcessResolveCapacity, type ProcessResolveCapacity } from "@figaro-protocol/sdk";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import { ZERO_PROCESS_ID, hexEqual } from "@/lib/shared/evm";
 
 export default function useProcessResolveCapacity(

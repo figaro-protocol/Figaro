@@ -17,7 +17,7 @@ import {
 } from "@figaro-protocol/sdk";
 import { clauseByField } from "@figaro-protocol/sdk";
 import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { topologyFollows } from "@/lib/semantic/processTopology";
 import type { ExtractedDocument } from "./types";

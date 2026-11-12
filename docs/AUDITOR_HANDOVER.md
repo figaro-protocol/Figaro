@@ -59,10 +59,9 @@ processes under one SP1 proof, in four parts:
 | `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` | 164 (303), 36 (67) |
 | `src/core/attestation/` | `AttestationCoordinator.sol` | 77 (197) |
 | `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 557 (1,043), 7 (23) |
-| `src/build/registries/` | `ClauseRegistry.sol`, `AgreementRegistry.sol`, `AssemblyRegistry.sol` | 49 (196), 53 (202), 47 (189) |
-| `src/build/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol` | 296 (884), 147 (344) |
-| `src/build/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` | 51 (83), 4 (9) |
-| `src/app/` | `MembersRegistry.sol`, `WitnessSwapAndCommitCoordinator.sol` | 60 (210), 110 (239) |
+| `src/registries/` | `ClauseRegistry.sol`, `AgreementRegistry.sol`, `AssemblyRegistry.sol`, `MembersRegistry.sol` | 49 (196), 53 (202), 47 (189), 60 (210) |
+| `src/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol`, `FlorinToken.sol`, `IFlorinMinter.sol` | 296 (884), 147 (344), 51 (83), 4 (9) |
+| `src/composability/` | `WitnessSwapAndCommitCoordinator.sol` | 110 (239) |
 | `script/Deploy.s.sol` | The devnet deploy | 198 (432) |
 | `script/DeployMainnet.s.sol` | The mainnet deploy: the audited mainnet surface | 169 (348) |
 | `script/DeploySwapCoordinator.s.sol` | The swap coordinator alone, onto a live stack | 31 (58) |

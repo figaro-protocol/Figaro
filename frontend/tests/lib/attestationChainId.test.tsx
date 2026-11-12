@@ -24,14 +24,14 @@ vi.mock("wagmi", () => ({
 vi.mock("@/lib/composition/contracts", () => ({
     getAttestationCoordinator: () => "0x00000000000000000000000000000000000a7701",
 }));
-vi.mock("@/lib/kernel/indexer", () => ({
+vi.mock("@/lib/core/indexer", () => ({
     getAllOrderCommitted: async (_client: unknown, chainId: number) => {
         w.orderReads.push(chainId);
         return [{ args: { orderHash: `0x${"0d".repeat(32)}`, checkoutHash: `0x${"cc".repeat(32)}` } }];
     },
     getStringArg: (log: { args: Record<string, unknown> }, key: string) => String(log.args[key]),
 }));
-vi.mock("@/lib/kernel/signedCommitment", () => ({
+vi.mock("@/lib/core/signedCommitment", () => ({
     restoreSignedProcessId: (c: unknown, chainId: number) => { w.restores.push(chainId); return c; },
 }));
 

@@ -11,7 +11,7 @@
  */
 
 import { erc20Abi, type PublicClient } from "viem";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 import { getAllMemberRegistered, getActiveMembers } from "@/lib/protocol/membersRegistryIndexer";
 import {
