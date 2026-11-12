@@ -2,8 +2,8 @@
 pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
-import {MembersRegistry} from "src/app/MembersRegistry.sol";
-import {UsageCounter} from "src/build/rewards/UsageCounter.sol";
+import {MembersRegistry} from "src/registries/MembersRegistry.sol";
+import {UsageCounter} from "src/rewards/UsageCounter.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
 
 /// @title HalmosMembersRegistry — the state machine the Sybil bound rests on

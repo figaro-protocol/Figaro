@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
-import "src/app/WitnessSwapAndCommitCoordinator.sol";
+import "src/composability/WitnessSwapAndCommitCoordinator.sol";
 import "src/mocks/MockERC20.sol";
 import "src/mocks/MockSwapVenue.sol";
 

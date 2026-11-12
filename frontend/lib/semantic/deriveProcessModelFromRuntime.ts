@@ -1,8 +1,8 @@
-import { Order, OrderState } from "@/lib/kernel/store";
+import { Order, OrderState } from "@/lib/core/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 import { clauseByField } from "@figaro-protocol/sdk";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
-import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
+import type { ProcessSummary } from "@/lib/core/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue, specSource } from "@/lib/shared/clauseSpecSource";
 import { PROVENANCE_LEAF_KEY } from "@figaro-protocol/sdk";

@@ -50,7 +50,7 @@ import {
 import { validateContent } from '@figaro-protocol/sdk/clauses';
 import { serializeCommitmentPayload, type CommitmentPayload } from '@figaro-protocol/sdk/agent';
 import { specSource } from '@/lib/shared/clauseSpecSource';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import {
     discoverAnchoredAssemblies,
     localPublicClient,

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Abi } from "viem";
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
-import { ERC20_ABI } from "@/lib/kernel/contracts";
+import { ERC20_ABI } from "@/lib/core/contracts";
 import { simulateWrite } from "@/lib/shared/contractWrite";
 import { activeChain } from "@/lib/shared/chains";
 

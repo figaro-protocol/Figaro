@@ -139,7 +139,7 @@ import {
 import { formatToken } from '@/lib/shared/utils';
 import { LOCAL_ANVIL, RPC_URL, discoverAnchoredAssemblies, localPublicClient, readAgreementBinding, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 
 const ERC20_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',

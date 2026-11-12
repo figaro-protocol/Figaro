@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import { handleOrderSurfaceFailure } from "@/lib/shared/orderSurfaceActions";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import useTokenDecimals from "@/hooks/useTokenDecimals";

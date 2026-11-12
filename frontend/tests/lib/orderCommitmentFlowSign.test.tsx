@@ -64,8 +64,8 @@ vi.mock("wagmi", () => ({
         },
     }),
 }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x00000000000000000000000000000000000000c0" } };
 });
 // The counterparty's signature and the seller's binding are each pinned by
@@ -96,10 +96,10 @@ vi.mock("@/lib/composition/swapFunding", async (importOriginal) => ({
 const shareSignedOrder = vi.fn(async (..._args: unknown[]) => { s.acts.push("share"); return "ipfs://shared"; });
 vi.mock("@/lib/checkout/orderSignedAndShared", () => ({ shareSignedOrder: (...args: unknown[]) => shareSignedOrder(...args) }));
 const commitSignedOrder = vi.fn(async (_args: { payload: CommitmentPayload; commit: (c: Commitment, b: Hex, sl: Hex) => Promise<Hex> }) => `0x${"cc".repeat(32)}` as Hex);
-vi.mock("@/lib/kernel/orderCommitted", () => ({ commitSignedOrder: (args: Parameters<typeof commitSignedOrder>[0]) => commitSignedOrder(args) }));
+vi.mock("@/lib/core/orderCommitted", () => ({ commitSignedOrder: (args: Parameters<typeof commitSignedOrder>[0]) => commitSignedOrder(args) }));
 const commit = vi.fn(async () => `0x${"c1".repeat(32)}` as Hex);
 const swapAndCommit = vi.fn(async () => `0x${"c2".repeat(32)}` as Hex);
-vi.mock("@/lib/kernel/useFigaroActions", () => ({ useFigaroActions: () => ({ commit }) }));
+vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ commit }) }));
 vi.mock("@/lib/composition/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit }) }));
 const services = { handoffMessaging: { tag: "handoff" }, evidenceTransport: { tag: "evidence" } };
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({ useRuntimeServices: () => services }));

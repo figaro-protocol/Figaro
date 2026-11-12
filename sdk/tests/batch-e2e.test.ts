@@ -63,6 +63,8 @@ import {
     fetchUsageClaimContext,
     computeCheckoutHash,
     type Agreement,
+    computeDeadline,
+    readChainTimestamp,
 } from "../src/index.js";
 import { parseClauseSpec, encodeContentFromSpec } from "../src/clauses/index.js";
 import { SequencerClient } from "../src/agent/sequencer.js";
@@ -356,7 +358,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                 expectedCumulativeValue: PAYMENT,
                 checkoutHash: clauseLeaf,
                 salt: 42n,
-                deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+                deadline: computeDeadline(await readChainTimestamp(publicClient)),
             },
             domain,
         );
@@ -706,7 +708,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                     expectedCumulativeValue: PAYMENT,
                     checkoutHash: clauseLeaf,
                     salt: 43n,
-                    deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+                    deadline: computeDeadline(await readChainTimestamp(publicClient)),
                 },
                 domain,
             );

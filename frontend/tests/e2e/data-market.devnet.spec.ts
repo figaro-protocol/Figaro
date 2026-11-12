@@ -71,7 +71,7 @@ import { encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
 import { getClauseSpec, specSource } from '@/lib/shared/clauseSpecSource';
 import { LOCAL_ANVIL, RPC_URL, chainProfileReader, discoverAnchoredAssemblies, localPublicClient, pinJSONToIPFS, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs, type DiscoveredAssembly } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 
 const ERC20_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',

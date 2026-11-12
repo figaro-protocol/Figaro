@@ -971,7 +971,7 @@ refuses a batch claim keyed on either, the counter's batch path skips both,
 and `AgreementRegistry` refuses both as registrations.
 
 **Tests**: `test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt`
-(`test/build/rewards/RpgfIntegrationTest.t.sol`) — the stranger claims
+(`test/rewards/RpgfIntegrationTest.t.sol`) — the stranger claims
 nothing under the clause kind and is refused under the assembly kind, and the
 assembly's registrant takes the accrual;
 `test_aStrangerWhoStakesAClausesKeyAsAnAssemblyTakesNothingOfIt` and
@@ -982,15 +982,15 @@ squat, and `claimable` quoting what `claim` pays under a crossed kind;
 batch path, through `settleBatch`, the counter and `claim`;
 `check_theKindsNeverShareAKey`, `check_aKindNeverDisturbsAnotherKindsAccrual`
 and `check_anUnknownKindIsSkipped`
-(`test/build/rewards/HalmosUsageCounter.t.sol`) — an accrual under one kind on
+(`test/rewards/HalmosUsageCounter.t.sol`) — an accrual under one kind on
 either route leaves every other kind's accrual at the same key empty, leaves an
 existing one exactly as it was, and an unknown kind writes nothing — the
 three kinds, symbolically; `certora/RpgfMinterAuthor.spec` — `_isAuthor`
 answers for each kind from its own registry alone and refuses an unknown
 kind; `test_theThreeKindsNeverShareACount`
-(`test/build/rewards/UsageCounterTest.t.sol`) and
+(`test/rewards/UsageCounterTest.t.sol`) and
 `test_theThreeKindsPayOnlyTheirOwnDesignerOfRecord`
-(`test/build/rewards/RpgfMinterTest.t.sol`) — no kind's count or claim is
+(`test/rewards/RpgfMinterTest.t.sol`) — no kind's count or claim is
 read from another kind's registry.
 
 ## 24. The assembly root is a merkle tree over registered agreement hashes — membership is proved, never looked up
@@ -1031,7 +1031,7 @@ assembly. The reserved assembly terms key is refused as an agreement's
 **Tests**: the SDK, the counter and the guest each rebuild the agreement
 leaves, the terms leaf, the root and the membership proofs of
 `test/fixtures/assembly-vectors.json` (the parity legs, `TESTING.md` §
-"Assembly parity"); in `test/build/rewards/UsageCounterTest.t.sol`,
+"Assembly parity"); in `test/rewards/UsageCounterTest.t.sol`,
 `test_aSlotLeafUnderADifferentAssemblyHashFails` and
 `test_aSlotLeafWithAnotherSlotsBytesFails` refuse a membership proof that the
 root did not commit, and `test_theTermsLeafNeverPassesAsAnAgreement` refuses

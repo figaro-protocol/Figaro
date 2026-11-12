@@ -2,7 +2,7 @@
 
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, usePublicClient } from "wagmi";
 import type { Abi } from "viem";
-import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
+import { CORE_ABI, CONTRACTS } from "@/lib/core/contracts";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import type { Commitment } from "@figaro-protocol/sdk";
 

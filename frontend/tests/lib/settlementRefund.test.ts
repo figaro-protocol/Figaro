@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
-import { OrderState, type Order } from "@/lib/kernel/store";
-import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
+import { OrderState, type Order } from "@/lib/core/store";
+import type { ProcessSummary } from "@/lib/core/walletProcessQueries";
 
 // The receipt after resolution states what came BACK to this wallet. The
 // buyer's bond carried the payment, so its refund is the bond less that

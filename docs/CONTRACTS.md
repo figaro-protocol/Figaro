@@ -1,11 +1,11 @@
 # Smart Contracts — the inventory
 
-Every contract in `src/`. Solidity 0.8.26, Foundry. The directory is the tier
-map, one directory per layer of the site that presents it — **core** `src/core/{kernel,attestation,verifier}/`
+Every contract in `src/`. Solidity 0.8.26, Foundry. The directory is the layer
+map, one directory per layer — **Core** `src/core/{kernel,attestation,verifier}/`
 (FigaroCore and its commitment types, the attestation coordinator, the batch verifier);
-**build** `src/build/{registries,rewards,florin}/` (the clause, agreement and assembly registries, the usage
-counter and the minter, the florin); **app** `src/app/` (the members registry and the swap
-coordinator) — plus `src/mocks/` and `src/echidna/`. The test tree and the sections
+**registries** `src/registries/` (the clause, agreement, assembly and members registries);
+**designer rewards** `src/rewards/` (the usage counter, the minter and the florin);
+**composability** `src/composability/` (the swap coordinator) — plus `src/mocks/` and `src/echidna/`. The test tree and the sections
 below mirror it; if they diverge, the filesystem is right.
 
 **This file is the canonical inventory. A contract not listed here does not
@@ -198,16 +198,13 @@ no-op, which lets trade keep resolving after the reward's last period closes.
 `verifyProof(programVKey, publicValues, proof)`, and `ISP1VerifierWithHash`, the
 routed verifier's `VERIFIER_HASH()` the batch verifier pins at construction.
 
-## `src/build/` — the registries, usage accounting, the florin, designer rewards
-
-### Registries (`src/build/registries/`)
+## `src/registries/` — the four registries
 
 Four parallel anchors, each with its own identity scheme, event stream, and
 withdrawal behavior; none references another. Registering publishes; it
-never qualifies — the Core gates nothing on registry state. Three are here; the
-fourth, `MembersRegistry`, is in `src/app/`.
+never qualifies — the Core gates nothing on registry state. All four are here; `MembersRegistry` is described after the designer rewards, below.
 
-**`src/build/registries/ClauseRegistry.sol`** — Permissionless clause
+**`src/registries/ClauseRegistry.sol`** — Permissionless clause
 anchoring under a stake.
 - Key: `clauseKey = keccak256` of the spec's pinned canonical bytes (the SDK's
   `computeClauseKey(spec)`, which is `canonicalContentHash(spec)`). The key is
@@ -234,7 +231,7 @@ anchoring under a stake.
 - Registration anchors a key and a locator only; the registry never sees the
   bytes and validates no content. `CLAUSES.md` owns the validation model.
 
-**`src/build/registries/AgreementRegistry.sol`** — Permissionless agreement
+**`src/registries/AgreementRegistry.sol`** — Permissionless agreement
 anchoring under a stake: the registered agreement, the reusable unit a
 designer composes an assembly from.
 - Identity is the composition: `agreementHash` is the merkle root over one leaf
@@ -277,7 +274,7 @@ designer composes an assembly from.
   `RpgfMinter`; the deployment record names it `agreementRegistry`, one of the
   fifteen address fields the checkout fingerprint covers.
 
-**`src/build/registries/AssemblyRegistry.sol`** — Permissionless assembly
+**`src/registries/AssemblyRegistry.sol`** — Permissionless assembly
 anchoring under a stake.
 - Identity is the composition: `assemblyHash` is a merkle root over the
   assembly's agreements, built with the assembly tree's own leaf convention
@@ -309,9 +306,11 @@ anchoring under a stake.
 The three hash-keyed registries carry no cooldown — their withdrawal is one-shot
 per key and the binding permanent, so there is nothing to recycle.
 
-### Usage accounting (`src/build/rewards/`)
+## `src/rewards/` — designer rewards: usage accounting, the florin, the minter
 
-**`src/build/rewards/UsageCounter.sol`** — Counts how much real trade a
+### Usage accounting
+
+**`src/rewards/UsageCounter.sol`** — Counts how much real trade a
 clause, agreement or assembly carried, on chain, at the moment it happens. The chain
 cannot look backwards — the Core calls no registry and contracts cannot read
 events — so the fact is recorded when it occurs, and nothing is posted,
@@ -423,19 +422,19 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   `floor(cbrt(2^256−1))`, so the cube cannot overflow.
 - Decentralized and permissionless: no admin, no pause. The measured gas anchor for
   `recordClauseUsage` and its regression ceiling live in
-  `test/build/rewards/UsageCounterTest.t.sol` (`RECORD_USAGE_GAS`); every
+  `test/rewards/UsageCounterTest.t.sol` (`RECORD_USAGE_GAS`); every
   analysis quotes that one home.
 
-### The florin (`src/build/florin/`)
+### The florin
 
-**`src/build/florin/FlorinToken.sol`** — ERC-20 with EIP-2612 permit. `MAX_SUPPLY` of
+**`src/rewards/FlorinToken.sol`** — ERC-20 with EIP-2612 permit. `MAX_SUPPLY` of
 one billion, enforced on every mint. A minter registry with
 `totalRegisteredCap` (the sum of registered caps may not exceed
 `MAX_SUPPLY`); the deployer registers capped minters, then
 `renounceDeployerMint` closes the registry. Reentrancy-guarded. No deployer authority after
 renounce, no upgrade, no parameter.
 
-**`src/build/florin/IFlorinMinter.sol`** — `mint(address, uint256)`, the interface a
+**`src/rewards/IFlorinMinter.sol`** — `mint(address, uint256)`, the interface a
 registered minter implements.
 
 Genesis: the deployer deploys `RpgfMinter`, registers it with a 600M cap,
@@ -443,7 +442,7 @@ registers itself as a one-shot minter with a 400M cap, mints 70M / 30M / 300M
 to the founder, supporters, and DAO wallets, then renounces. `FLORIN_TOKEN.md`
 owns the allocation and its reasoning. Nothing is minted on resolution.
 
-### Designer rewards (`src/build/rewards/`)
+### The minter
 
 The 600M reserve, rewarded to designers of record in proportion to the trade
 their clauses, agreements and assemblies carried: one claim per period, nine annual
@@ -452,7 +451,7 @@ over years 1–2, 30% over 3–5, 55% over 6–9, split equally within each grou
 `DESIGNER_REWARDS.md` owns the schedule's reasoning and the boundary;
 `DATA_LAYER.md` owns what the stake does and does not do.
 
-**`src/build/rewards/RpgfMinter.sol`** — `claim(periodId, clausesOrAssemblies)` mints
+**`src/rewards/RpgfMinter.sol`** — `claim(periodId, clausesOrAssemblies)` mints
 `periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period;
 a wallet passes every clause, agreement and assembly it designed in that one
 call, each as a `ClauseOrAssemblyKey{uint8 kind, bytes32 key}`. The constructor
@@ -490,12 +489,12 @@ recomputing what the chain holds, never posting an answer. The 300M DAO
 treasury pays for public goods by human decision; there is no match round and
 no crowd mechanism.
 
-## `src/app/` — the members registry and the swap coordinator
+## The members registry (`src/registries/`) and the swap coordinator (`src/composability/`)
 
 `MembersRegistry` is the fourth of the four parallel registries (§ Registries).
 `WitnessSwapAndCommitCoordinator` has the coordinator shape (§ Coordinators).
 
-**`src/app/MembersRegistry.sol`** — Permissionless member
+**`src/registries/MembersRegistry.sol`** — Permissionless member
 registration under a stake. A member is a wallet that publishes a
 profile — buyer, seller, or both; the profile is one document, split
 between the identity envelope here and the item list behind `catalogURI`.
@@ -516,7 +515,7 @@ between the identity envelope here and the item list behind `catalogURI`.
   costs `stake · N · T / P`. Leaving view and refunding are different moments
   by design.
 
-**`src/app/WitnessSwapAndCommitCoordinator.sol`** — Lets a
+**`src/composability/WitnessSwapAndCommitCoordinator.sol`** — Lets a
 buyer and/or seller fund a bond from a token other than the process's
 denomination, in the same transaction as `commit`. One external function,
 `swapAndCommit(c, buyerSig, sellerSig, buyerFunding, sellerFunding)`: for each
@@ -546,7 +545,7 @@ the party's own address, then calls `FigaroCore.commit`.
 
 Contracts that compose `FigaroCore` without becoming a party to it. Two here
 have the shape: `AttestationCoordinator`, one of the Core's four, and
-`WitnessSwapAndCommitCoordinator` in `src/app/`. A new capability beside
+`WitnessSwapAndCommitCoordinator` in `src/composability/`. A new capability beside
 `FigaroCore` is a NEW parallel contract composing its state — never an edit to
 it, never a tenant inside an existing registry. The copyable shape:
 

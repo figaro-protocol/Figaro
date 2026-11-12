@@ -23,7 +23,7 @@
  */
 
 import { type Agreement, computeProvenanceLeaf, computeClauseLeaf } from "@figaro-protocol/sdk";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import type { ExtractedDocument } from "./types";
 import { truncateHex } from "@/lib/shared/formatHex";

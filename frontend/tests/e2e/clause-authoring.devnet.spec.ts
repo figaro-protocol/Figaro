@@ -59,7 +59,7 @@ import { mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, publishOrAdoptReviewed, waitForConnected } from './devnet-helpers';
 import { makeProbeSpec } from './probeAssembly';
 import { calculateBonds, computeClauseKey, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 

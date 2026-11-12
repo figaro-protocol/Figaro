@@ -45,7 +45,7 @@ import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, waitForConnected, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { makeProbeSpec, makeProbeWitnessSpec, registerProbeClause } from './probeAssembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import { calculateBonds } from '@figaro-protocol/sdk';
 import type { Page } from '@playwright/test';
 
@@ -365,7 +365,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         // ── BUYER ORDERS LIST — IN PROGRESS: before resolving, the buyer reads the
         //    actor-neutral /orders list. It is event-driven: useWalletProcessRows
         //    reads the OrderCommitted/OrderResolved EVENT logs through the indexer
-        //    query layer (lib/kernel/indexer.ts), the SAME events the seller's list
+        //    query layer (lib/core/indexer.ts), the SAME events the seller's list
         //    reads — there is NO separate buyer/seller inbox. The committed-but-
         //    unresolved process shows under "In progress", labeled from its state. ──
         await gotoAsWallet(page, BUYER, '/orders?e2e=devnet');

@@ -10,7 +10,7 @@
  */
 
 import type { Hex } from "viem";
-import { Order, OrderState } from "@/lib/kernel/store";
+import { Order, OrderState } from "@/lib/core/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { buildOrderAgreement } from "@figaro-protocol/sdk";

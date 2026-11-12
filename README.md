@@ -37,11 +37,11 @@ they published. The paper at `/papers/figaro-as-a-cryptoeconomic-system` says wh
   `ISP1Verifier.sol`, the SP1 verifier gateway's ABI. In the
   audit's scope with everything else the handover lists
   (`docs/AUDITOR_HANDOVER.md` § "Scope").
-- **Protocol contracts** — `src/build/` and `src/app/`: the four registries
+- **Protocol contracts** — `src/registries/`, `src/rewards/` and `src/composability/`: the four registries
   (clauses, agreements, assemblies, members — permissionless, first-write-wins, under a
   stake), the swap-and-commit coordinator, and the usage counter. Inventory:
   `docs/CONTRACTS.md`.
-- **The florin and designer rewards** — `src/build/florin/`, `src/build/rewards/`: a
+- **The florin and designer rewards** — `src/rewards/`, `src/rewards/`: a
   one-billion-cap ERC-20 and the minter that rewards designers of record in
   proportion to the use their clauses and assemblies carried.
   `docs/FLORIN_TOKEN.md` (the token), `docs/DESIGNER_REWARDS.md` (the reward),

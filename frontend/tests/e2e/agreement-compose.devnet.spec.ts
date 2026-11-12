@@ -42,7 +42,7 @@ import {
     assemblyHashOf,
 } from '@figaro-protocol/sdk';
 import { recordProcessUsage } from '@figaro-protocol/sdk/agent';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import { test, expect } from './devnet-multi-test';
 import {
     LOCAL_ANVIL,

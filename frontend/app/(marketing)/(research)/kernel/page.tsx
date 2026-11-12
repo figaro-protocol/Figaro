@@ -6,9 +6,9 @@ import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFig
 import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
 
 // Every number and every outcome on this page is rendered from the Core's
-// equilibrium module (sdk/src/equilibrium.json), the one owner of those
-// figures; the theorem itself is the asymmetric-bonding paper's. The guard
-// scripts/lint-equilibrium-owner.sh fails a commit that retypes them here.
+// equilibrium module, imported above, the one owner of those figures; the
+// theorem itself is the asymmetric-bonding paper's. A guard fails a commit
+// that retypes them here.
 const EQ = KERNEL_EQUILIBRIUM;
 const EX = EQ.example;
 const CH = EQ.example.chain; // the same trade shared by three sellers — legs and their arithmetic, one owner

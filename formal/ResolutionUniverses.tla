@@ -20,7 +20,7 @@
  *                           It writes NO FigaroCore state — a batch-resolved order
  *                           never acquires FigaroCore orderStatus, ever.
  *
- *   UsageCounter          (src/build/rewards/UsageCounter.sol)
+ *   UsageCounter          (src/rewards/UsageCounter.sol)
  *       recordClauseUsage()  → direct path; requires core.orderStatus == 2
  *       applyBatchAccrual()  → batch path; proof-gated writer of USES, each
  *                              counted through the same _count, into the

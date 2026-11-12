@@ -37,11 +37,11 @@ const SERVICES = {
         },
     },
 };
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/contracts")>()),
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
 }));
-vi.mock("@/lib/kernel/eventCache", () => ({
+vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: async (_client: unknown, _chainId: number, opts: { address: string; event: unknown }) =>
         chain.logs.filter((l) => l.address.toLowerCase() === opts.address.toLowerCase() && l.topics[0] === selectorOf(opts.event)),
     cachedGetReceiptLogs: async () => [],
@@ -50,7 +50,7 @@ vi.mock("@figaro-protocol/sdk", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@figaro-protocol/sdk")>()),
     verifyCommitmentSignature: vi.fn().mockResolvedValue(true),
 }));
-vi.mock("@/lib/kernel/agreementFetch", () => ({ publishAgreement: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@/lib/core/agreementFetch", () => ({ publishAgreement: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => ({ read: { status: "present", value: [] } }) }));
