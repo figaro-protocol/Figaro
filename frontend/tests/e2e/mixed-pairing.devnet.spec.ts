@@ -52,7 +52,7 @@ import {
 } from './devnet-helpers';
 import { specSource } from '@/lib/shared/clauseSpecSource';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import { calculateBonds } from '@figaro-protocol/sdk';
 import {
     makeHttpOfferResponder,

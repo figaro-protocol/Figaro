@@ -260,7 +260,7 @@ export type LogReadRetryKind = "pruned-history" | "rate-limit";
  * limit); `null` for every other error, which propagates. A reader counts its
  * asks per `kind`, so a run of one kind never spends the other's budget or
  * lengthens its pause. One rule for every log reader — the SDK's
- * `fetchLogsChunked` and the frontend's (`frontend/lib/kernel/eventCache.ts`).
+ * `fetchLogsChunked` and the frontend's (`frontend/lib/core/eventCache.ts`).
  */
 export function logReadRetry(err: unknown): { kind: LogReadRetryKind; attempts: number; delayMs: (attempt: number) => number } | null {
     if (isPrunedHistoryError(err)) return { kind: "pruned-history", attempts: PRUNED_HISTORY_ATTEMPTS, delayMs: prunedHistoryDelayMs };

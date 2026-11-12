@@ -30,7 +30,7 @@ import { mockAwareHttp } from "@/lib/shared/mockTransport";
 import { buildProcessTimeline, type ProcessTimeline, type TimelineEvent } from "@/lib/audit/processTimeline";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import { activeChain } from "@/lib/shared/chains";
 import { siteRpcUrl } from "@/lib/shared/wagmi";
 import { hexEqual } from "@/lib/shared/evm";

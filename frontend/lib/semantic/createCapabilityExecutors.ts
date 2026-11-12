@@ -23,8 +23,8 @@ import {
     type UsageClaimContext,
 } from "@figaro-protocol/sdk";
 import { encodeContentFromSpec, validateContent } from "@figaro-protocol/sdk/clauses";
-import { OrderState, type Order } from "@/lib/kernel/store";
-import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
+import { OrderState, type Order } from "@/lib/core/store";
+import { restoreSignedProcessId } from "@/lib/core/signedCommitment";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { isBytes32Hex } from "@/lib/shared/evm";
 import type { UsageWrite } from "@/lib/protocol/useUsageRecorder";

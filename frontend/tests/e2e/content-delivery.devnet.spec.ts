@@ -40,7 +40,7 @@ import { createPublicClient, createWalletClient, defineChain, http, keccak256, p
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import { calculateBonds, ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
 import { encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
 import { getClauseSpec } from '@/lib/shared/clauseSpecSource';

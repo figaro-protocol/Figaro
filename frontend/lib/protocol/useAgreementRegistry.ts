@@ -30,7 +30,7 @@ import {
     type HydratedAssembly,
 } from "@figaro-protocol/sdk";
 import { isValidAddress } from "@/lib/shared/evm";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import { publicClient } from "@/lib/shared/wagmi";
 import {
     createUseWithdrawStake,

@@ -42,9 +42,9 @@ import {
     type WithdrawGate,
 } from "@figaro-protocol/sdk/derive";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
-import { CONTRACTS } from "@/lib/kernel/contracts";
-import { getCoreEvents } from "@/lib/kernel/indexer";
-import { fetchAgreement, witnessedAgreementUri } from "@/lib/kernel/agreementFetch";
+import { CONTRACTS } from "@/lib/core/contracts";
+import { getCoreEvents } from "@/lib/core/indexer";
+import { fetchAgreement, witnessedAgreementUri } from "@/lib/core/agreementFetch";
 import { isValidAddress } from "@/lib/shared/evm";
 
 export type WithdrawClauseOrAssembly =

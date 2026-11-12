@@ -20,7 +20,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import { getActiveMembers, getAllMemberRegistered } from "@/lib/protocol/membersRegistryIndexer";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import { scheduleContentRetry } from "@/lib/shared/ipfsService";

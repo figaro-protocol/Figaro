@@ -29,14 +29,14 @@ import {
 const CHAIN_ID = 31337;
 const CORE = "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" as const;
 
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" } };
 });
 
 const getAllOrderCommittedMock = vi.fn();
-vi.mock("@/lib/kernel/indexer", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/indexer")>();
+vi.mock("@/lib/core/indexer", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/indexer")>();
     return {
         ...actual,
         getAllOrderCommitted: (...args: unknown[]) => getAllOrderCommittedMock(...args),

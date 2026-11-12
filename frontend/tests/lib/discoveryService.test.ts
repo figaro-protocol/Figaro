@@ -20,7 +20,7 @@ vi.mock('@/lib/shared/ipfsService', async (importOriginal) => {
     };
 });
 
-vi.mock('@/lib/kernel/contracts', () => ({
+vi.mock('@/lib/core/contracts', () => ({
     CONTRACTS: {
         membersRegistry: '0x1111111111111111111111111111111111111111',
     },

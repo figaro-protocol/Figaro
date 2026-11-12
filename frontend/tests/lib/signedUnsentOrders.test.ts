@@ -15,8 +15,8 @@ import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
  */
 
 // The order hash needs a core domain; the app reads it from the environment.
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x00000000000000000000000000000000000000c0" } };
 });
 

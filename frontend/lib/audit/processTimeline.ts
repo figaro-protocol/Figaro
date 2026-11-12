@@ -18,10 +18,10 @@
  */
 
 import { erc20Abi, formatUnits, getAbiItem, type Abi, type PublicClient } from "viem";
-import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
+import { CORE_ABI, CONTRACTS } from "@/lib/core/contracts";
 import { ATTESTATION_COORDINATOR_ABI } from "@figaro-protocol/sdk";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
-import { cachedGetContractEvents, deploymentBlock, getLogsAdaptive, type LogScanClient } from "@/lib/kernel/eventCache";
+import { cachedGetContractEvents, deploymentBlock, getLogsAdaptive, type LogScanClient } from "@/lib/core/eventCache";
 import { activeChain } from "@/lib/shared/chains";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 import { hexEqual } from "@/lib/shared/evm";

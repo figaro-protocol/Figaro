@@ -22,7 +22,7 @@
 import { type Abi, type Log } from "viem";
 import { canonicalize, computeClauseKey, parseClauseRegistryLogs } from "@figaro-protocol/sdk";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
-import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
+import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
 import { publicClient } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { isValidAddress } from "@/lib/shared/evm";

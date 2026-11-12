@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getLogsAdaptive } from "@/lib/kernel/eventCache";
+import { getLogsAdaptive } from "@/lib/core/eventCache";
 
 /** A provider that refuses any range wider than `cap` blocks the way public
  *  gateways do, and otherwise returns one synthetic log per block that

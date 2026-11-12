@@ -4,8 +4,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // through an RPC the link chose must never write into it (frontend invariant
 // S-3: a displayed view cannot be forged through a link).
 const cached = vi.hoisted(() => vi.fn(async () => []));
-vi.mock("@/lib/kernel/eventCache", async (importOriginal) => {
-    const real = await importOriginal<typeof import("@/lib/kernel/eventCache")>();
+vi.mock("@/lib/core/eventCache", async (importOriginal) => {
+    const real = await importOriginal<typeof import("@/lib/core/eventCache")>();
     return { ...real, cachedGetContractEvents: cached };
 });
 // The site's own coordinator: configured here so a read of ANOTHER core can be

@@ -73,8 +73,8 @@ import {
     verifyCommitmentSignature,
     type Commitment,
 } from "@figaro-protocol/sdk";
-import { CONTRACTS } from "@/lib/kernel/contracts";
-import { getAllOrderCommitted, getStringArg } from "@/lib/kernel/indexer";
+import { CONTRACTS } from "@/lib/core/contracts";
+import { getAllOrderCommitted, getStringArg } from "@/lib/core/indexer";
 import { getBatchVerifier, getWitnessSwapAndCommitCoordinator } from "@/lib/composition/contracts";
 import { getAllBatchSettled, getBatchAttestationsByOrder } from "@/lib/composition/indexer";
 import { hexEqual } from "@/lib/shared/evm";

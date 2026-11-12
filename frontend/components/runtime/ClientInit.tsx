@@ -4,7 +4,7 @@ import { useCallback, useEffect } from "react";
 import { useConnect, useAccount, useChainId } from "wagmi";
 import { findInjectedConnector } from "@/lib/shared/connectors";
 import { TEST_HELPERS_ENABLED, windowSafe } from "@/lib/shared/testHelpers";
-import { useOrderStore } from "@/lib/kernel/store";
+import { useOrderStore } from "@/lib/core/store";
 import { calculateBonds } from "@figaro-protocol/sdk";
 import { textToBytes32 } from "@/lib/shared/evm";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
