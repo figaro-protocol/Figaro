@@ -213,8 +213,8 @@ This section tracks features that are not protocol invariants but are significan
 | **Kleros dispute / evidence** | `frontend/lib/audit/` + `frontend/lib/semantic/processRecourse.ts` | — (frontend-local; SDK carries no Kleros helpers) | `/spec` → Composition | `/evidence-display` (full rendering for jurors) | — |
 | **Agent SDK** | `sdk/` (root + `/agent`, `/derive`, `/clauses`, `/handoff`, `/signer`) | Self-referential (`npx vitest run` in `sdk/` is the census) | `/spec` → The sequencer (SDK README) | — | — |
 | **Semantic derivation** | `frontend/lib/semantic/` | — | `/assemblies` → How one is composed. | `TopologyCanvas` in the design canvas (`/assemblies/designer/*`); `CapabilityRail` + `RecoursePanel` at runtime | — |
-| **Registered agreement** | `frontend/lib/designer/`; `src/build/registries/AgreementRegistry.sol` | — | `/assemblies` → each order composed from a registered agreement. | `/assemblies/designer/new` (the drawer's registered-agreement offer, or a new agreement registered at publish) | — |
-| **Institution assembly** | `frontend/lib/designer/`; `src/build/registries/AssemblyRegistry.sol` | — | `/assemblies` → Document-anchored, not catalog-listed. | `/assemblies/designer/new`, `/assemblies/designer/edit?slug=<slug>`, `/assemblies/designer/view?slug=<slug>` | — |
+| **Registered agreement** | `frontend/lib/designer/`; `src/registries/AgreementRegistry.sol` | — | `/assemblies` → each order composed from a registered agreement. | `/assemblies/designer/new` (the drawer's registered-agreement offer, or a new agreement registered at publish) | — |
+| **Institution assembly** | `frontend/lib/designer/`; `src/registries/AssemblyRegistry.sol` | — | `/assemblies` → Document-anchored, not catalog-listed. | `/assemblies/designer/new`, `/assemblies/designer/edit?slug=<slug>`, `/assemblies/designer/view?slug=<slug>` | — |
 | **Agreement publication** | `frontend/lib/kernel/agreementFetch.ts`, `@figaro-protocol/sdk` `projection.ts` | — | `/assemblies` → What the assembly hash covers. | — | — |
 | **Commerce checkout** | `frontend/lib/checkout/` | — | — | `/s/checkout` (`CheckoutView` + `CartLineList`); `YourTurnBadge` (header signal for orders awaiting this wallet's counter-signature) | — |
 | **Process topology** | `frontend/lib/semantic/processTopology.ts` | SDK: `reconstruct()`, `Topology` | `/assemblies` → How one is composed. | `TopologyCanvas` (`/assemblies/designer/new`, `/assemblies/designer/view?slug=<slug>`) | — |
@@ -469,7 +469,7 @@ its order.
 
 ## 9) Halmos symbolic testing — current posture
 
-### Harnesses: `test/core/kernel/HalmosFigaroCore.t.sol` + `test/app/HalmosMembersRegistry.t.sol` + `test/build/rewards/HalmosUsageCounter.t.sol` + `test/build/registries/HalmosClauseAgreementAndAssemblyRegistries.t.sol`
+### Harnesses: `test/core/kernel/HalmosFigaroCore.t.sol` + `test/registries/HalmosMembersRegistry.t.sol` + `test/rewards/HalmosUsageCounter.t.sol` + `test/registries/HalmosClauseAgreementAndAssemblyRegistries.t.sol`
 
 Halmos performs symbolic execution of Solidity bytecode using SMT solvers
 (z3/yices). Unlike Echidna (which searches for counterexamples via fuzzing),

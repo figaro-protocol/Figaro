@@ -85,11 +85,11 @@ struct Commitment {
 
 ## ClauseRegistry — anchoring a clause
 
-Permissionless, first-write-wins clause anchoring under a stake (`src/build/registries/ClauseRegistry.sol`). It anchors a clause key and a locator only; it validates no content shape — a registered clause is immediately attestable and batch-resolvable.
+Permissionless, first-write-wins clause anchoring under a stake (`src/registries/ClauseRegistry.sol`). It anchors a clause key and a locator only; it validates no content shape — a registered clause is immediately attestable and batch-resolvable.
 
 ```solidity
 function registerClause(bytes32 clauseKey, string calldata contentURI)
-    external payable;                          // src/build/registries/ClauseRegistry.sol:150
+    external payable;                          // src/registries/ClauseRegistry.sol:150
 function withdrawDeposit(bytes32 clauseKey) external;     // :173
 function setMechanismClause(bytes32 clauseKey) external;  // :192
 function registered(bytes32 clauseKey) external view returns (bool);                        // :81
@@ -98,7 +98,7 @@ function depositOf(bytes32 clauseKey) external view returns (address registeredB
 
 The key is `clauseKey = keccak256` of the spec's pinned bytes — the SDK's `computeClauseKey(spec)`, over the canonical JSON `canonicalize(spec)` you pin at `contentURI` (`:146-149`). The key is the clause's identity and its content hash at once; the registry stores no name, no version and no separate hash, and a reader verifies a fetched spec by checking `keccak256(bytes) == clauseKey` on the bytes it fetched (`:11-20`). `registered(clauseKey)` is never cleared, because it is what `FigaroBatchVerifier` checks every witness spec's key against. `withdrawDeposit` is caller-only, once, no time lock: it refunds the stake and de-surfaces the clause for new compositions, but the binding is permanent and orders already committed against it still resolve. `setMechanismClause` is permissionless self-declaration that writes no storage and confers nothing — it emits `MechanismClauseSet(msg.sender, clauseKey)` so indexers can see which clause a composed mechanism speaks.
 
-`registrationDeposit()` is a deploy-time immutable — **read it live and send exactly it**; over-payment reverts too, because there is no sweep (`src/build/registries/ClauseRegistry.sol:74`).
+`registrationDeposit()` is a deploy-time immutable — **read it live and send exactly it**; over-payment reverts too, because there is no sweep (`src/registries/ClauseRegistry.sol:74`).
 
 **Errors** (`:125-132`): `AlreadyRegistered(clauseKey)`, `NotRegistered(clauseKey)`, `ZeroClauseKey`, `EmptyContentURI`, `WrongDeposit(provided, required)`, `NotRegisteredBy(caller, registeredBy)`, `AlreadyWithdrawn`, `TransferFailed`. **Events:** `ClauseRegistered(bytes32 indexed clauseKey, string contentURI, address indexed registeredBy)`, `DepositWithdrawn(clauseKey, registeredBy, amount)`, `MechanismClauseSet(mechanism, clauseKey)` (`:107-121`).
 
@@ -115,7 +115,7 @@ cast send $CLAUSE_REGISTRY \
 
 ## AgreementRegistry — anchoring an agreement
 
-Permissionless, first-write-wins anchoring of an agreement's design — a merkle tree of clauses, one leaf per composed clause with the designer's fills, value-free, keyed by its root, the `agreementHash` — under a stake (`src/build/registries/AgreementRegistry.sol`). A registered agreement is the reusable unit an assembly is composed from; identity *is* the composition.
+Permissionless, first-write-wins anchoring of an agreement's design — a merkle tree of clauses, one leaf per composed clause with the designer's fills, value-free, keyed by its root, the `agreementHash` — under a stake (`src/registries/AgreementRegistry.sol`). A registered agreement is the reusable unit an assembly is composed from; identity *is* the composition.
 
 ```solidity
 function registerAgreement(bytes32 agreementHash, string calldata contentURI) external payable;  // :159
@@ -143,7 +143,7 @@ cast send $AGREEMENT_REGISTRY \
 
 ## AssemblyRegistry — anchoring an assembly
 
-Permissionless, first-write-wins assembly anchoring under a stake (`src/build/registries/AssemblyRegistry.sol`). Identity *is* the composition.
+Permissionless, first-write-wins assembly anchoring under a stake (`src/registries/AssemblyRegistry.sol`). Identity *is* the composition.
 
 ```solidity
 function registerAssembly(bytes32 assemblyHash, string calldata contentURI) external payable;  // :148
@@ -156,7 +156,7 @@ function withdrawDeposit(bytes32 assemblyHash) external;                        
 
 ## MembersRegistry — a participant declaration
 
-Permissionless self-registration under a reclaimable stake — one declaration document per wallet, whichever side of a trade it takes (`src/app/MembersRegistry.sol`).
+Permissionless self-registration under a reclaimable stake — one declaration document per wallet, whichever side of a trade it takes (`src/registries/MembersRegistry.sol`).
 
 ```solidity
 function register(string calldata metadataURI) external payable;   // :142
@@ -196,7 +196,7 @@ The coordinator checks that the caller is the named order's seller or buyer, tha
 
 ## WitnessSwapAndCommitCoordinator — bond in a token you do not hold
 
-Direct-path only. Lets a buyer and/or seller fund a bond from a token other than the process's denomination, in the same transaction as `commit` (`src/app/WitnessSwapAndCommitCoordinator.sol`).
+Direct-path only. Lets a buyer and/or seller fund a bond from a token other than the process's denomination, in the same transaction as `commit` (`src/composability/WitnessSwapAndCommitCoordinator.sol`).
 
 ```solidity
 function swapAndCommit(
@@ -209,7 +209,7 @@ function swapWitness(address inputToken, uint256 maxInput, bytes calldata swapDa
 
 For each enabled leg it pulls the input token through a Permit2 witness signature, forwards the swap calldata to an immutable Uniswap `SwapRouter02`, sends the swapped denomination to the party's own address, then calls `FigaroCore.commit`. Bond amounts derive from `c` (`2·payment`, `2·expectedCumulativeValue`), never from calldata; the witness binds `{router, inputToken, maxInput, keccak256(swapData)}` so no relayer can reroute the swap. `FigaroCore` still sees a single-currency, bilaterally-signed commitment. On the batch path there is no funding leg — swap in your own wallet before submitting.
 
-**The venue is SwapRouter02, and the distinction is load-bearing for the calldata you sign.** The coordinator approves the router for your input token and forwards your `swapData` verbatim (`src/app/WitnessSwapAndCommitCoordinator.sol:221-224`), so the venue must pull by ERC-20 allowance: the calldata is SwapRouter02's `exactOutputSingle` — an exact output, the bond, for at most `maxInput` of input (`:135`) — not the Universal Router, which pulls through Permit2 or spends pre-sent balances and would leave the swap unfunded. Build it with the SDK's `SWAP_ROUTER_02_ABI`, which carries exactly the venue shapes the protocol composes.
+**The venue is SwapRouter02, and the distinction is load-bearing for the calldata you sign.** The coordinator approves the router for your input token and forwards your `swapData` verbatim (`src/composability/WitnessSwapAndCommitCoordinator.sol:221-224`), so the venue must pull by ERC-20 allowance: the calldata is SwapRouter02's `exactOutputSingle` — an exact output, the bond, for at most `maxInput` of input (`:135`) — not the Universal Router, which pulls through Permit2 or spends pre-sent balances and would leave the swap unfunded. Build it with the SDK's `SWAP_ROUTER_02_ABI`, which carries exactly the venue shapes the protocol composes.
 
 **Errors** (`:153-155`): `NothingToFund`, `SwapCallFailed`, `OutputBelowBond(received, required)`. Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the denomination, a one-time `approve(Permit2, …)` for the input token, and a per-commit Permit2 witness signature.
 
@@ -252,7 +252,7 @@ Operation by operation, the two paths are compared in [`docs/VERIFICATION_MAP.md
 
 ## UsageCounter — verified clause, agreement and assembly usage
 
-Counts how much real trade a clause, a registered agreement or an assembly carried, on chain, at the moment it happens — because the Core calls no registry and contracts cannot read events, the fact is recorded when it occurs, never reconstructed afterward (`src/build/rewards/UsageCounter.sol`).
+Counts how much real trade a clause, a registered agreement or an assembly carried, on chain, at the moment it happens — because the Core calls no registry and contracts cannot read events, the fact is recorded when it occurs, never reconstructed afterward (`src/rewards/UsageCounter.sol`).
 
 ```solidity
 function recordClauseUsage(CommitmentTypes.Commitment calldata order, bytes32 clauseOrAssembly,
@@ -288,7 +288,7 @@ Every accrual, count and score is keyed by `(kind, key)`: kind `0` is a clause k
 
 ## FlorinToken — the unit
 
-ERC-20 with EIP-2612 permit (`src/build/florin/FlorinToken.sol`). `MAX_SUPPLY` of one billion, enforced on every mint. It is not a call surface for a stranger: `mint` is gated to registered minters, and the minter registry is closed by `renounceDeployerMint` at genesis.
+ERC-20 with EIP-2612 permit (`src/rewards/FlorinToken.sol`). `MAX_SUPPLY` of one billion, enforced on every mint. It is not a call surface for a stranger: `mint` is gated to registered minters, and the minter registry is closed by `renounceDeployerMint` at genesis.
 
 ```solidity
 function registerMinter(address minter, uint256 cap) external;    // :51  (deployer, pre-renounce)
@@ -300,7 +300,7 @@ function renounceDeployerMint() external;                         // :79
 
 ## RpgfMinter — claiming designer rewards
 
-Rewards designers of record from a 600M-florin reserve, pro rata to real recorded usage (`src/build/rewards/RpgfMinter.sol`). One state-changing entry point:
+Rewards designers of record from a 600M-florin reserve, pro rata to real recorded usage (`src/rewards/RpgfMinter.sol`). One state-changing entry point:
 
 ```solidity
 struct ClauseOrAssemblyKey { uint8 kind; bytes32 key; }                                    // :129

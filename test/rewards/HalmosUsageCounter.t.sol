@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
-import {UsageCounter} from "src/build/rewards/UsageCounter.sol";
+import {UsageCounter} from "src/rewards/UsageCounter.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
 
 /// @notice Permissive seller-side stake gate — always reports registered.

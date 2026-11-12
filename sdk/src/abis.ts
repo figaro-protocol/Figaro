@@ -172,7 +172,7 @@ export const WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI = parseAbi([
 // Permit2 is NOT a Figaro contract — it is the external, canonical
 // SignatureTransfer deployment (same address on every chain it's deployed to)
 // that `WitnessSwapAndCommitCoordinator` pulls a party's swap-input token
-// through (`src/app/WitnessSwapAndCommitCoordinator.sol` —
+// through (`src/composability/WitnessSwapAndCommitCoordinator.sol` —
 // `IPermit2WitnessTransfer`). This is the MINIMAL surface the coordinator's
 // off-chain half (`swapFunding.ts`, `buildSwapWitnessTypedData`) exists for:
 // the WITNESS variant of `permitTransferFrom`, which folds the coordinator's

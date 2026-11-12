@@ -85,7 +85,7 @@ jobs:
                   SEPOLIA_RPC_URL: https://ethereum-sepolia-rpc.publicnode.com
               run: |
                   set -o pipefail
-                  forge test --via-ir --match-path test/app/WitnessSwapAndCommitCoordinatorForkTest.t.sol | tee fork.log
+                  forge test --via-ir --match-path test/composability/WitnessSwapAndCommitCoordinatorForkTest.t.sol | tee fork.log
                   if grep -q '\[SKIP\]' fork.log; then
                       echo "a fork test skipped: its RPC variable did not reach it"
                       exit 1
@@ -219,12 +219,12 @@ jobs:
                   triaged = collections.Counter([
                       "High arbitrary-send-erc20 src/core/kernel/FigaroCore.sol:FigaroCore._pullExact :: token.safeTransferFrom(from,address(this),amount)",
                       "High arbitrary-send-erc20 src/core/verifier/FigaroBatchVerifier.sol:FigaroBatchVerifier._pullExact :: token.safeTransferFrom(from,address(this),amount)",
-                      "Medium incorrect-equality src/app/MembersRegistry.sol:MembersRegistry.withdraw :: unlockAt == 0",
+                      "Medium incorrect-equality src/registries/MembersRegistry.sol:MembersRegistry.withdraw :: unlockAt == 0",
                       "Medium reentrancy-no-eth src/core/verifier/FigaroBatchVerifier.sol:FigaroBatchVerifier.settleBatch :: usageCounter.applyBatchAccrual(usage.period,usage.provenanceLeaf,usage.uses) ; stateRoot = pv.newRoot",
-                      "Medium unused-return src/build/rewards/RpgfMinter.sol:RpgfMinter._isAuthor :: (agreementRegisteredBy,None,agreementWithdrawn,None) = agreements.bindings(clauseOrAssembly)",
-                      "Medium unused-return src/build/rewards/RpgfMinter.sol:RpgfMinter._isAuthor :: (assemblyRegisteredBy,None,depositWithdrawn,None) = assemblies.bindings(clauseOrAssembly)",
-                      "Medium unused-return src/build/rewards/UsageCounter.sol:UsageCounter._agreementLive :: (registeredBy,registeredAt,depositWithdrawn,None) = agreements.bindings(agreementHash)",
-                      "Medium unused-return src/build/rewards/UsageCounter.sol:UsageCounter._assemblyLive :: (registeredBy,registeredAt,depositWithdrawn,None) = assemblies.bindings(clauseOrAssembly)",
+                      "Medium unused-return src/rewards/RpgfMinter.sol:RpgfMinter._isAuthor :: (agreementRegisteredBy,None,agreementWithdrawn,None) = agreements.bindings(clauseOrAssembly)",
+                      "Medium unused-return src/rewards/RpgfMinter.sol:RpgfMinter._isAuthor :: (assemblyRegisteredBy,None,depositWithdrawn,None) = assemblies.bindings(clauseOrAssembly)",
+                      "Medium unused-return src/rewards/UsageCounter.sol:UsageCounter._agreementLive :: (registeredBy,registeredAt,depositWithdrawn,None) = agreements.bindings(agreementHash)",
+                      "Medium unused-return src/rewards/UsageCounter.sol:UsageCounter._assemblyLive :: (registeredBy,registeredAt,depositWithdrawn,None) = assemblies.bindings(clauseOrAssembly)",
                   ])
                   if found != triaged:
                       print("Slither High/Medium results differ from docs/AUDITOR_HANDOVER.md § Static analysis:")
@@ -242,4 +242,4 @@ jobs:
               run: pipx install semgrep==1.176.1
 
             - name: Run Semgrep
-              run: semgrep --config p/smart-contracts --error --severity ERROR --severity WARNING src/core src/build src/app
+              run: semgrep --config p/smart-contracts --error --severity ERROR --severity WARNING src/core src/registries src/rewards src/composability
