@@ -9,23 +9,29 @@ import { WholeStripFrame } from "@/components/figures/WholeStripFigure";
 export const metadata: Metadata = withOg({
     title: "Figaro",
     description:
-        "Every network collects rent from the people who depend on it. Figaro is a decentralized, permissionless protocol: nobody owns it, so nobody collects rent. One buyer and one or more sellers each lock a bond in any ERC-20 token, only the buyer closes the trade, and everyone is paid at once.",
+        "Every network collects rent from the people who depend on it. Figaro is a decentralized, permissionless protocol: nobody owns it, so nobody collects rent. Anyone can build an economy of their own on it; nobody stands in the middle, you keep what you earn, and your data is private and yours to sell. Each party locks a bond before the trade, so keeping your word is the better move, and the cost is gas.",
 });
 
 // THE HOME PAGE, told top-down, with the three doors after each stage so a reader can leave
-// or read on. The first screen is what sticks, four moves a stranger can repeat: the problem
-// (every network collects rent from the people who depend on it, and the protests on those
-// same networks), the fix with every assumption stated in order (any ERC-20 token; one buyer
-// and one or more sellers each lock a bond; keeping your word is the better move; only the
-// buyer closes and everyone is paid at once; the cost is gas), the builder's paragraph and
-// the proof sentence; then the doors. Next, the problem whole (power, trust and the
-// protests, the line from left to right and the alternative people disagree on, the
-// infrastructures people depend on, the platforms and the AI build-out, with "the way we
-// read it" marking the reading) and a fix; then the doors again. Then what changes for the
-// reader as six frames (`WholeStripFigure`), one section for what a process composes with
-// (other protocols, and legal and regulatory norms), one for why it is safe (the proof, the
-// benches and the bounty's terms, this website as one interface, who is behind it), and the
-// doors a third time, with "My word is my bond." as the page's last words. The problem is told as what the reader lives through, never as
+// or read on. The page tells what Figaro is and gives before how it is safe: readers repeat
+// whatever mechanism comes first, so the bond comes last. The first screen is what sticks,
+// four moves a stranger can repeat: the problem (every network collects rent from the people
+// who depend on it, and the protests on those same networks), what Figaro is and gives (a
+// decentralized, permissionless protocol of general purpose anyone builds an economy on;
+// nobody in the middle; you keep what you earn; your data private and yours to sell; the
+// cost is gas), the builder's paragraph and the proof sentence; then the doors. Next, the
+// problem whole (power, trust and the protests, the line from left to right and the
+// alternative people disagree on, the infrastructures people depend on, the platforms and
+// the AI build-out, with "the way we read it" marking the reading) and a fix (the lineage
+// from Bitcoin and Ethereum, what Figaro secures, no one in the middle, where buyers and
+// sellers find each other); then the doors again. Then what changes for the reader as six
+// frames (`WholeStripFigure`), the fifth data's two halves, privacy and income, the sixth how
+// the network grows, designers rewarded by use bringing their own communities; one section
+// for what a process composes with (other protocols, and legal and regulatory norms); one for
+// why it is safe (the proof, the bond with every assumption stated in order and the worked
+// example's numbers, the stall, the benches and the bounty's terms, this website as one
+// interface, who is behind it); and the doors a third time, with "My word is my bond." as the
+// page's last words. The problem is told as what the reader lives through, never as
 // declarations about the world. One DOORS list renders all three times; the Build door's
 // line is the invitation's. The category word stands in the body only, never in the
 // headline, the lead or the metadata. Platforms are named by function; no named trade and no
@@ -84,12 +90,12 @@ const FRAMES: { line: string; fact: string }[] = [
         fact: "Nobody takes a cut. When the buyer closes the trade, each seller receives its whole payment in that one transaction, and every bond is refunded.",
     },
     {
-        line: "Your data, your filings, your evidence and their sale are byproducts of the trade, transparent and verifiable by anyone you show them to; less is left in dispute, and the forums that rule on what is are many.",
-        fact: "Every trade leaves signed evidence of what was agreed, what each side attested and what was paid. Which wallets traded, and for how much, is public on-chain; of the detail the chain holds only a fingerprint, and the detail itself stays with you, private unless the terms you trade on make it public, yours to keep, to disclose or to sell. The same evidence is there for your books and taxes, and for a regulator or a court to read.",
+        line: "Your data is private, and it is yours to sell.",
+        fact: "Privacy: which wallets traded, and for how much, is public on-chain; of the detail the chain holds only a fingerprint, and the detail itself stays with you and travels sealed to your counterparty, private unless the terms you trade on make it public. Income: a buyer can check any piece of it against that fingerprint, so you can sell it to strangers, on terms you set, as an ordinary trade; the data the platforms live on becomes your income. Your filings and your evidence are byproducts of the trade too: every trade leaves signed evidence of what was agreed, what each side attested and what was paid, there for your books and taxes, and for a regulator or a court to read.",
     },
     {
-        line: "The reward: whoever wrote the terms and designs a trade used is rewarded by how much they are used.",
-        fact: "Once a trade closes, each term and each design it used counts once toward its designer. Whoever designed them is rewarded in florins, the protocol's own token, by how much they are used.",
+        line: "Designers are rewarded by use, so they bring their own communities.",
+        fact: "Figaro gives users nothing for joining; it rewards designers. Once a trade closes, each term and each design it used counts once toward its designer, who is rewarded in florins, the protocol's own token, by how much they are used. So designers build their own communities and bring their own buyers and sellers, often around a token of their own whose holders capture that economy's value.",
     },
 ];
 
@@ -125,7 +131,7 @@ export default function Home() {
                 lead="Every network collects rent from the people who depend on it, and you depend on many: the railroads and the highways, the power grid, the airlines, the exchanges and the asset managers, ride hailing, subscriptions, and now the cloud. Rent is where the money is. From the Arab Spring to the streets of the West, people have organized against it on those same networks."
             >
                 <p className="mt-6 text-base text-ink-body leading-relaxed max-w-2xl">
-                    Figaro is a decentralized, permissionless protocol: nobody owns it, so nobody collects rent. A trade runs in any ERC-20 token. One buyer and one or more sellers each lock a bond, twice what is at stake, in that token in a smart contract on a public blockchain, so keeping your word is the better move. Only the buyer closes the trade; when it does, every seller is paid and every bond is refunded at once, so the sellers finish together with no one directing them. The cost is gas.
+                    Figaro is a decentralized, permissionless protocol: nobody owns it, so nobody collects rent. It is of general purpose, as TCP/IP is: anyone can build an economy of their own on it, a market, a cooperative or a mutual-aid group, whatever its politics, and anyone can trade through it. Nobody stands in the middle and nobody takes a cut: you keep what you earn, and your data stays private and is yours to sell. The cost is gas.
                 </p>
                 <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl">
                     Build on it. Write the terms a trade runs on, compose them into processes, pick the token, and publish without asking anyone. Sellers bind your processes, buyers select them, and you are rewarded by how much they are used. Whoever trades on them keeps what they earn and the data they produce.
@@ -150,13 +156,10 @@ export default function Home() {
                 <div className="mt-16 border-t border-default pt-10">
                     <h2 className="text-heading-h2 text-ink-heading mb-5">A fix</h2>
                     <p className="text-base text-ink-body leading-relaxed">
-                        Figaro is a fix, not the fix. It is transparent, verifiable, permissionless infrastructure running on a decentralized blockchain, and it secures the two assets the networks have always taken from you: what you earn, and the data you produce. It does this by making a promise good before the trade.
+                        Bitcoin was the first economic system whose rules are all public, so anyone can read them: several markets held together with no central operator. Ethereum made such systems easier to build. Figaro inherits the security of the chain it runs on and gives anyone a primitive to build and use economic systems of their own.
                     </p>
                     <p className="mt-4 text-base text-ink-body leading-relaxed">
-                        Everyone in the trade puts up a bond first, the buyer twice the payment and each seller twice the value through its order, so keeping your word is the better move. Only the buyer closes the trade (resolves it, in the contract&rsquo;s word); when it does, every seller is paid and every bond is refunded at once. Nobody is paid until everyone is, so the sellers finish together with no boss in charge, and the reason a firm needed one goes with it. If the buyer never closes, every bond stays locked, the buyer&rsquo;s own included, and an arbitration forum or a court can rule on the trade&rsquo;s data while it stays open. A stall is what the second mechanism is for: a seller that stalls holds up every other seller&rsquo;s payment and its own bond, and the buyer&rsquo;s bond stays locked until the buyer closes, so the other sellers press the one that stalls, the buyer wants the trade closed, and the stall is put right before the close. That pressure, from every side at once, is why no clock is needed.{" "}
-                        <Link href="/kernel" className="text-ink-heading font-medium italic hover:underline">
-                            Why, once the work is delivered, closing is the buyer&apos;s better move and delivering each seller&apos;s.
-                        </Link>
+                        Figaro is a fix, not the fix. It is transparent, verifiable, permissionless infrastructure running on a decentralized blockchain, and it secures the two assets the networks have always taken from you: what you earn, and the data you produce. It does this by making a promise good before the trade.
                     </p>
                     <p className="mt-4 text-base text-ink-body leading-relaxed">
                         No one in the middle holds power over the outcome. The smart contracts run on any EVM-compatible blockchain and take nothing from a trade: the chain computes the bonds, the payments and the refunds, and what the terms are, whom to trade with and when to close are each a party&rsquo;s decision. It brings the cost of the party in the middle down to the cost of gas, plus the time value of the tokens locked while the trade is open.
@@ -222,6 +225,24 @@ export default function Home() {
                     <h2 className="text-heading-h2 text-ink-heading mb-5">Why it is safe</h2>
                     <p className="text-body-lead text-ink-heading font-medium leading-relaxed max-w-2xl">
                         It is safe because we can prove it, and since we can prove it, who we are does not matter. Only the proof does.
+                    </p>
+                    <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl">
+                        A trade runs in any ERC-20 token. One buyer and one or more sellers each lock a bond, twice what is at stake, in that token in a smart contract on a public blockchain: the buyer twice the payment and each seller twice the value through its order, so keeping your word is the better move. For example, a buyer pays a first seller 300 and a second seller 120. The first seller locks 600, twice 300; the second locks 840, twice 300 plus 120; the buyer locks 840, twice each payment. Only the buyer closes the trade; when it does, every seller is paid and every bond is refunded at once: the first seller receives its 600 back and its 300, the second its 840 back and its 120, and the buyer gets 420 back.{" "}
+                        <Link href="/agents/worked-example" className="text-ink-heading font-medium hover:underline">
+                            The whole example
+                        </Link>
+                        .
+                    </p>
+                    <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl">
+                        Nobody is paid until everyone is, so the sellers finish together with no boss in charge, and the reason a firm needed one goes with it. If the buyer never closes, every bond stays locked, the buyer&rsquo;s own included, and an arbitration forum or a court can rule on the trade&rsquo;s data while it stays open. A stall is what the second mechanism is for: a seller that stalls holds up every other seller&rsquo;s payment and its own bond, and the buyer&rsquo;s bond stays locked until the buyer closes, so the other sellers press the one that stalls, the buyer wants the trade closed, and the stall is put right before the close. That pressure, from every side at once, is why no clock is needed.{" "}
+                        <Link href="/kernel" className="text-ink-heading font-medium italic hover:underline">
+                            Why, once the work is delivered, closing is the buyer&apos;s better move and delivering each seller&apos;s.
+                        </Link>{" "}
+                        The theorem is proved in{" "}
+                        <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">
+                            Asymmetric Bonding and Buyer Dominance
+                        </Link>
+                        .
                     </p>
                     <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl">
                         The proof is mathematics: the equilibrium&rsquo;s best replies are proof-checked in Lean 4, and the smart contracts are verified by Certora and Halmos and modeled in TLA+, beside Foundry&rsquo;s tests, Echidna&rsquo;s fuzzing and the differential fuzz of the Rust against the Solidity. The contracts are decentralized and permissionless, the code is open, and a bounty is published, with its terms, in{" "}
