@@ -2031,19 +2031,13 @@ function registerAgreement(bytes32 agreementHash, string calldata contentURI) ex
 
 // AssemblyRegistry — cast selector: registerAssembly(bytes32,string)
 function registerAssembly(bytes32 assemblyHash, string calldata contentURI) external payable
-
-// ClauseRegistry — a composed MECHANISM contract declaring which clause it
-// speaks. Permissionless, not payable, writes no storage: it only emits
-// MechanismClauseSet(msg.sender, clauseKey) for indexers, and reverts
-// NotRegistered(clauseKey) if that clause was never registered.
-function setMechanismClause(bytes32 clauseKey) external
 </code><button type="button">Copy</button></pre>
 
 <p>The three registries key by content: <code>clauseKey</code> is the hash of the pinned spec
 bytes, <code>agreementHash</code> the merkle root over an agreement's composed clauses,
 <code>assemblyHash</code> the merkle root of the composition; none takes a name or
 a version. The registering calls are <code>payable</code>; <code>msg.value</code> must equal
-<code>registrationDeposit()</code> exactly (<code>setMechanismClause</code> is not — it takes no deposit).</p>
+<code>registrationDeposit()</code> exactly.</p>
 <p><strong>All four registries take the same reclaimable stake.</strong> <code>MembersRegistry</code>,
 <code>ClauseRegistry</code>, <code>AgreementRegistry</code> and <code>AssemblyRegistry</code> each require a <code>registrationDeposit</code> on
 the registering call (<code>register</code> / <code>registerClause</code> / <code>registerAgreement</code> / <code>registerAssembly</code>, all

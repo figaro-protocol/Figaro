@@ -74,15 +74,6 @@ contract AttestationCoordinatorTest is Test {
         // merkle-binds each attestation to its signed agreement and content-hash-
         // binds the evidence. Any registered clause is attestable with no
         // per-clause on-chain code.
-
-        // AttestationCoordinator declares which clauses it uses.
-        // In production this is called from the deploy script (post-audit amendment);
-        // in tests we use vm.prank to simulate the coordinator calling setMechanismClause.
-        vm.startPrank(address(coordinator));
-        clauses.setMechanismClause(LIFECYCLE_CLAUSE);
-        clauses.setMechanismClause(EMISSIONS_CLAUSE);
-        clauses.setMechanismClause(PROXIMITY_CLAUSE);
-        vm.stopPrank();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

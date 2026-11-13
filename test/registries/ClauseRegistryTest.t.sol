@@ -11,7 +11,7 @@ contract ClauseRegistryTest is Test {
     // stand-in for the canonical JSON `canonicalize` emits), and the clause key
     // is keccak256 of exactly those bytes — the registry's one identity rule,
     // the argument to registerClause, registered(), depositOf(),
-    // withdrawDeposit() and setMechanismClause(). The spec's clauseId and
+    // and withdrawDeposit(). The spec's clauseId and
     // version are presentation fields inside the bytes; nothing here reads
     // them. contentURI is the IPFS pointer a reader fetches the bytes from.
     bytes constant MODALITIES_SPEC = bytes('{"clauseId":"figaro-modalities","version":1}');
@@ -246,40 +246,17 @@ contract ClauseRegistryTest is Test {
         registry.registerClause{value: DEPOSIT}(EMISSIONS_KEY, EMISSIONS_URI);
     }
 
-    // ── Mechanism self-declaration ───────────────────────────────────
+    // ── No mechanism self-declaration ────────────────────────────────
 
-    function test_setMechanismClause() public {
+    /// The registry serves no `setMechanismClause(bytes32)`: the declaration was
+    /// built for a retired design and nothing read its event. A call to the old
+    /// selector finds no function and no fallback, so it reverts.
+    function test_noMechanismSelfDeclaration() public {
         registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
 
         vm.prank(mechanism);
-        registry.setMechanismClause(MODALITIES_KEY);
-        // Success = no revert. Event verified below.
-    }
-
-    function test_setMechanismClause_revertsOnUnregistered() public {
-        vm.prank(mechanism);
-        vm.expectRevert(abi.encodeWithSelector(ClauseRegistry.NotRegistered.selector, MODALITIES_KEY));
-        registry.setMechanismClause(MODALITIES_KEY);
-    }
-
-    function test_setMechanismClause_emitsEvent() public {
-        registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
-
-        vm.prank(mechanism);
-        vm.expectEmit(true, true, false, false);
-        emit ClauseRegistry.MechanismClauseSet(mechanism, MODALITIES_KEY);
-        registry.setMechanismClause(MODALITIES_KEY);
-    }
-
-    function test_mechanismCanDeclareMultipleClauses() public {
-        registry.registerClause{value: DEPOSIT}(MODALITIES_KEY, MODALITIES_URI);
-        registry.registerClause{value: DEPOSIT}(EMISSIONS_KEY, EMISSIONS_URI);
-
-        vm.startPrank(mechanism);
-        registry.setMechanismClause(MODALITIES_KEY);
-        registry.setMechanismClause(EMISSIONS_KEY);
-        vm.stopPrank();
-        // Both calls succeed — no storage conflict, just events.
+        (bool ok,) = address(registry).call(abi.encodeWithSignature("setMechanismClause(bytes32)", MODALITIES_KEY));
+        assertFalse(ok, "setMechanismClause is served");
     }
 
     // ── Multiple clauses ─────────────────────────────────────────────
