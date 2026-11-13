@@ -616,8 +616,16 @@ contract CoreBatchEquivalenceTest is Test {
             } else {
                 continue; // token transfers and approvals: compared as balances
             }
+            // The verifier's own batch events have no counterpart on the direct path: a batch
+            // exists only there. Any other event nobody listed here is a divergence.
+            if (
+                l.emitter == address(verifier)
+                    && (l.topics[0] == FigaroBatchVerifier.BatchOperations.selector
+                        || l.topics[0] == FigaroBatchVerifier.BatchSettled.selector
+                        || l.topics[0] == FigaroBatchVerifier.BatchAccrualSkipped.selector)
+            ) continue;
             (bool known, uint256 kind, bytes memory record) = _normalize(t, path, l);
-            if (!known) continue;
+            if (!known) revert ObservableDiverges("events: an event this test does not list", t, uint256(l.topics[0]));
             chain[path][kind] = keccak256(abi.encode(chain[path][kind], record));
             count[path][kind]++;
         }

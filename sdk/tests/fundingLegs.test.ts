@@ -4,6 +4,11 @@
  * real `swapAndCommit` and `commit` transactions (MockWitnessPermit2 +
  * MockSwapVenue, the same Transfer shape Permit2 + a router leave): the
  * receipt's own `OrderCommitted` names the parties and the denomination.
+ *
+ * The receipts were recorded from a Core that still emitted `OrderCurrency`
+ * (the event is since removed from FigaroCore and FigaroBatchVerifier), so
+ * their logs include it. The reader under test takes only `OrderCommitted` and
+ * `Transfer`, so the fixture holds for the current Core without re-recording.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
