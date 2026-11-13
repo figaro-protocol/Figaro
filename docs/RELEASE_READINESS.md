@@ -3,9 +3,9 @@
 Status: the open work between here and the public releases — the testnet line
 (live, rehearsing mainnet) and the Ethereum mainnet release. TODO tasks only:
 closed work is deleted in the session that closes it, and `git log` is the history.
-The audit handover — the scope in both languages, the baseline commit, the change
-policy, the validation gate, accepted risks — is `docs/AUDITOR_HANDOVER.md`, kept
-current for anyone who audits the scope, a bounty hunter or a firm alike.
+Results are recorded in `docs/VERIFICATION_MAP.md` § 14, and accepted risks in
+`docs/DESIGN_DECISIONS.md`. `docs/AUDITOR_HANDOVER.md` is left as it stands and
+is not updated; a new handover is written when an audit is engaged.
 
 ## Deployment Targets
 
@@ -63,9 +63,9 @@ neither line does not delay either.
    - [maintainer] the redeploy and the registrations, in the Ledger session — check:
      `node scripts/check-deployment.mjs` exits 0 against `deployments/11155111.json`;
    - [agent] the smoke over every reference assembly — check: the Sepolia smoke's exit code,
-     recorded with its transaction hashes in the handover;
+     recorded with its transaction hashes in `docs/VERIFICATION_MAP.md` § 14;
    - [maintainer] one trade resolved through the site with a real wallet — check: the resolved
-     process's transaction hash, recorded in the handover.
+     process's transaction hash, recorded in `docs/VERIFICATION_MAP.md` § 14.
 5. **The flip.** Robots' `Disallow` and the noindex meta are lifted, a sitemap of the
    canonical public pages is published, and the deployed headers are checked on the
    live host (Task 12). Before it, the testnet pinning key the bundle ships is reissued
@@ -111,8 +111,7 @@ Task numbers are stable; missing numbers are closed tasks — `git log` has each
 ### Task 2: Pass The In-House Security Program Over The Audit Scope
 
 No audit firm is engaged; the security work is the project's own, at every
-layer, with the bug bounty and the handover kept current for anyone who audits
-the scope.
+layer, with the bug bounty; a new handover is written when an audit is engaged.
 
 1. every layer named with its tooling and its evidence — the Solidity (Foundry
    invariants, Halmos, Certora, Echidna, Slither, Semgrep, mutation), the Rust
@@ -121,7 +120,7 @@ the scope.
    construction wherever the opportunity exists
 2. audit firms' open-source tooling applied where it fits this stack; the survey
    of their tools and programs lands here, with what each costs
-3. findings resolved, or accepted in writing in the handover
+3. findings resolved, or accepted in writing in `docs/DESIGN_DECISIONS.md`
 4. the outcome stated in the release docs and in the footer's one line, "Formally
    verified. Use as-is."
 
@@ -335,7 +334,7 @@ can answer are stated ahead in `deployments/1.expected.json` and read by
 hold before the record is published. Its `null`s — the deposits (Task 3), the
 cooldown, the wallets — are the decisions still owed. The broadcast itself runs
 from a clean checkout of the release commit, so the wrapper compiles the tree
-the handover's baseline names; the check, at the same commit, is what binds the
+the release commit names; the check, at the same commit, is what binds the
 result to it (the code, the guest key, the gateway). The list below is the procedure around it:
 
 - Verify the `--rpc-url` target by hand immediately before every `--broadcast`.
