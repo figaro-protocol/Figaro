@@ -11,8 +11,9 @@ import "./CommitmentTypes.sol";
 /// @title FigaroCore — Self-enforcing agreements between strangers
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
-/// @notice The Core's bonding and resolution contract. Two external functions: commit() and
-///         resolveProcess(). No owner, no fee, no escape hatches.
+/// @notice The Core's bonding and resolution contract. Two state-changing external functions:
+///         commit() and resolveProcess(); DOMAIN_SEPARATOR() and the getters of the three
+///         mappings are external views. No owner, no fee, no escape hatches.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
 ///         Invariants enforced on-chain:
@@ -245,10 +246,8 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     ///         hash + URI). Publish-side clients refuse to anchor an
     ///         assembly that would exceed the network's ceiling; buyer-side
     ///         clients verify the assembly document's order count before
-    ///         committing. For more orders than the ceiling, compose
-    ///         multiple processes linked at the assembly layer: an order in
-    ///         process A roots process B, so the orders span multiple
-    ///         resolutions while each process stays linear and within the ceiling.
+    ///         committing. No code links one process to another: the ceiling
+    ///         bounds each process, and it is the network's, read by clients.
     ///
     /// @param processId The process to resolve.
     /// @param commitments The full set of active order commitments.

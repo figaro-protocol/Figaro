@@ -28,9 +28,9 @@ let them sign one against the same processId" sounds protocol-aligned.
 **Why the gate is correct**: Each bonded process is a transaction-scoped
 institution that dissolves at resolution (`/papers/figaro-as-a-cryptoeconomic-system` § 6). The closure is the
 *dissolution*. Parties wanting a follow-on bonded relationship sign a
-fresh root commitment, getting a new `processId`; cross-process
-composition (a sub-order in process A roots process B) carries the
-"this is a continuation" semantic at the assembly layer, not `FigaroCore`.
+fresh root commitment, getting a new `processId`. No code links the new
+process to the old one; whatever "this is a continuation" means to the
+parties lives in what they sign, not in `FigaroCore`.
 
 The gate is implemented in the minimum-possible form: a single comparison
 against the existing `activeOrderCount` field, which `resolveProcess`
@@ -107,13 +107,13 @@ breaks buyer dominance. Breaking buyer dominance breaks the MAD equilibrium
 becomes a viable strategy).
 
 **The mitigation matches `FigaroCore`**: `FigaroCore` verifies
-both parties by ECDSA recovery alone (`FigaroCore.sol:158-162`), so a contract
+both parties by ECDSA recovery alone (`FigaroCore.sol:159-163`), so a contract
 wallet — multi-sig, ERC-1271 smart account — can never hold the buyer role,
 and `FigaroCore` as deployed forecloses adding contract-signature support. The live
 mitigation is **pre-installed EIP-7702 delegation**: while it still holds its key, the
 buyer sets a delegation (carrying its own guardian/recovery authorization) on
 the buyer EOA. `resolveProcess` authorizes by `msg.sender`
-(`FigaroCore.sol:261`), so after key loss the delegated code can still
+(`FigaroCore.sol:260`), so after key loss the delegated code can still
 originate the resolve call from the buyer's address — every active process the
 buyer opened through `FigaroCore` remains resolvable and none of its bonds is
 stranded. The same code reaches the proof-batched path: a batched resolve
@@ -471,7 +471,7 @@ buyer commits upfront.
 
 **Pattern**: The `Commitment` struct carries both a `salt` and a `deadline`;
 `commit` rejects expired commitments (`DeadlineExpired`,
-`FigaroCore.sol:150`) and nothing else in `FigaroCore` reads the field.
+`FigaroCore.sol:151`) and nothing else in `FigaroCore` reads the field.
 
 **Why it looks wrong**: `salt` already appears to "secure" the commitment,
 so `deadline` reads as leftover plumbing from an earlier design (it is not).

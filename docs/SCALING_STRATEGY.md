@@ -47,11 +47,10 @@ cheaper execution — the batch path below.
 iterates every commitment in the process in one transaction (the per-order
 constant `RESOLVE_GAS_PER_ORDER` in `sdk/src/gasCeilings.ts`, read from live
 post-fork receipts), so under the chain's cap on one transaction's gas the ceiling is about 550 orders (about 920 at a 30M block on a chain without the cap); practical assemblies stay well
-below it (50–100). Depth is already solved by multi-process composition — an
-order in process A roots process B, each process linear and within the
-ceiling. This is an existing `FigaroCore` property, not a scaling layer to build.
-(`FigaroCore` sees linear process chains; topology lives off-chain —
-`OPEN_WORLD.md` §1.)
+below it (50–100). No code links one process to another, so the ceiling bounds
+each process; clients read it live and refuse the order that would pass it
+(`assertOrderFitsResolveCap`, `VERIFICATION_MAP.md` A-6). (`FigaroCore` sees
+linear process chains; topology lives off-chain — `OPEN_WORLD.md` §1.)
 
 ## The two paths share no state
 
@@ -327,7 +326,6 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
 - zk proofs for proximity, compliance, or selective reveal → composition-layer
   tooling
 - deploying on a cheaper network → an execution-environment choice
-- multi-process composition → already a `FigaroCore` property
 
 ## Secondary-network deployment
 

@@ -230,7 +230,7 @@ name**, and they are not interchangeable: the ARGUMENT is the DERIVED id — the
 INSIDE `commitments` must carry the SIGNED id, the one the parties put under
 their signatures — and a root order signed `processId = 0`. `FigaroCore`
 recomputes `keccak256(processId ‖ hashStruct(c))` from both
-(`src/core/kernel/FigaroCore.sol:276-281`), so putting the derived id inside the root
+(`src/core/kernel/FigaroCore.sol:275-280`), so putting the derived id inside the root
 struct — the natural move, since that is what `OrderCommitted` carries and what
 event reconstruction hands you — yields a hash that matches no committed order
 and reverts `OrderNotCommitted`. The bridge is `restoreSignedProcessId(c,
@@ -664,7 +664,7 @@ have a reason not to; this sketch is only enough to orient a raw caller.
 nets nothing against bonds it already holds from earlier orders in the process.
 
 Two different things state that, and it is worth keeping them apart.
-`FigaroCore` only *pulls exactly*: `src/core/kernel/FigaroCore.sol:205-206` is two
+`FigaroCore` only *pulls exactly*: `src/core/kernel/FigaroCore.sol:206-207` is two
 `_pullExact` transfer calls, `c.payment * 2` from `c.buyer` and
 `c.expectedCumulativeValue * 2` from `c.seller`, with no approval commentary
 and no netting logic anywhere in the file — if the allowance falls short the
@@ -2888,7 +2888,7 @@ trade moved to the batch path under-reports.
 - **ECDSA signers only** — the SDK builds EIP-712 typed data, and any signer that
   produces a standard secp256k1 ECDSA signature works: an EOA, a hardware wallet, or
   an MPC / threshold scheme that outputs one signature. `FigaroCore` verifies both
-  commitment signatures by `ECDSA.recover` alone (`src/core/kernel/FigaroCore.sol:158-163`) — it
+  commitment signatures by `ECDSA.recover` alone (`src/core/kernel/FigaroCore.sol:159-164`) — it
   runs no ERC-1271 check — so an ERC-1271 contract wallet (a Safe or other smart
   account) CANNOT hold a `FigaroCore` party role. A contract that must transact routes
   through a funded EOA it controls (this is how the DAO treasury buys — it never

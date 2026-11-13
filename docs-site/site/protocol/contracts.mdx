@@ -21,27 +21,27 @@ You do not need it — every call below is reachable with raw `cast` — but it 
 
 ## FigaroCore
 
-`FigaroCore` holds every deposit and resolves a process on its buyer's signature. It reads no contract above it and has no third entry point (`src/core/kernel/FigaroCore.sol:26`).
+`FigaroCore` holds every deposit and resolves a process on its buyer's signature. It reads no contract above it and has no third entry point (`src/core/kernel/FigaroCore.sol:27`).
 
 **Two state-changing functions:**
 
 ```solidity
 function commit(CommitmentTypes.Commitment calldata c, bytes calldata buyerSig, bytes calldata sellerSig)
-    external returns (bytes32 processId, bytes32 orderHash);          // src/core/kernel/FigaroCore.sol:145
+    external returns (bytes32 processId, bytes32 orderHash);          // src/core/kernel/FigaroCore.sol:146
 
 function resolveProcess(bytes32 processId, CommitmentTypes.Commitment[] calldata commitments)
-    external;                                                          // src/core/kernel/FigaroCore.sol:258
+    external;                                                          // src/core/kernel/FigaroCore.sol:254
 ```
 
 Both are `nonReentrant`. `commit` verifies both EIP-712 signatures over `c`, then pulls `2 × payment` from the buyer and `2 × expectedCumulativeValue` from the seller. A root order (`c.processId == 0`) opens a process; any other order extends one and must carry the same `c.buyer` as the process's root buyer and an `expectedCumulativeValue` equal to the live accumulator plus this order's `payment`. `resolveProcess` requires `msg.sender` to be the root buyer and the complete active-order list, then pays every seller `2 × expectedCumulativeValue + payment` and refunds the buyer `payment` — every deposited token leaves in one call; `FigaroCore` never holds a withdrawable balance.
 
-**Public reads:** `orderStatus(bytes32 orderHash) → uint8` (0 unknown, 1 committed, 2 resolved), `orderProcessId(bytes32) → bytes32`, the `processes` mapping (`ProcessState{rootBuyer, currency, cumulativeValue, activeOrderCount}`), and `DOMAIN_SEPARATOR() → bytes32` (`src/core/kernel/FigaroCore.sol:51-112`). `orderStatus` answers for the **direct path only** — a batch-resolved order reads `0` here forever, so `0` means "not on this path," never "not resolved."
+**Public reads:** `orderStatus(bytes32 orderHash) → uint8` (0 unknown, 1 committed, 2 resolved), `orderProcessId(bytes32) → bytes32`, the `processes` mapping (`ProcessState{rootBuyer, currency, cumulativeValue, activeOrderCount}`), and `DOMAIN_SEPARATOR() → bytes32` (`src/core/kernel/FigaroCore.sol:52-113`). `orderStatus` answers for the **direct path only** — a batch-resolved order reads `0` here forever, so `0` means "not on this path," never "not resolved."
 
-**The EIP-712 domain is `{ name: "FigaroCore", version: "3", chainId, verifyingContract }`** (`src/core/kernel/FigaroCore.sol:104`). The version counts changes to the commitment struct's layout, not deploys.
+**The EIP-712 domain is `{ name: "FigaroCore", version: "3", chainId, verifyingContract }`** (`src/core/kernel/FigaroCore.sol:105`). The version counts changes to the commitment struct's layout, not deploys.
 
-**Custom errors** (`src/core/kernel/FigaroCore.sol:61-76`): `DeadlineExpired`, `InvalidBuyerSignature`, `InvalidSellerSignature`, `ZeroPayment`, `ProcessAlreadyExists`, `UnknownProcess`, `CumulativeValueMismatch(expected, actual)`, `NotProcessBuyer`, `CurrencyMismatch`, `OrderNotCommitted(orderHash)`, `NoActiveOrders`, `IncompleteOrderList(required, provided)`, `DuplicateCommitment`, `FeeOnTransferDetected`, `InvalidRootCumulativeValue`, `ProcessAlreadyResolved`. Decode them by name with `CORE_ABI` from `@figaro-protocol/sdk`, which also carries the standard ERC-20 error fragments (`ERC20InsufficientAllowance` shows up when a sub-order approval falls short — `FigaroCore` pulls the full per-order bond every time and nets nothing against bonds it already holds).
+**Custom errors** (`src/core/kernel/FigaroCore.sol:62-77`): `DeadlineExpired`, `InvalidBuyerSignature`, `InvalidSellerSignature`, `ZeroPayment`, `ProcessAlreadyExists`, `UnknownProcess`, `CumulativeValueMismatch(expected, actual)`, `NotProcessBuyer`, `CurrencyMismatch`, `OrderNotCommitted(orderHash)`, `NoActiveOrders`, `IncompleteOrderList(required, provided)`, `DuplicateCommitment`, `FeeOnTransferDetected`, `InvalidRootCumulativeValue`, `ProcessAlreadyResolved`. Decode them by name with `CORE_ABI` from `@figaro-protocol/sdk`, which also carries the standard ERC-20 error fragments (`ERC20InsufficientAllowance` shows up when a sub-order approval falls short — `FigaroCore` pulls the full per-order bond every time and nets nothing against bonds it already holds).
 
-**Events:** `OrderCommitted` (carries every struct field but no signatures — the signature bytes live in the commit transaction's calldata), `OrderSeller`, `OrderResolved`, `ProcessResolved` (`src/core/kernel/FigaroCore.sol:35-57`).
+**Events:** `OrderCommitted` (carries every struct field but no signatures — the signature bytes live in the commit transaction's calldata), `OrderSeller`, `OrderResolved`, `ProcessResolved` (`src/core/kernel/FigaroCore.sol:36-58`).
 
 ### Calling it from the chain
 
