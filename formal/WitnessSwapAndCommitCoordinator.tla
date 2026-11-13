@@ -29,7 +29,7 @@
  *                        the unconsumed input refunded to the party  (:234-235)
  *   Commit            →  figaroCore.commit(): FigaroCore pulls 2*payment from the
  *                        buyer and 2*expectedCumulativeValue from the seller
- *                        (FigaroCore.sol:205-206), after the root-order guard
+ *                        (FigaroCore.sol:206-207), after the root-order guard
  *                        `expectedCumulativeValue == payment`        (:178-180)
  *   Revert            →  EVM revert from ANY mid-call step: the whole call frame
  *                        rolls back to the snapshot. Enabled everywhere in-flight,
@@ -230,10 +230,10 @@ LegSwapSettle(party, maxIn, bondAmount, nxt, consumed, received) ==
 \* figaroCore.commit(c, buyerSig, sellerSig). FigaroCore pulls the bonds from the
 \* NAMED parties, not from msg.sender — which is why the coordinator funds the
 \* party in place and never becomes a counterparty.
-\*   _pullExact(currency, c.buyer,  c.payment * 2)                 FigaroCore.sol:205
-\*   _pullExact(currency, c.seller, c.expectedCumulativeValue * 2) FigaroCore.sol:206
+\*   _pullExact(currency, c.buyer,  c.payment * 2)                 FigaroCore.sol:206
+\*   _pullExact(currency, c.seller, c.expectedCumulativeValue * 2) FigaroCore.sol:207
 \* Root-order guard: expectedCumulativeValue must equal payment, else
-\* InvalidRootCumulativeValue reverts the whole call            FigaroCore.sol:175-177
+\* InvalidRootCumulativeValue reverts the whole call            FigaroCore.sol:176-178
 Commit ==
   /\ pc = "commit"
   /\ tx.cumVal = tx.payment
@@ -358,7 +358,7 @@ Inv_Atomicity ==
 
 \* ── Bonding arithmetic ───────────────────────────────────────
 \* Each landed order carries exactly FigaroCore's pulls: 2x payment from the
-\* buyer, 2x expectedCumulativeValue from the seller (FigaroCore.sol:205-206),
+\* buyer, 2x expectedCumulativeValue from the seller (FigaroCore.sol:206-207),
 \* which is what the coordinator funds each leg to (:190, :193). The swap is the
 \* on-ramp; the bond ratio is untouched by it.
 Inv_BondFormula ==

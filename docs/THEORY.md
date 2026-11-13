@@ -163,8 +163,8 @@ nothing.
 and an `activeOrderCount`. It stores no parent or child; there is no on-chain
 graph of orders. The topology of a process — who comes before whom, fan-out,
 fan-in — lives in the signed agreement (the `figaro-topology` clause) and is
-read from there by indexers and interfaces. Structures larger than one process
-compose by nesting: an order in process A is also the root commitment of
-process B, each process linear and within the network's gas ceiling. This is
-safe because a wrong cumulative value never commits: the topology is
+read from there by indexers and interfaces. No code links one process to
+another, so each process stays within the network's gas ceiling on its own.
+Leaving topology off chain is safe because a wrong cumulative value never
+commits: the topology is
 descriptive, and the bonds are sized by the on-chain accumulator alone.

@@ -172,7 +172,7 @@ name</strong>, and they are not interchangeable: the ARGUMENT is the DERIVED id 
 INSIDE <code>commitments</code> must carry the SIGNED id, the one the parties put under
 their signatures — and a root order signed <code>processId = 0</code>. <code>FigaroCore</code>
 recomputes <code>keccak256(processId ‖ hashStruct(c))</code> from both
-(<code>src/core/kernel/FigaroCore.sol:276-281</code>), so putting the derived id inside the root
+(<code>src/core/kernel/FigaroCore.sol:275-280</code>), so putting the derived id inside the root
 struct — the natural move, since that is what <code>OrderCommitted</code> carries and what
 event reconstruction hands you — yields a hash that matches no committed order
 and reverts <code>OrderNotCommitted</code>. The bridge is <code>restoreSignedProcessId(c, chainId, core)</code> (root export): it re-derives the id from the struct-as-root and,
@@ -1178,7 +1178,7 @@ have a reason not to; this sketch is only enough to orient a raw caller.</p>
 <code>FigaroCore</code> pulls the FULL per-order bonds on EVERY <code>commit</code>, root or sub-order, and
 nets nothing against bonds it already holds from earlier orders in the process.</p>
 <p>Two different things state that, and it is worth keeping them apart.
-<code>FigaroCore</code> only <em>pulls exactly</em>: <code>src/core/kernel/FigaroCore.sol:205-206</code> is two
+<code>FigaroCore</code> only <em>pulls exactly</em>: <code>src/core/kernel/FigaroCore.sol:206-207</code> is two
 <code>_pullExact</code> transfer calls, <code>c.payment * 2</code> from <code>c.buyer</code> and
 <code>c.expectedCumulativeValue * 2</code> from <code>c.seller</code>, with no approval commentary
 and no netting logic anywhere in the file — if the allowance falls short the
@@ -2256,7 +2256,7 @@ web3.js, no framework lock-in.</li>
 <li><strong>ECDSA signers only</strong> — the SDK builds EIP-712 typed data, and any signer that
 produces a standard secp256k1 ECDSA signature works: an EOA, a hardware wallet, or
 an MPC / threshold scheme that outputs one signature. <code>FigaroCore</code> verifies both
-commitment signatures by <code>ECDSA.recover</code> alone (<code>src/core/kernel/FigaroCore.sol:158-163</code>) — it
+commitment signatures by <code>ECDSA.recover</code> alone (<code>src/core/kernel/FigaroCore.sol:159-164</code>) — it
 runs no ERC-1271 check — so an ERC-1271 contract wallet (a Safe or other smart
 account) CANNOT hold a <code>FigaroCore</code> party role. A contract that must transact routes
 through a funded EOA it controls (this is how the DAO treasury buys — it never

@@ -20,9 +20,9 @@ What follows for a builder, mechanically:
 - **A reader must fold both.** An indexer or reward calculator that reads only `FigaroCore` events under-reports everything that scaled. The two streams are deliberately distinguishable — `FigaroBatchVerifier.Attestation` shares the coordinator's topic hash, so filter by contract address, not by topic.
 - **Exactly one thing crosses the boundary:** the uses for designer rewards — each a (kind, key, process, seller) the guest proved — carried by `settleBatch` into `UsageCounter.applyBatchAccrual`, which counts them into the same tally a direct call feeds, never as `FigaroCore` state. Value crosses as net token positions — payment, not state. No status, no process, no attestation entry crosses.
 
-## Depth is already solved — multi-process composition
+## Depth — the ceiling bounds each process
 
-Depth (a single process's order count) is bounded by gas: `resolveProcess` iterates every commitment in one transaction, so the ceiling is the chain's cap on one transaction's gas or the block's budget, whichever is smaller — about 550 orders under the cap mainnet enforces (EIP-7825's 2^24); the SDK reads the live limit and takes the cap, and no figure here is mainnet-stable. Practical assemblies stay well below it. Where more depth is wanted, an order in process A roots process B, each process linear and within the ceiling — an existing `FigaroCore` property, not a layer to build. `FigaroCore` sees only linear process chains; topology lives off-chain.
+Depth (a single process's order count) is bounded by gas: `resolveProcess` iterates every commitment in one transaction, so the ceiling is the chain's cap on one transaction's gas or the block's budget, whichever is smaller — about 550 orders under the cap mainnet enforces (EIP-7825's 2^24); the SDK reads the live limit and takes the cap, and no figure here is mainnet-stable. Practical assemblies stay well below it. No code links one process to another, so the ceiling bounds each process: the SDK refuses the order that would pass it (`assertOrderFitsResolveCap`). `FigaroCore` sees only linear process chains; topology lives off-chain.
 
 The batch path solves the other constraint, **throughput** — many concurrent processes competing for block space — by moving execution off-chain and landing only the proven net effect.
 
