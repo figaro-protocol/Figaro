@@ -30,6 +30,9 @@ export default function Kernel() {
             <h1 className="text-heading-h1 text-ink-heading mb-3">
                 How any two parties can transact directly, anywhere.
             </h1>
+            <p className="text-body-lead text-ink-muted mb-4">
+                Figaro is a protocol anyone can build an economy on, and every trade in each of those economies rests on the mechanism this page sets out. A court or a platform repairs a broken word after the trade; the mechanism adds the time before it, and the signed evidence a forum reads afterwards stays.
+            </p>
             <p className="text-body-lead text-ink-muted italic mb-8">
                 Two bonds that make keeping your word each side&apos;s better move, each bigger than the trade. One rule for who resolves. That is the entire machine.
             </p>

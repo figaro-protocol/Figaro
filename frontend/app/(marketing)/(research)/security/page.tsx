@@ -22,7 +22,7 @@ export default function Security() {
                 title="Security."
                 lead={
                     <>
-                        Security here means what it means in crypto: testing and code security. This page holds the verification stack: every way the code is secured. The questions people ask about who holds the tokens, non-delivery, disputes, or lost keys are answered once, on the <Link href="/faq" className="hover:underline">FAQ</Link>.
+                        Anyone can build an economy on Figaro, and every trade in each of them moves its tokens through the same smart contracts. Because everything built above depends on that code, the project secures it as far as it can, in each of the ways below. Security here means what it means in crypto: testing and code security. This page holds the verification stack: every way the code is secured. The questions people ask about who holds the tokens, non-delivery, disputes, or lost keys are answered once, on the <Link href="/faq" className="hover:underline">FAQ</Link>.
                     </>
                 }
             />

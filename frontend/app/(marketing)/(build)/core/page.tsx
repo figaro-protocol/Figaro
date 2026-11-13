@@ -55,7 +55,10 @@ const SUBJECTS: { line: string; body: ReactNode; cta: string; href: string }[] =
 export default function CoreDoor() {
     return (
         <>
-            <MarketingHero title="Figaro Core: four smart contracts, secured by cryptoeconomics">
+            <MarketingHero
+                title="Figaro Core: four smart contracts, secured by cryptoeconomics"
+                lead="Figaro is a protocol anyone can build an economy on, with the terms, the processes and the token of their choosing, and every trade in each of those economies runs through these four contracts. Because everything built above depends on them, the project secures them as far as it can: they have no admin, no pause and no upgrade, and they are proven and checked."
+            >
                 <div className="flex flex-wrap gap-4 mb-8">
                     <CtaLink href="/spec">Read the spec</CtaLink>
                 </div>

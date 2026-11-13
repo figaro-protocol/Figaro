@@ -47,7 +47,7 @@ export default function Faq() {
                 title="Core FAQ."
                 lead={
                     <>
-                        Answers about the Core. Each states a fact of the contracts and points at the page that owns it.
+                        Anyone can build an economy on Figaro, with its own terms and its own token, and every trade in it runs through the Core. Because all of that depends on it, the Core is kept to two calls, with no admin, no pause and no upgrade. Answers about the Core. Each states a fact of the contracts and points at the page that owns it.
                     </>
                 }
             />
