@@ -22,7 +22,7 @@
 import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
-import type { ExtractedDocument } from "./types";
+import type { ExtractedDocument, MissingPart } from "./types";
 import { clauseIsProcessLog, clauseWitnessStages, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
 interface ProcessLogEntry {
@@ -61,6 +61,9 @@ export interface ProcessLogsDocument extends ExtractedDocument {
     /** Per-clause event timelines, one group per process clause that
      *  attested on this order, in first-seen order. */
     logs: ProcessLogGroup[];
+    /** Attestations of this order the section could not place in a clause's
+     *  timeline, each named with its fingerprint. */
+    missing: MissingPart[];
 }
 
 export function extractProcessLogs(
@@ -68,14 +71,23 @@ export function extractProcessLogs(
     attestations: readonly AttestationRecord[],
 ): ProcessLogsDocument {
     const groups = new Map<string, ProcessLogGroup>();
+    const missing: MissingPart[] = [];
 
     for (const att of attestations) {
         if (att.orderHash !== order.orderHash) continue;
         // Attestation events carry the clause KEY; the spec reads key on it.
-        // A key whose spec is not loaded is skipped until the cache warms.
+        // A key whose spec is not loaded cannot be placed in a clause's
+        // timeline: the evidence file names the attestation as missing from it.
         const clauseKey = att.clauseId.toLowerCase();
         const spec = getClauseSpec(clauseKey);
-        if (!spec) continue;
+        if (!spec) {
+            missing.push({
+                part: `Attestation of clause ${clauseKey}, stage ${att.stage}, contentRef ${att.contentRef}${att.transactionHash ? `, transaction ${att.transactionHash}` : ""}`,
+                orderHash: order.orderHash,
+                reason: "the spec of this clause was not loaded, so the attestation is not placed in a clause's timeline (the hash appendix lists its contentRef)",
+            });
+            continue;
+        }
         // Two runtime-evidence shapes share this timeline: process-log LADDERS
         // (attestations article) and declared WITNESS stages (spec.stages[N] —
         // a temperature reading, measured grams, a detected band). Both are
@@ -106,5 +118,6 @@ export function extractProcessLogs(
         buyer: order.buyer,
         seller: order.seller,
         logs: Array.from(groups.values()),
+        missing,
     };
 }

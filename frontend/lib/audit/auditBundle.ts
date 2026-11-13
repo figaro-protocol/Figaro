@@ -35,6 +35,7 @@ import {
     type MemberRegisteredEvent,
 } from "./membersRegistryExtract";
 import { buildHashAppendix, type HashAppendixDocument } from "./hashAppendix";
+import type { MissingPart } from "./types";
 
 export interface AuditBundle {
     contract: ContractDocument;
@@ -48,6 +49,9 @@ export interface AuditBundle {
      *  buyer's. Both are members when they register. */
     membersRegistry: { seller: MembersRegistryDocument; buyer: MembersRegistryDocument };
     hashAppendix: HashAppendixDocument;
+    /** What this order's sections could not hold, gathered from the sections
+     *  that name it (the process logs and the clause data). */
+    missing: MissingPart[];
 }
 
 export interface AuditBundleInputs {
@@ -64,10 +68,13 @@ export function buildAuditBundle(
     inputs: AuditBundleInputs = {},
 ): AuditBundle {
     const contract = extractContract(order, agreement);
+    const processLogs = extractProcessLogs(order, attestations);
+    const clauseData = extractClauseData(order, agreement);
     return {
         contract,
-        processLogs: extractProcessLogs(order, attestations),
-        clauseData: extractClauseData(order, agreement),
+        processLogs,
+        clauseData,
+        missing: [...clauseData.missing, ...processLogs.missing],
         membersRegistry: {
             seller: extractMembersRegistry(order, inputs.memberRegistrationEvents ?? [], "seller"),
             buyer: extractMembersRegistry(order, inputs.memberRegistrationEvents ?? [], "buyer"),

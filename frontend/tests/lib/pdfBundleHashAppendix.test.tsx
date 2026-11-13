@@ -36,7 +36,7 @@ describe("AuditBundlePdf — the hash appendix page", () => {
     it("says the chain holds only the contentRef hash and the parties hold the content, never calldata", () => {
         const { container } = render(
             <AuditBundlePdf data={{
-                processId: ORDER.processId, buyer: BUYER, generatedAt: new Date(0),
+                processId: ORDER.processId, buyer: BUYER, missing: [], generatedAt: new Date(0),
                 perOrderBundles: [buildAuditBundle(ORDER, AGREEMENT, [])], documents: [],
             } as unknown as Parameters<typeof AuditBundlePdf>[0]["data"]} />,
         );
@@ -45,5 +45,19 @@ describe("AuditBundlePdf — the hash appendix page", () => {
             "Each attestation contentRef = keccak256(content); the chain holds only this hash, and the content is held off chain by the parties.",
         );
         expect(text).not.toMatch(/calldata/i);
+    });
+
+    it("draws the page \"What this evidence file does not contain\" with each missing part and its reason", () => {
+        const { container } = render(
+            <AuditBundlePdf data={{
+                processId: ORDER.processId, buyer: BUYER, generatedAt: new Date(0),
+                missing: [{ part: "Process timeline", reason: "the read of the chain's events failed" }],
+                perOrderBundles: [buildAuditBundle(ORDER, AGREEMENT, [])], documents: [],
+            } as unknown as Parameters<typeof AuditBundlePdf>[0]["data"]} />,
+        );
+        const text = container.textContent ?? "";
+        expect(text).toContain("What this evidence file does not contain");
+        expect(text).toContain("Process timeline");
+        expect(text).toContain("the read of the chain's events failed");
     });
 });

@@ -47,6 +47,9 @@ private data can already do so through the same bonded commitment as any other
 sale — the content-handoff clause family names datasets and access credentials
 as digital value-added, delivered over the sealed channel.
 
+The evidence file a party hands a forum names each part it does not contain,
+with the reason given, and fills no gap with content it does not hold.
+
 The voluntary data market around that capacity is Core-native and needs no
 contract of its own: data products are catalog items; the disclosure regime for
 a process's own data is the composable
