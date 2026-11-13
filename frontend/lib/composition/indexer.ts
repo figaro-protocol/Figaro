@@ -93,7 +93,7 @@ export async function getAttestationsByOrder(client: PublicClient, chainId: numb
 //
 // These reads are deliberately NOT merged into `getAllAttestations` above. The
 // `Attestation` topic hash is shared by the coordinator and the verifier
-// (FigaroBatchVerifier.sol:247 warns of exactly this), so the EMITTING ADDRESS
+// (the WARNING above the verifier's `Attestation` event says exactly this), so the EMITTING ADDRESS
 // is the only thing that says which universe a row came from — and that
 // distinction is the whole evidentiary difference between "re-verifiable from
 // calldata" and "proved once inside a batch". Merging the two streams would

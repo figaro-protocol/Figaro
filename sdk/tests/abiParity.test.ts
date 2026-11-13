@@ -111,3 +111,40 @@ describe("the SDK's ABIs are the contracts' ABIs", () => {
         expect(missingErrors(dropped, compiled("FigaroBatchVerifier"))).toEqual(["error ZeroVerifier()"]);
     });
 });
+
+/** The names of an ABI's items that change state: every function that is not
+ *  view or pure, and any fallback or receive (which would be a state-changing
+ *  entry with no name). */
+function stateChanging(abi: Abi): string[] {
+    return abi
+        .filter((i) =>
+            (i.type === "function" && i.stateMutability !== "view" && i.stateMutability !== "pure")
+            || i.type === "fallback" || i.type === "receive")
+        .map((i) => (i.type === "function" ? i.name : i.type))
+        .sort();
+}
+
+describe("the Core has no third action (CLAUDE.md § 'The Core's rules', rule 3: no admin, no pause, no upgrade)", () => {
+    it("FigaroCore changes state only through commit and resolveProcess", () => {
+        expect(stateChanging(compiled("FigaroCore"))).toEqual(["commit", "resolveProcess"]);
+    });
+
+    it("AttestationCoordinator changes state only through attestAsBuyer and attestAsSeller", () => {
+        expect(stateChanging(compiled("AttestationCoordinator"))).toEqual(["attestAsBuyer", "attestAsSeller"]);
+    });
+
+    it("neither names an owner, pause, upgrade, sweep or withdraw function", () => {
+        const names = [...compiled("FigaroCore"), ...compiled("AttestationCoordinator")]
+            .filter((i) => i.type === "function")
+            .map((i) => (i as { name: string }).name);
+        expect(names.filter((n) => /owner|admin|pause|upgrade|sweep|withdraw|rescue|recover|implementation|proxy/i.test(n))).toEqual([]);
+    });
+
+    it("the check reads what it claims to: a third state-changing function is caught", () => {
+        const extra = [
+            ...compiled("FigaroCore"),
+            { type: "function", name: "sweep", inputs: [], outputs: [], stateMutability: "nonpayable" },
+        ] as Abi;
+        expect(stateChanging(extra)).toEqual(["commit", "resolveProcess", "sweep"]);
+    });
+});

@@ -103,7 +103,8 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
             // on every order in its process (star shape), so the
             // fold's per-root-buyer processes give one row each. Root
             // detection within the process: cumulativeValue == payment
-            // iff this is the root commit (FigaroCore.sol:174; every
+            // iff this is the root commit (the `InvalidRootCumulativeValue` check in
+            // `FigaroCore.commit`; every
             // sub-order accumulates parent + payment > payment).
             // SELLER rows are per-order: a seller holds only its own
             // order(s), and a sub-order seller in someone else's process
