@@ -43,6 +43,7 @@ import { createPublicClient, http, parseAbi } from "viem";
 // canonical bytes, the form every pin writes. Built output: run
 // `npm run build` in sdk/ when dist/ is stale.
 import { canonicalContentHash } from "../sdk/dist/agreement.js";
+import { checkRegistrars, plannedRegistrations } from "./check-deployment-registrars.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -116,6 +117,7 @@ const ABI = parseAbi([
     "function minters(address) view returns (uint256 cap, uint256 minted)",
     "function depositOf(bytes32) view returns (address registeredBy, bool withdrawn)",
     "function registered(bytes32) view returns (bool)",
+    "function bindings(bytes32) view returns (address registeredBy, uint64 registeredAt, bool withdrawn, string contentURI)",
 ]);
 const read = (address, functionName, args = []) =>
     client.readContract({ address, abi: ABI, functionName, args });
@@ -369,6 +371,19 @@ async function main() {
             if (withdrawn) { bad(`${ref} registered`, "its deposit is withdrawn"); continue; }
             await expectValue(`${ref} registered by ${owner}`, { wallet: owner }, registeredBy);
         }
+    }
+
+    console.log("\nWho registered each named agreement and assembly");
+    if (!plan?.agreements && !plan?.assemblies) {
+        console.log("  · the expectations file names none under registrations.agreements or registrations.assemblies — not checked");
+    } else {
+        await checkRegistrars({
+            planned: plannedRegistrations(plan),
+            readBinding: (family, key) => read(family === "agreement" ? record.agreementRegistry : record.assemblyRegistry, "bindings", [key]),
+            walletAddress: (name) => resolveAddress({ wallet: name }, name),
+            ok,
+            bad,
+        });
     }
 
     console.log(`\n${passed} held, ${failures.length} did not.`);
