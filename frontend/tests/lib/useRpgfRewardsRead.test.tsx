@@ -80,6 +80,19 @@ describe("useRpgfRewards — one NetworkRead", () => {
         expect(read.value.memberLive).toBe(true);
     });
 
+    it("reads claimed per key, and a period is claimed once every accruing key is", async () => {
+        w.fail = false;
+        const { result } = renderHook(() => useRpgfRewards());
+        await waitFor(() => expect(result.current.read.status).toBe("present"));
+        expect(w.client.readContract as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
+            expect.objectContaining({ functionName: "claimed", args: [0, 0, w.key] }),
+        );
+        const read = result.current.read;
+        if (read.status !== "present") throw new Error("unreachable");
+        expect(read.value.periods[0].accruals[0].claimed).toBe(false);
+        expect(read.value.periods[0].claimed).toBe(false);
+    });
+
     it("a failed read is absent — never an empty period list", async () => {
         w.fail = true;
         const { result } = renderHook(() => useRpgfRewards());

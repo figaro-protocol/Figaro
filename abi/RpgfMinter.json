@@ -187,8 +187,13 @@
       },
       {
         "name": "",
-        "type": "address",
-        "internalType": "address"
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "outputs": [
@@ -333,22 +338,6 @@
       }
     ],
     "anonymous": false
-  },
-  {
-    "type": "error",
-    "name": "AlreadyClaimed",
-    "inputs": [
-      {
-        "name": "periodId",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "account",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
   },
   {
     "type": "error",

@@ -154,8 +154,12 @@ network is the DAO treasury's job, not the meter's.
 
 **The pool is fixed.** A wallet that manufactures usage only ever dilutes the
 period's pool; it can never inflate it. `RpgfMinter.claim` pays uniform pro
-rata from the period's fixed budget, once per wallet per closed period, with no
-per-wallet cap.
+rata from the period's fixed budget, once per key per closed period, with no
+per-wallet cap. The key, not the wallet, is the unit claimed: a designer may
+claim its keys in one call or in several and forfeits none by claiming some,
+and a list that names a claimed key again mints for the rest. Each call
+floors its own share, so several calls can mint at most one unit less per
+extra call than one would, and never more.
 
 **Every deployment runs the real annual schedule** — a testnet is the
 full-dress rehearsal for mainnet and rehearses mainnet's real timing, and the

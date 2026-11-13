@@ -6,7 +6,9 @@
 // mint an entire tranche — see the `_entitlement` doc comment in the .sol)
 // were both caught by audit, never by the Foundry suite. This spec proves the
 // six properties that class of bug would have violated, two more on the
-// `claimable` view, and two on the designer-side membership gate (ten rules).
+// `claimable` view, two on the designer-side membership gate, and two more on
+// the per-key claim: a claimed key adds nothing to a later claim, and a claimed
+// key is never cleared (twelve rules).
 //
 // Scope: only `src/rewards/RpgfMinter.sol` is in the verified scene. Every
 // dependency it calls through an interface — `IUsageCounter` (counter),
@@ -48,7 +50,8 @@
 //     deliberately left unsummarized.
 //
 //   • `florin.mint` is summarized to NONDET. In `claim`, BOTH state writes
-//     this spec protects (`claimed[periodId][msg.sender] = true` and
+//     this spec protects (`claimed[periodId][kind][key] = true` for every
+//     listed key, and
 //     `minted[periodId] = spent`) happen BEFORE `florin.mint` is called — the
 //     call is the last statement in the function, checks-effects-interactions
 //     — so no outcome of `florin.mint` (including a hypothetical reentrant
@@ -79,7 +82,7 @@ methods {
     // (which are keyed by `uint8` directly).
     function periodAmount(uint256) external returns (uint256) envfree;
     function minted(uint8) external returns (uint256) envfree;
-    function claimed(uint8, address) external returns (bool) envfree;
+    function claimed(uint8, uint8, bytes32) external returns (bool) envfree;
     function claimable(uint8, address, RpgfMinter.ClauseOrAssemblyKey[]) external returns (uint256) envfree;
 
     // Eligibility gate — internal-function summary on the verified contract
@@ -150,17 +153,56 @@ rule mintedNeverExceedsPeriodBudget(uint8 periodId, method f) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 2: One claim per wallet per period (no double-claim)
+// RULE 2: One payment per key per period (no double-claim)
+//
+// A claim is per key: `claimed[periodId][kind][key]`. A list whose one key is
+// already claimed scores nothing, so `claim` reverts (`NothingToClaim`).
+// `claimedKeyAddsNothing` below proves the general case: a claimed key in a
+// longer list adds nothing to what the call mints.
 // ═══════════════════════════════════════════════════════════════════
 
-rule noDoubleClaimPerWalletPerPeriod(uint8 periodId, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies) {
+rule noDoubleClaimPerKeyPerPeriod(uint8 periodId, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies) {
     env e;
-    require claimed(periodId, e.msg.sender);
+    require clausesOrAssemblies.length == 1;
+    require claimed(periodId, clausesOrAssemblies[0].kind, clausesOrAssemblies[0].key);
 
     claim@withrevert(e, periodId, clausesOrAssemblies);
 
     assert lastReverted,
-        "claim must revert if msg.sender already claimed this period";
+        "claim must revert when its only key was already claimed this period";
+}
+
+// A claimed key in a two-entry list adds nothing: the call mints exactly the
+// share of the other, unclaimed key — what a call naming that key alone mints.
+// So claiming in two calls never rewards a key twice, and claiming one key never
+// forfeits the other.
+rule claimedKeyAddsNothing(uint8 periodId, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies) {
+    env e;
+    require clausesOrAssemblies.length == 2;
+    require claimed(periodId, clausesOrAssemblies[0].kind, clausesOrAssemblies[0].key);
+    require !claimed(periodId, clausesOrAssemblies[1].kind, clausesOrAssemblies[1].key);
+    uint256 before = minted(periodId);
+
+    claim(e, periodId, clausesOrAssemblies);
+
+    mathint share = (periodAmount(periodId)
+        * g_scoreOf[clausesOrAssemblies[1].kind][clausesOrAssemblies[1].key][periodId])
+        / g_totalScoreIn[periodId];
+    assert minted(periodId) - before == share,
+        "a claimed key adds nothing: the call mints the unclaimed key's share alone";
+    assert claimed(periodId, clausesOrAssemblies[1].kind, clausesOrAssemblies[1].key),
+        "a successful claim marks every listed key claimed";
+}
+
+// A claimed key stays claimed: no method clears it.
+rule claimedIsNeverCleared(uint8 periodId, uint8 kind, bytes32 key, method f) {
+    require claimed(periodId, kind, key);
+
+    env e;
+    calldataarg args;
+    f(e, args);
+
+    assert claimed(periodId, kind, key), "a claimed key is never cleared";
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -283,10 +325,9 @@ rule mintedMonotonic(uint8 periodId, method f) {
 rule claimableRejectsDuplicatesToo(uint8 periodId, address account, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies, uint256 i, uint256 j) {
     // Two early-return paths reach the dedupe loop in `_entitlement` only
     // conditionally, and both are legitimate non-revert shapes independent of
-    // the clause-or-assembly list's contents:
-    //   (a) `claimable` itself short-circuits to `return 0` for an
-    //       already-claimed wallet BEFORE calling `_entitlement` at all (see
-    //       claimableReturnsZeroForAlreadyClaimedWallet);
+    // the clause-or-assembly list's contents (a claimed key is no early
+    // return: `_entitlement` checks it for duplicates and authorship first,
+    // and only then counts it zero):
     //   (b) `_entitlement` short-circuits to `(0, 0)` when
     //       `counter.totalScoreIn(periodId) == 0` — BEFORE its own dedupe
     //       loop runs. On `claim` this still reverts one step later
@@ -296,10 +337,9 @@ rule claimableRejectsDuplicatesToo(uint8 periodId, address account, RpgfMinter.C
     //   (c) `claimable` returns 0 for a wallet that holds no live member stake,
     //       BEFORE `_entitlement` (the designer-side membership gate; its own
     //       rules are `nonMemberCannotBePaid` and `nonMemberIsQuotedZero`).
-    // Excluding all three isolates what this rule actually checks: for a member
-    // that hasn't claimed, in a period with real score to divide, the view
-    // path enforces the same dedupe guard `claim` does.
-    require !claimed(periodId, account);
+    // Excluding both isolates what this rule actually checks: for a member,
+    // in a period with real score to divide, the view path enforces the same
+    // dedupe guard `claim` does, whatever its keys' claimed state.
     require g_isMember[account];
     require g_totalScoreIn[periodId] != 0;
     require i < clausesOrAssemblies.length && j < i && clausesOrAssemblies[i].kind == clausesOrAssemblies[j].kind
@@ -308,20 +348,21 @@ rule claimableRejectsDuplicatesToo(uint8 periodId, address account, RpgfMinter.C
     claimable@withrevert(periodId, account, clausesOrAssemblies);
 
     assert lastReverted,
-        "claimable must reject the same duplicate-entry list claim() would reject, for a wallet that has not yet claimed in a non-empty period";
+        "claimable must reject the same duplicate-entry list claim() would reject, for a member in a non-empty period";
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SUPPLEMENTARY S2: `claimable` quotes zero once the wallet has already
-// claimed the period — the view-side twin of rule 2.
+// SUPPLEMENTARY S2: `claimable` quotes zero for a list whose one key is
+// already claimed this period — the view-side twin of rule 2.
 // ═══════════════════════════════════════════════════════════════════
 
-rule claimableReturnsZeroForAlreadyClaimedWallet(uint8 periodId, address account, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies) {
-    require claimed(periodId, account);
+rule claimableQuotesZeroForAClaimedKey(uint8 periodId, address account, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies) {
+    require clausesOrAssemblies.length == 1;
+    require claimed(periodId, clausesOrAssemblies[0].kind, clausesOrAssemblies[0].key);
 
     uint256 quoted = claimable@withrevert(periodId, account, clausesOrAssemblies);
     bool reverted = lastReverted;
 
     assert !reverted => quoted == 0,
-        "claimable must quote zero once a wallet has already claimed the period";
+        "claimable must quote zero for a key already claimed this period";
 }

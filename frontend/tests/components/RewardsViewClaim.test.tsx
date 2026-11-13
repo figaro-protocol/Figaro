@@ -31,7 +31,7 @@ import { RewardsView } from "@/app/(app)/rewards/_components/RewardsView";
 function period(overrides: Partial<RpgfPeriodState> = {}): RpgfPeriodState {
     return {
         periodId: 3, amount: 1000n, minted: 0n, periodClosed: true, totalScore: 10n,
-        accruals: [{ clauseOrAssembly: CLAUSE, kind: 0, label: "clause 0xabab", family: "clause", c: 1n, d: 1n, score: 3n }],
+        accruals: [{ clauseOrAssembly: CLAUSE, kind: 0, label: "clause 0xabab", family: "clause", c: 1n, d: 1n, score: 3n, claimed: false }],
         myScore: 3n, claimable: 5n * 10n ** 18n, claimed: false,
         ...overrides,
     };
@@ -67,10 +67,10 @@ describe("RewardsView — the claim", () => {
     });
 
     it("a refused claim shows its reason", async () => {
-        m.claim = vi.fn(async () => { throw new Error("AlreadyClaimed"); });
+        m.claim = vi.fn(async () => { throw new Error("NothingToClaim"); });
         render(<RewardsView />);
         await act(async () => { fireEvent.click(screen.getByTestId("claim-3")); });
-        expect(screen.getByTestId("rewards-error").textContent).toBe("AlreadyClaimed");
+        expect(screen.getByTestId("rewards-error").textContent).toBe("NothingToClaim");
     });
 
     it("holds the claim while nothing is claimable", () => {

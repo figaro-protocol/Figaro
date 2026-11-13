@@ -353,16 +353,68 @@ contract RpgfMinterTest is Test {
         minter.claim(0, _assembly(ASM));
     }
 
-    // ── Once per wallet per period ──────────────────────────────────
+    // ── Once per key per period ─────────────────────────────────────
 
-    function test_claimsOncePerPeriod() public {
+    /// A claim is per key: a key claimed once in a period is never rewarded again
+    /// in that period, and a second claim naming only it mints nothing.
+    function test_claimsOncePerKeyPerPeriod() public {
         counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
         counter.setClosed(0, true);
         vm.startPrank(alice);
         minter.claim(0, _clause(A_KEY));
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.AlreadyClaimed.selector, uint8(0), alice));
+        assertTrue(minter.claimed(0, KIND_CLAUSE, A_KEY));
+        vm.expectRevert(RpgfMinter.NothingToClaim.selector);
         minter.claim(0, _clause(A_KEY));
         vm.stopPrank();
+    }
+
+    /// A designer that claims its keys in two calls receives both shares:
+    /// claiming one key does not forfeit the others.
+    function test_claimsTwoKeysInTwoCallsAndReceivesBoth() public {
+        vm.prank(alice);
+        bytes32 cKey = keccak256('{"clauseId":"clause-c","version":1}');
+        clauses.registerClause(cKey, "ipfs://c");
+
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 50);
+        counter.setScore(KIND_CLAUSE, cKey, 0, 50);
+        counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
+        counter.setClosed(0, true);
+
+        vm.startPrank(alice);
+        minter.claim(0, _clause(A_KEY));
+        minter.claim(0, _clause(cKey));
+        vm.stopPrank();
+        assertEq(florin.balanceOf(alice), 2 * ((T0 * 50) / 1000));
+        assertEq(minter.minted(0), 2 * ((T0 * 50) / 1000));
+    }
+
+    /// A list that names a key already claimed and one not yet claimed mints for
+    /// the second alone, and the quote says so first: a page that passes
+    /// every key it knows loses nothing and is rewarded nothing twice.
+    function test_aListWithAClaimedKeyPaysOnlyTheUnclaimedOnes() public {
+        vm.prank(alice);
+        bytes32 cKey = keccak256('{"clauseId":"clause-c","version":1}');
+        clauses.registerClause(cKey, "ipfs://c");
+
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 50);
+        counter.setScore(KIND_CLAUSE, cKey, 0, 50);
+        counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
+        counter.setClosed(0, true);
+
+        RpgfMinter.ClauseOrAssemblyKey[] memory both = new RpgfMinter.ClauseOrAssemblyKey[](2);
+        both[0] = _entry(KIND_CLAUSE, A_KEY);
+        both[1] = _entry(KIND_CLAUSE, cKey);
+
+        vm.prank(alice);
+        minter.claim(0, _clause(A_KEY));
+        uint256 first = florin.balanceOf(alice);
+
+        uint256 quoted = minter.claimable(0, alice, both);
+        assertEq(quoted, (T0 * 50) / 1000);
+        vm.prank(alice);
+        minter.claim(0, both);
+        assertEq(florin.balanceOf(alice) - first, quoted);
+        assertEq(minter.claimable(0, alice, both), 0);
     }
 
     function test_periodsAreIndependent() public {
