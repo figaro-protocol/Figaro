@@ -1145,6 +1145,27 @@ bound) and `test_MintWritesOnlyTheTallyTheSupplyAndTheBalance`
 
 ---
 
+## 29. Public pieces no code of ours reads stay for a stranger's reader
+
+**Pattern**: Each piece below is public, and no contract, SDK reader, page,
+relay or agent in this repository reads it (searched over `src`, `sdk/src`
+without its ABI lists, `frontend`, `prover/sequencer/src`, `scripts` and
+`ecosystem-agents`; tests and ABI lists are not readers).
+
+**Why it looks wrong**: Surface nothing reads is surface to audit for nothing.
+
+**Why it is correct**: Each one answers a question a stranger asks of the
+chain without trusting this project's software or documents.
+
+| Piece | What it gives a stranger | Who would read it |
+|---|---|---|
+| `FlorinToken.MinterRegistered(minter, cap)` | The list of every wallet that may mint florins and its cap; the `minters(address)` getter answers only for an address already known | Anyone checking the florin supply plan against the chain, from the token's logs alone |
+| `AgreementRegistry.PROVENANCE_LEAF_KEY()` and `ASSEMBLY_TERMS_LEAF_KEY()` | The two reserved keys the registry refuses to register (`ReservedKeyIsNotARegistration`); the registry reads the constants itself, and the getters publish them | A stranger's software that builds agreements and assemblies, to check its own reserved leaf keys against the deployed registry (the SDK checks the counter's copies, `UsageCounter.provenanceLeaf()` and `assemblyTermsLeaf()`) |
+| `MembersRegistry.MemberWithdrawn(member, amount)` | The receipt of the release: the stake left the registry, to which wallet, and how much. De-surfacing is `MemberWithdrawalRequested`, which the readers fold | The member, or anyone auditing the registry's balance against its stakes |
+| `UsageCounter.sellerSeen(kind, key, period, seller)` | Whether a seller already counted toward a key's breadth `d` in a period; the counter reads it to count each seller once | Anyone recomputing a key's score from `UsageRecorded` events and checking it against the counter's state |
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -1177,3 +1198,4 @@ bound) and `test_MintWritesOnlyTheTallyTheSupplyAndTheBalance`
 | 26 | The attestation signature does not cover the witness form | batch-path/evidence | A relay can submit a plaintext operation hash-only, and the event is the same for both forms, so the in-proof check is not legible | The evidence a reader relies on (signer, open order, inclusion, `contentRef`) is identical on every path; the in-proof check assures the attesting party's own submission, not a reader |
 | 27 | A state-neutral batch's proof can land twice | batch-path/reward-path | A proof submitted twice is the replay shape, and `BatchSettled` repeats | A batch that moves no state has prev root == new root; its second landing moves no token, and the counter's once-ever `processCounted` skips every use, so nothing a reader relies on changes; a batch that moved the root cannot land twice |
 | 28 | `FlorinToken.mint` checks the supply cap the minters' caps already bound | token | A check that cannot fire reads as dead code | It states the billion bound in the token, at the one function that creates florins, where a stranger reads it; one storage read, no outcome changes |
+| 29 | Public pieces no code of ours reads | registry/reward-path/token | Surface nothing reads is surface to audit for nothing | Each answers a stranger's question of the chain: who may mint, which keys are reserved, where a stake went, which sellers counted |
