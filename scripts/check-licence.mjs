@@ -10,7 +10,11 @@ import { join, relative, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const SKIP = new Set(["node_modules", ".git", "target", "out", ".next", "dist", "cache", "work", ".claude"]);
+const SKIP = new Set(["node_modules", ".git", "target", "out", ".next", "dist", "cache", "work", ".claude", ".venv"]);
+// Third-party code is not ours to license. The repository's top-level `lib` holds the
+// Foundry submodules; a folder named `lib` elsewhere (the proof program's, the
+// frontend's) is the project's own and is read.
+const SKIP_AT_ROOT = new Set(["lib"]);
 const failures = [];
 const fail = (m) => failures.push(m);
 
@@ -19,7 +23,7 @@ function walk(dir, hits = []) {
         const p = join(dir, name);
         const s = statSync(p);
         if (s.isDirectory()) {
-            if (!SKIP.has(name)) walk(p, hits);
+            if (!SKIP.has(name) && !(dir === root && SKIP_AT_ROOT.has(name))) walk(p, hits);
         } else if (name === "package.json" || name === "Cargo.toml" || name === "LICENSE") hits.push(p);
     }
     return hits;
