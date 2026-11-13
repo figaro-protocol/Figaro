@@ -6,7 +6,7 @@ Nouns and their definitions. One name per thing.
 
 **agreement** — A merkle tree of clauses, one leaf per clause, each verifiable by a merkle proof. It defines the relationship between a buyer and a seller. Its design is saved on IPFS and registered in the agreement registry under its merkle root, the `agreementHash`, and its CID, for designers to reuse in assemblies. Completed at checkout, it is a new tree whose merkle root, the `checkoutHash`, commits to the parties' data; the commitment carries the root, never the data.
 
-**assembly** — A merkle tree of agreements, one leaf per agreement, each verifiable by a merkle proof. Its design is saved on IPFS and registered in the assembly registry under its merkle root and CID, and every process that instantiates it reuses it.
+**assembly** — A merkle tree of agreements, one leaf per agreement, each verifiable by a merkle proof. When the design carries terms that belong to the whole assembly, one further leaf holds them; that leaf is not an agreement. Its design is saved on IPFS and registered in the assembly registry under its merkle root and CID, and every process that instantiates it reuses it.
 
 **attestation** — A statement a party signs with its wallet, during the process, about a clause of its agreement. The chain accepts it only from the process's buyer or one of its sellers, only before resolution, and only once the clause is proved in the `checkoutHash`; it keeps the hash of the content, never the content, and checks who signed it and what it is bound to, never whether it is true.
 
