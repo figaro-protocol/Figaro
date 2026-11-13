@@ -52,9 +52,6 @@ pragma solidity 0.8.26;
 ///         cannot be removed or deactivated. Clause governance is a
 ///         convention-layer concern, not enforcement.
 ///
-///         Mechanism self-declaration: any contract can emit which clause
-///         it uses. Frontends read these events to determine encoding.
-///
 ///         Grouping: a clause's group is `block.design.article` in its spec —
 ///         inside the bytes the key hashes. There is NO on-chain group field
 ///         and never will be — grouping is a READER concern (the drawer's
@@ -114,11 +111,6 @@ contract ClauseRegistry {
     /// @param registeredBy Address that withdrew.
     /// @param amount       Deposit returned (always equals `registrationDeposit`).
     event DepositWithdrawn(bytes32 indexed clauseKey, address indexed registeredBy, uint256 amount);
-
-    /// @notice Emitted when a mechanism declares which clause it uses.
-    /// @param mechanism  The declaring contract address (msg.sender).
-    /// @param clauseKey  The declared clause's key.
-    event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseKey);
 
     // ── Errors ──────────────────────────────────────────────────────
 
@@ -182,15 +174,5 @@ contract ClauseRegistry {
 
         (bool ok,) = msg.sender.call{value: registrationDeposit}("");
         if (!ok) revert TransferFailed();
-    }
-
-    // ── Mechanism self-declaration (permissionless) ─────────────────
-
-    /// @notice Declare which clause this mechanism uses. Any contract can call.
-    ///         Reverts if the clause has not been registered.
-    /// @param clauseKey A registered clause's key.
-    function setMechanismClause(bytes32 clauseKey) external {
-        if (!registered[clauseKey]) revert NotRegistered(clauseKey);
-        emit MechanismClauseSet(msg.sender, clauseKey);
     }
 }

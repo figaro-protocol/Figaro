@@ -100,7 +100,6 @@ export function parseClauseRegistryLogs(logs: Log[]): ClauseRegistryEvents {
                     logIndex: Number(log.logIndex ?? 0),
                 });
             }
-            // MechanismClauseSet is not a discovery input — skip.
         } catch {
             // Skip non-matching logs
         }

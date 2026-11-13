@@ -225,9 +225,6 @@ anchoring under a stake.
   refunds the stake and emits `DepositWithdrawn`. The binding stays; readers
   remove the clause from view for new compositions, and orders already
   committed against it still resolve.
-- `setMechanismClause(clauseKey)` — permissionless self-declaration by any
-  contract; writes no storage, emits `MechanismClauseSet(msg.sender, clauseKey)`,
-  reverts `NotRegistered` on an unanchored key. It confers nothing.
 - Registration anchors a key and a locator only; the registry never sees the
   bytes and validates no content. `CLAUSES.md` owns the validation model.
 

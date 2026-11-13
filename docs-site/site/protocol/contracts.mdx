@@ -89,18 +89,17 @@ Permissionless, first-write-wins clause anchoring under a stake (`src/registries
 
 ```solidity
 function registerClause(bytes32 clauseKey, string calldata contentURI)
-    external payable;                          // src/registries/ClauseRegistry.sol:150
-function withdrawDeposit(bytes32 clauseKey) external;     // :173
-function setMechanismClause(bytes32 clauseKey) external;  // :192
-function registered(bytes32 clauseKey) external view returns (bool);                        // :81
-function depositOf(bytes32 clauseKey) external view returns (address registeredBy, bool withdrawn);  // :92
+    external payable;                          // src/registries/ClauseRegistry.sol:142
+function withdrawDeposit(bytes32 clauseKey) external;     // :165
+function registered(bytes32 clauseKey) external view returns (bool);                        // :78
+function depositOf(bytes32 clauseKey) external view returns (address registeredBy, bool withdrawn);  // :89
 ```
 
-The key is `clauseKey = keccak256` of the spec's pinned bytes — the SDK's `computeClauseKey(spec)`, over the canonical JSON `canonicalize(spec)` you pin at `contentURI` (`:146-149`). The key is the clause's identity and its content hash at once; the registry stores no name, no version and no separate hash, and a reader verifies a fetched spec by checking `keccak256(bytes) == clauseKey` on the bytes it fetched (`:11-20`). `registered(clauseKey)` is never cleared, because it is what `FigaroBatchVerifier` checks every witness spec's key against. `withdrawDeposit` is caller-only, once, no time lock: it refunds the stake and de-surfaces the clause for new compositions, but the binding is permanent and orders already committed against it still resolve. `setMechanismClause` is permissionless self-declaration that writes no storage and confers nothing — it emits `MechanismClauseSet(msg.sender, clauseKey)` so indexers can see which clause a composed mechanism speaks.
+The key is `clauseKey = keccak256` of the spec's pinned bytes — the SDK's `computeClauseKey(spec)`, over the canonical JSON `canonicalize(spec)` you pin at `contentURI` (`:138-141`). The key is the clause's identity and its content hash at once; the registry stores no name, no version and no separate hash, and a reader verifies a fetched spec by checking `keccak256(bytes) == clauseKey` on the bytes it fetched (`:11-20`). `registered(clauseKey)` is never cleared, because it is what `FigaroBatchVerifier` checks every witness spec's key against. `withdrawDeposit` is caller-only, once, no time lock: it refunds the stake and de-surfaces the clause for new compositions, but the binding is permanent and orders already committed against it still resolve.
 
-`registrationDeposit()` is a deploy-time immutable — **read it live and send exactly it**; over-payment reverts too, because there is no sweep (`src/registries/ClauseRegistry.sol:74`).
+`registrationDeposit()` is a deploy-time immutable — **read it live and send exactly it**; over-payment reverts too, because there is no sweep (`src/registries/ClauseRegistry.sol:71`).
 
-**Errors** (`:125-132`): `AlreadyRegistered(clauseKey)`, `NotRegistered(clauseKey)`, `ZeroClauseKey`, `EmptyContentURI`, `WrongDeposit(provided, required)`, `NotRegisteredBy(caller, registeredBy)`, `AlreadyWithdrawn`, `TransferFailed`. **Events:** `ClauseRegistered(bytes32 indexed clauseKey, string contentURI, address indexed registeredBy)`, `DepositWithdrawn(clauseKey, registeredBy, amount)`, `MechanismClauseSet(mechanism, clauseKey)` (`:107-121`).
+**Errors** (`:117-124`): `AlreadyRegistered(clauseKey)`, `NotRegistered(clauseKey)`, `ZeroClauseKey`, `EmptyContentURI`, `WrongDeposit(provided, required)`, `NotRegisteredBy(caller, registeredBy)`, `AlreadyWithdrawn`, `TransferFailed`. **Events:** `ClauseRegistered(bytes32 indexed clauseKey, string contentURI, address indexed registeredBy)`, `DepositWithdrawn(clauseKey, registeredBy, amount)` (`:93-113`).
 
 ```bash
 # CLAUSE_KEY = computeClauseKey(spec); CID = the pin of canonicalize(spec), exactly those bytes
