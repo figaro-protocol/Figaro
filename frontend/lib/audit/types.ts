@@ -32,3 +32,19 @@ export interface ExtractedDocument {
     /** Seller address from the order — same load-bearing rationale. */
     seller: string;
 }
+
+/**
+ * A part the evidence file does not contain, and why. The evidence file is a
+ * document for a forum: a part that could not be read is named here, never
+ * left out without a word, and never replaced by content the evidence file does not
+ * hold. An entry states what is missing and the reason the reader gave. It
+ * says nothing about why a party holds anything back.
+ */
+export interface MissingPart {
+    /** What is missing, in the evidence file's own nouns. */
+    part: string;
+    /** The order the part belongs to, when it belongs to one. */
+    orderHash?: string;
+    /** Why the evidence file lacks it. */
+    reason: string;
+}

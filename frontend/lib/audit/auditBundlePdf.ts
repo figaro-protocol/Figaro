@@ -26,6 +26,8 @@ import {
     buildProcessTimeline,
     type ProcessTimeline,
 } from "@/lib/audit/processTimeline";
+import type { MissingPart } from "@/lib/audit/types";
+import type { AuditBundlePdfData } from "@/lib/audit/pdfBundle";
 
 
 // `@react-pdf/renderer` is ~400 kB. Lazy-load on first call so the
@@ -48,15 +50,23 @@ export interface BuildAuditBundlePdfOptions {
     includeTimeline?: boolean;
 }
 
-export async function buildAuditBundlePdfBlob(
+/**
+ * The data the evidence file is drawn from: one bundle per order whose agreement
+ * loaded, the process timeline, the documents, and `missing`, the list of every
+ * part the evidence file does not contain with its reason. A part that could not be
+ * read is named there; none is left out without a word, and none is replaced by
+ * content the evidence file does not hold.
+ */
+export async function buildAuditBundleData(
     processId: string,
     orders: readonly Order[],
     publicClient: PublicClient | undefined,
     chainId: number,
     agreements: Map<string, Agreement>,
     options: BuildAuditBundlePdfOptions = {},
-): Promise<Blob> {
+): Promise<AuditBundlePdfData> {
     const perOrderBundles: AuditBundle[] = [];
+    const missing: MissingPart[] = [];
 
     let memberRegisteredAll: MemberRegisteredEvent[] = [];
     if (publicClient) {
@@ -83,9 +93,18 @@ export async function buildAuditBundlePdfBlob(
                 withdrawn: !activeMembers.has(row.member.toLowerCase()),
             }));
         } catch {
-            // Non-fatal — the extractor reports registered=false and the
-            // bundle still renders.
+            // The extractor reports registered=false and the bundle still
+            // renders; the evidence file says the registry rows were not read.
+            missing.push({
+                part: "Members registry rows of the parties",
+                reason: "the read of the members registry failed, so each party's registration is shown as not found",
+            });
         }
+    } else {
+        missing.push({
+            part: "Members registry rows of the parties",
+            reason: "no network client was given, so the members registry was not read",
+        });
     }
 
     for (const order of orders) {
@@ -93,6 +112,13 @@ export async function buildAuditBundlePdfBlob(
             ? (agreements.get(order.checkoutHash) ?? null)
             : null;
         if (!cleartextAgreement) {
+            missing.push({
+                part: `Agreement and clauses of order ${order.orderHash}`,
+                orderHash: order.orderHash,
+                reason: order.checkoutHash
+                    ? `the agreement under checkoutHash ${order.checkoutHash} was not loaded`
+                    : "the order carries no checkoutHash, so no agreement was looked up",
+            });
             continue;
         }
         // Agreements are cleartext end to end (the IPFS body carries every
@@ -104,15 +130,25 @@ export async function buildAuditBundlePdfBlob(
             try {
                 attestations = await getAttestationsByOrder(publicClient, chainId, order.orderHash);
             } catch {
-                attestations = [];
+                missing.push({
+                    part: `Attestations of order ${order.orderHash}`,
+                    orderHash: order.orderHash,
+                    reason: "the read of its attestations failed, so the evidence file lists none; the order may have attestations",
+                });
             }
+        } else {
+            missing.push({
+                part: `Attestations of order ${order.orderHash}`,
+                orderHash: order.orderHash,
+                reason: "no network client was given, so its attestations were not read",
+            });
         }
 
-        perOrderBundles.push(
-            buildAuditBundle(order, agreement, attestations, {
-                memberRegistrationEvents: memberRegisteredAll,
-            }),
-        );
+        const bundle = buildAuditBundle(order, agreement, attestations, {
+            memberRegistrationEvents: memberRegisteredAll,
+        });
+        perOrderBundles.push(bundle);
+        missing.push(...bundle.missing);
     }
 
     // Every document — invoice per seller, BoL per carriage leg, financial
@@ -125,13 +161,18 @@ export async function buildAuditBundlePdfBlob(
     const buyer = orders[0]?.buyer;
 
     let timeline: ProcessTimeline | null = null;
-    if (publicClient && options.includeTimeline !== false) {
+    if (!publicClient) {
+        missing.push({ part: "Process timeline", reason: "no network client was given, so the timeline was not read" });
+    } else if (options.includeTimeline === false) {
+        missing.push({ part: "Process timeline", reason: "the timeline was not requested for this evidence file" });
+    } else {
         try {
             timeline = await buildProcessTimeline(publicClient, processId as `0x${string}`);
+            missing.push(...timeline.missing);
         } catch {
-            // Non-fatal — render without the timeline page if RPC fails.
-            // Hash-anchored evidence (clauses, contentRefs) is still sufficient
-            // for verification; the timeline is convenience.
+            // The evidence file renders without the timeline page and says so; the
+            // hash-anchored evidence (clauses, contentRefs) still verifies.
+            missing.push({ part: "Process timeline", reason: "the read of the chain's events failed" });
         }
     }
 
@@ -143,20 +184,41 @@ export async function buildAuditBundlePdfBlob(
             tokenDecimals = Number(await publicClient.readContract({ address: processCurrency, abi: erc20Abi, functionName: "decimals" }));
         } catch {
             tokenDecimals = undefined;
+            missing.push({
+                part: "Amounts of the contract pages, in the token's units",
+                reason: `the decimals of the token ${processCurrency} could not be read, so the amounts are shown in the token's smallest unit`,
+            });
         }
+    } else if (orders.length > 0) {
+        missing.push({
+            part: "Amounts of the contract pages, in the token's units",
+            reason: publicClient ? "no commitment names the process's token" : "no network client was given, so the token's decimals were not read",
+        });
     }
 
+    return {
+        processId,
+        buyer,
+        perOrderBundles,
+        documents,
+        timeline,
+        tokenDecimals,
+        missing,
+        generatedAt: new Date(),
+    };
+}
+
+export async function buildAuditBundlePdfBlob(
+    processId: string,
+    orders: readonly Order[],
+    publicClient: PublicClient | undefined,
+    chainId: number,
+    agreements: Map<string, Agreement>,
+    options: BuildAuditBundlePdfOptions = {},
+): Promise<Blob> {
+    const data = await buildAuditBundleData(processId, orders, publicClient, chainId, agreements, options);
+
     const { pdf, AuditBundlePdf } = await loadPdfModule();
-    const doc = AuditBundlePdf({
-        data: {
-            processId,
-            buyer,
-            perOrderBundles,
-            documents,
-            timeline,
-            tokenDecimals,
-            generatedAt: new Date(),
-        },
-    });
+    const doc = AuditBundlePdf({ data });
     return pdf(doc).toBlob();
 }

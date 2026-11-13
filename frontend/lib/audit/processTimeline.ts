@@ -26,6 +26,7 @@ import { cachedGetContractEvents, deploymentBlock, getLogsAdaptive, type LogScan
 import { activeChain } from "@/lib/shared/chains";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 import { hexEqual } from "@/lib/shared/evm";
+import type { MissingPart } from "./types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -76,6 +77,8 @@ export interface ProcessTimeline {
     events: TimelineEvent[];
     /** Participating addresses (buyers + sellers) discovered from events. */
     participants: string[];
+    /** What the scans could not read or place, each named with its reason. */
+    missing: MissingPart[];
     /** Summary statistics. */
     summary: {
         orderCount: number;
@@ -210,12 +213,22 @@ export async function buildProcessTimeline(
     // from whichever commit exists, direct or batched.
     const processCurrency = (committedLogs[0]?.args as { currency?: `0x${string}` } | undefined)?.currency;
     let processDecimals: number | undefined;
+    const missing: MissingPart[] = [];
     if (processCurrency) {
         try {
             processDecimals = Number(await client.readContract({ address: processCurrency, abi: erc20Abi, functionName: "decimals" }));
         } catch {
             processDecimals = undefined;
+            missing.push({
+                part: "Amounts in the timeline and its summary, in the token's units",
+                reason: `the decimals of the token ${processCurrency} could not be read, so no amount is shown`,
+            });
         }
+    } else if (committedLogs.length > 0) {
+        missing.push({
+            part: "Amounts in the timeline and its summary, in the token's units",
+            reason: "no commitment event names the process's token, so no amount is shown",
+        });
     }
     const weiToDecimal = amountIn(processDecimals);
 
@@ -303,7 +316,14 @@ export async function buildProcessTimeline(
             attester: string;
             contentRef: string;
         }>;
-        if (!a.clauseId) continue;
+        if (!a.clauseId) {
+            missing.push({
+                part: `Attestation in transaction ${log.transactionHash ?? "unknown"}`,
+                orderHash: a.orderHash,
+                reason: "the event carries no clause key, so the timeline cannot label it",
+            });
+            continue;
+        }
         const stage = Number(a.stage ?? 0);
         const ts = await getBlockTimestamp(client, log.blockNumber!, blockCache);
         const { clauseTitle, eventLabel } = describeAttestation(a.clauseId, stage);
@@ -341,6 +361,7 @@ export async function buildProcessTimeline(
         generatedAt: new Date().toISOString(),
         events,
         participants: Array.from(participantSet),
+        missing,
         summary: {
             orderCount,
             resolvedCount,

@@ -12,9 +12,9 @@
  */
 
 import type { Agreement } from "@figaro-protocol/sdk";
-import { describeClause, type ClauseDescription } from "@/lib/shared/clauseSpecSource";
+import { describeClause, getClauseSpec, type ClauseDescription } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/kernel/store";
-import type { ExtractedDocument } from "./types";
+import type { ExtractedDocument, MissingPart } from "./types";
 
 export interface ClauseDataDocument extends ExtractedDocument {
     /** One description per committed clause — its spec title + each declared
@@ -23,6 +23,9 @@ export interface ClauseDataDocument extends ExtractedDocument {
      *  empty parents): the audit's contract is completeness over the committed
      *  tree, so omission would hide a leaf the merkle root provably carries. */
     clauses: ClauseDescription[];
+    /** A clause whose spec was not loaded still lists its committed fields, by
+     *  raw name; the evidence file says it lacks the spec's title and labels. */
+    missing: MissingPart[];
 }
 
 export function extractClauseData(
@@ -32,6 +35,13 @@ export function extractClauseData(
     const clauses = agreement.clauses.map((clauseEntry) =>
         describeClause(clauseEntry.clause, (clauseEntry as { data?: Record<string, unknown> }).data),
     );
+    const missing: MissingPart[] = agreement.clauses
+        .filter((c) => !getClauseSpec(c.clause))
+        .map((c) => ({
+            part: `Spec of clause ${c.clause}`,
+            orderHash: order.orderHash,
+            reason: "the spec was not loaded, so the clause's fields are shown by raw name, without the spec's title and labels",
+        }));
     return {
         title: "Clause data",
         orderHash: order.orderHash,
@@ -40,5 +50,6 @@ export function extractClauseData(
         buyer: order.buyer,
         seller: order.seller,
         clauses,
+        missing,
     };
 }

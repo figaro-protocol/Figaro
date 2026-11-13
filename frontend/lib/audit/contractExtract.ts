@@ -139,14 +139,9 @@ export function extractContract(
     order: Order,
     agreement: Agreement,
 ): ContractDocument {
-    // Currency: prefer the agreement's commerce-clause currency (signed by both
-    // parties) over the order's currency field (which is event-derived, normally
-    // identical, but the commerce clause is the authoritative party-signed
-    // source). When the commerce clause is absent, fall back to order.currency
-    // — FigaroCore emits the commitment's currency regardless.
-    const commerce = clauseByField(agreement, "lineItems", specSource());
-    const commerceCurrency = (commerce?.data as { currency?: string } | undefined)?.currency;
-
+    // Currency: the commitment's own, from the chain's event (`order.currency`).
+    // A clause's copy of the token is never read here: a clause that names
+    // another token than the commitment would show a token the chain did not move.
     return {
         title: "Bonded commitment",
         orderHash: order.orderHash,
@@ -155,7 +150,7 @@ export function extractContract(
         buyer: order.buyer,
         seller: order.seller,
         parties: { buyer: order.buyer, seller: order.seller },
-        currency: commerceCurrency ?? order.currency ?? ZERO_ADDRESS,
+        currency: order.currency ?? ZERO_ADDRESS,
         payment: order.payment,
         cumulativeValue: order.cumulativeValue,
         salt: order.salt,

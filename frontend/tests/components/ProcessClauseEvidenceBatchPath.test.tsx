@@ -64,4 +64,16 @@ describe("ProcessClauseEvidence on both paths", () => {
         expect(paths.map((p) => p.getAttribute("data-universe"))).toEqual(["direct", "batch"]);
         expect(paths[1].textContent).toBe("Batch path — emitted by the batch verifier");
     });
+
+    it("names the attestations as missing when their read fails, and nothing when it succeeds", async () => {
+        getByOrderMock.mockResolvedValue([]);
+        const ok = render(<ProcessClauseEvidence processId={PROCESS} />);
+        await screen.findByText("No clause evidence recorded for this process yet.");
+        expect(screen.queryByTestId("audit-missing-parts")).toBeNull();
+        ok.unmount();
+        getByOrderMock.mockRejectedValue(new Error("rpc down"));
+        render(<ProcessClauseEvidence processId={PROCESS} />);
+        const block = await screen.findByTestId("audit-missing-parts");
+        expect(block.textContent).toContain("Attestations of this process");
+    });
 });

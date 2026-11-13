@@ -34,6 +34,7 @@ import {
 } from "@react-pdf/renderer";
 import { tokenFigure } from "@/lib/shared/utils";
 import type { AuditBundle } from "./auditBundle";
+import type { MissingPart } from "./types";
 import type { RenderedDocument } from "./documentProjection";
 import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import type { ProcessTimeline, TimelineEvent } from "@/lib/audit/processTimeline";
@@ -287,6 +288,31 @@ function CoverPage({ processId, buyer, generatedAt }: {
                 process: Documents (invoice, bill of lading, financial
                 statements) · Hash appendix.
             </Text>
+        </AuditPage>
+    );
+}
+
+// ── What this evidence file does not contain ───────────────────────────────────────
+
+/** The parts this evidence file could not hold, each with the reason the reader gave.
+ *  The page states what is missing and draws no conclusion about why. */
+function MissingPage({ missing }: { missing: readonly MissingPart[] }) {
+    return (
+        <AuditPage label="Audit bundle" title="What this evidence file does not contain">
+            <Text style={styles.note}>
+                {missing.length === 0
+                    ? "The reader that built this evidence file named no missing part."
+                    : "Each entry below names a part this evidence file does not contain and the reason the reader gave. The evidence file holds no content for these parts."}
+            </Text>
+            <View style={styles.section}>
+                {missing.map((m, i) => (
+                    <View key={i}>
+                        <MetaRow k="part" v={m.part} mono />
+                        {m.orderHash && <MetaRow k="orderHash" v={m.orderHash} mono />}
+                        <MetaRow k="reason" v={m.reason} />
+                    </View>
+                ))}
+            </View>
         </AuditPage>
     );
 }
@@ -677,7 +703,7 @@ function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] 
 
 // ── Top-level Document ──────────────────────────────────────────────────────
 
-interface AuditBundlePdfData {
+export interface AuditBundlePdfData {
     /** Process id this bundle covers. */
     processId: string;
     /** Buyer address (root buyer of the process), if known. */
@@ -696,6 +722,9 @@ interface AuditBundlePdfData {
     timeline?: ProcessTimeline | null;
     /** The process token's decimals(), read from the chain; absent when unreadable. */
     tokenDecimals?: number;
+    /** Every part the evidence file does not contain, each with its reason; drawn on
+     *  its own page right after the cover. */
+    missing: readonly MissingPart[];
     /** Generation timestamp (UTC). */
     generatedAt: Date;
 }
@@ -773,6 +802,7 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
             subject="Bonded commitment record"
         >
             <CoverPage processId={data.processId} buyer={data.buyer} generatedAt={data.generatedAt} />
+            <MissingPage missing={data.missing} />
             {data.timeline ? <TimelinePage timeline={data.timeline} /> : null}
             {data.perOrderBundles.map((bundle) => (
                 <ContractPage key={`contract-${bundle.contract.orderHash}`} contract={bundle.contract} decimals={data.tokenDecimals} />

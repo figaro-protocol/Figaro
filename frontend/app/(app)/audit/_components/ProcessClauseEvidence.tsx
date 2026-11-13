@@ -18,6 +18,8 @@ import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyBut
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
 import { clauseWitnessStages, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { MissingParts } from "./MissingParts";
+import type { MissingPart } from "@/lib/audit/types";
 import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 import type { Order } from "@/lib/kernel/store";
 
@@ -263,6 +265,29 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
         );
     }, [orders, agreements, attestationsByOrder, clauseSpecsVersion]);
 
+    // What this evidence lacks, stated beside it. An agreement still in flight
+    // is not listed: the page cannot tell it from one that failed to load, and
+    // the PDF's evidence file names it.
+    const missing = useMemo(() => {
+        const parts: MissingPart[] = [];
+        if (attestationsRead.status === "absent") {
+            parts.push({ part: "Attestations of this process", reason: "the read of its attestations failed, so none are listed; the process may have attestations" });
+        }
+        for (const order of orders) {
+            const agreement = order.checkoutHash ? agreements.get(order.checkoutHash) : undefined;
+            if (!order.checkoutHash) {
+                parts.push({
+                    part: `Agreement and clauses of order ${order.orderHash}`,
+                    orderHash: order.orderHash,
+                    reason: "the order carries no checkoutHash, so no agreement was looked up",
+                });
+            }
+            if (agreement) parts.push(...extractClauseData(order, agreement).missing);
+            parts.push(...extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? []).missing);
+        }
+        return parts;
+    }, [orders, agreements, attestationsRead.status, attestationsByOrder, clauseSpecsVersion]);
+
     return (
         <section data-testid="audit-clause-evidence" className="space-y-6">
             <div className="space-y-2">
@@ -280,6 +305,8 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                     &mdash; never that it is true.
                 </p>
             </div>
+
+            <MissingParts missing={missing} />
 
             {attestationsRead.status === "absent" ? null : attestationsRead.status === "pending" ? (
                 <p className="text-sm text-ink-muted">Loading…</p>
