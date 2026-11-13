@@ -16,9 +16,20 @@
  *   evidence → OUT OF BAND: the verifier's root moved, the buyer bond left the
  *              buyer (read from the token), and the verifier's OrderCommitted
  *              names the order
- *   read     → /audit/view for the process, with no relay endpoint anywhere:
- *              the order renders, its signatures "Proved in a batch", bound to
- *              the batch the chain names
+ *   attest   → the seller signs an attestation of a process-log clause of the
+ *              agreement and the relay lands it; the verifier emits the
+ *              `Attestation`, the coordinator emits none
+ *   resolve  → the buyer signs the resolution, the relay lands it; the verifier
+ *              emits `OrderResolved` and `ProcessResolved`, FigaroCore none
+ *   read     → each surface, with no relay endpoint anywhere:
+ *              /orders/view lists the batched attestation, tagged batch, and
+ *              the sealed handoff key the buyer's tab held for the order is
+ *              purged when the batched resolution lands (useHandoffCleanup);
+ *              /audit/view renders the order, its signatures "Proved in a
+ *              batch", bound to the batch the chain names, and the clause
+ *              evidence lists the batched attestation, tagged batch;
+ *              /evidence-display lists the commit, the attestation and the
+ *              resolution, each tagged batch
  *
  * Skips when no sequencer binary is built. Depends on populate-test-data, as
  * every devnet spec does; needs nothing it seeds.
@@ -28,7 +39,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createWalletClient, hashTypedData, http, parseAbi, type Hex } from 'viem';
+import { createWalletClient, hashTypedData, http, keccak256, parseAbi, stringToHex, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { LOCAL_ANVIL, RPC_URL, keyOf, localPublicClient, pinJSONToIPFS, primeRegisteredClauseSpecs, readLocalDeploymentConfig } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
@@ -38,8 +49,10 @@ import {
     buildCommitment,
     buildDomain,
     buildOrderAgreement,
+    buildSignedClauseInclusionProof,
     calculateBonds,
     computeOrderHash,
+    hashClauseData,
 } from '@figaro-protocol/sdk';
 import { SequencerClient } from '@figaro-protocol/sdk/agent';
 import { specSource } from '@/lib/shared/clauseSpecSource';
@@ -57,6 +70,23 @@ const SELLER = privateKeyToAccount(ANVIL_KEYS[14] as Hex);
 const RELAY_SIGNER_KEY = ANVIL_KEYS[4] as Hex;
 
 const PAYMENT = 1n * 10n ** 18n;
+
+// The batch path's typed data (the verifier's EIP-712 domain): the signature
+// replaces msg.sender, as the direct path's caller does.
+const RESOLVE_TYPES = {
+    ResolveProcess: [
+        { name: 'processId', type: 'bytes32' },
+        { name: 'cumulativeValue', type: 'uint256' },
+    ],
+} as const;
+const ATTEST_SELLER_TYPES = {
+    AttestSeller: [
+        { name: 'orderHash', type: 'bytes32' },
+        { name: 'clauseId', type: 'bytes32' },
+        { name: 'stage', type: 'uint8' },
+        { name: 'contentRef', type: 'bytes32' },
+    ],
+} as const;
 
 async function waitForRelay(exit: { code: number | null; lines: string[] }, timeoutMs: number): Promise<void> {
     const deadline = Date.now() + timeoutMs;
@@ -85,7 +115,7 @@ async function stopRelay(child: ChildProcess): Promise<void> {
 test.describe('BATCH EVENTS — a batch-resolved order renders from chain events alone (devnet)', () => {
     test.setTimeout(900_000);
 
-    test('one order through a relay rebuilt from the chain: the chain names it, and /audit/view renders it proved in its batch', async ({ page }) => {
+    test('one order through a relay rebuilt from the chain, attested and resolved in batches: the chain names each, and every surface shows it tagged batch', async ({ page }) => {
         test.skip(!fs.existsSync(SEQUENCER_BIN), `no sequencer binary at ${SEQUENCER_BIN} (cargo build --release -p figaro-sequencer)`);
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
@@ -154,6 +184,9 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
                     lineItems: [{ itemId: 'batch-events-1', name: 'One batch-resolved order', quantity: 1, unitPrice: PAYMENT.toString() }],
                 },
                 [keyOf('figaro-topology')]: { follows: [] },
+                // A process-log clause: the seller's attestation below names it, and the
+                // audit page's clause evidence and the order page's timeline list it.
+                [keyOf('figaro-merchant-process')]: {},
             }, specSource());
             const domain = buildDomain(31337, verifier);
             const { commitment, typedData } = buildCommitment({
@@ -187,17 +220,82 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
             expect(committed, 'the verifier names the order in the Core\'s own event').toHaveLength(1);
             expect(committed[0].args.processId).toBe(processId);
 
-            // ── The page, with no relay endpoint anywhere. ──
-            // The chain holds the agreement's fingerprint only; its content is the
-            // parties' own, pinned by the buyer's client when the buyer signed
-            // (`publishAgreement` → the wallet's `figaro:agreement-uri:<checkoutHash>`
-            // locator). This spec signed for the buyer out of band, so it does that
-            // one step the buyer's client would have done: pin the agreement and
-            // give the buyer's browser its locator. Nothing here comes from a relay.
+            // ── The seller's attestation, through the relay. ──
+            const processClause = keyOf('figaro-merchant-process');
+            const processClauseEntry = agreement.clauses.find((c) => c.clause.toLowerCase() === processClause.toLowerCase())!;
+            const { proof } = buildSignedClauseInclusionProof(agreement, processClause);
+            const contentRef = keccak256(stringToHex('batch-events: preparation started'));
+            const attestSig = await SELLER.signTypedData({
+                domain, types: ATTEST_SELLER_TYPES, primaryType: 'AttestSeller',
+                message: { orderHash, clauseId: processClause, stage: 0, contentRef },
+            });
+            const attested = await client.submitAttestAsSeller({
+                target: commitment, clauseId: processClause, stage: 0, contentRef, sellerSig: attestSig,
+                clauseDataHash: hashClauseData(processClauseEntry), inclusionProof: proof,
+            });
+            expect(typeof attested.id, 'the relay admits the attestation').toBe('number');
+            // CHAIN FACT, out of band: the verifier emitted the Attestation; the coordinator emitted none.
+            const attestationsAt = (address: Hex) => publicClient.getContractEvents({
+                address, abi: BATCH_VERIFIER_ABI, eventName: 'Attestation', args: { orderHash }, fromBlock: 0n,
+            });
+            await expect.poll(async () => (await attestationsAt(verifier)).length, {
+                timeout: 120_000, message: 'the relay lands the batch that carries the attestation',
+            }).toBe(1);
+            expect(await attestationsAt(config.attestationCoordinator as Hex), 'the coordinator emitted none: the attestation is batch-only').toHaveLength(0);
+
+            // ── The agreement's content is the parties' own: pin it for the buyer's browser. ──
+            // The chain holds the agreement's fingerprint only; its content is pinned by the buyer's
+            // client when the buyer signs (`publishAgreement` → the wallet's
+            // `figaro:agreement-uri:<checkoutHash>` locator). This spec signed for the buyer out of
+            // band, so it does that one step the buyer's client would have done. Nothing here comes
+            // from a relay.
             const { uri: agreementUri } = await pinJSONToIPFS(agreement);
-            await page.addInitScript(([key, uri]: [string, string]) => {
-                window.localStorage.setItem(key, uri);
-            }, [`figaro:agreement-uri:${checkoutHash}`, agreementUri] as [string, string]);
+            const ecdhKey = `${BUYER.address.toLowerCase()}:${orderHash}`;
+            await page.addInitScript(([locatorKey, uri, storeKey]: [string, string, string]) => {
+                window.localStorage.setItem(locatorKey, uri);
+                // The buyer's tab holds a sealed-handoff key for the order (seeded once, so a later
+                // navigation does not put back what the purge removed).
+                if (!window.sessionStorage.getItem('batch-events-seeded')) {
+                    window.sessionStorage.setItem('batch-events-seeded', '1');
+                    window.sessionStorage.setItem('figaro-ecdh-keys', JSON.stringify({
+                        [storeKey]: { privateKeyHex: '11'.repeat(32), publicKeyHex: '02' + '22'.repeat(32), createdAt: Date.now() },
+                    }));
+                }
+            }, [`figaro:agreement-uri:${checkoutHash}`, agreementUri, ecdhKey] as [string, string, string]);
+            const ecdhHeld = () => page.evaluate((key) => {
+                const store = JSON.parse(window.sessionStorage.getItem('figaro-ecdh-keys') ?? '{}');
+                return key in store;
+            }, ecdhKey);
+
+            // ── The order page, while the order is still open: the batched attestation. ──
+            await gotoAsWallet(page, BUYER.address, `/orders/view?process=${processId}&e2e=devnet`);
+            await page.getByTestId('order-timeline-view').waitFor({ timeout: 60000 });
+            await expect(page.getByTestId('timeline-event-prep-started').getByTestId('timeline-event-path'), 'the order page lists the batched attestation, tagged batch')
+                .toHaveAttribute('data-universe', 'batch', { timeout: 60000 });
+            expect(await ecdhHeld(), 'the buyer\'s tab holds the sealed-handoff key while the order is open').toBe(true);
+
+            // ── The buyer's resolution, through the relay. ──
+            const resolveSig = await BUYER.signTypedData({
+                domain, types: RESOLVE_TYPES, primaryType: 'ResolveProcess',
+                message: { processId, cumulativeValue: PAYMENT },
+            });
+            const resolved = await client.submitResolve(processId, PAYMENT, [commitment], resolveSig);
+            expect(typeof resolved.id, 'the relay admits the resolution').toBe('number');
+            const resolvedAt = (address: Hex) => publicClient.getContractEvents({
+                address, abi: BATCH_VERIFIER_ABI, eventName: 'OrderResolved', args: { orderHash }, fromBlock: 0n,
+            });
+            await expect.poll(async () => (await resolvedAt(verifier)).length, {
+                timeout: 120_000, message: 'the relay lands the batch that carries the resolution',
+            }).toBe(1);
+            expect(await resolvedAt(config.figaroCore as Hex), 'FigaroCore emitted no OrderResolved: the resolution is batch-only').toHaveLength(0);
+            expect(await balanceOf(BUYER.address), 'the buyer\'s bond came back less the payment, on the batch path').toBe(buyerBefore - PAYMENT);
+
+            // ── The cleanup of sealed handoff data, on the buyer's open tab. ──
+            await expect.poll(ecdhHeld, {
+                timeout: 60000, message: 'the batched OrderResolved purges the sealed-handoff key the tab held',
+            }).toBe(false);
+
+            // ── The audit page, with no relay endpoint anywhere. ──
             await gotoAsWallet(page, BUYER.address, `/audit/view?process=${processId}&e2e=devnet`);
             await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
             await expect(page.getByTestId('financials-empty'), 'the order is found, from events').toHaveCount(0, { timeout: 60000 });
@@ -207,6 +305,22 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
                 .toContainText('Proved in a batch');
             await expect(page.getByTestId(`audit-sig-batch-${orderHash}`), 'bound to the batch the chain names')
                 .toContainText('Batch #', { timeout: 30000 });
+            await expect(page.getByTestId(`audit-attestation-path-${processClause.toLowerCase()}-0`), 'the clause evidence lists the batched attestation, tagged batch')
+                .toHaveAttribute('data-universe', 'batch', { timeout: 60000 });
+
+            // ── The evidence timeline: the commit, the attestation and the resolution, each from the verifier. ──
+            await page.goto(
+                `/evidence-display?processId=${processId}&chainID=31337&coreAddress=${config.figaroCore}` +
+                `&arbitrableJsonRpcUrl=${encodeURIComponent(RPC_URL)}&e2e=devnet`,
+                { waitUntil: 'domcontentloaded' },
+            );
+            await expect(page.getByRole('heading', { name: 'Figaro Process Timeline' })).toBeVisible({ timeout: 30000 });
+            await expect(page.getByTestId('evidence-batch-verifier'), 'the header names the verifier it read').toContainText('batch verifier', { timeout: 30000 });
+            const paths = page.getByTestId('evidence-event-path');
+            await expect(paths, 'three events: committed, attested, resolved').toHaveCount(3, { timeout: 60000 });
+            for (const path of await paths.all()) await expect(path).toHaveAttribute('data-universe', 'batch');
+            await expect(page.getByText('Order Committed').first()).toBeVisible();
+            await expect(page.getByText('Order Resolved').first()).toBeVisible();
         } finally {
             await stopRelay(relay);
             fs.rmSync(scratch, { recursive: true, force: true });

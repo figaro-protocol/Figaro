@@ -30,6 +30,7 @@ import { ResolutionProceedsPanel } from "@/components/runtime/ResolutionProceeds
 import { PayoutRoutingPanel } from "@/components/runtime/PayoutRoutingPanel";
 import { CapabilityRail } from "@/components/runtime/CapabilityRail";
 import { OrderInteractionSurfaces } from "@/components/runtime/OrderInteractionSurfaces";
+import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import { StageAttestationComparison } from "@/components/runtime/StageAttestationComparison";
 import { useSemanticProcessWorkspace } from "@/hooks/useSemanticProcessWorkspace";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
@@ -251,7 +252,12 @@ export function OrderTimelineView({ processId }: Props) {
                                 <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-success border-success" />
                                 <div className="flex-1">
                                     <p className="text-sm font-semibold text-ink-primary">{eventLabel}</p>
-                                    <p className="text-xs text-ink-muted">{clauseTitle} · block {att.blockNumber}</p>
+                                    <p className="text-xs text-ink-muted">
+                                        {clauseTitle} · block {att.blockNumber} ·{" "}
+                                        <span data-testid="timeline-event-path" data-universe={att.universe} title={attestationPathLabel(att.universe)}>
+                                            {att.universe} path
+                                        </span>
+                                    </p>
                                 </div>
                             </li>
                         );
