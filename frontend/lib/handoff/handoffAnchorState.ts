@@ -5,7 +5,7 @@
  * render one of the same three verdicts while they wait.
  */
 import type { PublicClient } from "viem";
-import { getAttestationsByOrder, parseAttestationLog } from "@/lib/composition/indexer";
+import { getAttestationsByOrder } from "@/lib/composition/indexer";
 import { hexEqual } from "@/lib/shared/evm";
 
 /** Whether a ceremony's locally-decrypted artifact has a matching on-chain
@@ -21,9 +21,8 @@ export async function attestationAnchorMatches(
     orderHash: string,
     expected: `0x${string}`,
 ): Promise<boolean> {
-    const logs = await getAttestationsByOrder(publicClient, chainId, orderHash);
-    return logs.some((log) => {
-        const record = parseAttestationLog(log);
-        return record !== null && hexEqual(record.contentRef, expected);
-    });
+    // Either path: the signer and the content reference are bound the same way
+    // on the coordinator's and on the batch verifier's `Attestation`.
+    const records = await getAttestationsByOrder(publicClient, chainId, orderHash);
+    return records.some((record) => hexEqual(record.contentRef, expected));
 }

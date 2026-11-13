@@ -20,7 +20,8 @@
 import { erc20Abi, formatUnits, getAbiItem, type Abi, type PublicClient } from "viem";
 import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { ATTESTATION_COORDINATOR_ABI } from "@figaro-protocol/sdk";
-import { getAttestationCoordinator } from "@/lib/composition/contracts";
+import { getAttestationCoordinator, getBatchVerifier } from "@/lib/composition/contracts";
+import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 import { cachedGetContractEvents, deploymentBlock, getLogsAdaptive, type LogScanClient } from "@/lib/kernel/eventCache";
 import { activeChain } from "@/lib/shared/chains";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
@@ -45,6 +46,9 @@ export interface TimelineEvent {
     orderHash: string;
     /** Source contract event name (e.g. "OrderCommitted"). */
     eventName: string;
+    /** The path that emitted the event: "direct" (FigaroCore, the coordinator)
+     *  or "batch" (the batch verifier's re-emission). */
+    universe: ResolutionUniverse;
     /** Key fields from the event, stringified for display. */
     details: Record<string, string>;
 }
@@ -60,6 +64,10 @@ export interface ProcessTimeline {
      *  for the page's deployment, the one the link names otherwise; null
      *  when none was named, so no attestation was scanned. */
     coordinatorAddress: `0x${string}` | null;
+    /** The FigaroBatchVerifier whose events were scanned beside the Core's and
+     *  the coordinator's: the site's for the page's deployment; null for any
+     *  other deployment (a link names none, so no batched event was scanned). */
+    batchVerifierAddress: `0x${string}` | null;
     /** The first block the scans read from. */
     scannedFromBlock: bigint;
     /** When the timeline was generated (ISO-8601). */
@@ -175,14 +183,31 @@ export async function buildProcessTimeline(
             .filter((l) => hexEqual(String(l.args?.processId ?? ""), processId))
             .map((l) => ({ ...l, blockNumber: BigInt(l.blockNumber ?? 0), transactionHash: l.transactionHash ?? undefined }));
 
-    // ── OrderCommitted ─────────────────────────────────────────────
-    const committedLogs = byProcess(await scanEvents({
-        address: coreAddress,
-        abi: CORE_ABI,
-        eventName: "OrderCommitted",
-    }));
+    // The batch verifier emits the Core's own order events and the coordinator's
+    // `Attestation` for every batched order, so each is read at both addresses and
+    // each row keeps the universe of the address that emitted it. Only the
+    // page's own deployment names its verifier; another deployment is read at
+    // what the link names, as for the coordinator.
+    const verifierAddr: `0x${string}` | null = ownDeployment ? getBatchVerifier() : null;
+    const scanBoth = async (
+        direct: `0x${string}` | null,
+        directAbi: Abi | readonly unknown[],
+        eventName: string,
+    ): Promise<(ReturnType<typeof byProcess>[number] & { universe: ResolutionUniverse })[]> => {
+        const rows: (ReturnType<typeof byProcess>[number] & { universe: ResolutionUniverse })[] = [];
+        for (const [address, universe] of [[direct, "direct"], [verifierAddr, "batch"]] as const) {
+            if (!address) continue;
+            const logs = byProcess(await scanEvents({ address, abi: directAbi, eventName }));
+            rows.push(...logs.map((l) => ({ ...l, universe })));
+        }
+        return rows;
+    };
 
-    // One currency per process (the Core's rule), so one decimals() read covers every amount.
+    // ── OrderCommitted ─────────────────────────────────────────────
+    const committedLogs = await scanBoth(coreAddress, CORE_ABI, "OrderCommitted");
+
+    // One currency per process (the Core's rule), so one decimals() read covers every amount,
+    // from whichever commit exists, direct or batched.
     const processCurrency = (committedLogs[0]?.args as { currency?: `0x${string}` } | undefined)?.currency;
     let processDecimals: number | undefined;
     if (processCurrency) {
@@ -215,6 +240,7 @@ export async function buildProcessTimeline(
             txHash: log.transactionHash!,
             orderHash: a.orderHash ?? "",
             eventName: "OrderCommitted",
+            universe: log.universe,
             details: {
                 buyer: a.buyer ?? "",
                 seller: a.seller ?? "",
@@ -230,11 +256,7 @@ export async function buildProcessTimeline(
     // Live FigaroCore: no OrderCancelled event — orders resolve or stay active.
 
     // ── OrderResolved ───────────────────────────────────────────────
-    const resolvedLogs = byProcess(await scanEvents({
-        address: coreAddress,
-        abi: CORE_ABI,
-        eventName: "OrderResolved",
-    }));
+    const resolvedLogs = await scanBoth(coreAddress, CORE_ABI, "OrderResolved");
 
     for (const log of resolvedLogs) {
         const a = log.args as Partial<{
@@ -255,6 +277,7 @@ export async function buildProcessTimeline(
             txHash: log.transactionHash!,
             orderHash: a.orderHash ?? "",
             eventName: "OrderResolved",
+            universe: log.universe,
             details: {
                 sellerPayout: weiToDecimal(a.sellerPayout),
                 buyerPayout: weiToDecimal(a.buyerPayout),
@@ -265,45 +288,41 @@ export async function buildProcessTimeline(
 
     // ── Runtime attestations (every clause) ─────────────────────────
     // All attestations — lifecycle, proximity, disclosure, any permissionless
-    // clause — arrive through AttestationCoordinator's unified Attestation
-    // event, each labeled from its OWN spec. No clause names; an unknown
-    // clause falls back to a short hash + stage (describeAttestation handles
-    // it). The event's `contentRef = keccak256(content)` is a verification
-    // digest, not an off-chain pointer.
-    if (coordinatorAddr) {
-        const attestLogs = byProcess(await scanEvents({
-            address: coordinatorAddr,
-            abi: ATTESTATION_COORDINATOR_ABI,
+    // clause — arrive through the unified Attestation event, from the
+    // coordinator (direct) and the verifier (batch), each labeled from its OWN
+    // spec. No clause names; an unknown clause falls back to a short hash +
+    // stage (describeAttestation handles it). The event's
+    // `contentRef = keccak256(content)` is a verification digest, not an
+    // off-chain pointer.
+    const attestLogs = await scanBoth(coordinatorAddr, ATTESTATION_COORDINATOR_ABI, "Attestation");
+    for (const log of attestLogs) {
+        const a = log.args as Partial<{
+            clauseId: string;
+            stage: bigint | number;
+            orderHash: string;
+            attester: string;
+            contentRef: string;
+        }>;
+        if (!a.clauseId) continue;
+        const stage = Number(a.stage ?? 0);
+        const ts = await getBlockTimestamp(client, log.blockNumber!, blockCache);
+        const { clauseTitle, eventLabel } = describeAttestation(a.clauseId, stage);
+        events.push({
+            label: `${clauseTitle} — ${eventLabel}`,
+            blockNumber: log.blockNumber!,
+            timestamp: ts,
+            iso: new Date(ts * 1000).toISOString(),
+            txHash: log.transactionHash!,
+            orderHash: a.orderHash ?? "",
             eventName: "Attestation",
-        }));
-        for (const log of attestLogs) {
-            const a = log.args as Partial<{
-                clauseId: string;
-                stage: bigint | number;
-                orderHash: string;
-                attester: string;
-                contentRef: string;
-            }>;
-            if (!a.clauseId) continue;
-            const stage = Number(a.stage ?? 0);
-            const ts = await getBlockTimestamp(client, log.blockNumber!, blockCache);
-            const { clauseTitle, eventLabel } = describeAttestation(a.clauseId, stage);
-            events.push({
-                label: `${clauseTitle} — ${eventLabel}`,
-                blockNumber: log.blockNumber!,
-                timestamp: ts,
-                iso: new Date(ts * 1000).toISOString(),
-                txHash: log.transactionHash!,
-                orderHash: a.orderHash ?? "",
-                eventName: "Attestation",
-                details: {
-                    attester: a.attester ?? "",
-                    stage: String(stage),
-                    contentRef: a.contentRef ?? "",
-                    clauseId: a.clauseId,
-                },
-            });
-        }
+            universe: log.universe,
+            details: {
+                attester: a.attester ?? "",
+                stage: String(stage),
+                contentRef: a.contentRef ?? "",
+                clauseId: a.clauseId,
+            },
+        });
     }
 
     events.sort((a, b) => {
@@ -317,6 +336,7 @@ export async function buildProcessTimeline(
         chainId,
         coreAddress,
         coordinatorAddress: coordinatorAddr,
+        batchVerifierAddress: verifierAddr,
         scannedFromBlock,
         generatedAt: new Date().toISOString(),
         events,

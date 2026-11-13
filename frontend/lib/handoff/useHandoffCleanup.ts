@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Watches for the terminal order event — OrderResolved (FigaroCore has NO
+ * Watches for the terminal order event — OrderResolved, at FigaroCore and at
+ * FigaroBatchVerifier (FigaroCore has NO
  * cancel, and `resolveProcess` emits OrderResolved for EVERY order before the
  * one ProcessResolved) — and purges the order's ECDH ephemeral keypair
  * (sessionStorage ecdh store) via handoffPersistenceService: the
@@ -17,7 +18,7 @@
 
 import { useEffect, useRef } from "react";
 import { useAccount, usePublicClient } from "wagmi";
-import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
+import { CORE_ABI, CONTRACTS, getBatchVerifier } from "@/lib/kernel/contracts";
 import { ensureRpc } from "@/lib/handoff/rpc";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import type { HandoffPersistenceService } from "@/lib/handoff/handoffPersistenceService";
@@ -66,13 +67,16 @@ export function useHandoffCleanup(opts: UseHandoffCleanupOpts = {}) {
         if (!publicClient || !address || isE2EMock) return;
         let unwatch: (() => void) | undefined;
         let mounted = true;
+        const batchVerifier = getBatchVerifier();
 
         const start = async () => {
             const rpc = await ensureRpc(publicClient);
             if (!rpc.ok || !mounted) return;
 
             unwatch = publicClient.watchContractEvent({
-                address: CONTRACTS.core as `0x${string}`,
+                // Both emitters: FigaroCore (direct path) and FigaroBatchVerifier,
+                // which emits the same OrderResolved for every batched order.
+                address: [CONTRACTS.core as `0x${string}`, ...(batchVerifier ? [batchVerifier] : [])],
                 abi: CORE_ABI,
                 eventName: "OrderResolved",
                 onLogs: (logs) => {

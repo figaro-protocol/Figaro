@@ -27,6 +27,7 @@ import { Suspense, useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { createPublicClient, isAddress } from "viem";
 import { mockAwareHttp } from "@/lib/shared/mockTransport";
+import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import { buildProcessTimeline, type ProcessTimeline, type TimelineEvent } from "@/lib/audit/processTimeline";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
@@ -118,6 +119,8 @@ function TimelineEventCard({ event, index }: { event: TimelineEvent; index: numb
 
                 <div className="text-xs text-ink-muted mb-2">
                     {formatTimestamp(event.iso)} · Block {event.blockNumber.toString()}
+                    {" · "}
+                    <span data-testid="evidence-event-path" data-universe={event.universe}>{attestationPathLabel(event.universe)}</span>
                 </div>
 
                 {/* Event details */}
@@ -305,6 +308,9 @@ function EvidenceDisplayContent() {
                         <span data-testid="evidence-coordinator">
                             coordinator: {timeline.coordinatorAddress ? truncateHex(timeline.coordinatorAddress) : "none named — attestations not read"}
                         </span>
+                        {timeline.batchVerifierAddress && (
+                            <span data-testid="evidence-batch-verifier">batch verifier: {truncateHex(timeline.batchVerifierAddress)}</span>
+                        )}
                         <span data-testid="evidence-from-block">scanned from block {timeline.scannedFromBlock.toString()}</span>
                         <span>rpc: {rpcOrigin(rpcUrl)}</span>
                         <span>generated: {formatTimestamp(timeline.generatedAt)}</span>

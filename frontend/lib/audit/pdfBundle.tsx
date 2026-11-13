@@ -35,6 +35,7 @@ import {
 import { tokenFigure } from "@/lib/shared/utils";
 import type { AuditBundle } from "./auditBundle";
 import type { RenderedDocument } from "./documentProjection";
+import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import type { ProcessTimeline, TimelineEvent } from "@/lib/audit/processTimeline";
 import { truncateHex } from "@/lib/shared/formatHex";
 
@@ -461,6 +462,10 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                 put right, and parties acting together are outside that reach.
             </Text>
 
+            <Text style={styles.note}>
+                Path: direct = {attestationPathLabel("direct")}; batch = {attestationPathLabel("batch")}.
+            </Text>
+
             {doc.logs.map((group) => (
                 <View key={group.clauseKey}>
                     <Text style={styles.h2}>{group.title} ({group.events.length})</Text>
@@ -470,6 +475,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                             <Text style={[styles.tCellMono, { flex: 3 }]}>Attester</Text>
                             <Text style={[styles.tCellMono, { flex: 4 }]}>contentRef</Text>
                             <Text style={[styles.tCell, { flex: 1 }]}>Block</Text>
+                            <Text style={[styles.tCell, { flex: 1 }]}>Path</Text>
                         </View>
                         {group.events.map((e, i) => (
                             <View key={`${group.clauseKey}-${e.contentRef}-${i}`} style={styles.tableRow}>
@@ -477,6 +483,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                                 <Text style={[styles.tCellMono, { flex: 3 }]}>{shortAddr(e.attester)}</Text>
                                 <Text style={[styles.tCellMono, { flex: 4 }]}>{shortHex(e.contentRef, 14, 8)}</Text>
                                 <Text style={[styles.tCell, { flex: 1 }]}>{e.blockNumber}</Text>
+                                <Text style={[styles.tCell, { flex: 1 }]}>{e.universe ?? ""}</Text>
                             </View>
                         ))}
                     </View>
@@ -570,6 +577,9 @@ function TimelinePage({ timeline }: { timeline: ProcessTimeline }) {
             <View style={styles.section}>
                 <MetaRow k="chainId" v={timeline.chainId} />
                 <MetaRow k="core address" v={timeline.coreAddress} mono />
+                {timeline.batchVerifierAddress && (
+                    <MetaRow k="batch verifier" v={timeline.batchVerifierAddress} mono />
+                )}
                 <MetaRow
                     k="events"
                     v={<>{events.length} total · {summary.orderCount} committed · {summary.resolvedCount} resolved</>}
@@ -582,6 +592,9 @@ function TimelinePage({ timeline }: { timeline: ProcessTimeline }) {
                 )}
             </View>
 
+            <Text style={styles.note}>
+                Path: direct = {attestationPathLabel("direct")}; batch = {attestationPathLabel("batch")}.
+            </Text>
             <Text style={styles.h2}>Events ({events.length})</Text>
             {events.length === 0 ? (
                 <Text style={styles.sectionBody}>
@@ -595,6 +608,7 @@ function TimelinePage({ timeline }: { timeline: ProcessTimeline }) {
                         <Text style={[styles.tCell, { flex: 2 }]}>Timestamp (UTC)</Text>
                         <Text style={[styles.tCell, { flex: 1 }]}>Block</Text>
                         <Text style={[styles.tCell, { flex: 2 }]}>Event</Text>
+                        <Text style={[styles.tCell, { flex: 1 }]}>Path</Text>
                         <Text style={[styles.tCellMono, { flex: 2 }]}>Order</Text>
                         <Text style={[styles.tCell, { flex: 4 }]}>Detail</Text>
                         <Text style={[styles.tCellMono, { flex: 2 }]}>tx</Text>
@@ -604,6 +618,7 @@ function TimelinePage({ timeline }: { timeline: ProcessTimeline }) {
                             <Text style={[styles.tCell, { flex: 2 }]}>{ev.iso}</Text>
                             <Text style={[styles.tCell, { flex: 1 }]}>{ev.blockNumber.toString()}</Text>
                             <Text style={[styles.tCell, { flex: 2 }]}>{ev.label}</Text>
+                            <Text style={[styles.tCell, { flex: 1 }]}>{ev.universe}</Text>
                             <Text style={[styles.tCellMono, { flex: 2 }]}>
                                 {ev.orderHash ? shortHex(ev.orderHash, 8, 4) : "—"}
                             </Text>

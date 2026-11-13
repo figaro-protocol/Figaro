@@ -4,12 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
-import {
-    getAttestationsByOrder,
-    parseAttestationLog,
-    type AttestationRecord,
-    type IndexedAttestationLog,
-} from "@/lib/composition/indexer";
+import { getAttestationsByOrder, type AttestationRecord } from "@/lib/composition/indexer";
+import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
 import { fetchWitnessContent } from "@/lib/composition/witnessContent";
 import { decodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
@@ -159,10 +155,7 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
         void readNetwork("ProcessClauseEvidence.attestations", async () => {
             const next = new Map<string, AttestationRecord[]>();
             await Promise.all(orders.map(async (order) => {
-                const logs = await getAttestationsByOrder(publicClient, chainId, order.orderHash);
-                next.set(order.orderHash, (logs as IndexedAttestationLog[])
-                    .map(parseAttestationLog)
-                    .filter((r): r is AttestationRecord => r !== null));
+                next.set(order.orderHash, await getAttestationsByOrder(publicClient, chainId, order.orderHash));
             }));
             return next;
         }).then((next) => { if (!canceled) setAttestationsRead(next); });
@@ -358,6 +351,14 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                                                     >
                                                         <dt className="text-ink-muted">Content fingerprint</dt>
                                                         <dd className="text-ink-body font-mono break-all">{event.contentRef}</dd>
+                                                        {event.universe && (
+                                                            <>
+                                                                <dt className="text-ink-muted">Path</dt>
+                                                                <dd className="text-ink-body" data-testid={`audit-attestation-path-${group.clauseKey}-${event.stage}`} data-universe={event.universe}>
+                                                                    {attestationPathLabel(event.universe)}
+                                                                </dd>
+                                                            </>
+                                                        )}
                                                     </dl>
                                                     {/* The values behind the fingerprint, when their publication
                                                         resolves — fetched at the keccak-CID the fingerprint

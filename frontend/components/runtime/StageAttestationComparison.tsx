@@ -22,6 +22,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { decodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
+import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import { fetchWitnessContent } from "@/lib/composition/witnessContent";
 import {
     compareStageContent,
@@ -150,6 +151,10 @@ export function StageAttestationComparison({ attestations }: Props) {
                                                 {truncateHex(att.orderHash)}
                                             </span>
                                             {" · block "}{att.blockNumber}
+                                            {" · "}
+                                            <span title={attestationPathLabel(att.universe)} data-testid="stage-filing-path" data-universe={att.universe}>
+                                                {att.universe} path
+                                            </span>
                                         </p>
                                         {loaded && !content && (
                                             <p className="ml-4 text-xs text-ink-muted">content not available</p>

@@ -8,7 +8,7 @@
  * reverse). Reads are clause-agnostic — clauseId is DATA off the event, never
  * hardcoded.
  */
-import { decodeFunctionData, getAbiItem, type Hex, type Log, type PublicClient } from "viem";
+import { getAbiItem, type Log, type PublicClient } from "viem";
 import { cachedGetLogs } from "@/lib/kernel/eventCache";
 import {
     cachedGetLogsMulti,
@@ -24,27 +24,28 @@ import {
     ATTESTATION_COORDINATOR_ABI,
     BATCH_VERIFIER_ABI,
     EV_ATTESTATION,
-    parseAttestationLogs,
     tagAttestationUniverses,
+    type ResolutionUniverse,
     type UniverseAttestationEvent,
 } from "@figaro-protocol/sdk";
 import { getAttestationCoordinator, getBatchVerifier } from "@/lib/composition/contracts";
 
 // ── AttestationCoordinator ────────────────────────────────────────────────────
 
-/** Typed view of an `Attestation` log row. `blockNumber`/`transactionHash` may
- *  be null for pending logs; guard downstream. */
-export type IndexedAttestationLog = {
-    args?: Record<string, unknown> & {
-        orderHash?: string;
-        processId?: string;
-        attester?: string;
-        clauseId?: string;
-        stage?: number | bigint;
-        contentRef?: string;
-    };
-    blockNumber?: number | bigint | null;
-    transactionHash?: `0x${string}` | null;
+/** One `Attestation` event flattened to its full row — the shape shared by
+ *  the audit/evidence bundle and (via the narrower `RuntimeAttestation` view)
+ *  the semantic model. clauseId is DATA off the event, never hardcoded.
+ *  `universe` names the path that emitted the row when the reader knows it. */
+export type AttestationRecord = {
+    orderHash: string;
+    processId: string;
+    attester: string;
+    clauseId: string;
+    stage: number;
+    contentRef: string;
+    transactionHash: string | null;
+    blockNumber: number;
+    universe?: ResolutionUniverse;
 };
 
 async function getAllAttestations(client: PublicClient, chainId: number): Promise<IndexedLog[]> {
@@ -58,37 +59,6 @@ async function getAllAttestations(client: PublicClient, chainId: number): Promis
     );
 }
 
-/** One `Attestation` event flattened to its full row — the shape shared by
- *  the audit/evidence bundle and (via the narrower `RuntimeAttestation` view)
- *  the semantic model. clauseId is DATA off the event, never hardcoded. */
-export type AttestationRecord = {
-    orderHash: string;
-    processId: string;
-    attester: string;
-    clauseId: string;
-    stage: number;
-    contentRef: string;
-    transactionHash: string | null;
-    blockNumber: number;
-};
-
-/** THE Attestation-log → row reducer — the one parse every consumer shares
- *  (semantic model, evidence/audit bundle; the juror path stays React-free).
- *  Decoding is the SDK's (`parseAttestationLogs`); this wraps it per-log.
- *  Returns null when the log doesn't decode as an `Attestation` (garbage or
- *  still-pending log) — callers filter. */
-export function parseAttestationLog(log: IndexedAttestationLog): AttestationRecord | null {
-    const [row] = parseAttestationLogs([log as unknown as Log]);
-    return row ?? null;
-}
-
-
-/** Attestation logs filtered by orderHash (hex case never matters). */
-export async function getAttestationsByOrder(client: PublicClient, chainId: number, orderHash: string) {
-    const all = await getAllAttestations(client, chainId);
-    return all.filter((log) => hexEqual(getStringArg(log, "orderHash"), orderHash));
-}
-
 // ── FigaroBatchVerifier — the batch path, the second of the two resolution paths ─────────────────────
 //
 // These reads are deliberately NOT merged into `getAllAttestations` above. The
@@ -97,8 +67,8 @@ export async function getAttestationsByOrder(client: PublicClient, chainId: numb
 // is the only thing that says which universe a row came from — and that
 // distinction is the whole evidentiary difference between "re-verifiable from
 // calldata" and "proved once inside a batch". Merging the two streams would
-// erase it. Callers that only want a timeline use the coordinator read; callers
-// that must attribute evidence use these.
+// erase it. Every evidence reader folds both streams through
+// `getAllAttestationRecords`, which keeps each row's `universe` tag.
 
 /** `Attestation` logs re-emitted BY THE BATCH VERIFIER (never the coordinator's).
  *  Empty when no verifier address is configured — absence, not "not resolved". */
@@ -160,11 +130,24 @@ export async function getAllAttestationRecords(
     return tagAttestationUniverses(direct as unknown as Log[], batch as unknown as Log[]);
 }
 
+/** Attestations on one order from BOTH resolution paths (hex case never
+ *  matters), each row tagged with the `universe` that emitted it ("direct": the
+ *  coordinator's; "batch": the verifier's re-emission). Empty from a stream whose
+ *  contract is unconfigured: absence of a reader, never "no attestations". */
+export async function getAttestationsByOrder(
+    client: PublicClient,
+    chainId: number,
+    orderHash: string,
+): Promise<UniverseAttestationEvent[]> {
+    const all = await getAllAttestationRecords(client, chainId);
+    return all.filter((row) => hexEqual(row.orderHash, orderHash));
+}
+
 /** A process attestation flattened to the fields the runtime model needs:
  *  which clause, which order, which stage, who attested, and the fingerprint
  *  of what was attested (`contentRef`, the keccak-CID digest a reader resolves
- *  the published content at). clauseId is DATA off the event — no caller
- *  hardcodes it. */
+ *  the published content at), and the `universe` that emitted it. clauseId is
+ *  DATA off the event — no caller hardcodes it. */
 export interface RuntimeAttestation {
     clauseId: string;
     orderHash: string;
@@ -172,9 +155,10 @@ export interface RuntimeAttestation {
     attester: string;
     contentRef: string;
     blockNumber: number;
+    universe: ResolutionUniverse;
 }
 
-/** All attestations on a process, clause-agnostic. The semantic builder buckets
+/** All attestations on a process, from both paths, clause-agnostic. The semantic builder buckets
  *  these by clause to gate capabilities; the order page renders them as a
  *  generic timeline (clause + stage straight from data). */
 export async function getAttestationsByProcess(
@@ -182,13 +166,11 @@ export async function getAttestationsByProcess(
     chainId: number,
     processId: string,
 ): Promise<RuntimeAttestation[]> {
-    const all = await getAllAttestations(client, chainId);
+    const all = await getAllAttestationRecords(client, chainId);
     return all
-        .filter((log) => getStringArg(log, "processId") === processId)
-        .map((log) => parseAttestationLog(log as IndexedAttestationLog))
-        .filter((r): r is AttestationRecord => r !== null)
-        .map(({ clauseId, orderHash, stage, attester, contentRef, blockNumber }) => ({
-            clauseId, orderHash, stage, attester, contentRef, blockNumber,
+        .filter((row) => hexEqual(row.processId, processId))
+        .map(({ clauseId, orderHash, stage, attester, contentRef, blockNumber, universe }) => ({
+            clauseId, orderHash, stage, attester, contentRef, blockNumber, universe,
         }))
         .sort((a, b) => a.blockNumber - b.blockNumber);
 }

@@ -19,6 +19,7 @@
  * takes only its hash, `contentRef`).
  */
 
+import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import type { ExtractedDocument } from "./types";
@@ -38,6 +39,8 @@ interface ProcessLogEntry {
     contentRef: string;
     blockNumber: number;
     transactionHash?: string;
+    /** The path that emitted the attestation, when the reader knows it. */
+    universe?: ResolutionUniverse;
 }
 
 /** One process clause's event timeline — the per-clause group the PDF
@@ -91,6 +94,7 @@ export function extractProcessLogs(
             contentRef: att.contentRef,
             blockNumber: att.blockNumber,
             transactionHash: att.transactionHash ?? undefined,
+            universe: att.universe,
         });
     }
 
