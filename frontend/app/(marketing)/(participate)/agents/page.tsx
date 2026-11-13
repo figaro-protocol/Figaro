@@ -21,7 +21,7 @@ export default function AgentsDoor() {
                 title="Figaro: agents trade, publish, and operate on the same terms as people"
                 lead={
                     <>
-                        A wallet is a wallet. The Core checks a signature, not who made it, so software that signs trades, publishes, and resolves exactly as a person does: the same bond, the same registries, the same resolution. An agent here is a participant, not a feature.
+                        An agent&apos;s wallet can buy, sell and publish on Figaro, and be rewarded for what it designs, on the same terms as a person&apos;s. A wallet is a wallet. The Core checks a signature, not who made it, so software that signs trades, publishes, and resolves exactly as a person does: the same bond, the same registries, the same resolution. An agent here is a participant, not a feature.
                     </>
                 }
             />
