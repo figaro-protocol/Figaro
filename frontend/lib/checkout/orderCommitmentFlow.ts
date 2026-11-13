@@ -76,6 +76,11 @@ export interface BuyerFundingRequest {
     /** The slippage margin the buyer set in the funding-token chooser, in
      *  basis points; absent, the venue's own. */
     slippageBps?: number;
+    /** What the party has authorized Permit2 to pull of the funding token
+     *  (its allowance, in that token's units). A fresh quote whose cap exceeds
+     *  it is refused before the wallet opens: the price moved since the party
+     *  authorized, and the commit would revert at Permit2. */
+    approvedInput?: bigint;
 }
 
 /** The seller's accept-time choice to fund their bond by swap: which token
@@ -86,6 +91,11 @@ export interface SellerFundingRequest {
     /** The slippage margin the seller set in the funding-token chooser, in
      *  basis points; absent, the venue's own. */
     slippageBps?: number;
+    /** What the party has authorized Permit2 to pull of the funding token
+     *  (its allowance, in that token's units). A fresh quote whose cap exceeds
+     *  it is refused before the wallet opens: the price moved since the party
+     *  authorized, and the commit would revert at Permit2. */
+    approvedInput?: bigint;
 }
 
 export type OrderFlowStep =
@@ -134,6 +144,11 @@ function quoteBondFundingLeg(
         bondAmount: party === "buyer" ? bonds.buyerBond : bonds.sellerBond,
         deadline: commitment.deadline,
         slippageBps: funding.slippageBps,
+    }).then((quote) => {
+        if (funding.approvedInput !== undefined && quote.maxInput > funding.approvedInput) {
+            throw new Error("The swap's maximum input is above what you authorized. Authorize the funding token for the new maximum.");
+        }
+        return quote;
     });
 }
 

@@ -148,7 +148,11 @@ function SignPageContent() {
             // on-ramp leg — swapped into the process denomination in the same
             // atomic swapAndCommit.
             await acceptOrder(parsed, sellerFundingToken
-                ? { inputToken: sellerFundingToken, ...(sellerMargin.bps !== null ? { slippageBps: sellerMargin.bps } : {}) }
+                ? {
+                    inputToken: sellerFundingToken,
+                    ...(sellerMargin.bps !== null ? { slippageBps: sellerMargin.bps } : {}),
+                    ...(swapFunding.allowance !== undefined ? { approvedInput: swapFunding.allowance } : {}),
+                }
                 : undefined);
         } catch {
             // Error state handled by the order commitment flow.
@@ -243,7 +247,6 @@ function SignPageContent() {
     // state the funding panel shows and the counter-sign button obeys. A
     // counter-sign with a funding leg broadcasts swapAndCommit, which pulls
     // the token through Permit2 and reverts on an allowance that is short.
-    const sellerFunding = swapFunding.authorizationFor(myBondAmount);
     // The slippage margin the seller sets in the chooser, before the quote
     // its accept signature binds.
     const sellerMargin = useFundingMargin({
@@ -253,6 +256,8 @@ function SignPageContent() {
         fundingSymbol: sellerFundingCandidates.find((t) => hexEqual(t.address, sellerFundingToken))?.symbol ?? "",
     }).marginFor(myBondAmount);
     const marginHeld = !!sellerFundingToken && marginBlocksTheAct(sellerMargin);
+    // Against the swap's maximum input in the funding token's units, not the bond's.
+    const sellerFunding = swapFunding.authorizationFor(sellerMargin.maxInput);
     // A seller short of the denomination has no other way through accept —
     // insufficiency auto-opens the collapsed on-ramp.
     const sellerShortOfDenomination = isSeller
@@ -532,7 +537,7 @@ function SignPageContent() {
                                     fundingToken={sellerFundingToken}
                                     onSelect={setSellerFundingToken}
                                     authorization={sellerFunding}
-                                    onAuthorize={swapFunding.authorize}
+                                    onAuthorize={() => swapFunding.authorize(sellerMargin.maxInput)}
                                     margin={sellerMargin}
                                 />
                             )}

@@ -171,7 +171,11 @@ export function SwapFundingPanel({
                     className="w-full"
                     data-testid="funding-authorize"
                 >
-                    {authorization === "authorizing" ? "Authorizing…" : "Authorize funding token"}
+                    {authorization === "authorizing"
+                        ? "Authorizing…"
+                        : margin?.maxInput != null && margin.decimals !== undefined
+                            ? `Authorize ${tokenFigure(margin.maxInput, margin.decimals)} ${margin.symbol}`
+                            : "Authorize funding token"}
                 </Button>
             )}
             {(authorization === "reading" || authorization === "ready") && (

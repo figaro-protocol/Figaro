@@ -189,6 +189,24 @@ describe("signCommitment — the buyer's signature", () => {
         expect(result.current.step).toBe("awaiting-seller");
     });
 
+    it("refuses, before any wallet prompt, a quote whose cap is above what the party authorized Permit2 to pull", async () => {
+        const p = preview();
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        // The quote's cap is 207; an allowance of 206 does not cover it.
+        const { caught } = await run(() => result.current.signCommitment(p, { inputToken: INPUT_TOKEN, slippageBps: 300, approvedInput: 206n }));
+        expect((caught as Error).message).toMatch(/above what you authorized/);
+        expect(confirm).not.toHaveBeenCalled();
+        expect(s.typedData).toEqual([]);
+        expect(result.current.step).toBe("error");
+    });
+
+    it("signs when the authorized allowance equals the quote's cap", async () => {
+        const p = preview();
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        const { value } = await run(() => result.current.signCommitment(p, { inputToken: INPUT_TOKEN, slippageBps: 300, approvedInput: 207n }));
+        expect(value?.buyerFunding).toMatchObject({ maxInput: 207n });
+    });
+
     it("with a funding token and no chain connection, signs nothing, records the reason and stands at error", async () => {
         s.client = undefined;
         const p = preview();

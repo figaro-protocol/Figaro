@@ -420,4 +420,80 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
             "witness must change when maxInput changes"
         );
     }
+
+    // ── The coordinator never signs, never holds, never resolves ──
+
+    /// @dev A contract has no key, so no signature recovers to its address: a
+    ///      commitment naming the coordinator as buyer fails FigaroCore's ECDSA
+    ///      recovery. Tried straight at the Core and through the coordinator.
+    function test_CoordinatorCannotBeBuyer() public {
+        CommitmentTypes.Commitment memory c = _rootCommitment(20);
+        c.buyer = address(coord);
+        bytes memory bSig = _sign(c, BUYER_KEY);
+        bytes memory sSig = _sign(c, SELLER_KEY);
+
+        vm.expectRevert(FigaroCore.InvalidBuyerSignature.selector);
+        core.commit(c, bSig, sSig);
+
+        _fundInput(seller, sellerInput, 2 * P);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(sellerInput, 2 * P, SELLER_KEY);
+        vm.prank(relayer);
+        vm.expectRevert(FigaroCore.InvalidBuyerSignature.selector);
+        coord.swapAndCommit(c, bSig, sSig, _disabled(), leg);
+    }
+
+    function test_CoordinatorCannotBeSeller() public {
+        CommitmentTypes.Commitment memory c = _rootCommitment(21);
+        c.seller = address(coord);
+        bytes memory bSig = _sign(c, BUYER_KEY);
+        bytes memory sSig = _sign(c, SELLER_KEY);
+
+        vm.expectRevert(FigaroCore.InvalidSellerSignature.selector);
+        core.commit(c, bSig, sSig);
+
+        _fundInput(buyer, buyerInput, 2 * P);
+        WitnessSwapAndCommitCoordinator.SwapFunding memory leg = _leg(buyerInput, 2 * P, BUYER_KEY);
+        vm.prank(relayer);
+        vm.expectRevert(FigaroCore.InvalidSellerSignature.selector);
+        coord.swapAndCommit(c, bSig, sSig, leg, _disabled());
+    }
+
+    /// @dev Only the root buyer's own address resolves. A call from the
+    ///      coordinator's address is refused.
+    function test_CoordinatorCannotResolve() public {
+        _fundInput(buyer, buyerInput, 2 * P);
+        _selfFundBond(seller, 2 * P);
+        CommitmentTypes.Commitment memory c = _rootCommitment(22);
+        vm.prank(relayer);
+        (bytes32 processId,) = coord.swapAndCommit(
+            c, _sign(c, BUYER_KEY), _sign(c, SELLER_KEY), _leg(buyerInput, 2 * P, BUYER_KEY), _disabled()
+        );
+
+        CommitmentTypes.Commitment[] memory cs = new CommitmentTypes.Commitment[](1);
+        cs[0] = c;
+        cs[0].processId = processId;
+        vm.prank(address(coord));
+        vm.expectRevert(FigaroCore.NotProcessBuyer.selector);
+        core.resolveProcess(processId, cs);
+    }
+
+    /// @dev After a swap-funded order lands with both legs swapped and a surplus
+    ///      on each, the coordinator holds none of the three tokens.
+    function test_CoordinatorHoldsNoTokenAfterBothLegs() public {
+        router.setRate(3, 2);
+        _fundInput(buyer, buyerInput, 2 * P);
+        _fundInput(seller, sellerInput, 2 * P);
+        CommitmentTypes.Commitment memory c = _rootCommitment(23);
+        vm.prank(relayer);
+        coord.swapAndCommit(
+            c,
+            _sign(c, BUYER_KEY),
+            _sign(c, SELLER_KEY),
+            _leg(buyerInput, 2 * P, BUYER_KEY),
+            _leg(sellerInput, 2 * P, SELLER_KEY)
+        );
+        assertEq(bond.balanceOf(address(coord)), 0, "no bond currency");
+        assertEq(buyerInput.balanceOf(address(coord)), 0, "no buyer input");
+        assertEq(sellerInput.balanceOf(address(coord)), 0, "no seller input");
+    }
 }

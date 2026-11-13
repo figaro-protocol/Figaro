@@ -210,7 +210,7 @@ For each enabled leg it pulls the input token through a Permit2 witness signatur
 
 **The venue is SwapRouter02, and the distinction is load-bearing for the calldata you sign.** The coordinator approves the router for your input token and forwards your `swapData` verbatim (`src/composability/WitnessSwapAndCommitCoordinator.sol:221-224`), so the venue must pull by ERC-20 allowance: the calldata is SwapRouter02's `exactOutputSingle` — an exact output, the bond, for at most `maxInput` of input (`:135`) — not the Universal Router, which pulls through Permit2 or spends pre-sent balances and would leave the swap unfunded. Build it with the SDK's `SWAP_ROUTER_02_ABI`, which carries exactly the venue shapes the protocol composes.
 
-**Errors** (`:153-155`): `NothingToFund`, `SwapCallFailed`, `OutputBelowBond(received, required)`. Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the denomination, a one-time `approve(Permit2, …)` for the input token, and a per-commit Permit2 witness signature.
+**Errors** (`:153-155`): `NothingToFund`, `SwapCallFailed`, `OutputBelowBond(received, required)`. Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the denomination, an `approve(Permit2, …)` for the input token, for the signed maximum of each swap, and a per-commit Permit2 witness signature.
 
 ## FigaroBatchVerifier — the batch path
 

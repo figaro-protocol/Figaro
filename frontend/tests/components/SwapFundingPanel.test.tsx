@@ -97,6 +97,12 @@ describe("SwapFundingPanel — the slippage margin field", () => {
         ...state(over), venue: "uniswap-v3" as const, decimals: 6, symbol: "AAA", onChange: () => {}, ...extra,
     });
 
+    it("says the amount the authorize step will approve: the max input, in the funding token's units", () => {
+        render(<SwapFundingPanel {...props} authorization="needed" margin={margin()} />);
+        // quote 1.000000 AAA + the 1% margin = 1.010000 AAA, the cap the party signs.
+        expect(screen.getByTestId("funding-authorize").textContent).toMatch(/Authorize 1\.01 AAA/);
+    });
+
     it("shows the venue's margin and the max input it yields, in the funding token's units", () => {
         render(<SwapFundingPanel {...props} margin={margin()} />);
         expect(screen.getByTestId("funding-margin-input")).toHaveValue(1);

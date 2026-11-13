@@ -782,7 +782,8 @@ const permitSignature = await walletClient.signTypedData({ account, ...typedData
 // swapAndCommit(c, buyerSig, sellerSig, buyerFunding, sellerFunding) — one leg
 // per party; pass DISABLED_SWAP_FUNDING_LEG for a party that self-funds.
 // Per-party prerequisites: approve(FigaroCore) for the denomination (as
-// always) plus a one-time approve(Permit2) for the input token.
+// always) plus an approve(Permit2) for the input token, for the signed maximum
+// of each swap.
 ```
 
 **There is no batch-path equivalent, and none can exist in-batch.** A sequencer
