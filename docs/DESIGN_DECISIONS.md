@@ -944,7 +944,7 @@ the one registry the kind names, reverting `UnknownKind` on a kind above 2.
 seller(20)` per use, so the proof commits the kind.
 
 **Why it looks wrong**: The registry families are parallel and carry no
-edge between them (CLAUDE.md § "Separation of Concerns"), so a discriminator
+edge between them (CLAUDE.md § "The six layers"), so a discriminator
 that names which registry a key belongs to looks like the reward reaching
 across the boundary — and all three hash-keyed registries already key by
 content, so the bytes look like they should suffice.
@@ -1016,8 +1016,7 @@ supplied by the caller reads like trust handed to the caller.
 
 **Why it is correct**: A list stored in `AssemblyRegistry`, or a lookup into
 `AgreementRegistry` at assembly registration, is an edge between two
-registry families, and the families are parallel (CLAUDE.md § "Separation of
-Concerns"): assemblies use agreements, agreements use clauses, and neither
+registry families, and the families are parallel (CLAUDE.md § "The six layers"): assemblies use agreements, agreements use clauses, and neither
 knows what uses it. The root carries the membership instead: an agreement leaf
 either hashes up to the registered `assemblyHash` or it does not, so the
 caller can supply nothing the root did not already commit, and a wrong
