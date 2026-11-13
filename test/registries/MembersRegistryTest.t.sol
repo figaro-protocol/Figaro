@@ -390,6 +390,34 @@ contract MembersRegistryTest is Test {
         assertEq(alice.balance, balBefore + deposit);
         assertEq(address(r).balance, 0);
     }
+
+    // ── No owner, no pause, no upgrade ───────────────────────────────
+
+    function test_noOwner_noPauseNoUpgrade() public {
+        // MembersRegistry has no owner, no pause and no upgrade path: such a call
+        // finds no function and no fallback, so it fails, and a registered
+        // entry stays registered.
+        vm.prank(alice);
+        reg.register{value: REG_DEPOSIT}("ipfs://alice-profile");
+
+        bytes[9] memory probes = [
+            abi.encodeWithSignature("owner()"),
+            abi.encodeWithSignature("transferOwnership(address)", alice),
+            abi.encodeWithSignature("renounceOwnership()"),
+            abi.encodeWithSignature("pause()"),
+            abi.encodeWithSignature("unpause()"),
+            abi.encodeWithSignature("paused()"),
+            abi.encodeWithSignature("upgradeTo(address)", address(this)),
+            abi.encodeWithSignature("upgradeToAndCall(address,bytes)", address(this), bytes("")),
+            abi.encodeWithSignature("setDeposit(uint256)", 0)
+        ];
+        for (uint256 i = 0; i < probes.length; i++) {
+            vm.prank(alice);
+            (bool ok,) = address(reg).call(probes[i]);
+            assertFalse(ok, "the registry answers an ownership, pause or upgrade call");
+        }
+        assertTrue(reg.registered(alice), "the member stays registered");
+    }
 }
 
 /// A member that is a contract and refuses ETH — the case that distinguishes

@@ -213,4 +213,33 @@ contract AssemblyRegistryTest is Test {
         vm.expectRevert(abi.encodeWithSelector(AssemblyRegistry.AssemblyAlreadyRegistered.selector, ASSEMBLY_HASH));
         registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, "ipfs://hijack");
     }
+
+    // ── No owner, no pause, no upgrade ───────────────────────────────
+
+    function test_noOwner_noPauseNoUpgrade() public {
+        // AssemblyRegistry has no owner, no pause and no upgrade path: such a call
+        // finds no function and no fallback, so it fails, and a registered
+        // entry stays registered.
+        vm.prank(alice);
+        registry.registerAssembly{value: DEPOSIT}(ASSEMBLY_HASH, "ipfs://QmAssembly");
+
+        bytes[9] memory probes = [
+            abi.encodeWithSignature("owner()"),
+            abi.encodeWithSignature("transferOwnership(address)", alice),
+            abi.encodeWithSignature("renounceOwnership()"),
+            abi.encodeWithSignature("pause()"),
+            abi.encodeWithSignature("unpause()"),
+            abi.encodeWithSignature("paused()"),
+            abi.encodeWithSignature("upgradeTo(address)", address(this)),
+            abi.encodeWithSignature("upgradeToAndCall(address,bytes)", address(this), bytes("")),
+            abi.encodeWithSignature("setDeposit(uint256)", 0)
+        ];
+        for (uint256 i = 0; i < probes.length; i++) {
+            vm.prank(alice);
+            (bool ok,) = address(registry).call(probes[i]);
+            assertFalse(ok, "the registry answers an ownership, pause or upgrade call");
+        }
+        (address registeredBy,,,) = registry.bindings(ASSEMBLY_HASH);
+        assertEq(registeredBy, alice, "the assembly stays registered");
+    }
 }

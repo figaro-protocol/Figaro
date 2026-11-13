@@ -680,6 +680,33 @@ contract UsageCounterTest is Test {
         counter.recordAssemblyUsage(c, _asmRoot(), AGR_KEY, keccak256(_agreementLeafBytes(0)), proof, membership);
     }
 
+    /// An agreement-format tree never opens an assembly leaf. The same entries
+    /// are built once with the agreement format's leaf (`keccak256(key | dataHash)`,
+    /// no domain) and its root is offered as the assemblyHash. The order names
+    /// that root, so the provenance opens, yet the membership proof, valid in
+    /// the agreement-format tree, is not a proof of an assembly leaf.
+    /// The control: the same entries in the assembly format under their own
+    /// root are accepted.
+    function test_anAgreementFormatRootIsRefusedWhereAnAssemblyRootIsExpected() public {
+        bytes32[] memory wrongLeaves = new bytes32[](3);
+        wrongLeaves[0] = AgreementTestHelper.leafFor(AGR_KEY, _agreementLeafBytes(0));
+        wrongLeaves[1] = AgreementTestHelper.leafFor(AGR2_KEY, _agreementLeafBytes(1));
+        wrongLeaves[2] = AgreementTestHelper.leafFor(AgreementTestHelper.ASSEMBLY_TERMS_LEAF_KEY, TERMS);
+        bytes32 wrongRoot = AgreementTestHelper.rootFor(wrongLeaves);
+        assertTrue(wrongRoot != _asmRoot(), "the two conventions give two roots");
+        bytes32[] memory wrongMembership = AgreementTestHelper.proofFor(wrongLeaves, 0);
+
+        (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderAgreement(AGR_KEY, wrongRoot, 1);
+        vm.expectRevert(UsageCounter.InvalidMembershipProof.selector);
+        counter.recordAssemblyUsage(c, wrongRoot, AGR_KEY, keccak256(_agreementLeafBytes(0)), proof, wrongMembership);
+
+        (CommitmentTypes.Commitment memory ok, bytes32[] memory okProof) =
+            _settledUnderAgreement(AGR_KEY, _asmRoot(), 2);
+        _recordAssembly(counter, ok, 0, okProof);
+        (uint64 count,,) = counter.accrualOf(KIND_ASSEMBLY, _asmRoot(), 0);
+        assertEq(count, 1, "the assembly-format tree is accepted");
+    }
+
     /// The agreement leaf commits its index and its own fills: a claim with
     /// the right agreement and another agreement's bytes is not a leaf of the tree.
     function test_anAgreementLeafWithAnotherAgreementsBytesFails() public {
