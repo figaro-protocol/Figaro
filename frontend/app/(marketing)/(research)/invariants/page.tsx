@@ -30,7 +30,7 @@ export default function Invariants() {
         <>
             <MarketingHero
                 title="Invariants."
-                lead="Figaro rests on six facts a contract cannot violate — not policies someone chose, not promises anyone keeps. Everything else the protocol does either follows from those six or is built on top of them by somebody else."
+                lead="Anyone can build an economy on Figaro, a market, a cooperative or a mutual-aid group, and anyone can trade in it with strangers. Every one of those trades depends on the six facts below, which is why the contracts that state them have no admin, no pause and no upgrade. Figaro rests on six facts a contract cannot violate — not policies someone chose, not promises anyone keeps. Everything else the protocol does either follows from those six or is built on top of them by somebody else."
             />
 
             <MarketingSection title="The six.">
