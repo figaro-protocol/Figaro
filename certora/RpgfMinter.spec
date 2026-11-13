@@ -157,8 +157,11 @@ rule mintedNeverExceedsPeriodBudget(uint8 periodId, method f) {
 //
 // A claim is per key: `claimed[periodId][kind][key]`. A list whose one key is
 // already claimed scores nothing, so `claim` reverts (`NothingToClaim`).
-// `claimedKeyAddsNothing` below proves the general case: a claimed key in a
-// longer list adds nothing to what the call mints.
+// BOUNDS: this rule and `claimableQuotesZeroForAClaimedKey` fix the list at one
+// entry; `claimedKeyAddsNothing` below fixes it at two entries, the claimed one
+// first. Neither proves a list of three or more, nor the claimed key placed
+// second; those rest on the loop being the same for every entry, an argument
+// these rules do not machine-check.
 // ═══════════════════════════════════════════════════════════════════
 
 rule noDoubleClaimPerKeyPerPeriod(uint8 periodId, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies) {
@@ -172,10 +175,14 @@ rule noDoubleClaimPerKeyPerPeriod(uint8 periodId, RpgfMinter.ClauseOrAssemblyKey
         "claim must revert when its only key was already claimed this period";
 }
 
-// A claimed key in a two-entry list adds nothing: the call mints exactly the
-// share of the other, unclaimed key — what a call naming that key alone mints.
-// So claiming in two calls never rewards a key twice, and claiming one key never
-// forfeits the other.
+// A claimed key in a two-entry list (the claimed entry first) adds nothing: the
+// call mints exactly the share of the other, unclaimed key — what a call naming
+// that key alone mints. So, for two keys, claiming in two calls never rewards a
+// key twice, and claiming one key never forfeits the other. The rule fixes
+// neither kind nor key, so it includes one key under two kinds, the first
+// claimed and the second not: the mark of one kind does not zero the other
+// (Foundry holds the same case concretely:
+// `test_aClaimUnderOneKindLeavesTheSameBytesUnderAnotherKind`).
 rule claimedKeyAddsNothing(uint8 periodId, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies) {
     env e;
     require clausesOrAssemblies.length == 2;
@@ -323,18 +330,18 @@ rule mintedMonotonic(uint8 periodId, method f) {
 // ═══════════════════════════════════════════════════════════════════
 
 rule claimableRejectsDuplicatesToo(uint8 periodId, address account, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies, uint256 i, uint256 j) {
-    // Two early-return paths reach the dedupe loop in `_entitlement` only
-    // conditionally, and both are legitimate non-revert shapes independent of
-    // the clause-or-assembly list's contents (a claimed key is no early
-    // return: `_entitlement` checks it for duplicates and authorship first,
-    // and only then counts it zero):
-    //   (b) `_entitlement` short-circuits to `(0, 0)` when
+    // Two early returns come before the dedupe loop in `_entitlement`, and
+    // both are legitimate non-revert shapes independent of the
+    // clause-or-assembly list's contents (a claimed key is no early return:
+    // `_entitlement` checks it for duplicates and authorship first, and only
+    // then counts it zero):
+    //   (a) `_entitlement` short-circuits to `(0, 0)` when
     //       `counter.totalScoreIn(periodId) == 0` — BEFORE its own dedupe
     //       loop runs. On `claim` this still reverts one step later
     //       (`amount == 0` => `NothingToClaim`), which is why rule 4 holds
     //       unconditionally; `claimable` has no such second gate, so a
     //       genuinely empty period returns 0 for ANY list, dupes included.
-    //   (c) `claimable` returns 0 for a wallet that holds no live member stake,
+    //   (b) `claimable` returns 0 for a wallet that holds no live member stake,
     //       BEFORE `_entitlement` (the designer-side membership gate; its own
     //       rules are `nonMemberCannotBePaid` and `nonMemberIsQuotedZero`).
     // Excluding both isolates what this rule actually checks: for a member,

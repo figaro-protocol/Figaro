@@ -15,7 +15,14 @@ const w = vi.hoisted(() => {
     return {
         address: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as `0x${string}`,
         key: `0x${"ab".repeat(32)}` as `0x${string}`,
+        key2: `0x${"cd".repeat(32)}` as `0x${string}`,
         fail: false,
+        /** Two accruing keys in place of one. */
+        twoKeys: false,
+        /** The keys `claimed(period, kind, key)` answers true for. */
+        claimedKeys: new Set<string>(),
+        /** A per-key `claimed` read throws. */
+        failClaimed: false,
         client: {} as Record<string, unknown>,
     };
 });
@@ -32,8 +39,9 @@ vi.mock("@/lib/composition/contracts", () => ({
 }));
 vi.mock("@/lib/kernel/eventCache", () => ({
     cachedGetContractEvents: async (_client: unknown, _chainId: number, { eventName }: { eventName: string }) => {
-        if (eventName === "ClauseRegistered") return [{ args: { registeredBy: w.address, clauseKey: w.key } }];
-        if (eventName === "UsageRecorded") return [{ args: { kind: 0, clauseOrAssembly: w.key, period: 0 } }];
+        const keys = w.twoKeys ? [w.key, w.key2] : [w.key];
+        if (eventName === "ClauseRegistered") return keys.map((k) => ({ args: { registeredBy: w.address, clauseKey: k } }));
+        if (eventName === "UsageRecorded") return keys.map((k) => ({ args: { kind: 0, clauseOrAssembly: k, period: 0 } }));
         return [];
     },
 }));
@@ -57,9 +65,16 @@ const READS: Record<string, unknown> = {
 };
 
 beforeEach(() => {
+    w.twoKeys = false;
+    w.claimedKeys = new Set();
+    w.failClaimed = false;
     w.client = {
-        readContract: vi.fn(async ({ functionName }: { functionName: string }) => {
+        readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: readonly unknown[] }) => {
             if (w.fail && functionName === "totalScoreIn") throw new Error("HTTP request failed");
+            if (functionName === "claimed") {
+                if (w.failClaimed) throw new Error("HTTP request failed");
+                return w.claimedKeys.has(String(args?.[2]));
+            }
             return READS[functionName];
         }),
     };
@@ -118,5 +133,36 @@ describe("RewardsView — renders on the read's state", () => {
         render(<RewardsView />);
         expect(await screen.findByTestId("period-card-0")).toBeInTheDocument();
         expect(screen.getByTestId("period-claimable-0")).toBeInTheDocument();
+    });
+
+    it("some keys claimed and others not: the period is claimable, with the unclaimed share", async () => {
+        w.fail = false;
+        w.twoKeys = true;
+        w.claimedKeys = new Set([w.key]);
+        render(<RewardsView />);
+        expect(await screen.findByTestId("period-card-0")).toBeInTheDocument();
+        expect(screen.getByTestId("period-claimable-0")).toBeInTheDocument();
+        expect(screen.queryByTestId("period-claimed-0")).toBeNull();
+    });
+
+    it("every key claimed: the period shows claimed and no claimable figure", async () => {
+        w.fail = false;
+        w.twoKeys = true;
+        w.claimedKeys = new Set([w.key, w.key2]);
+        render(<RewardsView />);
+        expect(await screen.findByTestId("period-claimed-0")).toBeInTheDocument();
+        expect(screen.queryByTestId("period-claimable-0")).toBeNull();
+    });
+
+    it("a failed per-key claimed read leaves the place empty", async () => {
+        w.fail = false;
+        w.failClaimed = true;
+        render(<RewardsView />);
+        await waitFor(() => expect((w.client.readContract as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith(
+            expect.objectContaining({ functionName: "claimed" }),
+        ));
+        await waitFor(() => expect(screen.queryByTestId("rewards-loading")).toBeNull());
+        expect(screen.queryByTestId("period-card-0")).toBeNull();
+        expect(screen.queryByTestId("period-claimed-0")).toBeNull();
     });
 });

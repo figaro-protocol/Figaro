@@ -11,9 +11,9 @@ import "./CommitmentTypes.sol";
 /// @title FigaroCore — Self-enforcing agreements between strangers
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
-/// @notice The Core's bonding and resolution contract. Two state-changing external functions:
-///         commit() and resolveProcess(); DOMAIN_SEPARATOR() and the getters of the three
-///         mappings are external views. No owner, no fee, no escape hatches.
+/// @notice The Core's bonding and resolution contract. Two state-changing external functions: commit()
+///         and resolveProcess(); DOMAIN_SEPARATOR(), the three mappings' getters and eip712Domain()
+///         (inherited from OpenZeppelin's EIP712) are external views. No owner, no fee, no escape hatches.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
 ///         Invariants enforced on-chain:

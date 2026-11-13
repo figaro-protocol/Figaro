@@ -45,8 +45,8 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 ///                           precedes renounce, so the minter MUST exist here);
 ///                           paid pro rata from UsageCounter accrual to clause
 ///                           authors + assembly designers of record — uniform,
-///                           no per-wallet cap; one claim per closed annual
-///                           period.
+///                           no per-wallet cap; each key claimed once per
+///                           closed annual period.
 ///
 /// @dev Clause-content validation is path-split. The DIRECT path binds an
 ///      attestation to its signed agreement (merkle inclusion) and to its
