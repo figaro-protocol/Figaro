@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 import {FlorinToken} from "src/rewards/FlorinToken.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
@@ -111,14 +112,34 @@ contract FlorinTokenTest is Test {
 
     // ── What a mint writes ───────────────────────────────────────────────
 
-    /// `mint` makes no external call, so it carries no reentrancy guard: it
-    /// writes the minter's tally, the supply and the recipient's balance, and
-    /// no other slot of the token.
+    /// A mint writes the minter's tally, the supply and the recipient's
+    /// balance, and no other slot of the token (no guard flag among them).
+    /// That it makes no external call is `test_MintMakesNoExternalCall`.
     function test_MintWritesOnlyTheTallyTheSupplyAndTheBalance() public {
         vm.record();
         florin.mint(alice, 1 ether);
         (, bytes32[] memory writes) = vm.accesses(address(florin));
         assertEq(writes.length, 3, "a mint writes three slots");
+    }
+
+    /// No call leaves the token during `mint`: every account access recorded
+    /// across the mint is the test's own call into the token, never a call,
+    /// a delegatecall, a staticcall or a creation the token makes.
+    function test_MintMakesNoExternalCall() public {
+        vm.startStateDiffRecording();
+        florin.mint(alice, 1 ether);
+        VmSafe.AccountAccess[] memory accesses = vm.stopAndReturnStateDiff();
+        uint256 calls;
+        for (uint256 i = 0; i < accesses.length; ++i) {
+            VmSafe.AccountAccessKind k = accesses[i].kind;
+            bool isCall = k == VmSafe.AccountAccessKind.Call || k == VmSafe.AccountAccessKind.DelegateCall
+                || k == VmSafe.AccountAccessKind.CallCode || k == VmSafe.AccountAccessKind.StaticCall
+                || k == VmSafe.AccountAccessKind.Create;
+            if (!isCall) continue;
+            assertTrue(accesses[i].accessor != address(florin), "mint made a call out of the token");
+            ++calls;
+        }
+        assertEq(calls, 1, "the only call is the test's call into mint");
     }
 
     // ── ERC-20 edge cases ────────────────────────────────────────────────

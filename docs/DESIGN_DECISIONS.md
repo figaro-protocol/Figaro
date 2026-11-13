@@ -1139,7 +1139,8 @@ read per mint and changes no outcome. `mint` makes no external call, so it
 carries no reentrancy guard.
 
 **Tests**: `test_CannotRegisterMinterIfCapExceedsMaxSupply` (the registry's
-bound) and `test_MintWritesOnlyTheTallyTheSupplyAndTheBalance`
+bound), `test_MintMakesNoExternalCall` and
+`test_MintWritesOnlyTheTallyTheSupplyAndTheBalance`
 (`test/rewards/FlorinToken.t.sol`); the Echidna property
 `echidna_max_supply_never_exceeded` (`src/echidna/EchidnaFlorinToken.sol`).
 

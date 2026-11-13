@@ -467,8 +467,9 @@ export const EV_USAGE_RECORDED = parseAbiItem(
 
 // ── RpgfMinter ABI ────────────────────────────────────────────────────────
 //
-// The 600M retroactive distribution: one claim per accrual period, from a
-// per-period budget validated against the counter's schedule at deploy (the
+// The 600M retroactive distribution: each key claimed once per closed accrual
+// period, from a per-period budget validated against the counter's schedule
+// at deploy (the
 // reference schedule: nine annual periods, budgets grouped 15/30/55 into
 // three rising tranches — deploy-script data, not contract state). There is
 // nothing to post, nothing to bond and nothing to dispute — a claim is

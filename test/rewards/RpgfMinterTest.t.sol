@@ -388,6 +388,32 @@ contract RpgfMinterTest is Test {
         assertEq(minter.minted(0), 2 * ((T0 * 50) / 1000));
     }
 
+    /// The claimed mark is keyed by kind as well as key: the same 32 bytes
+    /// registered as a clause by one designer and as an assembly by another
+    /// are two keys, and the first designer's claim leaves the second's whole.
+    function test_aClaimUnderOneKindLeavesTheSameBytesUnderAnotherKind() public {
+        bytes32 shared = keccak256("the-same-32-bytes");
+        vm.prank(alice);
+        clauses.registerClause(shared, "ipfs://shared-clause");
+        vm.prank(carol);
+        assemblies.registerAssembly(shared, "ipfs://shared-assembly");
+
+        counter.setScore(KIND_CLAUSE, shared, 0, 100);
+        counter.setScore(KIND_ASSEMBLY, shared, 0, 300);
+        counter.setScore(KIND_CLAUSE, B_KEY, 0, 600);
+        counter.setClosed(0, true);
+
+        vm.prank(alice);
+        minter.claim(0, _clause(shared));
+        assertEq(florin.balanceOf(alice), (T0 * 100) / 1000);
+        assertFalse(minter.claimed(0, KIND_ASSEMBLY, shared));
+
+        assertEq(minter.claimable(0, carol, _assembly(shared)), (T0 * 300) / 1000);
+        vm.prank(carol);
+        minter.claim(0, _assembly(shared));
+        assertEq(florin.balanceOf(carol), (T0 * 300) / 1000);
+    }
+
     /// A list that names a key already claimed and one not yet claimed mints for
     /// the second alone, and the quote says so first: a page that passes
     /// every key it knows loses nothing and is rewarded nothing twice.
