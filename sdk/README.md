@@ -2814,7 +2814,7 @@ particular assembly, only the clauses your buyer and you both sign.
 Everything above earns. If the wallet registered a clause, an agreement or an assembly and
 other people's trade composed it, the 600M designer-rewards reserve is claimed by the **designer of record** — the wallet each registry stored as `registeredBy`,
 and only while its registration stake is still un-withdrawn (that is the designer-side half of the two-sided live-stake gate; the seller-side half lives in
-`UsageCounter`). One call per wallet per period, carrying **every** clause, agreement and assembly that wallet registered:
+`UsageCounter`). Each key is rewarded once per period, whichever call names it: pass the wallet's clauses, agreements and assemblies in one call or in several, and claiming some forfeits none of the rest:
 
 ```ts
 import { USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE, RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro-protocol/sdk";
@@ -2831,8 +2831,8 @@ const mine = [
 ];
 
 // A period must be CLOSED before it can be claimed (claim reverts
-// PeriodStillAccruing otherwise), and `claimable` returns 0 — not a revert —
-// for a wallet that already claimed. Read before you write:
+// PeriodStillAccruing otherwise), and `claimable` counts a key already
+// claimed in the period as 0 — not a revert. Read before you write:
 const closed = await client.readContract({
   address: addresses.usageCounter!, abi: USAGE_COUNTER_ABI,
   functionName: "periodClosed", args: [periodId],
@@ -2853,7 +2853,8 @@ if (closed && amount > 0n) {
 The list is a **lookup key, never a claim of ownership**: each entry is verified
 against its own registry, so a key you did not register reverts `NotAuthorOfRecord`
 and a repeated entry reverts `DuplicateClauseOrAssembly`. `claim` adds two of
-its own: `AlreadyClaimed` (once per wallet per period) and
+its own: `NothingToClaim` (the unclaimed keys score nothing, as when every
+listed key is already claimed; `claimed(periodId, kind, key)` reads one key) and
 `NoClausesOrAssemblies` (the empty list). Every one of those fragments is in
 `RPGF_MINTER_ABI`, so they decode by name instead of arriving as opaque bytes.
 
@@ -2865,7 +2866,7 @@ a duplicate list, and even a key the caller did not register, both answer `0`
 rather than reverting. And it never checks CLOSURE — during accrual it returns a
 live figure that moves with every recorded usage and cannot yet be claimed;
 `claim` is the one that refuses, with `PeriodStillAccruing`. So a `0` is four
-facts wearing one answer (already claimed · nothing scored by you · nothing
+facts wearing one answer (every key already claimed · nothing scored by you · nothing
 scored at all · a list that would have reverted on a live period), and a
 non-zero on an open period is an estimate, not an entitlement. Read
 `periodClosed` beside it, always. Once a period is closed there is no claim

@@ -69,6 +69,10 @@ export interface RpgfClauseOrAssemblyAccrual {
     d: bigint;
     /** `scoreOf` — the one tally's score, and the figure the payout divides by. */
     score: bigint;
+    /** `claimed(period, kind, key)` — true once this key has been claimed for
+     *  the period. The minter rewards each key once per period, whichever call
+     *  names it. */
+    claimed: boolean;
 }
 
 export interface RpgfPeriodState {
@@ -86,11 +90,13 @@ export interface RpgfPeriodState {
     accruals: RpgfClauseOrAssemblyAccrual[];
     /** Summed score of those clauses, agreements and assemblies. */
     myScore: bigint;
-    /** What the minter says the wallet can take right now: 0 once claimed, and
-     *  0 for a wallet that holds no live member stake (`claimable` reads the
-     *  same gates `claim` reads; it does not read whether the period closed). */
+    /** What the minter says the wallet can take right now: the share of its
+     *  keys not yet claimed, and 0 for a wallet that holds no live member
+     *  stake (`claimable` reads the same gates `claim` reads; it does not read
+     *  whether the period closed). */
     claimable: bigint;
-    /** True once the wallet has claimed this period. */
+    /** True once every key that accrued for the wallet in this period has
+     *  been claimed. */
     claimed: boolean;
 }
 
@@ -235,7 +241,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             const rows = await Promise.all(
                 ids.map(async (periodId) => {
                     const period = periodId;
-                    const [amount, minted, periodClosed, totalScore, claimed, claimable, accrualRows] =
+                    const [amount, minted, periodClosed, totalScore, claimable, accrualRows] =
                         await Promise.all([
                             publicClient.readContract({
                                 ...minterBase,
@@ -257,13 +263,6 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                                 functionName: "totalScoreIn",
                                 args: [period],
                             }),
-                            account
-                                ? publicClient.readContract({
-                                      ...minterBase,
-                                      functionName: "claimed",
-                                      args: [periodId, account],
-                                  })
-                                : Promise.resolve(false),
                             account && clausesOrAssemblies.length > 0
                                 ? publicClient.readContract({
                                       ...minterBase,
@@ -275,7 +274,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                                 mine.filter((m) => usedIn.get(period)?.has(usageKeyId(m.kind, m.clauseOrAssembly))).map(async (m) => {
                                     // The one tally, route-blind; `scoreOf` is
                                     // the figure the minter rewards on.
-                                    const [[c, d], score] = await Promise.all([
+                                    const [[c, d], score, claimed] = await Promise.all([
                                         publicClient.readContract({
                                             ...counterBase,
                                             functionName: "accrualOf",
@@ -286,8 +285,14 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                                             functionName: "scoreOf",
                                             args: [m.kind, m.clauseOrAssembly, period],
                                         }),
+                                        // The minter rewards each key once per period.
+                                        publicClient.readContract({
+                                            ...minterBase,
+                                            functionName: "claimed",
+                                            args: [periodId, m.kind, m.clauseOrAssembly],
+                                        }),
                                     ]);
-                                    return { ...m, c, d, score };
+                                    return { ...m, c, d, score, claimed };
                                 }),
                             ),
                         ]);
@@ -301,7 +306,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                         accruals,
                         myScore: accruals.reduce((sum, a) => sum + a.score, 0n),
                         claimable,
-                        claimed,
+                        claimed: accruals.length > 0 && accruals.every((a) => a.claimed),
                     } satisfies RpgfPeriodState;
                 }),
             );
@@ -314,8 +319,10 @@ export function useRpgfRewards(subject?: `0x${string}`) {
         };
     }, [minter, counter, publicClient, chainId, account, discoverClausesAndAssemblies, refreshNonce]);
 
-    /** Claim a closed period: one call per wallet per period, carrying every
-     *  clause, agreement or assembly the wallet designed. The shared simulate →
+    /** Claim a closed period: one call carrying every clause, agreement or
+     *  assembly that accrued for the wallet in it. The minter rewards each key
+     *  once per period and counts a key already claimed as zero, so the call
+     *  mints for the keys not yet claimed. The shared simulate →
      *  send → verify (`simulateWriteVerify`), then refresh — any minter revert (still accruing, already
      *  claimed, not designer of record) surfaces BEFORE the wallet prompt. */
     const claim = useCallback(

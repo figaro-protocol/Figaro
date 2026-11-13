@@ -399,8 +399,8 @@ const SITES: Array<{
         // The wallet's one accruing clause (the `UsageRecorded` fixture), by
         // its (kind, key) pair, for period 0.
         writes: () => [{ address: RPGF_MINTER, functionName: "claim", args: [0, [{ kind: USAGE_KIND_CLAUSE, key: KEY }]] }],
-        errorName: "AlreadyClaimed",
-        message: "AlreadyClaimed",
+        errorName: "NothingToClaim",
+        message: "NothingToClaim",
     },
 ];
 

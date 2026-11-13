@@ -330,8 +330,9 @@ README. Read the section; never reconstruct one from the ABI.
   over-balance leg reverts the whole batch: "Routing what you received". It reads no process
   state, so it behaves identically for receipts from either path — and the fiscal trail it
   leaves is a byproduct the owner can show anyone.
-- **Claiming what the owner's clauses, agreements and assemblies earned** — `RpgfMinter.claim`, once
-  per wallet per CLOSED period, carrying every `(kind, key)` pair the wallet designed —
+- **Claiming what the owner's clauses, agreements and assemblies earned** — `RpgfMinter.claim` for a
+  CLOSED period, carrying the `(kind, key)` pairs the wallet designed (each key is rewarded once per
+  period, so the pairs may go in one call or several, and a pair already claimed counts zero) —
   `{ kind: USAGE_KIND_CLAUSE, key: clauseKey }`, `{ kind: USAGE_KIND_ASSEMBLY, key:
   assemblyHash }` or `{ kind: USAGE_KIND_AGREEMENT, key: agreementHash }`, each checked
   against the one registry its kind names (a duplicate

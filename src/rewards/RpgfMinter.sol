@@ -49,8 +49,8 @@ interface IAgreementAuthor {
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 ///
 /// @notice Pays the designers of record of clauses, registered agreements and
-///         assemblies for the trade their work actually carried, one claim per
-///         accrual period. The reference
+///         assemblies for the trade their work actually carried, once per key
+///         per accrual period. The reference
 ///         schedule: nine ANNUAL periods whose budgets
 ///         group into three RISING tranches — 15% of the reserve over years
 ///         1–2, 30% over years 3–5, 55% over years 6–9, each tranche split
@@ -140,10 +140,12 @@ contract RpgfMinter {
     /// @notice Florins already minted per period — the budget backstop.
     mapping(uint8 => uint256) public minted;
 
-    /// @notice period → wallet → claimed. One claim per wallet per period; a
-    ///         wallet passes all of its clauses, agreements and assemblies in that single
-    ///         call.
-    mapping(uint8 => mapping(address => bool)) public claimed;
+    /// @notice period → kind → key → claimed. A key is rewarded once per period,
+    ///         whichever call names it: a designer may claim its keys in one
+    ///         call or in several, and claiming some forfeits none of the rest.
+    ///         The key, not the wallet, is the unit, because each key has one
+    ///         designer of record and a registry never reassigns it.
+    mapping(uint8 => mapping(uint8 => mapping(bytes32 => bool))) public claimed;
 
     // ── Events ──────────────────────────────────────────────────────
 
@@ -160,7 +162,6 @@ contract RpgfMinter {
     error UnknownPeriod(uint8 periodId);
     error AmountsPeriodsMismatch(uint256 amounts, uint256 periods);
     error PeriodStillAccruing(uint8 periodId);
-    error AlreadyClaimed(uint8 periodId, address account);
     error NoClausesOrAssemblies();
     error DuplicateClauseOrAssembly(uint8 kind, bytes32 clauseOrAssembly);
     error NotAuthorOfRecord(uint8 kind, bytes32 clauseOrAssembly, address caller);
@@ -211,15 +212,15 @@ contract RpgfMinter {
     }
 
     /// @notice What `account` could claim for `periodId` with
-    ///         `clausesOrAssemblies`, without sending a transaction. Zero once
-    ///         claimed, and zero for a wallet that holds no live member stake.
+    ///         `clausesOrAssemblies`, without sending a transaction. A key
+    ///         already claimed in the period counts zero, and a wallet that
+    ///         holds no live member stake is quoted zero.
     function claimable(uint8 periodId, address account, ClauseOrAssemblyKey[] calldata clausesOrAssemblies)
         external
         view
         returns (uint256)
     {
         if (periodId >= periodAmount.length) revert UnknownPeriod(periodId);
-        if (claimed[periodId][account]) return 0;
         // The quote reads the gates the claim reads: a wallet that is not a
         // live member is quoted zero, the answer its claim would give.
         if (!members.registered(account)) return 0;
@@ -229,8 +230,10 @@ contract RpgfMinter {
 
     // ── Claim ───────────────────────────────────────────────────────
 
-    /// @notice Mint your share of a closed period. Once per wallet per period;
-    ///         pass every clause, agreement and assembly you are designer of record for in one call.
+    /// @notice Mint your share of a closed period for the keys you name. Each
+    ///         key is rewarded once per period: a key already claimed counts zero,
+    ///         so a list may name it again and the call mints for the rest.
+    ///         `NothingToClaim` when the unclaimed keys score nothing.
     ///         The claimant holds a live member stake (`NotLiveMember` otherwise),
     ///         read before any key: the designer-side membership gate.
     /// @param periodId  The accrual period being claimed.
@@ -244,7 +247,6 @@ contract RpgfMinter {
     function claim(uint8 periodId, ClauseOrAssemblyKey[] calldata clausesOrAssemblies) external {
         if (periodId >= periodAmount.length) revert UnknownPeriod(periodId);
         if (!counter.periodClosed(periodId)) revert PeriodStillAccruing(periodId);
-        if (claimed[periodId][msg.sender]) revert AlreadyClaimed(periodId, msg.sender);
         if (clausesOrAssemblies.length == 0) revert NoClausesOrAssemblies();
         // The designer-side membership gate, read at the claim: the claimant
         // holds a live member stake, as the seller of record held one when its
@@ -258,7 +260,9 @@ contract RpgfMinter {
         uint256 spent = minted[periodId] + amount;
         if (spent > periodAmount[periodId]) revert PeriodBudgetExceeded(periodId);
 
-        claimed[periodId][msg.sender] = true;
+        for (uint256 i = 0; i < clausesOrAssemblies.length; ++i) {
+            claimed[periodId][clausesOrAssemblies[i].kind][clausesOrAssemblies[i].key] = true;
+        }
         minted[periodId] = spent;
 
         emit Claimed(periodId, msg.sender, amount, score);
@@ -268,8 +272,14 @@ contract RpgfMinter {
 
     // ── Internals ───────────────────────────────────────────────────
 
-    /// @dev Sum the caller's clauses', agreements' and assemblies' scores for the period and
-    ///      take the pro-rata share of its budget. UNIFORM pro rata: no cap.
+    /// @dev Sum the scores of the caller's keys not yet claimed in the period
+    ///      and take the pro-rata share of its budget. UNIFORM pro rata: no cap.
+    ///      Every key, claimed or not, is still checked for duplicates and
+    ///      for its designer of record, so a list with one bad entry reverts
+    ///      whole.
+    ///      Claiming in several calls floors each call's share apart, so it can
+    ///      mint at most one unit less per extra call than one call would; it
+    ///      never mints more.
     ///      The reward tracks real usage directly, and the fixed 600M pool is one
     ///      a farmer DILUTES, never inflates.
     ///
@@ -303,6 +313,7 @@ contract RpgfMinter {
                 }
             }
             if (!_isAuthor(kind, clauseOrAssembly, account)) revert NotAuthorOfRecord(kind, clauseOrAssembly, account);
+            if (claimed[periodId][kind][clauseOrAssembly]) continue;
             score += counter.scoreOf(kind, clauseOrAssembly, periodId);
         }
         if (score == 0) return (0, 0);

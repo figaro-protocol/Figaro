@@ -442,16 +442,20 @@ owns the allocation and its reasoning. Nothing is minted on resolution.
 ### The minter
 
 The 600M reserve, rewarded to designers of record in proportion to the trade
-their clauses, agreements and assemblies carried: one claim per period, nine annual
+their clauses, agreements and assemblies carried: each key rewarded once per period, nine annual
 periods, per-period budgets rising over three groups (15% of the reserve
 over years 1–2, 30% over 3–5, 55% over 6–9, split equally within each group).
 `DESIGNER_REWARDS.md` owns the schedule's reasoning and the boundary;
 `DATA_LAYER.md` owns what the stake does and does not do.
 
 **`src/rewards/RpgfMinter.sol`** — `claim(periodId, clausesOrAssemblies)` mints
-`periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period;
-a wallet passes every clause, agreement and assembly it designed in that one
-call, each as a `ClauseOrAssemblyKey{uint8 kind, bytes32 key}`. The constructor
+`periodAmount · callerScore / totalScoreInPeriod`, where `callerScore` sums
+the listed keys not yet claimed in the period. Each key is rewarded once per
+period (`claimed[periodId][kind][key]`), whichever call names it: a wallet may
+pass its clauses, agreements and assemblies in one call or in several, each as
+a `ClauseOrAssemblyKey{uint8 kind, bytes32 key}`, and claiming some forfeits
+none of the rest. A list that names a claimed key again mints for the others; one
+whose unclaimed keys score nothing reverts `NothingToClaim`. The constructor
 takes the members registry after the counter, and the agreements registry
 after the assemblies registry.
 - `claim` requires `counter.periodClosed(periodId)`: the numbers it reads are

@@ -221,7 +221,7 @@ export function RewardsView() {
                                     )}
                                     {t.claimed && (
                                         <p className="text-sm text-ink-muted" data-testid={`period-claimed-${t.periodId}`}>
-                                            Claimed — one claim per wallet per period.
+                                            Claimed — each key is rewarded once per period.
                                         </p>
                                     )}
                                 </div>
