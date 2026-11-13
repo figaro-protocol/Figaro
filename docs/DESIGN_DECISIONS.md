@@ -1164,6 +1164,13 @@ chain without trusting this project's software or documents.
 | `MembersRegistry.MemberWithdrawn(member, amount)` | The receipt of the release: the stake left the registry, to which wallet, and how much. De-surfacing is `MemberWithdrawalRequested`, which the readers fold | The member, or anyone auditing the registry's balance against its stakes |
 | `UsageCounter.sellerSeen(kind, key, period, seller)` | Whether a seller already counted toward a key's breadth `d` in a period; the counter reads it to count each seller once | Anyone recomputing a key's score from `UsageRecorded` events and checking it against the counter's state |
 
+A commit-time guard, `scripts/lint-contract-surface-read.sh`, holds this
+entry: it refuses a commit that leaves a public function, variable or event of
+the Core, the registries, the designer rewards or the composability contracts
+with no reader in the contracts, the deploy scripts, the SDK, the app, the
+relay, the scripts or the agents' runtime, unless an allowlist line cites the
+entry that says why it stays.
+
 ---
 
 ## Summary Table
