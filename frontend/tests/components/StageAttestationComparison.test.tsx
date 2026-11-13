@@ -96,7 +96,7 @@ function filing(clauseKey: Hex, attester: string, values: Record<string, unknown
     const contentRef = keccak256(content);
     if (values) published.set(contentRef.toLowerCase(), content);
     block += 1;
-    return { clauseId: clauseKey, orderHash, stage: 1, attester, contentRef, blockNumber: block };
+    return { clauseId: clauseKey, orderHash, stage: 1, attester, contentRef, blockNumber: block, universe: "direct" };
 }
 
 const variation = {
@@ -197,5 +197,18 @@ describe("StageAttestationComparison — the parties' filings under one assembly
             <StageAttestationComparison attestations={[filing(PER_ORDER, BUYER, variation), filing(PER_ORDER, SELLER, variation), unknown]} />,
         );
         expect(container.innerHTML).toBe("");
+    });
+});
+
+describe("StageAttestationComparison — the path that emitted each filing", () => {
+    it("a batched filing and a direct one each name their path, the batched one compared with the direct one", async () => {
+        const viaBatch: RuntimeAttestation = { ...filing(SHARED, SELLER, variation), universe: "batch" };
+        render(<StageAttestationComparison attestations={[filing(SHARED, BUYER, variation), viaBatch]} />);
+        expect((await verdict(SHARED)).textContent).toBe("agree");
+        const card = screen.getByTestId(`stage-comparison-${SHARED.toLowerCase()}-1`);
+        const pathOf = (who: string) => within(within(card).getByTestId(`stage-filing-${who}-${ORDER_A}`)).getByTestId("stage-filing-path");
+        expect(pathOf(BUYER).getAttribute("data-universe")).toBe("direct");
+        expect(pathOf(SELLER).getAttribute("data-universe")).toBe("batch");
+        expect(pathOf(SELLER).getAttribute("title")).toBe("Batch path — emitted by the batch verifier");
     });
 });

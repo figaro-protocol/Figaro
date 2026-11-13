@@ -14,11 +14,7 @@ import { erc20Abi, type PublicClient } from "viem";
 import type { Order } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 import { getAllMemberRegistered, getActiveMembers } from "@/lib/protocol/membersRegistryIndexer";
-import {
-    getAttestationsByOrder,
-    parseAttestationLog,
-    type IndexedAttestationLog,
-} from "@/lib/composition/indexer";
+import { getAttestationsByOrder } from "@/lib/composition/indexer";
 import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
 import type {
     MemberRegisteredEvent,
@@ -106,10 +102,7 @@ export async function buildAuditBundlePdfBlob(
         let attestations: readonly AttestationRecord[] = [];
         if (publicClient) {
             try {
-                const logs = await getAttestationsByOrder(publicClient, chainId, order.orderHash);
-                attestations = (logs as IndexedAttestationLog[])
-                    .map(parseAttestationLog)
-                    .filter((r): r is AttestationRecord => r !== null);
+                attestations = await getAttestationsByOrder(publicClient, chainId, order.orderHash);
             } catch {
                 attestations = [];
             }

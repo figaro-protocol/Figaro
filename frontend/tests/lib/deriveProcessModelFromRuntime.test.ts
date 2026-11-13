@@ -63,6 +63,7 @@ const reasserted = (clauseIndex: number, attester: string): RuntimeAttestation =
     attester,
     contentRef: `0x${"00".repeat(32)}`,
     blockNumber: 1,
+    universe: "direct",
 });
 
 const reassertCards = (address: string, attestations: RuntimeAttestation[] = []): CapabilityModel[] => {
@@ -177,7 +178,7 @@ describe("re-assert committed clauses — the provenance leaf", () => {
     });
 
     it("the buyer's own attestation of the reserved key removes it", () => {
-        const filed: RuntimeAttestation = { clauseId: PROVENANCE_LEAF_KEY, orderHash: ORDER_HASH, stage: 0, attester: BUYER, contentRef: `0x${"00".repeat(32)}`, blockNumber: 2 };
+        const filed: RuntimeAttestation = { clauseId: PROVENANCE_LEAF_KEY, orderHash: ORDER_HASH, stage: 0, attester: BUYER, contentRef: `0x${"00".repeat(32)}`, blockNumber: 2, universe: "direct" };
         expect(provenanceChoices(cardsWith(BUYER, [filed]))).toHaveLength(0);
     });
 
@@ -334,7 +335,7 @@ describe("process-log ladders — every party advances its own log", () => {
                 && c.action.clauseKey === pinned.clauseKey);
     const stepBy = (attester: string, stage: number): RuntimeAttestation => ({
         clauseId: pinned.clauseKey, orderHash: ORDER_HASH, stage, attester,
-        contentRef: `0x${"00".repeat(32)}`, blockNumber: 1,
+        contentRef: `0x${"00".repeat(32)}`, blockNumber: 1, universe: "direct",
     });
 
     for (const [party, address] of [["seller", SELLER], ["buyer", BUYER]] as const) {
