@@ -540,8 +540,8 @@ the party's own address, then calls `FigaroCore.commit`.
   no pause. Alternative coordinators with other routers are valid
   compositions.
 - Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the
-  denomination, a one-time `approve(Permit2, …)` for the input token, and a
-  per-commit Permit2 witness signature.
+  denomination, an `approve(Permit2, …)` for the input token, for the signed maximum of
+  each swap, and a per-commit Permit2 witness signature.
 
 ## Coordinators — the shape of a contract beside `FigaroCore`
 

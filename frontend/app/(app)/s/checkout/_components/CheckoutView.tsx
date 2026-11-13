@@ -587,15 +587,20 @@ export function CheckoutView({ sellerAddress }: Props) {
         ? null
         : planTotal > 0n ? calculateBonds(planTotal, planTotal).buyerBond : 0n;
     const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && lockedTotal !== null && balance < lockedTotal;
-    // Where the chosen funding token stands with Permit2 — the one derived
-    // state the funding panel shows and the place-order button obeys.
-    const buyerFunding = swapFunding.authorizationFor(lockedTotal);
     // The margin against the whole locked total: every order's leg draws on
     // the same funding token, and each is quoted again at its own sign.
     const buyerMargin = fundingMargins.marginFor(lockedTotal);
+    // Where the chosen funding token stands with Permit2 against the swap's
+    // maximum input (the funding token's units, not the bond's) — the one
+    // derived state the funding panel shows and the place-order button obeys.
+    const buyerFunding = swapFunding.authorizationFor(buyerMargin.maxInput);
     const marginHeld = !!fundingToken && marginBlocksTheAct(buyerMargin);
     const buyerFundingRequest = fundingToken
-        ? { inputToken: fundingToken, ...(buyerMargin.bps !== null ? { slippageBps: buyerMargin.bps } : {}) }
+        ? {
+            inputToken: fundingToken,
+            ...(buyerMargin.bps !== null ? { slippageBps: buyerMargin.bps } : {}),
+            ...(swapFunding.allowance !== undefined ? { approvedInput: swapFunding.allowance } : {}),
+        }
         : undefined;
 
     // Every order in the assembly — root + sub-orders — surfaced for review:
@@ -1255,7 +1260,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 fundingToken={fundingToken}
                                 onSelect={swapFunding.setFundingToken}
                                 authorization={buyerFunding}
-                                onAuthorize={swapFunding.authorize}
+                                onAuthorize={() => swapFunding.authorize(buyerMargin.maxInput)}
                                 margin={buyerMargin}
                             />
                         )}

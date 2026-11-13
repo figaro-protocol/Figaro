@@ -8,14 +8,14 @@
  * It holds the funding-token choice, the candidate set (the party's
  * `acceptedTokens` minus the process denomination, empty where the swap
  * composition — coordinator + Permit2 + venue — is unconfigured or no party
- * is known), the one-time Permit2 authorization of the chosen token (the
- * standard Permit2 max approval; per-commit amounts are witness-bound), and
- * where that authorization stands against a bond (`authorizationFor`). The
+ * is known), the Permit2 authorization of the chosen token for exactly the
+ * swap's signed maximum input (the cap, in the funding token's units, never
+ * the bond, which is in the process's token), and where that authorization
+ * stands against a cap (`authorizationFor`). The
  * panel (`SwapFundingPanel`) renders it; the witness-signed leg itself is
  * built at sign / accept (`lib/checkout/orderCommitmentFlow`).
  */
 import { useMemo, useState } from "react";
-import { maxUint256 } from "viem";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import { hexEqual, ZERO_ADDRESS } from "@/lib/shared/evm";
 import { resolveSwapFundingContracts } from "@/lib/composition/swapFunding";
@@ -28,9 +28,9 @@ import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
  *   none        no funding token is chosen
  *   reading     the allowance has not been read yet, or is being read again
  *               (after an approval's receipt the value in hand is stale)
- *   needed      the allowance is known and short of the bond
+ *   needed      the allowance is known and short of the cap
  *   authorizing the approval is pending or confirming
- *   ready       the allowance is known and covers the bond
+ *   ready       the allowance is known and covers the cap
  *
  * A commit with a funding leg pulls the token through Permit2, so anything but
  * `none` or `ready` would broadcast a commit that reverts.
@@ -46,7 +46,7 @@ export function fundingAuthorization({
     fundingToken: `0x${string}` | null;
     /** The allowance in hand is current: read, and not being read again. */
     allowanceKnown: boolean;
-    /** The allowance last read is short of the bond. */
+    /** The allowance last read is short of the cap. */
     needsApproval: boolean;
     /** The approval transaction is pending or confirming. */
     isAuthorizing: boolean;
@@ -89,14 +89,15 @@ export function useSwapFunding({
         owner: party,
         spender: (contracts?.permit2 ?? ZERO_ADDRESS) as `0x${string}`,
     });
-    /** Where the chosen token stands with Permit2 against `bond`; a bond not
-     *  yet known is never covered. */
-    const authorizationFor = (bond: bigint | null): FundingAuthorization => fundingAuthorization({
+    /** Where the chosen token stands with Permit2 against `cap` (the swap's
+     *  maximum input, in the funding token's units); a cap not yet known is
+     *  never covered. */
+    const authorizationFor = (cap: bigint | null): FundingAuthorization => fundingAuthorization({
         fundingToken,
-        // Until the bond is known there is nothing to cover it against, so the
+        // Until the cap is known there is nothing to cover it against, so the
         // authorization reads as still being read, never as ready.
-        allowanceKnown: bond !== null && permit2.allowanceKnown && !permit2.isAllowanceRefetching,
-        needsApproval: bond !== null && permit2.needsApproval(bond),
+        allowanceKnown: cap !== null && permit2.allowanceKnown && !permit2.isAllowanceRefetching,
+        needsApproval: cap !== null && permit2.needsApproval(cap),
         isAuthorizing: permit2.isApprovePending || permit2.isApproveConfirming,
     });
     return {
@@ -106,8 +107,11 @@ export function useSwapFunding({
         fundingToken,
         setFundingToken,
         authorizationFor,
-        /** Send the chosen token's one-time Permit2 max approval. */
-        authorize: () => permit2.approve(maxUint256),
+        /** The allowance the party gave Permit2 on the chosen token, in that token's units. */
+        allowance: permit2.allowance as bigint | undefined,
+        /** Send the chosen token's Permit2 approval for exactly `cap`, the
+         *  signed maximum input of this swap; nothing for a cap not yet known. */
+        authorize: (cap: bigint | null) => (cap ? permit2.approve(cap) : undefined),
         /** The approval was refused by the wallet or reverted. */
         authorizeFailed: permit2.isApproveError,
     };

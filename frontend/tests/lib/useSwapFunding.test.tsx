@@ -3,10 +3,12 @@
  * checkout and the seller at /sign. Its candidates are the party's accepted
  * tokens minus the process denomination, and none where the swap composition
  * is unconfigured or the party or the denomination is unknown; `authorize`
- * sends the chosen token's one-time Permit2 max approval (`approve(permit2,
- * maxUint256)` on that token); `authorizationFor(bond)` says where the chosen
- * token stands with Permit2 against the bond, from the allowance the owner
- * gave Permit2 on that token; `authorizeFailed` is the approval's error.
+ * sends `approve(permit2, cap)` on the chosen token, the cap being the signed
+ * maximum input of this swap in the FUNDING token's units and never more;
+ * `authorizationFor(cap)` says where the chosen token stands with Permit2
+ * against that cap (not against the bond, which is in the process's token),
+ * from the allowance the owner gave Permit2 on that token; `authorizeFailed`
+ * is the approval's error.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
@@ -88,23 +90,45 @@ describe("useSwapFunding — the Permit2 authorization of the chosen token", () 
         });
     });
 
-    it("authorize sends approve(permit2, maxUint256) on the chosen token, on the page's chain", async () => {
+    it("authorize sends approve(permit2, cap) on the chosen token, on the page's chain, for exactly the cap", async () => {
         const { result } = render();
         act(() => result.current.setFundingToken(TOKEN_B));
-        await act(async () => { await result.current.authorize(); });
+        const cap = 1_010_000n; // the signed maximum input, in the funding token's units
+        await act(async () => { await result.current.authorize(cap); });
         expect(wagmiState.writeContract).toHaveBeenCalledTimes(1);
         expect(wagmiState.writeContract).toHaveBeenCalledWith({
-            address: TOKEN_B, abi: ERC20_ABI, functionName: "approve", args: [PERMIT2, maxUint256], chainId: activeChain.id,
+            address: TOKEN_B, abi: ERC20_ABI, functionName: "approve", args: [PERMIT2, cap], chainId: activeChain.id,
         });
+        const [{ args }] = (wagmiState.writeContract as ReturnType<typeof vi.fn>).mock.calls[0] as [{ args: [string, bigint] }];
+        expect(args[1]).toBeLessThanOrEqual(cap);
+        expect(args[1]).not.toBe(maxUint256);
+    });
+
+    it("authorize sends nothing for a cap that is unknown or zero", async () => {
+        const { result } = render();
+        act(() => result.current.setFundingToken(TOKEN_B));
+        await act(async () => { await result.current.authorize(null); });
+        await act(async () => { await result.current.authorize(0n); });
+        expect(wagmiState.writeContract).not.toHaveBeenCalled();
     });
 
     it("authorize sends nothing before a token is chosen", async () => {
         const { result } = render();
-        await act(async () => { await result.current.authorize(); });
+        await act(async () => { await result.current.authorize(1_000n); });
         expect(wagmiState.writeContract).not.toHaveBeenCalled();
     });
 
-    it("stands reading, never ready, while the bond itself is not yet known", () => {
+    it("stands against the cap in the funding token's units, whatever the bond is in the process token", () => {
+        const { result, rerender } = render();
+        act(() => result.current.setFundingToken(TOKEN_A));
+        wagmiState.allowance = { ...wagmiState.allowance, data: 1_000n, isFetched: true };
+        rerender();
+        expect(result.current.authorizationFor(1_001n)).toBe("needed");
+        expect(result.current.authorizationFor(1_000n)).toBe("ready");
+        expect(result.current.authorizationFor(1n)).toBe("ready");
+    });
+
+    it("stands reading, never ready, while the cap itself is not yet known", () => {
         const { result, rerender } = render();
         act(() => result.current.setFundingToken(TOKEN_A));
         wagmiState.allowance = { ...wagmiState.allowance, data: maxUint256, isFetched: true };
