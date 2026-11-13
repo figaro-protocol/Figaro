@@ -558,25 +558,6 @@
   },
   {
     "type": "event",
-    "name": "OrderCurrency",
-    "inputs": [
-      {
-        "name": "orderHash",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "currency",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "OrderResolved",
     "inputs": [
       {

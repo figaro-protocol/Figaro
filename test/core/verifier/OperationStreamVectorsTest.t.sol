@@ -135,8 +135,6 @@ contract OperationStreamVectorsTest is Test {
         vm.expectEmit(true, true, true, true, address(verifier));
         emit FigaroBatchVerifier.OrderSeller(orderHash, c.seller);
         vm.expectEmit(true, true, true, true, address(verifier));
-        emit FigaroBatchVerifier.OrderCurrency(orderHash, c.currency);
-        vm.expectEmit(true, true, true, true, address(verifier));
         emit FigaroBatchVerifier.OrderCommitted(
             orderHash,
             processId,

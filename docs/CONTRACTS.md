@@ -158,7 +158,7 @@ The proof-based path that resolves batches of processes beside the direct
 - reconciles net token positions (pulls net deposits, pushes net payouts;
   `FeeOnTransferDetected` guard), re-emits proven `Attestation` events (same
   topic as the coordinator's — indexers filter by address), emits the Core's own
-  `OrderCommitted` / `OrderSeller` / `OrderCurrency` / `OrderResolved` /
+  `OrderCommitted` / `OrderSeller` / `OrderResolved` /
   `ProcessResolved` for every commit and resolution the operation stream
   carries (ids derived under its own EIP-712 domain, `FigaroCore` v3 at its
   address, the one the batch's signatures were made under), logs the stream

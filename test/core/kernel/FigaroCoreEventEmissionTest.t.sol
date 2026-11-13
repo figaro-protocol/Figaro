@@ -28,7 +28,6 @@ contract FigaroCore_EventEmission is Test {
     bytes32 internal constant COMMITTED_SIG =
         keccak256("OrderCommitted(bytes32,bytes32,address,address,address,uint256,uint256,bytes32,uint256,uint256)");
     bytes32 internal constant SELLER_SIG = keccak256("OrderSeller(bytes32,address)");
-    bytes32 internal constant CURRENCY_SIG = keccak256("OrderCurrency(bytes32,address)");
     bytes32 internal constant ORDER_RESOLVED_SIG = keccak256("OrderResolved(bytes32,bytes32,uint256,uint256)");
     bytes32 internal constant PROCESS_RESOLVED_SIG = keccak256("ProcessResolved(bytes32,address,uint256)");
 
@@ -199,27 +198,6 @@ contract FigaroCore_EventEmission is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // TEST 2b: Root order emits OrderCurrency
-    // ═══════════════════════════════════════════════════════════════
-
-    function test_rootOrder_emitsOrderCurrency() public {
-        vm.recordLogs();
-        (, bytes32 orderHash,) = _commitRoot(50 ether, 1);
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-
-        bool found = false;
-        for (uint256 i = 0; i < logs.length; i++) {
-            if (logs[i].topics[0] == CURRENCY_SIG) {
-                assertEq(logs[i].topics[1], orderHash, "indexed orderHash");
-                assertEq(logs[i].topics[2], bytes32(uint256(uint160(address(token)))), "indexed currency");
-                found = true;
-                break;
-            }
-        }
-        assertTrue(found, "OrderCurrency not emitted");
-    }
-
-    // ═══════════════════════════════════════════════════════════════
     // TEST 3: Resolution emits OrderResolved per order (no timestamp)
     // ═══════════════════════════════════════════════════════════════
 
@@ -373,15 +351,16 @@ contract FigaroCore_EventEmission is Test {
 
         uint256 commitCount;
         uint256 sellerCount;
-        uint256 currencyCount;
+        uint256 coreLogs;
         uint256 resolvedCount;
         uint256 procResolvedCount;
 
         for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].emitter != address(core)) continue;
+            coreLogs++;
             bytes32 sig = logs[i].topics[0];
             if (sig == COMMITTED_SIG) commitCount++;
             else if (sig == SELLER_SIG) sellerCount++;
-            else if (sig == CURRENCY_SIG) currencyCount++;
             else if (sig == ORDER_RESOLVED_SIG) resolvedCount++;
             else if (sig == PROCESS_RESOLVED_SIG) procResolvedCount++;
         }
@@ -389,8 +368,9 @@ contract FigaroCore_EventEmission is Test {
         // No OrderParents — topology is not a FigaroCore concern
         assertEq(commitCount, 2, "2 OrderCommitted (root + sub)");
         assertEq(sellerCount, 2, "2 OrderSeller (root + sub)");
-        assertEq(currencyCount, 2, "2 OrderCurrency (root + sub)");
         assertEq(resolvedCount, 2, "2 OrderResolved (root + sub)");
         assertEq(procResolvedCount, 1, "1 ProcessResolved");
+        // The Core emits these four events and no other: every log it emits is counted above.
+        assertEq(coreLogs, 7, "the Core emits nothing beside its four events");
     }
 }

@@ -455,7 +455,7 @@ performed, or tell the owner a payment never arrived when it did.
 So when a process the wallet expected is absent from `sync()`, or an order reads status
 `0`, check the other path before concluding anything. **Read the verifier's events** — the
 deployment record's `batchVerifier` emits `FigaroCore`'s own `OrderCommitted`,
-`OrderSeller`, `OrderCurrency`, `OrderResolved` and `ProcessResolved` for every batched
+`OrderSeller`, `OrderResolved` and `ProcessResolved` for every batched
 order, with ids derived under the verifier's EIP-712 domain, so the same query filtered on
 its address answers for the batch path. No relay is asked; a relay is transport only.
 

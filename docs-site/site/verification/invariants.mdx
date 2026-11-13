@@ -13,7 +13,7 @@ Each is a checked fact of `FigaroCore`. The stable IDs (`K-1`…`K-9`) match the
 
 | ID | Invariant | What enforces it |
 |---|---|---|
-| K-1 | **Asymmetric bonding** — the buyer locks `2 × payment`, each seller locks `2 × cumulativeValue` at its own link. | `_pullExact(currency, c.buyer, c.payment * 2)` and `_pullExact(currency, c.seller, c.expectedCumulativeValue * 2)` in `commit` (`FigaroCore.sol:208-209`). |
+| K-1 | **Asymmetric bonding** — the buyer locks `2 × payment`, each seller locks `2 × cumulativeValue` at its own link. | `_pullExact(currency, c.buyer, c.payment * 2)` and `_pullExact(currency, c.seller, c.expectedCumulativeValue * 2)` in `commit` (`FigaroCore.sol:205-206`). |
 | K-2 | **Buyer dominance** — only the process's root buyer can resolve, and only its buyer can extend it. | `if (msg.sender != ps.rootBuyer) revert NotProcessBuyer()` in `resolveProcess` (`:268`); the same check on a sub-order's buyer in `commit` (`:190`). |
 | K-3 | **Atomic resolution** — the resolve call must carry every active order, so no order is cherry-picked. | `if (commitments.length != ps.activeOrderCount) revert IncompleteOrderList(...)` in `resolveProcess` (`:270-271`). |
 | K-4 | **No escape hatches** — no timeout, no admin exit, no unilateral withdrawal from an active process. | No timeout action and no admin function exist; only `resolveProcess` moves a process out of active, and it zeroes `activeOrderCount` (`:302`) after `ProcessAlreadyResolved`/`ProcessAlreadyExists` guards (`:189`). Status only ever moves forward. |

@@ -36,7 +36,6 @@ export const CORE_ABI = parseAbi([
     // ── Events ──────────────────────────────────────────────────────
     "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
     "event OrderSeller(bytes32 indexed orderHash, address indexed seller)",
-    "event OrderCurrency(bytes32 indexed orderHash, address indexed currency)",
     "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
     "event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)",
 
@@ -93,10 +92,6 @@ export const EV_ORDER_COMMITTED = parseAbiItem(
 
 export const EV_ORDER_SELLER = parseAbiItem(
     "event OrderSeller(bytes32 indexed orderHash, address indexed seller)",
-);
-
-export const EV_ORDER_CURRENCY = parseAbiItem(
-    "event OrderCurrency(bytes32 indexed orderHash, address indexed currency)",
 );
 
 export const EV_ORDER_RESOLVED = parseAbiItem(
@@ -539,7 +534,6 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     // the same fields, ids derived under the verifier's EIP-712 domain.
     "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
     "event OrderSeller(bytes32 indexed orderHash, address indexed seller)",
-    "event OrderCurrency(bytes32 indexed orderHash, address indexed currency)",
     "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
     "event ProcessResolved(bytes32 indexed processId, address indexed buyer, uint256 orderCount)",
     // The batch's whole operation stream and its replay inputs: the state

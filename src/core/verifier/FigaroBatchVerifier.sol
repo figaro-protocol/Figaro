@@ -237,7 +237,6 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         uint256 deadline
     );
     event OrderSeller(bytes32 indexed orderHash, address indexed seller);
-    event OrderCurrency(bytes32 indexed orderHash, address indexed currency);
     event OrderResolved(
         bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout
     );
@@ -1005,7 +1004,6 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         bytes32 processId = c.processId == bytes32(0) ? _hashTypedDataV4(structHash) : c.processId;
         bytes32 orderHash = keccak256(abi.encodePacked(processId, structHash));
         emit OrderSeller(orderHash, c.seller);
-        emit OrderCurrency(orderHash, c.currency);
         emit OrderCommitted(
             orderHash,
             processId,

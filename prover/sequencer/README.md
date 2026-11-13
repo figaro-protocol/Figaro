@@ -24,7 +24,7 @@ verifier's root, and any relay can rebuild that state from the chain
 ### The chain carries what a batch resolved
 
 `FigaroCore` resolves an order and publishes it: `OrderCommitted` /
-`OrderSeller` / `OrderCurrency` carry the whole commitment struct,
+`OrderSeller` carry the whole commitment struct,
 `OrderResolved` / `ProcessResolved` the resolution facts. `FigaroBatchVerifier`
 does the same for every batch: it emits those events, under its own address,
 for every commit and resolution the batch carries, with the ids derived under
