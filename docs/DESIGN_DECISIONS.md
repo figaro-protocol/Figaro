@@ -1120,6 +1120,31 @@ the root cannot land twice: its prev root is no longer current.
 
 ---
 
+## 28. `FlorinToken.mint` checks the supply cap although the minters' caps already bound it
+
+**Pattern**: `mint` reverts with `SupplyCapExceeded` when `totalSupply() +
+amount > MAX_SUPPLY`. The minter registry already makes that impossible:
+`registerMinter` refuses a cap that would take `totalRegisteredCap` past
+`MAX_SUPPLY`, and `mint` refuses an amount past the minter's own cap
+(`MinterCapExceeded`), so the supply is at most the sum of the caps.
+
+**Why it looks wrong**: A check that cannot fire is dead code, and dead code
+in a token reads as either a misunderstanding or a hidden path.
+
+**Why it is correct**: The check states the cap in the token itself, at the
+one function that creates florins. A stranger who reads `mint` sees the
+billion bound there, without first proving the registry's arithmetic across
+`registerMinter`, `minters` and `totalRegisteredCap`. It costs one storage
+read per mint and changes no outcome. `mint` makes no external call, so it
+carries no reentrancy guard.
+
+**Tests**: `test_CannotRegisterMinterIfCapExceedsMaxSupply` (the registry's
+bound) and `test_MintWritesOnlyTheTallyTheSupplyAndTheBalance`
+(`test/rewards/FlorinToken.t.sol`); the Echidna property
+`echidna_max_supply_never_exceeded` (`src/echidna/EchidnaFlorinToken.sol`).
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -1151,3 +1176,4 @@ the root cannot land twice: its prev root is no longer current.
 | 25 | Ordered agreements; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per process per (kind, key) |
 | 26 | The attestation signature does not cover the witness form | batch-path/evidence | A relay can submit a plaintext operation hash-only, and the event is the same for both forms, so the in-proof check is not legible | The evidence a reader relies on (signer, open order, inclusion, `contentRef`) is identical on every path; the in-proof check assures the attesting party's own submission, not a reader |
 | 27 | A state-neutral batch's proof can land twice | batch-path/reward-path | A proof submitted twice is the replay shape, and `BatchSettled` repeats | A batch that moves no state has prev root == new root; its second landing moves no token, and the counter's once-ever `processCounted` skips every use, so nothing a reader relies on changes; a batch that moved the root cannot land twice |
+| 28 | `FlorinToken.mint` checks the supply cap the minters' caps already bound | token | A check that cannot fire reads as dead code | It states the billion bound in the token, at the one function that creates florins, where a stranger reads it; one storage read, no outcome changes |

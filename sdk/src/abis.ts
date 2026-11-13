@@ -372,12 +372,11 @@ export const FLORIN_TOKEN_ABI = parseAbi([
     "error ERC2612ExpiredSignature(uint256 deadline)",
     "error ERC2612InvalidSigner(address signer, address owner)",
     "error InvalidAccountNonce(address account, uint256 currentNonce)",
-    // OpenZeppelin library errors: ECDSA under permit, ReentrancyGuard,
-    // ShortStrings under EIP712.
+    // OpenZeppelin library errors: ECDSA under permit, ShortStrings under
+    // EIP712.
     "error ECDSAInvalidSignature()",
     "error ECDSAInvalidSignatureLength(uint256 length)",
     "error ECDSAInvalidSignatureS(bytes32 s)",
-    "error ReentrancyGuardReentrantCall()",
     "error InvalidShortString()",
     "error StringTooLong(string str)",
 ]);

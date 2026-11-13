@@ -113,12 +113,17 @@ minter registry.
 ## FlorinToken mechanics
 
 `FlorinToken` (`src/rewards/FlorinToken.sol`) is an ERC-20 with EIP-2612 permit
-(`ERC20Permit`) and a reentrancy-guarded `mint`. The supply discipline is
+(`ERC20Permit`) and a `mint` that makes no external call, so it carries no
+reentrancy guard. The supply discipline is
 enforced entirely at registration and mint time — there is no admin, no pause,
 no upgrade path.
 
-- **Hard cap.** `MAX_SUPPLY = 1_000_000_000 ether`. Every `mint` reverts with
-  `SupplyCapExceeded` if it would push `totalSupply()` past the cap.
+- **Hard cap.** `MAX_SUPPLY = 1_000_000_000 ether`. What holds it is the
+  minter registry below: the registered caps sum to at most `MAX_SUPPLY`, and
+  no minter mints past its own cap, so the supply never passes it. `mint` also
+  reverts with `SupplyCapExceeded` if it would push `totalSupply()` past the
+  cap; that check cannot fire while the registry holds, and it stays so the cap
+  is stated in the token itself (`docs/DESIGN_DECISIONS.md` § 28).
 
 - **Minter registry.** The deployer registers minter contracts via
   `registerMinter(minter, cap)`. Each minter has a `Minter { cap, minted }`

@@ -290,12 +290,12 @@ Every accrual, count and score is keyed by `(kind, key)`: kind `0` is a clause k
 ERC-20 with EIP-2612 permit (`src/rewards/FlorinToken.sol`). `MAX_SUPPLY` of one billion, enforced on every mint. It is not a call surface for a stranger: `mint` is gated to registered minters, and the minter registry is closed by `renounceDeployerMint` at genesis.
 
 ```solidity
-function registerMinter(address minter, uint256 cap) external;    // :51  (deployer, pre-renounce)
-function mint(address to, uint256 amount) external;               // :64  (registered minter only)
-function renounceDeployerMint() external;                         // :79
+function registerMinter(address minter, uint256 cap) external;    // :50  (deployer, pre-renounce)
+function mint(address to, uint256 amount) external;               // :65  (registered minter only)
+function renounceDeployerMint() external;                         // :80
 ```
 
-**Errors** (`:18-24`): `NotMinter`, `DeployerMintRenounced`, `ZeroAddress`, `SupplyCapExceeded`, `MinterAlreadySet`, `MinterNotRegistered`, `MinterCapExceeded`. A florin carries no rights of any kind; nothing is minted on resolution. Allocation and the token argument are on the [florin page](/token/florin/).
+**Errors** (`:17-23`): `NotMinter`, `DeployerMintRenounced`, `ZeroAddress`, `SupplyCapExceeded`, `MinterAlreadySet`, `MinterNotRegistered`, `MinterCapExceeded`. A florin carries no rights of any kind; nothing is minted on resolution. Allocation and the token argument are on the [florin page](/token/florin/).
 
 ## RpgfMinter — claiming designer rewards
 
