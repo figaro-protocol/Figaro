@@ -12,11 +12,11 @@ export type LockedFundsStateFigureProps = BaseFigureProps;
  *     --resolveProcess()--> Resolved (orderStatus 2)
  *
  * `commit()` requires both signatures and pulls both bonds in the same
- * call (`_pullExact` ×2, FigaroCore.sol:208-209). `resolveProcess()` is
- * buyer-only (`msg.sender != ps.rootBuyer` reverts, FigaroCore.sol:268)
+ * call (`_pullExact` ×2, FigaroCore.sol:205-206). `resolveProcess()` is
+ * buyer-only (`msg.sender != ps.rootBuyer` reverts, FigaroCore.sol:264)
  * and atomic across every active order in the process
- * (`IncompleteOrderList` requires the full set, FigaroCore.sol:270-271;
- * payouts happen in one loop, FigaroCore.sol:276-299).
+ * (`IncompleteOrderList` requires the full set, FigaroCore.sol:266-267;
+ * payouts happen in one loop, FigaroCore.sol:272-295).
  *
  * The two absent transitions are load-bearing, not missing features —
  * `docs/DESIGN_DECISIONS.md` §3 ("No admin, no escape hatch —

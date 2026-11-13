@@ -48,9 +48,6 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     /// @notice Companion event for indexed seller lookup (EVM 3-index limit).
     event OrderSeller(bytes32 indexed orderHash, address indexed seller);
 
-    /// @notice Companion event for indexed currency lookup (EVM 3-index limit).
-    event OrderCurrency(bytes32 indexed orderHash, address indexed currency);
-
     /// @notice Emitted per order during resolution.
     event OrderResolved(
         bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout
@@ -210,7 +207,6 @@ contract FigaroCore is EIP712, ReentrancyGuard {
 
         _emitCommitted(orderHash, processId, c);
         emit OrderSeller(orderHash, c.seller);
-        emit OrderCurrency(orderHash, c.currency);
     }
 
     /**

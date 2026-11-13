@@ -77,7 +77,7 @@ returns 0 — UNKNOWN — for it, permanently. And the converse holds: a
   id names a process on both paths, and counting an id once is counting a
   process once.
 - **A reader must fold BOTH.** The verifier emits `FigaroCore`'s own
-  `OrderCommitted`, `OrderSeller`, `OrderCurrency`, `OrderResolved` and
+  `OrderCommitted`, `OrderSeller`, `OrderResolved` and
   `ProcessResolved` for every batched order, and re-emits its attestations, so
   an indexer, a reward calculator or an interface reads both addresses with
   one decoder; one that reads only `FigaroCore` sees the direct path alone and
@@ -318,7 +318,7 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
    with protocol-compatible signatures, hash-verified against proof
    commitments. Event-sourced readers consume the verifier's events identically to
    `FigaroCore`'s — filtered by contract address: it emits `OrderCommitted`,
-   `OrderSeller`, `OrderCurrency`, `OrderResolved` and `ProcessResolved` from the
+   `OrderSeller`, `OrderResolved` and `ProcessResolved` from the
    operation stream, with ids derived under its own domain.
 
 ### What is not `FigaroCore` scaling

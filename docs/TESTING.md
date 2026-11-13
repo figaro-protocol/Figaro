@@ -115,7 +115,7 @@ attest on each new order, resolutions alternate the buyer's signature and its
 wallet's code, and each resolution claims its root order's clause. Every wallet
 and each contract's holding are held to the model (the Core after every step,
 the batch path after every batch). The Core's cumulative value and active count
-for each process are held to the model too. Every `OrderCommitted`, `OrderSeller`, `OrderCurrency`,
+for each process are held to the model too. Every `OrderCommitted`, `OrderSeller`,
 `OrderResolved`, `ProcessResolved`, `Attestation` and `UsageRecorded` is held
 to the other path, per kind and in order, each id checked against its own
 domain. The batch's guest outputs are computed in the test from the guest's

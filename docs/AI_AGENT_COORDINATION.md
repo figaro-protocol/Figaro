@@ -289,7 +289,7 @@ What is emitted, and what each thing is evidence of:
   the designer and a `contentURI`; the content resolves chain → IPFS, and a reader
   verifies it against the key (an agreement by recomputing its `agreementHash`). Either registry's `DepositWithdrawn` de-surfaces the entry for new
   compositions while every order already committed against it still resolves.
-- **Someone bonded.** `FigaroCore.OrderCommitted`, with `OrderSeller` and `OrderCurrency`
+- **Someone bonded.** `FigaroCore.OrderCommitted`, with `OrderSeller`
   beside it: a value at one link of a chain, in a named token, backed 2×. The TERMS behind
   it are merkle leaves under `checkoutHash` — the chain holds the root; the document is
   fetched from wherever it was pinned, and a fingerprint whose pre-image is unreachable is

@@ -34,7 +34,7 @@ import {MockERC1271Wallet} from "src/mocks/MockERC1271Wallet.sol";
 ///         wallet and each contract's holding against the model and against the
 ///         other path (the Core after every step, the batch path after every
 ///         batch); the Core's process record against the model; and, per event
-///         kind, the sequence of `OrderCommitted`, `OrderSeller`, `OrderCurrency`,
+///         kind, the sequence of `OrderCommitted`, `OrderSeller`,
 ///         `OrderResolved`, `ProcessResolved`, `Attestation` and `UsageRecorded`,
 ///         each id checked against its own path's EIP-712 derivation and then
 ///         read as the model's order and process index.
@@ -72,12 +72,11 @@ contract CoreBatchEquivalenceTest is Test {
     // The event kinds compared, one sequence each per path.
     uint256 internal constant E_COMMITTED = 0;
     uint256 internal constant E_SELLER = 1;
-    uint256 internal constant E_CURRENCY = 2;
-    uint256 internal constant E_RESOLVED = 3;
-    uint256 internal constant E_PROCESS = 4;
-    uint256 internal constant E_ATTESTATION = 5;
-    uint256 internal constant E_USAGE = 6;
-    uint256 internal constant E_KINDS = 7;
+    uint256 internal constant E_RESOLVED = 2;
+    uint256 internal constant E_PROCESS = 3;
+    uint256 internal constant E_ATTESTATION = 4;
+    uint256 internal constant E_USAGE = 5;
+    uint256 internal constant E_KINDS = 6;
     uint256 internal constant DIRECT = 0;
     uint256 internal constant BATCH = 1;
 
@@ -633,12 +632,6 @@ contract CoreBatchEquivalenceTest is Test {
         if (sig == FigaroCore.OrderSeller.selector) {
             return (true, E_SELLER, abi.encode(_oid(t, l.topics[1]), l.topics[2]));
         }
-        if (sig == FigaroCore.OrderCurrency.selector) {
-            if (address(uint160(uint256(l.topics[2]))) != token) {
-                revert ObservableDiverges("events: OrderCurrency", t, path);
-            }
-            return (true, E_CURRENCY, abi.encode(_oid(t, l.topics[1])));
-        }
         if (sig == FigaroCore.OrderResolved.selector) {
             return (true, E_RESOLVED, abi.encode(_oid(t, l.topics[1]), _pid(t, l.topics[2]), l.data));
         }
@@ -686,7 +679,6 @@ contract CoreBatchEquivalenceTest is Test {
         string[E_KINDS] memory names = [
             "events: OrderCommitted",
             "events: OrderSeller",
-            "events: OrderCurrency",
             "events: OrderResolved",
             "events: ProcessResolved",
             "events: Attestation",
