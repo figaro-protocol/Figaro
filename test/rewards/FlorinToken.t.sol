@@ -109,11 +109,16 @@ contract FlorinTokenTest is Test {
         florin.mint(address(0), 1 ether);
     }
 
-    // ── Reentrancy ───────────────────────────────────────────────────────
+    // ── What a mint writes ───────────────────────────────────────────────
 
-    function test_MintIsNonReentrant() public {
-        // Not directly testable here, but covered by nonReentrant modifier
-        assertTrue(florin.mint.selector != bytes4(0));
+    /// `mint` makes no external call, so it carries no reentrancy guard: it
+    /// writes the minter's tally, the supply and the recipient's balance, and
+    /// no other slot of the token.
+    function test_MintWritesOnlyTheTallyTheSupplyAndTheBalance() public {
+        vm.record();
+        florin.mint(alice, 1 ether);
+        (, bytes32[] memory writes) = vm.accesses(address(florin));
+        assertEq(writes.length, 3, "a mint writes three slots");
     }
 
     // ── ERC-20 edge cases ────────────────────────────────────────────────

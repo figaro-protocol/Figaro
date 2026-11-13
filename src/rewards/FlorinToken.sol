@@ -3,7 +3,6 @@ pragma solidity 0.8.26;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title FlorinToken
 /// @custom:security-contact figarosecurity@gmail.com
@@ -14,7 +13,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 ///         The first price is a stranger's to name; value arises from use.
 /// @dev Minter registry: deployer can register emission/vesting contracts as minters (one-shot, capped, non-upgradeable). No legacy emission logic remains.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
-contract FlorinToken is ERC20Permit, ReentrancyGuard {
+contract FlorinToken is ERC20Permit {
     error NotMinter();
     error DeployerMintRenounced();
     error ZeroAddress();
@@ -60,8 +59,10 @@ contract FlorinToken is ERC20Permit, ReentrancyGuard {
     }
 
     /// @notice Mint tokens. Only callable by registered minters, up to their cap.
-    /// @dev Each minter can mint up to its cap. Global MAX_SUPPLY is enforced. Non-reentrant.
-    function mint(address to, uint256 amount) external nonReentrant {
+    /// @dev Each minter can mint up to its cap. Global MAX_SUPPLY is enforced.
+    ///      No reentrancy guard: `mint` makes no external call (`_mint` writes
+    ///      the balance and the supply and emits `Transfer`, and calls no one).
+    function mint(address to, uint256 amount) external {
         // Block deployer from minting after renounce
         if (msg.sender == deployer && deployerMintRenounced) {
             revert DeployerMintRenounced();

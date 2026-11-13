@@ -428,7 +428,8 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
 one billion, enforced on every mint. A minter registry with
 `totalRegisteredCap` (the sum of registered caps may not exceed
 `MAX_SUPPLY`); the deployer registers capped minters, then
-`renounceDeployerMint` closes the registry. Reentrancy-guarded. No deployer authority after
+`renounceDeployerMint` closes the registry. `mint` makes no external call and
+carries no reentrancy guard. No deployer authority after
 renounce, no upgrade, no parameter.
 
 **`src/rewards/IFlorinMinter.sol`** — `mint(address, uint256)`, the interface a
