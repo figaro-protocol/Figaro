@@ -57,7 +57,7 @@ export default function Faq() {
              *  derived there. */}
             <MarketingSection title="Before your first real trade." sectionId="before-you-send">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Fifteen things worth having answered before a first commitment. Every line is the short form; the answer that owns it in full &mdash; with its residual risk &mdash; is one link away. The unfavorable answers are on it too, in the same list as the rest.
+                    Sixteen things worth having answered before a first commitment. Every line is the short form; the answer that owns it in full &mdash; with its residual risk &mdash; is one link away. The unfavorable answers are on it too, in the same list as the rest.
                 </p>
                 <ul className="space-y-3 text-base text-ink-body mb-5 ml-6">
                     <li>&mdash; <strong className="text-ink-heading font-medium">Is anyone selling near me?</strong> Whatever the <Link href="/discover" className="text-ink-heading font-medium hover:underline">member directory</Link> shows where you are looking is the whole answer, including nothing. It reads the chain live and is never a curated list.</li>
