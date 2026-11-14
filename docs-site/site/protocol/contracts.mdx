@@ -221,7 +221,7 @@ function settleBatch(
     bytes calldata proof, bytes calldata publicValues,
     NetPosition[] calldata positions, BatchEventData calldata events, BatchUsageData calldata usage,
     bytes calldata operations
-) external;                                    // :346  (nonReentrant, external, no caller gate)
+) external;                                    // :407  (nonReentrant, external, no caller gate)
 ```
 
 `settleBatch` verifies the proof against the immutable `programVKey`, checks state-root continuity and chain binding, hash-verifies the calldata byte-for-byte, checks every spec binding — the guest commits the clause key, which it requires to equal `keccak256(witness-spec bytes)`, for each spec it validated content against, one per clause a plaintext attestation names (a hash-only attestation, the default, commits none, as the coordinator consults no registry), and the verifier requires `ClauseRegistry.registered(clauseKey)` (`src/core/verifier/FigaroBatchVerifier.sol:665-670`); the vkey covers the generic clause engine, the registry anchors the constraint set, so a new clause never touches the prover — then moves each net token position with at most one transfer (pulls `deposit − payout` from a position that owes, pushes `payout − deposit` to one that is owed, nothing when the two are equal), re-emits proven `Attestation` events, and hands the batch's uses to `UsageCounter.applyBatchAccrual`. Public state is `stateRoot() → bytes32` and `batchCount() → uint64`, advanced per `BatchSettled`.
@@ -251,7 +251,7 @@ Operation by operation, the two paths are compared in [`docs/VERIFICATION_MAP.md
 
 ## UsageCounter — verified clause, agreement and assembly usage
 
-Counts how much real trade a clause, a registered agreement or an assembly carried, on chain, at the moment it happens — because the Core calls no registry and contracts cannot read events, the fact is recorded when it occurs, never reconstructed afterward (`src/rewards/UsageCounter.sol`).
+Counts how much real trade a clause, a registered agreement or an assembly carried, on chain, from facts the chain holds when a usage call is sent (`src/rewards/UsageCounter.sol`). `resolveProcess` calls no contract, so the resolve counts nothing: on the direct path a separate transaction sent after the resolve counts the use, and anyone may send it, since the counter trusts the merkle proof against the resolved order, never the caller. The SDK's `recordProcessUsage` (`@figaro-protocol/sdk/agent`) sends it; a resolve with no usage call leaves the use uncounted until someone sends one. On the batch path a party submits a usage claim to the relay (`SequencerClient.submitUsageClaim`), and the batch's proof carries it to the counter. Contracts cannot read events, so nothing reconstructs a use the chain was never shown.
 
 ```solidity
 function recordClauseUsage(CommitmentTypes.Commitment calldata order, bytes32 clauseOrAssembly,

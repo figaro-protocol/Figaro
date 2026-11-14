@@ -270,8 +270,9 @@ const report = await recordProcessUsage(walletClient, publicClient, addresses.us
 ]);
 ```
 
-Usage is counted **at resolution**; a use left uncounted waits on its seller's stake and can
-never count once the last period closes (`docs/DESIGN_DECISIONS.md` §20). A buyer
+The resolve counts nothing (`resolveProcess` calls no contract); usage is counted by this
+call, **sent right after the resolve**. A use left uncounted waits on its seller's stake and can
+never count once the last period closes (`src/rewards/UsageCounter.sol`). A buyer
 agent that resolves without this credits no clause, agreement or assembly designer, and
 the 600M reward's uniformity across actors is exactly this call. Only the clause FINGERPRINT
 reaches calldata, so a private clause's plaintext never becomes public. Read the report,

@@ -452,7 +452,7 @@ An attestation is a party's signed statement about a clause of its own order, fi
 | customs agent | `figaro-merchant-process` | prep started, ready for pickup, handed off |
 | destination drayage | `figaro-courier-process`; `figaro-proximity-policy`, stage 1 | the five courier events, the band the hand-off was detected in |
 
-Each seller files on its own order and on no other. The importer then attests each order's provenance leaf, the public link from the order to the registered agreement and the assembly it instantiated (`provenanceLeafAttestation`). Times are chain time (`readChainTimestamp`), never the machine clock.
+Each seller files on its own order and on no other. The importer then attests each order's provenance leaf (`provenanceLeafAttestation`). That attestation is the buyer's declaration that the order runs a registered agreement and the assembly it instantiated. `AttestationCoordinator` proves the leaf against the signed `checkoutHash` but never ties the attestation's `contentRef` to it; `provenanceLeafAttestation` is what sets the two equal. A reader checks the declaration by computing `provenanceContentRef(agreementHash, assemblyHash)` for registered pairs and comparing it with the attestation's `contentRef`. Times are chain time (`readChainTimestamp`), never the machine clock.
 
 ```js title="attest.mjs"
 // attest.mjs — each party files what it did, on its own order, while the process is open.
@@ -507,8 +507,8 @@ await walk(customs, MERCHANT);
 await walk(drayage, COURIER);
 await attest(drayage, "bands", { band: "zone-wifi" }, 1);
 
-// The importer attests each order's provenance leaf: the public link from the
-// order to the registered agreement and the assembly it instantiated.
+// The importer attests each order's provenance leaf: its declaration that the
+// order runs this registered agreement and the assembly it instantiated.
 for (const { commitment, agreement } of orders.map(deserializeCommitmentPayload)) {
     const p = provenanceLeafAttestation(agreement);
     const { hash } = await attestAsBuyer(walletOf(BUYER), addresses.attestationCoordinator, commitment,
@@ -581,7 +581,7 @@ cast logs --from-block 0 --address "$(jq -r .figaroCore "$DEPLOYMENT_FILE")" \
   --rpc-url "$RPC_URL" --json | jq -r '.[].data' | while read d; do cast abi-decode --input "f(uint256,uint256)" "$d" | tr '\n' ' '; echo; done
 ```
 
-Six lines, each the seller's payout then the importer's. `recordProcessUsage`, called at resolution, counts the use of every clause the process committed, of each registered agreement and of the assembly on `UsageCounter`, from the provenance leaves; the report reads `"recorded":19,"assemblyRecorded":true,"agreementRecorded":true,"failures":[]` on a fresh devnet. A leg that cannot land (a closed accrual period, a key another caller counted first) sits in `failures` rather than throwing, so read the report. Why the count happens at resolution is on [Sharp edges](/protocol/sharp-edges/) and [Designer rewards](/token/designer-rewards/).
+Six lines, each the seller's payout then the importer's. `recordProcessUsage`, sent right after the resolve confirms, counts the use of every clause the process committed, of each registered agreement and of the assembly on `UsageCounter`, from the provenance leaves; the report reads `"recorded":19,"assemblyRecorded":true,"agreementRecorded":true,"failures":[]` on a fresh devnet. A leg that cannot land (a closed accrual period, a key another caller counted first) sits in `failures` rather than throwing, so read the report. The resolve itself counts nothing, since `resolveProcess` calls no contract; why the usage call follows it at once is on [Sharp edges](/protocol/sharp-edges/) and [Designer rewards](/token/designer-rewards/).
 
 ## What the run shows, and what it does not
 

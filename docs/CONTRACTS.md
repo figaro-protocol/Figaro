@@ -33,7 +33,7 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
           FigaroBatchVerifier   RpgfMinter ──▶ ClauseRegistry, AgreementRegistry, AssemblyRegistry, MembersRegistry
               │        │            │              (designer of record)
               ▼        ▼            ▼
-       (SP1 gateway)  ClauseRegistry   FlorinToken
+       (SP1 verifier) ClauseRegistry   FlorinToken
                       (registered)     (registered minter at genesis, 600M cap)
 ```
 
@@ -308,9 +308,19 @@ per key and the binding permanent, so there is nothing to recycle.
 ### Usage accounting
 
 **`src/rewards/UsageCounter.sol`** — Counts how much real trade a
-clause, agreement or assembly carried, on chain, at the moment it happens. The chain
-cannot look backwards — the Core calls no registry and contracts cannot read
-events — so the fact is recorded when it occurs, and nothing is posted,
+clause, agreement or assembly carried, on chain. The Core calls no contract
+(`FigaroCore.resolveProcess` transfers tokens and names no counter) and
+contracts cannot read events, so on the direct path a use is counted by a
+separate transaction, sent after the resolve, that proves the order resolved.
+The buyer's wallet in this frontend sends it right after the resolve confirms
+(`frontend/lib/semantic/createCapabilityExecutors.ts`, through
+`frontend/lib/protocol/useUsageRecorder.ts`), and the SDK's agent sends it
+with `recordProcessUsage` (`sdk/src/agent/autonomous.ts`); anyone may send a
+missed one. A resolve that no usage call follows leaves its uses uncounted: each
+stays countable in whichever period is open when a usage call is sent with its
+gates met, and is lost once the last period has closed (`DESIGN_DECISIONS.md`
+§ 20). On the batch path the verifier hands the proof's uses to
+`applyBatchAccrual` in the batch's own transaction. Nothing is posted,
 bonded, challenged, or adjudicated afterward.
 
 Constructor `(core, members, clauses, assemblies, agreements, batchVerifier,
@@ -648,7 +658,7 @@ canonical public Disperse deployment
 across chains) is composed, never duplicated. `MockDisperse.sol` mirrors its
 interface so a devnet rehearses the composition.
 
-**Permit2, the Uniswap router, the SP1 gateway, the DAO's Safe** — external
+**Permit2, the Uniswap router, the pinned SP1 verifier, the DAO's Safe** — external
 canonical contracts the coordinators, the verifier, and the treasury compose;
 addresses are deployment configuration, never code written here.
 
