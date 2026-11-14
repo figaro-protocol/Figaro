@@ -17,7 +17,7 @@ describe("extractErrorMessage", () => {
             };
             const wrapped = new BaseError("wrapper", { cause: revert });
             expect(extractErrorMessage(wrapped, "fallback")).toBe(
-                "Process has already been resolved",
+                "This process is already resolved, so it takes no further order.",
             );
         });
 

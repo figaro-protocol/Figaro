@@ -56,6 +56,19 @@ describe("AgreementReview shows every signed field", () => {
         expect(screen.getByTestId("agreement-review").textContent).toContain("42");
     });
 
+    it("names the token, the payment, the running total and both bonds in the token's units", () => {
+        decimalsState.decimals = 6;
+        decimalsState.ready = true;
+        decimalsState.loading = false;
+        render(<AgreementReview commitment={commitment} agreement={null} />);
+        expect(screen.getByTestId("preview-token").textContent).toBe(commitment.currency);
+        expect(screen.getByTestId("preview-payment").textContent).toContain("1.5");
+        expect(screen.getByTestId("agreement-review").textContent).toContain("Running total");
+        expect(screen.getByTestId("preview-buyer-bond").textContent).toMatch(/^3 /);
+        expect(screen.getByTestId("preview-seller-bond").textContent).toMatch(/^3 /);
+        expect(screen.getByTestId("preview-seller-bond").textContent).toContain("twice the running total");
+    });
+
     it("names a sub-order's process by its id", () => {
         const sub = { ...commitment, processId: `0x${"cd".repeat(32)}` as const, expectedCumulativeValue: 4_000_000n };
         render(<AgreementReview commitment={sub} agreement={null} />);

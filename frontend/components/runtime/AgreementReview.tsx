@@ -5,9 +5,10 @@
  * agreement terms, shared by every surface that asks a party to review
  * before signing or committing.
  *
- * The wallet prompt shows only the 32-byte checkoutHash; this component
- * renders the terms that hash to it — parties, payment, line items,
- * consent documents, every clause — next to the hash itself, so
+ * The wallet prompt shows every field of the commitment, among them the
+ * 32-byte checkoutHash, which is only a fingerprint of the agreement; this
+ * component renders the terms that hash to it — parties, payment, line
+ * items, consent documents, every clause — next to the hash itself, so
  * the reviewer can verify "the hash I'm about to bind to corresponds to
  * the agreement in front of me."
  *
@@ -153,8 +154,8 @@ export function AgreementReview({ commitment, agreement }: Props) {
             <section>
                 <h3 className="text-xs font-semibold text-ink-muted mb-2">Payment</h3>
                 <dl className="grid grid-cols-[80px_1fr] gap-y-1 text-sm">
-                    <dt className="text-ink-muted">Currency</dt>
-                    <dd className="font-mono text-xs text-ink-primary break-all">{commitment.currency}</dd>
+                    <dt className="text-ink-muted">Token</dt>
+                    <dd className="font-mono text-xs text-ink-primary break-all" data-testid="preview-token">{commitment.currency}</dd>
                     <dt className="text-ink-muted">Amount</dt>
                     <dd className="text-ink-primary" data-testid="preview-payment">
                         {figure(commitment.payment)} <span className="text-ink-muted text-xs">(raw: {commitment.payment.toString()})</span>
@@ -175,9 +176,9 @@ export function AgreementReview({ commitment, agreement }: Props) {
                     <dd className="font-mono text-xs text-ink-primary break-all" data-testid="preview-process">
                         {isRoot ? "a new process — this is its root order" : commitment.processId}
                     </dd>
-                    <dt className="text-ink-muted">Cumulative</dt>
+                    <dt className="text-ink-muted">Running total</dt>
                     <dd className="text-ink-primary" data-testid="preview-cumulative">
-                        {figure(commitment.expectedCumulativeValue)} <span className="text-ink-muted text-xs">(raw: {commitment.expectedCumulativeValue.toString()} — the process&rsquo;s value through this order)</span>
+                        {figure(commitment.expectedCumulativeValue)} <span className="text-ink-muted text-xs">(raw: {commitment.expectedCumulativeValue.toString()} — the sum of the payments of the process through this order)</span>
                     </dd>
                     <dt className="text-ink-muted">Buyer bond</dt>
                     <dd className="text-ink-primary" data-testid="preview-buyer-bond">
@@ -185,7 +186,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
                     </dd>
                     <dt className="text-ink-muted">Seller bond</dt>
                     <dd className="text-ink-primary" data-testid="preview-seller-bond">
-                        {figure(bonds.sellerBond)} <span className="text-ink-muted text-xs">(raw: {bonds.sellerBond.toString()} — twice the cumulative value, locked at commit)</span>
+                        {figure(bonds.sellerBond)} <span className="text-ink-muted text-xs">(raw: {bonds.sellerBond.toString()} — twice the running total, locked at commit)</span>
                     </dd>
                     <dt className="text-ink-muted">Salt</dt>
                     <dd className="font-mono text-xs text-ink-muted break-all">{commitment.salt.toString()}</dd>
@@ -218,9 +219,9 @@ export function AgreementReview({ commitment, agreement }: Props) {
                     <div className="rounded border border-default bg-subtle px-3 py-2 space-y-2 text-xs text-ink-body">
                         <p>
                             This agreement composes a consent clause and affixes its
-                            documents to the trade. Your signature over the{" "}
-                            <code className="font-mono">checkoutHash</code> cryptographically
-                            binds your acceptance of each document listed below — consent as
+                            documents to the trade. Your signature over the commitment, which
+                            carries the <code className="font-mono">checkoutHash</code>,
+                            cryptographically binds your acceptance of each document listed below — consent as
                             an agreement term, the pattern the European Data Protection Board
                             recommends for blockchains (Guidelines 02/2025): the documents stay
                             off-chain; the chain keeps only fingerprints.
@@ -296,7 +297,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
                     {commitment.checkoutHash}
                 </p>
                 <p className="text-xs text-ink-muted mt-1">
-                    This is the exact 32-byte value the signatures bind to. Proceed only if it matches the agreement above.
+                    This is the fingerprint of the agreement above, one field of the commitment the signatures cover. Proceed only if it matches the agreement above.
                 </p>
             </section>
         </div>

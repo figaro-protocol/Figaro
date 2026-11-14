@@ -5,7 +5,8 @@
  * the COMMIT step of a Commitment.
  *
  * Threat-model 🟡 Priority 4 (UI ↔ MetaMask injection). The wallet prompt
- * shows only the checkoutHash (sign) or an opaque transaction (commit).
+ * shows every field of the typed commitment (sign) or an opaque transaction
+ * (commit); the checkoutHash among those fields is only a fingerprint.
  * This modal renders the human-readable agreement terms — the shared
  * `AgreementReview` — next to the hash so the user can verify "the hash
  * I'm about to bind to corresponds to the agreement in front of me"
@@ -29,6 +30,7 @@ import useTokenBalance from "@/hooks/useTokenBalance";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { tokenFigure } from "@/lib/shared/utils";
+import { signedFieldRows } from "@/lib/checkout/signedCommitmentFields";
 import { formatSlippagePercent } from "@/lib/composition/swapVenue";
 
 interface Props {
@@ -48,8 +50,8 @@ const INTENT_COPY: Record<ConfirmationIntent, { eyebrow: string; lede: React.Rea
         eyebrow: "Review before signing",
         lede: (
             <>
-                Your wallet will display only the <code className="font-mono text-xs">checkoutHash</code>.
-                Verify the terms below match what you intend to sign.
+                Your wallet will display every field of the commitment you sign, listed below
+                with what each means. Verify the terms below match what you intend to sign.
             </>
         ),
         confirm: "Confirm & sign",
@@ -155,6 +157,21 @@ export function AgreementPreviewModal({ commitment, agreement, intent, swap, onC
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto px-6 py-4">
                     <AgreementReview commitment={commitment} agreement={agreement} />
+                    {intent === "sign" && (
+                        <section className="mt-5 border-t border-default pt-4" data-testid="preview-wallet-fields">
+                            <h3 className="text-xs font-semibold text-ink-muted mb-2">
+                                What your wallet shows
+                            </h3>
+                            <dl className="grid grid-cols-[150px_1fr] gap-y-2 text-sm">
+                                {signedFieldRows().map((row) => (
+                                    <div key={row.name} className="contents" data-testid={`preview-wallet-field-${row.name}`}>
+                                        <dt className="font-mono text-xs text-ink-primary">{row.name}</dt>
+                                        <dd className="text-ink-body">{row.meaning}</dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        </section>
+                    )}
                     {swap && (
                         <section className="mt-5 border-t border-default pt-4" data-testid="preview-swap">
                             <h3 className="text-xs font-semibold text-ink-muted mb-2">

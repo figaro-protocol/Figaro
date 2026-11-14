@@ -300,21 +300,21 @@ const SITES: Array<{
             args: [COMMITMENT, "0x01", "0x02", DISABLED_SWAP_FUNDING_LEG, DISABLED_SWAP_FUNDING_LEG],
         }],
         errorName: "OutputBelowBond",
-        message: "OutputBelowBond",
+        message: "The swap produced less of the process token than the bond needs.",
     },
     {
         site: "useFigaroActions.commit",
         prepare: async () => { const h = rendered(() => useFigaroActions()); return () => h.current.commit(COMMITMENT, "0x01", "0x02"); },
         writes: () => [{ address: CORE, functionName: "commit", args: [COMMITMENT, "0x01", "0x02"] }],
         errorName: "DeadlineExpired",
-        message: "Commitment deadline has expired",
+        message: "The deadline in the signed commitment has passed, so it can no longer be submitted.",
     },
     {
         site: "useFigaroActions.resolveProcess",
         prepare: async () => { const h = rendered(() => useFigaroActions()); return () => h.current.resolveProcess(KEY, [COMMITMENT]); },
         writes: () => [{ address: CORE, functionName: "resolveProcess", args: [KEY, [COMMITMENT]] }],
         errorName: "NotProcessBuyer",
-        message: "Only the process buyer can resolve",
+        message: "Only the buyer who opened the process can add an order to it (a later order must name that buyer) or resolve it.",
     },
     {
         site: "useUsageRecorder.recordUsage (clause)",
@@ -325,7 +325,7 @@ const SITES: Array<{
         },
         writes: () => [{ address: USAGE_COUNTER, functionName: "recordClauseUsage", args: [COMMITMENT, KEY, ORDER_HASH, [KEY]] }],
         errorName: "AlreadyCounted",
-        message: "AlreadyCounted",
+        message: "This use of the clause, agreement or assembly was already counted for this process.",
     },
     {
         site: "useUsageRecorder.recordUsage (agreement)",
@@ -336,7 +336,7 @@ const SITES: Array<{
         },
         writes: () => [{ address: USAGE_COUNTER, functionName: "recordAgreementUsage", args: [COMMITMENT, KEY, ORDER_HASH, [KEY]] }],
         errorName: "AlreadyCounted",
-        message: "AlreadyCounted",
+        message: "This use of the clause, agreement or assembly was already counted for this process.",
     },
     {
         site: "useUsageRecorder.recordUsage (assembly)",
@@ -350,7 +350,7 @@ const SITES: Array<{
         },
         writes: () => [{ address: USAGE_COUNTER, functionName: "recordAssemblyUsage", args: [COMMITMENT, KEY, ORDER_HASH, TX, [KEY], [ORDER_HASH]] }],
         errorName: "AlreadyCounted",
-        message: "AlreadyCounted",
+        message: "This use of the clause, agreement or assembly was already counted for this process.",
     },
     {
         site: "useAttestationCoordinatorActions.submitAttestation",
@@ -400,7 +400,7 @@ const SITES: Array<{
         // its (kind, key) pair, for period 0.
         writes: () => [{ address: RPGF_MINTER, functionName: "claim", args: [0, [{ kind: USAGE_KIND_CLAUSE, key: KEY }]] }],
         errorName: "NothingToClaim",
-        message: "NothingToClaim",
+        message: "There is nothing to claim for this period.",
     },
 ];
 

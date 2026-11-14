@@ -434,9 +434,21 @@ function SignPageContent() {
 
                     {/* This party's position — context the agreement itself doesn't carry */}
                     <div className="text-xs space-y-1.5 text-ink-body border-t border-default pt-3">
+                        <div className="flex justify-between gap-2">
+                            <span>Token</span>
+                            <span className="font-mono break-all text-right" data-testid="sign-token">{commitment.currency}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Payment</span>
+                            <span data-testid="sign-payment">
+                                {tokenFigure(commitment.payment, tokenDecimals)} {currencySymbol ?? ""}
+                            </span>
+                        </div>
                         <div className="flex justify-between">
                             <span>{myBondLabel}</span>
-                            <span>{tokenFigure(myBondAmount, tokenDecimals)} tokens</span>
+                            <span data-testid="sign-my-bond">
+                                {tokenFigure(myBondAmount, tokenDecimals)} {currencySymbol ?? ""}
+                            </span>
                         </div>
                         {!isRoot && (
                             <div className="flex justify-between">
