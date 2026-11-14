@@ -148,3 +148,182 @@ describe("the Core has no third action (CLAUDE.md § 'The Core's rules', rule 3:
         expect(stateChanging(extra)).toEqual(["commit", "resolveProcess", "sweep"]);
     });
 });
+
+/** Every function and event name an ABI carries, sorted. */
+function itemNames(abi: Abi, type: "function" | "event"): string[] {
+    return abi.filter((i) => i.type === type).map((i) => (i as { name: string }).name).sort();
+}
+
+/** The words of a machine that makes the chain believe a claim about the
+ *  past: post a count, bond it, challenge it, dispute it, slash, propose,
+ *  finalize, referee. `UsageCounter`'s NatSpec names that apparatus as what it
+ *  replaces (src/rewards/UsageCounter.sol, the contract's @notice). */
+const CLAIM_GAME = /post|bond|challenge|dispute|slash|finali[sz]e|propos|referee|adjudicat|appeal|arbitrat|veto|optimistic/i;
+
+describe("designer rewards: nothing to post, nothing to bond, nothing to dispute — the count is final when it is made", () => {
+    it("UsageCounter changes state only by counting a use: the three direct records and the proved batch's accrual", () => {
+        // recordClauseUsage / recordAgreementUsage / recordAssemblyUsage prove
+        // the order resolved and the key is committed in its agreement;
+        // applyBatchAccrual takes the uses a proof committed, from the
+        // verifier alone (src/rewards/UsageCounter.sol, `batchVerifier`).
+        expect(stateChanging(compiled("UsageCounter"))).toEqual([
+            "applyBatchAccrual", "recordAgreementUsage", "recordAssemblyUsage", "recordClauseUsage",
+        ]);
+    });
+
+    it("RpgfMinter changes state only through claim, which mints a closed period's share", () => {
+        expect(stateChanging(compiled("RpgfMinter"))).toEqual(["claim"]);
+    });
+
+    it("no function or event of either contract is named for posting, bonding, challenging, disputing or finalizing", () => {
+        const names = ["UsageCounter", "RpgfMinter"].flatMap((c) => [
+            ...itemNames(compiled(c), "function"), ...itemNames(compiled(c), "event"),
+        ]);
+        expect(names.filter((n) => CLAIM_GAME.test(n))).toEqual([]);
+    });
+
+    it("the check reads what it claims to: a posted claim and its challenge are caught", () => {
+        const extra = [
+            ...compiled("UsageCounter"),
+            { type: "function", name: "postUsage", inputs: [], outputs: [], stateMutability: "nonpayable" },
+            { type: "function", name: "challengeUsage", inputs: [], outputs: [], stateMutability: "payable" },
+        ] as Abi;
+        expect(stateChanging(extra)).toContain("postUsage");
+        expect(itemNames(extra, "function").filter((n) => CLAIM_GAME.test(n))).toEqual(["challengeUsage", "postUsage"]);
+    });
+});
+
+/** A claim on revenue or a vote, by the names an ERC-20 extension gives them:
+ *  ERC20Votes (delegate, getVotes, checkpoints), snapshots, dividend and
+ *  distribution tokens, governors. */
+const VOTE_OR_REVENUE = /delegat|vote|checkpoint|dividend|distribut|claim|snapshot|govern|proposal|quorum|revenue|profit|yield|share|withdraw/i;
+
+describe("designer rewards: the florin carries no claim on revenue and no vote", () => {
+    it("FlorinToken's functions are the ERC-20 surface, its EIP-2612 permit, the minter registration, mint and the renounce", () => {
+        // src/rewards/FlorinToken.sol: `ERC20Permit` plus registerMinter,
+        // mint and renounceDeployerMint, with their public state.
+        expect(itemNames(compiled("FlorinToken"), "function")).toEqual([
+            // ERC-20
+            "allowance", "approve", "balanceOf", "decimals", "name", "symbol", "totalSupply", "transfer", "transferFrom",
+            // EIP-2612 permit, an approval by signature, and EIP-5267's domain read
+            "DOMAIN_SEPARATOR", "eip712Domain", "nonces", "permit",
+            // the minter registry: capped, registered by the deployer until it renounces
+            "MAX_SUPPLY", "deployer", "deployerMintRenounced", "mint", "minters", "registerMinter",
+            "renounceDeployerMint", "totalRegisteredCap",
+        ].sort());
+    });
+
+    it("FlorinToken's events are the ERC-20 events, EIP-5267's and the minter registration", () => {
+        expect(itemNames(compiled("FlorinToken"), "event")).toEqual(["Approval", "EIP712DomainChanged", "MinterRegistered", "Transfer"]);
+    });
+
+    it("no function or event of FlorinToken is named for a vote, a delegation, a snapshot or a payout", () => {
+        const names = [...itemNames(compiled("FlorinToken"), "function"), ...itemNames(compiled("FlorinToken"), "event")];
+        expect(names.filter((n) => VOTE_OR_REVENUE.test(n))).toEqual([]);
+    });
+
+    it("the check reads what it claims to: ERC20Votes' delegate and getVotes are caught", () => {
+        const extra = [
+            ...compiled("FlorinToken"),
+            { type: "function", name: "delegate", inputs: [], outputs: [], stateMutability: "nonpayable" },
+            { type: "function", name: "getVotes", inputs: [], outputs: [], stateMutability: "view" },
+        ] as Abi;
+        expect(itemNames(extra, "function").filter((n) => VOTE_OR_REVENUE.test(n))).toEqual(["delegate", "getVotes"]);
+    });
+});
+
+/** Every `string` and dynamic `bytes` an ABI carries in a function's inputs,
+ *  a function's outputs or an event's fields, struct members included, as
+ *  `function name(path): type` or `event name(path): type`. Errors are left
+ *  out: they are the contract's own refusals, never data a party supplies. */
+function dynamicFields(abi: Abi): string[] {
+    const out: string[] = [];
+    const walk = (p: AbiParameter, at: string, item: string) => {
+        const here = at ? `${at}.${p.name ?? "?"}` : (p.name || "?");
+        const components = (p as { components?: readonly AbiParameter[] }).components;
+        if (components) for (const c of components) walk(c, here, item);
+        if (/^(string|bytes)(\[\d*\])*$/.test(p.type)) out.push(`${item}(${here}): ${p.type}`);
+    };
+    for (const i of abi) {
+        if (i.type === "function") {
+            for (const p of i.inputs) walk(p, "in", `function ${i.name}`);
+            for (const p of i.outputs) walk(p, "out", `function ${i.name}`);
+        } else if (i.type === "event") {
+            for (const p of i.inputs) walk(p, "", `event ${i.name}`);
+        }
+    }
+    return out.sort();
+}
+
+const EIP5267 = "EIP-5267's domain read: the EIP-712 name and version, fixed at deploy, no party's data";
+
+/** Each `string` or dynamic `bytes` the Core, the counter and the registries
+ *  carry, with why it is there, read from the contract. Anything else fails. */
+const DYNAMIC_ALLOWED: Record<string, Record<string, string>> = {
+    FigaroCore: {
+        "function commit(in.buyerSig): bytes": "the buyer's EIP-712 signature over the commitment (FigaroCore.commit @param buyerSig)",
+        "function commit(in.sellerSig): bytes": "the seller's EIP-712 signature over the commitment (FigaroCore.commit @param sellerSig)",
+        "function eip712Domain(out.name): string": EIP5267,
+        "function eip712Domain(out.version): string": EIP5267,
+    },
+    AttestationCoordinator: {},
+    FigaroBatchVerifier: {
+        "function settleBatch(in.proof): bytes": "the SP1 proof's bytes",
+        "function settleBatch(in.publicValues): bytes": "the proof's public values, decoded by _decodePV",
+        "function settleBatch(in.operations): bytes": "the batch's operation stream: commitments, signatures, wallet-code authorizations and usage claims, never clause content",
+        "event BatchOperations(operations): bytes": "the same operation stream, logged so the batch path's state rebuilds from the chain",
+        "event BatchAccrualSkipped(reason): bytes": "the revert data of UsageCounter.applyBatchAccrual, caught so a refused accrual never blocks a batch",
+        "function eip712Domain(out.name): string": EIP5267,
+        "function eip712Domain(out.version): string": EIP5267,
+    },
+    UsageCounter: {},
+    // The four registries carry a designer's or a member's URI in plain text:
+    // a pointer to a public document, never a trade's content. The clause,
+    // agreement and assembly URIs point at documents the key verifies
+    // (keccak256 of the spec's bytes, a merkle root); the member's URI is not
+    // verified by any hash on chain (MembersRegistry.register @param metadataURI:
+    // "IPFS or HTTPS URI").
+    ClauseRegistry: {
+        "function registerClause(in.contentURI): string": "the pointer to the spec's pinned bytes, which its clause key verifies",
+        "event ClauseRegistered(contentURI): string": "the same pointer, logged for readers",
+    },
+    AgreementRegistry: {
+        "function registerAgreement(in.contentURI): string": "the pointer to the pinned agreement document, which the agreementHash verifies",
+        "event AgreementRegistered(contentURI): string": "the same pointer, logged for readers",
+        "function bindings(out.contentURI): string": "the same pointer, stored with the binding",
+    },
+    AssemblyRegistry: {
+        "function registerAssembly(in.contentURI): string": "the pointer to the pinned assembly document, which the assemblyHash verifies",
+        "event AssemblyRegistered(contentURI): string": "the same pointer, logged for readers",
+        "function bindings(out.contentURI): string": "the same pointer, stored with the binding",
+    },
+    MembersRegistry: {
+        "function register(in.metadataURI): string": "the pointer to the member's public profile document, which no hash on chain verifies",
+        "function updateProfile(in.metadataURI): string": "the same pointer, replaced",
+        "event MemberRegistered(metadataURI): string": "the same pointer, logged for discovery",
+        "event MemberProfileUpdated(metadataURI): string": "the same pointer, logged for discovery",
+    },
+};
+
+describe("data: the chain holds a fingerprint, never content; the protocol holds no user data to sell", () => {
+    for (const [contract, allowed] of Object.entries(DYNAMIC_ALLOWED)) {
+        it(`${contract} carries no string and no dynamic bytes beyond its allowlist`, () => {
+            expect(dynamicFields(compiled(contract))).toEqual(Object.keys(allowed).sort());
+        });
+    }
+
+    it("no function and no event of the Core or the counter takes a string", () => {
+        const strings = ["FigaroCore", "AttestationCoordinator", "FigaroBatchVerifier", "UsageCounter"]
+            .flatMap((c) => dynamicFields(compiled(c)).filter((f) => f.endsWith("string")).map((f) => `${c}: ${f}`));
+        expect(strings.filter((f) => !f.includes("function eip712Domain(out."))).toEqual([]);
+    });
+
+    it("the check reads what it claims to: a string inside a struct a party signs is caught", () => {
+        const withContent = compiled("AttestationCoordinator").map((i) =>
+            i.type === "event" && i.name === "Attestation"
+                ? { ...i, inputs: [...i.inputs, { name: "detail", type: "tuple", components: [{ name: "content", type: "string" }] }] }
+                : i,
+        ) as Abi;
+        expect(dynamicFields(withContent)).toEqual(["event Attestation(detail.content): string"]);
+    });
+});
