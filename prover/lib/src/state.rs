@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 /// A process leaf's tag in the state tree.
 pub const PROCESS_TAG: u8 = 0x01;
-/// An order leaf's tag: one leaf per order, its status and its process id.
+/// An order leaf's tag: one leaf per order, its status.
 pub const ORDER_TAG: u8 = 0x02;
 
 /// A leaf's path in the state tree: `keccak256(tag ‖ key)`.
@@ -28,13 +28,10 @@ pub fn process_value_hash(ps: &ProcessState) -> B256 {
     keccak256(data)
 }
 
-/// An order leaf's value hash: `keccak256(status ‖ process id)` — 1 and 32
-/// bytes.
-pub fn order_value_hash(status: u8, process_id: &B256) -> B256 {
-    let mut data = [0u8; 33];
-    data[0] = status;
-    data[1..].copy_from_slice(process_id.as_slice());
-    keccak256(data)
+/// An order leaf's value hash: `keccak256(status)` — 1 byte. The order's
+/// hash, its key, already binds its process.
+pub fn order_value_hash(status: u8) -> B256 {
+    keccak256([status])
 }
 
 /// Working mirror state with indexed mappings — the FigaroCore mappings
@@ -57,7 +54,6 @@ pub struct KernelState {
     // as absent.
     processes: BTreeMap<B256, ProcessState>,
     order_status: BTreeMap<B256, u8>,
-    order_process_id: BTreeMap<B256, B256>,
     witnessed: Option<BTreeSet<(u8, B256)>>,
     touched: Mutex<BTreeSet<(u8, B256)>>,
 }
@@ -67,7 +63,6 @@ impl Clone for KernelState {
         Self {
             processes: self.processes.clone(),
             order_status: self.order_status.clone(),
-            order_process_id: self.order_process_id.clone(),
             witnessed: self.witnessed.clone(),
             touched: Mutex::new(self.touched()),
         }
@@ -79,7 +74,6 @@ impl KernelState {
         Self {
             processes: BTreeMap::new(),
             order_status: BTreeMap::new(),
-            order_process_id: BTreeMap::new(),
             witnessed: None,
             touched: Mutex::new(BTreeSet::new()),
         }
@@ -90,7 +84,6 @@ impl KernelState {
         KernelStateSnapshot {
             processes: self.processes.iter().map(|(k, v)| (*k, v.clone())).collect(),
             order_status: self.order_status.iter().map(|(k, v)| (*k, *v)).collect(),
-            order_process_id: self.order_process_id.iter().map(|(k, v)| (*k, *v)).collect(),
         }
     }
 
@@ -99,7 +92,6 @@ impl KernelState {
         Self {
             processes: snap.processes.iter().cloned().collect(),
             order_status: snap.order_status.iter().cloned().collect(),
-            order_process_id: snap.order_process_id.iter().cloned().collect(),
             witnessed: None,
             touched: Mutex::new(BTreeSet::new()),
         }
@@ -122,9 +114,8 @@ impl KernelState {
             if !keys.insert((ORDER_TAG, *hash)) {
                 return Err(KernelError::DuplicateWitnessEntry);
             }
-            if let Some((status, process_id)) = order {
+            if let Some(status) = order {
                 state.order_status.insert(*hash, *status);
-                state.order_process_id.insert(*hash, *process_id);
             }
         }
         state.witnessed = Some(keys);
@@ -174,15 +165,7 @@ impl KernelState {
         Ok(self.order_status.get(order_hash).copied().unwrap_or(0))
     }
 
-    /// A committed order: its status and its process id, written together.
-    pub fn insert_order(&mut self, order_hash: B256, status: u8, process_id: B256) -> Result<(), KernelError> {
-        self.touch(ORDER_TAG, &order_hash)?;
-        self.order_status.insert(order_hash, status);
-        self.order_process_id.insert(order_hash, process_id);
-        Ok(())
-    }
-
-    /// A known order's new status; its process id stays.
+    /// An order's new status: a committed order's first, a known order's next.
     pub fn set_order_status(&mut self, order_hash: B256, status: u8) -> Result<(), KernelError> {
         self.touch(ORDER_TAG, &order_hash)?;
         self.order_status.insert(order_hash, status);
@@ -194,9 +177,7 @@ impl KernelState {
     pub fn leaf_value_hash(&self, tag: u8, key: &B256) -> Option<B256> {
         match tag {
             PROCESS_TAG => self.processes.get(key).map(process_value_hash),
-            _ => self.order_status.get(key).map(|status| {
-                order_value_hash(*status, &self.order_process_id.get(key).copied().unwrap_or_default())
-            }),
+            _ => self.order_status.get(key).map(|status| order_value_hash(*status)),
         }
     }
 
@@ -207,8 +188,7 @@ impl KernelState {
             leaves.insert(leaf_path(PROCESS_TAG, id), process_value_hash(ps));
         }
         for (hash, status) in &self.order_status {
-            let process_id = self.order_process_id.get(hash).copied().unwrap_or_default();
-            leaves.insert(leaf_path(ORDER_TAG, hash), order_value_hash(*status, &process_id));
+            leaves.insert(leaf_path(ORDER_TAG, hash), order_value_hash(*status));
         }
         leaves
     }
@@ -222,11 +202,7 @@ impl KernelState {
             if *tag == PROCESS_TAG {
                 processes.push((*key, self.processes.get(key).cloned()));
             } else {
-                let order = self
-                    .order_status
-                    .get(key)
-                    .map(|s| (*s, self.order_process_id.get(key).copied().unwrap_or_default()));
-                orders.push((*key, order));
+                orders.push((*key, self.order_status.get(key).copied()));
             }
         }
         let mut paths: Vec<B256> = keys.iter().map(|(t, k)| leaf_path(*t, k)).collect();

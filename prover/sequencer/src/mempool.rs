@@ -657,6 +657,40 @@ impl Mempool {
         (kept, expired)
     }
 
+    /// The orders an operation names: a commit's own, a resolve's listed
+    /// orders under its process, an attestation's target order. Each hash
+    /// binds its process.
+    fn touched_orders(&self, op: &KernelOp) -> Vec<B256> {
+        let domain = domain_separator(self.chain_id, self.verifying_contract);
+        let order = |c: &Commitment| derive_commitment_ids(&domain, c).0;
+        match op {
+            KernelOp::Commit { commitment, .. } => vec![order(commitment)],
+            KernelOp::Resolve { process_id, commitments, .. }
+            | KernelOp::ResolveByWalletCode { process_id, commitments, .. } => commitments
+                .iter()
+                .map(|c| compute_order_hash(process_id, &commitment_struct_hash(c)))
+                .collect(),
+            KernelOp::AttestAsSeller { target, .. }
+            | KernelOp::AttestAsBuyer { target, .. }
+            | KernelOp::AttestByWalletCode { target, .. } => vec![order(target)],
+        }
+    }
+
+    /// The slice of `state` a group of operations reads: the processes they
+    /// touch and the orders they name. The Core's rules read nothing else
+    /// for an operation — a commit reads its process and its own order, an
+    /// attestation its target order, a resolve its process and listed
+    /// orders — so an operation applies against the slice exactly as
+    /// against the whole.
+    fn group_state(&self, state: &KernelStateSnapshot, group: &[PendingOp]) -> KernelStateSnapshot {
+        let processes: HashSet<B256> = group.iter().flat_map(|p| self.touched_processes(&p.op)).collect();
+        let orders: HashSet<B256> = group.iter().flat_map(|p| self.touched_orders(&p.op)).collect();
+        KernelStateSnapshot {
+            processes: state.processes.iter().filter(|(p, _)| processes.contains(p)).cloned().collect(),
+            order_status: state.order_status.iter().filter(|(o, _)| orders.contains(o)).cloned().collect(),
+        }
+    }
+
     /// The processes an operation touches: a commit's own (a root order's
     /// derived from its struct), a resolve's, an attestation's target
     /// order's process.
@@ -756,7 +790,7 @@ impl Mempool {
                 }
                 continue;
             }
-            let state = group_state(prev_state, &group.iter().flat_map(|p| self.touched_processes(&p.op)).collect());
+            let state = self.group_state(prev_state, &group);
             for x in group_candidates {
                 reruns += 1;
                 let without: Vec<PendingOp> =
@@ -1305,36 +1339,6 @@ fn commit_precedes(domain: &B256, c: &KernelOp, f: &KernelOp, touched: &HashSet<
     match f {
         KernelOp::Commit { commitment: f, .. } => c.expected_cumulative_value < f.expected_cumulative_value,
         _ => true,
-    }
-}
-
-/// The slice of `state` an operation of these processes reads: the
-/// processes, and the orders filed under them. The Core's rules read
-/// nothing else for an operation — a commit reads its process and its own
-/// order (an order's hash binds its process), an attestation its target
-/// order, a resolve its process and listed orders — so an operation applies
-/// against the slice exactly as against the whole. One assumption: every key in
-/// `order_status` is also in `order_process_id`, filed under the process its
-/// hash binds. The Core mirror writes the two together (`apply_commit`) and
-/// nothing removes either; the snapshot carries no serde defaults; and the
-/// state root covers `order_process_id`, so every state the relay holds came
-/// out of the Core mirror.
-fn group_state(state: &KernelStateSnapshot, processes: &HashSet<B256>) -> KernelStateSnapshot {
-    let orders: HashSet<B256> = state
-        .order_process_id
-        .iter()
-        .filter(|(_, p)| processes.contains(p))
-        .map(|(o, _)| *o)
-        .collect();
-    KernelStateSnapshot {
-        processes: state.processes.iter().filter(|(p, _)| processes.contains(p)).cloned().collect(),
-        order_status: state.order_status.iter().filter(|(o, _)| orders.contains(o)).cloned().collect(),
-        order_process_id: state
-            .order_process_id
-            .iter()
-            .filter(|(o, _)| orders.contains(o))
-            .cloned()
-            .collect(),
     }
 }
 

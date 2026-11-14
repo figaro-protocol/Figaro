@@ -168,7 +168,7 @@ contract FigaroBatchVerifierTest is Test {
         );
 
         FigaroBatchVerifier.SpecBinding[] memory bindings = new FigaroBatchVerifier.SpecBinding[](1);
-        bindings[0] = FigaroBatchVerifier.SpecBinding(clauseKey, SPEC_HASH);
+        bindings[0] = FigaroBatchVerifier.SpecBinding(clauseKey);
 
         events = FigaroBatchVerifier.BatchEventData(atts, bindings);
         newRoot = keccak256("next-root");
@@ -269,37 +269,6 @@ contract FigaroBatchVerifierTest is Test {
 
     // ── The open-world anchor gate ──────────────────────────────────
 
-    function test_settleBatch_revertsOnSpecBindingMismatch() public {
-        (
-            ,
-            FigaroBatchVerifier.NetPosition[] memory positions,
-            FigaroBatchVerifier.BatchEventData memory events,
-            bytes32 newRoot
-        ) = _canonicalBatch();
-
-        // The proof validated content against some other document's bytes
-        // while naming the registered key: the binding's two words differ.
-        bytes32 wrongSpecHash = keccak256("a permissive substitute spec");
-        events.specBindings[0] = FigaroBatchVerifier.SpecBinding(clauseKey, wrongSpecHash);
-        bytes memory pv = abi.encode(
-            GENESIS,
-            newRoot,
-            uint64(block.chainid),
-            address(verifier),
-            _hashPositions(positions),
-            _hashAttestations(events.attestations),
-            _hashBindings(events.specBindings),
-            _hashUsageEmpty(),
-            uint64(block.timestamp),
-            keccak256(hex"")
-        );
-
-        vm.expectRevert(
-            abi.encodeWithSelector(FigaroBatchVerifier.SpecBindingMismatch.selector, clauseKey, wrongSpecHash)
-        );
-        verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
-    }
-
     function test_settleBatch_revertsOnUnregisteredClauseBinding() public {
         (
             ,
@@ -308,11 +277,10 @@ contract FigaroBatchVerifierTest is Test {
             bytes32 newRoot
         ) = _canonicalBatch();
 
-        // A spec whose key the registry never registered: the binding is
-        // well-formed (specHash == clauseId) and still refused, because
+        // A spec whose key the registry never registered: refused, because
         // nothing anchors those bytes.
         bytes32 strangerKey = keccak256(bytes('{"clauseId":"figaro-never-registered","version":1}'));
-        events.specBindings[0] = FigaroBatchVerifier.SpecBinding(strangerKey, strangerKey);
+        events.specBindings[0] = FigaroBatchVerifier.SpecBinding(strangerKey);
         bytes memory pv = abi.encode(
             GENESIS,
             newRoot,
@@ -343,7 +311,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.BatchEventData memory events,
             bytes32 newRoot
         ) = _canonicalBatch();
-        events.specBindings[0] = FigaroBatchVerifier.SpecBinding(novelKey, novelKey);
+        events.specBindings[0] = FigaroBatchVerifier.SpecBinding(novelKey);
         events.attestations[0].clauseId = novelKey;
         bytes memory pv = abi.encode(
             GENESIS,
@@ -470,9 +438,9 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.NetPosition[] memory positions,
             FigaroBatchVerifier.BatchEventData memory events,
         ) = _canonicalBatch();
-        // Same clause key, different spec hash than the proof committed —
-        // dies at the hash check BEFORE the registry anchor check.
-        events.specBindings[0].specHash = keccak256("not what the proof said");
+        // A clause key other than the one the proof committed — dies at the
+        // hash check BEFORE the registry anchor check.
+        events.specBindings[0].clauseId = keccak256("not what the proof said");
         vm.expectRevert(FigaroBatchVerifier.SpecBindingsHashMismatch.selector);
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage(), hex"");
     }
@@ -2040,8 +2008,7 @@ contract FigaroBatchVerifierTest is Test {
     {
         bs = new FigaroBatchVerifier.SpecBinding[](n);
         for (uint256 i = 0; i < n; i++) {
-            bs[i] =
-                i == 0 ? b0 : FigaroBatchVerifier.SpecBinding(_word(seed, "bindClause", i), _word(seed, "specHash", i));
+            bs[i] = i == 0 ? b0 : FigaroBatchVerifier.SpecBinding(_word(seed, "bindClause", i));
         }
     }
 
@@ -2072,8 +2039,8 @@ contract FigaroBatchVerifierTest is Test {
     /// public value IN ORDER, reverting with that hash's own error on the first
     /// disagreement — and only after all four agree does it anchor the spec
     /// bindings. So: hand it random inputs with the MIRROR hashes as the public
-    /// values, make the first binding one whose spec hash is not its clause
-    /// key, and require exactly that LATER revert. Reaching `SpecBindingMismatch` proves
+    /// values, make the first binding a clause key the registry never
+    /// registered, and require exactly that LATER revert. Reaching `ClauseNotRegistered` proves
     /// every assembly hash equaled its mirror on this input; a packing slip in
     /// any of the four surfaces instead as the corresponding `*HashMismatch`.
     ///
@@ -2112,9 +2079,9 @@ contract FigaroBatchVerifierTest is Test {
     }
 
     function testFuzz_assemblyPackersMatchTheMirrors(PackerFuzz memory f) public {
-        // The sentinel: a binding whose spec hash is not its clause key
-        // mismatches before any registry read.
-        vm.assume(f.b0.clauseId != f.b0.specHash);
+        // The sentinel: a binding whose clause key the registry never
+        // registered, refused at the first binding.
+        vm.assume(!registry.registered(f.b0.clauseId));
 
         FigaroBatchVerifier.NetPosition[] memory positions = _fuzzPositions(f.seed, f.p0, f.lengths & 3);
         FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
@@ -2123,9 +2090,7 @@ contract FigaroBatchVerifierTest is Test {
         );
         FigaroBatchVerifier.BatchUsageData memory usage = _fuzzUsage(f.seed, f.use0, f.period, (f.lengths >> 6) & 3);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(FigaroBatchVerifier.SpecBindingMismatch.selector, f.b0.clauseId, f.b0.specHash)
-        );
+        vm.expectRevert(abi.encodeWithSelector(FigaroBatchVerifier.ClauseNotRegistered.selector, f.b0.clauseId));
         verifier.settleBatch(hex"", _packerPv(positions, events, usage), positions, events, usage, hex"");
     }
 
@@ -2145,8 +2110,8 @@ contract FigaroBatchVerifierTest is Test {
     /// The vectors are asserted against the test mirrors AND the contract's
     /// own assembly: a batch committing exactly these three hashes gets past
     /// every hash check (each mismatch reverts with its own error, in order)
-    /// and is stopped only by the spec-binding anchor — the fixture's spec
-    /// hash is not its clause key. That `SpecBindingMismatch` is the proof all
+    /// and is stopped only by the spec-binding anchor — the fixture's clause
+    /// key is not registered. That `ClauseNotRegistered` is the proof all
     /// three packers agreed.
     function test_packerHashes_matchTheRustVectors() public {
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](2);
@@ -2162,12 +2127,12 @@ contract FigaroBatchVerifierTest is Test {
         );
 
         FigaroBatchVerifier.SpecBinding[] memory bindings = new FigaroBatchVerifier.SpecBinding[](2);
-        bindings[0] = FigaroBatchVerifier.SpecBinding(keccak256("clause-a"), keccak256("spec-a"));
-        bindings[1] = FigaroBatchVerifier.SpecBinding(keccak256("clause-b"), keccak256("spec-b"));
+        bindings[0] = FigaroBatchVerifier.SpecBinding(keccak256("clause-a"));
+        bindings[1] = FigaroBatchVerifier.SpecBinding(keccak256("clause-b"));
 
         bytes32 positionsVector = 0x9bd2d9af56189ba485fc2e232edeafb4bccd8fd1fdc286064ada3f97b522766d;
         bytes32 attestationsVector = 0x8d905f5a099cb2530f0912090a34135967c19e660b79a2ba7275489145a74dfc;
-        bytes32 bindingsVector = 0x46470c7694c808e183fefa90a173f9398346f792cf859f22e49b42e598da3704;
+        bytes32 bindingsVector = 0x91d0c5f7eda867b0d10fb4d5cc8f3d1b73e675ab798d2ea8b8b2835c39c85469;
 
         assertEq(_hashPositions(positions), positionsVector, "positions mirror matches the Rust vector");
         assertEq(_hashAttestations(atts), attestationsVector, "attestations mirror matches the Rust vector");
@@ -2185,11 +2150,7 @@ contract FigaroBatchVerifierTest is Test {
             uint64(block.timestamp),
             keccak256(hex"")
         );
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                FigaroBatchVerifier.SpecBindingMismatch.selector, bindings[0].clauseId, bindings[0].specHash
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(FigaroBatchVerifier.ClauseNotRegistered.selector, bindings[0].clauseId));
         verifier.settleBatch(
             hex"", pv, positions, FigaroBatchVerifier.BatchEventData(atts, bindings), _emptyUsage(), hex""
         );

@@ -156,7 +156,6 @@ fn a_hash_only_batched_attestation_emits_the_coordinator_s_event_bytes() {
         prev_state: KernelStateSnapshot {
             processes: vec![],
             order_status: vec![],
-            order_process_id: vec![],
         },
         usage_claims: vec![],
         usage_period: 0,

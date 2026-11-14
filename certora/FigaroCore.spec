@@ -10,7 +10,6 @@
 
 methods {
     function orderStatus(bytes32) external returns (uint8) envfree;
-    function orderProcessId(bytes32) external returns (bytes32) envfree;
     function processes(bytes32) external returns (address, address, uint256, uint256) envfree;
 }
 
@@ -114,7 +113,7 @@ rule onlyBuyerCanResolve(bytes32 processId, method f) {
 //
 // A commit that succeeds returns an order hash whose status was 0 before
 // the call: no order hash already committed or resolved is committed
-// again.  With commitBindsTheOrderToItsProcess (the returned order is
+// again.  With commitLeavesTheOrderCommitted (the returned order is
 // committed afterwards) and orderStatusNeverDecreases (a status never
 // returns to 0), each order hash is committed at most once.
 // ═══════════════════════════════════════════════════════════════════
@@ -206,15 +205,14 @@ rule currencyImmutable(bytes32 processId, method f) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RULE 10: A Committed Order Is Bound To Its Process (A-10)
+// RULE 9: Commit Leaves The Order Committed
 //
-// orderProcessId is FigaroCore's own record of which process an order
-// belongs to. It is written once at commit and never moves: an order
-// that has a status has a process, and a bound process never changes.
-// The Foundry test of A-10 and these two rules are what read the mapping.
+// A successful commit leaves the order hash it returns at status 1.
+// With noDoubleCommit and orderStatusNeverDecreases, each order hash is
+// committed at most once.
 // ═══════════════════════════════════════════════════════════════════
 
-rule commitBindsTheOrderToItsProcess() {
+rule commitLeavesTheOrderCommitted() {
     env e;
     CommitmentTypes.Commitment c;
     bytes buyerSig;
@@ -224,23 +222,6 @@ rule commitBindsTheOrderToItsProcess() {
     bytes32 orderHash;
     processId, orderHash = commit(e, c, buyerSig, sellerSig);
 
-    assert orderProcessId(orderHash) == processId,
-        "commit must bind the new order to the process it returns";
     assert orderStatus(orderHash) == 1,
         "commit must leave the new order committed";
-}
-
-rule orderProcessIdImmutableOnceCommitted(bytes32 orderHash, method f) {
-    // A committed order: it has a status. From any such state, no method
-    // moves its process — commit on the same hash reverts, resolve only
-    // advances the status.
-    require orderStatus(orderHash) != 0;
-    bytes32 processBefore = orderProcessId(orderHash);
-
-    env e;
-    calldataarg args;
-    f(e, args);
-
-    assert orderProcessId(orderHash) == processBefore,
-        "A committed order's process must never change";
 }

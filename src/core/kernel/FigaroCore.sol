@@ -12,7 +12,7 @@ import "./CommitmentTypes.sol";
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice The Core's bonding and resolution contract. Two state-changing external functions: commit()
-///         and resolveProcess(); DOMAIN_SEPARATOR(), the three mappings' getters and eip712Domain()
+///         and resolveProcess(); DOMAIN_SEPARATOR(), the two mappings' getters and eip712Domain()
 ///         (inherited from OpenZeppelin's EIP712) are external views. No owner, no fee, no escape hatches.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
@@ -90,10 +90,6 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     // ── Order nullifier (0 = unknown, 1 = committed, 2 = resolved) ─
 
     mapping(bytes32 => uint8) public orderStatus;
-
-    // ── Order → process membership (zero = unknown order) ──────────
-
-    mapping(bytes32 => bytes32) public orderProcessId;
 
     // ── Constructor ───────────────────────────────────────────────
 
@@ -201,7 +197,6 @@ contract FigaroCore is EIP712, ReentrancyGuard {
 
         if (orderStatus[orderHash] != 0) revert DuplicateCommitment();
         orderStatus[orderHash] = 1;
-        orderProcessId[orderHash] = processId;
 
         _pullExact(IERC20(c.currency), c.buyer, c.payment * 2);
         _pullExact(IERC20(c.currency), c.seller, c.expectedCumulativeValue * 2);

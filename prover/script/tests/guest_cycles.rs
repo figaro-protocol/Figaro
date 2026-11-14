@@ -33,7 +33,6 @@ async fn the_guests_cycles_do_not_grow_with_the_stored_state() {
                 },
             ));
             input.prev_state.order_status.push((key, 2));
-            input.prev_state.order_process_id.push((key, key));
         }
         let guest = guest_input(&input).expect("the canonical batch's witness");
         let mut stdin = SP1Stdin::new();

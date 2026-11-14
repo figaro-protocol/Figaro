@@ -107,10 +107,9 @@ pub enum AttestationWitness {
 ///   S. Spec identity + binding — `spec_json` parses as a `ClauseSpec`
 ///      and `keccak256(spec_json bytes)`, hashed verbatim as pinned,
 ///      equals the op's `clause_id` (a clause key IS its spec's hash);
-///      the pair is committed as a `SpecBinding` public value with both
-///      fields equal. The on-chain verifier accepts the batch only if
-///      every binding's fields are equal and
-///      `ClauseRegistry.registered(clause_id)` — the registry is the
+///      the key is committed as a `SpecBinding` public value. The on-chain
+///      verifier accepts the batch only if
+///      `ClauseRegistry.registered(clause_id)` for every binding — the registry is the
 ///      trust anchor, the vkey covers the ENGINE, and a caller cannot
 ///      weaken validation with a permissive spec.
 ///   C. Content — per `content_kind` (validate + generic-encode for a
@@ -246,8 +245,8 @@ pub enum KernelOp {
     /// (`0x05`, public value 9). `FigaroBatchVerifier.settleBatch` asks the
     /// party's code and emits the coordinator's `Attestation` event only on
     /// the magic value; on any other answer, or when the party's account
-    /// has no code, the attestation is skipped and the batch lands, as a
-    /// reverted `attestAsSeller` call drops alone on the direct path.
+    /// has no code, the whole batch reverts by name, so a batch that lands
+    /// carries the attestation of every `0x05` entry.
     AttestByWalletCode {
         role: AttesterRole,
         target: Commitment,
@@ -410,7 +409,6 @@ pub struct BatchUse {
 pub struct KernelStateSnapshot {
     pub processes: Vec<(B256, ProcessState)>,
     pub order_status: Vec<(B256, u8)>,
-    pub order_process_id: Vec<(B256, B256)>,
 }
 
 // ── Batch inputs ──────────────────────────────────────────────────
@@ -429,12 +427,13 @@ pub struct BatchInput {
     /// against the post-state.
     pub usage_claims: Vec<UsageClaim>,
     /// The accrual period every claim in this batch lands in. The guest
-    /// takes it on trust and COMMITS it; the on-chain verifier requires
-    /// it to equal `UsageCounter.currentPeriod()` at resolution, so the
+    /// takes it on trust and COMMITS it; `UsageCounter.applyBatchAccrual`
+    /// requires it to equal `currentPeriod()` at resolution, so the
     /// chain — never the sequencer's clock — decides which period a
     /// batch pays into. A batch proven just before a boundary and
-    /// resolved just after is rejected and must be re-proven: loud, and
-    /// far better than silently paying the wrong tranche.
+    /// resolved just after still lands: `FigaroBatchVerifier.settleBatch`
+    /// calls the counter inside a try, emits `BatchAccrualSkipped`, and
+    /// its uses are not counted, never paid into the wrong period.
     pub usage_period: u8,
 }
 
@@ -445,8 +444,8 @@ pub struct BatchInput {
 pub struct StateWitness {
     /// Process id → its state, `None` when absent.
     pub processes: Vec<(B256, Option<ProcessState>)>,
-    /// Order hash → (status, process id), `None` when absent.
-    pub orders: Vec<(B256, Option<(u8, B256)>)>,
+    /// Order hash → its status, `None` when absent.
+    pub orders: Vec<(B256, Option<u8>)>,
     /// The previous tree's items for these entries, in descent order.
     pub proof: Vec<crate::state_tree::ProofItem>,
 }
@@ -479,10 +478,10 @@ pub struct PublicValues {
     /// Hash of attestation events emitted in this batch.
     /// The on-chain verifier re-emits these events.
     pub attestation_events_hash: B256,
-    /// Hash of the deduplicated (clause key, witness-spec hash) bindings
-    /// the in-proof clause gates validated against — both fields equal.
-    /// The on-chain verifier checks each binding's fields are equal and
-    /// its key `ClauseRegistry.registered` before accepting the batch.
+    /// Hash of the deduplicated clause keys the in-proof clause gates
+    /// validated against, each the hash of its witness spec. The on-chain
+    /// verifier checks each key is `ClauseRegistry.registered` before
+    /// accepting the batch.
     pub spec_bindings_hash: B256,
     /// Hash of the batch's designer-reward uses — the period, the
     /// provenance leaf's key and every (kind, key, process, seller) use.
@@ -583,14 +582,12 @@ pub struct AttestationEventData {
     pub content_ref: B256,
 }
 
-/// One (clause key, witness-spec hash) binding used by the batch's
-/// clause gates. `spec_hash` is `keccak256` of the exact witness spec
-/// bytes and `clause_id` is the clause key, which Gate S requires to be
-/// that same hash — the two fields are equal; the layout keeps both.
+/// One clause key used by the batch's clause gates. Gate S requires the
+/// key to be `keccak256` of the exact witness spec bytes, so the key alone
+/// names the document the gates read.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct SpecBinding {
     pub clause_id: B256,
-    pub spec_hash: B256,
 }
 
 /// Collected side-effect data from batch execution.

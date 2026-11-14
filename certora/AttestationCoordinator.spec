@@ -28,7 +28,6 @@ using FigaroCore as core;
 methods {
     // FigaroCore view functions called by AttestationCoordinator (linked contract)
     function core.orderStatus(bytes32) external returns (uint8) envfree;
-    function core.orderProcessId(bytes32) external returns (bytes32) envfree;
     function core.processes(bytes32) external returns (address, address, uint256, uint256) envfree;
 }
 

@@ -238,11 +238,6 @@
                 "name": "clauseId",
                 "type": "bytes32",
                 "internalType": "bytes32"
-              },
-              {
-                "name": "specHash",
-                "type": "bytes32",
-                "internalType": "bytes32"
               }
             ]
           }
@@ -765,22 +760,6 @@
         "name": "token",
         "type": "address",
         "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "SpecBindingMismatch",
-    "inputs": [
-      {
-        "name": "clauseId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "proven",
-        "type": "bytes32",
-        "internalType": "bytes32"
       }
     ]
   },

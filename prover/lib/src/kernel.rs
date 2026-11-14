@@ -177,7 +177,7 @@ fn apply_commit(
     if state.order_status_of(&order_hash)? != 0 {
         return Err(KernelError::DuplicateCommitment);
     }
-    state.insert_order(order_hash, 1, process_id)?;
+    state.set_order_status(order_hash, 1)?;
 
     // ── Token flows ──
     // Buyer bond = 2 × payment.
@@ -482,14 +482,10 @@ pub fn validate_attestation_content(
             return Err(KernelError::ClauseSpecParseFailed(first));
         }
     };
-    let spec_hash = keccak256(proof.spec_json.as_bytes());
-    if spec_hash != *clause_id {
+    if keccak256(proof.spec_json.as_bytes()) != *clause_id {
         return Err(KernelError::SpecIdentityMismatch(*clause_id));
     }
-    let binding = SpecBinding {
-        clause_id: *clause_id,
-        spec_hash,
-    };
+    let binding = SpecBinding { clause_id: *clause_id };
 
     // ── Gate C: content satisfies the spec and hashes to content_ref ──
     match proof.content_kind {
@@ -678,12 +674,11 @@ pub fn compute_attestation_events_hash(events: &[AttestationEventData]) -> B256 
 }
 
 /// Deterministic hash of the deduplicated, sorted spec bindings.
-/// Per-binding record: clauseId(32) ++ specHash(32).
+/// Packed per binding: clauseId(32).
 pub fn compute_spec_bindings_hash(bindings: &[SpecBinding]) -> B256 {
-    let mut data = Vec::with_capacity(bindings.len() * 64);
+    let mut data = Vec::with_capacity(bindings.len() * 32);
     for b in bindings {
         data.extend_from_slice(b.clause_id.as_slice());
-        data.extend_from_slice(b.spec_hash.as_slice());
     }
     keccak256(&data)
 }

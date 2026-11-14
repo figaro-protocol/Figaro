@@ -221,7 +221,7 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
             // The key is keccak256 of the spec's bytes, so a binding carries it twice.
             bytes32 clauseKey = keccak256(abi.encodePacked("gas-clause-spec-", vm.toString(seed + i)));
             registry.registerClause{value: DEPOSIT}(clauseKey, "ipfs://gas");
-            ev.specBindings[i] = FigaroBatchVerifier.SpecBinding(clauseKey, clauseKey);
+            ev.specBindings[i] = FigaroBatchVerifier.SpecBinding(clauseKey);
         }
     }
 

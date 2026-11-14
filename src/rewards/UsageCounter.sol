@@ -8,7 +8,6 @@ import "src/core/kernel/CommitmentTypes.sol";
 ///         per the coordinator exemplar — never a vendored dependency.
 interface IFigaroCore {
     function orderStatus(bytes32 orderHash) external view returns (uint8);
-    function orderProcessId(bytes32 orderHash) external view returns (bytes32);
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
 

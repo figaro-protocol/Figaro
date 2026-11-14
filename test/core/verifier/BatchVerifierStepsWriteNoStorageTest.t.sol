@@ -113,8 +113,8 @@ contract BatchVerifierStepsWriteNoStorageTest is OperationStreamVectorsTest {
         vm.deal(address(this), 1 ether);
         registry.registerClause{value: 0.001 ether}(key, "ipfs://spec");
         FigaroBatchVerifier.SpecBinding[] memory bindings = new FigaroBatchVerifier.SpecBinding[](2);
-        bindings[0] = FigaroBatchVerifier.SpecBinding(key, key);
-        bindings[1] = FigaroBatchVerifier.SpecBinding(key, key);
+        bindings[0] = FigaroBatchVerifier.SpecBinding(key);
+        bindings[1] = FigaroBatchVerifier.SpecBinding(key);
 
         vm.record();
         steps.checkSpecBindings(bindings);

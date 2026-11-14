@@ -1045,7 +1045,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                         },
                         {
                             name: 'specBindings', type: 'tuple[]', components: [
-                                { name: 'clauseId', type: 'bytes32' }, { name: 'specHash', type: 'bytes32' },
+                                { name: 'clauseId', type: 'bytes32' },
                             ],
                         },
                     ],
@@ -1084,7 +1084,6 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         { type: 'error', name: 'UsageAccrualHashMismatch', inputs: [] },
         { type: 'error', name: 'BatchTimestampOutOfRange', inputs: [{ name: 'committed', type: 'uint64' }, { name: 'current', type: 'uint64' }] },
         { type: 'error', name: 'PublicValuesLengthMismatch', inputs: [{ name: 'expected', type: 'uint256' }, { name: 'actual', type: 'uint256' }] },
-        { type: 'error', name: 'SpecBindingMismatch', inputs: [{ name: 'clauseId', type: 'bytes32' }, { name: 'proven', type: 'bytes32' }] },
         { type: 'error', name: 'ClauseNotRegistered', inputs: [{ name: 'clauseId', type: 'bytes32' }] },
     ] as const;
 
@@ -1119,12 +1118,6 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         expect(await publicClient.readContract({
             address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [geoKey],
         }), 'the registry holds a live registration under the geo key').toBe(true);
-
-        // The verifier's open-world gate: the spec binding names the exact
-        // document the proof validated against — and the clause key IS the
-        // hash of that document's pinned bytes, so both words of a binding
-        // are the key.
-        const specHash = geoKey;
 
         // A BATCH-ONLY process identity, fresh each run: batch-resolved trade
         // acquires no FigaroCore status and emits no FigaroCore event — the two
@@ -1172,7 +1165,10 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             ['bytes32', 'bytes32', 'address', 'bytes32', 'uint8', 'bytes32'],
             [orderHash, processId, surveyor.address, geoKey, stage, contentRef],
         ));
-        const specBindingsHash = keccak256(encodePacked(['bytes32', 'bytes32'], [geoKey, specHash]));
+        // The verifier's open-world gate: the spec binding is the clause key,
+        // which IS the hash of the pinned bytes of the document the proof
+        // validated against.
+        const specBindingsHash = keccak256(encodePacked(['bytes32'], [geoKey]));
         const emptyPositionsHash = keccak256('0x');
         const emptyUsageHash = keccak256(encodePacked(['uint8', 'bytes32', 'uint64'], [0, zeroHash, 0n]));
         const batchTimestamp = (await publicClient.getBlock()).timestamp;
@@ -1190,7 +1186,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             address: batchVerifier, abi: BATCH_VERIFIER_ABI, functionName: 'settleBatch',
             args: [
                 '0x', publicValues, [],
-                { attestations: [attestation], specBindings: [{ clauseId: geoKey, specHash }] },
+                { attestations: [attestation], specBindings: [{ clauseId: geoKey }] },
                 { period: 0, provenanceLeaf: zeroHash, uses: [] },
                 // The batch's operation stream: this leg lands an attestation
                 // alone, which moves no state, so the stream is empty.

@@ -223,7 +223,7 @@ contract BatchVerifierNeverRegistersTest is Test {
             keccak256("order"), PROCESS, seller, SPEC_HASH, 0, keccak256("content")
         );
         FigaroBatchVerifier.SpecBinding[] memory bindings = new FigaroBatchVerifier.SpecBinding[](1);
-        bindings[0] = FigaroBatchVerifier.SpecBinding(SPEC_HASH, SPEC_HASH);
+        bindings[0] = FigaroBatchVerifier.SpecBinding(SPEC_HASH);
         FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(atts, bindings);
         FigaroBatchVerifier.BatchUsageData memory usage;
         usage.uses = new IUsageCounter.BatchUse[](0);

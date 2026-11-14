@@ -383,7 +383,6 @@ fn empty_snapshot() -> KernelStateSnapshot {
     KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
-        order_process_id: vec![],
     }
 }
 
@@ -535,17 +534,14 @@ fn attest_as_seller_runtime_witness_passes_all_gates() {
     assert_eq!(e.clause_id, f.clause_key);
     assert_eq!(e.content_ref, content_ref);
 
-    // The spec binding is committed for on-chain verification: both
-    // fields are the clause key, which the verifier checks is
-    // ClauseRegistry.registered.
+    // The spec binding is committed for on-chain verification: the
+    // clause key, which is the spec's hash and which the verifier checks
+    // is ClauseRegistry.registered.
     assert_eq!(events.spec_bindings.len(), 1);
     assert_eq!(events.spec_bindings[0].clause_id, f.clause_key);
     assert_eq!(
-        events.spec_bindings[0].spec_hash,
-        keccak256(f.spec_json.as_bytes())
-    );
-    assert_eq!(
-        events.spec_bindings[0].spec_hash, events.spec_bindings[0].clause_id,
+        events.spec_bindings[0].clause_id,
+        keccak256(f.spec_json.as_bytes()),
         "the clause key is the spec hash"
     );
     assert_eq!(
@@ -1038,7 +1034,6 @@ fn the_state_root_binds_every_map_it_covers() {
             },
         )];
         s.order_status = vec![(ROOT_ORDER_HASH, 1)];
-        s.order_process_id = vec![(ROOT_ORDER_HASH, PROCESS_ID)];
         s
     };
     let root_of = |s: &KernelStateSnapshot| KernelState::from_snapshot(s).compute_root();
@@ -1067,12 +1062,6 @@ fn the_state_root_binds_every_map_it_covers() {
     let mut s = base.clone();
     s.order_status[0].0 = SUB_ORDER_HASH;
     cases.push(("which order carries the status", s));
-    let mut s = base.clone();
-    s.order_process_id[0].1 = SUB_DIGEST;
-    cases.push(("an order's process", s));
-    let mut s = base.clone();
-    s.order_process_id[0].0 = SUB_ORDER_HASH;
-    cases.push(("which order belongs to the process", s));
 
     let mut roots = std::collections::BTreeSet::new();
     roots.insert(base_root);

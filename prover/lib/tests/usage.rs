@@ -65,7 +65,6 @@ fn empty_snapshot() -> KernelStateSnapshot {
     KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
-        order_process_id: vec![],
     }
 }
 

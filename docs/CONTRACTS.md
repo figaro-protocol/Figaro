@@ -62,9 +62,9 @@ a process when its buyer calls it.
 - Two state-changing entry points: `commit(Commitment c, bytes buyerSig,
   bytes sellerSig)` and `resolveProcess(bytes32 processId, Commitment[]
   commitments)`.
-- Three mappings: `processes` (`ProcessState{rootBuyer, currency,
-  cumulativeValue, activeOrderCount}`), `orderStatus` (`uint8`: 0 unknown,
-  1 committed, 2 resolved), `orderProcessId` (`bytes32`).
+- Two mappings: `processes` (`ProcessState{rootBuyer, currency,
+  cumulativeValue, activeOrderCount}`) and `orderStatus` (`uint8`: 0 unknown,
+  1 committed, 2 resolved).
 - `commit` verifies both EIP-712 signatures over `c`, then pulls `2 × payment`
   from the buyer and `2 × expectedCumulativeValue` from the seller. A root
   order (`c.processId == 0`) opens a process; any other order extends one and
@@ -150,9 +150,9 @@ The proof-based path that resolves batches of processes beside the direct
   carries the `Attestation` of every `0x05` entry its stream publishes;
 - checks every spec binding, one per clause a plaintext attestation names (a
   hash-only attestation commits none, as the coordinator consults no
-  registry): the clause key is the hash of the witness spec,
-  so the binding's two words must be equal (`SpecBindingMismatch`), and the
-  key must be `ClauseRegistry.registered` (`ClauseNotRegistered`) — the vkey
+  registry): the binding is the clause key, which the proof program requires
+  to be the hash of the witness spec, and the key must be
+  `ClauseRegistry.registered` (`ClauseNotRegistered`) — the vkey
   covers the generic clause engine, the registry anchors the constraint set,
   so a new clause never touches the prover;
 - reconciles net token positions (pulls net deposits, pushes net payouts;

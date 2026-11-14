@@ -131,8 +131,8 @@ plus the attestation gates (inclusion for every attestation; spec identity and
 content for one sent in the plaintext form) and the usage bridge, translated to Rust.
 Five `KernelOp` variants — `Commit`, `Resolve`, `ResolveByWalletCode`,
 `AttestAsSeller`, `AttestAsBuyer` (registry mutations never enter a batch);
-the two resolves are one rule under two forms of the buyer's authorization. Three-member state
-(processes, orderStatus, orderProcessId), committed as one sparse merkle tree with a leaf per
+the two resolves are one rule under two forms of the buyer's authorization. Two-member state
+(processes, orderStatus), committed as one sparse merkle tree with a leaf per
 process and a leaf per order (`prover/lib/src/state_tree.rs`); the guest reads only the entries a
 batch touches, proved against the previous root, so its work grows with the batch and with the
 logarithm of the state, not with the state; a usage claim moves no state. EIP-712 signature
@@ -162,8 +162,8 @@ state.
 **On-chain verifier** (`src/core/verifier/FigaroBatchVerifier.sol`):
 accepts SP1 proofs, verifies state-root continuity and chain binding,
 hash-verifies auxiliary calldata (positions, attestation events, spec
-bindings, the uses), checks each (clause key, spec hash) binding —
-the two words equal and the key `ClauseRegistry.registered` — executes net
+bindings, the uses), checks each spec binding — its clause key
+`ClauseRegistry.registered` — executes net
 token transfers, re-emits
 proven `Attestation` events, emits the Core's order and process events from
 the operation stream and logs the stream itself (`BatchOperations`), asks
@@ -381,9 +381,9 @@ form (§ "The two attestation forms"). The spec is a witness input, and its clau
 hash: `registerClause` anchors `clauseKey = keccak256(canonical spec JSON)`,
 the guest's Gate S requires `keccak256(spec_json bytes) == clause_id` on the
 bytes it was given, canonicalizing nothing (`prover/lib/src/kernel.rs`), the
-guest commits the deduplicated (clause key, witness-spec hash) bindings it
-validated against (`spec_bindings_hash`), and `settleBatch` requires each
-binding's two words equal and `ClauseRegistry.registered(clauseKey)` before
+guest commits the deduplicated clause keys it validated against
+(`spec_bindings_hash`), and `settleBatch` requires
+`ClauseRegistry.registered(clauseKey)` for each before
 accepting the batch; `ClauseRegistry` is the trust anchor. Adding a clause is
 a `ClauseRegistry` transaction and nothing else: no guest rebuild, no vkey
 change, no verifier redeploy
@@ -594,7 +594,7 @@ runs node software, or buys liveness, never safety, from the network.
 publicValues, positions, events, usage, operations)`. The verifier: verifies the proof;
 checks state-root continuity and chain binding; verifies the auxiliary
 calldata hashes against the proof's commitments; checks each spec binding
-(`specHash == clauseId`, `ClauseRegistry.registered(clauseId)`); executes the net token transfers, every pull before any payout, so a payout listed before the pull it needs lands;
+(`ClauseRegistry.registered(clauseId)`); executes the net token transfers, every pull before any payout, so a payout listed before the pull it needs lands;
 re-emits the attestations and emits the Core's order and process events from
 the operation stream, and logs the stream (`BatchOperations`); hands the
 uses to `UsageCounter.applyBatchAccrual`; advances the state root.
