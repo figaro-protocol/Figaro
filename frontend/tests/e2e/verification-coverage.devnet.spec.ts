@@ -136,7 +136,7 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
         //    replays, and counter-signing it AGAIN must surface a TYPED FigaroCore
         //    revert as readable copy — never a raw hex revert. This seed order
         //    is a ROOT (it creates the process), so re-committing throws
-        //    ProcessAlreadyExists → "Process ID already exists" (a sub-order
+        //    ProcessAlreadyExists → "A process with this id already exists, ..." (a sub-order
         //    re-commit would throw DuplicateCommitment instead; either way the
         //    point is the DECODED, readable form). ──
         await gotoAsWallet(page, SELLER, '/sign?e2e=devnet');

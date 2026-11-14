@@ -186,6 +186,25 @@ describe("/sign — the seller's counter-signature and the flow's step", () => {
         return view;
     }
 
+    it("shows the seller the token, the payment and its own bond (twice the running total) before the wallet opens", async () => {
+        await reviewing();
+        expect(screen.getByTestId("sign-token").textContent).toBe(CURRENCY);
+        // payment 1000 and running total 1000 in a 6-decimal token named TKN
+        expect(screen.getByTestId("sign-payment").textContent).toBe("0.001 TKN");
+        expect(screen.getByTestId("sign-my-bond").textContent).toBe("0.002 TKN");
+    });
+
+    it("shows the buyer its own bond, twice the payment, in the same token", async () => {
+        m.address = BUYER;
+        const p = payload();
+        const sellerSigned: CommitmentPayload = { ...p, buyerSig: undefined, sellerSig: `0x${"33".repeat(65)}` as Hex };
+        m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(sellerSigned))}`;
+        render(<SignPage />);
+        await flush();
+        expect(screen.getByTestId("sign-my-bond").textContent).toBe("0.002 TKN");
+        expect(screen.getByTestId("sign-payment").textContent).toBe("0.001 TKN");
+    });
+
     it("counter-signs the parsed order with no funding leg", async () => {
         await reviewing();
         await act(async () => { fireEvent.click(screen.getByTestId("btn-counter-sign")); });
