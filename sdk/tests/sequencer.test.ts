@@ -63,6 +63,67 @@ function mockFetch(responses: Map<string, { status: number; body: unknown }>): t
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
+/**
+ * Registering never enters a batch. The relay takes the operations of the
+ * Rust `KernelOp` (prover/lib/src/types.rs) on `/submit` and usage claims on
+ * `/submit-usage`; the client sends each through one `submit*` method. The
+ * check calls every `submit*` method the client has and records what reaches
+ * the relay, so a new kind of operation, or one that registers anything, fails
+ * here until this list is changed on purpose.
+ */
+describe("registering never enters a batch: the operations the SDK sends the relay", () => {
+    const KERNEL_OPS = ["AttestAsBuyer", "AttestAsSeller", "AttestByWalletCode", "Commit", "Resolve", "ResolveByWalletCode"];
+    const witness = { clauseDataHash: ZERO_HASH, inclusionProof: [] as `0x${string}`[] };
+    const calls: Record<string, (c: SequencerClient) => Promise<unknown>> = {
+        submit: (c) => c.submit({ type: "Resolve", process_id: ZERO_HASH, cumulative_value: "100", commitments: [], buyer_sig: toSequencerSig(DUMMY_SIG) }),
+        submitCommit: (c) => c.submitCommit(testCommitment, DUMMY_SIG, DUMMY_SIG),
+        submitResolve: (c) => c.submitResolve(ZERO_HASH, 100n, [testCommitment], DUMMY_SIG),
+        submitResolveByWalletCode: (c) => c.submitResolveByWalletCode(ZERO_HASH, 100n, [testCommitment], "0x01"),
+        submitAttestAsSeller: (c) => c.submitAttestAsSeller({ target: testCommitment, clauseId: ZERO_HASH, stage: 1, contentRef: ZERO_HASH, sellerSig: DUMMY_SIG, ...witness }),
+        submitAttestAsBuyer: (c) => c.submitAttestAsBuyer({ target: testCommitment, clauseId: ZERO_HASH, stage: 1, contentRef: ZERO_HASH, buyerSig: DUMMY_SIG, ...witness }),
+        submitAttestByWalletCode: (c) => c.submitAttestByWalletCode({ role: "Seller", target: testCommitment, clauseId: ZERO_HASH, stage: 1, contentRef: ZERO_HASH, authorization: "0x01", ...witness }),
+        submitUsageClaim: (c) => c.submitUsageClaim({
+            order: toSequencerCommitment(testCommitment),
+            clause_or_assembly: ZERO_HASH,
+            kind: { Clause: { clause_data_hash: ZERO_HASH } },
+            inclusion_proof: [],
+        }),
+    };
+
+    /** What each `submit*` method sends: the path and the operation's tag, or the claim's kind. */
+    async function sent(): Promise<string[]> {
+        const seen: string[] = [];
+        const client = new SequencerClient({
+            url: "http://localhost:3001",
+            fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+                const body = JSON.parse(String(init?.body)) as { operation?: Record<string, unknown>; claim?: { kind: Record<string, unknown> } };
+                const pathname = new URL(String(input)).pathname;
+                const tag = body.operation ? Object.keys(body.operation)[0] : `claim:${Object.keys(body.claim!.kind)[0]}`;
+                seen.push(`${pathname} ${tag}`);
+                return new Response(JSON.stringify({ id: 1, pending: 1 }), { status: 200 });
+            }) as typeof globalThis.fetch,
+        });
+        for (const call of Object.values(calls)) await call(client);
+        return seen;
+    }
+
+    it("the client's submitting methods are exactly the known ones", () => {
+        const methods = Object.getOwnPropertyNames(SequencerClient.prototype).filter((n) => n.startsWith("submit")).sort();
+        expect(methods).toEqual(Object.keys(calls).sort());
+    });
+
+    it("every operation it sends is a Core operation or an attestation, and a claim goes to its own door", async () => {
+        const seen = await sent();
+        expect([...new Set(seen.filter((s) => s.startsWith("/submit ")).map((s) => s.slice("/submit ".length)))].sort()).toEqual(KERNEL_OPS);
+        expect(seen.filter((s) => !s.startsWith("/submit "))).toEqual(["/submit-usage claim:Clause"]);
+    });
+
+    it("no method, operation or claim registers anything", async () => {
+        const names = [...Object.getOwnPropertyNames(SequencerClient.prototype), ...(await sent())];
+        expect(names.filter((n) => /regist|member|profile|withdraw|deposit/i.test(n))).toEqual([]);
+    });
+});
+
 describe("toSequencerCommitment", () => {
     it("converts SDK Commitment to wire format", () => {
         const sc = toSequencerCommitment(testCommitment);
