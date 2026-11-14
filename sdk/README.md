@@ -189,10 +189,14 @@ const [resolve] = proposeActions(ctx.getProcess(processId)!, buyer)
   .filter((a) => a.type === "resolve-process");
 await executeAction(walletClient, publicClient, addresses, resolve);
 
-// AND RECORD THE USAGE — at resolution, not later. The designer-rewards path pays the designers of record from recordings the BUYER's side writes when the
-// process resolves; a deferred count waits on the seller's stake and can
-// never land once the last period closes (docs/DESIGN_DECISIONS.md §20). One call, the
-// headless twin of what the frontend does at the same moment. Every committed
+// AND COUNT THE USAGE — right after the resolve confirms. resolveProcess calls no
+// contract, so the resolve counts nothing; the designer-rewards path rewards the
+// designers of record from usage calls sent to UsageCounter in their own
+// transactions (anyone may send them; the merkle proof is what is trusted). A
+// resolve with no usage call leaves the use uncounted: a deferred usage call waits on
+// the seller's stake and can never land once the last period closes
+// (src/rewards/UsageCounter.sol). One call, the headless twin of what the
+// frontend sends after its resolve. Every committed
 // clause EARNS — commerce and topology are scored for their author of record
 // like any other — and the designers of the registered agreement and of the
 // assembly accrue through recordAgreementUsage and recordAssemblyUsage from the
@@ -431,7 +435,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `reconstructOrdersFromAssembly` | root | THE hydrated-assembly→orders walk: root signs `processId = 0`, children carry the real order hashes of the orders they follow. |
 | `provenanceContentRef` | root | The provenance leaf's fingerprint for an agreement hash and a assembly hash — its data hash, and the `contentRef` its attestation carries. |
 | `provenanceLeafAttestation` | root | The provenance leaf's attestation inputs — reserved key, fingerprint, proof, content ref — for `attestAsBuyer`. |
-| `recordProcessUsage` | `/agent` | File direct-path usage at resolution: one leg per distinct clause key plus the agreement and assembly legs from the provenance leaf; a sent leg that reverts lands in `failures`, never thrown. |
+| `recordProcessUsage` | `/agent` | File direct-path usage in its own transactions, sent after the resolve (the resolve counts nothing; anyone may send them): one leg per distinct clause key plus the agreement and assembly legs from the provenance leaf; a sent leg that reverts lands in `failures`, never thrown. |
 | `registerRateQuantitySource` | root | Register a resolver for a catalog's rate-quantity source (a composition tenant, no core edit). |
 | `requestCounterSignatures` | `/agent` | Fan out race drafts, verify each reply by exact struct match, rank cheapest first. |
 | `requestQuotes` | `/agent` | Fan out RFQ requests, verify each reply by reconstruction, rank cheapest first. |
@@ -485,8 +489,8 @@ Event parsing, state reconstruction, EIP-712 commitments, bond calculations,
 chain gas ceilings. Also home to the rewards mirror —
 `computeRpgfAllocations` (`src/rewards/formula.json`): a deterministic integer
 pipeline that reproduces, off chain, what `UsageCounter` + `RpgfMinter` compute
-on chain for the 600M designer-rewards reserve. Usage is counted as the facts
-happen — recorded against a resolved order — so **there is nothing to post,
+on chain for the 600M designer-rewards reserve. Usage is counted by a usage call
+sent against a resolved order, after its resolve — so **there is nothing to post,
 nothing to bond and nothing to dispute**. Trade resolved through
 `FigaroBatchVerifier` never acquires `FigaroCore` status, so it reaches the counter by
 a second route: `buildUsageClaims` turns a batch-resolved order plus its

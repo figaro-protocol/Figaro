@@ -315,10 +315,16 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
    and `FigaroCore` coexist — two resolution paths.
 5. **Event reconstruction**: the verifier re-emits proven attestation events
    with protocol-compatible signatures, hash-verified against proof
-   commitments. Event-sourced readers consume the verifier's events identically to
-   `FigaroCore`'s — filtered by contract address: it emits `OrderCommitted`,
-   `OrderSeller`, `OrderResolved` and `ProcessResolved` from the
-   operation stream, with ids derived under its own domain.
+   commitments. It emits `OrderCommitted`, `OrderSeller`, `OrderResolved` and
+   `ProcessResolved` from the operation stream, with the Core's signatures and
+   ids derived under its own domain, so a reader filters them by contract
+   address. The order of the events differs from the direct path. A batch emits
+   every `Attestation` before any order event: a wallet-code attestation's
+   during the walk that checks the batch, then the proof's attestations, then
+   the order events (`FigaroBatchVerifier`, steps 4 and 6). Within one order it
+   emits `OrderSeller` before `OrderCommitted` (`_emitCommitted`), where
+   `FigaroCore.commit` emits `OrderCommitted` first. A reader that depends on
+   the order of logs within a transaction treats the two paths apart.
 
 ### What is not `FigaroCore` scaling
 
@@ -502,9 +508,9 @@ contract's `VERIFIER_HASH()` and refuses any contract that names none
 (`VerifierNotPinned`), a gateway included. A gateway routes proofs to verifier
 versions, and its owner can freeze a route; this verifier fixes one program key
 and has no upgrade path, so a route buys nothing and a frozen route would leave
-every open batch-path process unresolvable. The deployment resolves the
-verifier the gateway routes for the chosen proof form and binds that contract
-(`script/DeploySepoliaPair.s.sol`, `SP1_VERIFIER`). SP1 verification is
+every open batch-path process unresolvable. The deployment binds the one SP1
+verifier contract for the chosen proof form, passed as `SP1_VERIFIER`
+(`script/DeploySepoliaPair.s.sol`). SP1 verification is
 EVM-pure — a Solidity Groth16/PLONK verifier — so it runs on any EVM chain; a
 chain with no Succinct deployment can host the verifier contract directly.
 Figaro is therefore not chain-constrained — the deployment target is a Figaro

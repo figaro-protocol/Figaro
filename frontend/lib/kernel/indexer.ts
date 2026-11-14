@@ -214,7 +214,10 @@ export async function getOrderCommittedByBuyer(client: PublicClient, chainId: nu
     return all.filter((log) => hexEqual(getStringArg(log, "buyer"), buyer));
 }
 
-/** OrderSeller logs — indexed seller lookup, no full-table scan. */
+/** Every OrderSeller log from both order emitters (`FigaroCore` and
+ *  `FigaroBatchVerifier`), through the event cache. It passes no topic, so the
+ *  indexed seller is not used in the read: the caller filters by seller on the
+ *  client. */
 async function getAllOrderSeller(client: PublicClient, chainId: number) {
     return cachedGetLogsMulti(client, chainId, ORDER_EMITTERS(), {
         event: EV_ORDER_SELLER,

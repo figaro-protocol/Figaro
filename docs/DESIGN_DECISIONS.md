@@ -1174,6 +1174,34 @@ entry that says why it stays.
 
 ---
 
+## 30. Topology is not in the commitment struct
+
+**Pattern**: The `Commitment` both parties sign
+(`src/core/kernel/CommitmentTypes.sol`) carries the process, the parties, the
+token, the payment, the running total, the `checkoutHash`, the salt and the
+deadline, and no parent order. Which order follows which is in the agreement
+body (the `figaro-topology` clause), bound by the `checkoutHash`, and no event
+carries the body's address.
+
+**Why it looks wrong**: A process's shape reads as part of what the parties
+bond to, and leaving it off the struct reads as a loss: the chain events alone
+do not show the graph of orders.
+
+**Why it is correct**: The bonds are sized by the running total alone, and a
+commitment with a wrong running total never commits, so the edges size
+nothing (`THEORY.md` § "Topology is not in the Core"). Version 3 already took
+the bond's parent from the process's tail and never from the parent list. A
+field in the struct that the Core neither reads nor checks adds calldata to
+every commit for a graph the Core does not use. The parties still sign the edges,
+since the agreement body hashes into the `checkoutHash` they sign. A wallet
+outside the trade reads the designed edges from the registered assembly
+(`planAssemblyOrders`, `sdk/src/reconstructOrders.ts`), never from an event.
+
+**Tests**: `COMMITMENT_TYPEHASH equals FigaroCore's literal type string`
+(`sdk/tests/commitments.test.ts`) pins the struct's fields.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -1207,3 +1235,4 @@ entry that says why it stays.
 | 27 | A state-neutral batch's proof can land twice | batch-path/reward-path | A proof submitted twice is the replay shape, and `BatchSettled` repeats | A batch that moves no state has prev root == new root; its second landing moves no token, and the counter's once-ever `processCounted` skips every use, so nothing a reader relies on changes; a batch that moved the root cannot land twice |
 | 28 | `FlorinToken.mint` checks the supply cap the minters' caps already bound | token | A check that cannot fire reads as dead code | It states the billion bound in the token, at the one function that creates florins, where a stranger reads it; one storage read, no outcome changes |
 | 29 | Public pieces no code of ours reads | registry/reward-path/token | Surface nothing reads is surface to audit for nothing | Each answers a stranger's question of the chain: who may mint, which keys are reserved, where a stake went, which sellers counted |
+| 30 | Topology is not in the commitment struct | Core-critical | The process's shape reads as part of what is bonded, and the events alone do not show the graph of orders | The bonds are sized by the running total alone; the parties sign the edges through the `checkoutHash`; a wallet outside the trade reads the designed edges from the registered assembly |

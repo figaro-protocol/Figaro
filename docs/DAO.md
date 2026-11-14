@@ -100,7 +100,11 @@ agreement is not an agreement without commerce and topology, so the designer's
 canvas writes the DAO's live mandatory clauses into every agreement it
 registers, before the designer composes anything, and the treasury that
 developed them is rewarded, on the uniform meter, each time a trade under that
-design resolves. The canvas reads them from `ClauseRegistry` by registrant and
+design resolves and a usage call for it reaches `UsageCounter`. On the direct
+path the usage call is a separate transaction after the resolve, which the buyer's
+wallet in this frontend and the SDK's agent (`recordProcessUsage`) send; a
+resolve that no usage call follows leaves the use uncounted until someone sends one
+(`DESIGNER_REWARDS.md` § "Counting follows the resolve"). The canvas reads them from `ClauseRegistry` by registrant and
 stake: the DAO wallet's live registrations whose spec declares the mandatory
 article, all of them, one per shape (`mandatoryClauses`, `sdk/src/projection.ts`).
 The treasury spends on development, marketing and clauses by judgment, and

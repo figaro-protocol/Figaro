@@ -126,10 +126,16 @@ Neutrality is achieved by the **stake, not by weighting.**
 **The must-haves see value, not place.** Every Figaro agreement composes the core
 protocol plus two clauses present in essentially all of them: **topology** (the
 chain — who comes before whom) and **commerce** (who pays whom, in what
-token, how much). From these alone the network emits its economic skeleton by
-construction — who paid whom, in what denomination, for how much, who the parties
-in the value-added process are, and how value accumulates. That skeleton is complete
-on its own.
+token, how much). The chain emits one part of the trade's economic skeleton
+itself: each order's buyer, seller, token, payment and running total, in the
+sequence the orders were committed (`OrderCommitted`), and each order's payouts
+at resolution (`OrderResolved`). The other part, the edges of who comes before
+whom, is read from the design: the edges sit in the agreement body, whose
+address no event carries (`frontend/lib/kernel/agreementFetch.ts`, header), so a
+reader takes them from the registered assembly or from an agreement body it
+holds. Together the two give who paid whom, in what denomination, for how much,
+who the parties in the value-added process are, and how value accumulates. That
+skeleton is complete on its own.
 
 **What it cannot see is *where*.** The must-haves show *that* value was added and
 *by whom* — never the **physical or virtual flow** of the work: where a pickup
@@ -258,7 +264,18 @@ frontend knows in advance.
 The corpus links an order to the registered agreement and the assembly it
 instantiated through one attestation: the buyer attests the agreement format's
 reserved provenance leaf (`CLAUSES.md` § "Every clause is a merkle leaf") while
-the process is open, and that attestation names both the `agreementHash` and the
-`assemblyHash`; the agreement's membership in the assembly is a merkle proof
-against the assembly's root. A process without it is counted
+the process is open. That link is the buyer's declaration. The `Attestation`
+event carries the clause key, the stage and the content reference; the
+coordinator proves the leaf from the clause data hash and never ties the content
+reference to it (`AttestationCoordinator._verifyInclusion`), so on the direct
+path only the SDK's `provenanceLeafAttestation` (`sdk/src/agreement.ts`) makes
+the content reference equal to the leaf's fingerprint. A reader checks the
+declaration: the content reference decodes to an `agreementHash` and an
+`assemblyHash` (`decodeProvenanceContent`) or equals the `provenanceContentRef`
+of a registered pair it loaded (`frontend/lib/data/graphCorpus.ts`, header); the
+agreement's membership in the assembly is a merkle proof against the assembly's
+root; and a reader who holds the agreement body that hashes to the order's
+`checkoutHash` reads the same pair in its provenance leaf. A `UsageRecorded`
+event of the agreement kind, for that process, shows that `UsageCounter` proved
+the leaf under the `checkoutHash`. A process without the attestation is counted
 as unattributed.

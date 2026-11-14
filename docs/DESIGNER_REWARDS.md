@@ -78,30 +78,39 @@ earn but the two live stakes any manufactured trade must carry.
 
 ---
 
-## Counting happens when the trade resolves
+## Counting follows the resolve
 
 `UsageCounter` counts a clause's, a registered agreement's or an assembly's
-usage at resolution, permissionlessly, from facts the chain already holds: the
-order is resolved, and the clause — or the provenance leaf naming the
-registered agreement and the assembly, with the agreement's membership proof
-under the assembly's root — was merkle-committed in the signed
+usage once the order has resolved, permissionlessly, from facts the chain
+already holds: the order is resolved, and the clause — or the provenance leaf
+naming the registered agreement and the assembly, with the agreement's
+membership proof under the assembly's root — was merkle-committed in the signed
 `checkoutHash`.
-Anyone may call it; the proof is what is trusted, never the caller. A use in a
-proved batch reaches the counter through the verifier alone, its resolution and
-its inclusion proved by the batch's own proof, and the counter counts it into
-the same tally a direct call feeds, checking the open period, the seller's live
-stake, the entry's live registration in its own registry and whether the
-process is already counted, as it does for a direct call (`CONTRACTS.md` §
-"Usage accounting" owns the two routes). Nothing is posted, bonded, challenged, or adjudicated,
-and there is no recurring cost to anyone.
+Anyone may call it; the proof is what is trusted, never the caller. On the
+direct path the count is a separate transaction, never part of the resolve:
+`FigaroCore.resolveProcess` calls no contract. The buyer's wallet in this
+frontend sends the usage calls right after its resolve confirms
+(`frontend/lib/semantic/createCapabilityExecutors.ts`, through
+`frontend/lib/protocol/useUsageRecorder.ts`), and the SDK's agent sends them
+with `recordProcessUsage` (`sdk/src/agent/autonomous.ts`). A resolve that no
+usage call follows leaves its uses uncounted until someone sends one. A use in a
+proved batch reaches the counter through the verifier alone, in the batch's own
+transaction, its resolution and its inclusion proved by the batch's own proof,
+and the counter counts it into the same tally a direct call feeds, checking the
+open period, the seller's live stake, the entry's live registration in its own
+registry and whether the process is already counted, as it does for a direct
+call (`CONTRACTS.md` § "Usage accounting" owns the two routes). Nothing is
+posted, bonded, challenged, or adjudicated, and there is no recurring cost to
+anyone.
 
 The timing is forced, not chosen. **The chain cannot look backwards** — the
 Core never calls the registries, and no contract can read an
 event. Reconstructing usage after the fact is what would require the posting,
-bonding, challenge, and forum apparatus this mechanism does without. So the
-fact is counted at the moment it occurs; a use left uncounted waits on its
-seller's stake — a seller can unstake before it is counted — and can never
-count once the last period has closed.
+bonding, challenge, and forum apparatus this mechanism does without. So a use
+is counted by a usage call that proves it from the chain's current state, and the
+software that resolves sends that usage call right after the resolve; a use left
+uncounted waits on its seller's stake — a seller can unstake before it is
+counted — and can never count once the last period has closed.
 
 Only the clause's data hash reaches calldata, so a private clause's plaintext
 never becomes public in the counting.
@@ -212,7 +221,8 @@ it earn for theirs.
 Each absence is deliberate, and each is load-bearing.
 
 - **No posting, bonding, challenge, or forum.** Nothing about the reward is
-  asserted and then contested; it is counted from chain facts as it happens.
+  asserted and then contested; it is counted from chain facts by a usage call that
+  proves them.
 - **No match pool, crowd round, or quadratic funding.** Discretionary,
   human-judged funding is the DAO treasury's, at a different tier.
 - **No per-clause multiplier, tag, category, or weight.**
