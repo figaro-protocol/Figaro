@@ -19,8 +19,8 @@
 //! source) on the host and ships its exact bytes inside the seller's
 //! `AttestationContentProof`. Nothing is
 //! embedded in the guest — the clause key IS `keccak256` of those bytes,
-//! the batch commits the (clause key, spec hash) binding with both fields
-//! equal, and on-chain the verifier checks the key is
+//! the batch commits the clause key as its spec binding, and on-chain the
+//! verifier checks the key is
 //! `ClauseRegistry.registered`.
 
 use alloy_primitives::{address, keccak256, Address, B256, U256};
@@ -285,7 +285,6 @@ pub fn build_canonical_batch_input() -> BatchInput {
         prev_state: KernelStateSnapshot {
             processes: vec![],
             order_status: vec![],
-            order_process_id: vec![],
         },
         // RPGF: credit the clause for the process this batch just resolved.
         // The claim is proved against the POST-state, which is why an order

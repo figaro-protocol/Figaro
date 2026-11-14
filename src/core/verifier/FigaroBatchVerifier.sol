@@ -49,9 +49,9 @@ interface IUsageCounter {
 ///
 ///         The spec-binding check is what makes the in-proof clause validation
 ///         OPEN-WORLD: for an attestation sent in the plaintext form the guest validates content against a witness spec and
-///         commits (clause key, keccak256(spec bytes)); a hash-only attestation commits no binding; the clause key IS the
-///         spec hash, so this contract accepts the batch only if the two words
-///         of each binding are equal and `ClauseRegistry.registered(clauseKey)`.
+///         commits the clause key, which it requires to equal keccak256(spec bytes); a hash-only attestation commits no
+///         binding; this contract accepts the batch only if
+///         `ClauseRegistry.registered(clauseKey)` for each binding.
 ///         The program verification key covers the ENGINE, the registry
 ///         anchors the constraint set — a never-seen clause resolves through
 ///         the proven path with zero code changes, and a permissive-spec
@@ -181,15 +181,13 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         bytes32 contentRef;
     }
 
-    /// @dev One (clause key, witness-spec hash) binding the batch's
-    ///      in-proof clause gates validated against. Deduplicated and
-    ///      sorted ascending by (clauseId, specHash) in the prover. The clause
-    ///      key is keccak256 of the spec's pinned bytes, so a well-formed
-    ///      binding carries the same word in both fields; the two-field layout
-    ///      is what the guest's public values hash.
+    /// @dev One clause key the batch's in-proof clause gates validated
+    ///      against. Deduplicated and sorted ascending by clauseId in the
+    ///      prover. The clause key is keccak256 of the spec's pinned bytes, and
+    ///      the prover refuses a witness spec whose hash is not the key, so the
+    ///      key alone names the document the proof read.
     struct SpecBinding {
         bytes32 clauseId;
-        bytes32 specHash;
     }
 
     /// @dev Wraps the event arrays to reduce settleBatch parameter count
@@ -296,10 +294,6 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
     error VerifierNotPinned();
     error BatchTimestampOutOfRange(uint64 committed, uint64 current);
     error PublicValuesLengthMismatch(uint256 expected, uint256 actual);
-    /// @dev The proof validated content against a spec whose hash is not the
-    ///      clause key it names: the key IS the spec hash, so the two differ
-    ///      only when the witness is some other document.
-    error SpecBindingMismatch(bytes32 clauseId, bytes32 proven);
     /// @dev The proof validated content against a spec whose key the
     ///      registry has never registered.
     error ClauseNotRegistered(bytes32 clauseId);
@@ -598,21 +592,18 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
         return keccak256(packed);
     }
 
-    /// @dev Pack: clauseId(32) + specHash(32) = 64 bytes per binding,
+    /// @dev Pack: clauseId(32) = 32 bytes per binding,
     ///      matching the Rust `compute_spec_bindings_hash`.
     function _hashSpecBindings(SpecBinding[] calldata bindings) internal pure returns (bytes32) {
         uint256 len = bindings.length;
-        bytes memory packed = new bytes(len * 64);
+        bytes memory packed = new bytes(len * 32);
         uint256 offset;
         for (uint256 i = 0; i < len; i++) {
             bytes32 clauseId = bindings[i].clauseId;
-            bytes32 specHash = bindings[i].specHash;
             assembly ("memory-safe") {
-                let dst := add(add(packed, 32), offset)
-                mstore(dst, clauseId)
-                mstore(add(dst, 32), specHash)
+                mstore(add(add(packed, 32), offset), clauseId)
             }
-            offset += 64;
+            offset += 32;
         }
         return keccak256(packed);
     }
@@ -669,15 +660,12 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
     /// @dev The open-world gate: each witness spec the proof validated
     ///      against must be the exact document a registered clause key names.
-    ///      The key IS the spec hash, so the binding's two words must be equal,
-    ///      and the key must be registered. One SLOAD-backed external view call
-    ///      per distinct clause per batch (the prover deduplicates).
+    ///      The key IS the spec hash, which the proof checks, so the key must be
+    ///      registered. One SLOAD-backed external view call per distinct clause
+    ///      per batch (the prover deduplicates).
     function _checkSpecBindings(SpecBinding[] calldata bindings) internal view {
         for (uint256 i = 0; i < bindings.length; i++) {
             bytes32 clauseKey = bindings[i].clauseId;
-            if (bindings[i].specHash != clauseKey) {
-                revert SpecBindingMismatch(clauseKey, bindings[i].specHash);
-            }
             if (!clauseRegistry.registered(clauseKey)) revert ClauseNotRegistered(clauseKey);
         }
     }

@@ -28,7 +28,7 @@ they published. The paper at `/papers/figaro-as-a-cryptoeconomic-system` says wh
 ## What this repository contains
 
 - **Core** — `src/core/`: the four contracts every trade runs on.
-  `FigaroCore.sol` (two entry points, three mappings, decentralized and
+  `FigaroCore.sol` (two entry points, two mappings, decentralized and
   permissionless) holds each bond on the direct path and resolves a process when its buyer
   signs; `CommitmentTypes.sol` defines the commitment and its EIP-712 hashing;
   `AttestationCoordinator.sol` binds what a party attests to the agreement it

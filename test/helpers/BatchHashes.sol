@@ -40,11 +40,11 @@ library BatchHashes {
         return keccak256(packed);
     }
 
-    /// @dev clauseId(32) ‖ specHash(32) per binding.
+    /// @dev clauseId(32) per binding.
     function bindings(FigaroBatchVerifier.SpecBinding[] memory bs) internal pure returns (bytes32) {
         bytes memory packed;
         for (uint256 i = 0; i < bs.length; i++) {
-            packed = bytes.concat(packed, abi.encodePacked(bs[i].clauseId, bs[i].specHash));
+            packed = bytes.concat(packed, abi.encodePacked(bs[i].clauseId));
         }
         return keccak256(packed);
     }

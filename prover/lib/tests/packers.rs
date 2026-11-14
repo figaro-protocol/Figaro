@@ -73,17 +73,11 @@ fn the_attestations_hash_matches_the_solidity_vector() {
 #[test]
 fn the_spec_bindings_hash_matches_the_solidity_vector() {
     let bindings = vec![
-        SpecBinding {
-            clause_id: keccak256(b"clause-a"),
-            spec_hash: keccak256(b"spec-a"),
-        },
-        SpecBinding {
-            clause_id: keccak256(b"clause-b"),
-            spec_hash: keccak256(b"spec-b"),
-        },
+        SpecBinding { clause_id: keccak256(b"clause-a") },
+        SpecBinding { clause_id: keccak256(b"clause-b") },
     ];
     assert_eq!(
         compute_spec_bindings_hash(&bindings),
-        b256!("46470c7694c808e183fefa90a173f9398346f792cf859f22e49b42e598da3704")
+        b256!("91d0c5f7eda867b0d10fb4d5cc8f3d1b73e675ab798d2ea8b8b2835c39c85469")
     );
 }

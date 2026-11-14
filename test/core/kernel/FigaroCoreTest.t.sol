@@ -424,15 +424,6 @@ contract FigaroCoreTest is Test {
         assertEq(core.orderStatus(orderHash), 2, "after resolve: resolved");
     }
 
-    function test_orderProcessId_bindsEveryOrderToItsProcess() public {
-        (bytes32 processId, bytes32 rootHash,) = _commitRoot(50 ether, 1);
-        (bytes32 subHash,) = _commitSub(processId, seller2, 20 ether, 70 ether, SELLER2_KEY, 2);
-
-        assertEq(core.orderProcessId(rootHash), processId, "root order binds to its process");
-        assertEq(core.orderProcessId(subHash), processId, "sub order binds to the same process");
-        assertEq(core.orderProcessId(keccak256("unknown")), bytes32(0), "unknown order binds to nothing");
-    }
-
     // ═══════════════════════════════════════════════════════════════
     // 15: Full process — root + two subs → resolve
     // ═══════════════════════════════════════════════════════════════
@@ -476,7 +467,7 @@ contract FigaroCoreTest is Test {
     /// An order committed under process B, presented to resolve process A.
     /// The order hash is keccak256(processId ‖ structHash), so B's struct
     /// hashed under A names an order A never saw — for B's root and for B's
-    /// sub-order alike. Nothing moves; B's bindings stand; A then resolves
+    /// sub-order alike. Nothing moves; B's orders stay committed; A then resolves
     /// with its own order.
     function test_resolve_orderFromAnotherProcess_reverts() public {
         (bytes32 processA,, CommitmentTypes.Commitment memory rootA) = _commitRoot(50 ether, 1);
@@ -499,8 +490,6 @@ contract FigaroCoreTest is Test {
         vm.expectRevert(abi.encodeWithSelector(FigaroCore.OrderNotCommitted.selector, foreignHash));
         core.resolveProcess(processA, foreign);
 
-        assertEq(core.orderProcessId(rootHashB), processB, "B's root still bound to B");
-        assertEq(core.orderProcessId(subHashB), processB, "B's sub still bound to B");
         assertEq(core.orderStatus(rootHashB), 1, "B's root still committed");
         assertEq(core.orderStatus(subHashB), 1, "B's sub still committed");
         (,,, uint256 activeA) = core.processes(processA);

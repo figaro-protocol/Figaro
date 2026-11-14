@@ -46,7 +46,6 @@ export const FIGARO_ERROR_MESSAGES: Readonly<Record<string, string>> = {
     VerifierNotPinned: "The proof verifier does not name its own circuit, so it is refused.",
     BatchTimestampOutOfRange: "The time the batch was proved at is in the future or too old.",
     PublicValuesLengthMismatch: "The proof's public values have the wrong length.",
-    SpecBindingMismatch: "A clause spec in this batch is not the document its clause key names.",
     ClauseNotRegistered: "A clause in this batch is not registered in the clause registry.",
     ZeroVerifier: "The proof verifier address is zero.",
     VerifierNotContract: "The proof verifier address holds no contract.",

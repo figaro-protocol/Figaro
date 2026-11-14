@@ -362,14 +362,14 @@ pub async fn filter_anchored_attestations(
     let mut valid = Vec::with_capacity(pending.len());
     let mut dropped = Vec::new();
     for op in pending {
-        let Some((clause, spec_hash)) = attestation_spec(&op.op) else {
+        let Some((clause, witness_hash)) = attestation_spec(&op.op) else {
             valid.push(op);
             continue;
         };
-        if spec_hash != clause {
+        if witness_hash != clause {
             dropped.push((
                 op,
-                format!("witness spec {spec_hash} does not hash to clause key {clause} — the guest would refuse the batch"),
+                format!("witness spec {witness_hash} does not hash to clause key {clause} — the guest would refuse the batch"),
             ));
             continue;
         }
@@ -710,7 +710,6 @@ sol! {
 
         struct SpecBindingCall {
             bytes32 clauseId;
-            bytes32 specHash;
         }
 
         struct BatchEventDataCall {
@@ -1121,15 +1120,12 @@ pub fn settle_call_args(
             contentRef: a.content_ref,
         })
         .collect();
-    // The (clause key, witness-spec hash) bindings the proof committed,
-    // both fields equal — the verifier checks each key is registered.
+    // The clause keys the proof committed — the verifier checks each key is
+    // registered.
     let spec_bindings = events
         .spec_bindings
         .iter()
-        .map(|b| IFigaroBatchVerifier::SpecBindingCall {
-            clauseId: b.clause_id,
-            specHash: b.spec_hash,
-        })
+        .map(|b| IFigaroBatchVerifier::SpecBindingCall { clauseId: b.clause_id })
         .collect();
     let events_call = IFigaroBatchVerifier::BatchEventDataCall {
         attestations,

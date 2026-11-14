@@ -31,7 +31,6 @@ export const CORE_ABI = parseAbi([
     // ── Process state views ─────────────────────────────────────────
     "function processes(bytes32 processId) view returns (address rootBuyer, address currency, uint256 cumulativeValue, uint256 activeOrderCount)",
     "function orderStatus(bytes32 orderHash) view returns (uint8)",
-    "function orderProcessId(bytes32 orderHash) view returns (bytes32)",
 
     // ── Events ──────────────────────────────────────────────────────
     "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
@@ -510,8 +509,8 @@ export const RPGF_MINTER_ABI = parseAbi([
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────
 // The batch-resolution verifier (proof-based scaling). settleBatch carries the
 // proof, the ten-word public values, net positions, the event data — the
-// attestations to re-emit plus the (clause key, witness-spec hash) bindings —
-// the key IS the spec hash, so the contract requires the two equal and the key
+// attestations to re-emit plus the spec bindings — each a clause key, which IS
+// the hash of the spec the proof read, so the contract requires the key
 // registered on ClauseRegistry before resolving — and the RPGF usage accrual,
 // each entry naming its kind (clause 0, assembly 1, agreement 2), which it forwards to
 // UsageCounter. A batch that
@@ -524,7 +523,7 @@ export const RPGF_MINTER_ABI = parseAbi([
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch resolution ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrAssembly, uint8 kind, bytes32 processId, address seller)[] uses) usage, bytes operations) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrAssembly, uint8 kind, bytes32 processId, address seller)[] uses) usage, bytes operations) external",
 
     // ── The Core's own order and process events, emitted from the stream ──
     // Filter on the verifier's address beside FigaroCore's: the same events,
@@ -561,7 +560,6 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "error AttestationHashMismatch()",
     "error SpecBindingsHashMismatch()",
     "error UsageAccrualHashMismatch()",
-    "error SpecBindingMismatch(bytes32 clauseId, bytes32 proven)",
     "error ClauseNotRegistered(bytes32 clauseId)",
     "error FeeOnTransferDetected()",
     // A resolve in the wallet-code form: the buyer's account has no code, or

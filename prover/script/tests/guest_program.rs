@@ -285,7 +285,6 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
         prev_state: KernelStateSnapshot {
             processes: vec![],
             order_status: vec![],
-            order_process_id: vec![],
         },
         usage_claims: vec![
             UsageClaim {

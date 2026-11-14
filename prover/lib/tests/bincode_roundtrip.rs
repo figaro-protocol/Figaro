@@ -56,7 +56,6 @@ fn empty_snapshot() -> KernelStateSnapshot {
     KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
-        order_process_id: vec![],
     }
 }
 
@@ -227,10 +226,7 @@ fn bincode_roundtrip_public_values_and_events() {
             stage: 2,
             content_ref: B256::repeat_byte(0x09),
         }],
-        spec_bindings: vec![SpecBinding {
-            clause_id: B256::repeat_byte(0x0a),
-            spec_hash: B256::repeat_byte(0x0b),
-        }],
+        spec_bindings: vec![SpecBinding { clause_id: B256::repeat_byte(0x0a) }],
         uses: vec![BatchUse {
             clause_or_assembly: B256::repeat_byte(0x0c),
             kind: USAGE_KIND_CLAUSE,

@@ -41,7 +41,6 @@ fn empty_snapshot() -> KernelStateSnapshot {
     KernelStateSnapshot {
         processes: vec![],
         order_status: vec![],
-        order_process_id: vec![],
     }
 }
 
@@ -1692,7 +1691,7 @@ fn the_spec_an_attestation_carries_is_what_the_registry_check_reads() {
     let ops = canonical_ops();
     {
         let index = 1usize;
-        let (clause, spec_hash) = attestation_spec(&ops[index]).expect("a plaintext attestation");
+        let (clause, witness_hash) = attestation_spec(&ops[index]).expect("a plaintext attestation");
         let (expected_clause, spec_json) = match &ops[index] {
             KernelOp::AttestAsSeller { clause_id, proof: AttestationWitness::Plaintext(proof), .. }
             | KernelOp::AttestAsBuyer { clause_id, proof: AttestationWitness::Plaintext(proof), .. } => {
@@ -1702,15 +1701,15 @@ fn the_spec_an_attestation_carries_is_what_the_registry_check_reads() {
         };
         assert_eq!(clause, expected_clause);
         // keccak256 of the exact bytes, which the clause key must be.
-        assert_eq!(spec_hash, keccak256(spec_json.as_bytes()));
-        assert_eq!(clause, spec_hash, "the clause key is the spec's hash");
+        assert_eq!(witness_hash, keccak256(spec_json.as_bytes()));
+        assert_eq!(clause, witness_hash, "the clause key is the spec's hash");
         let mut copy = ops[index].clone();
         if let KernelOp::AttestAsSeller { proof: AttestationWitness::Plaintext(proof), .. }
         | KernelOp::AttestAsBuyer { proof: AttestationWitness::Plaintext(proof), .. } = &mut copy
         {
             proof.spec_json.push(' ');
         }
-        assert_ne!(attestation_spec(&copy).unwrap().1, spec_hash, "one byte moves the hash");
+        assert_ne!(attestation_spec(&copy).unwrap().1, witness_hash, "one byte moves the hash");
     }
     // ops[2] is hash-only: no spec, so nothing for the registry check to
     // read, as the verifier reads no registry for it.
@@ -2842,7 +2841,6 @@ fn padded(mut landed: KernelStateSnapshot, n: u32) -> KernelStateSnapshot {
             },
         ));
         landed.order_status.push((order, 1));
-        landed.order_process_id.push((order, process));
     }
     landed
 }
