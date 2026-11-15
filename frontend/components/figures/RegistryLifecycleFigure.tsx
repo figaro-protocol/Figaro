@@ -34,7 +34,7 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  *    (`WrongDeposit`), keep `registeredBy`, and are first-write-wins:
  *    `AlreadyRegistered(clauseKey)` / `AssemblyAlreadyRegistered(hash)`.
  *    First-write-wins is anti-DISPLACEMENT: a clause key is `keccak256` of the
- *    spec's pinned canonical bytes, so there is nothing to squat but bytes — a
+ *    canonical spec without `block`, so there is nothing to squat but bytes — a
  *    lookalike spec of the same name is another key. What the registry
  *    guarantees is that a binding, once made, cannot be rebound. (An assembly
  *    key is the assembly hash of its pinned document, so both families key

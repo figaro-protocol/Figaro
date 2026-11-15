@@ -3,8 +3,8 @@
 A clause is data: a JSON spec, registered publicly, that defines one term of an
 agreement. Its content is validated in one place — off-chain, by the SDK
 (`@figaro-protocol/sdk/clauses`) — against the spec. The chain registers the
-clause's key — `keccak256` of the spec's pinned canonical bytes, its identity
-and its content hash at once — and binds each attestation to the signed
+clause's key — `keccak256` of the canonical bytes of the spec without its
+top-level `block`, its identity and its content hash at once — and binds each attestation to the signed
 agreement; it validates no content shape. Content validation exists on chain
 only inside a proof and only at the attesting party's choice: a batched
 attestation sent in the plaintext form has its content validated in proof by
@@ -237,13 +237,17 @@ Two touch points, and neither validates content.
 
 **Registration.** `ClauseRegistry.registerClause(clauseKey, contentURI)` —
 permissionless, first-write-wins on the key, immutable, under a stake. The
-key is `keccak256` of the spec's pinned canonical bytes:
-`computeClauseKey(spec) = canonicalContentHash(spec)` (`sdk/src/discovery.ts`).
-The designer pins `canonicalize(spec)` and registers the hash of exactly those
-bytes; a reader fetches the bytes from `contentURI` and checks
-`keccak256(bytes) == clauseKey` on the bytes it fetched, re-canonicalizing
-nothing (`loadClauseSpec` in `frontend/lib/shared/clauseSpecSource.ts`). A
-spec pinned in any other byte form has a different key. The spec's
+key is `keccak256` of the canonical bytes of the spec without its top-level
+`block`: `computeClauseKey(spec)`, which hashes `clauseKeyPreimage(spec)`
+(`sdk/src/discovery.ts`). It covers `clauseId`, `version`, `title`,
+`description`, `fields`, `stages` and every other top-level attribute; it
+leaves out `block`, the presentation. The designer pins `canonicalize(spec)`,
+`block` included, and registers its clause key; a reader fetches the document
+from `contentURI`, parses it, drops `block`, canonicalizes and checks the hash
+against the key (`anchorClauseSpec` in `sdk/src/anchored.ts`, called by
+`loadClauseSpec` in `frontend/lib/shared/clauseSpecSource.ts`). The byte form
+a spec is pinned in and its `block` do not change its key; an edit to
+presentation alone keeps the clause, and so its count of use. The spec's
 `clauseId` (`figaro-emissions`) and `version` are presentation fields inside
 the document — a title and a lineage counter a human reads; nothing on chain
 or in a leaf reads them, so two specs that carry one name are two clauses and
@@ -254,16 +258,16 @@ use), no validator (a registered clause is immediately attestable). Stake,
 withdrawal, and the registry's other semantics are in `CONTRACTS.md`
 § Registries.
 
-On a public chain a registered spec is immutable — a change is a new spec
-and therefore a new key. On a local devnet the registry is re-seeded fresh on
+On a public chain a registered spec is immutable — a change outside `block`
+is a new spec and therefore a new key. On a local devnet the registry is re-seeded fresh on
 every `devup`, so specs in `clauses/` are edited in place during development;
 `version` is not bumped for an edit.
 
-**Versioning.** A change is a new spec and a new key; `version` is a lineage
+**Versioning.** A change outside `block` is a new spec and a new key; `version` is a lineage
 counter a human reads, an integer and never semver. Semver is a compatibility
 promise for consumers that resolve version ranges and upgrade within them;
-here a consumer names an exact key, every content change produces a different
-key, and in a first-write-wins registry a compatibility claim is unverifiable
+here a consumer names an exact key, every change outside `block` produces a
+different key, and in a first-write-wins registry a compatibility claim is unverifiable
 data. Compatibility between two specs, if it ever matters, is derived by
 diffing the two immutable documents. Assemblies follow the same rule. The
 software packages (`@figaro-protocol/sdk`, the interface) are ordinary
@@ -289,7 +293,8 @@ resolves empty reads as absence.
 ## Clause-spec format
 
 A spec lives off-chain as its canonical JSON bytes at the `contentURI` its
-registration emits; the clause key is their hash. The canonical specs are in `clauses/`, the
+registration emits; the clause key is the hash of the canonical spec without
+its top-level `block`. The canonical specs are in `clauses/`, the
 registry's seed data; the published definition of the format is
 `sdk/src/clauses/clause-spec.schema.json`.
 
@@ -308,7 +313,14 @@ registry's seed data; the published definition of the format is
   `checkout` (`catalogueFills`, `profileFills`, `catalogueMeasures`), `runtime`
   (`interaction`, `fields`). `runtime.fields` serves on-network composition inputs only (paired
   with `design.composes`); reporting is witness stages (`spec.stages`), never
-  `runtime.fields`. Nothing on-chain or in the SDK's content layer reads `block`;
+  `runtime.fields`. The clause key leaves `block` out, and no fingerprint reads
+  it. Six of its attributes (`design.article`, `design.scope`, `design.fills`,
+  `checkout.catalogueFills`, `checkout.profileFills`,
+  `checkout.catalogueMeasures`; `parseProjectionHints` in `sdk/src/projection.ts`)
+  are the reference tooling's rules for collecting the data a party signs.
+  Another frontend may collect it differently; both parties sign one
+  `checkoutHash` over one agreement, which either recomputes from the agreement
+  alone. Nothing on-chain or in the SDK's content layer reads `block`;
   the reference parser is `ClauseBlockBinding`
   (`frontend/lib/shared/clauseBlockBinding.ts`) — derive the attribute list from
   that type. **One verb — `fills` — says who fills which content fields**
@@ -482,7 +494,8 @@ input whose hash is the registered clause key.
    validator and the encoder are generic and need no per-clause case.
 3. Register: `frontend/scripts/populate-clauses.mjs` pins the spec to IPFS and
    calls `registerClause(clauseKey, contentURI)` under the stake, the key
-   being `computeClauseKey(spec)` over the canonical bytes it pinned. The Solidity deploy scripts deploy the registry and register no
+   being `computeClauseKey(spec)`, the hash of the canonical spec without its
+   `block`. The Solidity deploy scripts deploy the registry and register no
    clauses. No validator step exists, and no interface step: the drawer, the
    `/clauses` inventory, and every other surface read the clause set live from
    `ClauseRegistry` events and each spec from IPFS.

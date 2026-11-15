@@ -12,13 +12,15 @@
 <li><a href="" aria-current="page">ProjectionHints</a></li></ul>
 <h1>Interface ProjectionHints</h1></div>
 <section class="tsd-panel tsd-comment">
-<div class="tsd-comment tsd-typography"><p>The hash-load-bearing slice of a clause spec's <code>block</code> — the few
-phase-section attributes whose values decide what ends up committed
-(assembly values, checkout folds), lifted out of the sectioned block.</p>
+<div class="tsd-comment tsd-typography"><p>The slice of a clause spec's <code>block</code> the reference tooling collects the
+data by — the six phase-section attributes that steer which values it
+writes into the assembly and the checkout folds, lifted out of the
+sectioned block. Another frontend may collect the data differently; no
+fingerprint function reads these.</p>
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">ProjectionHints</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#article">article</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#cataloguefills">catalogueFills</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#cataloguemeasures">catalogueMeasures</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <a href="index.CatalogueMeasure.html" class="tsd-signature-type tsd-kind-interface">CatalogueMeasure</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#designfills">designFills</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#profilefills">profileFills</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#scope">scope</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L62">projection.ts:62</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L66">projection.ts:66</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -42,7 +44,7 @@ phase-section attributes whose values decide what ends up committed
 <div class="tsd-comment tsd-typography"><p>The spec's <code>block.design.article</code> (e.g. <code>&quot;mandatory&quot;</code>, <code>&quot;attestations&quot;</code>).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L64">projection.ts:64</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L68">projection.ts:68</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="cataloguefills"><code class="tsd-tag">Optional</code><span>catalogue<wbr/>Fills</span><a href="#cataloguefills" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">catalogueFills</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div>
@@ -51,7 +53,7 @@ name) authored per-item on the member's CATALOG and folded onto the
 matching leaf at checkout.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L80">projection.ts:80</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L84">projection.ts:84</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="cataloguemeasures"><code class="tsd-tag">Optional</code><span>catalogue<wbr/>Measures</span><a href="#cataloguemeasures" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">catalogueMeasures</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <a href="index.CatalogueMeasure.html" class="tsd-signature-type tsd-kind-interface">CatalogueMeasure</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></div>
@@ -60,7 +62,7 @@ matching leaf at checkout.</p>
 order's lines combine it (<code>CatalogueMeasure</code>).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L89">projection.ts:89</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L93">projection.ts:93</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="designfills"><code class="tsd-tag">Optional</code><span>design<wbr/>Fills</span><a href="#designfills" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">designFills</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div>
@@ -71,7 +73,7 @@ published assembly. Absent/empty = the designer only selects the
 clause.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L76">projection.ts:76</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L80">projection.ts:80</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="profilefills"><code class="tsd-tag">Optional</code><span>profile<wbr/>Fills</span><a href="#profilefills" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">profileFills</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div>
@@ -81,7 +83,7 @@ divisor, a declared credential id), folded onto the matching leaf at
 checkout. The profile sibling of <code>catalogueFills</code> (item master data).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L85">projection.ts:85</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L89">projection.ts:89</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="scope"><code class="tsd-tag">Optional</code><span>scope</span><a href="#scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">scope</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span></div>
@@ -92,7 +94,7 @@ every party signs it. Absent/<code>&quot;agreement&quot;</code> = the default: c
 per-order, a term of one relationship.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L70">projection.ts:70</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L74">projection.ts:74</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

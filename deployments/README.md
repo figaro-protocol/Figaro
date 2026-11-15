@@ -99,8 +99,9 @@ reward schedule, the provenance and assembly terms leaf keys), the florin genesi
 each clause (the genesis registration plan). The plan names clauses by the
 `clauseId` of their spec in `clauses/` — the maintainer's authored name, under
 `registrations.byClause`, with `registrations.default` for the rest; the check
-derives each clause's key by hashing the canonical bytes of `clauses/<name>.json`
-with the SDK's `canonicalContentHash` (from `sdk/dist`, so `npm run build` in
+derives each clause's key from `clauses/<name>.json` with the SDK's
+`computeClauseKey`, the hash of the canonical spec without its top-level
+`block` (from `sdk/dist`, so `npm run build` in
 `sdk/` first when it is stale) and reads `registered(key)` and `depositOf(key)`
 on `ClauseRegistry`. `scripts/check-deployment.mjs`
 reads a chain against it — and against the contracts as compiled, with

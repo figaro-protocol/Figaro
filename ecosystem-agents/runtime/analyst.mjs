@@ -113,7 +113,7 @@ async function loadSpecSource(discovery, { gateways } = {}) {
     for (const clause of discovery.getClauses()) {
         let raw;
         try {
-            // Verified against the clause key (the hash of the pinned bytes):
+            // Verified against the clause key (the hash of the spec without `block`):
             // a spec a gateway substituted is skipped, never decoded with.
             const hit = await fetchAnchoredClauseSpec(clause, { gateways });
             if (hit.absent) { skipped.push({ contentURI: clause.contentURI, reason: hit.absent }); continue; }

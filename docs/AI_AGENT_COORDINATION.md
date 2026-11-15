@@ -364,8 +364,8 @@ composes.
 - **Clause designer** — no process role at all:
   `ClauseRegistry.registerClause(clauseKey, contentURI)` under the designer's own key,
   over a spec pinned off-chain as its canonical bytes; the clause key is `keccak256` of
-  those bytes (`computeClauseKey(spec)`), and the spec's `clauseId` and `version` are
-  its label. Permissionless, first-write-wins,
+  the canonical bytes of the spec without its top-level `block` (`computeClauseKey(spec)`),
+  and the spec's `clauseId` and `version` are its label. Permissionless, first-write-wins,
   deposit-backed; the capacity's prompt is `ecosystem-agents/figaro-clause-author.md`.
 - **Assembly designer** — `AgreementRegistry.registerAgreement(agreementHash, contentURI)`
   for each agreement no registration already carries, then

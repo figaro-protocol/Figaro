@@ -39,8 +39,8 @@ event's `contentRef` IS the content address (a raw block multihashed with
 keccak-256), so the fingerprint is the lookup, and the bytes are verified to
 hash back to it before anything is printed. `clause`, `agreement` and `assembly`
 verify the same way, against the registry's key: a clause is read by its 32-byte key, and the
-bytes fetched from its `contentURI` must hash (`keccak256`, as fetched, never
-re-canonicalized) to that clause key, a registered agreement (`agreementHashOf`,
+spec fetched from its `contentURI`, parsed with its top-level `block` dropped and
+canonicalized, must hash (`keccak256`) to that clause key, a registered agreement (`agreementHashOf`,
 its `{ clauses }`) to its agreement hash, read from the binding whatever its
 stake, and a assembly (`assemblyHashOf`) to its assembly hash, so a gateway that serves
 other bytes is read as absence, never as the registry's content. `profile` and

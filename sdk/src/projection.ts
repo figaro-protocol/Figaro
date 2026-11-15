@@ -13,23 +13,25 @@
  * fall back to data-key presence. Consumers that need strictness gate on
  * their cache being warm before projecting.
  *
- * Five `block` hints are HASH-LOAD-BEARING and therefore projection
- * vocabulary, not presentation: `design.article: "mandatory"` (the DAO's
- * live commerce and topology the canvas writes into each agreement →
- * agreementHash),
- * `design.article: "attestations"` (process-log clauses stay empty anchors at
- * commit → checkoutHash), `design.scope: "assembly"` (composed once for the
- * whole design, folded into EVERY agreement at checkout → assemblyHash +
- * checkoutHash), `design.fills` (the fields whose values the
- * DESIGNER composes into the assembly — the tailoring; every other clause's
- * assembly values are `{}` and the fields fill at checkout →
- * assemblyHash), and the `checkout` fills (`catalogueFills` /
- * `profileFills` / `catalogueMeasures` — which clauses the catalog and
- * member-profile folds write → checkoutHash). `parseProjectionHints` extracts exactly those from
- * a raw spec document; everything else in `block` remains presentation the
- * SDK never reads. (A field's `default` is the sixth thing that reaches a
- * hash without living in `block`: `withSpecDefaults` fills omitted fields
- * from the spec, so the default lands in the signed clause → checkoutHash.)
+ * Six `block` attributes are the reference tooling's rules for collecting
+ * the data a party signs: `design.article` (`"mandatory"`: the canvas writes
+ * the live commerce and topology clauses into each agreement;
+ * `"attestations"`: a process-log clause stays an empty anchor at commit),
+ * `design.scope` (`"assembly"`: composed once for the whole design and folded
+ * into every agreement at checkout), `design.fills` (the fields whose values
+ * the DESIGNER composes into the assembly; every other clause's assembly
+ * values are `{}` and its fields fill at checkout), and the `checkout` fills
+ * (`catalogueFills` / `profileFills` / `catalogueMeasures` — which fields the
+ * catalog and member-profile folds write). `parseProjectionHints` extracts
+ * exactly those from a raw spec document; everything else in `block` is
+ * presentation the SDK never reads. No fingerprint function reads `block`:
+ * `computeClauseKey` leaves it out, and `agreementHashOf`, `assemblyHashOf`
+ * and `computeCheckoutHash` read clause keys and data only. Another frontend
+ * may collect the data differently; both parties sign one `checkoutHash` over
+ * one agreement, which either recomputes from the agreement alone. (A
+ * field's `default` lives in the protocol half, outside `block`:
+ * `withSpecDefaults` fills omitted fields from the spec, so the default lands
+ * in the signed clause.)
  */
 
 import {
@@ -56,9 +58,11 @@ import { isAddressHex, isBytes32Hex, type Address, type Hex } from "./types.js";
 
 // ── The spec seam ───────────────────────────────────────────────────────────
 
-/** The hash-load-bearing slice of a clause spec's `block` — the few
- *  phase-section attributes whose values decide what ends up committed
- *  (assembly values, checkout folds), lifted out of the sectioned block. */
+/** The slice of a clause spec's `block` the reference tooling collects the
+ *  data by — the six phase-section attributes that steer which values it
+ *  writes into the assembly and the checkout folds, lifted out of the
+ *  sectioned block. Another frontend may collect the data differently; no
+ *  fingerprint function reads these. */
 export interface ProjectionHints {
     /** The spec's `block.design.article` (e.g. `"mandatory"`, `"attestations"`). */
     article?: string;
@@ -101,13 +105,13 @@ export interface CatalogueMeasure {
 }
 
 /** A clause spec as the projection sees it: the off-chain spec plus the
- *  hash-load-bearing hints. */
+ *  hints the reference tooling collects the data by. */
 export type ProjectionSpecView = ClauseSpec & { clauseKey: Hex; hints?: ProjectionHints };
 
 /**
  * The consumer's window onto its loaded clause specs (ClauseRegistry → IPFS).
- * A clause's identity is its KEY, `keccak256` of the spec's pinned bytes
- * (`computeClauseKey`), so `get` reads one registration by key and nothing
+ * A clause's identity is its KEY, `keccak256` of the canonical spec without
+ * its `block` (`computeClauseKey`), so `get` reads one registration by key and nothing
  * reads a clause by name; `list` returns every spec the source surfaces, each
  * carrying its key. A spec's `clauseId` and `version` are presentation.
  */
@@ -116,7 +120,7 @@ export interface SpecSource {
     list(): readonly ProjectionSpecView[];
 }
 
-/** Extract the hash-load-bearing hints from a raw spec document's `block`
+/** Extract the reference tooling's collection hints from a raw spec document's `block`
  *  slice (`JSON.parse`d clause JSON, sectioned by phase: design / checkout /
  *  runtime). Everything else in `block` is presentation and deliberately not
  *  surfaced here. */

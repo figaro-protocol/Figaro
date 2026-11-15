@@ -48,7 +48,7 @@ Exactly one of <code>data</code> / <code>dataHash</code> is set.</li>
 <h3 class="tsd-anchor-link" id="clause"><span>clause</span><a href="#clause" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">clause</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div>
 <div class="tsd-comment tsd-typography"><p>The clause KEY — the 32-byte hex identity <code>ClauseRegistry</code> registers,
-<code>keccak256</code> of the spec's pinned canonical bytes (<code>computeClauseKey</code>).
+<code>keccak256</code> of the canonical spec without <code>block</code> (<code>computeClauseKey</code>).
 Never a name: a spec's <code>clauseId</code> and <code>version</code> are its own
 presentation fields, read from the spec the key resolves to.</p>
 </div><aside class="tsd-sources">

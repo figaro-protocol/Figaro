@@ -3,10 +3,11 @@
 /**
  * useClauseRegistry — readers for `ClauseRegistry.ClauseRegistered`.
  *
- * The on-chain event carries the clause KEY — `keccak256` of the spec's pinned
- * canonical bytes — and a `contentURI` (the IPFS locator). The chain knows no
- * name: the spec's own `clauseId` and `version` are read from the spec itself
- * once `loadClauseSpec` has verified its bytes against the key. No bundled
+ * The on-chain event carries the clause KEY — `keccak256` of the canonical
+ * bytes of the spec without its top-level `block` — and a `contentURI` (the
+ * IPFS locator). The chain knows no name: the spec's own `clauseId` and
+ * `version` are read from the spec itself once `loadClauseSpec` has verified
+ * it against the key. No bundled
  * spec set. `registeredBy` is indexed. (Grouping is `block.design.article` in
  * the spec JSON — no on-chain group field.)
  *
@@ -44,7 +45,8 @@ function getClauseRegistry(): `0x${string}` | null {
 }
 
 export interface RegisteredClauseEvent {
-    /** The clause key — `keccak256` of the spec bytes pinned at `contentURI`;
+    /** The clause key — `keccak256` of the canonical bytes of the spec pinned
+     *  at `contentURI`, without its top-level `block`;
      *  the key every leaf, attestation, usage count and withdrawal names. SDK
      *  vocabulary (`RegisteredClause.clauseKey`). */
     clauseKey: `0x${string}`;
@@ -134,7 +136,7 @@ export function clauseRegisterRevertMessage(
 ): string | null {
     switch (errorName) {
         case "AlreadyRegistered":
-            return `"${clauseLabel}" is already registered: these exact spec bytes hash to a clause key the registry holds. A clause's key is the hash of its spec and registration is first-write-wins and immutable, so the same spec always maps to one binding. Adopt the existing clause, or change the spec to register a different one.`;
+            return `"${clauseLabel}" is already registered: this spec, without its presentation block, hashes to a clause key the registry holds. A clause's key is the hash of its spec without the block, and registration is first-write-wins and immutable, so the same spec always maps to one binding. Adopt the existing clause, or change the spec to register a different one.`;
         case "ZeroClauseKey":
             return "Computed a zero clause key — the spec document is empty or malformed.";
         default:
@@ -157,7 +159,7 @@ export interface RegisterClauseOutcome {
     /** The spec's own presentation fields — what a receipt shows. */
     clauseId: string;
     version: number;
-    /** `keccak256` of the pinned canonical bytes — the on-chain key. */
+    /** `computeClauseKey` of the spec — the on-chain key. */
     clauseKey: `0x${string}`;
     contentURI: string;
 }
@@ -165,9 +167,9 @@ export interface RegisterClauseOutcome {
 /**
  * Register a clause on `ClauseRegistry.registerClause` (payable). Mirrors the
  * assembly publish flow (`usePublishAssembly`) for clauses: pin the RAW spec
- * document's CANONICAL bytes (`canonicalize` — INCLUDING `block`; re-serializing
- * a parsed spec would drop `block` and change the bytes), take the clause key
- * as `keccak256` of exactly those bytes (`computeClauseKey`), read the
+ * document's canonical bytes (`canonicalize`, `block` included, so a reader
+ * gets the presentation with the spec), take the clause key as `keccak256` of
+ * the canonical bytes of the spec without `block` (`computeClauseKey`), read the
  * registry's stake ON DEMAND, simulate to surface a typed revert before
  * opening the wallet, send, then wait for a `success` receipt.
  *
@@ -193,10 +195,10 @@ export function useRegisterClause() {
         const clauseId = rawSpec.clauseId as string;
         const version = Number(rawSpec.version);
 
-        // The key is keccak256 of the bytes pinned, and a reader checks the
-        // bytes it fetches against it, so the bytes pinned are exactly the
-        // canonical form (sorted keys, no whitespace) the key is computed over
-        // — the convention populate-clauses.mjs pins too.
+        // The key covers the spec without `block`; a reader parses the bytes
+        // it fetches, drops `block` and recomputes it. The bytes pinned are the
+        // canonical form (sorted keys, no whitespace) with `block` included —
+        // the convention populate-clauses.mjs pins too.
         const bytes = canonicalize(rawSpec);
         const clauseKey = computeClauseKey(rawSpec);
         const cid = await DEFAULT_IPFS_SERVICE.pinBlob(new Blob([bytes], { type: "application/json" }));

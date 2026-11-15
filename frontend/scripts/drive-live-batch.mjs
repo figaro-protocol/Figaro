@@ -153,7 +153,7 @@ import {
     BATCH_VERIFIER_ABI, CLAUSE_REGISTRY_ABI, ERC20_ABI,
     MEMBERS_REGISTRY_ABI, USAGE_COUNTER_ABI,
     buildCommitment, buildDomain, calculateBonds, computeOrderHash,
-    computeCheckoutHash, computeClauseKey, canonicalize, hashResolveProcess,
+    computeCheckoutHash, computeClauseKey, clauseKeyPreimage, canonicalize, hashResolveProcess,
     fetchUsageClaimContext, buildUsageClaims, USAGE_KIND_CLAUSE,
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec, encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
@@ -246,22 +246,21 @@ const isAnvil = await publicClient.request({ method: 'anvil_nodeInfo' }).then(()
 const verifier = record.batchVerifier;
 const bonds = calculateBonds(PAYMENT, PAYMENT);
 
-// ── The witness clause: canonical bytes, exactly as registered ──────────────
-// The clause key IS keccak over the spec's CANONICAL serialization (the bytes
-// the seeding pinned), so the witness proof carries that same canonical
-// string for the guest's hash to meet the key.
+// ── The witness clause: the bytes its clause key hashes ─────────────────────
+// The clause key IS keccak over the canonical serialization of the spec
+// without its top-level `block` (`clauseKeyPreimage`), so the witness proof
+// carries that same string for the guest's hash to meet the key.
 
 const specObject = JSON.parse(fs.readFileSync(
     path.resolve(__dirname, `../../clauses/${WITNESS_CLAUSE}.json`), 'utf-8'));
-const specJson = canonicalize(specObject);
+const specJson = clauseKeyPreimage(specObject);
 const parseResult = parseClauseSpec(specObject);
 if (!parseResult.ok) {
     console.error(`spec parse failed: ${JSON.stringify(parseResult.errors)}`);
     process.exit(1);
 }
 const spec = parseResult.spec;
-// Over the raw document (block included), as the seeding pins it — never the
-// parsed spec, which drops the presentation slice.
+// Over the raw document, `block` dropped, as the seeding registers it.
 const clauseKey = computeClauseKey(specObject);
 
 const clauseObject = { modality: 'delivery' };

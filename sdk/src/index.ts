@@ -135,6 +135,7 @@ export type { CoreEvents } from "./state.js";
 
 // Discovery — the cold-start catalog (clauses, members, assemblies)
 export {
+    clauseKeyPreimage,
     computeClauseKey,
     parseClauseRegistryLogs,
     parseMembersRegistryLogs,
@@ -238,7 +239,7 @@ export {
     deriveAnchored,
 } from "./anchored.js";
 
-// Agreement + assembly projection (the deterministic, hash-load-bearing rules)
+// Agreement + assembly projection (the reference tooling's rules for collecting the data a party signs)
 export {
     assertAgreementSignable,
     buildAssembly,

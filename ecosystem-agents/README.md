@@ -73,13 +73,13 @@ permission barrier (repo access + a merge) the open world exists to remove.
 
 Registration is the whole act. A UI surfaces clauses, agreements and assemblies *from the registry
 events*, so registering makes a clause, an agreement or an assembly discoverable everywhere that reads the registry —
-there is no frontend binding to meet. MOST `block` attributes shape how a UI *presents* an
-entry and affect neither validity nor discoverability — **but never say that unqualified:
-six hints inside `block` are hash-load-bearing and change what a designer's assembly and a
-party's signed agreement actually CONTAIN** (a reserved `design.article`, `design.scope`,
+there is no frontend binding to meet. `block` is presentation: the clause key leaves it out,
+and no fingerprint reads it. Six of its attributes are the reference tooling's rules for
+collecting the data a party signs (a reserved `design.article`, `design.scope`,
 `design.fills`, and the three `checkout` fill lists — `figaro-clause-author` § "The six
-hash-load-bearing `block` hints" is the owner of that list, and it bans the unqualified
-sentence for the same reason). The core is invariant (unless forked); many
+`block` hints the reference tooling collects by" is the owner of that list). Another tool
+may collect the data differently; both parties sign one `checkoutHash`, which either
+recomputes from the agreement alone. The core is invariant (unless forked); many
 UIs compete — that is what permissionless and decentralized mean.
 
 ## The run that proves a stranger's wiring

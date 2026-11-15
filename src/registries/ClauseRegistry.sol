@@ -8,12 +8,12 @@ pragma solidity 0.8.26;
 ///         protocol's four registries (clauses, registered agreements, assemblies,
 ///         members), parallel, reading none of the others. No owner, minimal storage.
 ///
-///         A CLAUSE IS ITS SPEC. The clause key is `keccak256` of the spec's
-///         pinned bytes — the canonical JSON the designer pins (the SDK's
-///         `computeClauseKey(spec)`, which is `canonicalContentHash(spec)`).
-///         The key is the identity and the content hash at once: a reader
-///         fetches the bytes from `contentURI` and checks
-///         `keccak256(bytes) == clauseKey`. The spec's own `clauseId` and
+///         A CLAUSE IS ITS SPEC. The clause key is `keccak256` of the
+///         canonical JSON of the spec without its top-level `block`, the
+///         presentation (the SDK's `computeClauseKey(spec)`). The key is the
+///         identity and the content hash at once: a reader fetches the
+///         document from `contentURI`, drops `block`, canonicalizes it and
+///         checks its hash against `clauseKey`. The spec's own `clauseId` and
 ///         `version` are presentation fields inside the document — a title
 ///         and a lineage counter a human reads; nothing on chain reads them.
 ///         Two specs that carry the same name are two clauses; a lookalike
@@ -91,8 +91,8 @@ contract ClauseRegistry {
     // ── Events ──────────────────────────────────────────────────────
 
     /// @notice Emitted when a new clause is registered.
-    /// @param clauseKey    keccak256 of the spec's pinned bytes — the clause's
-    ///                     identity and its content hash.
+    /// @param clauseKey    keccak256 of the canonical spec without `block` —
+    ///                     the clause's identity and its content hash.
     /// @param contentURI   Off-chain spec document URI (IPFS, etc.). The pointer that
     ///                     lets any reader FETCH the spec from chain state alone and
     ///                     verify it against `clauseKey` — the same role `contentURI`
@@ -135,8 +135,8 @@ contract ClauseRegistry {
     /// @notice Register a clause. Anyone can call. Requires
     ///         `registrationDeposit` ETH (exact — no sweep function
     ///         exists). Reverts if the key is already registered.
-    /// @param clauseKey  keccak256 of the spec's pinned bytes (the SDK's
-    ///                   `computeClauseKey(spec)`).
+    /// @param clauseKey  keccak256 of the canonical spec without `block` (the
+    ///                   SDK's `computeClauseKey(spec)`).
     /// @param contentURI Off-chain spec document URI (IPFS) — readers FETCH the
     ///                   spec from it and check its hash against `clauseKey`.
     function registerClause(bytes32 clauseKey, string calldata contentURI) external payable {

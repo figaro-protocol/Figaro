@@ -18,7 +18,7 @@ import {
 import { PROVENANCE_LEAF_KEY, canonicalContentHash, canonicalize, computeCheckoutHash, type Agreement } from "../src/agreement.js";
 import { computeClauseKey } from "../src/discovery.js";
 import { ASSEMBLY_TERMS_LEAF_KEY, agreementHashOf, assemblyHashOf, type Assembly } from "../src/assembly.js";
-import { keyOf } from "./specFixtures.js";
+import { keyOf, rawSpecOf } from "./specFixtures.js";
 
 const OTHER = `0x${"11".repeat(32)}` as const;
 
@@ -39,32 +39,50 @@ const agreement: Agreement = {
 };
 
 describe("anchorClauseSpec", () => {
-    // The key is keccak256 of the PINNED BYTES, so the reader hashes the bytes
-    // it fetched — never a re-canonicalization of what it parsed.
+    // The key is keccak256 of the canonical bytes of the spec without its
+    // top-level `block`: the reader parses what it fetched, drops `block`,
+    // canonicalizes and hashes.
     const pinned = canonicalize(spec);
     const key = keccak256(toBytes(pinned));
 
-    it("returns the spec parsed from the bytes its key names (text or bytes)", () => {
+    it("returns the spec parsed from bytes whose protocol half its key names (text or bytes)", () => {
         expect(anchorClauseSpec(pinned, key)).toEqual(spec);
         expect(anchorClauseSpec(toBytes(pinned), key)).toEqual(spec);
-        expect(key).toBe(computeClauseKey(spec)); // the reference tooling pins canonical bytes
+        expect(key).toBe(computeClauseKey(spec));
     });
     it("matches the key in any letter case", () => {
         expect(anchorClauseSpec(pinned, key.toUpperCase().replace("0X", "0x"))).toEqual(spec);
     });
-    it("hashes the bytes as fetched: the same document in another byte form is another key", () => {
-        const pretty = JSON.stringify(spec, null, 2);
-        expect(anchorClauseSpec(pretty, key)).toBeNull();
-        expect(anchorClauseSpec(pretty, keccak256(toBytes(pretty)))).toEqual(spec);
+    it("reads the parsed document, so the same spec in another byte form verifies", () => {
+        expect(anchorClauseSpec(JSON.stringify(spec, null, 2), key)).toEqual(spec);
     });
-    it("refuses other bytes under the key, and bytes that are not JSON", () => {
+    it("verifies a spec whose `block` differs from the designer's, and returns the block it fetched", () => {
+        const designed = { ...rawSpecOf("figaro-geolocation") };
+        const designedKey = computeClauseKey(designed);
+        const restyled = structuredClone(designed) as Record<string, any>;
+        restyled.block.design.article = "another-article";
+        restyled.block.runtime.interaction = null;
+        const anchored = anchorClauseSpec(canonicalize(restyled), designedKey);
+        expect(anchored).toEqual(restyled);
+        const bare = { ...designed };
+        delete bare.block;
+        expect(anchorClauseSpec(canonicalize(bare), designedKey)).toEqual(bare);
+    });
+    it("refuses a spec whose `fields` differ, and any other top-level change", () => {
+        const designed = rawSpecOf("figaro-geolocation");
+        const designedKey = computeClauseKey(designed);
+        const changed = structuredClone(designed) as Record<string, any>;
+        changed.fields[1].type = "integer";
+        expect(anchorClauseSpec(canonicalize(changed), designedKey)).toBeNull();
         expect(anchorClauseSpec(canonicalize({ ...spec, title: "Changed" }), key)).toBeNull();
+    });
+    it("refuses bytes under another key, and bytes that are not JSON", () => {
         expect(anchorClauseSpec(pinned, OTHER)).toBeNull();
         expect(anchorClauseSpec("not json", keccak256(toBytes("not json")))).toBeNull();
     });
-    it("strips prototype-pollution keys from what it parses", () => {
+    it("strips prototype-pollution keys from what it parses, before it hashes", () => {
         const hostile = '{"__proto__":{"polluted":true},"clauseId":"x"}';
-        const parsed = anchorClauseSpec(hostile, keccak256(toBytes(hostile))) as Record<string, unknown>;
+        const parsed = anchorClauseSpec(hostile, computeClauseKey({ clauseId: "x" })) as Record<string, unknown>;
         expect(parsed).toEqual({ clauseId: "x" });
         expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     });

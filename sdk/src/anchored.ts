@@ -2,7 +2,7 @@
  * anchored.ts — content the chain anchors, verified before it is used.
  *
  * Five kinds of document live off chain and are anchored on it by a digest:
- * a clause spec (its clause key, the digest of its pinned bytes), a
+ * a clause spec (its clause key, the digest of the spec without `block`), a
  * registered agreement (`AgreementRegistry`'s `agreementHash`), an assembly
  * assembly (`AssemblyRegistry`'s `assemblyHash`), an agreement (the commitment's
  * `checkoutHash`) and attestation content (the `contentRef` an
@@ -24,6 +24,7 @@
  */
 
 import { keccak256, type Hex } from "viem";
+import { computeClauseKey } from "./discovery.js";
 import { computeCheckoutHash, type Agreement } from "./agreement.js";
 import { strippingReviver } from "./safeJson.js";
 import {
@@ -54,21 +55,22 @@ export type Anchored<T> = T & { readonly [ANCHORED]: true };
 
 const sameHex = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
 
-/** A clause spec, verified against its clause key: `keccak256` of the BYTES
- *  fetched equals the key. The key is the hash of exactly the bytes the
- *  registrant pinned, so the check runs on what was fetched — the exact text
- *  or bytes — and re-canonicalizes nothing; the same document pinned in
- *  another byte form is another key. The spec is parsed from the verified
- *  bytes (prototype-pollution keys stripped) and returned; its shape is the
- *  clause parser's. Bytes that are not JSON are not a spec. */
+/** A clause spec, verified against its clause key: the fetched bytes are
+ *  parsed (prototype-pollution keys stripped), and `computeClauseKey` of the
+ *  parsed document — `keccak256` of the canonical bytes of the spec without
+ *  its top-level `block` — equals the key. The byte form pinned does not
+ *  matter, and neither does the `block`: the spec is returned with the
+ *  `block` it was served with, which the key does not cover. Bytes that are
+ *  not UTF-8 JSON are not a spec. */
 export function anchorClauseSpec(fetched: Uint8Array | string, clauseKey: Hex | string): Anchored<unknown> | null {
-    const bytes = typeof fetched === "string" ? new TextEncoder().encode(fetched) : fetched;
-    if (!sameHex(keccak256(bytes), clauseKey)) return null;
+    let doc: unknown;
     try {
-        return JSON.parse(new TextDecoder().decode(bytes), strippingReviver) as Anchored<unknown>;
+        const text = typeof fetched === "string" ? fetched : new TextDecoder("utf-8", { fatal: true }).decode(fetched);
+        doc = JSON.parse(text, strippingReviver);
     } catch {
         return null;
     }
+    return sameHex(computeClauseKey(doc), clauseKey) ? (doc as Anchored<unknown>) : null;
 }
 
 /** A registered agreement's pinned document, verified against its

@@ -372,8 +372,9 @@ of losing the batch:
   A clock that cannot be read builds nothing that tick. The host's clock is
   never read.
 - **The witness spec.** An attestation in the plaintext form carries its
-  clause spec's text (a hash-only one carries none and commits no binding),
-  and the clause key is the `keccak256` of those bytes: the guest refuses a
+  clause spec's canonical text without the top-level `block` (a hash-only
+  one carries none and commits no binding), and the clause key is the
+  `keccak256` of those bytes: the guest refuses a
   spec that does not hash to the key, and the verifier refuses a key
   `ClauseRegistry.registered` does not hold — either reverts the whole
   batch. The relay checks the hash itself, reads `registered` from the

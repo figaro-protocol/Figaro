@@ -16,7 +16,7 @@
  *
  * Flow:
  *   1. Deploy MockERC20, MockSP1Verifier, ClauseRegistry, FigaroBatchVerifier
- *   2. Register figaro-modalities on ClauseRegistry under its key (the hash of its pinned bytes)
+ *   2. Register figaro-modalities on ClauseRegistry under its key (the hash of its canonical spec without `block`)
  *   3. Mint tokens, approve bonds to FigaroBatchVerifier
  *   4. Start sequencer as child process
  *   5. Submit Commit + AttestAsSeller (the plaintext form, RuntimeWitness) via SequencerClient
@@ -187,7 +187,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         if (!r.ok) throw new Error(`spec parse failed: ${JSON.stringify(r.errors)}`);
         return r.spec;
     })();
-    // The key is the hash of the pinned (canonical) bytes the witness carries.
+    // The key is the hash of the bytes the witness carries: the canonical spec without `block`.
     const clauseKey = keccak256(stringToHex(specJson));
     const contentRef = keccak256(
         encodeContentFromSpec(parsedSpec, JSON.parse(CLAUSE_DATA), { stage: 0 }),

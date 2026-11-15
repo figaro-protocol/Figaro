@@ -1,8 +1,10 @@
-//! The cross-language lock on a clause key: `keccak256` of the spec's
-//! pinned bytes, `canonicalize(spec)`. The SDK harvests
+//! The cross-language lock on a clause key: `keccak256` of the canonical
+//! bytes of the spec without its top-level `block` (the SDK's
+//! `clauseKeyPreimage`). The SDK harvests
 //! `test/fixtures/clause-keys.json` as `{ "<name>": "<key>" }` over
 //! `clauses/*.json`; this file canonicalizes each `clauses/<name>.json` the
-//! way the fixtures feed the guest and asserts it hashes to the SDK's key.
+//! way the fixtures feed the guest (`block` dropped) and asserts it hashes to
+//! the SDK's key.
 use std::str::FromStr;
 
 use alloy_primitives::{keccak256, B256};

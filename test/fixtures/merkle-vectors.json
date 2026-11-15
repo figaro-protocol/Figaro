@@ -3,81 +3,81 @@
     "agreements": [
         {
             "label": "three-clauses",
-            "checkoutHash": "0xda454e3c9e196b4ab35e49e509829625e6009816fe438566b75a6a3ba16d9e70",
+            "checkoutHash": "0x3e340a77a4201cd4aacd7c0e40fa8ea5d985e2ee7f68a9ad28ae9d40f4cfaaf5",
             "clauseCount": 3,
             "clauses": [
                 {
-                    "clauseKey": "0xe3535da706f9c0486ebfd3b451a46e82edc4bbcd6d7de74af0692cd9a5b4a3c3",
+                    "clauseKey": "0x037534789810d0f2a242575421dd8d44e4fc401d6b1b622b318af636354f53e3",
                     "clauseData": "{\"modality\":\"delivery\"}",
-                    "leaf": "0xf42acf8689e12f88056e7a4bb673e6f1cdb3d07c7e1f63c00d246f0150a2dac0",
+                    "leaf": "0xe5801a45b9e0e0dd86b4b0570d83bb4c86db3136ae44c268a7dbaacc5ffcf032",
                     "proof": [
-                        "0x56d751004599e648e512ff5692627e0b142deaa4158c68d58361235ec11b6760"
+                        "0x65ef4d65f0971dd1e363fbe6f72873a673565505613d10eaf1d3806cbed8fe37"
                     ]
                 },
                 {
-                    "clauseKey": "0x7977cefd8271ecb21084be12a7cdd92443c0e1cba84769da3735e455fea28898",
+                    "clauseKey": "0x2debe8f7d98d145369387dc1c930855123ce013b164693d60e3669149fc707ca",
                     "clauseData": "{\"hops\":2,\"origin\":\"site-7\"}",
-                    "leaf": "0x8f486dec88b0651feaacd892aa7bc67a2c98fd7875718d8d354d02ead8175f64",
+                    "leaf": "0xb17ac010d7be512894be7e1a29f39f73b80913e19fcd57a07b5b0df88bb46a2d",
                     "proof": [
-                        "0x1a554d46d7948fc066497a531ee129ffff7fb84059dcbe61fcf157eb069012ce",
-                        "0xf42acf8689e12f88056e7a4bb673e6f1cdb3d07c7e1f63c00d246f0150a2dac0"
+                        "0xe33e3cdd6670028d2acc9e1fe3502f8d62a41bead5809746dc313de1fe2de39b",
+                        "0xe5801a45b9e0e0dd86b4b0570d83bb4c86db3136ae44c268a7dbaacc5ffcf032"
                     ]
                 },
                 {
-                    "clauseKey": "0xe479fad15bfd9df3ea17d84d753faaf35e002992564f2369e561928c7ca9b0f3",
+                    "clauseKey": "0x2e29cbbac16da434487896f98cb7083b8f39cf3b0bcb984d9fa6368f71ea0c90",
                     "clauseData": "{\"law\":\"ch\"}",
-                    "leaf": "0x1a554d46d7948fc066497a531ee129ffff7fb84059dcbe61fcf157eb069012ce",
+                    "leaf": "0xe33e3cdd6670028d2acc9e1fe3502f8d62a41bead5809746dc313de1fe2de39b",
                     "proof": [
-                        "0x8f486dec88b0651feaacd892aa7bc67a2c98fd7875718d8d354d02ead8175f64",
-                        "0xf42acf8689e12f88056e7a4bb673e6f1cdb3d07c7e1f63c00d246f0150a2dac0"
+                        "0xb17ac010d7be512894be7e1a29f39f73b80913e19fcd57a07b5b0df88bb46a2d",
+                        "0xe5801a45b9e0e0dd86b4b0570d83bb4c86db3136ae44c268a7dbaacc5ffcf032"
                     ]
                 }
             ]
         },
         {
             "label": "one-clause",
-            "checkoutHash": "0xae739bff8ca50453e58d9561a2ec40c20ba4e7cefa19688b83e982dd75e2cc35",
+            "checkoutHash": "0x2a80e0390d23e6851e760d61d7ed4e9fd638ade1b091854d926aeaf408f9c863",
             "clauseCount": 1,
             "clauses": [
                 {
-                    "clauseKey": "0xe3535da706f9c0486ebfd3b451a46e82edc4bbcd6d7de74af0692cd9a5b4a3c3",
+                    "clauseKey": "0x037534789810d0f2a242575421dd8d44e4fc401d6b1b622b318af636354f53e3",
                     "clauseData": "{\"modality\":\"pickup\"}",
-                    "leaf": "0xae739bff8ca50453e58d9561a2ec40c20ba4e7cefa19688b83e982dd75e2cc35",
+                    "leaf": "0x2a80e0390d23e6851e760d61d7ed4e9fd638ade1b091854d926aeaf408f9c863",
                     "proof": []
                 }
             ]
         },
         {
             "label": "two-clauses-and-a-design",
-            "checkoutHash": "0x0e589a4eb3d62eedc22479a749cf15c7ce8f7275f95c17b3bb7b914ad1f28616",
+            "checkoutHash": "0xe09721df0f7f935ab16813f1b1d943b76e18b8ae5e3dc9409bdc782ba935accc",
             "clauseCount": 2,
             "provenance": {
                 "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
-                "agreementHash": "0xf49f8bd61b0762fae53743dd566a94fb70d2c4742e4eec959e513fdf1b291bc5",
-                "assemblyHash": "0x9c40d687531b5c8975444b6b51de36b9fd21df36fdc0eb14b317107bfb365e1b",
-                "clauseData": "{\"agreementHash\":\"0xf49f8bd61b0762fae53743dd566a94fb70d2c4742e4eec959e513fdf1b291bc5\",\"assemblyHash\":\"0x9c40d687531b5c8975444b6b51de36b9fd21df36fdc0eb14b317107bfb365e1b\"}",
-                "leaf": "0x96d29634cc9d7f18087261c6ab342c939e222a53417486b669d3e41cd5542b8e",
+                "agreementHash": "0x2b909095c23aeb99436c735b615b220ee22f6c89eb047025417f2632f89eb79b",
+                "assemblyHash": "0xab903e68ee4554b8c212f6998d0d8de58ec61d24c59ea9e5ed96141b5500765d",
+                "clauseData": "{\"agreementHash\":\"0x2b909095c23aeb99436c735b615b220ee22f6c89eb047025417f2632f89eb79b\",\"assemblyHash\":\"0xab903e68ee4554b8c212f6998d0d8de58ec61d24c59ea9e5ed96141b5500765d\"}",
+                "leaf": "0x077333aeb92faccf8c58b4370189113c88a5f7e9eec44d7ca32612c3931c54f3",
                 "proof": [
-                    "0xc3e23103206f131dc658a46240827d6a2ee564699a28c77b9c17cba7809907e2",
-                    "0xde6c0a89fee41fa4ac40956d2d82bb891366e655d13ce9793ed9056e92411d9a"
+                    "0x4b497919b0700d4f4eb75a65c98e82e8a752376929bec73a7888ea8b93225052",
+                    "0xb528f067a93b59eaaee800d58596a499456ba3ebf8a17b56cd53762d6a98c572"
                 ]
             },
             "clauses": [
                 {
-                    "clauseKey": "0xaec2585282cb927efcbb814062e87ece53ea1ba7876bfbf6dfbc3462fc6ef180",
+                    "clauseKey": "0x19d7c589c107fb6ccee7490794c8f9a275dea904d8bf1a4467dc6dad3770ae7b",
                     "clauseData": "{\"currency\":\"0x0000000000000000000000000000000000000000\",\"payment\":\"7\"}",
-                    "leaf": "0xde6c0a89fee41fa4ac40956d2d82bb891366e655d13ce9793ed9056e92411d9a",
+                    "leaf": "0x4b497919b0700d4f4eb75a65c98e82e8a752376929bec73a7888ea8b93225052",
                     "proof": [
-                        "0xe90d7341dd16e74bd743a0a8ea4c647b9edf879fe8605c747a932ea80bf8540f"
+                        "0x077333aeb92faccf8c58b4370189113c88a5f7e9eec44d7ca32612c3931c54f3",
+                        "0xb528f067a93b59eaaee800d58596a499456ba3ebf8a17b56cd53762d6a98c572"
                     ]
                 },
                 {
-                    "clauseKey": "0x0a5ffdfd8c130972a621a5615f2e05ac3575233bd1540bdaee2174d9ee1f0570",
+                    "clauseKey": "0x8aa51dc7a383d7cccdcd9124b535518154319e76d26f3487fd62e22b65013531",
                     "clauseData": "{\"follows\":[]}",
-                    "leaf": "0xc3e23103206f131dc658a46240827d6a2ee564699a28c77b9c17cba7809907e2",
+                    "leaf": "0xb528f067a93b59eaaee800d58596a499456ba3ebf8a17b56cd53762d6a98c572",
                     "proof": [
-                        "0x96d29634cc9d7f18087261c6ab342c939e222a53417486b669d3e41cd5542b8e",
-                        "0xde6c0a89fee41fa4ac40956d2d82bb891366e655d13ce9793ed9056e92411d9a"
+                        "0x9401422e56306cf8e5af4daa6d49419eaf4c9e99d44bc1701d73b3b6ee8b735d"
                     ]
                 }
             ]

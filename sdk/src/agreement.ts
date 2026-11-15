@@ -8,8 +8,8 @@
  *
  * Leaf format: `keccak256(keccak256(clauseKey || hashClauseData))` (double-hashed
  * for leaf/node domain separation) where
- *   - `clauseKey` = the clause's on-chain identity, `keccak256` of the spec's
- *      pinned canonical bytes (`computeClauseKey(spec)` in discovery.ts, the
+ *   - `clauseKey` = the clause's on-chain identity, `keccak256` of the
+ *      canonical spec without `block` (`computeClauseKey(spec)` in discovery.ts, the
  *      key `ClauseRegistry` registers), used DIRECTLY as the leaf id. The
  *      reserved provenance leaf uses `PROVENANCE_LEAF_KEY` the same way.
  *   - `hashClauseData` = `keccak256(canonicalJSON(clause.data))`
@@ -42,7 +42,7 @@ import { ZERO_BYTES32 } from "./commitments.js";
  */
 export interface AgreementClause {
     /** The clause KEY — the 32-byte hex identity `ClauseRegistry` registers,
-     *  `keccak256` of the spec's pinned canonical bytes (`computeClauseKey`).
+     *  `keccak256` of the canonical spec without `block` (`computeClauseKey`).
      *  Never a name: a spec's `clauseId` and `version` are its own
      *  presentation fields, read from the spec the key resolves to. */
     clause: Hex;
@@ -172,18 +172,18 @@ function sortedReplacer(_key: string, value: unknown): unknown {
  * preserved array order, no whitespace. THE one canonical-JSON convention —
  * agreement clauses, agreement documents (`agreementHashOf`) and the
  * assembly's entry and terms leaves hash this form, and it is the byte form the reference tooling PINS a clause
- * spec in, so the clause key (`computeClauseKey`, keccak256 of the pinned
- * bytes) is the hash of this form. A clause reader hashes the bytes it
- * fetched (`anchorClauseSpec`), never a re-canonicalization: a spec pinned in
- * any other byte form has a different key. The serialized value must carry
+ * spec in. The clause key (`computeClauseKey`) is the hash of this form of
+ * the spec without its top-level `block`; a clause reader parses what it
+ * fetched and recomputes it (`anchorClauseSpec`), so the byte form a spec is
+ * pinned in does not change its key. The serialized value must carry
  * no bigints.
  */
 export function canonicalize(value: unknown): string {
     return JSON.stringify(value, sortedReplacer);
 }
 
-/** keccak256 over the canonical serialization — a clause spec's key when it
- *  is pinned in this form (`computeClauseKey`). */
+/** keccak256 over the canonical serialization. A clause spec's key is this
+ *  hash of the spec without its `block` (`computeClauseKey`). */
 export function canonicalContentHash(value: unknown): Hex {
     return keccak256(toHex(canonicalize(value)));
 }

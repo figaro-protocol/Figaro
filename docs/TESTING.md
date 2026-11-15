@@ -460,8 +460,8 @@ field-for-field against host `apply_batch`; in-VM Gate-S
 rejection; the guest on SP1's patched `ecdsa`/`k256` aborts on the high-s twin of the canonical
 batch's buyer signature, which on the host recovers the same buyer
 (`guest_program_rejects_the_high_s_twin_of_the_buyer_signature`); `SP1_REAL_PROOF=1` generates + verifies a real local Core proof;
-`prover/script/tests/clause_keys.rs` canonicalizes every `clauses/*.json` and
-asserts it hashes to the SDK's key in `test/fixtures/clause-keys.json`),
+`prover/script/tests/clause_keys.rs` canonicalizes every `clauses/*.json` without its
+`block` and asserts it hashes to the SDK's key in `test/fixtures/clause-keys.json`),
 and `figaro-sequencer` (mempool runs the mirror's own witness gates at the
 door, admitting a hash-only attestation and refusing a wrong `clauseDataHash`;
 the relay writes no attestation content to its logs, state file, journal
@@ -649,13 +649,18 @@ decodes by name. lint-staged runs it when `abi/*.json`, `sdk/src/abis.ts` or the
 staged, and SDK CI re-runs on `abi/**`.
 
 **Clause keys — the two-language canonicalization lock.** A clause key is
-`keccak256` of the spec's canonical bytes, so the SDK and the guest must
-canonicalize identically. `sdk/tests/clauseKeys.test.ts` derives every
-`clauses/*.json` key with `computeClauseKey` and checks it against
+`keccak256` of the canonical bytes of the spec without its top-level `block`,
+so the SDK and the guest must canonicalize identically. `sdk/tests/clauseKeys.test.ts`
+derives every `clauses/*.json` key with `computeClauseKey` and checks it against
 `test/fixtures/clause-keys.json` (`{ name: key }`, one entry per spec;
-`HARVEST_CLAUSE_KEYS=1` regenerates); `prover/script/tests/clause_keys.rs`
+`HARVEST_CLAUSE_KEYS=1` regenerates); it also holds that an edit to `block`, in
+each of its three parts, moves no clause key, no leaf, no `agreementHash` and no
+`checkoutHash` of the reference agreement `agreements/counter-sale.json`, while an
+edit to the `title` or a field's type moves the key. `prover/script/tests/clause_keys.rs`
 (`figaro-prove-test`) and `prover/lib/tests/parity.rs` read the same fixture
-and assert the Rust canonicalization lands on every key. The resolver from
+and assert the Rust canonicalization lands on every key; `parity.rs`
+`attest_witness_carrying_block_is_refused_and_without_it_is_accepted` holds Gate S
+to the witness without `block`. The resolver from
 written clause names to keys — a local authoring read run before a document
 is published — is covered by
 `sdk/tests/assembly.test.ts` § `resolveAuthoredClauseKeys`: a name two loaded

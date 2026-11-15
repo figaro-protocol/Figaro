@@ -441,7 +441,7 @@ describe("publicForm — the public/private disposition seam", () => {
 
 describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap", () => {
     // A synthetic field + hints view, mirroring the specView() helper above but
-    // parameterized on the hash-load-bearing `hints` under test.
+    // parameterized on the collection `hints` under test.
     const specView = (
         clauseId: string,
         hints: ProjectionSpecView["hints"],

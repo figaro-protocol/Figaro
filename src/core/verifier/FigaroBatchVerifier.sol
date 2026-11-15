@@ -9,8 +9,8 @@ import "src/core/verifier/ISP1Verifier.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 
 /// @notice Minimal ClauseRegistry surface the verifier reads — the
-///         anchor for witness specs. A clause key is keccak256 of the spec's
-///         pinned bytes, so a registered key anchors at most one document.
+///         anchor for witness specs. A clause key is keccak256 of the canonical
+///         spec without `block`, so a registered key anchors at most one spec.
 interface IClauseRegistryAnchor {
     function registered(bytes32 clauseKey) external view returns (bool);
 }
@@ -183,7 +183,7 @@ contract FigaroBatchVerifier is ReentrancyGuard, EIP712 {
 
     /// @dev One clause key the batch's in-proof clause gates validated
     ///      against. Deduplicated and sorted ascending by clauseId in the
-    ///      prover. The clause key is keccak256 of the spec's pinned bytes, and
+    ///      prover. The clause key is keccak256 of the canonical spec without `block`, and
     ///      the prover refuses a witness spec whose hash is not the key, so the
     ///      key alone names the document the proof read.
     struct SpecBinding {

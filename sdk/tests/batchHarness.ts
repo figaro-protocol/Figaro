@@ -29,7 +29,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { BATCH_VERIFIER_ABI } from "../src/index.js";
-import { canonicalize } from "../src/agreement.js";
+import { clauseKeyPreimage } from "../src/discovery.js";
 import type { SequencerClient } from "../src/agent/sequencer.js";
 
 /** The chain the suites run against; `ANVIL_URL` points them at another Anvil. */
@@ -64,14 +64,15 @@ function loadBytecode(contractPath: string): Hex {
     return artifact.bytecode.object as Hex;
 }
 
-// ── The witness clause: figaro-modalities, exact pinned bytes ────────────────
+// ── The witness clause: figaro-modalities, the bytes its key hashes ─────────
 
-/** The bytes a clause is pinned as: the canonical serialization of
- *  `clauses/<name>.json` (`canonicalize`) — the bytes the clause key hashes
- *  and the guest's Gate S re-hashes. */
+/** The bytes a plaintext attestation's witness carries: the canonical
+ *  serialization of `clauses/<name>.json` without its top-level `block`
+ *  (`clauseKeyPreimage`) — the bytes the clause key hashes and the guest's
+ *  Gate S re-hashes. */
 export function loadSpecJson(name: string): string {
     const repoRoot = path.resolve(import.meta.dirname, "../..");
-    return canonicalize(JSON.parse(fs.readFileSync(path.join(repoRoot, "clauses", `${name}.json`), "utf-8")));
+    return clauseKeyPreimage(JSON.parse(fs.readFileSync(path.join(repoRoot, "clauses", `${name}.json`), "utf-8")));
 }
 
 // ── Genesis state root ───────────────────────────────────────────────────────
@@ -161,7 +162,7 @@ export async function deployBatchStack(
     const clauseRegistryAddress = regReceipt.contractAddress!;
 
     // Register the clause under the key of the EXACT bytes the witness proof
-    // will carry: the key is the hash of the pinned bytes.
+    // will carry: the key is the hash of the canonical spec without `block`.
     expect(keccak256(stringToHex(witness.specJson))).toBe(witness.clauseKey);
     await deployerWallet
         .writeContract({

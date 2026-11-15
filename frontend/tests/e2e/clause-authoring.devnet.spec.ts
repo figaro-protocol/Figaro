@@ -100,8 +100,8 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         const CLAUSE_ID = `figaro-authored-${runNonce}`;
         const CLAUSE_TITLE = `Authored clause ${runNonce}`;
         const SPEC = makeProbeSpec(CLAUSE_ID, CLAUSE_TITLE);
-        // The clause key: keccak256 of the spec's canonical bytes — what the
-        // register surface pins and names on chain.
+        // The clause key: keccak256 of the canonical spec without its `block`
+        // — what the register surface names on chain.
         const idHash = computeClauseKey(SPEC);
 
         // ── CTA ROUND-TRIP, OUTBOUND: the marketing /clauses page carries the

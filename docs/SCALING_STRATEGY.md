@@ -384,7 +384,8 @@ validate + encode (`prover/clause/src/spec.rs`, `validate.rs`, `encode.rs`) —
 and no clauses: no embedded spec table, no per-clause code path anywhere in
 `prover/`. The engine runs for an attestation the party sends in the plaintext
 form (§ "The two attestation forms"). The spec is a witness input, and its clause key IS its content
-hash: `registerClause` anchors `clauseKey = keccak256(canonical spec JSON)`,
+hash: `registerClause` anchors `clauseKey = keccak256(canonical spec JSON
+without its top-level block)`, the witness carries exactly those bytes, and
 the guest's Gate S requires `keccak256(spec_json bytes) == clause_id` on the
 bytes it was given, canonicalizing nothing (`prover/lib/src/kernel.rs`), the
 guest commits the deduplicated clause keys it validated against
@@ -415,7 +416,7 @@ party:
   fingerprints the chain sees on the direct path, never the parties' data.
 - **Plaintext, the party's choice.** The spec, the content and the committed
   clauseData, to have the content checked inside the proof: Gate S (the
-  spec's bytes hash to the clause key), Gate C (the content validates against
+  witness spec, the canonical spec without its `block`, hashes to the clause key), Gate C (the content validates against
   the spec and hashes to the `contentRef`) and Gate I, with a spec binding
   committed for the verifier's registry check. The relay receives that
   plaintext and, under `SP1_PROVER=network`, forwards it to the proving

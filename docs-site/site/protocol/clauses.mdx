@@ -13,7 +13,7 @@ Everything below is verified against the shipped SDK (`sdk/src/agreement.ts`, `s
 
 Five different hashes are computed over what you write, and mixing them up is the most expensive authoring mistake — registration is permanent and first-write-wins.
 
-**1. The clause key — a clause's identity and its content at once.** `keccak256` of exactly the bytes pinned at the clause's `contentURI`: the *whole* spec document — `clauseId`, `version`, `title`, `description`, `fields`, and *all* of `block`, editorial text included. The SDK pins the canonical JSON, `canonicalize(spec)` (sorted keys at every depth, array order kept, no whitespace), and `computeClauseKey(spec)` is `keccak256` of those bytes (`sdk/src/discovery.ts:66`; the same value as `canonicalContentHash(spec)`, `sdk/src/agreement.ts:188`). It is the key `ClauseRegistry` registers, every agreement clause's `clause`, the `clauseId` argument of the attest calls, and the key `FigaroBatchVerifier` checks every witness spec against. Change one label in `block` and you have a different key, which is a different clause, so pin exactly the bytes you hashed.
+**1. The clause key — a clause's identity and its content at once.** `keccak256` of the canonical JSON of the spec *without its top-level `block`*: `clauseId`, `version`, `title`, `description`, `fields`, `stages` and every other top-level attribute, and none of `block`, which is presentation. Canonical means `canonicalize` (sorted keys at every depth, array order kept, no whitespace); `clauseKeyPreimage(spec)` returns those bytes and `computeClauseKey(spec)` is their `keccak256` (`sdk/src/discovery.ts:73`, `:86`). It is the key `ClauseRegistry` registers, every agreement clause's `clause`, the `clauseId` argument of the attest calls, and the key `FigaroBatchVerifier` checks every witness spec against. Change a label in `block` and the key stays; change a field, a stage or the title and you have a different key, which is a different clause. The SDK pins `canonicalize(spec)`, `block` included, so a reader gets the presentation with the spec.
 
 **2. The clause leaf — one clause's place in one agreement.** `keccak256(keccak256(clauseKey || hashClauseData))` (`sdk/src/agreement.ts:259`), where `clauseKey` is the clause key of (1) used verbatim (not re-hashed), and `hashClauseData = keccak256(canonicalJSON(clause.data))`. The inner hash binds the clause; the outer hash domain-separates leaves from internal nodes (a leaf preimage is 32 bytes, an internal node's is 64, so no node can be replayed as a leaf). This is the *only* thing the merkle tree — and the on-chain `clauseDataHash` argument to the attest calls and `recordClauseUsage` — needs, so a private clause's plaintext never has to be present to build or verify the tree.
 
@@ -27,7 +27,7 @@ Five different hashes are computed over what you write, and mixing them up is th
 import { computeClauseKey, computeCheckoutHash, agreementHashOf,
          assemblyHashOf } from "@figaro-protocol/sdk";
 
-computeClauseKey(spec);              // (1) the clause key — keccak256 of canonicalize(spec), the bytes you pin
+computeClauseKey(spec);              // (1) the clause key — keccak256 of the canonical spec without its block
 computeCheckoutHash(agreement);     // (3) the checkoutHash both parties sign
 agreementHashOf(composed);            // (4) a registered agreement's agreementHash — its identity
 assemblyHashOf(assembly);   // (5) an assembly's assemblyHash — the merkle root over its agreements
@@ -37,7 +37,7 @@ assemblyHashOf(assembly);   // (5) an assembly's assemblyHash — the merkle roo
 
 ## The clause-spec format
 
-A spec lives off-chain as JSON at the `contentURI` its registration emits; its clause key is its integrity, checked by hashing the bytes fetched from that URI. The published definition of the format is the JSON Schema at [`sdk/src/clauses/clause-spec.schema.json`](https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/clauses/clause-spec.schema.json) — a closed subset of JSON Schema whose field `type` is one of `string`, `integer`, `bigint` (a decimal string), `boolean`, `enum`, `array`, `object`.
+A spec lives off-chain as JSON at the `contentURI` its registration emits; its clause key is its integrity, checked by parsing the document fetched from that URI, dropping its top-level `block`, canonicalizing and hashing. The published definition of the format is the JSON Schema at [`sdk/src/clauses/clause-spec.schema.json`](https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/clauses/clause-spec.schema.json) — a closed subset of JSON Schema whose field `type` is one of `string`, `integer`, `bigint` (a decimal string), `boolean`, `enum`, `array`, `object`.
 
 **The spec has two halves, and the protocol ends between them.**
 
@@ -127,21 +127,21 @@ function registerClause(bytes32 clauseKey, string calldata contentURI)
     external payable;   // ClauseRegistry — first-write-wins on the key, immutable, under a stake
 ```
 
-The key is `computeClauseKey(spec)`, `keccak256` of the canonical bytes you pin at `contentURI` (`src/registries/ClauseRegistry.sol:138-142`). The registry stores no name, no version and no separate content hash: the key is the content hash. It takes the key as given and never sees the bytes, so a key whose bytes nobody can fetch is a registration no reader can verify (`:49-51`). Registration anchors identity and integrity only — no group field (grouping is `block.design.article`, off-chain), no reward tag (designer rewards are uniform on real use), no validator (a registered clause is immediately attestable and batch-resolvable). The stake is a deploy-time parameter: read `registrationDeposit()` live and send exactly it. `clauseId` and `version` are the spec's own labels: two specs that carry the same name are two clauses with two keys, a revision of a clause is a new spec with a new key registered beside the old one, and compatibility between two revisions, if it ever matters, is derived by diffing two immutable specs.
+The key is `computeClauseKey(spec)`, `keccak256` of the canonical bytes of the spec without its top-level `block` (`src/registries/ClauseRegistry.sol:138-142`). The registry stores no name, no version and no separate content hash: the key is the content hash. It takes the key as given and never sees the document, so a key whose bytes nobody can fetch is a registration no reader can verify (`:49-51`). Registration anchors identity and integrity only — no group field (grouping is `block.design.article`, off-chain), no reward tag (designer rewards are uniform on real use), no validator (a registered clause is immediately attestable and batch-resolvable). The stake is a deploy-time parameter: read `registrationDeposit()` live and send exactly it. `clauseId` and `version` are the spec's own labels: two specs that carry the same name are two clauses with two keys, a revision of a clause is a new spec with a new key registered beside the old one, and compatibility between two revisions, if it ever matters, is derived by diffing two immutable specs.
 
 ```ts
 import { canonicalize, computeClauseKey, anchorClauseSpec } from "@figaro-protocol/sdk";
 
 const bytes = canonicalize(spec);          // the whole raw document, block included: the bytes to pin
-const clauseKey = computeClauseKey(spec);  // keccak256 of exactly those bytes
-// read registered(clauseKey) first (same bytes, same clause), pin `bytes`,
+const clauseKey = computeClauseKey(spec);  // keccak256 of the canonical spec without its block
+// read registered(clauseKey) first (same spec, same clause), pin `bytes`,
 // then registerClause(clauseKey, contentURI) with value = registrationDeposit()
 
-// A reader verifies a fetched spec by hashing the bytes it fetched:
-anchorClauseSpec(fetchedBytes, clauseKey); // the parsed spec, or null when keccak256(bytes) != clauseKey
+// A reader verifies a fetched spec by recomputing its key:
+anchorClauseSpec(fetchedBytes, clauseKey); // the parsed spec, or null when computeClauseKey(parsed) != clauseKey
 ```
 
-`anchorClauseSpec` re-canonicalizes nothing (`sdk/src/anchored.ts:63`): a spec pinned in any other byte form — pretty-printed, keys re-ordered — has a different key and never verifies against the one you registered ([Sharp edges](/protocol/sharp-edges/)).
+`anchorClauseSpec` parses what it fetched, drops the top-level `block`, canonicalizes and hashes (`sdk/src/anchored.ts:65`): the byte form a spec is pinned in and its `block` do not change its key. It returns the spec with the `block` it was served, which the key does not cover ([Sharp edges](/protocol/sharp-edges/)).
 
 Withdrawing the stake de-surfaces the clause for new compositions but never deletes the binding: orders already committed against it still resolve. Agreements register the same way on `AgreementRegistry` (keyed by `agreementHash`) and assemblies on `AssemblyRegistry` (keyed by `assemblyHash`), with the same permanence.
 

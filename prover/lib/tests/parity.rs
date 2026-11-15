@@ -16,23 +16,33 @@ use figaro_kernel::types::*;
 // Specs are witness inputs loaded from `clauses/` (the ClauseRegistry
 // seed source) — nothing is embedded in the engine.
 
-fn load_spec_json(clause_id_str: &str) -> String {
+/// The spec file as pinned: the SDK's `canonicalize` of the whole document,
+/// `block` included — keys sorted at every depth (serde_json's default map
+/// is sorted), compact. The specs loaded here carry no array-index keys,
+/// which `JSON.stringify` would order first.
+fn load_pinned_spec_json(clause_id_str: &str) -> String {
     let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     p.pop(); // prover/
     p.pop(); // repo root
     p.push("clauses");
     p.push(format!("{clause_id_str}.json"));
     let raw = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
-    // The pinned bytes: the SDK's `canonicalize` — keys sorted at every
-    // depth (serde_json's default map is sorted), compact. The specs loaded
-    // here carry no array-index keys, which `JSON.stringify` would order
-    // first; `sdk_clause_key` pins the result to the SDK's key.
     let value: serde_json::Value = serde_json::from_str(&raw).expect("spec JSON");
+    serde_json::to_string(&value).expect("serialize")
+}
+
+/// The witness bytes: the canonical form of the spec without its top-level
+/// `block` — the bytes the clause key hashes. `sdk_clause_key` pins the
+/// result to the SDK's key.
+fn load_spec_json(clause_id_str: &str) -> String {
+    let mut value: serde_json::Value =
+        serde_json::from_str(&load_pinned_spec_json(clause_id_str)).expect("spec JSON");
+    value.as_object_mut().expect("spec object").remove("block");
     let canonical = serde_json::to_string(&value).expect("serialize");
     assert_eq!(
         keccak256(canonical.as_bytes()),
         sdk_clause_key(clause_id_str),
-        "{clause_id_str}: the loaded bytes are the pinned bytes"
+        "{clause_id_str}: the witness bytes hash to the clause key"
     );
     canonical
 }
@@ -405,7 +415,8 @@ struct AttestFixture {
 
 fn attest_fixture() -> AttestFixture {
     let spec_json = load_spec_json("figaro-modalities");
-    // The clause key is keccak256 of the spec bytes the witness carries.
+    // The clause key is keccak256 of the spec bytes the witness carries:
+    // the canonical form of the spec without its `block`.
     let clause_key = keccak256(spec_json.as_bytes());
     let leaf = clause_leaf(&clause_key, CLAUSE_DATA);
 
@@ -694,6 +705,30 @@ fn attest_lookalike_spec_under_the_same_name_fails() {
         Err(KernelError::SpecIdentityMismatch(_)) => {}
         other => panic!("expected SpecIdentityMismatch, got {other:?}"),
     }
+}
+
+#[test]
+fn attest_witness_carrying_block_is_refused_and_without_it_is_accepted() {
+    // The clause key covers the spec without its top-level `block`, so the
+    // witness carries exactly those canonical bytes. The file as pinned,
+    // `block` included, hashes to another key and is refused.
+    let f = attest_fixture();
+    let with_block = load_pinned_spec_json("figaro-modalities");
+    assert_ne!(with_block, f.spec_json);
+    let seller1_key = make_signing_key(SELLER1_KEY);
+
+    let (mut carrying, content_ref) = runtime_witness_proof(&f);
+    carrying.spec_json = with_block;
+    let op = seller_attest_op(&f, carrying, content_ref, &seller1_key);
+    match run_attest_batch(&f, op) {
+        Err(KernelError::SpecIdentityMismatch(_)) => {}
+        other => panic!("expected SpecIdentityMismatch, got {other:?}"),
+    }
+
+    let (bare, content_ref) = runtime_witness_proof(&f);
+    assert_eq!(bare.spec_json, f.spec_json);
+    let op = seller_attest_op(&f, bare, content_ref, &seller1_key);
+    run_attest_batch(&f, op).expect("the witness without block passes Gate S");
 }
 
 #[test]

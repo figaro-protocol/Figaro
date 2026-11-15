@@ -20,10 +20,10 @@
 preserved array order, no whitespace. THE one canonical-JSON convention —
 agreement clauses, agreement documents (<code>agreementHashOf</code>) and the
 assembly's entry and terms leaves hash this form, and it is the byte form the reference tooling PINS a clause
-spec in, so the clause key (<code>computeClauseKey</code>, keccak256 of the pinned
-bytes) is the hash of this form. A clause reader hashes the bytes it
-fetched (<code>anchorClauseSpec</code>), never a re-canonicalization: a spec pinned in
-any other byte form has a different key. The serialized value must carry
+spec in. The clause key (<code>computeClauseKey</code>) is the hash of this form of
+the spec without its top-level <code>block</code>; a clause reader parses what it
+fetched and recomputes it (<code>anchorClauseSpec</code>), so the byte form a spec is
+pinned in does not change its key. The serialized value must carry
 no bigints.</p>
 </div>
 <div class="tsd-parameters">

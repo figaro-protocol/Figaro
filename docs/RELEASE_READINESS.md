@@ -308,8 +308,8 @@ own wallet — the founder direct as a buyer-side member, the DAO under its
 EIP-7702-delegated operator EOA, never the vault address (Task 9). Registrar = designer of record = who the 600M reserve rewards
 (`RpgfMinter._isAuthor(kind, key, account)` reads `depositOf(key).registeredBy`
 for the clause kind, and `claim` reads the claimant's live member stake); first-write-wins and permanent per key — a clause key is
-`keccak256` of the spec's pinned canonical bytes, so a registration is one
-exact document. The procedure is rehearsed end to end on the testnet.
+`keccak256` of the canonical spec without its `block`, so a registration is
+one exact spec. The procedure is rehearsed end to end on the testnet.
 
 Before mainnet genesis seeding:
 

@@ -36,9 +36,9 @@ change it, and register the fork under your own key; the fork is yours (RPGF rew
 - **You never touch the Core, and you refuse Core-changing compositions** (below).
 - **You do not depend on any UI.** A UI surfaces assemblies *from the registry events*, so
   registering makes it discoverable everywhere that reads the registry — no frontend to
-  satisfy. Most of a clause's `block` shapes presentation and affects neither validity nor
-  discoverability — but **six hints in it are hash-load-bearing and three of them decide
-  what YOUR assembly contains**: `design.article: "mandatory"` (never selected on its own:
+  satisfy. A clause's `block` is presentation, outside its clause key — but **six hints in
+  it are the reference tooling's rules for collecting the data, and three of them decide
+  what the reference tooling writes into YOUR assembly**: `design.article: "mandatory"` (never selected on its own:
   the DAO wallet's live registrations carrying it are written into every agreement —
   `mandatoryClauses` — before anything you compose), `design.scope: "assembly"` (composed once for the whole
   design, carried by every agreement — composing it on an agreement is a build error, not a
@@ -116,7 +116,7 @@ canvas sketch. `assemblyHashOf(assembly)` is the registry key, so any other shap
 computes a hash that matches nothing and cannot be registered. The assembly is
 `{ name?, summary?, description?, faq?, assemblyClauses?, agreements: AssemblyAgreement[] }`, each
 `AssemblyAgreement` `{ id: "agreement-<i>", agreementHash, clauses }`, every clause map keyed by clause
-KEY — `keccak256` of the clause spec's pinned bytes, the `clauseKey` each registry row carries
+KEY — `keccak256` of the canonical clause spec without its `block`, the `clauseKey` each registry row carries
 — never by the name a spec displays.
 
 **Build it with `buildAssembly` (root `@figaro-protocol/sdk`), not by hand.** It takes the
@@ -143,9 +143,9 @@ every order signs.
 assembly bytes need NOT be byte-canonical: `assemblyHashOf` recomputes
 over the composition SUBSET (the agreements plus the assembly-scoped clauses;
 editorial prose excluded), so the
-exact serialization you pin does not enter the hash. This is the OPPOSITE of a
-clause, whose key is `keccak256` of the WHOLE pinned document, so
-a clause's pinned bytes MUST be its canonical bytes. Pin readable JSON here;
+exact serialization you pin does not enter the hash. A clause works the same way:
+its key is `keccak256` of the canonical spec without its `block`
+(`computeClauseKey`), recomputed from the parsed document. Pin readable JSON here;
 let `assemblyHashOf` — never a hand-rolled hash over the raw bytes —
 derive identity.
 
@@ -173,7 +173,7 @@ derive identity.
   expressible ONLY through `assemblyClauses`. Once pinned, the pin is part of the assembly's
   identity: the same composition in another token is a different assembly.
 - **The key IS the clause you compose.** A clause is its spec: its key is `keccak256` of the
-  spec's pinned bytes, and the spec's `clauseId` and `version` are labels. Two registrations
+  canonical spec without its `block`, and the spec's `clauseId` and `version` are labels. Two registrations
   showing the same name are two clauses; the key you put in the map names exactly one
   document, so choose it from the spec you read (fetched through `ClauseRegistry → IPFS` and
   verified with `anchorClauseSpec(bytes, clauseKey)`), never from the label alone.

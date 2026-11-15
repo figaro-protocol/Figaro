@@ -39,10 +39,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { createPublicClient, http, parseAbi } from "viem";
-// The SDK's own canonical hash — the clause key is keccak256 of the spec's
-// canonical bytes, the form every pin writes. Built output: run
+// The SDK's own clause key — keccak256 of the canonical bytes of the spec
+// without its top-level `block`. Built output: run
 // `npm run build` in sdk/ when dist/ is stale.
-import { canonicalContentHash } from "../sdk/dist/agreement.js";
+import { computeClauseKey } from "../sdk/dist/discovery.js";
 import { checkRegistrars, plannedRegistrations } from "./check-deployment-registrars.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -122,9 +122,9 @@ const ABI = parseAbi([
 const read = (address, functionName, args = []) =>
     client.readContract({ address, abi: ABI, functionName, args });
 
-/** ClauseRegistry's key for a spec: keccak256 of its canonical bytes (sdk
- *  `computeClauseKey(spec)` = `canonicalContentHash(spec)`). */
-const clauseKey = (spec) => canonicalContentHash(spec);
+/** ClauseRegistry's key for a spec: keccak256 of the canonical bytes of the
+ *  spec without its top-level `block` (sdk `computeClauseKey`). */
+const clauseKey = (spec) => computeClauseKey(spec);
 
 // ── Compiled code ──────────────────────────────────────────────────────────
 
@@ -358,7 +358,7 @@ async function main() {
         // Every spec in clauses/ is a protocol clause: the plan names an owner
         // for some, by the spec's own clauseId (the maintainer's authored
         // name), and a default for the rest. The key read on chain is derived
-        // from the spec's canonical bytes, never from the name.
+        // from the spec's canonical bytes without `block`, never from the name.
         const specs = fs.readdirSync(path.join(root, "clauses")).filter((f) => f.endsWith(".json"))
             .map((f) => JSON.parse(fs.readFileSync(path.join(root, "clauses", f), "utf8")));
         for (const spec of specs) {

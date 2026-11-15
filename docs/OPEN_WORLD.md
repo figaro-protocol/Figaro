@@ -98,8 +98,8 @@ Three legitimately bundled categories (do NOT flag):
    agreements, profiles/catalogs. Fetching the pre-image of an on-chain
    commitment is the pattern, not a copy. The SET stays event-driven; the per-item
    CONTENT resolves from the committed pointer. A clause's committed pointer is
-   its key — `keccak256` of the spec's pinned canonical bytes — and a reader
-   checks the fetched bytes against it. The reference `agreements/*.json`,
+   its key — `keccak256` of the canonical spec without its `block` — and a
+   reader checks the fetched spec against it. The reference `agreements/*.json`,
    `assemblies/*.json` and `members/*.json` are the maintainer's written source and name clauses by
    name; `resolveAuthoredClauseKeys` (`sdk/src/assembly.ts`) maps each name to
    a key over the specs the caller loaded — a local authoring read run before
@@ -138,8 +138,8 @@ every composition.
   which a free string cannot; (3) **renderable** as a real choice control.
 
 - **Extend by a new spec, not by unbounding.** To add an option, register a NEW
-  spec — the clause key is `keccak256` of its pinned canonical bytes, so any
-  change makes it a distinct clause, and `version` is the lineage counter a
+  spec — the clause key is `keccak256` of its canonical bytes without `block`,
+  so any change outside `block` makes it a distinct clause, and `version` is the lineage counter a
   human reads — on the **additive-only** registries (once registered, a clause
   cannot be removed or deactivated). The network only grows: new specs, never
   mutation, never unbounding.

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { PROVENANCE_LEAF_KEY, anchorClauseSpec, canonicalize, type Anchored } from "@figaro-protocol/sdk";
 import {
@@ -104,7 +106,7 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
         expect((await loadClauseSpec(clauseKey, "ipfs://fake")).clauseId).toBe("test-bytes");
     });
 
-    it("the SpecSource adapter carries the key and EVERY hash-load-bearing hint — designFills included (a dropped hint silently strips designer values at publish)", async () => {
+    it("the SpecSource adapter carries the key and EVERY collection hint — designFills included (a dropped hint silently strips designer values at publish)", async () => {
         const key = serve({
             clauseId: "test-designer-fills",
             version: 1,
@@ -140,11 +142,35 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
         expect(getClauseSpecLoadError(clauseKey)).toMatch(/integrity failure/);
     });
 
-    it("checks the bytes fetched and re-canonicalizes nothing: the same document in another byte form is not the clause", async () => {
+    it("checks the spec without its block: another byte form verifies", async () => {
         const spec = { clauseId: "test-bytes-form", version: 1, title: "Form", description: "d", fields: [{ name: "x", type: "string", required: true }] };
         const { clauseKey } = pinSpec(spec);
         setClauseSpecFetcher(async () => JSON.stringify(spec, null, 2));
-        await expect(loadClauseSpec(clauseKey, "ipfs://fake")).rejects.toThrow(/integrity failure/);
+        expect((await loadClauseSpec(clauseKey, "ipfs://fake")).title).toBe("Form");
+    });
+
+    it("verifies a spec fetched under a key whose block differs from the designer's, and reads the block it fetched", async () => {
+        const designed = JSON.parse(readFileSync(path.resolve(process.cwd(), "../clauses/figaro-geolocation.json"), "utf8"));
+        const { clauseKey } = pinSpec(designed);
+        const restyled = structuredClone(designed);
+        restyled.block.design.article = "resolution";
+        restyled.block.runtime.interaction = null;
+        setClauseSpecFetcher(async () => canonicalize(restyled));
+        const loaded = await loadClauseSpec(clauseKey, "ipfs://restyled");
+        expect(loaded.clauseKey).toBe(clauseKey);
+        expect(loaded.block?.design.article).toBe("resolution");
+        expect(getClauseSpecLoadError(clauseKey)).toBeUndefined();
+    });
+
+    it("refuses a spec fetched under the key whose fields differ from the designer's", async () => {
+        const designed = JSON.parse(readFileSync(path.resolve(process.cwd(), "../clauses/figaro-geolocation.json"), "utf8"));
+        const { clauseKey } = pinSpec(designed);
+        const changed = structuredClone(designed);
+        changed.fields[1].type = "integer";
+        setClauseSpecFetcher(async () => canonicalize(changed));
+        await expect(loadClauseSpec(clauseKey, "ipfs://changed")).rejects.toThrow(/integrity failure/);
+        expect(getClauseSpec(clauseKey)).toBeUndefined();
+        expect(getClauseSpecLoadError(clauseKey)).toMatch(/integrity failure/);
     });
 });
 

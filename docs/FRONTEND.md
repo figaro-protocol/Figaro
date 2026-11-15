@@ -318,8 +318,8 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
   plus any third-party registrations);
   spec-consuming surfaces gate on its `loaded`. The cache holds
   `Anchored` specs only: a spec enters after the SDK's `anchorClauseSpec`
-  checked that the fetched bytes hash to the clause key, re-canonicalizing
-  nothing. Every reader — `getClauseSpec`, `clauseIsMandatory`,
+  parsed the fetched bytes and checked that the canonical spec, without its
+  top-level `block`, hashes to the clause key. Every reader — `getClauseSpec`, `clauseIsMandatory`,
   `clauseNestsUnder`, `describeClause` and the rest — takes a clause key; the
   spec's `clauseId` and `version` are its label. The other registry reads type
   the same way — `fetchAssembly`, `fetchAgreement` and

@@ -6,7 +6,7 @@
 //! OpenZeppelin library the direct path calls; this file verifies them with
 //! `merkle::verify_inclusion`, the batch path's verifier, from a leaf rebuilt
 //! the way the guest rebuilds it for a usage claim — the clause's
-//! `clauseKey` (the `keccak256` of the clause spec's pinned bytes, carried
+//! `clauseKey` (the `keccak256` of the clause spec without `block`, carried
 //! as the key itself), clause data hash over the canonical bytes,
 //! `keccak256(keccak256(key ‖ clauseDataHash))`.
 //!

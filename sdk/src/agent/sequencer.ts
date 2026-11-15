@@ -45,8 +45,9 @@ export type SequencerContentKind = "RuntimeWitness" | "ReAssert";
  *  choice (`checkContentInProof`): it hands the relay the clause's
  *  content. */
 export interface SequencerContentProof {
-    /** The clause's spec JSON — the EXACT pinned bytes (`keccak256` of them
-     *  is the clause key the attestation names). */
+    /** The clause's spec JSON without its top-level `block`, canonical —
+     *  `clauseKeyPreimage(spec)`; `keccak256` of these bytes is the clause key
+     *  the attestation names. */
     spec_json: string;
     /** The structured content validated (and, for a RuntimeWitness,
      *  generically ABI-encoded) in-proof. */

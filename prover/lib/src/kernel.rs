@@ -431,10 +431,10 @@ fn validate_provenance_attestation(
 /// (`validate_provenance_attestation`) verifies with no spec.
 ///
 ///   Gate S — spec identity: `spec_json` parses as a `ClauseSpec`, and
-///     `keccak256` of its bytes, hashed verbatim as pinned, equals the
-///     op's `clause_id` — a clause key IS the hash of its spec's pinned
-///     bytes; the spec's own `clauseId` and `version` are presentation and
-///     key nothing. The binding `(clause_id, keccak256(spec_json))`, both
+///     `keccak256` of its bytes, hashed verbatim as carried, equals the
+///     op's `clause_id` — a clause key IS the hash of the canonical spec
+///     without `block`, the bytes the witness carries; the spec's own
+///     `clauseId` and `version` are words inside it and key nothing. The binding `(clause_id, keccak256(spec_json))`, both
 ///     fields equal, is returned for the public-values commitment; the
 ///     on-chain verifier accepts the batch only if they are equal and
 ///     `ClauseRegistry.registered(clause_id)` — so the constraint set is

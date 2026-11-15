@@ -5,11 +5,12 @@
  *
  * For each Layer-A clause spec in `clauses/*.json` (the canonical seed data,
  * the single origin pinned to IPFS and anchored on-chain):
- *   1. pin the spec's CANONICAL JSON bytes (`canonicalize`) to IPFS (real CID), and
+ *   1. pin the spec's CANONICAL JSON bytes (`canonicalize`, `block` included)
+ *      to IPFS (real CID), and
  *   2. `registerClause(clauseKey, contentURI)` on ClauseRegistry, where the
- *      clause key is keccak256 of exactly those pinned bytes
- *      (`computeClauseKey`) — so any reader fetches the bytes from chain state
- *      alone and checks them against the key.
+ *      clause key is keccak256 of the canonical bytes of the spec without its
+ *      top-level `block` (`computeClauseKey`) — so any reader fetches the
+ *      document from chain state alone and checks its spec against the key.
  *
  * The reference assemblies (`assemblies/*.json`) and the SEED_CLAUSES list are
  * AUTHORED by clause name (`name` or `name@version`); every name is resolved
@@ -483,8 +484,9 @@ export async function populateClauses({ publicClient, walletClient, account, reg
     for (const { spec, clauseKey, label } of pending) {
 
         // Pin the spec's CANONICAL bytes (sorted keys at every depth, no
-        // whitespace) — the clause key is keccak256 of exactly these bytes,
-        // and a reader checks the bytes it fetches against the key.
+        // whitespace, `block` included). The clause key is keccak256 of the
+        // canonical spec without `block`; a reader parses what it fetches,
+        // drops `block` and checks the result against the key.
         const contentURI = await pinJSON(ipfsApiUrl, canonicalize(spec));
 
         // Registering = staked intent (K4): every registration posts the

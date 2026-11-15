@@ -72,9 +72,10 @@ pub fn sign_commitment(c: &Commitment, domain: &B256, key: &SigningKey) -> Signa
 
 // ── Witness-spec loading (host-side; the guest sees only the bytes) ──
 
-/// Load a clause's spec from `clauses/` at the repo root as its pinned
-/// bytes — the canonical serialization the reference tooling pins, which
-/// the witness carries and its clause key hashes.
+/// Load a clause's spec from `clauses/` at the repo root as the witness
+/// carries it: the canonical serialization of the spec without its
+/// top-level `block` — the bytes its clause key hashes (the SDK's
+/// `clauseKeyPreimage`).
 pub fn load_spec_json(clause_id_str: &str) -> String {
     let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     p.pop(); // prover/
@@ -82,7 +83,11 @@ pub fn load_spec_json(clause_id_str: &str) -> String {
     p.push("clauses");
     p.push(format!("{clause_id_str}.json"));
     let raw = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
-    canonicalize_json(&raw)
+    let mut value: serde_json::Value = serde_json::from_str(&raw).expect("spec JSON");
+    if let Some(spec) = value.as_object_mut() {
+        spec.remove("block");
+    }
+    canonicalize_json(&value.to_string())
 }
 
 /// The SDK's `canonicalize` — `JSON.stringify` with every object's keys

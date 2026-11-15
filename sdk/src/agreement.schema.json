@@ -22,7 +22,7 @@
         "clauseKey": {
             "type": "string",
             "pattern": "^0x[0-9a-fA-F]{64}$",
-            "description": "A clause key: keccak256 of the spec's pinned canonical bytes, the `ClauseRegistry` key."
+            "description": "A clause key: keccak256 of the canonical bytes of the spec without its top-level block, the `ClauseRegistry` key."
         },
         "clauseName": {
             "type": "string",

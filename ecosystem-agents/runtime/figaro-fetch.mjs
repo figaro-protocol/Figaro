@@ -99,7 +99,7 @@ async function main() {
         const graph = await discovery();
         const clause = graph.getClause(clauseKey);
         if (!clause) fail(`clause ${clauseKey} is not live on the registry`);
-        // Verified against the clause key (the hash of the pinned bytes)
+        // Verified against the clause key (the hash of the spec without `block`)
         // before it is printed: a gateway can serve any bytes.
         const hit = await fetchAnchoredClauseSpec(clause);
         if (hit.absent) fail(`clause ${clauseKey}: no anchored spec at ${clause.contentURI} — ${hit.absent} (absence, not the registry's content)`);

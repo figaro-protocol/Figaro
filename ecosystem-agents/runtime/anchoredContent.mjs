@@ -4,7 +4,7 @@
  * A clause spec, a registered agreement and an assembly are fetched
  * from IPFS through whatever gateway the host configured, and the registries
  * anchor each one on chain: `ClauseRegistry` keys a clause by the hash of its
- * pinned spec bytes (the clause key), `AgreementRegistry` keys a registered
+ * canonical spec without `block` (the clause key), `AgreementRegistry` keys a registered
  * agreement by `agreementHashOf` of its document, `AssemblyRegistry` keys the
  * assembly by its assembly hash. A gateway can serve any bytes, so the
  * bytes are checked against the anchor before anything reads them, by the
@@ -20,7 +20,6 @@
  * permissionless, so it says nothing about whether the bytes are hostile.
  */
 
-import { keccak256 } from "viem";
 import {
     agreementHashOf,
     anchorClauseSpec,
@@ -41,25 +40,22 @@ function parseUntrusted(text) {
 }
 
 /**
- * A live clause's spec, verified against its clause key: keccak256 of the
- * BYTES fetched must equal the key (nothing is re-canonicalized — the key is
- * the hash of exactly the bytes the registrant pinned).
+ * A live clause's spec, verified against its clause key: the fetched bytes
+ * are parsed, and `computeClauseKey` of the spec — keccak256 of its canonical
+ * bytes without the top-level `block` — must equal the key
+ * (`anchorClauseSpec`). The byte form and the `block` are outside the key.
  *
  * @param clause  a `RegisteredClause` from the discovery graph
  *                (`contentURI`, `clauseKey`)
  * @returns `{ raw, text }` (the parsed spec and its text), or `{ absent }`
- *          naming why: not served, not the keyed bytes, or not JSON.
+ *          naming why: not served, or not the spec the key names.
  *          Throws only when every gateway failed to answer.
  */
 export async function fetchAnchoredClauseSpec(clause, options = {}) {
     const bytes = await fetchUriBytes(clause.contentURI, options);
     if (bytes === null) return { absent: "not served" };
-    const digest = keccak256(bytes);
-    if (digest.toLowerCase() !== clause.clauseKey.toLowerCase()) {
-        return { absent: `bytes hash to ${digest}, not the clause key ${clause.clauseKey}` };
-    }
     const raw = anchorClauseSpec(bytes, clause.clauseKey);
-    if (raw === null) return { absent: "not JSON" };
+    if (raw === null) return { absent: `the document served is not the spec the clause key ${clause.clauseKey} names` };
     return { raw, text: new TextDecoder().decode(bytes) };
 }
 
