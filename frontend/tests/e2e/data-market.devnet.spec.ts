@@ -394,8 +394,6 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             payment: parseEther('1'),
             overrides: {
                 [keyOf('figaro-commerce')]: {
-                    currency: token,
-                    payment: parseEther('1').toString(),
                     lineItems: [{ itemId: 'survey-flight', name: 'Aerial survey flight', quantity: 1, unitPrice: parseEther('1').toString() }],
                 },
                 [keyOf('figaro-schedule')]: { windowStart: '2026-08-15T09:00:00Z', windowEnd: '2026-08-15T13:00:00Z' },
@@ -432,8 +430,6 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             payment: parseEther('2'),
             overrides: {
                 [keyOf('figaro-commerce')]: {
-                    currency: token,
-                    payment: parseEther('2').toString(),
                     lineItems: [{ itemId: 'telemetry-stream', name: 'Flight telemetry stream — 30 days', quantity: 1, unitPrice: parseEther('2').toString() }],
                 },
                 [keyOf('figaro-schedule')]: { windowStart: '2026-09-01T00:00:00Z', windowEnd: '2026-10-01T00:00:00Z' },

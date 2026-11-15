@@ -110,8 +110,7 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
 
         // The Node-side spec cache is primed from the chain (beforeAll) — this
         // process never loads the browser's `useClauseSpecs` hook — so
-        // `assertAgreementSignable` below finds the commerce clause's
-        // currency-as-content leaf.
+        // `assertAgreementSignable` below finds every composed clause's spec.
         const TOPOLOGY_CLAUSE = keyOf('figaro-topology');
         const COMMERCE_CLAUSE = keyOf('figaro-commerce');
 

@@ -179,8 +179,6 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
             await primeRegisteredClauseSpecs();
             const { agreement, checkoutHash } = buildOrderAgreement(BUYER.address, SELLER.address, {
                 [keyOf('figaro-commerce')]: {
-                    currency: token,
-                    payment: PAYMENT.toString(),
                     lineItems: [{ itemId: 'batch-events-1', name: 'One batch-resolved order', quantity: 1, unitPrice: PAYMENT.toString() }],
                 },
                 [keyOf('figaro-topology')]: { follows: [] },

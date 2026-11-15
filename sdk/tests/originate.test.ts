@@ -175,7 +175,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
     it("rejects an offer whose agreement was mutated after the buyer signed", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
         // Tamper: change the agreement so it no longer hashes to the committed checkoutHash.
-        offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!.data.payment = "1";
+        offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!.data.lineItems = [];
         expect((await validateOffer(offer, SELLER.address, undefined, undefined, null, BOUND)).ok).toBe(false);
         await expect(counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, SPECS, undefined, undefined, assembly, BOUND)).rejects.toThrow(/agreement does not hash/i);
     });

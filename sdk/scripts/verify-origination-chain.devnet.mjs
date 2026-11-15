@@ -63,7 +63,7 @@ await ctx.sync();
 
 // The SpecSource (registry→IPFS, parseClauseSpec + parseProjectionHints) —
 // passed on both sides so the merkle-leaf sign gate runs on every order of the
-// chain, and so the walk's currency-leaf fill + contradiction throw engage.
+// chain.
 const specViews = [];
 for (const c of ctx.getClauses()) {
     const raw = await tryHydrate(c.contentURI);
@@ -164,7 +164,7 @@ const nodes = orderedIds.map((id, i) => ({
     nodeId: id, seller: NODE_SELLERS[i].address, payment: PAYMENTS[i],
     overrides: {
         ...rootParticulars(id),
-        [commerceClauseId]: { currency: TOKEN, payment: PAYMENTS[i].toString(), lineItems: [{ itemId: `n${i}`, name: `Node ${i}`, quantity: 1, unitPrice: PAYMENTS[i].toString() }] },
+        [commerceClauseId]: { lineItems: [{ itemId: `n${i}`, name: `Node ${i}`, quantity: 1, unitPrice: PAYMENTS[i].toString() }] },
     },
 }));
 

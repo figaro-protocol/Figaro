@@ -193,8 +193,6 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
                 payment,
                 overrides: {
                     [keyOf('figaro-commerce')]: {
-                        currency: token,
-                        payment: payment.toString(),
                         lineItems: [{ itemId: 'probe', name: 'Probe item', quantity: 1, unitPrice: payment.toString() }],
                     },
                 },

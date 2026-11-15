@@ -6,11 +6,9 @@
  * the same one-order shape as the POS reference (commerce + topology +
  * modalities + geolocation), PLUS `figaro-utility-token` composed at ASSEMBLY
  * scope: the designer's own ERC-20 pin. When a composition carries that pin,
- * checkout writes it straight into the commerce clause's currency and no
- * token picker renders — even for a seller who accepts more than one token —
- * and the commitment mirrors it. The provenance the clause exists to
- * record: the commerce leaf and the pin leaf, both committed under the same
- * checkoutHash, carrying the SAME address.
+ * checkout takes the commitment's token from it and no token picker renders —
+ * even for a seller who accepts more than one token. The pin leaf, committed
+ * under the checkoutHash, and the commitment's token carry the SAME address.
  *
  *   discover → the reference is identified by IDENTITY (assemblyHash →
  *              slug), computed from the written assembly with the live
@@ -28,8 +26,8 @@
  *              OrderCommitted event; the catalog's MPMT price on IPFS is
  *              untouched
  *   evidence → the committed agreement (network SSoT, IPFS-pinned) carries
- *              the commerce leaf and the figaro-utility-token leaf with the
- *              SAME currency — the provenance pair
+ *              the figaro-utility-token leaf, whose currency is the token
+ *              the OrderCommitted event names
  *   resolve  → buyer dominance resolves the process; every value leg — bond
  *              lock at commit, net payment at resolve — moves in the pinned
  *              token, read from chain
@@ -315,9 +313,9 @@ test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by de
         const pinLeaf = agreement.clauses.find((s) => s.clause.toLowerCase() === keyOf('figaro-utility-token'));
         expect(commerceLeaf, 'the commerce leaf is committed under checkoutHash').toBeTruthy();
         expect(pinLeaf, 'the figaro-utility-token leaf is committed under checkoutHash').toBeTruthy();
-        expect(String(commerceLeaf!.data.currency).toLowerCase(), 'the commerce leaf carries the pinned currency')
-            .toBe(mockToken.toLowerCase());
-        expect(String(pinLeaf!.data.currency).toLowerCase(), 'the pin leaf matches — the designer-determined provenance')
+        expect(commerceLeaf!.data.currency, 'the commerce leaf restates no token').toBeUndefined();
+        expect(commerceLeaf!.data.payment, 'the commerce leaf restates no payment').toBeUndefined();
+        expect(String(pinLeaf!.data.currency).toLowerCase(), 'the pin leaf carries the designer\'s token, which the commitment names')
             .toBe(mockToken.toLowerCase());
 
         // ── Buyer resolves (BUYER DOMINANCE, atomic). ──
