@@ -1,0 +1,144 @@
+/**
+ * The member pages over a network read that fails or is still in flight
+ * (docs/OPEN_WORLD.md § 1 "No fallbacks — absence is the representation").
+ *
+ * The edit pages under /members/edit/ read the wallet's registration from
+ * `MembersRegistry`, then its profile document from IPFS, through
+ * `useMemberProfileEditor`. Either read failing leaves the page with no text
+ * at all: no form (a blind save would overwrite what the read would have
+ * shown), no error text. A read in flight shows the wait line.
+ *
+ * The wizard steps under /members/ that read the assembly registry show the
+ * registry's assemblies as rows; a failed or empty read shows no row and no
+ * error text.
+ */
+import React from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render } from "@testing-library/react";
+import { ABSENT, PENDING, present } from "@/lib/shared/networkRead";
+
+const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as const;
+
+const m = vi.hoisted(() => ({
+    registration: undefined as unknown,
+    profile: (async () => null) as () => Promise<unknown>,
+    choices: undefined as unknown,
+    onboarding: {
+        state: {},
+        loaded: true,
+        subject: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+        update: () => undefined,
+    },
+}));
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => undefined, replace: () => undefined }) }));
+vi.mock("wagmi", () => ({
+    useAccount: () => ({ address: WALLET, isConnected: true }),
+    useChainId: () => 31337,
+    usePublicClient: () => undefined,
+    useReadContract: () => ({ data: undefined, isLoading: false }),
+}));
+vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
+vi.mock("@/lib/member/useMembersRegistry", () => ({
+    useMemberProfile: () => ({ read: m.registration }),
+    useUpdateProfile: () => ({ updateProfile: async () => undefined, isPending: false, isConfirming: false, isSuccess: false, error: null, hash: undefined }),
+}));
+vi.mock("@/lib/member/profileFetcher", () => ({ fetchMemberProfile: () => m.profile() }));
+vi.mock("@/lib/member/onboardingState", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/member/onboardingState")>()),
+    useOnboardingState: () => m.onboarding,
+}));
+vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => ({ read: m.choices }) }));
+vi.mock("@/lib/member/useRegisteredCatalogs", () => ({ useRegisteredCatalogs: () => ({ read: m.choices }) }));
+vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true }) }));
+
+import { MemberEditProfile } from "@/components/members/MemberEditProfile";
+import { MemberEditAgents } from "@/components/members/MemberEditAgents";
+import { MemberEditBuyer } from "@/components/members/MemberEditBuyer";
+import { MemberEditAssemblies } from "@/components/members/MemberEditAssemblies";
+import { MemberEditCatalog } from "@/components/members/MemberEditCatalog";
+import { OnboardingBuyerForm } from "@/components/members/OnboardingBuyerForm";
+import { OnboardingCatalogForm } from "@/components/members/OnboardingCatalogForm";
+import { OnboardingAssembliesForm } from "@/components/members/OnboardingAssembliesForm";
+
+/** Words a page may not show in a read's place when the read failed or came back empty. */
+const ERROR_TEXT = /\bfail(s|ed|ure)?\b|\berror\b|could ?n[o']t|unavailable|unable|unreachable/i;
+
+const REGISTERED = present({ registered: true, metadataURI: "ipfs://QmProfile", registeredBlock: 1n });
+
+async function flush() {
+    await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+}
+
+const EDIT_PAGES = [
+    ["/members/edit/identity", MemberEditProfile],
+    ["/members/edit/agents", MemberEditAgents],
+    ["/members/edit/buyer", MemberEditBuyer],
+    ["/members/edit/assemblies", MemberEditAssemblies],
+    ["/members/edit/catalog", MemberEditCatalog],
+] as const;
+
+describe("member edit pages: a failed read renders nothing", () => {
+    beforeEach(() => {
+        m.registration = PENDING;
+        m.profile = async () => null;
+        m.choices = PENDING;
+    });
+
+    it.each(EDIT_PAGES)("%s — the registration read fails: no text, no form", async (_route, Page) => {
+        m.registration = ABSENT;
+        const { container } = render(<Page />);
+        await flush();
+        expect(container.textContent).toBe("");
+        expect(container.querySelector("form")).toBeNull();
+    });
+
+    it.each(EDIT_PAGES)("%s — the profile document fails to read: no text, no form", async (_route, Page) => {
+        m.registration = REGISTERED;
+        m.profile = async () => { throw new Error("fetch failed: gateway unreachable"); };
+        const { container } = render(<Page />);
+        await flush();
+        expect(container.textContent).toBe("");
+        expect(container.querySelector("form")).toBeNull();
+    });
+
+    it.each(EDIT_PAGES)("%s — the profile document resolves empty: no text, no form", async (_route, Page) => {
+        m.registration = REGISTERED;
+        m.profile = async () => null;
+        const { container } = render(<Page />);
+        await flush();
+        expect(container.textContent).toBe("");
+    });
+
+    it.each(EDIT_PAGES)("%s — the registration read is in flight: the wait line only", async (_route, Page) => {
+        const { container } = render(<Page />);
+        await flush();
+        expect(container.textContent).toBe("Reading registry…");
+    });
+});
+
+/** Each step, and the selector of what it shows from the read: an assembly
+ *  row, or (the catalog step) the item fields the bound assemblies' clauses ask for. */
+const WIZARD_STEPS = [
+    ["/members/buyer", OnboardingBuyerForm, '[data-testid^="buyer-assembly-"]'],
+    ["/members/catalog", OnboardingCatalogForm, '[data-testid$="-clauses"]'],
+    ["/members/assemblies", OnboardingAssembliesForm, '[data-testid^="seller-assembly-"]'],
+] as const;
+
+describe("member wizard steps: a failed or empty assembly-registry read shows nothing from the read and no error text", () => {
+    it.each(WIZARD_STEPS)("%s — the read fails", async (_route, Step, fromRead) => {
+        m.choices = ABSENT;
+        const { container } = render(<Step />);
+        await flush();
+        expect(container.textContent ?? "").not.toMatch(ERROR_TEXT);
+        expect(container.querySelector(fromRead)).toBeNull();
+    });
+
+    it.each(WIZARD_STEPS)("%s — the read resolves empty", async (_route, Step, fromRead) => {
+        m.choices = present([]);
+        const { container } = render(<Step />);
+        await flush();
+        expect(container.textContent ?? "").not.toMatch(ERROR_TEXT);
+        expect(container.querySelector(fromRead)).toBeNull();
+    });
+});
