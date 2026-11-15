@@ -411,7 +411,7 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   the guest refuses a batch claim keyed on either (`apply_usage_claims`), and
   `applyBatchAccrual` skips both before the registration gate. Every
   registered clause earns under the uniform
-  rule, the two order-mandatory clauses (`figaro-commerce`, `figaro-topology`)
+  rule, the two mandatory-article clauses (`figaro-commerce`, `figaro-topology`)
   among them, for their designer of record — the DAO treasury, which
   registers exactly the mandatory clauses at genesis.
 - **Periods, not checkpoints:** a period's counts are final once it ends;

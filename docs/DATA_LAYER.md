@@ -123,10 +123,10 @@ The reward is UNIFORM (contract surface: `CONTRACTS.md` § "Designer rewards"): 
 alone** — `icbrt(c·d²·1e18)` — with **no tag, no category, no weight multiplier.**
 Neutrality is achieved by the **stake, not by weighting.**
 
-**The must-haves see value, not place.** Every Figaro agreement composes the core
-protocol plus two clauses present in essentially all of them: **topology** (the
-chain — who comes before whom) and **commerce** (who pays whom, in what
-token, how much). The chain emits one part of the trade's economic skeleton
+**The must-haves see value, not place.** Every Figaro order carries **topology**
+(the chain — who comes before whom), a clause every agreement composes, and its
+commitment says who pays whom, in what token, how much; the commerce clause, where
+a designer composes it, adds only the line items the payment buys. The chain emits one part of the trade's economic skeleton
 itself: each order's buyer, seller, token, payment and running total, in the
 sequence the orders were committed (`OrderCommitted`), and each order's payouts
 at resolution (`OrderResolved`). The other part, the edges of who comes before

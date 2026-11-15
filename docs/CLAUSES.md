@@ -24,16 +24,21 @@ adding one. The list of clauses is the directory `clauses/`; each spec's
 
 ## Every clause is a merkle leaf
 
-Every term of an agreement is a clause, and every clause is a
-merkle leaf under `checkoutHash`. A datum that is not a leaf is not a term of
-the agreement. The commitment struct's fields (`currency`, `payment`,
-`expectedCumulativeValue`, `deadline`) are execution data — what `FigaroCore`
-holds and resolves — and never substitute for a term: the agreement's merkle
-root is the data of the process's terms, and a term living only in the struct
-leaves that data incomplete. Execution and terms are different layers; a copy
-across them is the binding, not redundancy, and the sign gate's job is to
-assert leaf == struct. `payment` has both homes — the commerce leaf and the
-struct field — and so does the denomination.
+Every clause is a merkle leaf under `checkoutHash`. The commitment
+struct (`src/core/kernel/CommitmentTypes.sol`, struct `Commitment`) carries
+what every order must carry: the parties, the token (`currency`), the
+`payment`, `expectedCumulativeValue`, the `checkoutHash`, the salt and the
+`deadline`. Both parties sign that struct, and it names the merkle root, so
+the struct and the clauses are signed together. No term that every order
+carries is a registered clause, and no clause restates a field of the
+struct: `figaro-commerce` declares only `lineItems`, and a clause carrying
+`payment` or `currency` beside them declares a field its spec does not, which
+the sign gate refuses. Every reader takes the payment and the token from the
+commitment (or from `OrderCommitted`, which carries both), never from a
+clause. The one comparison the gate makes across the two is the
+denomination pin: where an assembly composes a clause with a designer-filled
+`currency` (`figaro-utility-token`), the gate requires the commitment's token
+to equal it.
 
 Beside the clause leaves, the agreement format carries one reserved leaf: the
 **provenance leaf**, the link from an order to the registered agreement and the
@@ -147,21 +152,25 @@ every kind and skips both on the batch path, `recordAssemblyUsage` refuses an
 `agreementHash` equal to either, and the guest and the relay refuse both the
 same way.
 
-**The mandatory clauses — written in at composition, never picked.** An
-agreement is not an agreement without commerce and topology, so the designer's
-canvas writes them into every agreement it registers before the designer
-composes anything, and the designer composes the rest. Which clauses they are
-is read from `ClauseRegistry`: the DAO wallet's live registrations whose spec
-declares the mandatory article at agreement scope, one per shape, the later
-registration winning where the DAO holds two of one shape (`mandatoryClauses`
-in the SDK; the frontend's `mandatoryClausesForCanvas` reads the DAO's wallet
-from the chain's deployment record). Mandatory is a shape, never a name:
-commerce is the clause declaring `payment`, `currency` and `lineItems` as
-content, topology the clause declaring `follows`
-(`specIsCommerceShape`, `specIsTopologyShape`), and every reader already finds
-them by those fields. `composeOrderAgreement` refuses an agreement without one
-clause of each shape, or with two; a registered agreement bound as is must
-carry both shapes itself, whatever their keys. A mandatory-article
+**The mandatory clauses — written in at composition, never picked.** The
+designer's canvas writes the mandatory clauses into every agreement it
+registers before the designer composes anything, and the designer composes
+the rest. Which clauses they are is read from `ClauseRegistry`: the DAO
+wallet's live registrations whose spec declares the mandatory article at
+agreement scope, one per shape, the later registration winning where the DAO
+holds two of one shape (`mandatoryClauses` in the SDK; the frontend's
+`mandatoryClausesForCanvas` reads the DAO's wallet from the chain's
+deployment file). The reference specs give that article to `figaro-topology` and
+`figaro-commerce`. Only topology is required: an agreement is not an
+agreement without the orders it follows, and topology is the clause declaring
+`follows` (`specIsTopologyShape`), a shape, never a name.
+`composeOrderAgreement` refuses an agreement without one clause of topology's
+shape, or with two; a registered agreement bound as is must carry it itself,
+whatever its key. No clause of commerce is required, because the commitment
+carries the payment and the token: an agreement that composes no clause
+declaring `lineItems` still carries its payment, and what it does not commit
+is the list of what the payment buys. The designer's review screen names each
+such order before publishing. A mandatory-article
 registration by any other wallet is an ordinary clause. A reference agreement file
 (`agreements/*.json`) names the two clauses like any other. Checkout fills
 values and writes the topology; it never adds or drops a clause. Each order's agreement is the agreement's hydrated
@@ -376,11 +385,13 @@ value, so a sparser third-party spec surfaces fine.
 section a clause reads under. Classification reads the article, never the
 field shape:
 
-- **`mandatory`** — committed content on every order (`figaro-commerce`,
-  `figaro-topology`, both at agreement scope), never selected one by one; the
-  designer's canvas writes the DAO's live ones into every agreement
-  (§ "The registered agreement and the assembly"). No mandatory clause is at
-  assembly scope, and one registered there joins no composition.
+- **`mandatory`** — never selected one by one; the designer's canvas writes the
+  DAO's live ones into every agreement (§ "The registered agreement and the
+  assembly"). The reference specs give it to `figaro-topology` and
+  `figaro-commerce`, both at agreement scope; the build requires only
+  topology's shape, so an agreement composed by another tool may leave
+  commerce out. No mandatory clause is at assembly scope, and one registered
+  there joins no composition.
 - **`attestations`** — runtime transfer ladders the responsible party advances
   (`figaro-merchant-process`, `figaro-courier-process`; a supply chain runs the
   same structure at length). These are coordination attestations between

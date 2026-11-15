@@ -162,8 +162,6 @@ function payloadFor(
 ): CommitmentPayload {
     const { agreement: built } = buildOrderAgreement(BUYER, SELLER, {
         [keyOf("figaro-commerce")]: {
-            currency: CURRENCY,
-            payment: "1000",
             lineItems: [{ itemId: "item-1", name: "Item", quantity: 1, unitPrice: "1000" }],
         },
         ...(consent === null ? {} : { [keyOf("figaro-consent")]: consent }),

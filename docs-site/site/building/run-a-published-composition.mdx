@@ -382,7 +382,8 @@ for (const planned of planAssemblyOrders(hydrated)) {
         }
         if (Object.keys(fill).length) overrides[key] = fill;
     }
-    overrides[clauseDeclaring(base, "lineItems")] = { currency: TOKEN, payment: payment.toString(),
+    // The payment and the token are the commitment's; the clause carries the line only.
+    overrides[clauseDeclaring(base, "lineItems")] = {
         lineItems: [{ itemId: line.itemId, name: line.name, quantity: 1, unitPrice: line.unitPrice }] };
     nodes.push({ nodeId: planned.nodeId, seller, payment, overrides });
 }

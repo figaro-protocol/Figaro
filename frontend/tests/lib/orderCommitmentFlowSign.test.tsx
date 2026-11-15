@@ -111,8 +111,6 @@ const { useOrderCommitmentFlow } = await import("@/lib/checkout/orderCommitmentF
 function preview(payment = 100n, expectedCumulativeValue = 300n) {
     const { agreement } = buildOrderAgreement(BUYER, SELLER, {
         [keyOf("figaro-commerce")]: {
-            currency: CURRENCY,
-            payment: payment.toString(),
             lineItems: [{ itemId: "item-1", name: "Item", quantity: 1, unitPrice: payment.toString() }],
         },
     }, specSource());

@@ -12,8 +12,8 @@
         "description": { "type": "string", "description": "The designer's longer telling; never part of the key." },
         "clauses": {
             "type": "object",
-            "minProperties": 2,
-            "description": "The composed clauses: each key names one clause (WRITTEN: its name or `name@version`; REGISTERED: its 0x-prefixed 32-byte clause key), each value is the designer's fills for it, `{}` when the designer only selects it. At least two: one clause of commerce's shape and one of topology's, the mandatory article every order carries.",
+            "minProperties": 1,
+            "description": "The composed clauses: each key names one clause (WRITTEN: its name or `name@version`; REGISTERED: its 0x-prefixed 32-byte clause key), each value is the designer's fills for it, `{}` when the designer only selects it. At least one: a clause of topology's shape, which every order carries. The payment and the token are the commitment's, so no clause of commerce is required.",
             "propertyNames": { "$ref": "#/$defs/clauseRef" },
             "additionalProperties": { "$ref": "#/$defs/fills" }
         }

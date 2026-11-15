@@ -383,10 +383,11 @@ export function useDispatchRace() {
             ctxRef.current = { nodeId: racedNodeId, salts, deadline, decimals: checkout.tokenDecimals };
 
             // One dry walk per candidate — the raced node's order IS the draft.
-            // On the quotes leg every draft prices at the buyer's CEILING; the
-            // priced fields are derived from the built agreement (the same
-            // spec-routed lookup the fills use) and attached as the quote
-            // request's terms.
+            // On the quotes leg every draft prices at the buyer's CEILING: the
+            // quote moves the commitment's payment, and the copies of the
+            // figure inside the clauses (derived from the built agreement by
+            // the same spec-routed lookup the fills use, possibly none) are
+            // attached as the quote request's terms.
             const drafts: RaceCandidateState[] = [];
             for (const { address: candidate, endpoint, pricing } of routed) {
                 const item = { id: pricing.item!.id, name: pricing.item!.name };
@@ -404,11 +405,7 @@ export function useDispatchRace() {
                 if (!order) throw new Error(`The walk produced no order for node "${racedNodeId}".`);
                 let payload: CommitmentPayload = { commitment: order.commitment, agreement: order.agreement };
                 if (args.quote) {
-                    const pricedFields = derivePricedFields(order.agreement.clauses, specs);
-                    if (pricedFields.length === 0) {
-                        throw new Error("This order composes no commercial clause to quote against.");
-                    }
-                    payload = { ...payload, quoteRequest: { pricedFields } };
+                    payload = { ...payload, quoteRequest: { pricedFields: derivePricedFields(order.agreement.clauses, specs) } };
                 }
                 drafts.push({
                     address: candidate,

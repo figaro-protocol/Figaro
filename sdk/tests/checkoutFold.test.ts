@@ -111,18 +111,17 @@ describe("fillCatalogueMeasures — the measures a spec declares, read from each
 });
 
 const TOKEN = "0x000000000000000000000000000000000000000a" as const;
-const OTHER_TOKEN = "0x000000000000000000000000000000000000000b" as const;
 const COMMERCE_AND_PIN = specSourceFromFixtures(["figaro-commerce", "figaro-utility-token"]);
 const PIN_ONLY = specSourceFromFixtures(["figaro-utility-token"]);
 
-describe("fillCommerceClause — the order's resolution terms, written by declared field", () => {
-    it("writes the resolved currency beside the payment — both are TERMS, both are leaves", () => {
-        const out = fillCommerceClause({ [keyOf("figaro-commerce")]: {} }, 1000n, TOKEN, COMMERCE);
-        expect(out[keyOf("figaro-commerce")]).toMatchObject({ currency: TOKEN, payment: "1000" });
+describe("fillCommerceClause — the order's line items, written by declared field", () => {
+    it("writes no payment and no token: both are the commitment's", () => {
+        const out = fillCommerceClause({ [keyOf("figaro-commerce")]: {} }, COMMERCE);
+        expect(out[keyOf("figaro-commerce")]).toEqual({});
     });
 
     it("writes line items when supplied, stripped to the clause's closed shape", () => {
-        const out = fillCommerceClause({ [keyOf("figaro-commerce")]: {} }, 1000n, TOKEN, COMMERCE, [
+        const out = fillCommerceClause({ [keyOf("figaro-commerce")]: {} }, COMMERCE, [
             line({ itemId: "burger-001", name: "Cheeseburger", quantity: 2, unitPrice: "500", catalogItem: { massGrams: 400 } }),
         ]);
         expect(out[keyOf("figaro-commerce")].lineItems).toEqual([
@@ -132,7 +131,7 @@ describe("fillCommerceClause — the order's resolution terms, written by declar
 
     it("no-ops when no commerce clause is composed", () => {
         const clauses: ClauseFields = { [keyOf("figaro-cargo")]: {} };
-        expect(fillCommerceClause(clauses, 1000n, TOKEN, CARGO)).toEqual(clauses);
+        expect(fillCommerceClause(clauses, CARGO, [line({})])).toEqual(clauses);
     });
 });
 
@@ -141,25 +140,22 @@ describe("readUtilityTokenPin — routed on the DESIGN FILL, never on first matc
         expect(readUtilityTokenPin({ [keyOf("figaro-utility-token")]: { currency: TOKEN } }, PIN_ONLY)).toBe(TOKEN);
     });
 
-    it("never mistakes the commerce leaf for a pin, whichever clause is composed first", () => {
-        // The disambiguation the restored commerce `currency` demands: BOTH
-        // clauses declare a currency field, so a first-match lookup would
-        // return the order's own resolution term as if the designer had
-        // pinned it. Asserted in both key orders — a first-match bug passes
-        // one and fails the other.
+    it("finds the pin whichever clause is composed first", () => {
+        // Asserted in both key orders — a first-match bug passes one and
+        // fails the other.
         expect(readUtilityTokenPin({
-            [keyOf("figaro-commerce")]: { currency: OTHER_TOKEN, payment: "1", lineItems: [] },
+            [keyOf("figaro-commerce")]: { lineItems: [] },
             [keyOf("figaro-utility-token")]: { currency: TOKEN },
         }, COMMERCE_AND_PIN)).toBe(TOKEN);
         expect(readUtilityTokenPin({
             [keyOf("figaro-utility-token")]: { currency: TOKEN },
-            [keyOf("figaro-commerce")]: { currency: OTHER_TOKEN, payment: "1", lineItems: [] },
+            [keyOf("figaro-commerce")]: { lineItems: [] },
         }, COMMERCE_AND_PIN)).toBe(TOKEN);
     });
 
     it("is undefined for an unpinned assembly composing only commerce", () => {
         expect(readUtilityTokenPin({
-            [keyOf("figaro-commerce")]: { currency: OTHER_TOKEN, payment: "1", lineItems: [] },
+            [keyOf("figaro-commerce")]: { lineItems: [] },
         }, COMMERCE_AND_PIN)).toBeUndefined();
     });
 
@@ -380,16 +376,12 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
     const HASH = `0x${"ab".repeat(32)}` as const;
 
     it("fillCommerceClause", () => {
-        const { specs, fake } = lookalike([GEO], GEO, ["lineItems", "payment"]);
-        expect(fillCommerceClause({ [REAL]: {} }, 1000n, TOKEN, specs)).toEqual({ [REAL]: {} });
-        expect(fillCommerceClause({ [fake]: {} }, 1000n, TOKEN, specs)[fake]).toMatchObject({ payment: "1000" });
-    });
-
-    it("fillCommerceClause writes currency only where the composed key's spec declares it as content", () => {
-        const { specs, fake } = lookalike(["figaro-commerce"], "figaro-commerce", [], { design: { fills: ["currency"] } });
-        expect(fillCommerceClause({ [keyOf("figaro-commerce")]: {} }, 1000n, TOKEN, specs)[keyOf("figaro-commerce")])
-            .toMatchObject({ currency: TOKEN, payment: "1000" });
-        expect(fillCommerceClause({ [fake]: {} }, 1000n, TOKEN, specs)[fake]).not.toHaveProperty("currency");
+        const { specs, fake } = lookalike([GEO], GEO, ["lineItems"]);
+        const lines = [line({ itemId: "i", name: "Item", quantity: 1, unitPrice: "1000" })];
+        expect(fillCommerceClause({ [REAL]: {} }, specs, lines)).toEqual({ [REAL]: {} });
+        expect(fillCommerceClause({ [fake]: {} }, specs, lines)[fake]).toEqual({
+            lineItems: [{ itemId: "i", name: "Item", quantity: 1, unitPrice: "1000" }],
+        });
     });
 
     it("derivePricedFields reads each clause by its key", () => {
@@ -397,7 +389,6 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
         const data = { lineItems: [{ itemId: "i" }] };
         expect(derivePricedFields([{ clause: REAL, data }], specs)).toEqual([]);
         expect(derivePricedFields([{ clause: fake, data }], specs)).toEqual([
-            { clause: fake, path: "payment" },
             { clause: fake, path: "lineItems.0.unitPrice" },
         ]);
     });

@@ -206,9 +206,11 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
         expect(agreementHash).toBe(agreementHashOf({ clauses: document.clauses }));
         expect(agreementHashOf(document)).toBe(agreementHash);
         expect(() => composeAuthoredAgreement({ name: "none" }, specs)).toThrow(/no clauses/);
-        // An agreement is not an agreement without commerce and topology.
-        expect(() => composeAuthoredAgreement({ clauses: { "figaro-handoff": {} } }, specs)).toThrow(/no clause of commerce's shape/);
+        // An agreement is not an agreement without topology; commerce is the
+        // designer's choice, since the commitment carries the payment.
         expect(() => composeAuthoredAgreement({ clauses: { "figaro-commerce": {}, "figaro-handoff": {} } }, specs)).toThrow(/no clause of topology's shape/);
+        expect(composeAuthoredAgreement({ clauses: { "figaro-topology": {}, "figaro-handoff": {} } }, specs).document.clauses)
+            .toEqual({ [keyOf("figaro-topology")]: {}, [keyOf("figaro-handoff")]: {} });
     });
 
     it("composes a set of authored agreements by name", () => {
@@ -244,13 +246,13 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
         for (const entry of assembly.agreements) expect(agreementHashOf(agreements[entry.agreementHash])).toBe(entry.agreementHash);
     });
 
-    it("refuses a entry that names no agreement, an unknown one, inline clauses, or an agreement short of the mandatory clauses", () => {
+    it("refuses a entry that names no agreement, an unknown one, inline clauses, or an agreement without topology", () => {
         const bare = base;
         expect(() => assembleAuthored({ agreements: [{ id: "o" }] }, { bare }, specs)).toThrow(/names no agreement/);
         expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "nope" }] }, { bare }, specs)).toThrow(/not among the authored agreements/);
         expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "bare", clauses: {} }] }, { bare }, specs)).toThrow(/inline/);
-        // A bound agreement carries one clause of commerce's shape and one of
-        // topology's, or is refused: an agreement is not an agreement without them.
+        // A bound agreement carries one clause of topology's shape, or is
+        // refused: an agreement is not an agreement without the orders it follows.
         const short = { clauses: { [keyOf("figaro-handoff")]: {}, [keyOf("figaro-commerce")]: {} } };
         expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "short" }] }, { short, bare }, specs))
             .toThrow(/o: agreement "short": no clause of topology's shape/);

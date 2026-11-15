@@ -66,40 +66,22 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(parseClauseSpec(commerceSpecRaw).ok).toBe(true);
     });
 
-    it("figaro-commerce accepts an order with its denomination and line items", () => {
+    it("figaro-commerce accepts an order's line items, and an empty list", () => {
         const parsed = parseClauseSpec(commerceSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        const ok = validateContent({
-            currency: "0x" + "ab".repeat(20),
-            payment: "1000000000000000000",
+        expect(validateContent({
             lineItems: [{ itemId: "burger-001", name: "Cheeseburger", quantity: 2, unitPrice: "500000000000000000" }],
-        }, parsed.spec);
-        expect(ok.ok).toBe(true);
+        }, parsed.spec).ok).toBe(true);
+        expect(validateContent({ lineItems: [] }, parsed.spec).ok).toBe(true);
     });
 
-    it("figaro-commerce requires the currency — the denomination is a TERM, a merkle leaf like every other term", () => {
+    it("figaro-commerce declares only the line items: the payment and the token are the commitment's", () => {
+        expect((commerceSpecRaw as { fields: { name: string }[] }).fields.map((f) => f.name)).toEqual(["lineItems"]);
         const parsed = parseClauseSpec(commerceSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        // The commitment's currency field MIRRORS this leaf; a term
-        // living only in the struct would leave the evidence record
-        // incomplete (docs/CLAUSES.md § "Every clause is a merkle leaf").
-        expect(validateContent({
-            payment: "1000000000000000000",
-            lineItems: [],
-        }, parsed.spec).ok).toBe(false);
-        // …and it is a token ADDRESS, not prose.
-        expect(validateContent({
-            currency: "the MARIA token",
-            payment: "1000000000000000000",
-            lineItems: [],
-        }, parsed.spec).ok).toBe(false);
-    });
-
-    it("figaro-commerce declares its currency as plain CONTENT, never a designer fill (the pin-routing seam)", () => {
-        // The disambiguation the SDK's pin lookup routes on: commerce's
-        // currency is checkout-written content; the utility-token clause's is
-        // a design fill. Same field name, two different terms.
-        expect((commerceSpecRaw as { block: { design: { fills: string[] } } }).block.design.fills).toEqual([]);
+        for (const restated of [{ payment: "1000000000000000000" }, { currency: "0x" + "ab".repeat(20) }]) {
+            expect(validateContent({ ...restated, lineItems: [] }, parsed.spec).ok).toBe(false);
+        }
     });
 
     // ── figaro-content-handoff ──
@@ -137,16 +119,6 @@ describe("example clause specs — parse + validate sample content", () => {
         expect(validateContent({ currency: "the MARIA token" }, parsed.spec).ok).toBe(false);
     });
 
-    it("figaro-commerce rejects zero payment", () => {
-        const parsed = parseClauseSpec(commerceSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        const result = validateContent({
-            currency: "0x" + "ab".repeat(20),
-            payment: "0",
-            lineItems: [],
-        }, parsed.spec);
-        expect(result.ok).toBe(false);
-    });
 
     // ── figaro-geolocation ──
 

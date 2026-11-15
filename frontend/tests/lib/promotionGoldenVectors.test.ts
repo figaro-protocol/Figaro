@@ -70,8 +70,6 @@ const PLAINTEXT_KEY_B64 = "Zml4ZWQtaGFuZG9mZi1rZXktZm9yLXZlY3RvcnM";
 
 function commerceData() {
     return {
-        currency: "0x0000000000000000000000000000000000000001",
-        payment: "1",
         lineItems: [{ itemId: "item-1", name: "Test item", quantity: 1, unitPrice: "1" }],
     };
 }
@@ -95,8 +93,8 @@ function projectionCases() {
 }
 
 /** Two-node parent-edged design (root + child) exercising the mandatory
- *  clauses the canvas writes into every agreement (the DAO's commerce and
- *  topology, nothing picked), the local relabeling, the sparse-version
+ *  clauses the canvas writes into every agreement (the DAO's live mandatory
+ *  clauses, nothing picked), the local relabeling, the sparse-version
  *  normalization, and the ASSEMBLY-SCOPE placement (applicable-law declares
  *  design.scope "assembly" and no design fill — the designer composes it once
  *  at the assembly level with no values, and the buyer fills it at checkout). */

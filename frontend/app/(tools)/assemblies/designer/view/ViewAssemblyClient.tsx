@@ -708,6 +708,20 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                             </ul>
                         </div>
                     )}
+                    {review?.ok && review.withoutLineItems.length > 0 && (
+                        <p
+                            className="text-xs text-warning-fg mt-2 max-w-3xl leading-relaxed"
+                            data-testid="review-without-line-items"
+                        >
+                            {review.entries
+                                .map((entry, index) => (review.withoutLineItems.includes(entry.orderId) ? `Order ${index + 1}` : null))
+                                .filter((label): label is string => label !== null)
+                                .join(", ")}
+                            : the agreement composes no line items. Each order still commits its payment and its
+                            token in the commitment, but the list of what the payment buys is not committed, so no
+                            party can later prove which items the payment covered.
+                        </p>
+                    )}
                     {review?.ok && review.mandatory.length > 0 && (
                         <div className="mt-2 max-w-3xl space-y-1" data-testid="review-mandatory-clauses">
                             <p className="text-xs text-warning-fg leading-relaxed">

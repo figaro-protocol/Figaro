@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createWalletClient, http } from "viem";
+import { createWalletClient, http, recoverTypedDataAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { buildBuyerOffer, type OfferPolicy } from "../src/agent/originate.js";
 import {
@@ -12,6 +12,7 @@ import { InProcessChannel, type CommitmentPayload, type PricedField } from "../s
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { buildDomain, hashCommitmentStruct, COMMITMENT_TYPES } from "../src/commitments.js";
 import { computeCheckoutHash } from "../src/agreement.js";
+import { derivePricedFields } from "../src/checkoutPlan.js";
 import type { Address, Hex } from "../src/types.js";
 import { hydrateAuthored, profileBinding } from "./hydrate.js";
 import { forgeBuyerOffer } from "./forgeOffer.js";
@@ -58,7 +59,7 @@ const GATE = { specs: SPECS, readDesign: async () => assembly };
 async function draftFor(candidate: Address, payment: bigint): Promise<CommitmentPayload> {
     const offer = await buildBuyerOffer(buyerW, {
         assembly: assembly, seller: candidate, currency: CURRENCY, payment, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
-        overrides: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: payment.toString(), lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: payment.toString() }] } },
+        overrides: { [keyOf("figaro-commerce")]: { lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: payment.toString() }] } },
         specs: SPECS,
     });
     const { buyerSig: _stripped, ...draft } = offer;
@@ -187,21 +188,18 @@ describe("selectRaceWinner", () => {
 // ── RFQ — the quote leg ──────────────────────────────────────────────────────
 
 const PRICED: readonly PricedField[] = [
-    { clause: keyOf("figaro-commerce"), path: "payment" },
     { clause: keyOf("figaro-commerce"), path: "lineItems.0.unitPrice" },
 ];
 const CEILING = 1000n;
 
-/** A quote request to `candidate` at the buyer's ceiling — commerce carries
- *  the priced fields the request names. */
+/** A quote request to `candidate` at the buyer's ceiling — the commitment's
+ *  payment is the quoted figure, and the line's unit price carries a copy. */
 function requestFor(candidate: Address): CommitmentPayload {
     return buildQuoteRequest({
         assembly: assembly, buyer: BUYER.address, seller: candidate, currency: CURRENCY,
         ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n,
         overrides: {
             [keyOf("figaro-commerce")]: {
-                currency: CURRENCY,
-                payment: "0",
                 lineItems: [{ itemId: "job", name: "Bespoke job", quantity: 1, unitPrice: "0" }],
             },
         },
@@ -219,7 +217,7 @@ describe("buildQuoteRequest + substitutePricedValue", () => {
         expect(req.commitment.expectedCumulativeValue).toBe(CEILING);
         expect(req.quoteRequest?.pricedFields).toEqual(PRICED);
         const commerce = req.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!;
-        expect(commerce.data.payment).toBe(CEILING.toString());
+        expect(commerce.data).not.toHaveProperty("payment");
         expect((commerce.data.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe(CEILING.toString());
         expect((await validateDraft(req, COURIER_A.address, undefined, undefined, null, BOUND)).ok).toBe(true);
     });
@@ -229,7 +227,7 @@ describe("buildQuoteRequest + substitutePricedValue", () => {
         expect(() => substitutePricedValue(req.agreement, [{ clause: keyOf("figaro-commerce"), path: "surcharge" }], 5n))
             .toThrow(/no field "surcharge"/);
         const nope = `0x${"9e".repeat(32)}` as const;
-        expect(() => substitutePricedValue(req.agreement, [{ clause: nope, path: "payment" }], 5n))
+        expect(() => substitutePricedValue(req.agreement, [{ clause: nope, path: "lineItems.0.unitPrice" }], 5n))
             .toThrow(new RegExp(`no "${nope}" clauseEntry`));
     });
 });
@@ -242,7 +240,7 @@ describe("quoteDraft (real signatures, no chain)", () => {
         expect(reply?.commitment.payment).toBe(700n);
         expect(reply?.commitment.expectedCumulativeValue).toBe(700n);
         const commerce = reply!.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!;
-        expect(commerce.data.payment).toBe("700");
+        expect(commerce.data).not.toHaveProperty("payment");
         expect((commerce.data.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe("700");
         expect((await verifyQuoteReply(reply!, req, CTX)).ok).toBe(true);
     });
@@ -323,6 +321,47 @@ describe("verifyQuoteReply — the reconstruction gate", () => {
     });
 });
 
+describe("an agreement that composes no line items is quoted and committed on the commitment's payment", () => {
+    // No clause declares `lineItems`: the quoted figure lives in the
+    // commitment's payment alone, and nothing inside a clause is priced.
+    const bare = hydrateAuthored({
+        agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-topology")]: { follows: [] } } }],
+    });
+    const BARE = profileBinding(bare);
+    const TOPOLOGY_ONLY = specSourceFromFixtures(["figaro-topology"]);
+
+    it("the buyer drafts at its ceiling, the candidate quotes, the buyer verifies and signs the quoted commitment", async () => {
+        const unpriced = buildQuoteRequest({
+            assembly: bare, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
+            ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: [], deadline: 1_900_000_000n,
+        });
+        const priced = derivePricedFields(unpriced.agreement.clauses, TOPOLOGY_ONLY);
+        expect(priced).toEqual([]);
+        const req = buildQuoteRequest({
+            assembly: bare, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
+            ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: priced, deadline: 1_900_000_000n,
+        });
+        expect(req.commitment.payment).toBe(CEILING);
+        expect(req.quoteRequest).toEqual({ pricedFields: [] });
+
+        const reply = await quoteDraft(courierAW, req, CTX, TOPOLOGY_ONLY, () => 700n, quotePolicy, bare, BARE);
+        expect(reply?.commitment.payment).toBe(700n);
+        expect(reply?.commitment.checkoutHash).toBe(req.commitment.checkoutHash);
+        expect((await verifyQuoteReply(reply!, req, CTX)).ok).toBe(true);
+
+        // The buyer commits the quoted struct: its signature and the
+        // candidate's recover over one struct, the one the Core accepts.
+        const buyerSig = await buyerW.signTypedData({
+            account: BUYER, domain: buildDomain(CHAIN, CORE),
+            types: COMMITMENT_TYPES, primaryType: "Commitment", message: reply!.commitment,
+        });
+        const typed = { domain: buildDomain(CHAIN, CORE), types: COMMITMENT_TYPES, primaryType: "Commitment" as const, message: reply!.commitment };
+        expect((await recoverTypedDataAddress({ ...typed, signature: buyerSig })).toLowerCase()).toBe(BUYER.address.toLowerCase());
+        expect((await recoverTypedDataAddress({ ...typed, signature: reply!.sellerSig as Hex })).toLowerCase())
+            .toBe(COURIER_A.address.toLowerCase());
+    });
+});
+
 describe("requestCounterSignatures over the coordination channel", () => {
     it("fans race drafts out through mounted handlers; the cheapest posted countersigner wins, silence drops out", async () => {
         const channel = new InProcessChannel();
@@ -368,19 +407,23 @@ describe("requestQuotes over the coordination channel", () => {
 
 describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Every clause is a merkle leaf')", () => {
     const BAD_CURRENCY = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
-    const fullCommerce = (currency: Address, payment: string) => ({
+    const fullCommerce = (payment: string) => ({
         [keyOf("figaro-commerce")]: {
-            currency, payment,
             lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: payment }],
         },
     });
-    /** A draft whose commerce LEAF contradicts the struct — the tamper shape
-     *  only a SpecSource can see (the struct alone is allowlist-clean). */
+    /** Commerce restating a token — a field its spec does not declare. */
+    const restatedCommerce = (currency: Address, payment: string) => ({
+        [keyOf("figaro-commerce")]: { ...fullCommerce(payment)[keyOf("figaro-commerce")], currency },
+    });
+    /** A draft whose commerce clause restates another token than the
+     *  struct's — the tamper shape only a SpecSource can see (the struct
+     *  alone is allowlist-clean). */
     async function mismatchedDraft(candidate: Address): Promise<CommitmentPayload> {
         const offer = await forgeBuyerOffer(buyerW, {
             assembly: assembly, seller: candidate, currency: CURRENCY, payment: 1000n,
             chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
-            overrides: fullCommerce(BAD_CURRENCY, "1000"),
+            overrides: restatedCommerce(BAD_CURRENCY, "1000"),
         });
         const { buyerSig: _stripped, ...draft } = offer;
         return draft;
@@ -389,7 +432,7 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
     it("without specs the contradiction is invisible; with specs validateDraft refuses it", async () => {
         const draft = await mismatchedDraft(COURIER_A.address);
         expect((await validateDraft(draft, COURIER_A.address, undefined, undefined, null, BOUND)).ok).toBe(true);
-        expect((await validateDraft(draft, COURIER_A.address, undefined, SPECS, null, BOUND)).reason).toMatch(/denomination/i);
+        expect((await validateDraft(draft, COURIER_A.address, undefined, SPECS, null, BOUND)).reason).toMatch(/unknown field "currency"/);
     });
 
     it("counterSignOffer, counterSignDraft and quoteDraft take specs as a required parameter: omitting it is a compile error", () => {
@@ -414,14 +457,14 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
     it("counterSignDraft THROWS on the contradiction when specs are supplied — the candidate never countersigns it", async () => {
         const draft = await mismatchedDraft(COURIER_A.address);
         await expect(counterSignDraft(courierAW, draft, CTX, SPECS, () => true, policy, null, BOUND))
-            .rejects.toThrow(/denomination/i);
+            .rejects.toThrow(/unknown field "currency"/);
     });
 
     it("a clean draft still countersigns with the gate on (specs via the mountable handler too)", async () => {
         const offer = await buildBuyerOffer(buyerW, {
             assembly: assembly, seller: COURIER_A.address, currency: CURRENCY, payment: 1000n,
             chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
-            overrides: fullCommerce(CURRENCY, "1000"), specs: SPECS,
+            overrides: fullCommerce("1000"), specs: SPECS,
         });
         const { buyerSig: _stripped, ...draft } = offer;
         // The gate reads the design the draft names: without it the
@@ -443,10 +486,10 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
         const tampered = buildQuoteRequest({
             assembly: assembly, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
             ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n,
-            overrides: fullCommerce(BAD_CURRENCY, "0"),
+            overrides: restatedCommerce(BAD_CURRENCY, "0"),
         });
         await expect(quoteDraft(courierAW, tampered, CTX, SPECS, () => 700n, quotePolicy, assembly, BOUND))
-            .rejects.toThrow(/denomination/i);
+            .rejects.toThrow(/unknown field "currency"/);
     });
 
     /** `payload` with the topology clause the registered agreement composes
@@ -462,7 +505,7 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
         const offer = await buildBuyerOffer(buyerW, {
             assembly: assembly, seller: COURIER_A.address, currency: CURRENCY, payment: 1000n,
             chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
-            overrides: fullCommerce(CURRENCY, "1000"), specs: SPECS,
+            overrides: fullCommerce("1000"), specs: SPECS,
         });
         const { buyerSig: _stripped, ...draft } = offer;
         const short = withoutTopology(draft);

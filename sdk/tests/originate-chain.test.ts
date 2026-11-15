@@ -34,7 +34,7 @@ const assembly = hydrateAuthored({
     ],
 });
 const nodes: ChainNodeSpec[] = [
-    { nodeId: "agreement-0", seller: S0.address, payment: 1000n, overrides: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "1000" }] } } },
+    { nodeId: "agreement-0", seller: S0.address, payment: 1000n, overrides: { [keyOf("figaro-commerce")]: { lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "1000" }] } } },
     { nodeId: "agreement-1", seller: S1.address, payment: 500n },
     { nodeId: "agreement-2", seller: S2.address, payment: 300n },
 ];
@@ -93,20 +93,20 @@ describe("buildChainOffers — the value-added chain walk", () => {
             .rejects.toThrow(/buildChainOffers: refusing to sign without the clause specs/);
     });
 
-    it("the walk's currency-leaf fill + sign gate run on every order (merkle-leaf seam)", async () => {
+    it("the sign gate runs on every order, and no clause carries the token (merkle-leaf seam)", async () => {
         const offers = await buildChainOffers(buyerW, params);
         const commerce = offers[0].offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"));
-        expect(commerce?.data?.currency).toBe(CURRENCY);
+        expect(commerce?.data).not.toHaveProperty("currency");
+        expect(commerce?.data).not.toHaveProperty("payment");
         expect(offers.every((o) => !!o.offer.buyerSig)).toBe(true);
-        // A contradicting root override refuses to build — the walk throws
-        // before any signature (no leaf may disagree with the struct).
+        // A root override restating a token refuses to sign — the gate
+        // throws before any signature (the spec declares no such field).
         const badNodes: ChainNodeSpec[] = [
             {
                 ...nodes[0],
                 overrides: {
                     [keyOf("figaro-commerce")]: {
                         currency: "0xdddddddddddddddddddddddddddddddddddddddd",
-                        payment: "1000",
                         lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "1000" }],
                     },
                 },
@@ -114,7 +114,7 @@ describe("buildChainOffers — the value-added chain walk", () => {
             nodes[1], nodes[2],
         ];
         await expect(buildChainOffers(buyerW, { ...params, nodes: badNodes, specs: SPECS }))
-            .rejects.toThrow(/contradicts this process's/i);
+            .rejects.toThrow(/unknown field "currency"/);
     });
 });
 
@@ -152,7 +152,7 @@ describe("the buyer commits only the offer it sent", () => {
         // and returned in place of the one just sent.
         const earlier = await buildBuyerOffer(buyerW, {
             ...rootParams, payment: 5000n, salt: 1n,
-            overrides: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: "5000", lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "5000" }] } },
+            overrides: { [keyOf("figaro-commerce")]: { lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "5000" }] } },
         });
         const replay = await counterSignOffer(w(S0), earlier, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, SPECS, () => true, policy, rootParams.assembly, profileBinding(rootParams.assembly));
         const channel = new InProcessChannel();

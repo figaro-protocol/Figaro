@@ -25,9 +25,8 @@ another), and the agreement's parties match the commitment. Cryptographic
 verification of the buyer signature is done in <code>counterSignOffer</code> (async).</p>
 <p>With <code>specs</code> supplied, ALSO runs the merkle-leaf seam
 (<code>assertAgreementSignable</code> — docs/CLAUSES.md § &quot;Every clause is a merkle
-leaf&quot;): every clause conforms to its clause spec, and the offer's
-denomination TERM (the commerce clause leaf, and any composed
-denomination pin) equals the currency the seller is about to bond against —
+leaf&quot;): every clause conforms to its clause spec, and any composed
+denomination pin equals the currency the seller is about to bond against —
 the commitment struct's <code>currency</code> field. This is off-chain validation run on the
 SELLER's side of the handshake (the buyer-side builders —
 <code>buildBuyerOffer</code>, <code>buildChainOffers</code> — run the same gate when given
@@ -59,7 +58,7 @@ it has not been told to bound.</p>
 <li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">readProfile</span>: <a href="../types/index.MemberProfileReader.html" class="tsd-signature-type tsd-kind-type-alias">MemberProfileReader</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.OfferCheck.html" class="tsd-signature-type tsd-kind-interface">OfferCheck</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L225">agent/originate.ts:225</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L224">agent/originate.ts:224</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

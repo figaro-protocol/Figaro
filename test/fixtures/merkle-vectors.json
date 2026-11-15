@@ -49,27 +49,26 @@
         },
         {
             "label": "two-clauses-and-a-design",
-            "checkoutHash": "0xe09721df0f7f935ab16813f1b1d943b76e18b8ae5e3dc9409bdc782ba935accc",
+            "checkoutHash": "0x9ea7fc7566bd4158bf93f2cbbd89abf730d67063e36add59501ac1fc579e1725",
             "clauseCount": 2,
             "provenance": {
                 "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
-                "agreementHash": "0x2b909095c23aeb99436c735b615b220ee22f6c89eb047025417f2632f89eb79b",
-                "assemblyHash": "0xab903e68ee4554b8c212f6998d0d8de58ec61d24c59ea9e5ed96141b5500765d",
-                "clauseData": "{\"agreementHash\":\"0x2b909095c23aeb99436c735b615b220ee22f6c89eb047025417f2632f89eb79b\",\"assemblyHash\":\"0xab903e68ee4554b8c212f6998d0d8de58ec61d24c59ea9e5ed96141b5500765d\"}",
-                "leaf": "0x077333aeb92faccf8c58b4370189113c88a5f7e9eec44d7ca32612c3931c54f3",
+                "agreementHash": "0xd2865e1837efadf1ca053da2c4ebd2d568ffcfe7f56ddb5f119118dbf35e3937",
+                "assemblyHash": "0x32622096192bda32d344d48e940e0fdc61d5aa2d7b3f7db57983ce231f2cfaaf",
+                "clauseData": "{\"agreementHash\":\"0xd2865e1837efadf1ca053da2c4ebd2d568ffcfe7f56ddb5f119118dbf35e3937\",\"assemblyHash\":\"0x32622096192bda32d344d48e940e0fdc61d5aa2d7b3f7db57983ce231f2cfaaf\"}",
+                "leaf": "0x037a2b3c09683e8de0e001c76619cfcda7c62719d907f39343c9d38123d7eeab",
                 "proof": [
-                    "0x4b497919b0700d4f4eb75a65c98e82e8a752376929bec73a7888ea8b93225052",
-                    "0xb528f067a93b59eaaee800d58596a499456ba3ebf8a17b56cd53762d6a98c572"
+                    "0xb528f067a93b59eaaee800d58596a499456ba3ebf8a17b56cd53762d6a98c572",
+                    "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c"
                 ]
             },
             "clauses": [
                 {
-                    "clauseKey": "0x19d7c589c107fb6ccee7490794c8f9a275dea904d8bf1a4467dc6dad3770ae7b",
-                    "clauseData": "{\"currency\":\"0x0000000000000000000000000000000000000000\",\"payment\":\"7\"}",
-                    "leaf": "0x4b497919b0700d4f4eb75a65c98e82e8a752376929bec73a7888ea8b93225052",
+                    "clauseKey": "0x128c1085a5bb6ac319b038833c1b41ae9ca8652e78a50cd2f4052abe586cba02",
+                    "clauseData": "{\"lineItems\":[{\"itemId\":\"i-7\",\"name\":\"Item\",\"quantity\":1,\"unitPrice\":\"7\"}]}",
+                    "leaf": "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c",
                     "proof": [
-                        "0x077333aeb92faccf8c58b4370189113c88a5f7e9eec44d7ca32612c3931c54f3",
-                        "0xb528f067a93b59eaaee800d58596a499456ba3ebf8a17b56cd53762d6a98c572"
+                        "0xa49ea2cf92f50b88ace7784e30c2ee9c6aadb6a5877b62b25368810523b0f7db"
                     ]
                 },
                 {
@@ -77,7 +76,8 @@
                     "clauseData": "{\"follows\":[]}",
                     "leaf": "0xb528f067a93b59eaaee800d58596a499456ba3ebf8a17b56cd53762d6a98c572",
                     "proof": [
-                        "0x9401422e56306cf8e5af4daa6d49419eaf4c9e99d44bc1701d73b3b6ee8b735d"
+                        "0x037a2b3c09683e8de0e001c76619cfcda7c62719d907f39343c9d38123d7eeab",
+                        "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c"
                     ]
                 }
             ]

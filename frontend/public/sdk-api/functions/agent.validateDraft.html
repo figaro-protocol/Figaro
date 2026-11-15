@@ -27,8 +27,9 @@ hashes to the committed <code>checkoutHash</code> (the sender cannot pin one agr
 and commit another), and the agreement's parties match the commitment. With
 <code>specs</code>, ALSO runs the merkle-leaf seam (<code>assertAgreementSignable</code> —
 docs/CLAUSES.md § &quot;Every clause is a merkle leaf&quot;), exactly as
-<code>validateOffer</code> does: a draft whose commerce leaf contradicts the struct the
-candidate would bond against is refused before any signature. ALWAYS checks,
+<code>validateOffer</code> does: a draft whose clause breaks its spec, or whose
+denomination pin contradicts the token the candidate would bond against, is
+refused before any signature. ALWAYS checks,
 as <code>validateOffer</code> does, that the candidate has bound the assembly the draft
 instantiates (<code>checkSellerBindsAssembly</code>, the candidate's OWN profile read
 through <code>readProfile</code> at acceptance time); a draft with no provenance leaf,
@@ -48,7 +49,7 @@ here through it.</p>
 <li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">readProfile</span>: <a href="../types/index.MemberProfileReader.html" class="tsd-signature-type tsd-kind-type-alias">MemberProfileReader</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.OfferCheck.html" class="tsd-signature-type tsd-kind-interface">OfferCheck</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/dispatchRace.ts#L69">agent/dispatchRace.ts:69</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/dispatchRace.ts#L70">agent/dispatchRace.ts:70</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

@@ -36,6 +36,7 @@ export type ValueRef =
     | { party: PartyRole }
     | { followedSellers: true }                           // the sellers of the orders this order follows (topology)
     | { payment: true }                                   // smallest-unit amount (exact + verifiable)
+    | { currency: true }                                  // the commitment's token, from its OrderCommitted event
     | { resolvedDate: true }                              // ISO date of resolution, or "—"
     | { leafField: { byField: string; field: string } }  // leaf declaring `byField` → its `field`
     | { lineItemNames: true }                             // commerce lineItems → names joined
@@ -121,6 +122,7 @@ function resolve(ref: ValueRef, order: Order, unit: Unit): string {
         return [...new Set(sellers)].join(", ");
     }
     if ("payment" in ref) return order.payment.toString();
+    if ("currency" in ref) return order.currency ?? "";
     if ("resolvedDate" in ref) {
         return order.state === OrderState.Resolved && order.resolvedAt !== undefined
             ? new Date(order.resolvedAt * 1000).toISOString().slice(0, 10)

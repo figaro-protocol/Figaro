@@ -95,7 +95,7 @@ test("a assembly that hashes to its assembly hash is read; a substituted one is 
 });
 
 test("a registered agreement whose { clauses } key to its agreement hash is read, editorial prose aside; another is absence", async () => {
-    const forged = { ...COMPOSED, clauses: { ...COMPOSED.clauses, [COMMERCE]: { payment: "1" } } };
+    const forged = { ...COMPOSED, clauses: { ...COMPOSED.clauses, [COMMERCE]: { lineItems: [] } } };
     const gw = await gateway({
         g: JSON.stringify(COMPOSED), renamed: JSON.stringify({ ...COMPOSED, name: "Renamed" }),
         forged: JSON.stringify(forged), notAgreement: "{\"x\":1}",

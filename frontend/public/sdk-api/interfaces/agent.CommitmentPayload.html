@@ -71,15 +71,17 @@ in between needs its own E2E layer, or it reads every term.</p>
 <div class="tsd-signature"><span class="tsd-kind-property">quoteRequest</span><span class="tsd-signature-symbol">?:</span> <a href="agent.QuoteRequestTerms.html" class="tsd-signature-type tsd-kind-interface">QuoteRequestTerms</a></div>
 <div class="tsd-comment tsd-typography"><p>Present on an RFQ quote-request draft: the candidate authors the price.
 <code>commitment.payment</code> is the buyer's CEILING (their reservation price —
-a quote above it is invalid), and <code>pricedFields</code> names where the figure
-lives in the agreement — the BUYER names their own clause (the SDK
-names none); both sides apply the same mechanical substitution, so the
-buyer verifies a quote by RECONSTRUCTION, never by diffing. Absent on
+a quote above it is invalid), and the quote moves that payment;
+<code>pricedFields</code> names where copies of the figure live inside the
+agreement's clauses, possibly none — the BUYER names their own clause
+(the SDK names none); both sides apply the same mechanical
+substitution, so the buyer verifies a quote by RECONSTRUCTION, never by
+diffing. Absent on
 every other payload (a race draft prices at the candidate's posted
 figure; an offer is already priced).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/coordination.ts#L56">agent/coordination.ts:56</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/coordination.ts#L58">agent/coordination.ts:58</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="sellersig"><code class="tsd-tag">Optional</code><span>seller<wbr/>Sig</span><a href="#sellersig" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">sellerSig</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">

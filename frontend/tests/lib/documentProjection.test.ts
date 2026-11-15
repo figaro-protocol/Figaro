@@ -25,7 +25,7 @@ const agreement = (clauseEntries: { clause: string; data: Record<string, unknown
     ({ clauses: clauseEntries.map((s) => ({ ...s, clause: keyOf(s.clause) })) } as unknown as Agreement);
 
 const commerce = (lineItems: { name: string; quantity: number }[]) =>
-    ({ clause: "figaro-commerce", data: { currency: "0xtoken", payment: "0", lineItems } });
+    ({ clause: "figaro-commerce", data: { lineItems } });
 
 const doc = (docs: ReturnType<typeof projectDocuments>, genre: string) => docs.filter((d) => d.genre === genre);
 
@@ -48,6 +48,20 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
         expect(merchant.header.map((h) => h.label)).toContain("Seller (BG-4)");
         expect(merchant.lines!.rows).toEqual([["0xA", "Margherita", "100"]]);
         expect(merchant.lines!.total).toMatchObject({ value: "100" });
+    });
+
+    it("commercial-invoice: the currency is the commitment's token, never a clause's copy", async () => {
+        await primeClauseSpecs(ALL);
+        const currencyOf = (agreements: Map<string, Agreement>) => doc(
+            projectDocuments(DOCUMENT_LAYOUTS, [mkOrder({ orderHash: "0xA", seller: "0xS", payment: 5n, checkoutHash: "0xh" })], agreements),
+            "commercial-invoice",
+        )[0].header.find((h) => h.label === "Currency (BT-5)")!.value;
+        // No clause names a token: the commitment's stands.
+        expect(currencyOf(new Map([["0xh", agreement([commerce([{ name: "Part", quantity: 1 }])])]]))).toBe("0xToKeN");
+        // A clause that names another token is not read.
+        const disagreeing = agreement([commerce([{ name: "Part", quantity: 1 }])]);
+        disagreeing.clauses[0].data = { ...disagreeing.clauses[0].data, currency: "0xOTHER" };
+        expect(currencyOf(new Map([["0xh", disagreeing]]))).toBe("0xToKeN");
     });
 
     it("bill-of-lading: one per CARRIAGE LEG, with generic cargo/freight leaf sections", async () => {

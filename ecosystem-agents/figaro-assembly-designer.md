@@ -70,7 +70,7 @@ off-chain topology. Call it a process **chain** (linear in `FigaroCore`), never 
   registered under the user's key — the original designer of record's binding is untouched.
 - **New:** apply the decision rule out loud: *is there a reusable COMPOSITION here — a trade
   shape (clauses beyond one bare commitment) that sellers will bind and buyers will select
-  again?* A one-off bare purchase needs one `figaro-commerce` commitment, not an assembly —
+  again?* A one-off bare purchase needs one commitment, not an assembly —
   say so and stop. Agreement count is NOT the test: a single-agreement assembly is
   legitimate when it composes a reusable shape (the anchored references `pos` and
   `freelancer` are exactly that); multi-agreement assemblies add shared coordination

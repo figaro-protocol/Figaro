@@ -20,19 +20,18 @@
 writes in and the clauses a designer selected: the scope check (an
 assembly-scoped clause never composes on an order; a composed key's spec
 must be loaded), the value-free rule (only <code>block.design.fills</code> values
-survive), and the shape rule (exactly one clause of commerce's shape and
-one of topology's; a clause both carry keeps the designer's composition).
+survive), and the shape rule (exactly one clause of topology's shape; a
+clause both carry keeps the designer's composition).
 The result is the registered agreement's
 document and its key — what <code>AgreementRegistry</code> takes, whether the
 designer registers it on its own or an assembly's publish registers it
 for an agreement. <code>buildAssembly</code> composes every new agreement through
 this one function.</p>
-<p>The mandatory clauses (<code>mandatory</code>, the DAO's live commerce and topology
-the canvas reads from the registry — <code>mandatoryClauses</code>) are written in
-first and the designer's selection over them; the result carries exactly
-one clause of commerce's shape and one of topology's, or it is refused
-(<code>assertMandatoryShapes</code>). An authored agreement names the two clauses
-itself and passes none.</p>
+<p>The mandatory clauses (<code>mandatory</code>, the DAO's live mandatory clauses the
+canvas reads from the registry — <code>mandatoryClauses</code>) are written in first
+and the designer's selection over them; the result carries exactly one
+clause of topology's shape, or it is refused (<code>assertMandatoryShapes</code>).
+An authored agreement names its clauses itself and passes none.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -53,7 +52,7 @@ agreement that names them itself.</p>
 <h5><span class="tsd-kind-property">specs</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a></h5></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">agreementHash</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">composed</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.RegisteredAgreement.html" class="tsd-signature-type tsd-kind-interface">RegisteredAgreement</a> <span class="tsd-signature-symbol">}</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L1031">projection.ts:1031</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L951">projection.ts:951</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

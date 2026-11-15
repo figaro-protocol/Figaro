@@ -33,7 +33,7 @@ export const REGISTERED_ONE: RegisteredAgreement = {
 };
 export const REGISTERED_DESIGN: RegisteredAgreement = {
     clauses: {
-        [K("figaro-commerce")]: { currency: "0x0000000000000000000000000000000000000000", payment: "7" },
+        [K("figaro-commerce")]: { lineItems: [{ itemId: "i-7", name: "Item", quantity: 1, unitPrice: "7" }] },
         [K("figaro-topology")]: {},
     },
 };

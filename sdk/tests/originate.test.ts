@@ -47,7 +47,7 @@ const sellerW = createWalletClient({ account: SELLER, transport: http("http://lo
 const assembly = hydrateAuthored({
     agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } }],
 });
-const overrides = { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }] } };
+const overrides = { [keyOf("figaro-commerce")]: { lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }] } };
 
 function offerParams() {
     return { assembly: assembly, seller: SELLER.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides, specs: SPECS };
@@ -64,8 +64,7 @@ describe("instantiateRootAgreement", () => {
     it("merges overrides onto the assembly's root clause bag", () => {
         const a = instantiateRootAgreement(assembly, { buyer: BUYER.address, seller: SELLER.address, overrides });
         const commerce = a.clauses.find((s) => s.clause === keyOf("figaro-commerce"));
-        expect(commerce?.data.payment).toBe("1000");
-        expect(commerce?.data.currency).toBe(CURRENCY);
+        expect(commerce?.data).toEqual({ lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }] });
         expect(a.buyer).toBe(BUYER.address);
         expect(a.seller).toBe(SELLER.address);
     });
@@ -195,28 +194,27 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
     });
 
     // THE MERKLE-LEAF SEAM (docs/CLAUSES.md § "Every clause is a merkle
-    // leaf"): a leaf that disagrees with the struct is tampering, refused
-    // with the same anti-tamper treatment as every other structural check —
-    // but ONLY when the seller's SpecSource is supplied (`specs`), since
-    // that's what finds the commerce clause's currency-as-content leaf.
-    it("rejects an offer whose commerce leaf names a currency contradicting the allowlisted struct currency", async () => {
+    // leaf"): the commitment alone carries the token and the payment, and a
+    // clause that restates either declares a field its spec does not —
+    // refused with the same anti-tamper treatment as every other structural
+    // check, but ONLY when the seller's SpecSource is supplied (`specs`).
+    it("rejects an offer whose commerce clause restates a token", async () => {
         const BAD_CURRENCY = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
-        const mismatched = {
+        const restated = {
             ...offerParams(),
             overrides: {
                 [keyOf("figaro-commerce")]: {
-                    currency: BAD_CURRENCY, // the signed TERM
-                    payment: "1000",
+                    currency: BAD_CURRENCY,
                     lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }],
                 },
             },
         };
-        const offer = await forgeBuyerOffer(buyerW, mismatched);
+        const offer = await forgeBuyerOffer(buyerW, restated);
         // The signed STRUCT still names the allowlisted currency.
         expect(offer.commitment.currency).toBe(CURRENCY);
 
-        // validateOffer without specs is structural only — the leaf mismatch
-        // is invisible to it; no signing path runs without specs.
+        // validateOffer without specs is structural only — the restated
+        // token is invisible to it; no signing path runs without specs.
         expect((await validateOffer(offer, SELLER.address, undefined, undefined, null, BOUND)).ok).toBe(true);
         await expect(
             counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, undefined as never, () => true, policy, null, BOUND),
@@ -226,7 +224,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
         expect((await validateOffer(offer, SELLER.address, undefined, SPECS, null, BOUND)).ok).toBe(false);
         await expect(
             counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW }, SPECS, () => true, policy, assembly, BOUND),
-        ).rejects.toThrow(/denomination/i);
+        ).rejects.toThrow(/unknown field "currency"/);
     });
 
     it("buildBuyerOffer refuses to sign without specs", async () => {
@@ -234,40 +232,37 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
             .rejects.toThrow(/buildBuyerOffer: refusing to sign without the clause specs/);
     });
 
-    it("buildBuyerOffer refuses to sign the same contradiction BUYER-side", async () => {
-        const BAD_CURRENCY = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
-        const mismatched = {
+    it("buildBuyerOffer refuses to sign a restated token BUYER-side", async () => {
+        const restated = {
             ...offerParams(),
             specs: SPECS,
             overrides: {
                 [keyOf("figaro-commerce")]: {
-                    currency: BAD_CURRENCY,
-                    payment: "1000",
+                    currency: CURRENCY,
                     lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }],
                 },
             },
         };
-        await expect(buildBuyerOffer(buyerW, mismatched)).rejects.toThrow(/denomination/i);
+        await expect(buildBuyerOffer(buyerW, restated)).rejects.toThrow(/unknown field "currency"/);
         // A clean offer still signs with the gate on.
         const offer = await buildBuyerOffer(buyerW, { ...offerParams(), specs: SPECS });
         expect(offer.buyerSig).toBeDefined();
     });
 
-    it("rejects an offer whose commerce PAYMENT leaf contradicts the struct payment (both mirrored fields gate)", async () => {
-        const mismatched = {
-            ...offerParams(), // struct payment stays 1000n
+    it("rejects an offer whose commerce clause restates a payment", async () => {
+        const restated = {
+            ...offerParams(),
             overrides: {
                 [keyOf("figaro-commerce")]: {
-                    currency: CURRENCY,
-                    payment: "5", // the signed TERM disagrees
-                    lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "5" }],
+                    payment: "1000",
+                    lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }],
                 },
             },
         };
-        const offer = await forgeBuyerOffer(buyerW, mismatched);
+        const offer = await forgeBuyerOffer(buyerW, restated);
         // Invisible to the structural check, refused by the spec gate.
         expect((await validateOffer(offer, SELLER.address, undefined, undefined, null, BOUND)).ok).toBe(true);
-        expect((await validateOffer(offer, SELLER.address, undefined, SPECS, null, BOUND)).reason).toMatch(/commitment payment 1000 contradicts/i);
+        expect((await validateOffer(offer, SELLER.address, undefined, SPECS, null, BOUND)).reason).toMatch(/unknown field "payment"/);
     });
 });
 
