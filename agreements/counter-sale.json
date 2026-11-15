@@ -1,7 +1,6 @@
 {
     "clauses": {
         "figaro-commerce": {},
-        "figaro-topology": {},
         "figaro-geolocation": {},
         "figaro-modalities": {}
     },

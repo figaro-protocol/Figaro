@@ -39,10 +39,10 @@ describe("clause keys — test/fixtures/clause-keys.json", () => {
 });
 
 describe("the clause key covers the protocol half of a spec and leaves `block` out", () => {
-    // The reference agreement `agreements/counter-sale.json` and the four
+    // The reference agreement `agreements/counter-sale.json` and the three
     // clauses it composes. `figaro-geolocation` is the clause whose `block` is
     // edited: it carries a design fill and a runtime interaction.
-    const NAMES = ["figaro-commerce", "figaro-topology", "figaro-geolocation", "figaro-modalities"] as const;
+    const NAMES = ["figaro-commerce", "figaro-geolocation", "figaro-modalities"] as const;
     const AUTHORED = JSON.parse(readFileSync(path.resolve(__dirname, "../../agreements/counter-sale.json"), "utf8"));
     const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
     const SELLER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as const;
@@ -52,7 +52,7 @@ describe("the clause key covers the protocol half of a spec and leaves `block` o
         const specs = specSourceOf(raws.map(viewOf));
         const registered = resolveAuthoredClauseKeys(AUTHORED, specs) as RegisteredAgreement;
         const values = { ...(registered.clauses as Record<Hex, Record<string, unknown>>) };
-        const geo = computeClauseKey(raws[2]);
+        const geo = computeClauseKey(raws[1]);
         values[geo] = { ...values[geo], geocoder: "nominatim", origin: "u0m6", destination: "u0m7" };
         const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, values, specs);
         return {
@@ -69,7 +69,7 @@ describe("the clause key covers the protocol half of a spec and leaves `block` o
     /** `figaro-geolocation` with one edit applied to a deep copy. */
     function editedGeo(edit: (spec: Record<string, any>) => void): Record<string, unknown>[] {
         const copy = structuredClone(original) as Record<string, any>[];
-        edit(copy[2]);
+        edit(copy[1]);
         return copy;
     }
 
@@ -81,7 +81,7 @@ describe("the clause key covers the protocol half of a spec and leaves `block` o
         ["the whole block removed", (s: Record<string, any>) => { delete s.block; }],
     ])("an edit to `block` (%s) changes no key, no leaf and no hash", (_label, edit) => {
         const edited = editedGeo(edit);
-        expect(canonicalize(edited[2])).not.toBe(canonicalize(original[2]));
+        expect(canonicalize(edited[1])).not.toBe(canonicalize(original[1]));
         expect(hashesOf(edited)).toEqual(before);
     });
 
@@ -90,12 +90,12 @@ describe("the clause key covers the protocol half of a spec and leaves `block` o
         ["a field's type", (s: Record<string, any>) => { s.fields[1].type = "integer"; }],
     ])("an edit to a top-level attribute (%s) changes the key", (_label, edit) => {
         const edited = editedGeo(edit);
-        expect(computeClauseKey(edited[2])).not.toBe(before.keys[2]);
+        expect(computeClauseKey(edited[1])).not.toBe(before.keys[1]);
     });
 
     it("the key is keccak256 of the canonical bytes of the spec without its top-level `block`", () => {
-        const { block: _block, ...protocol } = original[2];
-        expect(before.keys[2]).toBe(keccak256(toBytes(canonicalize(protocol))));
-        expect(before.keys[2]).not.toBe(keccak256(toBytes(canonicalize(original[2]))));
+        const { block: _block, ...protocol } = original[1];
+        expect(before.keys[1]).toBe(keccak256(toBytes(canonicalize(protocol))));
+        expect(before.keys[1]).not.toBe(keccak256(toBytes(canonicalize(original[1]))));
     });
 });

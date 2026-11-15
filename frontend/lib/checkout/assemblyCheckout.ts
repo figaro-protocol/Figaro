@@ -92,8 +92,7 @@ function assertValidToSign(preview: OrderPreview, design: HydratedAssembly, labe
 }
 
 /** The entries the fills actually CHANGED — passed to the walk as overrides so
- *  the untouched clauses (topology above all, whose assembly-local parent ids
- *  the walk itself rewrites to real hashes) stay the walk's to complete. */
+ *  the untouched clauses stay the walk's to complete. */
 function changedClauses(filled: ClauseFields, original: ClauseFields): ClauseFields {
     const out: ClauseFields = {};
     for (const [clauseId, data] of Object.entries(filled)) {
@@ -477,8 +476,8 @@ function checkoutNodes(
         // logistics leaves (cargo / class / dimweight) from its own
         // catalog item + its own seller's profile values. A no-op for orders
         // composing none (e.g. a service leg) → G7 absence. The topology
-        // clause is the WALK's to complete (assembly-local parent ids →
-        // real order hashes), so it is never in the overrides.
+        // is the agreement format's leaf, which the WALK writes
+        // (assembly-local parent ids → real order hashes), never a clause.
         const filled = fillCommerceClause(
             fillDerivedClauses(
                 { ...nodeClauses },

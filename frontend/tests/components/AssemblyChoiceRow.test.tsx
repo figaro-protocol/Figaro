@@ -21,7 +21,7 @@ const CHOICE: AssemblyChoice = {
     name: "Point of sale",
     summary: "One bonded order at the counter: buyer and seller, no process in between.",
     agreementCount: 1,
-    clauses: ["figaro-commerce", "figaro-topology"],
+    clauses: ["figaro-commerce", "figaro-schedule"],
     hydratedAssembly: null,
     stakeWithdrawn: false,
 };

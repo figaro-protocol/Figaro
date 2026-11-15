@@ -1,8 +1,8 @@
 /**
  * The drawer's mandatory article — the DAO's clauses, with nothing to choose.
  *
- * An agreement is not an agreement without commerce and topology, so the
- * canvas writes them into every agreement before the designer composes
+ * The canvas writes the DAO's mandatory clauses (commerce, as the reference
+ * specs declare it) into every agreement before the designer composes
  * anything. The article shows which clauses those are on the network this
  * site reads: the DAO wallet's live registrations whose spec declares the
  * mandatory article (`mandatoryClausesForCanvas`), by registrant and stake.
@@ -45,14 +45,12 @@ const STRANGER = "0x1111111111111111111111111111111111111111" as const;
 const NOBODY = "0x2222222222222222222222222222222222222222" as const;
 let strangersCommerce: Hex;
 let commerce: Hex;
-let topology: Hex;
 let schedule: Hex;
 
 beforeAll(async () => {
-    await primeClauseSpecs(["figaro-commerce", "figaro-topology", "figaro-schedule"]);
+    await primeClauseSpecs(["figaro-commerce", "figaro-schedule"]);
     // The DAO's keys, read before a look-alike shares commerce's name.
     commerce = keyOf("figaro-commerce");
-    topology = keyOf("figaro-topology");
     schedule = keyOf("figaro-schedule");
     // Another wallet's registration of a commerce look-alike: the DAO's spec
     // with another title — same shape, another key, another registrant.
@@ -77,11 +75,10 @@ function renderDrawer() {
 }
 
 describe("AgreementDrawer — the mandatory article shows the DAO's clauses, with nothing to choose", () => {
-    it("lists the DAO wallet's live commerce and topology, and not another wallet's mandatory registration", () => {
+    it("lists the DAO wallet's live commerce, and not another wallet's mandatory registration", () => {
         renderDrawer();
         const article = screen.getByTestId("drawer-mandatory-article");
         expect(article.querySelector(`[data-testid="drawer-mandatory-clause-${commerce}"]`)).not.toBeNull();
-        expect(article.querySelector(`[data-testid="drawer-mandatory-clause-${topology}"]`)).not.toBeNull();
         expect(article.querySelector(`[data-testid="drawer-mandatory-clause-${strangersCommerce}"]`)).toBeNull();
         expect(article.querySelectorAll("input")).toHaveLength(0);
         expect(article.textContent).toContain("nothing here is chosen");
@@ -103,7 +100,6 @@ describe("AgreementDrawer — the mandatory article shows the DAO's clauses, wit
     it("offers no mandatory clause as a checkbox of its own", () => {
         renderDrawer();
         expect(screen.queryByTestId(`drawer-registry-clause-${commerce}`)).toBeNull();
-        expect(screen.queryByTestId(`drawer-registry-clause-${topology}`)).toBeNull();
         expect(screen.getByTestId(`drawer-registry-clause-${schedule}`)).toBeTruthy();
     });
 

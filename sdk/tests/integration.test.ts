@@ -282,9 +282,9 @@ describe.skipIf(!ALIVE)(ALIVE ? "SDK Integration (Anvil)" : `SDK Integration (An
         //       ceiling; the priced fields name the buyer's OWN clause. ──
         const chainNow = (await publicClient.getBlock({ blockTag: "latest" })).timestamp;
         const assembly = hydrateAuthored({
-            agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } }],
+            agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {} }, follows: [] }],
         });
-        const GATE_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
+        const GATE_SPECS = specSourceFromFixtures(["figaro-commerce"]);
         const pricedFields = [
             { clause: keyOf("figaro-commerce"), path: "lineItems.0.unitPrice" },
         ];

@@ -68,9 +68,9 @@ export interface ContractDocument extends ExtractedDocument {
      * This order's place in its process, each part from its own evidence:
      *   - `position` from the chain: a root order's cumulative value equals its
      *     payment, and every later order's is larger.
-     *   - `composed`: whether the agreement composes a topology clause.
-     *   - `follows`: the parent links that clause holds (several for a
-     *     fan-in node), empty when it composes none.
+     *   - `composed`: whether the agreement carries its topology leaf.
+     *   - `follows`: the parent links that leaf holds (several for a
+     *     fan-in node), empty for a root and when it carries none.
      */
     topology: {
         position: "root" | "sub-order";

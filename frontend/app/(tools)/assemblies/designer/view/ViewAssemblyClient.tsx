@@ -725,7 +725,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     {review?.ok && review.mandatory.length > 0 && (
                         <div className="mt-2 max-w-3xl space-y-1" data-testid="review-mandatory-clauses">
                             <p className="text-xs text-warning-fg leading-relaxed">
-                                Mandatory clauses: the DAO&rsquo;s live commerce and topology, written
+                                Mandatory clauses: the DAO&rsquo;s live mandatory registrations, written
                                 into every agreement before anything is composed, read from the
                                 registry by registrant and stake. Check that each name, version and
                                 key below is the one you mean to publish; confirming publishes them

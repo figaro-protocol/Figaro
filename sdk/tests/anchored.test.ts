@@ -24,11 +24,11 @@ const OTHER = `0x${"11".repeat(32)}` as const;
 
 const spec = { clauseId: "test-anchor", version: 1, title: "T", description: "D", fields: [] };
 
-const composed = { name: "Editorial", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
+const composed = { name: "Editorial", clauses: { [keyOf("figaro-commerce")]: {} } };
 
 const assembly: Assembly = {
     name: "Editorial",
-    agreements: [{ id: "agreement-0", agreementHash: agreementHashOf(composed), clauses: { [keyOf("figaro-topology")]: { follows: [] } } }],
+    agreements: [{ id: "agreement-0", agreementHash: agreementHashOf(composed), clauses: {}, follows: [] }],
 };
 
 const agreement: Agreement = {
@@ -96,7 +96,7 @@ describe("anchorAssembly", () => {
         expect(anchorAssembly(renamed, hash)).toBe(renamed);
     });
     it("refuses a changed composition", () => {
-        const changed = { ...assembly, agreements: [{ ...assembly.agreements[0], clauses: {} }] };
+        const changed = { ...assembly, agreements: [{ ...assembly.agreements[0], follows: ["agreement-1"] }] };
         expect(anchorAssembly(changed, assemblyHashOf(assembly))).toBeNull();
     });
     it("refuses an agreement whose key is malformed or reserved", () => {
@@ -147,7 +147,7 @@ describe("hydrateAssembly", () => {
     const two: Assembly = {
         agreements: [
             assembly.agreements[0],
-            { id: "agreement-1", agreementHash: key, clauses: { [keyOf("figaro-topology")]: { follows: ["agreement-0"] } } },
+            { id: "agreement-1", agreementHash: key, clauses: {}, follows: ["agreement-0"] },
         ],
     };
 

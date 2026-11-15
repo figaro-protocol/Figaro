@@ -238,9 +238,9 @@ designer composes an assembly from.
   under the agreement format's leaf convention (the SDK's `agreementHashOf(doc)`;
   a clause's membership is proved by `buildRegisteredClauseInclusionProof`), where
   `clauses` maps each clause key to
-  the designer's fills for that clause — value-free, the topology clause
-  composed with `{}` because who follows whom is set by each assembly that
-  places the agreement (`AssemblyAgreement.clauses`, `sdk/src/assembly.ts`). The
+  the designer's fills for that clause — value-free and with no topology,
+  because who follows whom is set by each assembly that places the agreement
+  (`AssemblyAgreement.follows`, `sdk/src/assembly.ts`). The
   pinned document is the agreement (`RegisteredAgreement { name?,
   summary?, description?, clauses }`); the editorial fields are excluded from
   the key. A reader fetches the document from `contentURI`, parses it, and
@@ -281,8 +281,8 @@ anchoring under a stake.
   `assemblyLeafDomain = keccak256("figaro-assembly-leaf")`, sorted-pair hashing; the
   agreement format's leaf has no domain, so the two trees never share a shape): one leaf per agreement `i`, keyed by the agreement's
   `agreementHash`, whose bytes are the canonical JSON
-  `{"clauses":{…},"slot":i}` (the agreement's own fills — the topology
-  clause's `follows` naming the agreements it follows); and one
+  `{"clauses":{…},"follows":[…],"slot":i}` (the agreement's own fills and
+  the labels of the agreements it follows); and one
   assembly terms leaf, keyed by `ASSEMBLY_TERMS_LEAF_KEY =
   keccak256("figaro-assembly-terms")`, whose bytes are the canonical JSON of
   the assembly-scoped clauses, present only when any are composed. Order
@@ -411,9 +411,12 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   the guest refuses a batch claim keyed on either (`apply_usage_claims`), and
   `applyBatchAccrual` skips both before the registration gate. Every
   registered clause earns under the uniform
-  rule, the two mandatory-article clauses (`figaro-commerce`, `figaro-topology`)
-  among them, for their designer of record — the DAO treasury, which
-  registers exactly the mandatory clauses at genesis.
+  rule, the mandatory-article clause (`figaro-commerce`) among them, for its
+  designer of record — the DAO treasury, which registers exactly the
+  mandatory clauses at genesis. The agreement format's topology leaf is no
+  clause and no reserved key: its 96-byte inner preimage opens under no
+  clause key, so it is never counted (`docs/CLAUSES.md` § "Every clause is a
+  merkle leaf").
 - **Periods, not checkpoints:** a period's counts are final once it ends;
   `totalScoreIn(period)` is maintained as an O(1) delta on every recording. The
   contract knows nothing about budgets or who pays.

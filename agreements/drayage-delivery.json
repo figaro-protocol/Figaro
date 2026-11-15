@@ -1,7 +1,6 @@
 {
     "clauses": {
         "figaro-commerce": {},
-        "figaro-topology": {},
         "figaro-courier-process": {},
         "figaro-freight-class": {},
         "figaro-geolocation": {},

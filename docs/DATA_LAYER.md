@@ -124,7 +124,8 @@ alone** — `icbrt(c·d²·1e18)` — with **no tag, no category, no weight mult
 Neutrality is achieved by the **stake, not by weighting.**
 
 **The must-haves see value, not place.** Every Figaro order carries **topology**
-(the chain — who comes before whom), a clause every agreement composes, and its
+(the chain — who comes before whom), a leaf the agreement format itself
+carries (`Agreement.follows`, never a clause), and its
 commitment says who pays whom, in what token, how much; the commerce clause, where
 a designer composes it, adds only the line items the payment buys. The chain emits one part of the trade's economic skeleton
 itself: each order's buyer, seller, token, payment and running total, in the

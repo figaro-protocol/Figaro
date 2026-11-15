@@ -110,10 +110,10 @@ test.describe('AgreementRegistry withdraw — the designer reclaims an agreement
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-        // The DAO's mandatory commerce + topology are written into every
+        // The DAO's mandatory commerce is written into every
         // agreement the canvas registers (`composeOrderAgreement` with
         // `mandatoryClausesForCanvas()`); wait until the drawer has read them,
-        // or the composition has no commerce/topology to write in.
+        // or the composition has no commerce to write in.
         await page.getByTestId('drawer-mandatory-list').waitFor({ state: 'visible', timeout: 30000 });
         const probe = page.getByTestId(`drawer-registry-clause-${clauseKey}`);
         await expect(probe, 'the drawer surfaces the just-registered probe clause').toHaveCount(1, { timeout: 20000 });

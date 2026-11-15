@@ -81,12 +81,10 @@ function projectionCases() {
     return {
         defaults: buildOrderAgreement(BUYER, SELLER, byKey({
             "figaro-commerce": commerceData(),
-            "figaro-topology": { follows: [] },
             "figaro-applicable-law": { applicableLaw: "US-NY", forum: "us-federal-court" },
         }), specSource()),
         processLog: buildOrderAgreement(BUYER, SELLER, byKey({
             "figaro-commerce": commerceData(),
-            "figaro-topology": { follows: [] },
             "figaro-merchant-process": {},
         }), specSource()),
     };
@@ -161,7 +159,6 @@ interface GoldenVectors {
 beforeAll(async () => {
     await primeClauseSpecs([
         "figaro-commerce",
-        "figaro-topology",
         "figaro-applicable-law",
         "figaro-merchant-process",
     ]);

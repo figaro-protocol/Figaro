@@ -3,7 +3,8 @@
  * root, so a reader rebuilds the root from the listed leaves alone: the
  * clauses and, when the agreement names its provenance (its
  * registered agreement and its assembly's assembly root), the agreement
- * format's provenance leaf.
+ * format's provenance leaf, and, when it carries the orders it follows, the
+ * format's topology leaf.
  *
  * Each attestation's contentRef is told as what the coordinator holds: the
  * hash alone, the content held off chain by the parties and checked by
@@ -11,7 +12,7 @@
  * which the coordinator never receives.
  */
 import { describe, expect, it } from "vitest";
-import { agreementLeaves, computeCheckoutHash, computeProvenanceLeaf, type Agreement } from "@figaro-protocol/sdk";
+import { agreementLeaves, computeCheckoutHash, computeProvenanceLeaf, computeTopologyLeaf, type Agreement } from "@figaro-protocol/sdk";
 import { buildHashAppendix } from "@/lib/audit/hashAppendix";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
@@ -41,7 +42,7 @@ const base: Agreement = {
 
 const leavesOf = (agreement: Agreement) =>
     buildHashAppendix(orderFor(agreement), agreement, []).anchors
-        .filter((a) => a.kind === "agreement-clause-leaf" || a.kind === "agreement-provenance-leaf");
+        .filter((a) => a.kind === "agreement-clause-leaf" || a.kind === "agreement-provenance-leaf" || a.kind === "agreement-topology-leaf");
 
 describe("buildHashAppendix — every leaf under the root", () => {
     it("lists the provenance leaf beside the clauses — the listed leaves are the tree's leaves", () => {
@@ -51,6 +52,17 @@ describe("buildHashAppendix — every leaf under the root", () => {
             .toEqual([computeProvenanceLeaf(AGREEMENT_HASH, COMPOSITION)]);
         const sorted = leaves.map((a) => a.hash.toLowerCase()).sort();
         expect(sorted).toEqual(agreementLeaves(agreement).map((l) => l.toLowerCase()).sort());
+    });
+
+    it("lists the topology leaf from the agreement's own follows — the listed leaves still rebuild the root", () => {
+        const parent = `0x${"7e".repeat(32)}` as `0x${string}`;
+        const agreement: Agreement = { ...base, provenance: { agreementHash: AGREEMENT_HASH, assemblyHash: COMPOSITION }, follows: [parent] };
+        const leaves = leavesOf(agreement);
+        const topology = leaves.filter((a) => a.kind === "agreement-topology-leaf");
+        expect(topology.map((a) => a.hash)).toEqual([computeTopologyLeaf([parent])]);
+        expect(topology[0].sourceLocation).toContain(parent);
+        expect(leaves.map((a) => a.hash.toLowerCase()).sort()).toEqual(agreementLeaves(agreement).map((l) => l.toLowerCase()).sort());
+        expect(leavesOf(base).some((a) => a.kind === "agreement-topology-leaf")).toBe(false);
     });
 
     it("lists no provenance leaf for an agreement that names no assembly", () => {

@@ -19,7 +19,6 @@ import {
     missingCatalogueMeasures,
     readUtilityTokenPin,
     resolveSubOrderPricing,
-    writeTopologyClause,
     type AssemblyCheckoutLineItem,
 } from "../src/checkoutPlan.js";
 import { fillWalkProvenance } from "../src/reconstructOrders.js";
@@ -413,12 +412,6 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
             .toThrow(/refusing to claim a different provenance/);
         expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementHash: `0x${"cd".repeat(32)}`, assemblyHash: HASH } }, P, "n"))
             .toThrow(/refusing to claim a different provenance/);
-    });
-
-    it("writeTopologyClause", () => {
-        const { specs, fake } = lookalike([GEO], GEO, ["follows"]);
-        expect(writeTopologyClause({ [REAL]: {} }, [HASH], specs)).toEqual({ [REAL]: {} });
-        expect(writeTopologyClause({ [fake]: {} }, [HASH], specs)[fake]).toEqual({ follows: [HASH] });
     });
 
     it("fillCatalogueMeasures", () => {

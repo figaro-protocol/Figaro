@@ -111,7 +111,6 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
         // The Node-side spec cache is primed from the chain (beforeAll) — this
         // process never loads the browser's `useClauseSpecs` hook — so
         // `assertAgreementSignable` below finds every composed clause's spec.
-        const TOPOLOGY_CLAUSE = keyOf('figaro-topology');
         const COMMERCE_CLAUSE = keyOf('figaro-commerce');
 
         const publicClient = localPublicClient();
@@ -150,13 +149,12 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
                 }));
             }
 
-            // 2. The agreement: commerce + topology + the clause whose usage is counted.
+            // 2. The agreement: commerce + the clause whose usage is counted; a root's empty topology leaf.
             const agreement: Agreement = {
                 version: 'a1',
                 buyer: buyerAccount.address,
                 seller: sellerAccount.address,
                 clauses: [
-                    { clause: TOPOLOGY_CLAUSE, data: { follows: [] } },
                     {
                         clause: COMMERCE_CLAUSE,
                         data: {
@@ -168,6 +166,7 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
                         data: { geocodeStandard: 'geohash', origin: 'u4pruy', destination: 'u4pruz' },
                     },
                 ],
+                follows: [],
             };
             const checkoutHash = computeCheckoutHash(agreement);
 

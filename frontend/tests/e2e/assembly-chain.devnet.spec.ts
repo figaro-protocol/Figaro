@@ -585,7 +585,6 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         await evidence.waitFor({ state: 'visible', timeout: 30000 });
         for (const title of [
             'Commerce terms',
-            'Order topology',
             'Modalities',
             'Merchant internal process events',
             'Courier internal process events',

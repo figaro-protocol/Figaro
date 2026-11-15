@@ -288,7 +288,6 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         const composedKeys = Object.keys(read!.document.clauses).map((k) => k.toLowerCase());
         expect(composedKeys, 'the probe clause is composed').toContain(probeKey.toLowerCase());
         expect(composedKeys, 'the mandatory commerce clause merged from the pick').toContain(keyOf('figaro-commerce').toLowerCase());
-        expect(composedKeys, 'the mandatory topology clause merged from the pick').toContain(keyOf('figaro-topology').toLowerCase());
         expect(read!.document.name, 'the document carries the designer\'s name for it').toBe(`Alone ${nonce} · order 1`);
     });
 });

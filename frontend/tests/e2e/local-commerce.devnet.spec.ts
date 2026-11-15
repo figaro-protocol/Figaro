@@ -128,7 +128,6 @@ let HANDOFF_CLAUSE: Hex;
 let GEO_CLAUSE: Hex;
 let PROXIMITY_CLAUSE: Hex;
 let COMMERCE_CLAUSE: Hex;
-let TOPOLOGY_CLAUSE: Hex;
 test.beforeAll(async () => {
     await primeRegisteredClauseSpecs();
     ({
@@ -140,7 +139,6 @@ test.beforeAll(async () => {
         proximity: PROXIMITY_CLAUSE,
     } = deliveryClauseKeys());
     COMMERCE_CLAUSE = keyOf('figaro-commerce');
-    TOPOLOGY_CLAUSE = keyOf('figaro-topology');
 });
 
 // The committed PUBLIC half of where the delivery goes lives in the shared
@@ -765,7 +763,6 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         await evidence.waitFor({ state: 'visible', timeout: 30000 });
         for (const text of [
             'Commerce terms',
-            'Order topology',
             'Modalities',
             'Hand-off point',
             'Geolocation',
@@ -824,8 +821,8 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         let deliveryClauses: AgreementClause[] = [];
         for (const [event, label, expectedLeaves] of [
-            [merchantEvent, 'item', [COMMERCE_CLAUSE, TOPOLOGY_CLAUSE, MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
-            [courierEvent, 'delivery', [COMMERCE_CLAUSE, TOPOLOGY_CLAUSE, COURIER_CLAUSE, HANDOFF_CLAUSE, GEO_CLAUSE, PROXIMITY_CLAUSE]],
+            [merchantEvent, 'item', [COMMERCE_CLAUSE, MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
+            [courierEvent, 'delivery', [COMMERCE_CLAUSE, COURIER_CLAUSE, HANDOFF_CLAUSE, GEO_CLAUSE, PROXIMITY_CLAUSE]],
         ] as const) {
             const checkoutHash = event.args.checkoutHash as `0x${string}`;
             const agreementUri = await page.evaluate(
@@ -836,8 +833,13 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
             const agreementCid = agreementUri!.replace(/^ipfs:\/\//, '');
             await assertPinnedInIpfs(agreementCid);
             const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
-            const agreement = JSON.parse(agreementJson) as { clauses: AgreementClause[] };
+            const agreement = JSON.parse(agreementJson) as { clauses: AgreementClause[]; follows?: string[] };
             if (label === 'delivery') deliveryClauses = agreement.clauses;
+            // The topology leaf: the merchant's order is the root, the courier's follows it.
+            expect(
+                (agreement.follows ?? []).map((h) => h.toLowerCase()),
+                `the ${label} agreement's topology leaf names the orders it follows`,
+            ).toEqual(label === 'item' ? [] : [String(merchantEvent.args.orderHash).toLowerCase()]);
             expect(
                 agreement.clauses.map((s) => s.clause.toLowerCase()),
                 `the ${label} merkle tree carries every committed leaf`,

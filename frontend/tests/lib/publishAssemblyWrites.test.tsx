@@ -79,7 +79,7 @@ type Call = { address: string; functionName: string; args: readonly unknown[]; v
 const shape = ({ address, functionName, args, value }: Call) => ({ address: address.toLowerCase(), functionName, args, value });
 
 beforeAll(async () => {
-    await primeClauseSpecs(["figaro-commerce", "figaro-topology", "figaro-schedule", "figaro-acceptance-criteria"]);
+    await primeClauseSpecs(["figaro-commerce", "figaro-schedule", "figaro-acceptance-criteria"]);
 });
 beforeEach(() => {
     s.calls = [];
@@ -137,7 +137,7 @@ describe("usePublishAgreement — one order's agreement registered on its own", 
         await act(async () => { outcome = await result.current.publishAgreement({ clauses: { [keyOf("figaro-schedule")]: {} }, name: "Scheduled work" }); });
         const pinned = s.pins[0] as RegisteredAgreement;
         // The DAO's mandatory clauses are written in beside the designer's.
-        expect(Object.keys(pinned.clauses).sort()).toEqual([keyOf("figaro-commerce"), keyOf("figaro-topology"), keyOf("figaro-schedule")].sort());
+        expect(Object.keys(pinned.clauses).sort()).toEqual([keyOf("figaro-commerce"), keyOf("figaro-schedule")].sort());
         expect(pinned.name).toBe("Scheduled work");
         const key = agreementHashOf(pinned);
         expect(s.write.mock.calls.map(([c]) => shape(c))).toEqual([

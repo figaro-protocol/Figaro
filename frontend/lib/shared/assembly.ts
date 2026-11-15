@@ -13,10 +13,10 @@
  * The assembly is the JSON the designer pins: one AGREEMENT per future
  * FigaroCore order. Each agreement binds a REGISTERED AGREEMENT by its
  * `AgreementRegistry` key — the clauses composed for that agreement, pinned
- * once and read by key — and carries its own fills over it: the topology
- * clause's parents, as sibling `agreement-<index>` labels, which is why the
- * topology field is `follows` (at runtime it holds the parent
- * orders' FigaroCore order hashes). A reader hydrates the assembly with each
+ * once and read by key — and carries its own fills over it and its own
+ * topology, `follows`: the sibling `agreement-<index>` labels it follows (at
+ * runtime the order's agreement carries the parent orders' FigaroCore order
+ * hashes in its topology leaf, `Agreement.follows`). A reader hydrates the assembly with each
  * agreement's agreement before checkout plans from it. The assembly carries
  * NO party addresses (PARTY-AGNOSTIC — parties bind at adoption/checkout), NO
  * checkout hashes, NO sentinels: the fingerprint forms later, at checkout,

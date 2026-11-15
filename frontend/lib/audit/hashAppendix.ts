@@ -9,7 +9,9 @@
  *   1. Each agreement clause's `body` (in the contract document) hashes
  *      to its `leafHash` via `computeClauseLeaf(clause)`; the agreement's
  *      `provenance`, when it names its assembly, hashes to the format's
- *      reserved leaf via `computeProvenanceLeaf(provenance)`.
+ *      reserved leaf via `computeProvenanceLeaf(provenance)`; its `follows`,
+ *      when it carries them, hash to the format's topology leaf via
+ *      `computeTopologyLeaf(follows)`.
  *   2. The leaves combine into the merkle root = `checkoutHash`.
  *   3. The `checkoutHash` matches the `checkoutHash` field on the
  *      `OrderCommitted` event emitted at `transactionHash` for the order.
@@ -22,7 +24,7 @@
  * each step independently.
  */
 
-import { type Agreement, computeProvenanceLeaf, computeClauseLeaf } from "@figaro-protocol/sdk";
+import { type Agreement, computeProvenanceLeaf, computeClauseLeaf, computeTopologyLeaf } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import type { ExtractedDocument } from "./types";
@@ -32,6 +34,7 @@ type HashAnchorKind =
     | "agreement-root"
     | "agreement-clause-leaf"
     | "agreement-provenance-leaf"
+    | "agreement-topology-leaf"
     | "attestation-content-ref"
     | "transaction-hash"
     | "order-hash"
@@ -82,7 +85,7 @@ export function buildHashAppendix(
         kind: "agreement-root",
         label: "Agreement merkle root",
         hash: order.checkoutHash ?? "0x",
-        sourceLocation: "OrderCommitted.checkoutHash (matches keccak256 of canonical agreement JSON, computed as merkle root over clause leaves and the provenance leaf)",
+        sourceLocation: "OrderCommitted.checkoutHash (matches keccak256 of canonical agreement JSON, computed as merkle root over clause leaves, the provenance leaf and the topology leaf)",
     });
 
     // 3. Each agreement clause's leaf — every clause is cleartext (the IPFS
@@ -107,6 +110,18 @@ export function buildHashAppendix(
             label: "Provenance leaf — the registered agreement and the assembly this order instantiated",
             hash: computeProvenanceLeaf(agreementHash, assemblyHash),
             sourceLocation: `Merkle leaf under checkoutHash root. Reader recomputes via computeProvenanceLeaf("${agreementHash}", "${assemblyHash}") and verifies inclusion in the checkoutHash tree.`,
+        });
+    }
+
+    // 3c. The agreement FORMAT's topology leaf — the order hashes of the
+    //     orders this order follows, in a leaf shape of its own. A leaf of
+    //     the same tree: without it the listed leaves do not rebuild the root.
+    if (agreement.follows !== undefined) {
+        anchors.push({
+            kind: "agreement-topology-leaf",
+            label: `Topology leaf — the ${agreement.follows.length} order(s) this order follows`,
+            hash: computeTopologyLeaf(agreement.follows),
+            sourceLocation: `Merkle leaf under checkoutHash root. Reader recomputes via computeTopologyLeaf(${JSON.stringify(agreement.follows)}) and verifies inclusion in the checkoutHash tree.`,
         });
     }
 

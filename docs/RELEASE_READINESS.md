@@ -32,24 +32,24 @@ neither line does not delay either.
 
 1. **The model is coherent.** Each open design thread is ruled, built, and held by a
    test that fails on the old behavior: the mandatory clauses, the DAO wallet's live
-   commerce and topology written by the designer's canvas into every agreement, nothing
+   commerce written by the designer's canvas into every agreement, nothing
    picked; dispute resolution chosen by the buyer at checkout for every agreement of the
    process, its field required once the clause is composed; the utility token as the
    designer's assembly-level pin that overrides the buyer's selection, the assembly-wide
-   mechanism kept; topology's labels and field name; and a seller's attestation only about
+   mechanism kept; topology as the agreement format's own leaf; and a seller's attestation only about
    a clause of its own order.
    Who verifies, piece by piece (an agent is given only a piece with a machine check):
    - [agent] the mandatory clauses — `frontend/tests/components/AgreementDrawerMandatoryArticle.test.tsx`
      and `frontend/tests/e2e/designer-agreement-drawer.devnet.spec.ts` green;
-   - [agent] the DAO wallet's commerce and topology written by the canvas, nothing picked —
+   - [agent] the DAO wallet's commerce written by the canvas, nothing picked —
      `frontend/tests/lib/referenceAssemblies.test.ts` and `draftToReviewProjection.test.ts` green;
    - [agent] dispute resolution chosen by the buyer at checkout, its field required once
      composed — `frontend/tests/lib/checkoutBuyerFieldComplement.test.ts` and
      `frontend/tests/e2e/local-commerce.devnet.spec.ts` green;
    - [agent] the utility token as the assembly-level pin — `frontend/tests/components/PinnedTokenNote.test.tsx`
      and `frontend/tests/e2e/assembly-chain.devnet.spec.ts` green;
-   - [agent] topology's labels and field name — the clause-lockstep check (`figaro-clause-lockstep`)
-     reports no drift for `figaro-topology`;
+   - [agent] topology as the agreement format's own leaf — `sdk/tests/topologyLeaf.test.ts`
+     and `sdk/tests/projection.test.ts` green;
    - [agent] a seller's attestation only about a clause of its own order —
      `test/core/attestation/AttestationCoordinatorTest.t.sol` green;
    - [maintainer] that the list above is the whole set of open threads: a reading, never a run.
@@ -299,7 +299,7 @@ deploy environment before the export is uploaded.
 ### Task 13: Genesis Registration Ownership — the mainnet gate
 
 The rule: the DAO treasury vault is the designer of record for
-the **mandatory clauses only** (`figaro-commerce`, `figaro-topology`) and,
+the **mandatory clauses only** (`figaro-commerce`) and,
 after genesis, any mandatory clause it develops and
 registers; every
 other reference clause and every reference assembly is registered by the founder's
@@ -360,7 +360,7 @@ result to it (the code, the guest key, the gateway). The list below is the proce
 - After genesis clause registration (`frontend/scripts/populate-clauses.mjs` — NOT
   run by the deploy script, and its signer falls back to the anvil test key when
   `REGISTRAR_PRIVATE_KEY` is unset): `ClauseRegistry` `registeredBy` for the
-  `figaro-commerce` and `figaro-topology` keys == `DAO_WALLET`. The treasury is
+  `figaro-commerce` key == `DAO_WALLET`. The treasury is
   receives designer rewards as designer of record only if this holds (`/dao`,
   `DAO.md`); nothing else enforces it.
 - `MembersRegistry.registrationDeposit` / `.withdrawalCooldown` and `ClauseRegistry.registrationDeposit` == the mainnet values picked per Task 3 (NOT the devnet `0.001 ether` / `0` placeholders). Both MembersRegistry values are immutable and cannot be corrected after deploy.

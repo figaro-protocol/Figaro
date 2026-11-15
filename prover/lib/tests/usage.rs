@@ -118,22 +118,17 @@ fn sorted_pair(a: B256, b: B256) -> B256 {
     keccak256(pair)
 }
 
-/// The canonical bytes of an agreement, `{"clauses":{…},"slot":i}` — the
-/// agreement's own clause fills (here the topology clause's `follows`, the
-/// agreement it follows, when it follows one) and its index. The guest never parses
+/// The canonical bytes of an agreement, `{"clauses":{…},"follows":[…],"slot":i}` —
+/// the agreement's own clause fills (none here), the label of the agreement
+/// it follows, when it follows one, and its index. The guest never parses
 /// them; it takes their hash.
 fn slot_content_hash(entry: u64, follows: Option<&str>) -> B256 {
-    let clauses = match follows {
-        Some(label) => format!(
-            "{{\"{TOPOLOGY_KEY}\":{{\"follows\":[\"{label}\"]}}}}"
-        ),
-        None => "{}".to_string(),
+    let follows = match follows {
+        Some(label) => format!("[\"{label}\"]"),
+        None => "[]".to_string(),
     };
-    keccak256(format!("{{\"clauses\":{clauses},\"slot\":{entry}}}").as_bytes())
+    keccak256(format!("{{\"clauses\":{{}},\"follows\":{follows},\"slot\":{entry}}}").as_bytes())
 }
-
-/// A synthetic topology clause key for the agreements' fills.
-const TOPOLOGY_KEY: &str = "0x63c71d25d0aa1a36dffb9e5303aaa48ae132d7403be72cc6c3cdc3eccd168f5c";
 
 /// A two-agreement assembly root: agreement 0 holds `agreement_hash`,
 /// agreement 1 another agreement following it. Returns the root, agreement 0's

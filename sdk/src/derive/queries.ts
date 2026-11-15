@@ -10,7 +10,7 @@
  *   structural assembly fingerprint the withdraw gate uses) — the query never
  *   guesses, and an unattributed process is counted as such, never binned
  *   under a fabricated key. Chain shapes come from caller-supplied parent
- *   edges (decoded topology clauses) via `depthsOverParents`; without them
+ *   edges (each agreement's `follows`) via `depthsOverParents`; without them
  *   FigaroCore's own linear view stands.
  * - Wallet-record: one wallet's public trading history — the processes it
  *   resolves as root buyer and the orders it holds either side of.
@@ -96,8 +96,8 @@ function chainShapeOf(
  * @param graph            the projected process graph
  * @param assemblyKeyOf    caller-supplied attribution: processId → assembly
  *                         key, `undefined` when the process is unattributed
- * @param followsOf  caller-supplied parent edges from decoded
- *                         topology clauses; omitted = FigaroCore's linear view
+ * @param followsOf  caller-supplied parent edges from each
+ *                         agreement's `follows`; omitted = FigaroCore's linear view
  */
 export function marketShape(
     graph: ProcessGraph,

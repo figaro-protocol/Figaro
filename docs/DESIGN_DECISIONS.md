@@ -1181,7 +1181,7 @@ entry that says why it stays.
 (`src/core/kernel/CommitmentTypes.sol`) carries the process, the parties, the
 token, the payment, the running total, the `checkoutHash`, the salt and the
 deadline, and no parent order. Which order follows which is in the agreement
-body (the `figaro-topology` clause), bound by the `checkoutHash`, and no event
+body (its topology leaf, `Agreement.follows`), bound by the `checkoutHash`, and no event
 carries the body's address.
 
 **Why it looks wrong**: A process's shape reads as part of what the parties
@@ -1200,6 +1200,45 @@ outside the trade reads the designed edges from the registered assembly
 
 **Tests**: `COMMITMENT_TYPEHASH equals FigaroCore's literal type string`
 (`sdk/tests/commitments.test.ts`) pins the struct's fields.
+
+---
+
+## 31. The topology leaf has a shape of its own
+
+**Pattern**: The orders an order follows are a leaf of the agreement format,
+not a registered clause, and not a reserved key in the clause-leaf shape. The
+leaf is `keccak256(keccak256(TOPOLOGY_LEAF_DOMAIN ‖ uint256(n) ‖ dataHash))`,
+with `TOPOLOGY_LEAF_DOMAIN = keccak256("figaro-agreement-topology")`, `n` the
+number of edges and `dataHash` the `keccak256` of the canonical JSON
+`{"follows":[…]}`: an inner preimage of 96 bytes, where a clause leaf's and the
+provenance leaf's are 64 (`computeTopologyLeaf`, `sdk/src/agreement.ts`;
+`docs/CLAUSES.md` § "Every clause is a merkle leaf"). No contract and no proof
+program holds the domain.
+
+**Why it looks wrong**: The provenance leaf, the format's other leaf, takes
+the clause-leaf shape under a reserved key, and the two format leaves read as
+if they should share one convention. A leaf no contract can rebuild also
+reads as a leaf no one can prove, and `AttestationCoordinator` cannot attest
+it.
+
+**Why it is correct**: A key in the clause-leaf shape is a key anyone can
+register. `ClauseRegistry.registerClause` accepts any nonzero key, and
+`UsageCounter` and the guest refuse only the two reserved keys by constant
+(`is_reserved_key`, `prover/lib/src/kernel.rs`). A third reserved key in that
+shape would let a stranger register it and earn on every order, or would
+need a contract and a guest change to refuse it. A leaf of another length
+opens under no clause key, so it is registered nowhere, attested nowhere and
+counted nowhere, with no contract and no verification key moved. The leaf
+stays double-hashed, so it never passes as an internal node. The cost is
+that no attestation can name it, and none is lost: the edges are fixed at
+commit and have no later stage. A reader proves them by rebuilding the root
+from the signed agreement, which carries them in full.
+
+**Tests**: `sdk/tests/topologyLeaf.test.ts` (no clause key and data hash
+reproduce the leaf; the inner preimage lengths; the coordinator's rebuilt
+leaf does not open; the root moves with the edges, and an empty list differs
+from no leaf); `sdk/tests/projection.test.ts` (the sign gate refuses a
+design-built agreement whose topology leaf is absent or malformed).
 
 ---
 
@@ -1237,3 +1276,4 @@ outside the trade reads the designed edges from the registered assembly
 | 28 | `FlorinToken.mint` checks the supply cap the minters' caps already bound | token | A check that cannot fire reads as dead code | It states the billion bound in the token, at the one function that creates florins, where a stranger reads it; one storage read, no outcome changes |
 | 29 | Public pieces no code of ours reads | registry/reward-path/token | Surface nothing reads is surface to audit for nothing | Each answers a stranger's question of the chain: who may mint, which keys are reserved, where a stake went, which sellers counted |
 | 30 | Topology is not in the commitment struct | Core-critical | The process's shape reads as part of what is bonded, and the events alone do not show the graph of orders | The bonds are sized by the running total alone; the parties sign the edges through the `checkoutHash`; a wallet outside the trade reads the designed edges from the registered assembly |
+| 31 | The topology leaf has a shape of its own | agreement format/reward-path | The provenance leaf takes the clause-leaf shape under a reserved key, and a leaf no contract rebuilds reads as unprovable | A reserved key in the clause-leaf shape could be registered by anyone and earn on every order; a 96-byte inner preimage opens under no clause key, with no contract or verification key moved, and the edges have no stage after commit to attest |

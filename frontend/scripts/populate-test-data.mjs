@@ -87,7 +87,7 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // PRE-POPULATION, exactly like clauses and sellers above — never a test
 // (the scenario-era build-order coupling is the cautionary tale). Each seed is
 // authored like a reference: its agreements composed by clause name, the
-// two mandatory clauses named like any other (`composeAuthoredAgreements`),
+// mandatory clause named like any other (`composeAuthoredAgreements`),
 // then the assembly built over them by name
 // (`assembleAuthored`): its agreements register on AgreementRegistry, then
 // its assembly anchors — identity (agreement hashes, assemblyHash + slug)
@@ -95,8 +95,8 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 
 /** The seeds' authored agreements, composed once, by name. Design time is
  *  STRUCTURAL: a clause is SELECTED; its values are the buyer's at checkout.
- *  Each names the two mandatory clauses as the canvas would write them in. */
-const MANDATORY = { 'figaro-commerce': {}, 'figaro-topology': {} };
+ *  Each names the mandatory clause as the canvas would write it in. */
+const MANDATORY = { 'figaro-commerce': {} };
 const SEED_AGREEMENTS = Object.fromEntries(Object.entries(composeAuthoredAgreements({
     // The blank agreement: the mandatory clauses alone.
     blank: { clauses: { ...MANDATORY } },

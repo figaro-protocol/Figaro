@@ -217,6 +217,11 @@ export {
     decodeProvenanceContent,
     PROVENANCE_LEAF_KEY,
     PROVENANCE_LEAF_LABEL,
+    computeTopologyLeaf,
+    topologyLeafBytes,
+    topologyContentRef,
+    TOPOLOGY_LEAF_DOMAIN,
+    TOPOLOGY_LEAF_LABEL,
     verifyInclusionProof,
     getClauseDataBytes,
     hashClauseData,
@@ -264,7 +269,6 @@ export {
     specIsProcessLog,
     specIsAssemblyScoped,
     specIsMandatory,
-    specIsTopologyShape,
     mandatoryClauses,
     type ClauseRegistrationRow,
     specDesignFills,
@@ -316,7 +320,6 @@ export {
     planSubOrderSellers,
     registerRateQuantitySource,
     resolveSubOrderPricing,
-    writeTopologyClause,
 } from "./checkoutPlan.js";
 export type {
     AssemblyCheckoutLineItem,

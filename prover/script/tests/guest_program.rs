@@ -237,10 +237,10 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
     let provenance_key = keccak256(b"figaro-agreement-provenance");
 
     let agreement = keccak256(b"an-agreement");
-    let slot0 = keccak256(br#"{"clauses":{},"slot":0}"#);
+    let slot0 = keccak256(br#"{"clauses":{},"follows":[],"slot":0}"#);
     let slot1_leaf = figaro_kernel::kernel::assembly_leaf(
         &keccak256(b"the-following-agreement"),
-        &keccak256(br#"{"clauses":{"0x01":{"follows":["agreement-0"]}},"slot":1}"#),
+        &keccak256(br#"{"clauses":{},"follows":["agreement-0"],"slot":1}"#),
     );
     let composition = sorted_pair(figaro_kernel::kernel::assembly_leaf(&agreement, &slot0), slot1_leaf);
     let membership = if membership_root_is_the_claimed_one {

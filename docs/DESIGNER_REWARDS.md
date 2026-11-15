@@ -31,9 +31,9 @@ and one who registered fifty.
 
 Two things follow that people expect to be otherwise.
 
-**The mandatory clauses earn.** `figaro-commerce` and `figaro-topology` ride on
-every order whose designer picked an agreement carrying them in the mandatory
-article, the DAO's registration among them, and they are scored for their
+**The mandatory clauses earn.** `figaro-commerce` rides on
+every order whose designer picked an agreement carrying it in the mandatory
+article, the DAO's registration among them, and the mandatory clauses are scored for their
 designer of record like any other clause. "Mandatory" is a registration-layer
 convention about what a designer picks; nothing on chain privileges them, and nothing on chain exempts them.
 They are the DAO's because the DAO develops them: a clause every agreement
@@ -195,7 +195,7 @@ constants whatever a registry holds at them: the direct path reverts
 registration. No other key is refused by list. The line they draw is **terms
 versus meter**.
 
-Commerce and topology are contract *terms* the parties agree to. A runtime
+Commerce is a contract *term* the parties agree to. A runtime
 that writes them into every agreement is making an offer, and a runtime whose
 terms designers do not want loses its designers to another: the mandatory set
 is this frontend's reading of the registry (the DAO wallet's live
@@ -209,7 +209,10 @@ exit to. It meters; it never earns. The registered agreement's designer
 accrues through the agreement leg, which proves that leaf; the assembly's
 designer accrues through the assembly leg, which proves that leaf and the
 agreement's membership under the assembly's root; and every registered clause
-— commerce and topology among them — earns under the uniform rule. Nothing is
+— commerce among them — earns under the uniform rule. The topology leaf,
+the orders an order follows, is the agreement format's own and no clause: no
+key opens it, so it never earns (`docs/CLAUSES.md` § "Every clause is a merkle
+leaf"). Nothing is
 excluded: a registered agreement that carries the mandatory clauses earns for
 its own designer of record on the same meter, and the mandatory clauses inside
 it earn for theirs.

@@ -1,11 +1,11 @@
 /**
  * Test helper: a hydrated assembly from the AUTHORED shape the tests write
- * (`agreements[].clauses` keyed by clause key, the topology clause carrying
- * its parents as `agreement-<j>` labels). Each authored agreement becomes a
- * registered agreement with the `follows` values lifted into its
- * agreement's own fill (the clause stays composed, with `{}`), as the seeding
- * derives a reference assembly (`composeAuthoredAgreement`, `assembleAuthored`)
- * — with no mandatory pick, so a test's clause set is the one it wrote.
+ * (`agreements[].clauses` keyed by clause key, `agreements[].follows` the
+ * `agreement-<j>` labels of the entries it follows). Each authored agreement
+ * becomes a registered agreement over its clauses, and its entry carries the
+ * `follows` labels, as the seeding derives a reference assembly
+ * (`composeAuthoredAgreement`, `assembleAuthored`) — with no mandatory pick,
+ * so a test's clause set is the one it wrote.
  */
 import type { Hex } from "viem";
 import { agreementHashOf, assemblyHashOf, type RegisteredAgreement, type HydratedAssembly, type AssemblyAgreement } from "../src/assembly.js";
@@ -17,22 +17,16 @@ export interface AuthoredAssembly {
     description?: string;
     faq?: { question: string; answer: string }[];
     assemblyClauses?: Record<Hex, Record<string, unknown>>;
-    agreements: { id: string; clauses: Record<Hex, Record<string, unknown>> }[];
+    agreements: { id: string; clauses: Record<Hex, Record<string, unknown>>; follows?: string[] }[];
 }
 
 export function hydrateAuthored(authored: AuthoredAssembly): HydratedAssembly {
     const agreements: Record<Hex, RegisteredAgreement> = {};
     const entries: AssemblyAgreement[] = authored.agreements.map((entry) => {
-        const clauses: Record<Hex, Record<string, unknown>> = {};
-        const fills: Record<Hex, Record<string, unknown>> = {};
-        for (const [key, values] of Object.entries(entry.clauses) as [Hex, Record<string, unknown>][]) {
-            const { follows, ...rest } = values;
-            clauses[key] = rest;
-            if (Array.isArray(follows)) fills[key] = { follows };
-        }
+        const clauses = { ...entry.clauses };
         const agreementHash = agreementHashOf({ clauses });
         agreements[agreementHash.toLowerCase() as Hex] = { clauses };
-        return { id: entry.id, agreementHash, clauses: fills };
+        return { id: entry.id, agreementHash, clauses: {}, follows: [...(entry.follows ?? [])] };
     });
     const { agreements: _authored, ...rest } = authored;
     return { assembly: { ...rest, agreements: entries }, agreements };

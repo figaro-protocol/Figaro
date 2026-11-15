@@ -25,7 +25,7 @@ import { keyOf, primeClauseSpecs } from "../lib/primeClauseSpecs";
 const TOKEN = "0x00000000000000000000000000000000000000a1";
 
 beforeAll(async () => {
-    await primeClauseSpecs(["figaro-commerce", "figaro-topology", "figaro-utility-token"]);
+    await primeClauseSpecs(["figaro-commerce", "figaro-utility-token"]);
 });
 
 describe("PinnedTokenNote — binding a pinned assembly accepts its token", () => {

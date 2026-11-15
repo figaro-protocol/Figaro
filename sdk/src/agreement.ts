@@ -14,13 +14,18 @@
  *      reserved provenance leaf uses `PROVENANCE_LEAF_KEY` the same way.
  *   - `hashClauseData` = `keccak256(canonicalJSON(clause.data))`
  *
+ * The topology leaf (`Agreement.follows`, the orders an order follows) has a
+ * shape of its own: `keccak256(keccak256(TOPOLOGY_LEAF_DOMAIN ‖ uint256(n) ‖
+ * dataHash))`, a 96-byte inner preimage no clause key can reproduce
+ * (`computeTopologyLeaf`).
+ *
  * Merkle tree: OpenZeppelin-style sorted-pair hashing. Leaves are sorted
  * lexicographically; pair hash = `keccak256(min(a,b) || max(a,b))`. Odd leaves
  * promote to the next layer unpaired. Inclusion proofs verify on-chain via
  * `MerkleProof.verify`.
  */
 
-import { keccak256, toHex, concat, type Hex } from "viem";
+import { keccak256, toHex, concat, numberToHex, type Hex } from "viem";
 import { ZERO_BYTES32 } from "./commitments.js";
 
 // ── Core types ──────────────────────────────────────────────────────────────
@@ -75,6 +80,18 @@ export interface Agreement {
      *  test fixture, a bare pair) leaves it absent and has no provenance
      *  leaf. */
     provenance?: AgreementProvenance;
+    /** The orders this order follows: their FigaroCore order hashes, in the
+     *  order the design names them, empty for the process's root. Carried by
+     *  the agreement FORMAT as one leaf of a shape of its own
+     *  (`computeTopologyLeaf`), never by a clause. Checkout writes it from the
+     *  assembly entry the order instantiates (`AssemblyAgreement.follows`,
+     *  local labels there, order hashes here), as it writes the provenance; a
+     *  registered agreement carries none, since who follows whom is the
+     *  assembly's. An agreement built from a design carries it, an empty list
+     *  included, so absence never reads as "no edges"; an agreement built
+     *  without a design (a test fixture, a bare pair) leaves it absent and has
+     *  no topology leaf. */
+    follows?: Hex[];
 }
 
 /** The two design-time keys the provenance leaf names: the registered
@@ -151,6 +168,54 @@ export function decodeProvenanceContent(content: Hex): AgreementProvenance | nul
     return provenanceLeafBytes(agreementHash, assemblyHash).toLowerCase() === content.toLowerCase()
         ? { agreementHash, assemblyHash }
         : null;
+}
+
+// ── The topology leaf — the agreement format's own, in a shape of its own ───
+
+/** The label the topology leaf's domain is the hash of — a bare string no
+ *  spec serializes to, as the provenance and assembly labels are. */
+export const TOPOLOGY_LEAF_LABEL = "figaro-agreement-topology";
+
+/** The domain mixed into the topology leaf, `keccak256("figaro-agreement-topology")`.
+ *  No contract and no proof program holds it: the leaf is read by the
+ *  parties and the readers that rebuild the root, never attested and never
+ *  counted. */
+export const TOPOLOGY_LEAF_DOMAIN: Hex = keccak256(toHex(TOPOLOGY_LEAF_LABEL));
+
+/** The topology leaf's committed bytes — canonical JSON of the edges,
+ *  `{"follows":["0x<64 lowercase hex>",…]}`, in the order given (`[]` for a
+ *  root). Throws when `follows` is not a list, when an edge is not a 32-byte
+ *  hash, or when one edge is named twice: such a topology is not well
+ *  formed, and the sign gate refuses it (`validateCommitmentAgreement`). */
+export function topologyLeafBytes(follows: readonly Hex[]): Hex {
+    if (!Array.isArray(follows)) throw new Error("topology follows is not a list of order hashes");
+    const seen = new Set<string>();
+    const edges = follows.map((edge) => {
+        if (typeof edge !== "string" || !BYTES32_RE.test(edge)) {
+            throw new Error(`topology edge is not a 32-byte order hash: ${String(edge)}`);
+        }
+        const lower = edge.toLowerCase();
+        if (seen.has(lower)) throw new Error(`topology names order ${lower} twice`);
+        seen.add(lower);
+        return lower;
+    });
+    return toHex(new TextEncoder().encode(canonicalize({ follows: edges })));
+}
+
+/** The topology leaf's data hash — `keccak256(topologyLeafBytes(follows))`. */
+export function topologyContentRef(follows: readonly Hex[]): Hex {
+    return keccak256(topologyLeafBytes(follows));
+}
+
+/** The topology leaf: `keccak256(keccak256(TOPOLOGY_LEAF_DOMAIN ‖ uint256(n) ‖
+ *  dataHash))`, `n` the number of edges as a 32-byte big-endian word. The
+ *  inner preimage is 96 bytes where a clause leaf's (a clause key and a data
+ *  hash) is 64, so no clause key, registered or not, reproduces it: no
+ *  attestation and no usage claim opens it. The outer hash keeps every leaf
+ *  apart from an internal node, as for every leaf of the format. */
+export function computeTopologyLeaf(follows: readonly Hex[]): Hex {
+    const dataHash = topologyContentRef(follows);
+    return keccak256(keccak256(concat([TOPOLOGY_LEAF_DOMAIN, numberToHex(follows.length, { size: 32 }), dataHash])));
 }
 
 // ── Canonical serialization ─────────────────────────────────────────────────
@@ -302,9 +367,9 @@ export function computeCheckoutHash(agreement: Agreement): Hex {
     return buildMerkleRoot(agreementLeaves(agreement));
 }
 
-/** Every leaf of the agreement, sorted as the tree is built: one per clause
- *  clause, plus the reserved provenance leaf when the agreement names the
- *  design it instantiates. */
+/** Every leaf of the agreement, sorted as the tree is built: one per clause,
+ *  plus the reserved provenance leaf when the agreement names the design it
+ *  instantiates, plus the topology leaf when it carries `follows`. */
 export function agreementLeaves(agreement: Agreement): Hex[] {
     const keys = agreement.clauses.map((s) => s.clause.toLowerCase());
     const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
@@ -315,6 +380,7 @@ export function agreementLeaves(agreement: Agreement): Hex[] {
     if (agreement.provenance !== undefined) {
         leaves.push(computeProvenanceLeaf(agreement.provenance.agreementHash, agreement.provenance.assemblyHash));
     }
+    if (agreement.follows !== undefined) leaves.push(computeTopologyLeaf(agreement.follows));
     return sortLeaves(leaves);
 }
 

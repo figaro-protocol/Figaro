@@ -33,8 +33,7 @@
     "registrations": {
         "default": "seeder",
         "byClause": {
-            "figaro-commerce": "dao",
-            "figaro-topology": "dao"
+            "figaro-commerce": "dao"
         }
     }
 }

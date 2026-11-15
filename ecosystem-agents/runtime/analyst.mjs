@@ -36,7 +36,6 @@ import {
     provenanceContentRef,
     reconstructDiscovery,
     readUtilityTokenPin,
-    clauseByField,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 import {
@@ -476,17 +475,17 @@ function assemblyAttribution(corpus) {
 }
 
 /**
- * Parent edges from held agreements' topology clauses, found by the declared
- * `follows` field. Returns `undefined` when NO held agreement
- * carries edges — the caller then omits the argument and `marketShape` reports
- * FigaroCore's own linear view rather than a fabricated DAG.
+ * Parent edges from held agreements' topology leaves (`agreement.follows`,
+ * the order hashes each order follows, the agreement format's own field).
+ * Returns `undefined` when NO held agreement carries edges — the caller then
+ * omits the argument and `marketShape` reports FigaroCore's own linear view
+ * rather than a fabricated DAG.
  */
 function parentEdges(corpus) {
     const byOrder = new Map();
     for (const { agreement, order } of corpus.held.byHash.values()) {
-        const clauseEntry = clauseByField(agreement, "follows", corpus.specs);
-        const parents = clauseEntry?.data?.follows;
-        if (Array.isArray(parents)) byOrder.set(order.orderHash.toLowerCase(), parents);
+        const parents = agreement?.follows;
+        if (Array.isArray(parents)) byOrder.set(order.orderHash.toLowerCase(), parents.filter((p) => typeof p === "string"));
     }
     if (byOrder.size === 0) return undefined;
     return (orderHash) => byOrder.get(orderHash.toLowerCase()) ?? [];

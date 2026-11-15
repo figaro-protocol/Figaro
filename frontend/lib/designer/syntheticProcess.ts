@@ -53,8 +53,8 @@ export interface CreatedOrder {
 
 /**
  * Clause-field defaults applied to every freshly-spawned synthetic order.
- * No clause is pre-composed by default: mandatory clauses (commerce, topology)
- * are composed by the build itself, and every other clause is an explicit
+ * No clause is pre-composed by default: the mandatory clauses (commerce, as
+ * the reference specs declare it) are composed by the build itself, and every other clause is an explicit
  * designer choice in the drawer.
  */
 function defaultNodeClauseFields(): ClauseFields {
@@ -104,7 +104,7 @@ export function buildSyntheticOrder(params: {
         seller: params.seller,
         currency: params.currency,
         checkoutHash,
-        // First-class topology edges (the topology clause's data) — read directly by
+        // First-class topology edges (the entry's `follows`) — read directly by
         // the topology deriver, never recovered from the agreement.
         follows: params.follows ?? [],
         // Value-free draft: zeros satisfy the shared Order shape; never rendered

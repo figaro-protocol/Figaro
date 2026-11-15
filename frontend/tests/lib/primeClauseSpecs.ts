@@ -112,7 +112,7 @@ export function authoredAgreements(): Record<string, RegisteredAgreement> {
 }
 
 /** The mandatory clauses the canvas writes into every agreement, over the
- *  primed specs: the DAO's live commerce and topology (`mandatoryClausesForCanvas`).
+ *  primed specs: the DAO's live mandatory clauses (`mandatoryClausesForCanvas`).
  *  Prime the specs first. */
 export function mandatoryDefaults(): Record<Hex, Record<string, unknown>> {
     return mandatoryClausesForCanvas();
@@ -131,56 +131,42 @@ export function referenceAssembly(name: string): HydratedAssembly {
 }
 
 /** A hydrated assembly from the INLINE shape a test writes
- *  (`agreements[].clauses` by clause key or name, the topology clause
- *  carrying its parents as `agreement-<j>` labels): each agreement's parents
- *  lifted into its own fill (the clause stays composed, with `{}`) and each
- *  agreement's agreement keyed — every registered agreement beside the
- *  assembly, keyed by lowercased key, as a registry read hands them to
- *  checkout. By default each inline agreement composes as the seeding
- *  composes an authored one (`composeAuthoredAgreement` over the primed
- *  specs, the DAO's mandatory clauses written in first — `mandatoryDefaults`;
- *  prime the specs first) and the assembly builds over them
- *  (`assembleAuthored`); `{ pick: false }` keys
- *  each inline clause set as written, for a test whose spec set carries no
- *  mandatory clause. */
+ *  (`agreements[].clauses` by clause key or name, `agreements[].follows` the
+ *  `agreement-<j>` labels of the entries it follows): each entry's
+ *  `follows` carried onto it and each agreement's agreement keyed — every
+ *  registered agreement beside the assembly, keyed by lowercased key, as a
+ *  registry read hands them to checkout. By default each inline agreement
+ *  composes as the seeding composes an authored one
+ *  (`composeAuthoredAgreement` over the primed specs, the DAO's mandatory
+ *  clauses written in first — `mandatoryDefaults`; prime the specs first)
+ *  and the assembly builds over them (`assembleAuthored`); `{ pick: false }`
+ *  keys each inline clause set as written, for a test whose spec set carries
+ *  no mandatory clause. */
 export function hydrateAuthored(authored: object, opts: { pick?: boolean } = {}): HydratedAssembly {
     const byKey: Record<Hex, RegisteredAgreement> = {};
     if (opts.pick !== false) {
         const mandatory = mandatoryDefaults();
         const { agreements: written, ...rest } = authored as {
-            agreements: { id?: string; clauses: Record<string, Record<string, unknown>> }[];
+            agreements: { id?: string; clauses: Record<string, Record<string, unknown>>; follows?: string[] }[];
         } & Record<string, unknown>;
         const byName: Record<string, RegisteredAgreement> = {};
         const entries = written.map((entry, i) => {
             const id = entry.id ?? `agreement-${i}`;
-            const clauses: Record<string, Record<string, unknown>> = {};
-            let parents: string[] | undefined;
-            for (const [key, values] of Object.entries(entry.clauses)) {
-                const { follows, ...composed } = values ?? {};
-                clauses[key] = composed;
-                if (Array.isArray(follows)) parents = [...follows] as string[];
-            }
-            byName[id] = composeAuthoredAgreement({ clauses: { ...mandatory, ...clauses } }, specSource()).document;
-            return { id, agreement: id, ...(parents ? { follows: parents } : {}) };
+            byName[id] = composeAuthoredAgreement({ clauses: { ...mandatory, ...entry.clauses } }, specSource()).document;
+            return { id, agreement: id, ...(entry.follows ? { follows: [...entry.follows] } : {}) };
         });
         const { assembly, agreements } = assembleAuthored({ ...rest, agreements: entries }, byName, specSource());
         for (const [key, doc] of Object.entries(agreements)) byKey[key.toLowerCase() as Hex] = doc;
         return { assembly, agreements: byKey };
     }
     const { agreements: written, ...rest } = authored as {
-        agreements: { id: string; clauses: Record<Hex, Record<string, unknown>> }[];
+        agreements: { id: string; clauses: Record<Hex, Record<string, unknown>>; follows?: string[] }[];
     } & Omit<Assembly, "agreements">;
     const entries: AssemblyAgreement[] = written.map((entry) => {
-        const clauses: Record<Hex, Record<string, unknown>> = {};
-        const fills: Record<Hex, Record<string, unknown>> = {};
-        for (const [key, values] of Object.entries(entry.clauses) as [Hex, Record<string, unknown>][]) {
-            const { follows, ...composed } = values ?? {};
-            clauses[key] = composed;
-            if (Array.isArray(follows)) fills[key] = { follows: [...follows] };
-        }
+        const clauses = { ...entry.clauses };
         const agreementHash = agreementHashOf({ clauses });
         byKey[agreementHash.toLowerCase() as Hex] = { clauses };
-        return { id: entry.id, agreementHash, clauses: fills };
+        return { id: entry.id, agreementHash, clauses: {}, follows: [...(entry.follows ?? [])] };
     });
     return { assembly: { ...rest, agreements: entries }, agreements: byKey };
 }

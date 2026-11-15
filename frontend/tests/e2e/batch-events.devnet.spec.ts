@@ -181,7 +181,6 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
                 [keyOf('figaro-commerce')]: {
                     lineItems: [{ itemId: 'batch-events-1', name: 'One batch-resolved order', quantity: 1, unitPrice: PAYMENT.toString() }],
                 },
-                [keyOf('figaro-topology')]: { follows: [] },
                 // A process-log clause: the seller's attestation below names it, and the
                 // audit page's clause evidence and the order page's timeline list it.
                 [keyOf('figaro-merchant-process')]: {},

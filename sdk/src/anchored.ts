@@ -161,9 +161,11 @@ export function anchorAssembly(raw: unknown, assemblyHash: Hex | string): Anchor
 }
 
 /** An agreement, verified against the commitment's `checkoutHash`: the
- *  merkle root over its clause leaves and its provenance leaf is the hash. A
- *  document whose leaves do not hash (malformed, duplicated clause keys, a
- *  `provenance` that is not two 32-byte hex keys) is not the agreement. The
+ *  merkle root over its clause leaves, its provenance leaf and its topology
+ *  leaf is the hash. A document whose leaves do not hash (malformed,
+ *  duplicated clause keys, a `provenance` that is not two 32-byte hex keys,
+ *  a `follows` that is not a list of distinct 32-byte order hashes) is not
+ *  the agreement. The
  *  top-level `buyer` and `seller` are outside the hash and pass unchecked
  *  here — check them against the commitment. */
 export function anchorAgreement(raw: unknown, checkoutHash: Hex | string): Anchored<Agreement> | null {

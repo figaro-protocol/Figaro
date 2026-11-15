@@ -181,7 +181,7 @@ export interface AgreementGroup {
     label: string;
     /** `clauseKey` is the key the assembly composed for the clause — every
      *  spec read the row makes is keyed on it. `mandatory` marks a clause whose spec's
-     *  article is "mandatory" (commerce, topology, or anyone's
+     *  article is "mandatory" (commerce, or anyone's
      *  registration so marked): it is listed like every other clause, since
      *  the buyer signs it, and is never fillable — the checkout walk fills it.
      *  `fields` is the buyer's field complement for THIS row — the spec's
@@ -249,7 +249,7 @@ export function deriveAgreementGroups(args: {
     }];
     return [...assemblyGroup, ...orders.map((entry, i) => {
         // The agreement's clauses: its registered agreement's, with the
-        // agreement's own fills (the topology parents) merged over them.
+        // entry's own fills merged over them.
         const order = { id: entry.id, clauses: agreementClauses(hydrated, entry) };
         const isRoot = assemblyFollows(entry).length === 0;
         const assigned = isRoot ? leadAddress : sellerOf.get(String(order.id));
@@ -264,8 +264,8 @@ export function deriveAgreementGroups(args: {
             assigned ? profileValuesFor(assigned, sellerCatalogs) : undefined,
             specSource(),
         );
-        // Fields the checkout walk fills MECHANICALLY (the topology
-        // rewrite, …) — a buyer input the walk
+        // Fields the checkout walk fills MECHANICALLY (the line items,
+        // the dimweight, …) — a buyer input the walk
         // would overwrite is a false affordance, so a clause whose
         // declared fields are ALL mechanical is not fillable. Derived
         // from the planner's own fill set, never a clause id.

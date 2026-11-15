@@ -157,10 +157,11 @@ derive identity.
   `{}` = the clause is composed with no fields set (seller fills at first-use, buyer at
   checkout). Per-node clause choices AND the per-edge mechanism both live in this map. Its
   key is `agreementHashOf({ clauses })`.
-- **Topology is a clause like any other — filled by the agreement.** An agreement
-  carries `figaro-topology` as `{}`, so one registered agreement fits any position; the order
-  agreement's own `clauses` carry `{ follows: [...] }` — the root order is `[]`; a child
-  names its parent's local `"agreement-<i>"` label. There are **no** `nodes`/`edges` arrays —
+- **Topology is no clause — it is each entry's `follows`.** A registered agreement
+  carries no topology, so one registered agreement fits any position; each entry of the
+  assembly carries `follows` — the root is `[]`; a child names its parents' local
+  `"agreement-<i>"` labels. At checkout each order's agreement carries the edges as the
+  format's topology leaf (`Agreement.follows`, the parents' order hashes). There are **no** `nodes`/`edges` arrays —
   that is a canvas-internal editing form, never the published document.
 - **`assemblyClauses` is where an assembly-SCOPED clause lives** — the same
   `clauseKey → designer values` map, composed ONCE for the whole design, at the top level of
@@ -183,7 +184,7 @@ derive identity.
   own `follows` — `composeAuthoredAgreement(doc, specs)` from `@figaro-protocol/sdk`
   resolves the names (`resolveAuthoredClauseKeys`: the keys of the specs in `specs.list()` whose
   `clauseId` matches; write `name@version` to match the `version` too), composes them through
-  the one composition rule (the two mandatory clauses named like any other; or compose
+  the one composition rule (the mandatory clause named like any other; or compose
   the whole set by name with `composeAuthoredAgreements(docsByName, specs)`) and keys the agreement, and `assembleAuthored(doc, agreementsByName, specs)`
   binds each one to the named agreement's hash and returns `{ assembly, agreements }` with each
   DISTINCT agreement once. They refuse a name two loaded specs share unless the file
@@ -208,20 +209,21 @@ catalog values, not assembly fields.
     {
       "id": "agreement-0",
       "agreementHash": "0x<registered agreement hash>",
-      "clauses": { "0x<topology clause key>": { "follows": [] } }
+      "clauses": {},
+      "follows": []
     },
     {
       "id": "agreement-1",
       "agreementHash": "0x<registered agreement hash>",
-      "clauses": { "0x<topology clause key>": { "follows": ["agreement-0"] } }
+      "clauses": {},
+      "follows": ["agreement-0"]
     }
   ]
 }
 ```
 
 Each `agreementHash` names an agreement registered on `AgreementRegistry`, pinned as
-`{ "name": "<optional>", "clauses": { "0x<commerce clause key>": {}, "0x<handoff clause key>": {},
-"0x<topology clause key>": {} } }`.
+`{ "name": "<optional>", "clauses": { "0x<commerce clause key>": {}, "0x<handoff clause key>": {} } }`.
 
 `assemblyClauses` is omitted entirely when nothing assembly-scoped is composed. The
 mandatory clauses in a new agreement are exactly the clauses of the registered agreement you

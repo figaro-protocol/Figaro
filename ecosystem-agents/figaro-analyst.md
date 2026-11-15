@@ -37,7 +37,7 @@ answers in — but **the class itself is open**, and treating the five as a clos
 the single mistake that makes an analyst wrong about a market it has never seen.
 
 - **Process** and **Resolution** are BASE graphs. They fall out of what every order
-  carries by construction — the topology clause (who comes before whom) and the
+  carries by construction — the topology leaf of its agreement (who comes before whom) and the
   commitment (who pays whom, in what token, how much) — so every deployment has them and nothing has to be registered for
   them to exist. Truth boundary: **protocol-enforced**. Every node is economically backed;
   every bond and payout is on chain and checked by contract invariants.

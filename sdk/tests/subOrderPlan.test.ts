@@ -23,18 +23,14 @@ import { hydrateAuthored } from "./hydrate.js";
 // B + D carry proximity-policy, C carries emissions. Proximity is bound
 // to [Swift, Mercato], so the per-clause cursor hands B→Swift, D→Mercato by
 // commit order. Structure + clauses come straight off the registered agreements —
-// party-agnostic, no baked payment. Parents live INSIDE the topology clause
-// (the real assembly shape — planSubOrderSellers reads them via
-// assemblyFollows; a node-level follows field is the
-// retired pre-topology-clause shape and is never read).
+// party-agnostic, no baked payment. Parents are each entry's own `follows`
+// (planSubOrderSellers reads them via assemblyFollows).
 const MERCATO = "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f" as const;
 const SWIFT = "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955" as const;
 const ROSSO = "0x976EA74026E726554dB657fA54763abd0C3a0aa9" as const;
 
 const PROX = keyOf("figaro-proximity-policy");
 const EMISSIONS = keyOf("figaro-emissions");
-const TOPO = keyOf("figaro-topology");
-const parents = (ids: string[]) => ({ [TOPO]: { follows: ids } });
 
 const NO_SPECS = specSourceFromFixtures([]);
 const GEO_SPECS = specSourceFromFixtures(["figaro-geolocation"]);
@@ -59,10 +55,10 @@ const assembly: BoundAssemblyPlanInput = {
     hydratedAssembly: hydrateAuthored({
         name: "Kit",
         agreements: [
-            { id: "A", clauses: { ...parents([]) } },
-            { id: "B", clauses: { [PROX]: {}, ...parents(["A"]) } },
-            { id: "C", clauses: { [EMISSIONS]: {}, ...parents(["A"]) } },
-            { id: "D", clauses: { [PROX]: {}, ...parents(["B", "C"]) } },
+            { id: "A", clauses: {}, follows: [] },
+            { id: "B", clauses: { [PROX]: {} }, follows: ["A"] },
+            { id: "C", clauses: { [EMISSIONS]: {} }, follows: ["A"] },
+            { id: "D", clauses: { [PROX]: {} }, follows: ["B", "C"] },
         ],
     }),
 };
@@ -243,7 +239,7 @@ const rateCatalog = (item: Record<string, unknown>): PricingCatalog[] =>
     [{ address: SWIFT, items: [item] }] as unknown as PricingCatalog[];
 
 const nodeWithClauses = (clauses: Record<string, Record<string, unknown>>) =>
-    ({ clauses: { ...clauses, ...parents(["A"]) } });
+    ({ clauses: { ...clauses } });
 
 describe("resolveSubOrderPricing — rate items", () => {
     it("checkout-quantity: payment = rate × the buyer's entered units", () => {

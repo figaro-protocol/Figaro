@@ -56,7 +56,7 @@ const SHAPE =
     "proof of leaf under agreementHash, and agreementHash is the sorted-pair merkle root over every clause leaf " +
     "(a one-clause agreement's hash is its leaf). assemblies[]: { label, assemblyHash, entries[], terms|null }. " +
     "slots[i]: { id, agreementHash, agreementBytes, slotContentHash, leaf, membershipProof, provenance } — " +
-    "agreementBytes is the canonical JSON {\"clauses\":{…},\"slot\":i}, slotContentHash = keccak256(agreementBytes), " +
+    "agreementBytes is the canonical JSON {\"clauses\":{…},\"follows\":[…],\"slot\":i} (follows: the labels of the entries this one follows, [] on the root), slotContentHash = keccak256(agreementBytes), " +
     "leaf = keccak256(keccak256(assemblyLeafDomain ‖ agreementHash ‖ slotContentHash)) with assemblyLeafDomain = keccak256(\"figaro-assembly-leaf\"), the assembly tree's own leaf shape (the terms leaf takes it too), membershipProof is the sorted-pair proof of leaf " +
     "under assemblyHash. terms: { leafKey (keccak256(\"figaro-assembly-terms\")), termsBytes (canonical JSON of " +
     "assemblyClauses), clauseDataHash, leaf } or null when no assembly-scoped clause is composed. " +
@@ -122,7 +122,7 @@ function build() {
         agreements: [
             agreementVector("three-clauses", REGISTERED_THREE),
             agreementVector("one-clause", REGISTERED_ONE),
-            agreementVector("two-clauses-and-a-design", REGISTERED_DESIGN),
+            agreementVector("the-design", REGISTERED_DESIGN),
         ],
         assemblies: [
             assemblyVector("one-agreement", ASSEMBLY_ONE),

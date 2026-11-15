@@ -15,7 +15,7 @@
  *
  * Six `block` attributes are the reference tooling's rules for collecting
  * the data a party signs: `design.article` (`"mandatory"`: the canvas writes
- * the live commerce and topology clauses into each agreement;
+ * the DAO's live mandatory clauses into each agreement;
  * `"attestations"`: a process-log clause stays an empty anchor at commit),
  * `design.scope` (`"assembly"`: composed once for the whole design and folded
  * into every agreement at checkout), `design.fills` (the fields whose values
@@ -37,6 +37,7 @@
 import {
     canonicalize,
     computeCheckoutHash,
+    topologyLeafBytes,
     withholdClauseContent,
     type Agreement,
     type AgreementClause,
@@ -233,7 +234,7 @@ export function specHasPrivateField(spec: ProjectionSpecView): boolean {
  *  `warmAgreementSpecs` in `agreementFetch.publishAgreement`); with the cache warm
  *  this fail-closed form is EXACT — private clauses withheld, public clauses
  *  kept — and the over-redaction that fail-closed would otherwise cause for cold
- *  public clauses (topology, commerce) does not occur. If warming fails, the
+ *  public clauses (commerce) does not occur. If warming fails, the
  *  fail-closed default over-redacts (a public reader sees fingerprints) rather
  *  than leaking — the correct priority. The signed and counterparty-relayed forms
  *  keep full plaintext regardless — only the standalone public pin takes this form. */
@@ -250,12 +251,11 @@ export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
 }
 
 /** True for the MANDATORY clauses (`block.design.article: "mandatory"` —
- *  topology, and commerce as the reference specs declare it). A designer
- *  never selects one: the canvas writes the DAO's live mandatory clauses
- *  into every agreement it registers (`mandatoryClauses`), and the designer
- *  composes the rest. The build requires topology's shape only
- *  (`assertMandatoryShapes`). Never name this article "structural" — that
- *  word collides with the design/DAG sense.
+ *  commerce, as the reference specs declare it). A designer never selects
+ *  one: the canvas writes the DAO's live mandatory clauses into every
+ *  agreement it registers (`mandatoryClauses`), and the designer composes
+ *  the rest. The build requires none of them. Never name this article
+ *  "structural" — that word collides with the design/DAG sense.
  *
  *  The article is read from the spec's `block`, which whoever registered the
  *  clause wrote: it confers no protocol standing. A surface that shows a
@@ -266,19 +266,10 @@ export function specIsMandatory(spec: ProjectionSpecView): boolean {
     return spec.hints?.article === "mandatory";
 }
 
-/** The SHAPE of topology: a clause declaring `follows` as content —
- *  the orders this order follows, the process's DAG. An agreement carries
- *  exactly one. */
-export function specIsTopologyShape(spec: ProjectionSpecView): boolean {
-    return specDeclaresContentField(spec, "follows");
-}
-
-/** The shape a mandatory-article spec has: topology's, or (for a mandatory
- *  clause of another shape) the sorted names of the content fields it
- *  declares. Two mandatory specs of one shape are two versions of one clause
- *  to the canvas, whatever their names. */
+/** The shape a mandatory-article spec has: the sorted names of the content
+ *  fields it declares. Two mandatory specs of one shape are two versions of
+ *  one clause to the canvas, whatever their names. */
 function mandatoryShape(spec: ProjectionSpecView): string {
-    if (specIsTopologyShape(spec)) return "topology";
     return spec.fields.map((f) => f.name).filter((f) => specDeclaresContentField(spec, f)).sort().join(",");
 }
 
@@ -678,6 +669,27 @@ function designIssues(
     return first ?? [];
 }
 
+/** The topology check: an agreement built from a design (it names one in its
+ *  provenance leaf) carries its topology leaf, an empty list for a root, and
+ *  any topology an agreement carries is well formed — a list of 32-byte
+ *  order hashes, none named twice (`topologyLeafBytes`). Whether the edges
+ *  are the ones the design gives is not checked here. */
+function topologyIssues(agreement: Agreement): CommitmentAgreementIssue[] {
+    if (agreement.follows === undefined) {
+        return agreement.provenance === undefined ? [] : [{
+            clause: "(topology)",
+            path: "follows",
+            message: "the agreement instantiates a design but carries no topology leaf — write the orders it follows, [] for the root",
+        }];
+    }
+    try {
+        topologyLeafBytes(agreement.follows);
+        return [];
+    } catch (cause) {
+        return [{ clause: "(topology)", path: "follows", message: cause instanceof Error ? cause.message : String(cause) }];
+    }
+}
+
 /**
  * The off-chain layer of the verification stack, run on BOTH sides of the bilateral commit
  * (buyer before initiating, seller before counter-signing) so neither party
@@ -691,7 +703,9 @@ function designIssues(
  * agreement's provenance names, `null` when none was read, and an agreement
  * naming a design then fails (a buyer or a seller never drops a designed
  * clause or changes a designer's value); and the `checkoutHash` about to be
- * signed equals the merkle root recomputed from the clauses. Catches a
+ * signed equals the merkle root recomputed from the clauses. The agreement's
+ * topology leaf is well formed, and present wherever a design is named
+ * (`topologyIssues`). Catches a
  * malformed agreement before a chain round-trip.
  *
  * `commitment` is the commitment being signed. It alone carries the payment
@@ -770,6 +784,7 @@ export function validateCommitmentAgreement(
     }
 
     issues.push(...designIssues(agreement, specs, design));
+    issues.push(...topologyIssues(agreement));
 
     if (issues.length === 0) {
         let computed: `0x${string}` | null = null;
@@ -861,43 +876,14 @@ export interface AssemblyOrderNode {
     follows?: readonly string[];
 }
 
-/** The agreement's own fills for a composed clause map — the design-time
- *  values the ASSEMBLY'S AGREEMENT carries rather than the registered agreement: each
- *  composed clause whose loaded spec declares `follows` (the
- *  topology, matched by declared field, never by clause id) gets
- *  `{ follows: parents }` (root = []). The registered agreement
- *  composes those clauses with `{}`, so one agreement sits in any agreement
- *  of any assembly. */
-function agreementTopologyFills(
-    clauses: Readonly<Record<Hex, Record<string, unknown>>>,
-    parents: string[],
-    specs: SpecSource,
-): Record<Hex, Record<string, unknown>> {
-    const out: Record<Hex, Record<string, unknown>> = {};
-    for (const clauseKey of Object.keys(clauses) as Hex[]) {
-        const spec = specs.get(clauseKey);
-        if (spec && specDeclaresField(spec, "follows")) out[clauseKey] = { follows: [...parents] };
-    }
-    return out;
-}
-
-/** An agreement is not an agreement without topology: the composed clauses
- *  carry exactly one clause of topology's shape, whatever its key. Throws,
- *  naming `label`, on none or two. No clause of commerce is required: the
- *  commitment carries the payment and the token, so an agreement composing
- *  no line items is whole. */
-function assertMandatoryShapes(clauses: Readonly<Record<Hex, Record<string, unknown>>>, specs: SpecSource, label: string): void {
-    const keys = Object.keys(clauses) as Hex[];
-    const found = keys.filter((k) => { const spec = specs.get(k); return spec !== undefined && specIsTopologyShape(spec); });
-    if (found.length === 0) {
-        throw new Error(
-            `${label}: no clause of topology's shape — an agreement is not an agreement without the orders it follows; the canvas writes the DAO's live topology into every agreement`,
-        );
-    }
-    if (found.length > 1) {
-        throw new Error(
-            `${label}: two clauses of topology's shape (${found.map((k) => clauseLabel(k, specs.get(k))).join(", ")}) — one per agreement`,
-        );
+/** An agreement is a composition of at least one clause: an empty one's
+ *  root is bytes32(0), which `AgreementRegistry.registerAgreement` refuses
+ *  (`ZeroAgreementHash`). Throws, naming `label`. No clause of any shape is
+ *  required: the commitment carries the payment and the token, and the
+ *  agreement format carries the topology (`Agreement.follows`). */
+function assertComposesAClause(clauses: Readonly<Record<Hex, Record<string, unknown>>>, label: string): void {
+    if (Object.keys(clauses).length === 0) {
+        throw new Error(`${label}: composes no clause — its key would be bytes32(0), which the agreement registry refuses`);
     }
 }
 
@@ -935,7 +921,7 @@ export interface BuiltAssembly {
  *  writes in and the clauses a designer selected: the scope check (an
  *  assembly-scoped clause never composes on an order; a composed key's spec
  *  must be loaded), the value-free rule (only `block.design.fills` values
- *  survive), and the shape rule (exactly one clause of topology's shape; a
+ *  survive), and the floor (at least one clause, `assertComposesAClause`; a
  *  clause both carry keeps the designer's composition).
  *  The result is the registered agreement's
  *  document and its key — what `AgreementRegistry` takes, whether the
@@ -945,9 +931,8 @@ export interface BuiltAssembly {
  *
  *  The mandatory clauses (`mandatory`, the DAO's live mandatory clauses the
  *  canvas reads from the registry — `mandatoryClauses`) are written in first
- *  and the designer's selection over them; the result carries exactly one
- *  clause of topology's shape, or it is refused (`assertMandatoryShapes`).
- *  An authored agreement names its clauses itself and passes none. */
+ *  and the designer's selection over them. No topology is composed: who
+ *  follows whom is the assembly entry's `follows`. An authored agreement names its clauses itself and passes none. */
 export function composeOrderAgreement(args: {
     /** clauseKey → the designer's composed values for this order. */
     clauses: Readonly<Record<Hex, Record<string, unknown>>>;
@@ -986,7 +971,7 @@ export function composeOrderAgreement(args: {
         defaults[clauseKey] = designFillValues(spec, values);
     }
     const clauses: Record<Hex, Record<string, unknown>> = { ...defaults, ...selection };
-    assertMandatoryShapes(clauses, specs, "the agreement");
+    assertComposesAClause(clauses, "the agreement");
     const composed: RegisteredAgreement = { clauses };
     return { composed, agreementHash: agreementHashOf(composed) };
 }
@@ -998,10 +983,9 @@ export function composeOrderAgreement(args: {
  *  agreement — value-free, with the mandatory clauses (`mandatory`, the
  *  DAO's live mandatory clauses the canvas reads from the registry)
  *  written in first (composition time is the only place; checkout adds no
- *  clause). Every agreement carries one clause of topology's shape, or the
- *  build is refused: an agreement is not an agreement without the orders it
- *  follows. A bound registered agreement must carry it itself, whatever its
- *  key. The topology's parents are the agreement's own fill. */
+ *  clause). Each entry carries its own topology as `follows`, the local
+ *  labels of the entries whose orders it follows (`[]` on the root); a
+ *  registered agreement names none. */
 export function buildAssembly(args: {
     name?: string;
     summary?: string;
@@ -1075,8 +1059,7 @@ export function buildAssembly(args: {
             }
             const agreementHash = agreementHashOf(bound);
             assertNotReservedKey(agreementHash, `${id} agreementHash`);
-            assertMandatoryShapes(bound.clauses, specs, `${id}: registered agreement ${agreementHash}`);
-            return { id, agreementHash, clauses: agreementTopologyFills(bound.clauses, parents, specs) };
+            return { id, agreementHash, clauses: {}, follows: parents };
         }
         // The one composition rule (`composeOrderAgreement`): the mandatory
         // clauses written in first, the designer's clause SELECTION over them,
@@ -1086,9 +1069,8 @@ export function buildAssembly(args: {
             mandatory,
             specs,
         });
-        const { clauses } = registeredAgreement;
         agreements[agreementHash] = registeredAgreement;
-        return { id, agreementHash, clauses: agreementTopologyFills(clauses, parents, specs) };
+        return { id, agreementHash, clauses: {}, follows: parents };
     });
     return {
         assembly: {
@@ -1105,7 +1087,7 @@ export function buildAssembly(args: {
 /**
  * An authored agreement (`agreements/<name>.json`): the clauses a
  * designer composes into it, written by clause NAME with the
- * designer's fills, beside the designer's own words. The two mandatory
+ * designer's fills, beside the designer's own words. The mandatory
  * clauses are named like any other: an authored agreement states what the
  * canvas would write in. Seed time only.
  */
@@ -1120,8 +1102,8 @@ export interface AuthoredAgreement {
  * Compose an AUTHORED agreement (`agreements/*.json`, clause names) into the
  * registered agreement it names: the names resolved to keys
  * (`resolveAuthoredClauseKeys`), then the one composition rule
- * (`composeOrderAgreement`: the scope check, the value-free rule, one clause
- * of topology's shape). Returns the document the
+ * (`composeOrderAgreement`: the scope check, the value-free rule, at least
+ * one clause). Returns the document the
  * seeding pins — the designer's words beside the composed clauses — and its
  * key. Seed time only.
  */
@@ -1169,9 +1151,7 @@ export function composeAuthoredAgreements(
  * `follows` (`agreement-<j>` labels); `assemblyClauses` are written by
  * clause name. The entry binds the named agreement's hash — the same key
  * whether a designer registers that agreement on its own or this seeding
- * registers it — and its fill is the topology clause's parents
- * (`agreementTopologyFills`). A bound agreement must carry one clause of
- * topology's shape (`assertMandatoryShapes`), or it is refused. Returns the assembly and each DISTINCT agreement once, keyed.
+ * registers it — and carries the written `follows` (`[]` when absent). Returns the assembly and each DISTINCT agreement once, keyed.
  * Seed time only.
  */
 export function assembleAuthored(
@@ -1203,10 +1183,9 @@ export function assembleAuthored(
         if (!bound) throw new Error(`${id} names agreement "${entry.agreement}", which is not among the authored agreements`);
         const agreementHash = agreementHashOf(bound);
         assertNotReservedKey(agreementHash, `${id} agreementHash`);
-        assertMandatoryShapes(bound.clauses, specs, `${id}: agreement "${entry.agreement}"`);
         const parents = Array.isArray(entry.follows) ? [...entry.follows] : [];
         agreements[agreementHash] = { clauses: bound.clauses };
-        return { id, agreementHash, clauses: agreementTopologyFills(bound.clauses, parents, specs) };
+        return { id, agreementHash, clauses: {}, follows: parents };
     });
     return {
         assembly: {

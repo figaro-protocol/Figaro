@@ -27,7 +27,8 @@ labels: assembly-proposal
 ## Which existing clauses it composes with
 
 <!-- The clauses (clauses/*.json) each order in the assembly carries,
-     including the mandatory ones (figaro-commerce, figaro-topology). -->
+     including the mandatory one (figaro-commerce). Who follows whom is each
+     order's `follows`, not a clause. -->
 
 ## Staked-registration acknowledgment
 

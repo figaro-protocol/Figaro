@@ -904,11 +904,13 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
             const agreement = JSON.parse(agreementJson) as {
                 clauses: { clause: string; data: Record<string, unknown> }[];
+                follows?: string[];
             };
+            expect(Array.isArray(agreement.follows), 'the committed agreement carries its topology leaf (`follows`)').toBe(true);
             const leafClauses = agreement.clauses.map((s) => s.clause.toLowerCase());
             expect(leafClauses, 'the committed merkle tree carries the mandatory and target leaves')
                 .toEqual(expect.arrayContaining([
-                    keyOf('figaro-commerce'), keyOf('figaro-topology'),
+                    keyOf('figaro-commerce'),
                     ...(rung.composeFirst ?? []).map((name) => keyOf(name)), rungKey,
                 ]));
             const targetLeaf = agreement.clauses.find((s) => s.clause.toLowerCase() === rungKey);

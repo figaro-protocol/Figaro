@@ -14,8 +14,12 @@ use crate::mempool::PendingOp;
 ///
 /// THE PERIOD IS A CHAIN FACT, read from `UsageCounter.currentPeriod()`,
 /// never guessed from a local clock: the counter re-checks it at
-/// resolution and skips the batch's accrual on a mismatch. A batch assembled just before a period boundary and
-/// resolved just after it must be re-proven for the new period.
+/// resolution and refuses a mismatch (`UsageCounter.applyBatchAccrual`,
+/// `PeriodMismatch`), and the verifier catches the refusal
+/// (`BatchAccrualSkipped`). A batch assembled before a period boundary and
+/// resolved after it still resolves its tokens and counts none of its uses;
+/// only a later batch that proves those uses again under the new period
+/// counts them.
 #[derive(Clone, Debug, Default)]
 pub struct UsageContext {
     pub claims: Vec<UsageClaim>,

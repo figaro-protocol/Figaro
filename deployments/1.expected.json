@@ -39,8 +39,7 @@
     "registrations": {
         "default": "founder",
         "byClause": {
-            "figaro-commerce": "daoVault",
-            "figaro-topology": "daoVault"
+            "figaro-commerce": "daoVault"
         }
     }
 }

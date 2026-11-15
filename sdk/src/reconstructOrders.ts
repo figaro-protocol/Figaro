@@ -20,8 +20,8 @@
  *
  * A DAG of orders under one root: FigaroCore sees a LINEAR sequence of
  * commits updating a monotonic cumulative-value accumulator; DAG topology is
- * off-chain (each order's parents recorded in its topology clause, matched
- * by FIELD NAME, never clause id).
+ * off-chain (each order's parents' order hashes in its agreement's topology
+ * leaf, `Agreement.follows`, written from the assembly entry's `follows`).
  */
 
 import { agreementClauses, assemblyFollows, assemblyHashOf } from "./assembly.js";
@@ -56,7 +56,7 @@ export interface PlannedAssemblyOrder {
     agreementHash: Hex;
     /** The agreement's clause bag (clauseKey → values): the assembly-scoped
      *  clauses, the registered agreement's clauses and the agreement's own
-     *  fills over them (parents still assembly-local). */
+     *  fills over them. */
     clauses: Record<string, Record<string, unknown>>;
     /** Assembly-local parent node ids (empty on the root). */
     parentLocalIds: string[];
@@ -211,9 +211,9 @@ export async function reconstructOrdersFromAssembly(
 
         cumulative += spec.payment;
         // Assembly-local parent ids → the REAL order hashes built for those
-        // nodes (root's empty parents pass through unchanged). Matched by
-        // FIELD NAME on every clause carrying `follows`.
-        const clauses = withRealParents(node.clauses, realHash);
+        // nodes, written into the agreement's topology leaf ([] on the root).
+        const follows = realParents(node, realHash);
+        const clauses = node.clauses;
         const built = params.specs
             ? buildOrderAgreement(
                   params.buyer,
@@ -227,7 +227,11 @@ export async function reconstructOrdersFromAssembly(
                   spec.seller,
                   spec.overrides,
               );
-        const agreement = fillWalkProvenance(built, { agreementHash: node.agreementHash, assemblyHash }, node.nodeId);
+        const agreement = fillWalkTopology(
+            fillWalkProvenance(built, { agreementHash: node.agreementHash, assemblyHash }, node.nodeId),
+            follows,
+            node.nodeId,
+        );
         const checkoutHash = computeCheckoutHash(agreement);
 
         const { commitment, typedData } = buildCommitment(
@@ -271,27 +275,35 @@ export async function reconstructOrdersFromAssembly(
     return out;
 }
 
-/** Replace a node's assembly-local parent ids with the REAL order hashes built
- *  for those nodes. Root (empty parents) passes through unchanged. */
-function withRealParents(
-    clauses: Record<string, Record<string, unknown>>,
-    realHash: Map<string, Hex>,
-): Record<string, Record<string, unknown>> {
-    const out: Record<string, Record<string, unknown>> = { ...clauses };
-    for (const [cid, data] of Object.entries(clauses)) {
-        const p = (data as { follows?: unknown }).follows;
-        if (Array.isArray(p) && p.length > 0) {
-            out[cid] = {
-                ...data,
-                follows: (p as string[]).map((localId) => {
-                    const h = realHash.get(localId);
-                    if (!h) throw new Error(`parent "${localId}" was not built before its child (bad topo order)`);
-                    return h;
-                }),
-            };
-        }
+/** A node's assembly-local parent ids, as the REAL order hashes built for
+ *  those nodes. Empty for the root. */
+function realParents(node: PlannedAssemblyOrder, realHash: Map<string, Hex>): Hex[] {
+    return node.parentLocalIds.map((localId) => {
+        const h = realHash.get(localId);
+        if (!h) throw new Error(`parent "${localId}" was not built before its child (bad topo order)`);
+        return h;
+    });
+}
+
+/** Write the orders the order follows — their order hashes, `[]` for the
+ *  root — into the agreement's topology leaf (`Agreement.follows`) BEFORE
+ *  hashing: the agreement format's own field, never a clause, filled at
+ *  instantiation from the assembly entry's `follows`, as the provenance is.
+ *  An agreement already naming the SAME edges in the same order passes
+ *  (case-insensitive); one naming other edges throws — an agreement
+ *  claiming another place in the process than the one the walk gives it is
+ *  a forgery to surface, not a value to reconcile. */
+export function fillWalkTopology(agreement: Agreement, follows: readonly Hex[], nodeId: string): Agreement {
+    const existing = agreement.follows;
+    const same = (a: readonly Hex[], b: readonly Hex[]) =>
+        a.length === b.length && a.every((h, i) => h.toLowerCase() === b[i].toLowerCase());
+    if (existing !== undefined && !same(existing, follows)) {
+        throw new Error(
+            `node "${nodeId}": the agreement follows [${existing.join(", ")}], ` +
+            `which contradicts this order's [${follows.join(", ")}] — refusing to claim another place in the process`,
+        );
     }
-    return out;
+    return { ...agreement, follows: [...follows] };
 }
 
 /** Write the order's provenance — the registered agreement its agreement

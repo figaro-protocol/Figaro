@@ -17,12 +17,16 @@
  * verifier. The EIP-712 lock (`eip712Parity.test.ts`) is the sibling.
  *
  * Three agreements: three clauses (an odd leaf count, so one node is promoted
- * unpaired), one clause (an empty proof, leaf == root), and two clauses plus
+ * unpaired), one clause (an empty proof, leaf == root), and one clause plus
+ * the format's topology leaf (an empty list: the root of its process) and
  * the reserved provenance leaf (the agreement format's own leaf, keyed by
  * `PROVENANCE_LEAF_KEY` and reproduced from the two keys it names — the
  * registered agreement and the assembly, taken from the third assembly of
  * `assembly-vectors.json` — what both consumers rebuild for an agreement or
- * assembly claim).
+ * assembly claim). The topology leaf enters the root and its vector
+ * (`topology`: the edges, the committed bytes and the leaf) is frozen for a
+ * reader rebuilding the root; neither on-chain consumer rebuilds it, since
+ * its shape is no clause leaf's and nothing attests or counts it.
  *
  *   1. Regenerate the fixture on `HARVEST_MERKLE_VECTORS=1`.
  *   2. On `AGREEMENT_FUZZ_SEED=<n>`, write GENERATED agreements in the
@@ -41,7 +45,9 @@ import {
     buildSignedClauseInclusionProof,
     canonicalize,
     computeCheckoutHash,
+    computeTopologyLeaf,
     provenanceLeafBytes,
+    topologyLeafBytes,
     type Agreement,
 } from "../src/agreement.js";
 import { agreementArb } from "./propertyArbs.js";
@@ -68,15 +74,15 @@ const ONE: Agreement = {
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
     clauses: [{ clause: K("figaro-modalities"), data: { modality: "pickup" } }],
 };
-/** Two clauses and the design they were instantiated from. */
+/** One clause, the root's empty topology, and the design it was instantiated from. */
 const WITH_DESIGN: Agreement = {
     version: "a1",
     buyer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
     clauses: [
         { clause: K("figaro-commerce"), data: { lineItems: [{ itemId: "i-7", name: "Item", quantity: 1, unitPrice: "7" }] } },
-        { clause: K("figaro-topology"), data: { follows: [] } },
     ],
+    follows: [],
     provenance: { agreementHash: agreementHashOf(REGISTERED_DESIGN), assemblyHash: assemblyHashOf(ASSEMBLY_THREE) },
 };
 
@@ -97,11 +103,17 @@ function vectorFor(label: string, agreement: Agreement) {
             proof,
         };
     })();
+    const topology = agreement.follows === undefined ? undefined : {
+        follows: agreement.follows,
+        clauseData: Buffer.from(topologyLeafBytes(agreement.follows).slice(2), "hex").toString("utf8"),
+        leaf: computeTopologyLeaf(agreement.follows),
+    };
     return {
         label,
         checkoutHash: computeCheckoutHash(agreement),
         clauseCount: agreement.clauses.length,
         ...(provenance ? { provenance } : {}),
+        ...(topology ? { topology } : {}),
         clauses: agreement.clauses.map((clauseEntry) => {
             const { leaf, proof } = buildSignedClauseInclusionProof(agreement, clauseEntry.clause);
             return {
@@ -119,7 +131,7 @@ function vectorFor(label: string, agreement: Agreement) {
 function build() {
     return {
         agreementCount: 3,
-        agreements: [vectorFor("three-clauses", THREE), vectorFor("one-clause", ONE), vectorFor("two-clauses-and-a-design", WITH_DESIGN)],
+        agreements: [vectorFor("three-clauses", THREE), vectorFor("one-clause", ONE), vectorFor("one-clause-a-topology-and-a-design", WITH_DESIGN)],
     };
 }
 

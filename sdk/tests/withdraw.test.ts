@@ -160,7 +160,7 @@ const OTHER_AGREEMENT_HASH = ("0x" + "a1".repeat(32)) as Hex;
 /** An agreement whose provenance leaf names the given registered agreement
  *  and assembly. */
 function instantiated(agreementHash: Hex, assemblyHash: Hex): Agreement {
-    return { ...agreementWith(["figaro-commerce", "figaro-topology"]), provenance: { agreementHash, assemblyHash } };
+    return { ...agreementWith(["figaro-commerce"]), follows: [], provenance: { agreementHash, assemblyHash } };
 }
 
 for (const [label, derive, key, other] of [
@@ -190,7 +190,7 @@ for (const [label, derive, key, other] of [
         it("a process naming another key, or no provenance, does NOT match", () => {
             expect(derive(key, [
                 { processId: PROC_A, agreement: named(other) },
-                { processId: PROC_B, agreement: agreementWith(["figaro-commerce", "figaro-topology"]) },
+                { processId: PROC_B, agreement: agreementWith(["figaro-commerce"]) },
             ]).canWithdraw).toBe(true);
         });
 

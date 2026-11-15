@@ -22,10 +22,9 @@ const SPEC = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "..", "
 const SPEC_TEXT = canonicalize(SPEC);
 const SPEC_KEY = computeClauseKey(SPEC);
 const COMMERCE = SPEC_KEY;
-const TOPOLOGY = `0x${"7c".repeat(32)}`;
-const COMPOSED = { name: "One order", clauses: { [COMMERCE]: {}, [TOPOLOGY]: {} } };
+const COMPOSED = { name: "One order", clauses: { [COMMERCE]: {} } };
 const ASSEMBLY = {
-    agreements: [{ id: "agreement-0", agreementHash: agreementHashOf(COMPOSED), clauses: { [TOPOLOGY]: { follows: [] } } }],
+    agreements: [{ id: "agreement-0", agreementHash: agreementHashOf(COMPOSED), clauses: {}, follows: [] }],
 };
 
 /** A gateway serving `bodies[cid]` at /ipfs/<cid>; anything else 404s. */
@@ -79,7 +78,7 @@ test("a clause spec a gateway substituted reads as absence", async () => {
 });
 
 test("a assembly that hashes to its assembly hash is read; a substituted one is absence", async () => {
-    const forged = { agreements: [{ ...ASSEMBLY.agreements[0], clauses: { [TOPOLOGY]: { follows: ["agreement-9"] } } }] };
+    const forged = { agreements: [{ ...ASSEMBLY.agreements[0], follows: ["agreement-9"] }] };
     const gw = await gateway({ t: JSON.stringify(ASSEMBLY), forged: JSON.stringify(forged), notAssembly: "{\"x\":1}" });
     try {
         const assembly = { contentURI: "ipfs://t", assemblyHash: assemblyHashOf(ASSEMBLY) };
