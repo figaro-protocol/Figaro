@@ -56,8 +56,8 @@ describe("agreement.schema.json <-> composeAuthoredAgreement conformance", () =>
     const negatives: ReadonlyArray<readonly [string, object]> = [
         ["no clauses", { name: "N" }],
         ["clauses not an object", { clauses: ["figaro-commerce"] }],
-        ["an empty clause map (every order carries topology)", { clauses: {} }],
-        ["a fill that is not an object", { clauses: { "figaro-commerce": {}, "figaro-topology": 1 } }],
+        ["an empty clause map (its key would be bytes32(0), which the registry refuses)", { clauses: {} }],
+        ["a fill that is not an object", { clauses: { "figaro-commerce": {}, "figaro-handoff": 1 } }],
     ];
     it.each(negatives)("rejects (%s) in BOTH schema and composer", (_name, doc) => {
         expect(validAgreement(doc)).toBe(false);

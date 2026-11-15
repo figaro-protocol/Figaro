@@ -290,6 +290,31 @@ test("a provenance that is not a bytes32 attributes nothing — party free text 
     assert.equal(attributed.groups[0].key, hash);
 });
 
+test("market-shape reads each held agreement's own topology leaf for the chain's shape, never a clause's follows field", () => {
+    const assemblyHash = `0x${"5a".repeat(32)}`;
+    const provenance = { agreementHash: `0x${"6b".repeat(32)}`, assemblyHash };
+    const held = (order, follows, clauseData = {}) => ({
+        agreement: {
+            version: "a1", buyer: BUYER, seller: order.seller,
+            clauses: [{ clause: X_DEMO, data: clauseData }],
+            provenance, ...(follows === undefined ? {} : { follows }),
+        },
+        order,
+    });
+    const shapeOf = (a, b) => {
+        const corpus = fixtureCorpus();
+        const [orderA, orderB] = corpus.core.orderCommitted;
+        corpus.held = { byHash: new Map([["0x01", held(orderA, a)], ["0x02", held(orderB, b.follows, b.clauseData)]]), rejected: [], committedRoots: 2 };
+        return marketShapeAnswer(corpus).groups[0].shapes;
+    };
+    // B follows A in its topology leaf: a chain of depth 1.
+    assert.deepEqual(shapeOf([], { follows: [ORDER_A] }).map((x) => [x.depth, x.maxWidth]), [[1, 1]]);
+    // Both are roots of their leaves: depth 0, two wide — not FigaroCore's linear view.
+    assert.deepEqual(shapeOf([], { follows: [] }).map((x) => [x.depth, x.maxWidth]), [[0, 2]]);
+    // A clause carrying a follows field names no edge: B reads as a root.
+    assert.deepEqual(shapeOf([], { follows: [], clauseData: { follows: [ORDER_A] } }).map((x) => [x.depth, x.maxWidth]), [[0, 2]]);
+});
+
 test("the buyer's attestation of the provenance leaf is named as the agreement's provenance leaf, decoded to both keys", () => {
     const composition = `0x${"7e".repeat(32)}`;
     const agreementHash = `0x${"8f".repeat(32)}`;

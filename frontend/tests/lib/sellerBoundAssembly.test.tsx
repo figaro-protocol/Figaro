@@ -157,7 +157,7 @@ function payloadUnder(d: ReturnType<typeof design> | null, opts: { buyerSig?: bo
         },
         ...(d ? { [keyOf("figaro-consent")]: { documents: d.documents } } : {}),
     }, specSource());
-    const agreement: Agreement = d ? { ...built, provenance: { agreementHash: d.agreementHash, assemblyHash: d.assemblyHash } } : built;
+    const agreement: Agreement = d ? { ...built, follows: [], provenance: { agreementHash: d.agreementHash, assemblyHash: d.assemblyHash } } : built;
     const commitment: Commitment = {
         processId: `0x${"00".repeat(32)}` as Hex,
         buyer: BUYER,

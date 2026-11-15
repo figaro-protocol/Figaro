@@ -16,7 +16,7 @@ import { computeCheckoutHash, buildProvenanceInclusionProof, verifyInclusionProo
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { hydrateAuthored } from "./hydrate.js";
 
-const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
+const SPECS = specSourceFromFixtures(["figaro-commerce"]);
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 const SELLER_A = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
@@ -29,14 +29,13 @@ const assembly = hydrateAuthored({
     agreements: [
         {
             id: "courier",
-            clauses: {
-                [keyOf("figaro-commerce")]: {},
-                [keyOf("figaro-topology")]: { follows: ["merchant"] },
-            },
+            clauses: { [keyOf("figaro-commerce")]: {} },
+            follows: ["merchant"],
         },
         {
             id: "merchant",
-            clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } },
+            clauses: { [keyOf("figaro-commerce")]: {} },
+            follows: [],
         },
     ],
 });
@@ -49,14 +48,14 @@ describe("planAssemblyOrders — pure structure", () => {
         expect(planned[1].parentLocalIds).toEqual(["merchant"]);
         // The bag is keyed by clause key: the composition pinned WHICH clause
         // it composed, so nothing downstream reads a registry by name.
-        expect(Object.keys(planned[0].clauses).sort()).toEqual([keyOf("figaro-commerce"), keyOf("figaro-topology")].sort());
+        expect(Object.keys(planned[0].clauses).sort()).toEqual([keyOf("figaro-commerce")]);
     });
 
     it("throws on a cyclic topology", () => {
         const cyclic = hydrateAuthored({
             agreements: [
-                { id: "a", clauses: { [keyOf("figaro-topology")]: { follows: ["b"] } } },
-                { id: "b", clauses: { [keyOf("figaro-topology")]: { follows: ["a"] } } },
+                { id: "a", clauses: {}, follows: ["b"] },
+                { id: "b", clauses: {}, follows: ["a"] },
             ],
         });
         expect(() => planAssemblyOrders(cyclic)).toThrow(/cycle/);
@@ -93,9 +92,11 @@ describe("reconstructOrdersFromAssembly — realization", () => {
         // The sub-order's signed struct names the ROOT's derived process id.
         expect(sub.commitment.processId).toBe(root.processId);
         expect(sub.processId).toBe(root.processId);
-        // The sub's topology clause carries the root's REAL order hash.
-        const topo = sub.agreement.clauses.find((s) => s.clause === keyOf("figaro-topology"));
-        expect(topo?.data.follows).toEqual([root.orderHash]);
+        // The sub's topology leaf carries the root's REAL order hash; the
+        // root's carries an empty list, never an absent one.
+        expect(sub.agreement.follows).toEqual([root.orderHash]);
+        expect(root.agreement.follows).toEqual([]);
+        expect(sub.agreement.clauses.some((c) => c.data !== undefined && "follows" in c.data)).toBe(false);
         // The token and the payment live in the commitment only: no
         // realized order's clause carries either, root and sub alike.
         for (const order of orders) {
@@ -139,7 +140,7 @@ describe("reconstructOrdersFromAssembly — realization", () => {
     it("rejects a assembly whose commit order starts with a parented node", async () => {
         const dangling = hydrateAuthored({
             agreements: [
-                { id: "only", clauses: { [keyOf("figaro-topology")]: { follows: ["ghost"] } } },
+                { id: "only", clauses: {}, follows: ["ghost"] },
             ],
         });
         await expect(

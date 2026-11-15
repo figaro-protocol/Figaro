@@ -347,13 +347,13 @@ function ContractPage({ contract, decimals }: { contract: AuditBundle["contract"
                         : "Later order of its process (on chain, its cumulative value exceeds its payment)."}
                 </Text>
                 {!contract.topology.composed ? (
-                    <Text style={styles.sectionBody}>Its agreement composes no parent links.</Text>
+                    <Text style={styles.sectionBody}>Its agreement carries no topology leaf.</Text>
                 ) : contract.topology.follows.length === 0 ? (
-                    <Text style={styles.sectionBody}>Parent links composed: none.</Text>
+                    <Text style={styles.sectionBody}>Parent orders in its topology leaf: none.</Text>
                 ) : (
                     <>
                         <Text style={styles.sectionBody}>
-                            Parent order(s), as its agreement composes them:
+                            Parent order(s), as the topology leaf of its agreement names them:
                         </Text>
                         {contract.topology.follows.map((p) => (
                             <Text key={p} style={[styles.mono, { marginTop: 1 }]}>{p}</Text>
@@ -674,9 +674,10 @@ function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] 
             <Text style={styles.note}>
                 Reader recomputes each hash from the cited content / location and
                 verifies against chain. checkoutHash = merkle root over clause
-                leaves and the provenance leaf. Each clause leaf =
-                computeClauseLeaf(clause); the provenance leaf =
-                computeProvenanceLeaf(agreementHash, assemblyHash). Each
+                leaves, the provenance leaf and the topology leaf. Each clause
+                leaf = computeClauseLeaf(clause); the provenance leaf =
+                computeProvenanceLeaf(agreementHash, assemblyHash); the
+                topology leaf = computeTopologyLeaf(follows). Each
                 attestation contentRef = keccak256(content); the chain holds
                 only this hash, and the content is held off chain by the
                 parties.

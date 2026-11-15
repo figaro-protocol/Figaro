@@ -5,7 +5,7 @@
  * assembly's root and its first agreement's agreement in its provenance).
  *
  * Three registered agreements drawn from the three merkle-vector agreements
- * (their clause keys and values; the topology clause composed with `{}`),
+ * (their clause keys and values),
  * and three assemblies over them: one agreement, two agreements, and three
  * agreements with a parent edge and non-empty assembly-scoped terms.
  */
@@ -34,7 +34,6 @@ export const REGISTERED_ONE: RegisteredAgreement = {
 export const REGISTERED_DESIGN: RegisteredAgreement = {
     clauses: {
         [K("figaro-commerce")]: { lineItems: [{ itemId: "i-7", name: "Item", quantity: 1, unitPrice: "7" }] },
-        [K("figaro-topology")]: {},
     },
 };
 
@@ -52,8 +51,8 @@ export const ASSEMBLY_THREE: Assembly = {
         [K("figaro-applicable-law")]: { applicableLaw: "ch", forum: "Zurich", language: "en" },
     },
     agreements: [
-        { id: "agreement-0", agreementHash: agreementHashOf(REGISTERED_DESIGN), clauses: { [K("figaro-topology")]: { follows: [] } } },
-        { id: "agreement-1", agreementHash: agreementHashOf(REGISTERED_DESIGN), clauses: { [K("figaro-topology")]: { follows: ["agreement-0"] } } },
+        { id: "agreement-0", agreementHash: agreementHashOf(REGISTERED_DESIGN), clauses: {}, follows: [] },
+        { id: "agreement-1", agreementHash: agreementHashOf(REGISTERED_DESIGN), clauses: {}, follows: ["agreement-0"] },
         { id: "agreement-2", agreementHash: agreementHashOf(REGISTERED_THREE), clauses: {} },
     ],
 };

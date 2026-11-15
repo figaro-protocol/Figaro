@@ -7,7 +7,7 @@
  * Everything here shapes COMMITTED bytes (the agreement clauses the merkle
  * root hashes) or the payment figures the commitments sign, so a second
  * frontend must reproduce it exactly. No clause is ever named: clauses are
- * found by their DECLARED FIELDS (`lineItems`, `follows`,
+ * found by their DECLARED FIELDS (`lineItems`,
  * `massGrams`, `billedMassGrams`) or their spec hints (`catalogueFills`,
  * `catalogueMeasures`) through the caller's `SpecSource` — ANY registered clause carrying the
  * field participates, including clauses this code has never seen. A fill
@@ -156,13 +156,13 @@ export function readUtilityTokenPin(
 
 /** The field names this module's fills write MECHANICALLY — derived or
  *  rewritten by the checkout walk regardless of any buyer input: the
- *  line items (`fillCommerceClause`), the topology rewrite
- *  (`writeTopologyClause`), and the dimweight derivation
+ *  line items (`fillCommerceClause`) and the dimweight derivation
  *  (`fillDimweightClause`). ONE list, owned beside the fills it describes.
- *  The instantiated assembly's assembly hash is no field here: it is the
- *  agreement format's provenance leaf (`Agreement.provenance`), which the
- *  assembly walk writes, never a clause. */
-const MECHANICAL_FILL_FIELDS = ["lineItems", "follows", "billedMassGrams"] as const;
+ *  The instantiated assembly's hash and the orders an order follows are no
+ *  field here: they are the agreement format's provenance and topology
+ *  leaves (`Agreement.provenance`, `Agreement.follows`), which the assembly
+ *  walk writes, never a clause. */
+const MECHANICAL_FILL_FIELDS = ["lineItems", "billedMassGrams"] as const;
 
 /**
  * The field names the checkout walk fills mechanically for THIS composed
@@ -183,32 +183,6 @@ export function mechanicallyFilledFieldNames(
             }),
         ),
     );
-}
-
-/**
- * Write the REAL order hashes of the orders followed into the topology clause, found by its
- * declared `follows` field (never by clause id). The assembly's
- * topology data carries the assembly's LOCAL agreement labels ("agreement-0"); the committed
- * agreement must carry the actual EIP-712 order hashes — they are the DAG
- * edges every off-chain reader (audit, derive) reconstructs from, and the
- * bytes32 shape the off-chain validator validates. The overwrite IS this writer's contract —
- * the existing value (local ids) is EXPECTED to differ from the fill (real
- * hashes), so an equality guard here would reject every legitimate call.
- */
-export function writeTopologyClause(
-    clauses: ClauseFields,
-    follows: `0x${string}`[],
-    specs: SpecSource,
-): ClauseFields {
-    const topologyClauseId = composedClauseDeclaring(clauses, "follows", specs);
-    if (!topologyClauseId) return clauses;
-    return {
-        ...clauses,
-        [topologyClauseId]: {
-            ...clauses[topologyClauseId],
-            follows,
-        },
-    };
 }
 
 /** One catalog measure as a number: the line's catalog-item field, when it

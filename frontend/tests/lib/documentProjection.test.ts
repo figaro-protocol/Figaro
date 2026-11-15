@@ -11,7 +11,7 @@ afterEach(() => {
 });
 
 const ALL = [
-    "figaro-commerce", "figaro-topology", "figaro-courier-process",
+    "figaro-commerce", "figaro-courier-process",
     "figaro-geolocation", "figaro-cargo", "figaro-freight-class", "figaro-handoff",
 ];
 
@@ -21,8 +21,10 @@ const mkOrder = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Order
     sellerBond: 0n, buyerBond: 0n, salt: 0n, deadline: 0n, ...o,
 });
 
-const agreement = (clauseEntries: { clause: string; data: Record<string, unknown> }[]): Agreement =>
-    ({ clauses: clauseEntries.map((s) => ({ ...s, clause: keyOf(s.clause) })) } as unknown as Agreement);
+/** An agreement over the named clauses; `follows`, when given, is its
+ *  topology leaf — the orders it follows. */
+const agreement = (clauseEntries: { clause: string; data: Record<string, unknown> }[], follows?: string[]): Agreement =>
+    ({ clauses: clauseEntries.map((s) => ({ ...s, clause: keyOf(s.clause) })), ...(follows === undefined ? {} : { follows }) } as unknown as Agreement);
 
 const commerce = (lineItems: { name: string; quantity: number }[]) =>
     ({ clause: "figaro-commerce", data: { lineItems } });
@@ -67,14 +69,13 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
     it("bill-of-lading: one per CARRIAGE LEG, with generic cargo/freight leaf sections", async () => {
         await primeClauseSpecs(ALL);
         const carriage = agreement([
-            { clause: "figaro-topology", data: { follows: ["0xPARENT"] } },
             { clause: "figaro-courier-process", data: {} },
             { clause: "figaro-geolocation", data: { origin: "9q8yy", destination: "9q8yyk8yu" } },
             { clause: "figaro-cargo", data: { massGrams: 500, volumeMl: 1000 } },
             { clause: "figaro-freight-class", data: { nmfcClass: "100" } },
             { clause: "figaro-handoff", data: { handoff: "face-to-face" } },
             commerce([{ name: "Delivery", quantity: 1 }]),
-        ]);
+        ], ["0xPARENT"]);
         const docs = projectDocuments(
             DOCUMENT_LAYOUTS,
             [mkOrder({ orderHash: "0xC", seller: "0xCOURIER", payment: 40n, checkoutHash: "0xh" })],
@@ -99,12 +100,11 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
         await primeClauseSpecs(ALL);
         const PARENT = `0x${"0a".repeat(32)}`;
         const leg = agreement([
-            { clause: "figaro-topology", data: { follows: [PARENT] } },
             { clause: "figaro-courier-process", data: {} },
             { clause: "figaro-geolocation", data: { origin: "9q8yy", destination: "9q8yyk8yu" } },
             { clause: "figaro-handoff", data: { handoff: "face-to-face" } },
-        ]);
-        const root = agreement([{ clause: "figaro-topology", data: { follows: [] } }, commerce([{ name: "Pizza", quantity: 1 }])]);
+        ], [PARENT]);
+        const root = agreement([commerce([{ name: "Pizza", quantity: 1 }])], []);
         const docs = projectDocuments(
             DOCUMENT_LAYOUTS,
             [
@@ -124,10 +124,7 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
 
     it("emits NO bill-of-lading for a sub-order whose clauses do not make it a shipment", async () => {
         await primeClauseSpecs([...ALL, "figaro-merchant-process", "figaro-content-handoff"]);
-        const subOrder = (clauses: { clause: string; data: Record<string, unknown> }[]) => agreement([
-            { clause: "figaro-topology", data: { follows: ["0xPARENT"] } },
-            ...clauses,
-        ]);
+        const subOrder = (clauses: { clause: string; data: Record<string, unknown> }[]) => agreement(clauses, ["0xPARENT"]);
         for (const shape of [
             // a merchant's process log (an inspection, a customs filing): no route, no hand-off of goods
             [{ clause: "figaro-merchant-process", data: {} }],

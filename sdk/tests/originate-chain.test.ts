@@ -28,9 +28,9 @@ const buyerW = w(BUYER);
 // A 3-order value-added chain: root (agreement-0) + two subs under it (like the seed chain).
 const assembly = hydrateAuthored({
     agreements: [
-        { id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } },
-        { id: "agreement-1", clauses: { [keyOf("figaro-courier-process")]: {}, [keyOf("figaro-topology")]: { follows: ["agreement-0"] } } },
-        { id: "agreement-2", clauses: { [keyOf("figaro-merchant-process")]: {}, [keyOf("figaro-topology")]: { follows: ["agreement-0"] } } },
+        { id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {} }, follows: [] },
+        { id: "agreement-1", clauses: { [keyOf("figaro-courier-process")]: {} }, follows: ["agreement-0"] },
+        { id: "agreement-2", clauses: { [keyOf("figaro-merchant-process")]: {} }, follows: ["agreement-0"] },
     ],
 });
 const nodes: ChainNodeSpec[] = [
@@ -39,7 +39,7 @@ const nodes: ChainNodeSpec[] = [
     { nodeId: "agreement-2", seller: S2.address, payment: 300n },
 ];
 const SPECS = specSourceFromFixtures([
-    "figaro-commerce", "figaro-topology", "figaro-courier-process", "figaro-merchant-process",
+    "figaro-commerce", "figaro-courier-process", "figaro-merchant-process",
 ]);
 const params = { assembly: assembly, currency: CURRENCY, chainId: CHAIN, core: CORE, nodes, salt: () => 42n, deadline: 1_900_000_000n, specs: SPECS };
 
@@ -49,8 +49,9 @@ const policy: OfferPolicy = { currencyAllowlist: [CURRENCY], maxValue: 10_000n }
 // Every seller's own profile binds the chain's assembly.
 const BOUND = profileBinding(assembly);
 
-function topologyParents(offer: { agreement: { clauses: { clause: string; data: Record<string, unknown> }[] } }): unknown {
-    return offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-topology"))?.data.follows;
+/** The edges the offer's agreement signs: its topology leaf's `follows`. */
+function topologyParents(offer: { agreement: { follows?: readonly string[] } }): unknown {
+    return offer.agreement.follows;
 }
 
 describe("buildChainOffers — the value-added chain walk", () => {

@@ -8,7 +8,6 @@ import propertyTransferSpecRaw from "../../../clauses/figaro-property-transfer.j
 import acceptanceCriteriaSpecRaw from "../../../clauses/figaro-acceptance-criteria.json" with { type: "json" };
 import modalitiesSpecRaw from "../../../clauses/figaro-modalities.json" with { type: "json" };
 import { validateContent } from "../../src/clauses/validate.js";
-import topologySpecRaw from "../../../clauses/figaro-topology.json" with { type: "json" };
 import commerceSpecRaw from "../../../clauses/figaro-commerce.json" with { type: "json" };
 import utilityTokenSpecRaw from "../../../clauses/figaro-utility-token.json" with { type: "json" };
 import contentHandoffSpecRaw from "../../../clauses/figaro-content-handoff.json" with { type: "json" };
@@ -30,36 +29,6 @@ import handoffSpecRaw from "../../../clauses/figaro-handoff.json" with { type: "
 import scheduleSpecRaw from "../../../clauses/figaro-schedule.json" with { type: "json" };
 
 describe("example clause specs — parse + validate sample content", () => {
-    it("figaro-topology spec parses cleanly", () => {
-        const result = parseClauseSpec(topologySpecRaw);
-        expect(result.ok).toBe(true);
-    });
-
-    it("figaro-topology accepts a root-order content", () => {
-        const parsed = parseClauseSpec(topologySpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        // The clause stores only the edges; mode (root/explicit/linear) is
-        // DERIVED from them, never stored.
-        const root = { follows: [] };
-        expect(validateContent(root, parsed.spec).ok).toBe(true);
-    });
-
-    it("figaro-topology accepts an explicit child-order content", () => {
-        const parsed = parseClauseSpec(topologySpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        const child = {
-            follows: ["0x" + "ab".repeat(32), "0x" + "cd".repeat(32)],
-        };
-        expect(validateContent(child, parsed.spec).ok).toBe(true);
-    });
-
-    it("figaro-topology rejects malformed parent hashes", () => {
-        const parsed = parseClauseSpec(topologySpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        const bogus = { follows: ["not-hex"] };
-        expect(validateContent(bogus, parsed.spec).ok).toBe(false);
-    });
-
     // ── figaro-commerce ──
 
     it("figaro-commerce spec parses cleanly", () => {

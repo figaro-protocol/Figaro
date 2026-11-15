@@ -11,7 +11,7 @@
  *   1. Build the assembly from the snapshot — one agreement per canvas
  *      order, each binding a registered agreement by key (one the designer
  *      bound, or one newly composed from the order's clauses), the topology
- *      parents in the agreement's own fill — plus prose.
+ *      parents in the entry's own `follows` — plus prose.
  *   2. Compute the assembly root (the merkle root over the agreements
  *      and the assembly terms — the assembly's identity).
  *   3. Pin the assembly to IPFS and simulate
@@ -124,7 +124,7 @@ export async function registerAgreement(args: {
  * clauses the designer selected for the order compose through the SDK's one
  * composition rule (`composeOrderAgreement` — the DAO's mandatory clauses
  * written in first (`mandatoryClausesForCanvas`), value-free but for design
- * fills, the scope check, one clause of topology's shape), then
+ * fills, the scope check, at least one clause), then
  * `registerAgreement`.
  * The registered key is what the agreement then binds, and what any other
  * assembly's drawer offers from the live registry.

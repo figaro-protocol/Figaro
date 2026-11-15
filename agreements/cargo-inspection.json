@@ -1,7 +1,6 @@
 {
     "clauses": {
         "figaro-commerce": {},
-        "figaro-topology": {},
         "figaro-acceptance-criteria": {},
         "figaro-merchant-process": {}
     },

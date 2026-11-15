@@ -29,6 +29,7 @@ import { useState, useMemo } from "react";
 import {
     computeCheckoutHash,
     computeProvenanceLeaf,
+    computeTopologyLeaf,
     computeClauseLeaf,
     type Agreement,
     type AgreementClause,
@@ -249,7 +250,7 @@ function ClauseMode() {
 // ── Mode C — Hash search ───────────────────────────────────────────────────
 
 interface HashHit {
-    kind: "checkoutHash" | "clause-leaf" | "provenance-leaf" | "orderHash" | "processId";
+    kind: "checkoutHash" | "clause-leaf" | "provenance-leaf" | "topology-leaf" | "orderHash" | "processId";
     label: string;
     location: string;
 }
@@ -314,6 +315,15 @@ function SearchMode() {
                     found.push({
                         kind: "provenance-leaf",
                         label: `Provenance leaf — agreement ${agreement.provenance.agreementHash} in assembly ${agreement.provenance.assemblyHash}`,
+                        location: `Merkle leaf under checkoutHash ${order.checkoutHash} (order ${order.orderHash})`,
+                    });
+                }
+                // The agreement format's topology leaf — the orders this order
+                // follows, in a leaf shape of its own, never a clause.
+                if (agreement.follows !== undefined && hexEqual(computeTopologyLeaf(agreement.follows), target)) {
+                    found.push({
+                        kind: "topology-leaf",
+                        label: `Topology leaf — the ${agreement.follows.length} order(s) this order follows`,
                         location: `Merkle leaf under checkoutHash ${order.checkoutHash} (order ${order.orderHash})`,
                     });
                 }

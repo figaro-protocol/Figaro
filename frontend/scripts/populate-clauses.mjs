@@ -17,8 +17,8 @@
  * to the key of the loaded spec it names (`resolveAuthoredClauseKeys`) here,
  * at seed time, before anything is pinned — everything pinned carries keys.
  * Each authored agreement (`agreements/*.json`) is composed over the specs
- * (`composeAuthoredAgreements`, keyed; it names the two mandatory clauses
- * like any other); each
+ * (`composeAuthoredAgreements`, keyed; it names the mandatory clause like
+ * any other); each
  * reference assembly is built over the agreements its agreements name
  * (`assembleAuthored`: the entry binds the named agreement's hash and carries
  * its own topology parents); every DISTINCT agreement is pinned and
@@ -43,7 +43,7 @@
  *                                  Foundry's `cast send --ledger`, its stake paid
  *                                  from that account (the founder's own artifacts:
  *                                  the reference clauses + assemblies that are not
- *                                  the mandatory pair — RELEASE_READINESS Task 13)
+ *                                  the mandatory clauses — RELEASE_READINESS Task 13)
  *
  * VAULT-REGISTRAR MODE (docs/RELEASE_READINESS.md Task 13). This script always
  * acts FOR exactly one registrar per invocation, and registrar is a PER-WALLET

@@ -23,10 +23,9 @@ the designer composed for it (<code>clausesByOrderId</code>), which become a new
 agreement — value-free, with the mandatory clauses (<code>mandatory</code>, the
 DAO's live mandatory clauses the canvas reads from the registry)
 written in first (composition time is the only place; checkout adds no
-clause). Every agreement carries one clause of topology's shape, or the
-build is refused: an agreement is not an agreement without the orders it
-follows. A bound registered agreement must carry it itself, whatever its
-key. The topology's parents are the agreement's own fill.</p>
+clause). Each entry carries its own topology as <code>follows</code>, the local
+labels of the entries whose orders it follows (<code>[]</code> on the root); a
+registered agreement names none.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -66,7 +65,7 @@ clauses of its own.</p>
 <h5><code class="tsd-tag">Optional</code><span class="tsd-kind-property">summary</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span></h5></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/index.BuiltAssembly.html" class="tsd-signature-type tsd-kind-interface">BuiltAssembly</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L1005">projection.ts:1005</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L989">projection.ts:989</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

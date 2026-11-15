@@ -38,10 +38,10 @@
  *              exact bond-driven BALANCE deltas are asserted for every party,
  *              computed from the chain's own event values (the accumulator
  *              invariant itself is Foundry/Halmos/Certora-owned — not
- *              restated here; the DAG lives in the topology clause, never in
+ *              restated here; the DAG lives in the topology leaf, never in
  *              FigaroCore).
  *   diamond  → the leaf's PINNED agreement commits BOTH parents' real order
- *              hashes in its topology clause — the join, merkle-bound.
+ *              hashes in its topology leaf — the join, merkle-bound.
  *   resolve  → ONE signature resolves all four orders atomically.
  *   audit    → financials render one statement per seller (all four) + the
  *              consolidation; the cash-flow log carries every FigaroCore transfer
@@ -108,12 +108,10 @@ const SUPPLIER_C = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 12 }).addre
 // Clause KEYS, located by name over the specs the chain registered.
 let DELIVERY_CLAUSES: ReturnType<typeof deliveryClauseKeys>;
 let EMISSIONS_CLAUSE: Hex;
-let TOPOLOGY_CLAUSE: Hex;
 test.beforeAll(async () => {
     await primeRegisteredClauseSpecs();
     DELIVERY_CLAUSES = deliveryClauseKeys();
     EMISSIONS_CLAUSE = keyOf('figaro-emissions');
-    TOPOLOGY_CLAUSE = keyOf('figaro-topology');
 });
 
 /** The diamond's SHAPE on-chain: four orders, one committing TWO assembly
@@ -125,10 +123,7 @@ async function findDiamondAssembly(): Promise<string | undefined> {
     const assemblies = await discoverAnchoredAssemblies();
     return assemblies.find(
         (t) => t.agreements.length === 4
-            && t.agreements.some((o) => {
-                const topo = (o.clauses?.[TOPOLOGY_CLAUSE] ?? {}) as { follows?: unknown[] };
-                return Array.isArray(topo.follows) && topo.follows.length === 2;
-            })
+            && t.agreements.some((o) => Array.isArray(o.follows) && o.follows.length === 2)
             && t.agreements.some((o) => Object.keys(o.clauses ?? {}).includes(DELIVERY_CLAUSES.courier))
             && t.agreements.some((o) => Object.keys(o.clauses ?? {}).includes(EMISSIONS_CLAUSE)),
     )?.slug;
@@ -217,7 +212,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             // Editorial identity + publish.
             await page.getByTestId('designer-name-input').fill('Kit assembly (diamond)');
             await page.getByTestId('designer-summary-input').fill('A kit from two component suppliers; the final leg depends on both branches.');
-            await page.getByTestId('designer-description-input').fill('Multi-parent topology: the leaf order carries two parents — the DAG join FigaroCore never sees, committed in the topology clause.');
+            await page.getByTestId('designer-description-input').fill('Multi-parent topology: the leaf order carries two parents — the DAG join FigaroCore never sees, committed in the topology leaf.');
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
             await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
@@ -417,7 +412,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         expect((await queryCommitted()).length, 'exactly four orders committed').toBe(committedBefore + 4);
 
         // ── THE DIAMOND, merkle-bound: the leaf's pinned agreement commits
-        //    BOTH parents' REAL order hashes in its topology clause. ──
+        //    BOTH parents' REAL order hashes in its topology leaf. ──
         await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         const dAgreementUri = await page.evaluate(
@@ -430,9 +425,10 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         const dAgreement = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${dCid}`, { method: 'POST' })).json() as {
             clauses: { clause: string; data: Record<string, unknown> }[];
+            follows?: string[];
         };
-        const topoClause = dAgreement.clauses.find((s) => s.clause === TOPOLOGY_CLAUSE);
-        const parents = ((topoClause?.data.follows ?? []) as string[]).map((h) => h.toLowerCase());
+        // The edges are the agreement format's topology leaf, never a clause.
+        const parents = (dAgreement.follows ?? []).map((h) => h.toLowerCase());
         expect(parents, 'the leaf commits exactly TWO parents').toHaveLength(2);
         expect(
             parents.sort(),
@@ -476,7 +472,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         await expect(cashflowRows, 'one cash-flow row per FigaroCore transfer (4 orders × 4)').toHaveCount(16, { timeout: 30000 });
         const evidence = page.getByTestId('audit-clause-evidence');
         await evidence.waitFor({ state: 'visible', timeout: 30000 });
-        for (const text of ['Commerce terms', 'Order topology', 'Emissions disclosure', 'Proximity-verification policy']) {
+        for (const text of ['Commerce terms', 'Emissions disclosure', 'Proximity-verification policy']) {
             await expect(
                 evidence.getByText(text).first(),
                 `the "${text}" evidence leaf surfaces in the audit`,

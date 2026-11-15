@@ -80,7 +80,7 @@ async function findBookingAssembly(): Promise<string | undefined> {
         const keysets = t.agreements.map((o) => Object.keys(o.clauses ?? {}));
         const sub = keysets.find((k) => k.includes(PROCESS_CLAUSE) && k.includes(SCHEDULE_CLAUSE));
         const root = keysets.find((k) => !k.includes(SCHEDULE_CLAUSE));
-        return !!sub && sub.length === 4 && !!root && root.length === 2;
+        return !!sub && sub.length === 3 && !!root && root.length === 1;
     })?.slug;
 }
 

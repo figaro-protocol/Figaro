@@ -48,7 +48,7 @@ const ASSEMBLY_CLAUSES = [
     "figaro-applicable-law",
     "figaro-utility-token",
 ] as const;
-const MANDATORY = ["figaro-commerce", "figaro-topology"] as const;
+const MANDATORY = ["figaro-commerce"] as const;
 const keys = (names: readonly string[]) => names.map((n) => keyOf(n));
 
 /** A canvas session: root + one sub-order, exactly as the designer draws them. */
@@ -239,7 +239,7 @@ describe("projectSnapshotForReview — malformed and empty compositions", () => 
             const review = projectSnapshotForReview(snapshotOf(drawn));
             expect(review.ok).toBe(false);
             if (review.ok) return;
-            expect(review.error).toMatch(/no clause of topology's shape/);
+            expect(review.error).toMatch(/composes no clause/);
         } finally {
             process.env.NEXT_PUBLIC_DAO_TREASURY = dao ?? TEST_DAO_TREASURY;
         }
@@ -270,7 +270,7 @@ describe("projectSnapshotForReview — an agreement with no line items", () => {
     });
 
     it("names the order whose agreement composes no line items, and no other", () => {
-        const bare = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [keyOf("figaro-topology")]: {} } });
+        const bare = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [keyOf("figaro-schedule")]: {} } });
         const review = projectSnapshotForReview(snapshotOf(drawn, { registeredByOrderId: { [drawn.orders[0].orderHash]: bare } }));
         if (!review.ok) throw new Error(review.error);
         expect(review.withoutLineItems).toEqual([drawn.orders[0].orderHash]);
@@ -278,7 +278,7 @@ describe("projectSnapshotForReview — an agreement with no line items", () => {
 
     it("does not name an order while one of its clauses' specs is unread", () => {
         const unread = `0x${"ab".repeat(32)}`;
-        const bound = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [keyOf("figaro-topology")]: {}, [unread]: {} } });
+        const bound = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [unread]: {} } });
         const review = projectSnapshotForReview(snapshotOf(drawn, { registeredByOrderId: { [drawn.orders[0].orderHash]: bound } }));
         if (!review.ok) throw new Error(review.error);
         expect(review.withoutLineItems).toEqual([]);
@@ -391,7 +391,6 @@ describe("the mandatory clauses — written into every agreement, each listed on
         const listed = review.mandatory.map((f) => `${f.clauseId}#${f.version}:${f.carriedBy.join(",")}`).sort();
         expect(listed).toEqual([
             "figaro-commerce#1:agreement-0,agreement-1",
-            "figaro-topology#1:agreement-0,agreement-1",
         ]);
         expect(review.mandatory.map((f) => f.clauseKey).sort()).toEqual(keys(MANDATORY).sort());
         // The complement of the composed readout: together they are the assembly.
@@ -416,7 +415,7 @@ describe("the mandatory clauses — written into every agreement, each listed on
 
     it("a bound registered agreement carrying another wallet's commerce lists it by key — a shape, never a name", async () => {
         const lookalike = await registerStranger("figaro-commerce", 98);
-        const theirs = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [lookalike]: {}, [keyOf("figaro-topology")]: {} } });
+        const theirs = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [lookalike]: {} } });
         const review = projectSnapshotForReview(snapshotOf(drawn, { registeredByOrderId: { [drawn.orders[0].orderHash]: theirs } }));
         if (!review.ok) throw new Error(review.error);
         expect(review.mandatory).toContainEqual(expect.objectContaining({

@@ -7,7 +7,7 @@
  *     `cumulativeValue` is the exact prefix sum in commit order, the final
  *     order's equals the sum of ALL node payments (what FigaroCore's
  *     `expectedCumulativeValue` check enforces), and every sub-order's
- *     topology clause carries its parents' REAL order hashes.
+ *     topology leaf carries its parents' REAL order hashes.
  *   - `resolveSubOrderPricing` (live contributor pricing): the replay
  *     invariant the module promises — `payment = unitPrice × billedQuantity`,
  *     with rate items billed per STARTED unit (max(1, ceil(units))).
@@ -30,7 +30,7 @@ const SELLER = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
 const CURRENCY = "0x0000000000000000000000000000000000000001" as const;
 const CORE = "0x00000000000000000000000000000000000000c0" as const;
 const NO_SPECS = specSourceFromFixtures([]);
-const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
+const SPECS = specSourceFromFixtures(["figaro-commerce"]);
 
 // ── Arbitraries ─────────────────────────────────────────────────────────────
 
@@ -59,10 +59,8 @@ function assemblyFrom(parents: readonly number[][]): HydratedAssembly {
     return hydrateAuthored({
         agreements: parents.map((ps, i) => ({
             id: `n${i}`,
-            clauses: {
-                [keyOf("figaro-commerce")]: {},
-                [keyOf("figaro-topology")]: { follows: ps.map((p) => `n${p}`) },
-            },
+            clauses: { [keyOf("figaro-commerce")]: {} },
+            follows: ps.map((p) => `n${p}`),
         })),
     });
 }
@@ -125,7 +123,7 @@ describe("reconstructOrdersFromAssembly — payment conservation", () => {
         );
     });
 
-    it("every sub-order's topology clause carries its parents' REAL order hashes", async () => {
+    it("every sub-order's topology leaf carries its parents' REAL order hashes", async () => {
         await fc.assert(
             fc.asyncProperty(chainArb, async ({ payments, parents }) => {
                 const assembly = assemblyFrom(parents);
@@ -143,8 +141,7 @@ describe("reconstructOrdersFromAssembly — payment conservation", () => {
                 const hashOf = new Map(orders.map((o) => [o.nodeId, o.orderHash]));
                 for (const order of orders) {
                     const i = Number(order.nodeId.slice(1));
-                    const topo = order.agreement.clauses.find((s) => s.clause === keyOf("figaro-topology"));
-                    expect(topo?.data.follows).toEqual(
+                    expect(order.agreement.follows).toEqual(
                         parents[i].map((p) => hashOf.get(`n${p}`)),
                     );
                     // Same guarantee on this property too.

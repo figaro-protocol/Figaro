@@ -84,12 +84,12 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
         const derived = catalogClausesForBindings(
             [{ assemblyHash: H("haul") }],
             [
-                choice(H("haul"), [KEY("figaro-commerce"), KEY("figaro-topology"), KEY("figaro-freight-class")]),
+                choice(H("haul"), [KEY("figaro-commerce"), KEY("figaro-freight-class")]),
                 choice(H("reefer"), [KEY("figaro-commerce"), KEY("figaro-cold-chain"), KEY("figaro-hazmat")]),
             ],
         );
-        // figaro-commerce and figaro-topology declare no catalogueFills, so
-        // they contribute no clause; the UNBOUND reefer assembly's cold-chain
+        // figaro-commerce declares no catalogueFills, so it contributes no
+        // clause; the UNBOUND reefer assembly's cold-chain
         // and hazmat stay out of a haul seller's catalog entirely.
         expect(derived.map((c) => c.clauseId)).toEqual(["figaro-freight-class"]);
     });
@@ -98,7 +98,7 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
         await primeClauseSpecs();
         expect(catalogClausesForBindings(
             [{ assemblyHash: H("pos") }],
-            [choice(H("pos"), [KEY("figaro-commerce"), KEY("figaro-topology")])],
+            [choice(H("pos"), [KEY("figaro-commerce")])],
         )).toEqual([]);
     });
 

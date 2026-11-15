@@ -27,6 +27,7 @@ import {
     hydrateAssembly,
     parseProjectionHints,
     agreementClauses,
+    assemblyFollows,
     assembleAuthored,
     fillDeployTimeCurrency,
     composeAuthoredAgreements,
@@ -704,8 +705,8 @@ export interface DiscoveredAssembly {
     slug: string;
     assemblyHash: `0x${string}`;
     /** Per agreement, in assembly order: its id, the agreement hash it binds,
-     *  and the clauses it instantiates. */
-    agreements: Array<{ id: string; agreementHash: Hex; clauses: Record<string, Record<string, unknown>> }>;
+     *  the clauses it instantiates, and the labels of the entries it follows. */
+    agreements: Array<{ id: string; agreementHash: Hex; clauses: Record<string, Record<string, unknown>>; follows: string[] }>;
     /** The assembly and the agreements beside it, as checkout reads them. */
     hydrated: HydratedAssembly;
     /** The designer's editorial prose from the pinned assembly — what a
@@ -841,6 +842,7 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
                 slug: deriveAssemblySlug(assemblyHash), assemblyHash,
                 agreements: assembly.agreements.map((entry) => ({
                     id: entry.id, agreementHash: entry.agreementHash, clauses: agreementClauses(hydrated, entry),
+                    follows: assemblyFollows(entry),
                 })),
                 hydrated,
                 name: assembly.name,

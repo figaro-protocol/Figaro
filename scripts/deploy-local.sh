@@ -267,9 +267,8 @@ echo "   Deployment: $CORE_DEPLOYMENT"
 # to IPFS (Deploy.s.sol:77-80). populate-clauses.mjs is the single clause-population
 # path (same script prod/testnet/mainnet use) and is idempotent: a clause already on
 # the registry is skipped. Running it HERE makes a bare `deploy-local.sh` self-
-# sufficient — every deploy ends with the mandatory-article clauses
-# (figaro-commerce, figaro-topology; topology is required by every agreement)
-# pinned + anchored. Without it the
+# sufficient — every deploy ends with the mandatory-article clause
+# (figaro-commerce) pinned + anchored. Without it the
 # frontend's useClauseSpecs() never loads and the designer/checkout surfaces crash
 # with "clause specs not loaded: no structural clauses in the cache".
 # The same invocation registers the reference assemblies, as the Sepolia
@@ -278,14 +277,14 @@ echo "   Deployment: $CORE_DEPLOYMENT"
 # MockERC20 filled into the denomination pin a written reference leaves
 # unfilled (the token populate-test-data.mjs and the e2e specs fill too).
 # ── The mandatory clauses are the DAO's ──────────────────────────────────────
-# figaro-commerce and figaro-topology are registered by the DAO's wallet, the
+# figaro-commerce is registered by the DAO's wallet, the
 # treasury multisig (deployments/31337.expected.json § registrations.byClause),
 # because the frontend reads the mandatory clauses as the DAO's live
 # registrations whose spec declares the mandatory article. On a devnet the
 # treasury is MockTreasuryMultisig with anvil[0..2] as 2-of-3 owners, so the
 # same vault-mode run the Sepolia genesis uses (work/deploy/seed-sepolia-2-
 # vault-mandatory.sh) runs here with two anvil owner keys; the vault pays the
-# two deposits from its own balance, funded first. Devnet only: the keys are
+# deposit from its own balance, funded first. Devnet only: the keys are
 # anvil's.
 if [ "$(cast chain-id --rpc-url "$RPC_URL")" = "31337" ]; then
     echo ""
@@ -297,7 +296,7 @@ if [ "$(cast chain-id --rpc-url "$RPC_URL")" = "31337" ]; then
         NEXT_PUBLIC_AGREEMENT_REGISTRY="$AGREEMENT_ADDR" \
         REGISTRAR_VAULT="$DAO_TREASURY_ADDR" \
         VAULT_OWNER_KEYS="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80,0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" \
-        SEED_CLAUSES="figaro-commerce,figaro-topology" \
+        SEED_CLAUSES="figaro-commerce" \
         node scripts/populate-clauses.mjs)
 fi
 

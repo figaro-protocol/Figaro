@@ -276,8 +276,8 @@ agent that resolves without this credits no clause, agreement or assembly design
 the 600M reward's uniformity across actors is exactly this call. Only the clause FINGERPRINT
 reaches calldata, so a private clause's plaintext never becomes public. Read the report,
 not the absence of an exception. **Every clause EARNS**, the mandatory ones included:
-commerce and topology ride on every agreement the reference canvas composes and are scored for their designer of record like
-any other, and `recordProcessUsage` sends one clause leg per distinct clause key the
+commerce rides on every agreement the reference canvas composes and is scored for its designer of record like
+any other (the topology leaf is no clause and earns nothing), and `recordProcessUsage` sends one clause leg per distinct clause key the
 process carries (`attempted` / `recorded`). The once-per-process agreement and assembly credits are
 INDEPENDENT legs (`agreementRecorded`, `assemblyRecorded`): `recordAgreementUsage` is called
 with the agreement's `provenance` (both keys) and the provenance leaf's inclusion proof — the

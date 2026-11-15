@@ -429,12 +429,11 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await waitForConnected(page);
 
         // VALUES — the clause-evidence view surfaces EVERY committed leaf's value,
-        // each rendered from its registered spec title: the two mandatory leaves
-        // (commerce + topology) AND the never-seen clause.
+        // each rendered from its registered spec title: the mandatory leaf
+        // (commerce) AND the never-seen clause.
         const evidence = page.getByTestId('audit-clause-evidence');
         await evidence.waitFor({ state: 'visible', timeout: 30000 });
         await expect(evidence.getByText('Commerce terms'), 'the commerce leaf value surfaces').toBeVisible({ timeout: 30000 });
-        await expect(evidence.getByText('Order topology'), 'the topology leaf value surfaces').toBeVisible({ timeout: 15000 });
         await expect(
             evidence.getByText(NOVEL_TITLE),
             'the never-seen clause surfaces by its spec title — its committed data leaf AND its process-log timeline',
@@ -485,8 +484,8 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
         const agreement = JSON.parse(agreementJson) as { clauses: { clause: string }[] };
         const leafClauses = agreement.clauses.map((s) => s.clause.toLowerCase());
-        expect(leafClauses, 'the committed merkle tree carries all four leaves')
-            .toEqual(expect.arrayContaining([keyOf('figaro-commerce'), keyOf('figaro-topology'), NOVEL_KEY, WITNESS_KEY]));
+        expect(leafClauses, 'the committed merkle tree carries all three clause leaves')
+            .toEqual(expect.arrayContaining([keyOf('figaro-commerce'), NOVEL_KEY, WITNESS_KEY]));
 
         await page.getByTestId('verify-mode-agreement').click();
         await page.getByTestId('verify-agreement-input').fill(agreementJson);

@@ -10,7 +10,9 @@ in, so a file lists what the designer selects. That pick is the agreement of the
 mandatory clauses alone, the registration the designer drawer's mandatory
 article lists, composed and registered at seeding like any other agreement
 (`frontend/scripts/populate-clauses.mjs`); it has no file here and names no
-pick of its own.
+pick of its own. No file names a topology: who follows whom is each assembly
+entry's `follows`, and each signed agreement carries it as the format's
+topology leaf, never as a clause.
 
 The populate path composes each file at deploy (`composeAuthoredAgreement` in
 the SDK: names resolved to keys, the pick's clauses merged, the key derived

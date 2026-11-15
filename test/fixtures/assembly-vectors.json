@@ -1,5 +1,5 @@
 {
-    "shape": "agreements[]: { label, agreementHash, clauses[] } — clauses[j]: { clauseKey, fillsBytes, fillsHash, leaf, membershipProof }: fillsBytes is the canonical JSON of the designer's fills for that clause, fillsHash = keccak256(fillsBytes), leaf = keccak256(keccak256(clauseKey ‖ fillsHash)), membershipProof is the sorted-pair proof of leaf under agreementHash, and agreementHash is the sorted-pair merkle root over every clause leaf (a one-clause agreement's hash is its leaf). assemblies[]: { label, assemblyHash, entries[], terms|null }. slots[i]: { id, agreementHash, agreementBytes, slotContentHash, leaf, membershipProof, provenance } — agreementBytes is the canonical JSON {\"clauses\":{…},\"slot\":i}, slotContentHash = keccak256(agreementBytes), leaf = keccak256(keccak256(assemblyLeafDomain ‖ agreementHash ‖ slotContentHash)) with assemblyLeafDomain = keccak256(\"figaro-assembly-leaf\"), the assembly tree's own leaf shape (the terms leaf takes it too), membershipProof is the sorted-pair proof of leaf under assemblyHash. terms: { leafKey (keccak256(\"figaro-assembly-terms\")), termsBytes (canonical JSON of assemblyClauses), clauseDataHash, leaf } or null when no assembly-scoped clause is composed. provenance: { leafKey (keccak256(\"figaro-agreement-provenance\")), agreementHash, assemblyHash, clauseData (canonical JSON {\"agreementHash\":\"0x…\",\"assemblyHash\":\"0x…\"}, lowercase hex), clauseDataHash = keccak256(clauseData), leaf = keccak256(keccak256(leafKey ‖ clauseDataHash)) }. assemblyHash is the sorted-pair merkle root over every entry leaf and the terms leaf; a one-leaf tree's root is its leaf.",
+    "shape": "agreements[]: { label, agreementHash, clauses[] } — clauses[j]: { clauseKey, fillsBytes, fillsHash, leaf, membershipProof }: fillsBytes is the canonical JSON of the designer's fills for that clause, fillsHash = keccak256(fillsBytes), leaf = keccak256(keccak256(clauseKey ‖ fillsHash)), membershipProof is the sorted-pair proof of leaf under agreementHash, and agreementHash is the sorted-pair merkle root over every clause leaf (a one-clause agreement's hash is its leaf). assemblies[]: { label, assemblyHash, entries[], terms|null }. slots[i]: { id, agreementHash, agreementBytes, slotContentHash, leaf, membershipProof, provenance } — agreementBytes is the canonical JSON {\"clauses\":{…},\"follows\":[…],\"slot\":i} (follows: the labels of the entries this one follows, [] on the root), slotContentHash = keccak256(agreementBytes), leaf = keccak256(keccak256(assemblyLeafDomain ‖ agreementHash ‖ slotContentHash)) with assemblyLeafDomain = keccak256(\"figaro-assembly-leaf\"), the assembly tree's own leaf shape (the terms leaf takes it too), membershipProof is the sorted-pair proof of leaf under assemblyHash. terms: { leafKey (keccak256(\"figaro-assembly-terms\")), termsBytes (canonical JSON of assemblyClauses), clauseDataHash, leaf } or null when no assembly-scoped clause is composed. provenance: { leafKey (keccak256(\"figaro-agreement-provenance\")), agreementHash, assemblyHash, clauseData (canonical JSON {\"agreementHash\":\"0x…\",\"assemblyHash\":\"0x…\"}, lowercase hex), clauseDataHash = keccak256(clauseData), leaf = keccak256(keccak256(leafKey ‖ clauseDataHash)) }. assemblyHash is the sorted-pair merkle root over every entry leaf and the terms leaf; a one-leaf tree's root is its leaf.",
     "agreements": [
         {
             "label": "three-clauses",
@@ -50,26 +50,15 @@
             ]
         },
         {
-            "label": "two-clauses-and-a-design",
-            "agreementHash": "0xd2865e1837efadf1ca053da2c4ebd2d568ffcfe7f56ddb5f119118dbf35e3937",
+            "label": "the-design",
+            "agreementHash": "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c",
             "clauses": [
                 {
                     "clauseKey": "0x128c1085a5bb6ac319b038833c1b41ae9ca8652e78a50cd2f4052abe586cba02",
                     "fillsBytes": "{\"lineItems\":[{\"itemId\":\"i-7\",\"name\":\"Item\",\"quantity\":1,\"unitPrice\":\"7\"}]}",
                     "fillsHash": "0xa7653bb4a96ac7c7a68f4658bd3ce37904809dc19ce87ea42cd1720c00f751a2",
                     "leaf": "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c",
-                    "membershipProof": [
-                        "0xd7215377a7d19102ebd3421c291100ef7685d68a045d1f8ff6b503b06cdd40ae"
-                    ]
-                },
-                {
-                    "clauseKey": "0x8aa51dc7a383d7cccdcd9124b535518154319e76d26f3487fd62e22b65013531",
-                    "fillsBytes": "{}",
-                    "fillsHash": "0xb48d38f93eaa084033fc5970bf96e559c33c4cdc07d889ab00b4d63f9590739d",
-                    "leaf": "0xd7215377a7d19102ebd3421c291100ef7685d68a045d1f8ff6b503b06cdd40ae",
-                    "membershipProof": [
-                        "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c"
-                    ]
+                    "membershipProof": []
                 }
             ]
         }
@@ -77,22 +66,22 @@
     "assemblies": [
         {
             "label": "one-agreement",
-            "assemblyHash": "0xe94f5bb3a46ade28489a776766a7fe59c952630557c75f678b420133d95bcff6",
+            "assemblyHash": "0x436cddc0853b0f9ea72ae20f97b4962478488178dee7a1e51f2e6e9c18245ca2",
             "agreements": [
                 {
                     "id": "agreement-0",
                     "agreementHash": "0x2a80e0390d23e6851e760d61d7ed4e9fd638ade1b091854d926aeaf408f9c863",
-                    "agreementBytes": "{\"clauses\":{},\"slot\":0}",
-                    "slotContentHash": "0x766cc2b7e2f69a39e9bbbc6181f1f70c4fbea97094c92d74288928ba71b38406",
-                    "leaf": "0xe94f5bb3a46ade28489a776766a7fe59c952630557c75f678b420133d95bcff6",
+                    "agreementBytes": "{\"clauses\":{},\"follows\":[],\"slot\":0}",
+                    "slotContentHash": "0x9091acf2b03fad5ac3abd854b47537d5be10204c01ca362fbac7bc643b0714d0",
+                    "leaf": "0x436cddc0853b0f9ea72ae20f97b4962478488178dee7a1e51f2e6e9c18245ca2",
                     "membershipProof": [],
                     "provenance": {
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementHash": "0x2a80e0390d23e6851e760d61d7ed4e9fd638ade1b091854d926aeaf408f9c863",
-                        "assemblyHash": "0xe94f5bb3a46ade28489a776766a7fe59c952630557c75f678b420133d95bcff6",
-                        "clauseData": "{\"agreementHash\":\"0x2a80e0390d23e6851e760d61d7ed4e9fd638ade1b091854d926aeaf408f9c863\",\"assemblyHash\":\"0xe94f5bb3a46ade28489a776766a7fe59c952630557c75f678b420133d95bcff6\"}",
-                        "clauseDataHash": "0x6e817f7c8b8242567c95ce5b213637d37c8b614e0badce275f0e05ca8f7b806e",
-                        "leaf": "0xc9859f6581b77c4ed8c53ce0b8ea5e0796953699e4a2a5fc34d6c9cf56bf71c0"
+                        "assemblyHash": "0x436cddc0853b0f9ea72ae20f97b4962478488178dee7a1e51f2e6e9c18245ca2",
+                        "clauseData": "{\"agreementHash\":\"0x2a80e0390d23e6851e760d61d7ed4e9fd638ade1b091854d926aeaf408f9c863\",\"assemblyHash\":\"0x436cddc0853b0f9ea72ae20f97b4962478488178dee7a1e51f2e6e9c18245ca2\"}",
+                        "clauseDataHash": "0xcf1d6acf8a359ffbe4e88d7235e89dba792a0dceb6c3b87111e43d4895f8bfd4",
+                        "leaf": "0x5aff540ccec08d996b616d285f4a06a13c19caac97cc70159329b46f53aa78fc"
                     }
                 }
             ],
@@ -100,42 +89,42 @@
         },
         {
             "label": "two-agreements",
-            "assemblyHash": "0x6004dc83ee2a5a0121d301b0cfadeae98909eb06aa2cfeb638d1aff27109c343",
+            "assemblyHash": "0x6302469c10e217dbfe42350734c290bb377b67dcfbbbf138e72ccf53ba1645ac",
             "agreements": [
                 {
                     "id": "agreement-0",
                     "agreementHash": "0x3e340a77a4201cd4aacd7c0e40fa8ea5d985e2ee7f68a9ad28ae9d40f4cfaaf5",
-                    "agreementBytes": "{\"clauses\":{},\"slot\":0}",
-                    "slotContentHash": "0x766cc2b7e2f69a39e9bbbc6181f1f70c4fbea97094c92d74288928ba71b38406",
-                    "leaf": "0x820dfa063e44641d00a3604b9fbe33da7ea0a85ebcd22579cf6deaf6f5d371dc",
+                    "agreementBytes": "{\"clauses\":{},\"follows\":[],\"slot\":0}",
+                    "slotContentHash": "0x9091acf2b03fad5ac3abd854b47537d5be10204c01ca362fbac7bc643b0714d0",
+                    "leaf": "0x073f91eab5ed1f33b45240266735abc9ee9c9c9408627ec29f20d126313ac840",
                     "membershipProof": [
-                        "0x1e681975c228309bf825ae70edcb8044e5c0a45ea9fd2c5c714466bac4717aa7"
+                        "0xbd84d15144a6602caf4aa0b5d02337b6800df6acd7d37e8221038394ea9369b7"
                     ],
                     "provenance": {
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementHash": "0x3e340a77a4201cd4aacd7c0e40fa8ea5d985e2ee7f68a9ad28ae9d40f4cfaaf5",
-                        "assemblyHash": "0x6004dc83ee2a5a0121d301b0cfadeae98909eb06aa2cfeb638d1aff27109c343",
-                        "clauseData": "{\"agreementHash\":\"0x3e340a77a4201cd4aacd7c0e40fa8ea5d985e2ee7f68a9ad28ae9d40f4cfaaf5\",\"assemblyHash\":\"0x6004dc83ee2a5a0121d301b0cfadeae98909eb06aa2cfeb638d1aff27109c343\"}",
-                        "clauseDataHash": "0xeace3778c8fe146a9c36c00c39604b19549f79ab7c43808ac4d601008abc5661",
-                        "leaf": "0x0ba2951e35b3b28f65b41d4e16892df4823a83b10703769c7f7a1905549349da"
+                        "assemblyHash": "0x6302469c10e217dbfe42350734c290bb377b67dcfbbbf138e72ccf53ba1645ac",
+                        "clauseData": "{\"agreementHash\":\"0x3e340a77a4201cd4aacd7c0e40fa8ea5d985e2ee7f68a9ad28ae9d40f4cfaaf5\",\"assemblyHash\":\"0x6302469c10e217dbfe42350734c290bb377b67dcfbbbf138e72ccf53ba1645ac\"}",
+                        "clauseDataHash": "0x08cc126aadf2e28e24dc1dcaeae75618cf6dd5426c50aa3568975e112164a732",
+                        "leaf": "0x00a9da5991d6dd8a8bb4939fa454f391f433b16a0463e3b960bab2846c901e8a"
                     }
                 },
                 {
                     "id": "agreement-1",
                     "agreementHash": "0x2a80e0390d23e6851e760d61d7ed4e9fd638ade1b091854d926aeaf408f9c863",
-                    "agreementBytes": "{\"clauses\":{},\"slot\":1}",
-                    "slotContentHash": "0x3ef60931a82f4be74a452e2135653cd3965a22f181687abd23607f77c1ff5110",
-                    "leaf": "0x1e681975c228309bf825ae70edcb8044e5c0a45ea9fd2c5c714466bac4717aa7",
+                    "agreementBytes": "{\"clauses\":{},\"follows\":[],\"slot\":1}",
+                    "slotContentHash": "0xa35e3da73c713fe6d986394a619fc23faa55b982b872d2b5f798765a7213d532",
+                    "leaf": "0xbd84d15144a6602caf4aa0b5d02337b6800df6acd7d37e8221038394ea9369b7",
                     "membershipProof": [
-                        "0x820dfa063e44641d00a3604b9fbe33da7ea0a85ebcd22579cf6deaf6f5d371dc"
+                        "0x073f91eab5ed1f33b45240266735abc9ee9c9c9408627ec29f20d126313ac840"
                     ],
                     "provenance": {
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementHash": "0x2a80e0390d23e6851e760d61d7ed4e9fd638ade1b091854d926aeaf408f9c863",
-                        "assemblyHash": "0x6004dc83ee2a5a0121d301b0cfadeae98909eb06aa2cfeb638d1aff27109c343",
-                        "clauseData": "{\"agreementHash\":\"0x2a80e0390d23e6851e760d61d7ed4e9fd638ade1b091854d926aeaf408f9c863\",\"assemblyHash\":\"0x6004dc83ee2a5a0121d301b0cfadeae98909eb06aa2cfeb638d1aff27109c343\"}",
-                        "clauseDataHash": "0xcc6808451adee7b2feaa278da11fafc424ab2a1a8e68fbdb2b3598aa204040cb",
-                        "leaf": "0x7e04ed66fc5f9a367dc6efeabf2c3bc84ec8dbb20dd603138dd32b7a5d338ed3"
+                        "assemblyHash": "0x6302469c10e217dbfe42350734c290bb377b67dcfbbbf138e72ccf53ba1645ac",
+                        "clauseData": "{\"agreementHash\":\"0x2a80e0390d23e6851e760d61d7ed4e9fd638ade1b091854d926aeaf408f9c863\",\"assemblyHash\":\"0x6302469c10e217dbfe42350734c290bb377b67dcfbbbf138e72ccf53ba1645ac\"}",
+                        "clauseDataHash": "0xd039805116a269b754c422a6ffc3a51e9e280a32790d6bc7452c142c8d404464",
+                        "leaf": "0x411f3d84f9989f2f29c089f6c45ad2cca902e3cedf9c2b7bab83a1769be933ab"
                     }
                 }
             ],
@@ -143,63 +132,63 @@
         },
         {
             "label": "three-entries-a-parent-edge-and-terms",
-            "assemblyHash": "0x32622096192bda32d344d48e940e0fdc61d5aa2d7b3f7db57983ce231f2cfaaf",
+            "assemblyHash": "0x30c078f23dd666fd96f4a6164b4d43499eec4d068e5ee399e19ce2d7bbb4a6d0",
             "agreements": [
                 {
                     "id": "agreement-0",
-                    "agreementHash": "0xd2865e1837efadf1ca053da2c4ebd2d568ffcfe7f56ddb5f119118dbf35e3937",
-                    "agreementBytes": "{\"clauses\":{\"0x8aa51dc7a383d7cccdcd9124b535518154319e76d26f3487fd62e22b65013531\":{\"follows\":[]}},\"slot\":0}",
-                    "slotContentHash": "0xaf1301f43574ca6620b4435a2e33182ca2b9ed2dc87153a27fd583f028ee6179",
-                    "leaf": "0x7ff4b03d8616f435588a2b41745e9a11c4a3b91dddc910b3c57d229df42daf25",
+                    "agreementHash": "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c",
+                    "agreementBytes": "{\"clauses\":{},\"follows\":[],\"slot\":0}",
+                    "slotContentHash": "0x9091acf2b03fad5ac3abd854b47537d5be10204c01ca362fbac7bc643b0714d0",
+                    "leaf": "0x25bd9df962422cebf9ffc6eb0c952fb2f64f8a91bd04056acf08c59ac839597d",
                     "membershipProof": [
-                        "0x5901656fdffe57ae6030de60db86528dde61a59a0d4e29ea7621d618c053ebeb",
-                        "0x6f3beaa9c54d50cc737d72fb1c3561acaa7eb3c4bfc94fbb3ea36c680226d709"
+                        "0x1cdabb69322c9f7a9f31f369a00883ef79bbff2467c469edb842e285569f10d6",
+                        "0x94bb844585945c39034cb15ab29b188b04967f85182346f91682b90c63e23bcc"
                     ],
                     "provenance": {
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
-                        "agreementHash": "0xd2865e1837efadf1ca053da2c4ebd2d568ffcfe7f56ddb5f119118dbf35e3937",
-                        "assemblyHash": "0x32622096192bda32d344d48e940e0fdc61d5aa2d7b3f7db57983ce231f2cfaaf",
-                        "clauseData": "{\"agreementHash\":\"0xd2865e1837efadf1ca053da2c4ebd2d568ffcfe7f56ddb5f119118dbf35e3937\",\"assemblyHash\":\"0x32622096192bda32d344d48e940e0fdc61d5aa2d7b3f7db57983ce231f2cfaaf\"}",
-                        "clauseDataHash": "0x2efc0eda7b4dd024eab9768ffaae3e88488db2f7efbc12e184b7ca180607b83e",
-                        "leaf": "0x037a2b3c09683e8de0e001c76619cfcda7c62719d907f39343c9d38123d7eeab"
+                        "agreementHash": "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c",
+                        "assemblyHash": "0x30c078f23dd666fd96f4a6164b4d43499eec4d068e5ee399e19ce2d7bbb4a6d0",
+                        "clauseData": "{\"agreementHash\":\"0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c\",\"assemblyHash\":\"0x30c078f23dd666fd96f4a6164b4d43499eec4d068e5ee399e19ce2d7bbb4a6d0\"}",
+                        "clauseDataHash": "0xb222b113f0a02f0657075b2a0af49dbbfa65f2526b1bd724cbfe564805557ecb",
+                        "leaf": "0xaf07b021c8efc33b38b92668645c582ce0da26235c4ea0860d50d80bec62b0fd"
                     }
                 },
                 {
                     "id": "agreement-1",
-                    "agreementHash": "0xd2865e1837efadf1ca053da2c4ebd2d568ffcfe7f56ddb5f119118dbf35e3937",
-                    "agreementBytes": "{\"clauses\":{\"0x8aa51dc7a383d7cccdcd9124b535518154319e76d26f3487fd62e22b65013531\":{\"follows\":[\"agreement-0\"]}},\"slot\":1}",
-                    "slotContentHash": "0x7a3df888bccbf34fddd13529edc7955047d328834a9cd1cd558d6330797e66ca",
-                    "leaf": "0xcc8a3442d1ee1ab7784e7be0b310a06d91c49f238aa690e46379518162c9964f",
+                    "agreementHash": "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c",
+                    "agreementBytes": "{\"clauses\":{},\"follows\":[\"agreement-0\"],\"slot\":1}",
+                    "slotContentHash": "0x8893906a8a1761db63169101cc6bec1703cef3844f531e6a38b30aabffd2255f",
+                    "leaf": "0xef29360dee0c5d776d0751bd0713b7e5efefb33cad326e7c64997b3bb1fdf14b",
                     "membershipProof": [
                         "0xb61c6516acf3a1067b7a4d419f2d1d7a5beb71adc2ea538a4f91a69c95c751d6",
-                        "0x7b1cac43e5b42b9f5d96e9e2db2b7c35f26d2aa8a0501751d4667157e386757a"
+                        "0xb10f4584b40960e8685a8d98928ab7720955892fac8ade70f8030283a801b423"
                     ],
                     "provenance": {
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
-                        "agreementHash": "0xd2865e1837efadf1ca053da2c4ebd2d568ffcfe7f56ddb5f119118dbf35e3937",
-                        "assemblyHash": "0x32622096192bda32d344d48e940e0fdc61d5aa2d7b3f7db57983ce231f2cfaaf",
-                        "clauseData": "{\"agreementHash\":\"0xd2865e1837efadf1ca053da2c4ebd2d568ffcfe7f56ddb5f119118dbf35e3937\",\"assemblyHash\":\"0x32622096192bda32d344d48e940e0fdc61d5aa2d7b3f7db57983ce231f2cfaaf\"}",
-                        "clauseDataHash": "0x2efc0eda7b4dd024eab9768ffaae3e88488db2f7efbc12e184b7ca180607b83e",
-                        "leaf": "0x037a2b3c09683e8de0e001c76619cfcda7c62719d907f39343c9d38123d7eeab"
+                        "agreementHash": "0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c",
+                        "assemblyHash": "0x30c078f23dd666fd96f4a6164b4d43499eec4d068e5ee399e19ce2d7bbb4a6d0",
+                        "clauseData": "{\"agreementHash\":\"0xdec26459c3b6f93877ee9dbbacf8852d28a87d8bbf99fa4f32b33953d43d935c\",\"assemblyHash\":\"0x30c078f23dd666fd96f4a6164b4d43499eec4d068e5ee399e19ce2d7bbb4a6d0\"}",
+                        "clauseDataHash": "0xb222b113f0a02f0657075b2a0af49dbbfa65f2526b1bd724cbfe564805557ecb",
+                        "leaf": "0xaf07b021c8efc33b38b92668645c582ce0da26235c4ea0860d50d80bec62b0fd"
                     }
                 },
                 {
                     "id": "agreement-2",
                     "agreementHash": "0x3e340a77a4201cd4aacd7c0e40fa8ea5d985e2ee7f68a9ad28ae9d40f4cfaaf5",
-                    "agreementBytes": "{\"clauses\":{},\"slot\":2}",
-                    "slotContentHash": "0x9e0df0dc19ad2aa90e459c925c8b6eb18432a79d34876427113fe91c41c1d86a",
-                    "leaf": "0x5901656fdffe57ae6030de60db86528dde61a59a0d4e29ea7621d618c053ebeb",
+                    "agreementBytes": "{\"clauses\":{},\"follows\":[],\"slot\":2}",
+                    "slotContentHash": "0x1a6c594d592efb20dfd6392558c666f8d70eee4711b07beaa1ddd36b2919b72a",
+                    "leaf": "0x1cdabb69322c9f7a9f31f369a00883ef79bbff2467c469edb842e285569f10d6",
                     "membershipProof": [
-                        "0x7ff4b03d8616f435588a2b41745e9a11c4a3b91dddc910b3c57d229df42daf25",
-                        "0x6f3beaa9c54d50cc737d72fb1c3561acaa7eb3c4bfc94fbb3ea36c680226d709"
+                        "0x25bd9df962422cebf9ffc6eb0c952fb2f64f8a91bd04056acf08c59ac839597d",
+                        "0x94bb844585945c39034cb15ab29b188b04967f85182346f91682b90c63e23bcc"
                     ],
                     "provenance": {
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementHash": "0x3e340a77a4201cd4aacd7c0e40fa8ea5d985e2ee7f68a9ad28ae9d40f4cfaaf5",
-                        "assemblyHash": "0x32622096192bda32d344d48e940e0fdc61d5aa2d7b3f7db57983ce231f2cfaaf",
-                        "clauseData": "{\"agreementHash\":\"0x3e340a77a4201cd4aacd7c0e40fa8ea5d985e2ee7f68a9ad28ae9d40f4cfaaf5\",\"assemblyHash\":\"0x32622096192bda32d344d48e940e0fdc61d5aa2d7b3f7db57983ce231f2cfaaf\"}",
-                        "clauseDataHash": "0x1e4c9e062d02d805b8e4491839aa5395e1580ca91a732de44fc353936aa54fc3",
-                        "leaf": "0xeb47d0f582fe87253be4bd617eea4be01328e99ed240ecb575045bdf023a95f5"
+                        "assemblyHash": "0x30c078f23dd666fd96f4a6164b4d43499eec4d068e5ee399e19ce2d7bbb4a6d0",
+                        "clauseData": "{\"agreementHash\":\"0x3e340a77a4201cd4aacd7c0e40fa8ea5d985e2ee7f68a9ad28ae9d40f4cfaaf5\",\"assemblyHash\":\"0x30c078f23dd666fd96f4a6164b4d43499eec4d068e5ee399e19ce2d7bbb4a6d0\"}",
+                        "clauseDataHash": "0xf680817d70954a740353c7f2a2a5bc5b925389f98d4e7c6f0448a82f5dab80e0",
+                        "leaf": "0xf170cfce39061163b8b5d13b0068212595d79ab41356b68d6a5505e37dfda9d5"
                     }
                 }
             ],

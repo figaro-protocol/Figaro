@@ -166,7 +166,7 @@ function payloadFor(
         },
         ...(consent === null ? {} : { [keyOf("figaro-consent")]: consent }),
     }, specSource());
-    const agreement: Agreement = { ...built, clauses: [...built.clauses, ...extra], provenance: { agreementHash: d.agreementHash, assemblyHash: d.assemblyHash } };
+    const agreement: Agreement = { ...built, clauses: [...built.clauses, ...extra], follows: [], provenance: { agreementHash: d.agreementHash, assemblyHash: d.assemblyHash } };
     const commitment: Commitment = {
         processId: `0x${"00".repeat(32)}` as Hex,
         buyer: BUYER,

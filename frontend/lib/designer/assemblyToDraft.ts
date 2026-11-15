@@ -6,7 +6,7 @@
  * new slug, and the canvas opens at /assemblies/designer/edit?slug=<new-slug>.
  *
  * The assembly carries structure (agreements + the topology parents in each
- * agreement's own fill) and, per agreement, the registered agreement it binds —
+ * entry's own `follows`) and, per agreement, the registered agreement it binds —
  * no payment (payment is a runtime value). Each agreement is reconstructed
  * into a display Order with a synthetic agreement (built from its clauses +
  * topology parents) seeded into the store so the canvas resolves it by hash.

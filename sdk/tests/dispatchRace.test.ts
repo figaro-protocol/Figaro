@@ -39,7 +39,7 @@ const courierAW = createWalletClient({ account: COURIER_A, transport: http("http
 const courierBW = createWalletClient({ account: COURIER_B, transport: http("http://localhost:0") });
 
 const assembly = hydrateAuthored({
-    agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } }],
+    agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {} }, follows: [] }],
 });
 
 const policy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 10_000n };
@@ -49,7 +49,7 @@ const policy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURREN
 const BOUND = profileBinding(assembly);
 
 // Every signing leg runs the sign gate: the specs, and the design the drafts name.
-const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
+const SPECS = specSourceFromFixtures(["figaro-commerce"]);
 const GATE = { specs: SPECS, readDesign: async () => assembly };
 
 /** A race draft for `candidate` at `payment` — the same payload the buyer's
@@ -325,17 +325,17 @@ describe("an agreement that composes no line items is quoted and committed on th
     // No clause declares `lineItems`: the quoted figure lives in the
     // commitment's payment alone, and nothing inside a clause is priced.
     const bare = hydrateAuthored({
-        agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-topology")]: { follows: [] } } }],
+        agreements: [{ id: "agreement-0", clauses: {}, follows: [] }],
     });
     const BARE = profileBinding(bare);
-    const TOPOLOGY_ONLY = specSourceFromFixtures(["figaro-topology"]);
+    const NO_CLAUSES = specSourceFromFixtures([]);
 
     it("the buyer drafts at its ceiling, the candidate quotes, the buyer verifies and signs the quoted commitment", async () => {
         const unpriced = buildQuoteRequest({
             assembly: bare, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
             ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: [], deadline: 1_900_000_000n,
         });
-        const priced = derivePricedFields(unpriced.agreement.clauses, TOPOLOGY_ONLY);
+        const priced = derivePricedFields(unpriced.agreement.clauses, NO_CLAUSES);
         expect(priced).toEqual([]);
         const req = buildQuoteRequest({
             assembly: bare, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
@@ -344,7 +344,7 @@ describe("an agreement that composes no line items is quoted and committed on th
         expect(req.commitment.payment).toBe(CEILING);
         expect(req.quoteRequest).toEqual({ pricedFields: [] });
 
-        const reply = await quoteDraft(courierAW, req, CTX, TOPOLOGY_ONLY, () => 700n, quotePolicy, bare, BARE);
+        const reply = await quoteDraft(courierAW, req, CTX, NO_CLAUSES, () => 700n, quotePolicy, bare, BARE);
         expect(reply?.commitment.payment).toBe(700n);
         expect(reply?.commitment.checkoutHash).toBe(req.commitment.checkoutHash);
         expect((await verifyQuoteReply(reply!, req, CTX)).ok).toBe(true);
@@ -492,14 +492,14 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
             .rejects.toThrow(/unknown field "currency"/);
     });
 
-    /** `payload` with the topology clause the registered agreement composes
+    /** `payload` with the commerce clause the registered agreement composes
      *  dropped, rehashed so only the missing clause is wrong. */
-    function withoutTopology(payload: CommitmentPayload): CommitmentPayload {
-        const agreement = { ...payload.agreement, clauses: payload.agreement.clauses.filter((s) => s.clause !== keyOf("figaro-topology")) };
+    function withoutCommerce(payload: CommitmentPayload): CommitmentPayload {
+        const agreement = { ...payload.agreement, clauses: payload.agreement.clauses.filter((s) => s.clause !== keyOf("figaro-commerce")) };
         return { ...payload, agreement, commitment: { ...payload.commitment, checkoutHash: computeCheckoutHash(agreement) } };
     }
     const draftHash = assemblyHashOf(assembly.assembly);
-    const missing = new RegExp(`figaro-topology clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(draftHash)} \\(${draftHash}\\) composes`);
+    const missing = new RegExp(`figaro-commerce clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(draftHash)} \\(${draftHash}\\) composes`);
 
     it("validateDraft, counterSignDraft and quoteDraft refuse a draft missing a clause of the registered agreement it names", async () => {
         const offer = await buildBuyerOffer(buyerW, {
@@ -508,10 +508,10 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
             overrides: fullCommerce("1000"), specs: SPECS,
         });
         const { buyerSig: _stripped, ...draft } = offer;
-        const short = withoutTopology(draft);
+        const short = withoutCommerce(draft);
         expect((await validateDraft(short, COURIER_A.address, undefined, SPECS, assembly, BOUND)).reason).toMatch(missing);
         await expect(counterSignDraft(courierAW, short, CTX, SPECS, () => true, policy, assembly, BOUND)).rejects.toThrow(missing);
-        await expect(quoteDraft(courierAW, withoutTopology(requestFor(COURIER_A.address)), CTX, SPECS, () => 700n, quotePolicy, assembly, BOUND))
+        await expect(quoteDraft(courierAW, withoutCommerce(requestFor(COURIER_A.address)), CTX, SPECS, () => 700n, quotePolicy, assembly, BOUND))
             .rejects.toThrow(missing);
     });
 });
@@ -520,7 +520,7 @@ describe("the seller's bound assemblies — the race and quote legs refuse a dra
     // A structurally different assembly (its own clause selection), so its
     // assembly hash differs from the one the orders instantiate.
     const elsewhere = hydrateAuthored({
-        agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-topology")]: { follows: [] } } }],
+        agreements: [{ id: "agreement-0", clauses: {}, follows: [] }],
     });
     const draftHash = assemblyHashOf(assembly.assembly);
     const NOT_BINDING = profileBinding(elsewhere);

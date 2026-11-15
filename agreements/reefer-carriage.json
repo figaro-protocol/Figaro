@@ -1,7 +1,6 @@
 {
     "clauses": {
         "figaro-commerce": {},
-        "figaro-topology": {},
         "figaro-chain-of-custody": {},
         "figaro-cold-chain": {},
         "figaro-courier-process": {},

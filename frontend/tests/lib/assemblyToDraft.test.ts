@@ -14,29 +14,25 @@ import {
     parseAssemblyJson,
 } from "@/lib/designer/assemblyToDraft";
 
-/** A two-order assembly over the loaded commerce and topology keys. */
+/** A two-order assembly over the loaded commerce key, the second following the first. */
 const authoredOf = () => ({
     name: "Assist round-trip",
     agreements: [
         {
             id: "agreement-0",
-            clauses: {
-                [keyOf("figaro-commerce")]: {},
-                [keyOf("figaro-topology")]: { follows: [] },
-            },
+            clauses: { [keyOf("figaro-commerce")]: {} },
+            follows: [],
         },
         {
             id: "agreement-1",
-            clauses: {
-                [keyOf("figaro-commerce")]: {},
-                [keyOf("figaro-topology")]: { follows: ["agreement-0"] },
-            },
+            clauses: { [keyOf("figaro-commerce")]: {} },
+            follows: ["agreement-0"],
         },
     ],
 });
 
 beforeAll(async () => {
-    await primeClauseSpecs(["figaro-commerce", "figaro-topology"]);
+    await primeClauseSpecs(["figaro-commerce"]);
 });
 
 describe("parseAssemblyJson", () => {
@@ -93,6 +89,8 @@ describe("assemblyToDraft — the agreements carry", () => {
         });
         expect(draft.clausesByOrderId).toEqual({});
         expect(draft.orders).toHaveLength(2);
+        // The canvas edges are each entry's own `follows`.
+        expect(draft.orders.map((o) => o.follows ?? [])).toEqual([[], ["agreement-0"]]);
     });
 
     it("carries a agreement's clause keys into the draft when its key is to be composed anew", () => {
@@ -100,7 +98,7 @@ describe("assemblyToDraft — the agreements carry", () => {
         const key = hydrated.assembly.agreements[1].agreementHash.toLowerCase();
         const draft = assemblyToDraft(hydrated, { slug: "assist-test", composeKeys: new Set([key]) });
         expect(Object.keys(draft.clausesByOrderId?.["agreement-1"] ?? {}).sort())
-            .toEqual([keyOf("figaro-commerce"), keyOf("figaro-topology")].sort());
+            .toEqual([keyOf("figaro-commerce")]);
         expect(draft.registeredByOrderId).toBeUndefined();
         expect(draft).not.toHaveProperty("clauseVersionsByOrderId");
     });

@@ -11,10 +11,9 @@
  *     shown: the designer binds one to this agreement as is (a reusable
  *     unit), or unbinds it.
  *   - registry — first the mandatory article: the mandatory clauses the
- *     canvas writes into every agreement, the DAO's live commerce and
- *     topology read from `ClauseRegistry` by registrant and stake
- *     (`mandatoryClausesForCanvas`), shown with nothing to choose; an
- *     agreement is not an agreement without them. Then
+ *     canvas writes into every agreement, the DAO's live mandatory clauses
+ *     read from `ClauseRegistry` by registrant and stake
+ *     (`mandatoryClausesForCanvas`), shown with nothing to choose. Then
  *     every other clause registered on `ClauseRegistry`, read live from the
  *     chain, grouped by `groupClausesByArticle()` (the single clause
  *     classification, shared with the /clauses inventory — grouping + order
@@ -141,8 +140,8 @@ export function AgreementDrawer({
 
     const orderIndex = orders ? orders.findIndex((o) => o.orderHash === order.orderHash) : -1;
     const orderNumber = orderIndex >= 0 ? orderIndex + 1 : 1;
-    // Topology is first-class on the order (the topology clause's data), read
-    // directly — never recovered from the agreement. Forking a live assembly
+    // Topology is first-class on the order (the assembly entry's `follows`),
+    // read directly — never recovered from the agreement. Forking a live assembly
     // reconstructs these onto the order via fetchAgreement in the fork flow.
     const follows = order.follows ?? [];
 
@@ -566,9 +565,8 @@ function MandatoryArticlePanel() {
         <section data-testid="drawer-mandatory-article" className="mb-5">
             <p className="text-sm font-medium text-ink-heading mb-2">mandatory</p>
             <p className="text-xs text-ink-muted mb-2">
-                Written into every agreement before anything is composed: an agreement is not an
-                agreement without the payment, the token and what is bought, and the orders it
-                follows. They are the DAO&rsquo;s live registrations on the on-chain{" "}
+                Written into every agreement before anything is composed. They are the
+                DAO&rsquo;s live registrations on the on-chain{" "}
                 <code className="font-mono">ClauseRegistry</code>, read by registrant and stake;
                 nothing here is chosen.
             </p>

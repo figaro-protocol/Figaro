@@ -87,15 +87,15 @@ async function findRateAssembly(): Promise<string | undefined> {
     // construction — the geohashes are the buyer's checkout fills, so no
     // anchored value can identify the assembly). The rate shape: a two-node
     // chain whose hauled leg composes process + geo and NOTHING else beyond
-    // the two mandatory clauses of its pick (the delivery assembly's courier leg also
-    // carries handoff + proximity → 6 keys, and its root carries merchant +
-    // modalities → 4 keys; this shape is 4 and 2).
+    // the mandatory clause of its pick (the delivery assembly's courier leg also
+    // carries handoff + proximity → 5 keys, and its root carries merchant +
+    // modalities → 3 keys; this shape is 3 and 1).
     return assemblies.find((t) => {
         if (t.agreements.length !== 2) return false;
         const keysets = t.agreements.map((o) => Object.keys(o.clauses ?? {}));
         const sub = keysets.find((k) => k.includes(PROCESS_CLAUSE) && k.includes(GEO_CLAUSE));
         const root = keysets.find((k) => !k.includes(PROCESS_CLAUSE));
-        return !!sub && sub.length === 4 && !!root && root.length === 2;
+        return !!sub && sub.length === 3 && !!root && root.length === 1;
     })?.slug;
 }
 

@@ -20,8 +20,8 @@
  * agreements the designer bound to agreements, read from `AgreementRegistry`
  * and verified against their keys (`getRegisteredAgreement`). It VERIFIES
  * scope placement, refuses an agreement that both binds and composes,
- * refuses an agreement lacking a clause of topology's shape,
- * and throws on a cold spec cache or an unread bound agreement — loud
+ * refuses an agreement composing no clause, writes each entry's `follows`
+ * from the canvas edges, and throws on a cold spec cache or an unread bound agreement — loud
  * failures the callers
  * surface, never silently swallowed here.
  */
@@ -64,8 +64,8 @@ function readAgreements(byOrderId: Record<string, `0x${string}`> | undefined, us
  *  (`mandatoryClausesForCanvas`), written into every agreement it composes
  *  before the designer's selection. Throws when a clause's spec is not loaded
  *  or is composed at the wrong scope, an agreement both binds and composes, a
- *  bound agreement is unread, or an agreement lacks a clause of topology's
- *  shape — the SDK's own refusals, and this file's one. */
+ *  bound agreement is unread, or an agreement composes no clause — the
+ *  SDK's own refusals, and this file's one. */
 export function snapshotToAssembly(snapshot: DesignSnapshot): BuiltAssembly {
     return buildAssembly({
         name: snapshot.name.trim() || undefined,

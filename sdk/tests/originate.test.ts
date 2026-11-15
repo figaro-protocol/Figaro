@@ -29,7 +29,7 @@ import { deriveAssemblySlug } from "../src/assembly.js";
 import type { CommitmentPayload } from "../src/agent/coordination.js";
 import { forgeBuyerOffer } from "./forgeOffer.js";
 
-const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
+const SPECS = specSourceFromFixtures(["figaro-commerce"]);
 
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]
 const SELLER = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"); // anvil[1]
@@ -45,7 +45,7 @@ const buyerW = createWalletClient({ account: BUYER, transport: http("http://loca
 const sellerW = createWalletClient({ account: SELLER, transport: http("http://localhost:0") });
 
 const assembly = hydrateAuthored({
-    agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } }],
+    agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {} }, follows: [] }],
 });
 const overrides = { [keyOf("figaro-commerce")]: { lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }] } };
 
@@ -72,8 +72,8 @@ describe("instantiateRootAgreement", () => {
     it("picks the root agreement (no non-empty follows) from a multi-agreement assembly", () => {
         const multi = hydrateAuthored({
             agreements: [
-                { id: "agreement-1", clauses: { [keyOf("figaro-topology")]: { follows: ["0xabc"] } } },
-                { id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } },
+                { id: "agreement-1", clauses: {}, follows: ["0xabc"] },
+                { id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {} }, follows: [] },
             ],
         });
         const a = instantiateRootAgreement(multi, { buyer: BUYER.address, seller: SELLER.address });
@@ -279,7 +279,7 @@ describe("InProcessChannel", () => {
 
 describe("the assembly-scope fold at root instantiation (audit hole (a), closed)", () => {
     const FOLD_SPECS = specSourceFromFixtures([
-        "figaro-commerce", "figaro-topology", "figaro-utility-token",
+        "figaro-commerce", "figaro-utility-token",
     ]);
     const PIN = CURRENCY;
     const OTHER = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
@@ -287,15 +287,17 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
         assemblyClauses: {
             [keyOf("figaro-utility-token")]: { currency: PIN },
         },
-        agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { follows: [] } } }],
+        agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {} }, follows: [] }],
     });
 
     it("instantiateRootAgreement folds assemblyClauses into the root agreement", () => {
         const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address, overrides });
         const ids = a.clauses.map((s) => s.clause);
         expect(ids).toEqual(expect.arrayContaining([
-            keyOf("figaro-utility-token"), keyOf("figaro-commerce"), keyOf("figaro-topology"),
+            keyOf("figaro-utility-token"), keyOf("figaro-commerce"),
         ]));
+        // The root's topology is the format's own leaf, an empty list.
+        expect(a.follows).toEqual([]);
         expect(a.clauses.find((s) => s.clause === keyOf("figaro-utility-token"))?.data.currency).toBe(PIN);
     });
 
@@ -337,7 +339,7 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
     // The ruling: a design fill (`block.design.fills`) the designer set is the
     // designer's value; the sign gate refuses an agreement whose clause
     // carries another, wherever the override came from.
-    const DESIGN_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology", "figaro-consent", "figaro-applicable-law", "figaro-property-transfer"]);
+    const DESIGN_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-consent", "figaro-applicable-law", "figaro-property-transfer"]);
     const DOCS = [{ documentHash: `0x${"d0".repeat(32)}`, documentVersion: "1.0.0", documentTitle: "Terms of Service" }];
     const FORGED = [{ documentHash: `0x${"ee".repeat(32)}`, documentVersion: "1.0.0", documentTitle: "Terms of Service" }];
     // The designer's value of an ASSEMBLY-SCOPED clause with a design fill …
@@ -354,9 +356,9 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
             id: "agreement-0",
             clauses: {
                 [keyOf("figaro-commerce")]: {},
-                [keyOf("figaro-topology")]: { follows: [] },
                 [keyOf("figaro-consent")]: { documents: DOCS },
             },
+            follows: [],
         }],
     });
     const params = (extra: Record<string, Record<string, unknown>>) => ({
@@ -422,7 +424,7 @@ describe("the seller's bound assemblies — the offer leg refuses an order under
     // A structurally different assembly (its own clause selection), so its
     // assembly hash differs from the one the orders instantiate.
     const elsewhere = hydrateAuthored({
-        agreements: [{ id: "agreement-0", clauses: { [keyOf("figaro-topology")]: { follows: [] } } }],
+        agreements: [{ id: "agreement-0", clauses: {}, follows: [] }],
     });
     const offeredHash = assemblyHashOf(assembly.assembly);
     const CTX = { chainId: CHAIN, core: CORE, chainNow: CHAIN_NOW };

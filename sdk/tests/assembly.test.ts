@@ -31,12 +31,12 @@ describe("assemblyComposedClauseKeys", () => {
         const { assembly, agreements } = hydrateAuthored({
             assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
             agreements: [
-                { id: "agreement-0", clauses: { [keyOf("figaro-topology")]: {}, [keyOf("figaro-commerce")]: {} } },
+                { id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {} } },
                 { id: "agreement-1", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-handoff")]: {} } },
             ],
         });
         expect(assemblyComposedClauseKeys(assembly, agreements)).toEqual(
-            ["figaro-applicable-law", "figaro-commerce", "figaro-handoff", "figaro-topology"].map(keyOf).sort(),
+            ["figaro-applicable-law", "figaro-commerce", "figaro-handoff"].map(keyOf).sort(),
         );
     });
 
@@ -50,7 +50,7 @@ describe("assemblyComposedClauseKeys", () => {
 });
 
 describe("the registered agreement hash", () => {
-    const composed = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
+    const composed = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-geolocation")]: {} } };
 
     it("is the merkle root over one leaf per composed clause, editorial prose excluded", () => {
         const leaves = Object.entries(composed.clauses).map(([clauseKey, fills]) =>
@@ -92,13 +92,20 @@ describe("the registered agreement hash", () => {
 describe("the composition tree", () => {
     const A = `0x${"aa".repeat(32)}` as Hex;
     const B = `0x${"bb".repeat(32)}` as Hex;
-    const TOPO = keyOf("figaro-topology");
+    const COMMERCE = keyOf("figaro-commerce");
 
-    it("an agreement's bytes are canonical {clauses, slot} — slot, the wire name for the agreement's index", () => {
-        const bytes = agreementLeafBytes({ clauses: { [TOPO]: { follows: ["agreement-0"] } } }, 1);
+    it("an agreement's bytes are canonical {clauses, follows, slot} — slot, the wire name for the agreement's index", () => {
+        const bytes = agreementLeafBytes({ clauses: { [COMMERCE]: { x: 1 } }, follows: ["agreement-0"] }, 1);
         expect(Buffer.from(bytes.slice(2), "hex").toString("utf8"))
-            .toBe(`{"clauses":{"${TOPO}":{"follows":["agreement-0"]}},"slot":1}`);
+            .toBe(`{"clauses":{"${COMMERCE}":{"x":1}},"follows":["agreement-0"],"slot":1}`);
+        // An absent follows commits as the root's empty list.
+        expect(agreementLeafBytes({ clauses: {} }, 0)).toBe(agreementLeafBytes({ clauses: {}, follows: [] }, 0));
+        // The edges are part of the assembly's identity.
+        const root: Assembly = { agreements: [{ id: "agreement-0", agreementHash: A, clauses: {}, follows: [] }, { id: "agreement-1", agreementHash: B, clauses: {}, follows: ["agreement-0"] }] };
+        const flat: Assembly = { agreements: [{ id: "agreement-0", agreementHash: A, clauses: {}, follows: [] }, { id: "agreement-1", agreementHash: B, clauses: {}, follows: [] }] };
+        expect(assemblyHashOf(root)).not.toBe(assemblyHashOf(flat));
         expect(() => agreementLeafBytes({ clauses: {} }, -1)).toThrow(/non-negative/);
+        expect(() => agreementLeafBytes({ clauses: {}, follows: [1 as unknown as string] }, 0)).toThrow(/list of entry labels/);
     });
 
     it("a one-entry assembly's root is its agreement's leaf; terms add a leaf", () => {
@@ -121,8 +128,8 @@ describe("the composition tree", () => {
     it("the same agreement in two agreements is two leaves; editorial prose never moves the root", () => {
         const two: Assembly = {
             agreements: [
-                { id: "agreement-0", agreementHash: A, clauses: { [TOPO]: { follows: [] } } },
-                { id: "agreement-1", agreementHash: A, clauses: { [TOPO]: { follows: ["agreement-0"] } } },
+                { id: "agreement-0", agreementHash: A, clauses: {}, follows: [] },
+                { id: "agreement-1", agreementHash: A, clauses: {}, follows: ["agreement-0"] },
             ],
         };
         expect(new Set(assemblyLeaves(two)).size).toBe(2);
@@ -165,19 +172,19 @@ describe("the composition tree", () => {
 });
 
 describe("an agreement's clauses at checkout", () => {
-    const TOPO = keyOf("figaro-topology");
     const COMMERCE = keyOf("figaro-commerce");
     const hydrated = hydrateAuthored({
         agreements: [
-            { id: "agreement-0", clauses: { [COMMERCE]: {}, [TOPO]: { follows: [] } } },
-            { id: "agreement-1", clauses: { [COMMERCE]: {}, [TOPO]: { follows: ["agreement-0"] } } },
+            { id: "agreement-0", clauses: { [COMMERCE]: {} }, follows: [] },
+            { id: "agreement-1", clauses: { [COMMERCE]: {} }, follows: ["agreement-0"] },
         ],
     });
 
     it("one registered agreement serves both agreements; each agreement's fill merges over it", () => {
         const [s0, s1] = hydrated.assembly.agreements;
         expect(s0.agreementHash).toBe(s1.agreementHash);
-        expect(agreementClauses(hydrated, s1)).toEqual({ [COMMERCE]: {}, [TOPO]: { follows: ["agreement-0"] } });
+        expect(agreementClauses(hydrated, s1)).toEqual({ [COMMERCE]: {} });
+        expect(agreementClauses(hydrated, { ...s1, clauses: { [COMMERCE]: { x: 1 } } })).toEqual({ [COMMERCE]: { x: 1 } });
         expect(assemblyFollows(s1)).toEqual(["agreement-0"]);
         expect(assemblyFollows(s0)).toEqual([]);
     });
@@ -189,10 +196,10 @@ describe("an agreement's clauses at checkout", () => {
 });
 
 describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", () => {
-    const names = ["figaro-commerce", "figaro-topology", "figaro-applicable-law", "figaro-handoff"];
+    const names = ["figaro-commerce", "figaro-applicable-law", "figaro-handoff"];
     const specs = specSourceOf(names.map((n) => viewOf(rawSpecOf(n))));
-    /** The two mandatory clauses, named as the canvas would write them in. */
-    const MANDATORY = { "figaro-commerce": {}, "figaro-topology": {} };
+    /** The mandatory clause, named as the canvas would write it in. */
+    const MANDATORY = { "figaro-commerce": {} };
     /** The mandatory clauses alone: a complete agreement with nothing else composed. */
     const base = composeAuthoredAgreement({ name: "Mandatory clauses", clauses: { ...MANDATORY } }, specs).document;
 
@@ -201,16 +208,17 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
             { name: "A hand-off", summary: "one hand-off", clauses: { ...MANDATORY, "figaro-handoff": {} } },
             specs,
         );
-        expect(document.clauses).toEqual({ [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {}, [keyOf("figaro-handoff")]: {} });
+        expect(document.clauses).toEqual({ [keyOf("figaro-commerce")]: {}, [keyOf("figaro-handoff")]: {} });
         expect(document.name).toBe("A hand-off");
         expect(agreementHash).toBe(agreementHashOf({ clauses: document.clauses }));
         expect(agreementHashOf(document)).toBe(agreementHash);
         expect(() => composeAuthoredAgreement({ name: "none" }, specs)).toThrow(/no clauses/);
-        // An agreement is not an agreement without topology; commerce is the
-        // designer's choice, since the commitment carries the payment.
-        expect(() => composeAuthoredAgreement({ clauses: { "figaro-commerce": {}, "figaro-handoff": {} } }, specs)).toThrow(/no clause of topology's shape/);
-        expect(composeAuthoredAgreement({ clauses: { "figaro-topology": {}, "figaro-handoff": {} } }, specs).document.clauses)
-            .toEqual({ [keyOf("figaro-topology")]: {}, [keyOf("figaro-handoff")]: {} });
+        // No clause of any shape is required — commerce is the designer's
+        // choice, since the commitment carries the payment — but an empty
+        // composition hashes to bytes32(0), which the registry refuses.
+        expect(composeAuthoredAgreement({ clauses: { "figaro-handoff": {} } }, specs).document.clauses)
+            .toEqual({ [keyOf("figaro-handoff")]: {} });
+        expect(() => composeAuthoredAgreement({ clauses: {} }, specs)).toThrow(/composes no clause/);
     });
 
     it("composes a set of authored agreements by name", () => {
@@ -241,21 +249,16 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
         expect(assembly.agreements[0].agreementHash).toBe(assembly.agreements[1].agreementHash);
         expect(assembly.agreements[0].agreementHash).toBe(agreementHashOf(bare));
         expect(assembly.agreements[2].agreementHash).toBe(agreementHashOf(handoff));
-        expect(assembly.agreements[0].clauses).toEqual({ [keyOf("figaro-topology")]: { follows: [] } });
-        expect(assembly.agreements[1].clauses).toEqual({ [keyOf("figaro-topology")]: { follows: ["agreement-0"] } });
+        expect(assembly.agreements[0]).toMatchObject({ clauses: {}, follows: [] });
+        expect(assembly.agreements[1]).toMatchObject({ clauses: {}, follows: ["agreement-0"] });
         for (const entry of assembly.agreements) expect(agreementHashOf(agreements[entry.agreementHash])).toBe(entry.agreementHash);
     });
 
-    it("refuses a entry that names no agreement, an unknown one, inline clauses, or an agreement without topology", () => {
+    it("refuses a entry that names no agreement, an unknown one, or inline clauses", () => {
         const bare = base;
         expect(() => assembleAuthored({ agreements: [{ id: "o" }] }, { bare }, specs)).toThrow(/names no agreement/);
         expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "nope" }] }, { bare }, specs)).toThrow(/not among the authored agreements/);
         expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "bare", clauses: {} }] }, { bare }, specs)).toThrow(/inline/);
-        // A bound agreement carries one clause of topology's shape, or is
-        // refused: an agreement is not an agreement without the orders it follows.
-        const short = { clauses: { [keyOf("figaro-handoff")]: {}, [keyOf("figaro-commerce")]: {} } };
-        expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "short" }] }, { short, bare }, specs))
-            .toThrow(/o: agreement "short": no clause of topology's shape/);
         expect(() => assembleAuthored({ agreements: [] }, { bare }, specs)).toThrow(/no agreements/);
     });
 
@@ -289,14 +292,14 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
 });
 
 describe("resolveAuthoredClauseKeys (seed-time authoring resolver)", () => {
-    const specs = specSourceOf(["figaro-commerce", "figaro-topology", "figaro-applicable-law", "figaro-data-license"]
+    const specs = specSourceOf(["figaro-commerce", "figaro-applicable-law", "figaro-data-license"]
         .map((n) => viewOf(rawSpecOf(n))));
 
     it("rewrites a name-keyed assembly's agreements and assembly-scoped clauses to keys", () => {
         const authored = {
             name: "editorial",
             assemblyClauses: { "figaro-applicable-law": { law: "x" } },
-            agreements: [{ id: "agreement-0", clauses: { "figaro-commerce": {}, "figaro-topology": { follows: [] } } }],
+            agreements: [{ id: "agreement-0", clauses: { "figaro-commerce": {}, "figaro-data-license": {} } }],
         };
         const resolved = resolveAuthoredClauseKeys(authored, specs) as unknown as {
             name: string; assemblyClauses: unknown; agreements: { clauses: Record<string, unknown> }[];
@@ -305,10 +308,10 @@ describe("resolveAuthoredClauseKeys (seed-time authoring resolver)", () => {
         expect(resolved.assemblyClauses).toEqual({ [keyOf("figaro-applicable-law")]: { law: "x" } });
         expect(resolved.agreements[0].clauses).toEqual({
             [keyOf("figaro-commerce")]: {},
-            [keyOf("figaro-topology")]: { follows: [] },
+            [keyOf("figaro-data-license")]: {},
         });
         // The input is not mutated.
-        expect(Object.keys(authored.agreements[0].clauses)).toEqual(["figaro-commerce", "figaro-topology"]);
+        expect(Object.keys(authored.agreements[0].clauses)).toEqual(["figaro-commerce", "figaro-data-license"]);
     });
 
     it("rewrites a member document's named clause references to clauseKey", () => {

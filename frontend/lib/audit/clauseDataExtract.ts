@@ -19,8 +19,8 @@ import type { ExtractedDocument, MissingPart } from "./types";
 export interface ClauseDataDocument extends ExtractedDocument {
     /** One description per committed clause — its spec title + each declared
      *  field's label + committed value(s). EVERY committed leaf surfaces, even
-     *  when its fields render no values (e.g. a root order's topology leaf with
-     *  empty parents): the audit's contract is completeness over the committed
+     *  when its fields render no values (e.g. a process-log clause's empty
+     *  anchor): the audit's contract is completeness over the committed
      *  tree, so omission would hide a leaf the merkle root provably carries. */
     clauses: ClauseDescription[];
     /** A clause whose spec was not loaded still lists its committed fields, by

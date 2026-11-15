@@ -1,7 +1,6 @@
 {
     "clauses": {
         "figaro-commerce": {},
-        "figaro-topology": {},
         "figaro-content-handoff": {},
         "figaro-data-license": {},
         "figaro-schedule": {}

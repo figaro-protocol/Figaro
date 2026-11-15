@@ -1,7 +1,6 @@
 {
     "clauses": {
         "figaro-commerce": {},
-        "figaro-topology": {},
         "figaro-credential": {},
         "figaro-data-terms": {
             "disclosure": "each-own"

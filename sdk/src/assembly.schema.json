@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://figaro.org/schemas/assembly.json",
     "title": "Figaro Assembly (written and pinned forms)",
-    "description": "The shape of an assembly's document — the agreements composed for one design, one per order, each binding a registered agreement and carrying its own topology, beside the designer's words and the designer's answers. The document has two forms with one shape. WRITTEN: each entry names the written agreement it binds (`agreement`, a file name under `agreements/`) and the entries it follows (`follows`, `agreement-<j>` labels), and `assemblyClauses` are written by clause name, as the files under `assemblies/` do; the reference builder is `assembleAuthored` (sdk/src/projection.ts), which binds each named agreement's hash and lifts `follows` into the topology clause's fill. PINNED: each entry carries the bound agreement's `agreementHash` (the `AgreementRegistry` key) and its own fills by clause key, the topology clause's `{ follows: [...] }` among them; the `assemblyHash` is the merkle root over the agreement leaves (`assemblyHashOf`, sdk/src/assembly.ts), the key `AssemblyRegistry` takes, recomputed by every reader from the fetched bytes. The editorial fields and the designer's answers are excluded from the hash. A conformance test (sdk/tests/documents/schema-conformance.test.ts) keeps this schema and the builder in lockstep over the reference files. The schema is OPEN (additionalProperties allowed): unknown fields are tolerated and ignored by conforming readers.",
+    "description": "The shape of an assembly's document — the agreements composed for one design, one per order, each binding a registered agreement and carrying its own topology, beside the designer's words and the designer's answers. The document has two forms with one shape. WRITTEN: each entry names the written agreement it binds (`agreement`, a file name under `agreements/`) and the entries it follows (`follows`, `agreement-<j>` labels), and `assemblyClauses` are written by clause name, as the files under `assemblies/` do; the reference builder is `assembleAuthored` (sdk/src/projection.ts), which binds each named agreement's hash and carries `follows` over. PINNED: each entry carries the bound agreement's `agreementHash` (the `AgreementRegistry` key), its own fills by clause key, and `follows`, the labels of the entries it follows, hashed into its leaf; the `assemblyHash` is the merkle root over the agreement leaves (`assemblyHashOf`, sdk/src/assembly.ts), the key `AssemblyRegistry` takes, recomputed by every reader from the fetched bytes. The editorial fields and the designer's answers are excluded from the hash. A conformance test (sdk/tests/documents/schema-conformance.test.ts) keeps this schema and the builder in lockstep over the reference files. The schema is OPEN (additionalProperties allowed): unknown fields are tolerated and ignored by conforming readers.",
     "type": "object",
     "required": ["agreements"],
     "additionalProperties": true,
@@ -64,10 +64,11 @@
                 "agreementHash": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$", "description": "The registered agreement this entry binds: the merkle root over its composed clauses, the `AgreementRegistry` key." },
                 "clauses": {
                     "type": "object",
-                    "description": "The entry's own fills over the registered agreement, by clause key, merged over the agreement's clauses at checkout (the entry's fill wins for the keys it names): the topology clause's `{ follows: [\"agreement-<j>\", ...] }`, empty on the root.",
+                    "description": "The entry's own fills over the registered agreement, by clause key, merged over the agreement's clauses at checkout (the entry's fill wins for the keys it names); `{}` when the entry fills none.",
                     "propertyNames": { "$ref": "#/$defs/clauseKey" },
                     "additionalProperties": { "type": "object" }
-                }
+                },
+                "follows": { "type": "array", "items": { "$ref": "#/$defs/agreementLabel" }, "description": "The entries this order follows, by label; empty or absent on the root. Part of the entry's leaf bytes (`agreementLeafBytes`), and written at checkout into each order's topology leaf as the order hashes of those entries' orders." }
             }
         }
     }

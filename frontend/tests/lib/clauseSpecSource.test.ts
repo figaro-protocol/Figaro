@@ -43,13 +43,13 @@ describe("clauseSpecSource — chain-only cache", () => {
     });
 
     it("resolves a canonical off-chain spec synchronously by its key after an explicit load", async () => {
-        await primeClauseSpecs(["figaro-topology"]);
-        const key = keyOf("figaro-topology");
-        expect(listKnownClauses()).toContainEqual({ clauseKey: key, clauseId: "figaro-topology", version: 1 });
-        expect(getClauseSpec(key)?.clauseId).toBe("figaro-topology");
+        await primeClauseSpecs(["figaro-commerce"]);
+        const key = keyOf("figaro-commerce");
+        expect(listKnownClauses()).toContainEqual({ clauseKey: key, clauseId: "figaro-commerce", version: 1 });
+        expect(getClauseSpec(key)?.clauseId).toBe("figaro-commerce");
         expect(getClauseSpec(key)?.clauseKey).toBe(key);
         // The key is case-insensitive at the read.
-        expect(getClauseSpec(key.toUpperCase().replace("0X", "0x"))?.clauseId).toBe("figaro-topology");
+        expect(getClauseSpec(key.toUpperCase().replace("0X", "0x"))?.clauseId).toBe("figaro-commerce");
     });
 
     it("returns undefined for an unknown key without throwing", () => {
@@ -210,8 +210,8 @@ describe("clauseIsProcessLog — classified by the attestations article, never b
     });
 
     it("a mandatory clause with an enum is NOT a lifecycle (the earlier collision)", async () => {
-        await primeClauseSpecs(["figaro-topology"]);
-        expect(clauseIsProcessLog(keyOf("figaro-topology"))).toBe(false);
+        await primeClauseSpecs(["figaro-commerce"]);
+        expect(clauseIsProcessLog(keyOf("figaro-commerce"))).toBe(false);
     });
 
     it("an unknown clause is not a lifecycle (false while uncached)", () => {

@@ -188,8 +188,8 @@ export function mandatoryClauseRegistrant(): Hex | null {
  *  (`mandatoryClauses`, the SDK's one rule), read from what the registry said
  *  of each loaded spec. Empty — and the canvas publishes nothing — when the
  *  DAO's wallet holds no live mandatory clause on the network this site reads,
- *  or the site names no DAO wallet. An agreement is not an agreement without
- *  commerce and topology; nobody picks them. */
+ *  or the site names no DAO wallet. Nobody picks them; the topology is the
+ *  agreement format's own (each entry's `follows`), never a clause. */
 export function mandatoryClausesForCanvas(): Record<Hex, Record<string, unknown>> {
     const registrant = mandatoryClauseRegistrant();
     if (!registrant || mandatoryClausesPending()) return {};
@@ -306,7 +306,7 @@ export function clauseNestsUnder(clauseKey: string): string | null {
 }
 
 /** True if a clause is MANDATORY (`block.design.article: "mandatory"`,
- *  commerce + topology among them). The SDK's `specIsMandatory` is the one
+ *  commerce among them). The SDK's `specIsMandatory` is the one
  *  predicate, applied to the clause at `clauseKey`. This is the ARTICLE, not
  *  the canvas's set: the review and the checkout read it to tell a carried
  *  mandatory-article clause apart from a composed one, by key, whoever

@@ -162,7 +162,7 @@ nothing.
 `FigaroCore` sees a flat process: a `processId`, a monotonic `cumulativeValue`,
 and an `activeOrderCount`. It stores no parent or child; there is no on-chain
 graph of orders. The topology of a process — who comes before whom, fan-out,
-fan-in — lives in the signed agreement (the `figaro-topology` clause) and is
+fan-in — lives in the signed agreement (its topology leaf, `follows`) and is
 read from there by indexers and interfaces. No code links one process to
 another, so each process stays within the network's gas ceiling on its own.
 Leaving topology off chain is safe because a wrong cumulative value never

@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { FigaroContext, originateChain, makeSellerOfferHandler, InProcessChannel } from "@figaro-protocol/sdk/agent";
 import {
-    anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, agreementClauses,
+    anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, agreementClauses, assemblyFollows,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 import { bindAssemblyAsSeller, designReader, memberProfileReader } from "./devnet-seller.mjs";
@@ -141,7 +141,8 @@ channel.register(SELLERS[1].address, makeSellerOfferHandler(sellerW[1], pub, add
 }));
 
 // ── Buyer LOOP: originate the whole chain ─────────────────────────────────────
-const parentsOf = (id) => Object.values(agreementClausesById.get(id) ?? {}).find((d) => Array.isArray(d.follows))?.follows ?? [];
+// Each entry's own `follows`: the entries it follows, empty on the root.
+const parentsOf = (id) => assemblyFollows(assembly.assembly.agreements.find((a) => a.id === id) ?? {});
 const orderedIds = [
     ...assembly.assembly.agreements.filter((a) => parentsOf(a.id).length === 0),
     ...assembly.assembly.agreements.filter((a) => parentsOf(a.id).length > 0),

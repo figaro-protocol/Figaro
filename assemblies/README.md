@@ -11,10 +11,9 @@ bound by `pos.json` and `equipment-hire.json`, `freelance-deliverable.json` by
 `freelancer.json` and the root of `freelancer-value-chain.json`. The files keep
 that shape; the populate path builds the registered shape from it at deploy:
 `composeAuthoredAgreement` (in the SDK) composes each written agreement —
-names resolved to keys, the two mandatory clauses named like any other, the key derived — and
+names resolved to keys, the mandatory clause named like any other, the key derived — and
 `assembleAuthored` builds each assembly over the agreements its agreements
-name (each binds the agreement's hash; its fill is the topology clause's
-parents), then the seeding pins and registers each DISTINCT agreement once on
+name (each binds the agreement's hash and carries its written `follows`), then the seeding pins and registers each DISTINCT agreement once on
 `AgreementRegistry` (one stake each; a key already registered is skipped) and
 registers the assembly on `AssemblyRegistry`. Identity is content-derived on
 both registries (the `agreementHash`, a merkle root over the composed clauses;

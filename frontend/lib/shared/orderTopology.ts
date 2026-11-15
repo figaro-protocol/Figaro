@@ -6,7 +6,7 @@
  * topological sort lives in `@figaro-protocol/sdk` (`topologicalOrder`) — the ONE home
  * the assembly walk, the sub-order plan, and the depth derivation below all
  * order by. Reading a COMMITTED order's edges out of its agreement's
- * mandatory topology clause is a runtime concern and lives in
+ * topology leaf (`Agreement.follows`) is a runtime concern and lives in
  * `lib/semantic/processTopology.ts`.
  */
 
@@ -14,8 +14,8 @@ import { depthsOverParents } from "@figaro-protocol/sdk";
 
 /** Topology read from first-class draft edges: order id → parent order ids.
  *  A designer draft ALWAYS carries its edges directly on the order
- *  (`follows` — the canvas is the origin of the topology clause's
- *  data, pre-commit), so draft topology never touches an agreement. */
+ *  (`follows` — the canvas is the origin of each assembly entry's
+ *  `follows`, pre-commit), so draft topology never touches an agreement. */
 export function draftOrderTopology(
     orders: readonly { orderHash: string; follows?: string[] }[],
 ): Map<string, string[]> {

@@ -34,10 +34,9 @@ import type { ProjectionSpecView } from "./projection.js";
 // ── The registered agreement (the pinned document behind an agreement hash) ──
 
 /** A registered agreement's pinned document: the clauses composed for ONE
- *  agreement, value-free, with the designer's fills. The topology clause is
- *  composed with `{}` — who follows whom is the assembly's fact (each agreement
- *  own own `clauses` fill it), so one registered agreement sits in any
- *  agreement of any assembly.
+ *  agreement, value-free, with the designer's fills. It names no topology —
+ *  who follows whom is the assembly's fact (each entry's own `follows`), so
+ *  one registered agreement sits in any entry of any assembly.
  *  The editorial fields are the designer's own words, pinned in the document
  *  and EXCLUDED from the key, as the assembly's are. */
 export interface RegisteredAgreement {
@@ -102,18 +101,22 @@ export function buildRegisteredClauseInclusionProof(
  *  agreement's own fills over it. */
 export interface AssemblyAgreement {
     /** Local label for the agreement — `agreement-<index>`, stable within the
-     *  assembly; the reference target the topology clause's
-     *  `follows` names. NOT a chain id, and NOT a party — the
-     *  assembly is party-agnostic. */
+     *  assembly; the reference target another entry's `follows` names. NOT a
+     *  chain id, and NOT a party — the assembly is party-agnostic. */
     id: string;
     /** The registered agreement this agreement binds (`AgreementRegistry`
      *  key). */
     agreementHash: Hex;
     /** The agreement's own fills, clauseKey → values, merged over the
      *  registered agreement's `clauses` at checkout (the agreement's fill
-     *  wins for the keys it names): the topology clause's
-     *  `{ follows: ["agreement-<j>", …] }` (empty on the root). */
+     *  wins for the keys it names); `{}` when it fills none. */
     clauses: Record<Hex, Record<string, unknown>>;
+    /** The entries this one follows, by their `id` labels — the design's
+     *  topology, empty or absent on the root. Hashed into the entry's leaf
+     *  (`agreementLeafBytes`), and written by checkout into each order's
+     *  topology leaf as the order hashes of those entries' orders
+     *  (`Agreement.follows`). */
+    follows?: string[];
 }
 
 /** One question a designer answers about their assembly, in plain words. */
@@ -190,17 +193,11 @@ export function agreementClauses(hydrated: HydratedAssembly, entry: AssemblyAgre
     return out;
 }
 
-/** The agreements an agreement follows — the data of its topology fill. The
- *  entry is found by its DATA KEY (`follows`, one name at both times: at
- *  runtime the committed clause holds the FigaroCore order hashes of the
- *  orders the order follows; at design time the values are sibling
- *  `agreement-<i>` labels), so reading needs no spec cache and tolerates any
- *  registry-defined topology clause. */
-export function assemblyFollows(entry: Pick<AssemblyAgreement, "clauses">): string[] {
-    const fill = Object.values(entry.clauses ?? {}).find(
-        (fields) => Array.isArray((fields as { follows?: unknown } | undefined)?.follows),
-    );
-    const ids = (fill as { follows?: unknown } | undefined)?.follows;
+/** The entries an entry follows — its own `follows`, the sibling
+ *  `agreement-<i>` labels; empty for the root and for an entry that names
+ *  none. */
+export function assemblyFollows(entry: Pick<AssemblyAgreement, "follows">): string[] {
+    const ids = entry.follows;
     return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
 }
 
@@ -252,12 +249,17 @@ export function computeAssemblyLeaf(key: Hex, dataHash: Hex): Hex {
 }
 
 /** An agreement leaf's committed bytes — canonical JSON
- *  `{"clauses":{…},"slot":i}` (`slot`, the wire name for the agreement's index) of the agreement's own fills (object keys
- *  sorted, arrays in authored order). `i` is the agreement's 0-based
- *  position in the assembly. */
-export function agreementLeafBytes(entry: Pick<AssemblyAgreement, "clauses">, i: number): Hex {
+ *  `{"clauses":{…},"follows":[…],"slot":i}` (`slot`, the wire name for the agreement's index) of the agreement's own fills
+ *  and the labels of the entries it follows (`[]` on the root and when
+ *  absent; object keys sorted, arrays in authored order). `i` is the
+ *  agreement's 0-based position in the assembly. */
+export function agreementLeafBytes(entry: Pick<AssemblyAgreement, "clauses" | "follows">, i: number): Hex {
     if (!Number.isSafeInteger(i) || i < 0) throw new Error(`entry index is not a non-negative integer: ${i}`);
-    return toHex(new TextEncoder().encode(canonicalize({ clauses: entry.clauses ?? {}, slot: i })));
+    const follows = entry.follows ?? [];
+    if (!Array.isArray(follows) || follows.some((label) => typeof label !== "string")) {
+        throw new Error(`entry ${i} follows is not a list of entry labels`);
+    }
+    return toHex(new TextEncoder().encode(canonicalize({ clauses: entry.clauses ?? {}, follows, slot: i })));
 }
 
 /** The two format keys an agreement hash may never be: the provenance leaf's

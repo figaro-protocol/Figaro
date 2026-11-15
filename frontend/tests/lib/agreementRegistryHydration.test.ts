@@ -63,7 +63,7 @@ function register(doc: RegisteredAgreement, uri: string, body: string | null = c
 }
 
 beforeAll(async () => {
-    await primeClauseSpecs(["figaro-commerce", "figaro-topology", "figaro-schedule", "figaro-acceptance-criteria"]);
+    await primeClauseSpecs(["figaro-commerce", "figaro-schedule", "figaro-acceptance-criteria"]);
 });
 
 describe("fetchRegisteredAgreement — the binding by key, the document verified against it", () => {
@@ -93,15 +93,15 @@ describe("fetchRegisteredAgreement — the binding by key, the document verified
     });
 
     it("is absent when the pinned document is unreachable or not JSON", async () => {
-        const unreachable = register({ clauses: { [keyOf("figaro-topology")]: { a: 1 } } }, "ipfs://gone", null);
+        const unreachable = register({ clauses: { [keyOf("figaro-schedule")]: { a: 1 } } }, "ipfs://gone", null);
         expect(await fetchRegisteredAgreement(unreachable)).toBeNull();
-        const garbled = register({ clauses: { [keyOf("figaro-topology")]: { a: 2 } } }, "ipfs://garbled", "not json");
+        const garbled = register({ clauses: { [keyOf("figaro-schedule")]: { a: 2 } } }, "ipfs://garbled", "not json");
         expect(await fetchRegisteredAgreement(garbled)).toBeNull();
     });
 
     it("is absent when the document's clauses key elsewhere — the name rides outside the key, the clauses do not — and that absence is PERMANENT: recorded, never re-read", async () => {
-        const doc = { clauses: { [keyOf("figaro-topology")]: { a: 3 } } };
-        const other = { clauses: { [keyOf("figaro-topology")]: { a: 4 } } };
+        const doc = { clauses: { [keyOf("figaro-schedule")]: { a: 3 } } };
+        const other = { clauses: { [keyOf("figaro-schedule")]: { a: 4 } } };
         const key = register(doc, "ipfs://swapped", canonicalize(other));
         expect(await fetchRegisteredAgreement(key)).toBeNull();
         expect(getRegisteredAgreementLoadError(key)).toMatch(/not the agreement the key/);
@@ -113,7 +113,7 @@ describe("fetchRegisteredAgreement — the binding by key, the document verified
     });
 
     it("a gateway miss is NOT permanent: nothing is recorded and the next read lands", async () => {
-        const doc = { clauses: { [keyOf("figaro-topology")]: { a: 5 } } };
+        const doc = { clauses: { [keyOf("figaro-schedule")]: { a: 5 } } };
         const key = register(doc, "ipfs://late", null);
         expect(await fetchRegisteredAgreement(key)).toBeNull();
         expect(getRegisteredAgreementLoadError(key)).toBeUndefined();
@@ -122,7 +122,7 @@ describe("fetchRegisteredAgreement — the binding by key, the document verified
     });
 
     it("hydrates an assembly only when every agreement's agreement reads", async () => {
-        const present = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
+        const present = { clauses: { [keyOf("figaro-commerce")]: {} } };
         const presentKey = register(present, "ipfs://present");
         const absentKey = agreementHashOf({ clauses: { [keyOf("figaro-commerce")]: { never: true } } });
         const entries = [
@@ -156,8 +156,8 @@ describe("the designer binds a registered agreement to one agreement and compose
     }
 
     it("keeps the bound key, registers only the new agreement, and states both on the review", async () => {
-        // A registered agreement carrying both mandatory shapes.
-        const registered = { name: "Scheduled work", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {}, [keyOf("figaro-schedule")]: {} } };
+        // A registered agreement carrying the mandatory clause and one more.
+        const registered = { name: "Scheduled work", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-schedule")]: {} } };
         const boundKey = register(registered, "ipfs://scheduled-work");
         await fetchRegisteredAgreement(boundKey);
         const base = snapshot({});
@@ -174,13 +174,13 @@ describe("the designer binds a registered agreement to one agreement and compose
         expect(newKeys[0]).not.toBe(boundKey);
         // The new agreement carries the DAO's mandatory clauses beside the designer's composition.
         expect(Object.keys(review.newAgreements[newKeys[0] as Hex].clauses).sort())
-            .toEqual([keyOf("figaro-commerce"), keyOf("figaro-topology"), keyOf("figaro-acceptance-criteria")].sort());
-        // The bound agreement carries only its own topology fill.
-        expect(review.assembly.agreements[0].clauses).toEqual({ [keyOf("figaro-topology")]: { follows: [] } });
+            .toEqual([keyOf("figaro-commerce"), keyOf("figaro-acceptance-criteria")].sort());
+        // The bound agreement's entry carries no fill, and its own topology: the root's empty list.
+        expect(review.assembly.agreements[0]).toMatchObject({ clauses: {}, follows: [] });
     });
 
     it("refuses an agreement that binds and composes — the SDK's message reaches the review", async () => {
-        const registered = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
+        const registered = { clauses: { [keyOf("figaro-commerce")]: {} } };
         const boundKey = register(registered, "ipfs://plain");
         await fetchRegisteredAgreement(boundKey);
         const base = snapshot({});
@@ -193,14 +193,15 @@ describe("the designer binds a registered agreement to one agreement and compose
         if (!review.ok) expect(review.error).toMatch(/binds a registered agreement and also composes clauses/);
     });
 
-    it("refuses a bound agreement lacking a clause of topology's shape", async () => {
-        const short = { name: "No topology", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-schedule")]: {} } };
-        const boundKey = register(short, "ipfs://no-topology");
+    it("binds a registered agreement that names no topology: the entry carries the canvas edges", async () => {
+        const plain = { name: "No topology", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-schedule")]: {} } };
+        const boundKey = register(plain, "ipfs://no-topology");
         await fetchRegisteredAgreement(boundKey);
         const base = snapshot({});
         const review = projectSnapshotForReview({ ...base, registeredByOrderId: { [base.rootId]: boundKey } });
-        expect(review.ok).toBe(false);
-        if (!review.ok) expect(review.error).toMatch(/agreement-0: registered agreement 0x[0-9a-f]{64}: no clause of topology's shape/);
+        if (!review.ok) throw new Error(review.error);
+        expect(review.assembly.agreements[0]).toMatchObject({ agreementHash: boundKey, clauses: {}, follows: [] });
+        expect(review.assembly.agreements[1].follows).toEqual(["agreement-0"]);
     });
 
     it("refuses a binding this tab has not read — the build never binds an agreement it cannot read", () => {

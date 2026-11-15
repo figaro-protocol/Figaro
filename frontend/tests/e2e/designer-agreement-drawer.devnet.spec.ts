@@ -177,12 +177,11 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
 
         // Compose the regime clause on the root order.
         await page.getByTestId('drawer-tab-registry').click();
-        // The mandatory article shows the DAO's live commerce and topology,
-        // read from ClauseRegistry by registrant and stake, with nothing to
-        // choose: the canvas writes them into every agreement it registers.
+        // The mandatory article shows the DAO's live commerce clause, read
+        // from ClauseRegistry by registrant and stake, with nothing to
+        // choose: the canvas writes it into every agreement it registers.
         const mandatoryArticle = page.getByTestId('drawer-mandatory-article');
         await expect(mandatoryArticle.getByTestId(`drawer-mandatory-clause-${keyOf('figaro-commerce')}`)).toBeVisible({ timeout: 30000 });
-        await expect(mandatoryArticle.getByTestId(`drawer-mandatory-clause-${keyOf('figaro-topology')}`)).toBeVisible();
         await expect(mandatoryArticle.locator('input')).toHaveCount(0);
         const regimeToggle = page.getByTestId(`drawer-registry-clause-${REGIME_CLAUSE_KEY}`);
         await expect(regimeToggle, 'the drawer surfaces the regime clause').toHaveCount(1, { timeout: 20000 });

@@ -29,7 +29,7 @@ import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
 import { agreementClauses, assemblyHashOf, assemblyFollows } from "../assembly.js";
 import type { Assembly, HydratedAssembly, AssemblyAgreement } from "../assembly.js";
-import { reconstructOrdersFromAssembly, agreementFromClauses, mergeOverrides, fillWalkProvenance } from "../reconstructOrders.js";
+import { reconstructOrdersFromAssembly, agreementFromClauses, mergeOverrides, fillWalkProvenance, fillWalkTopology } from "../reconstructOrders.js";
 import { checkSellerBindsAssembly, type MemberProfileReader } from "../memberProfile.js";
 
 // ── Assembly (the pinned document, hydrated off-SDK) ─────────────────
@@ -38,9 +38,8 @@ import { checkSellerBindsAssembly, type MemberProfileReader } from "../memberPro
 
 export type { Assembly, HydratedAssembly, AssemblyAgreement };
 
-/** An agreement is a ROOT if its topology fill names no parent —
- *  `follows`, the mandatory topology clause's field, matched by
- *  name not by clause id (open-world). */
+/** An entry is a ROOT if it follows no other entry (its own `follows` is
+ *  empty or absent). */
 function isRootEntry(entry: AssemblyAgreement): boolean {
     return assemblyFollows(entry).length === 0;
 }
@@ -76,10 +75,15 @@ export function instantiateRootAgreement(hydrated: HydratedAssembly, params: Ins
     // The one clause-bag → Agreement builder (root and multi-order alike)
     // lives with the assembly walk: ../reconstructOrders.js. The agreement
     // names the registered agreement and the design it instantiates in its
-    // provenance leaf, the same fill the walk performs on every order.
-    return fillWalkProvenance(
-        agreementFromClauses(merged, params.buyer, params.seller),
-        { agreementHash: root.agreementHash, assemblyHash: assemblyHashOf(assembly) },
+    // provenance leaf, and the root's empty topology in its topology leaf,
+    // the same fills the walk performs on every order.
+    return fillWalkTopology(
+        fillWalkProvenance(
+            agreementFromClauses(merged, params.buyer, params.seller),
+            { agreementHash: root.agreementHash, assemblyHash: assemblyHashOf(assembly) },
+            root.id ?? "root",
+        ),
+        [],
         root.id ?? "root",
     );
 }
@@ -621,8 +625,8 @@ export function makeSellerOfferHandler(
 //
 // A DAG of orders under one root. FigaroCore sees a LINEAR sequence of commits
 // updating a monotonic cumulative-value accumulator; DAG topology is off-chain
-// (each order's parents recorded in its topology clause). Beyond the root case:
-//   - parents: a sub-order's topology field carries its parents' REAL EIP-712
+// (each order's parents in its agreement's topology leaf). Beyond the root case:
+//   - parents: a sub-order's topology leaf carries its parents' REAL EIP-712
 //     order hashes, not the assembly-local ids — so orders are built in
 //     dependency order and each order's hash is fed to its children.
 //   - cumulative value: each order commits against the running total (root's

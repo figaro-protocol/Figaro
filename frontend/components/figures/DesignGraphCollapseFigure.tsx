@@ -44,8 +44,8 @@ export interface DesignGraphCollapseFigureProps extends BaseFigureProps {
  * extending one monotonic accumulator, every one of them to the same root
  * buyer, with no parent-child structure anywhere in resolution state. The
  * ordering survives the collapse only because the parties committed it in
- * their agreement — the topology clause is agreement-only, enforced off-chain
- * by whoever reconstructs the graph from the data (`docs/CLAUSES.md`).
+ * their agreement — the topology leaf is the agreement format's own, read
+ * off-chain by whoever reconstructs the graph from the data (`docs/CLAUSES.md`).
  */
 
 const ROW_H = 26;

@@ -67,6 +67,48 @@ attestation of the leaf by inclusion with the bytes reproduced, consulting no
 spec. `decodeProvenanceContent(bytes)` returns `{ agreementHash,
 assemblyHash }` or `null`.
 
+The agreement format carries a second leaf of its own: the **topology leaf**,
+the orders this order follows (`Agreement.follows`, their FigaroCore order
+hashes, in the order the design names them, `[]` for the root of its
+process). A tool without the SDK rebuilds it from these bytes:
+
+- the label is the string `figaro-agreement-topology`, and the domain is
+  its `keccak256`, `TOPOLOGY_LEAF_DOMAIN` =
+  `0xbb19ab0597c6d28223160cd73f765e7ab09fb47de53be100cb982aec5ebc63af`;
+- the committed content is the canonical JSON `{"follows":[…]}`, each edge
+  `"0x<64 lowercase hex>"`, in the order given, no whitespace; a root's is
+  `{"follows":[]}`;
+- the data hash is `keccak256(content)`;
+- the leaf is `keccak256(keccak256(TOPOLOGY_LEAF_DOMAIN ‖ uint256(n) ‖
+  dataHash))`, `n` the number of edges as a 32-byte big-endian word: an
+  inner preimage of 96 bytes. A root's leaf is
+  `0xa17e1e2abf5a5709c413cce584db7e38200a19361ad5e98542a85c44a06b8709`.
+
+The inner preimage of a clause leaf, and of the provenance leaf, is 64 bytes,
+a key and a data hash. No pair of a 32-byte key and a 32-byte data hash
+reproduces a 96-byte preimage's hash, so no clause key opens the topology
+leaf: no key exists to register in `ClauseRegistry`, no attestation can name
+it (`AttestationCoordinator` rebuilds the clause shape), and no usage claim
+counts it. A reserved key in the clause-leaf shape would not hold this,
+because `ClauseRegistry.registerClause` accepts any nonzero key and
+`UsageCounter` and the guest refuse only the two reserved keys
+(`is_reserved_key`, `prover/lib/src/kernel.rs`). The edges are fixed at
+commit and have no later stage, so no attestation of them is lost. The leaf stays
+double-hashed, so it never passes as an internal node.
+
+Checkout writes `follows` from the assembly entry the order instantiates,
+each label mapped to the order hash of that entry's order, as it writes the
+provenance. Every agreement built from a design carries the leaf, an empty
+list included, so absence never reads as "no edges"; an agreement built
+without a design leaves it absent. The sign gate refuses an agreement that
+names a design (its provenance) and carries no topology leaf, and any
+topology leaf whose edges are not distinct 32-byte hashes
+(`validateCommitmentAgreement`). It does not check that the edges are the
+ones the design gives. The SDK owns the format (`TOPOLOGY_LEAF_LABEL`,
+`TOPOLOGY_LEAF_DOMAIN`, `topologyLeafBytes`, `topologyContentRef`,
+`computeTopologyLeaf`, `agreementLeaves` in `sdk/src/agreement.ts`); no
+contract and no proof program holds the constant.
+
 ## The registered agreement and the assembly — units above the clause
 
 Three design-time objects, three registries, parallel: a clause is its spec
@@ -90,9 +132,11 @@ composer and the builder over the reference files by
 **The agreement.** The reusable unit a designer composes an assembly
 from. Its document, `RegisteredAgreement`, is `{ name?, summary?, description?,
 clauses }`, where `clauses` maps each clause key to the designer's fills —
-value-free, and the topology clause composed with `{}`, because who follows
-whom belongs to the agreement; one registered agreement can therefore sit in
-any agreement of any assembly. Its key is the merkle root over one leaf per
+value-free, and with no topology, because who follows whom belongs to the
+assembly entry; one registered agreement can therefore sit in any entry of
+any assembly. It composes at least one clause: an empty one's key is
+`bytes32(0)`, which `AgreementRegistry.registerAgreement` refuses
+(`ZeroAgreementHash`). Its key is the merkle root over one leaf per
 composed clause, each leaf `keccak256(keccak256(clauseKey ‖ keccak256(fills)))`
 under the agreement format's own leaf convention (`agreementHashOf(doc)` in the
 SDK; a one-clause agreement's hash is its leaf), so a clause's membership in a
@@ -116,15 +160,17 @@ composition, and the agreement earns only while its stake is live.
 
 **The assembly.** The assembly document is `{ name?, summary?, description?,
 faq?, assemblyClauses?, agreements: [{ id: "agreement-<i>", agreementHash,
-clauses }] }`. Each entry of `agreements` is an agreement (`AssemblyAgreement`):
-a position that holds one registered agreement and the fills that belong to
-the position — the topology clause's `{ "follows": ["agreement-<j>",
-…] }`, naming the agreements it follows. The topology stays a clause: at design
-time in the assembly's agreement, at runtime in the signed agreement. The
+clauses, follows }] }`. Each entry of `agreements` is an agreement (`AssemblyAgreement`):
+a position that holds one registered agreement, the fills that belong to
+the position (`clauses`, `{}` when it fills none), and `follows`, the labels
+`["agreement-<j>", …]` of the entries it follows (`[]` or absent on the
+root). The topology is never a clause: at design time it is the entry's
+`follows`, at runtime the signed agreement's topology leaf. The
 assembly's key, `assemblyHash`, is the merkle root built with the clause-leaf
 convention above over one leaf per agreement `i` (0-based, assembly order) — key
-the agreement's `agreementHash`, content the canonical JSON `{"clauses":{…},"slot":i}`
-(object keys sorted, arrays in assembly order) — and, when any
+the agreement's `agreementHash`, content the canonical JSON
+`{"clauses":{…},"follows":[…],"slot":i}` (object keys sorted, arrays in
+assembly order, `follows` `[]` when absent) — and, when any
 assembly-scoped clauses are composed, one assembly terms leaf, key
 `ASSEMBLY_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms")`, content the
 canonical JSON of `assemblyClauses`. A one-leaf tree's root is its leaf.
@@ -160,25 +206,22 @@ wallet's live registrations whose spec declares the mandatory article at
 agreement scope, one per shape, the later registration winning where the DAO
 holds two of one shape (`mandatoryClauses` in the SDK; the frontend's
 `mandatoryClausesForCanvas` reads the DAO's wallet from the chain's
-deployment file). The reference specs give that article to `figaro-topology` and
-`figaro-commerce`. Only topology is required: an agreement is not an
-agreement without the orders it follows, and topology is the clause declaring
-`follows` (`specIsTopologyShape`), a shape, never a name.
-`composeOrderAgreement` refuses an agreement without one clause of topology's
-shape, or with two; a registered agreement bound as is must carry it itself,
-whatever its key. No clause of commerce is required, because the commitment
+deployment file). The reference specs give that article to
+`figaro-commerce`. No mandatory clause is required: the topology is the
+agreement format's own leaf, and `composeOrderAgreement` refuses only an
+agreement composing no clause. No clause of commerce is required, because the commitment
 carries the payment and the token: an agreement that composes no clause
 declaring `lineItems` still carries its payment, and what it does not commit
 is the list of what the payment buys. The designer's review screen names each
 such order before publishing. A mandatory-article
 registration by any other wallet is an ordinary clause. A reference agreement file
-(`agreements/*.json`) names the two clauses like any other. Checkout fills
+(`agreements/*.json`) names the mandatory clause like any other. Checkout fills
 values and writes the topology; it never adds or drops a clause. Each order's agreement is the agreement's hydrated
 registered agreement with the agreement's own fills merged over it (the agreement's fill
 wins for the keys it names) and the assembly-scoped clauses beside it; the
-values are filled, the topology labels are mapped to order hashes, the
-provenance leaf is written from the agreement, and the merkle root of the result is
-the order's `checkoutHash`.
+values are filled, the entry's `follows` labels are mapped to order hashes
+and written as the topology leaf, the provenance leaf is written from the
+agreement, and the merkle root of the result is the order's `checkoutHash`.
 
 ## The SDK's validation
 
@@ -387,10 +430,9 @@ field shape:
 
 - **`mandatory`** — never selected one by one; the designer's canvas writes the
   DAO's live ones into every agreement (§ "The registered agreement and the
-  assembly"). The reference specs give it to `figaro-topology` and
-  `figaro-commerce`, both at agreement scope; the build requires only
-  topology's shape, so an agreement composed by another tool may leave
-  commerce out. No mandatory clause is at assembly scope, and one registered
+  assembly"). The reference specs give it to `figaro-commerce`, at
+  agreement scope; the build requires none, so an agreement composed by
+  another tool may leave commerce out. No mandatory clause is at assembly scope, and one registered
   there joins no composition.
 - **`attestations`** — runtime transfer ladders the responsible party advances
   (`figaro-merchant-process`, `figaro-courier-process`; a supply chain runs the
@@ -423,12 +465,11 @@ registry and the same specs. Do not restate a description here.
 
 Two structural notes that no single spec can carry:
 
-- `figaro-topology` states the order of the sellers in a process. It is
-  committed at signing and is a merkle leaf like every other clause,
-  inclusion-provable against `checkoutHash`; an assembly may also attest it at
-  runtime as evidence that one seller performed after another. Indexers and
-  interfaces read a process's topology from the signed agreement, never from
-  `FigaroCore`, which stores no parent or child.
+- The order of the sellers in a process is the agreement format's topology
+  leaf (§ "Every clause is a merkle leaf"), never a clause. It is committed at
+  signing under `checkoutHash`; no attestation names it. Indexers and
+  interfaces read a process's topology from the signed agreement's `follows`,
+  never from `FigaroCore`, which stores no parent or child.
 - A process credits its registered agreement's and its assembly's designers
   through the agreement format's provenance leaf (§ "Every clause is a merkle
   leaf"), never through a clause: `UsageCounter.recordAgreementUsage` proves

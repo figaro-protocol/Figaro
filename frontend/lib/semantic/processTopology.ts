@@ -1,38 +1,31 @@
 /**
  * processTopology.ts — reconstruct a process's order DAG off-chain.
  *
- * Topology is a clause like any other, and a STRUCTURAL one: every committed
- * agreement carries the topology clause (mandatory, like commerce), so an
- * order's parents are always readable BY FIELD NAME (`follows`) via
- * `agreement.clauses` — no privileged topology read path, no stored mode, and
- * NO invented edges: an agreement not yet hydrated from IPFS renders edgeless
- * until it loads (loading, never fabrication). Topology is an organizational
- * element of a process — UI reconstruction + seller coordination — and is
- * independent of bonding, which is ALWAYS linear and on-chain. What remains
- * here is the by-field read of the committed clause; the generic graph math
- * (topological order, depth, draft edges) lives in `lib/shared/orderTopology`.
- * The agreements Map is supplied by the caller (render path:
- * `useProcessAgreements`); this module never fetches.
+ * Topology is the agreement FORMAT's own leaf (`Agreement.follows`), never a
+ * clause: every agreement checkout builds from a design carries it — the
+ * order hashes of the orders the order follows, `[]` for a root — so an
+ * order's parents are read straight off the signed agreement, with no spec
+ * read and NO invented edges: an agreement not yet hydrated from IPFS renders
+ * edgeless until it loads (loading, never fabrication). Topology is an
+ * organizational element of a process — UI reconstruction + seller
+ * coordination — and is independent of bonding, which is ALWAYS linear and
+ * on-chain. What remains here is the read of the committed leaf; the generic
+ * graph math (topological order, depth, draft edges) lives in
+ * `lib/shared/orderTopology`. The agreements Map is supplied by the caller
+ * (render path: `useProcessAgreements`); this module never fetches.
  */
 import type { Agreement } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/kernel/store";
-import { clauseByField } from "@figaro-protocol/sdk";
-import { specSource } from "@/lib/shared/clauseSpecSource";
 
-// ── By-field reads of the topology clause (no clause id named) ────────────────
+// ── The read of the topology leaf ─────────────────────────────────────────────
 
-/** The parent order ids an agreement's topology clause names, read by field:
- *  null when the agreement composes no topology clause, [] when its data is
- *  withheld; empty and blank ids are dropped. */
+/** The parent order ids an agreement's topology leaf names: null when the
+ *  agreement carries no topology leaf (one built without a design), [] for a
+ *  root; empty and blank ids are dropped. */
 export function topologyFollows(agreement: Agreement | null | undefined): string[] | null {
     if (!agreement) return null;
-    const clauseEntry = clauseByField(agreement, "follows", specSource());
-    if (!clauseEntry) return null;
-    // A clause fetched from a PUBLIC pin may be content-WITHHELD (its plaintext
-    // `data` replaced by a `dataHash` fingerprint — the public/private seam), so
-    // `data` can be absent. A withheld topology clause reads as edgeless, never
-    // a crash — the full edges live in the signed + counterparty-relayed forms.
-    const raw = (clauseEntry.data as Record<string, unknown> | undefined)?.follows;
+    const raw: unknown = agreement.follows;
+    if (raw === undefined) return null;
     if (!Array.isArray(raw)) return [];
     return raw.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
 }
@@ -41,8 +34,8 @@ export function topologyFollows(agreement: Agreement | null | undefined): string
 
 /** The ONLY topology data is the parent edges: order id → parent order ids.
  *  Two sources: a designer draft carries its edges directly (the canvas is
- *  the origin of the topology clause's data, pre-commit); a committed order's
- *  edges are read from its agreement's mandatory topology clause.
+ *  the origin of each entry's `follows`, pre-commit); a committed order's
+ *  edges are read from its agreement's topology leaf.
  *  An agreement not yet hydrated from IPFS yields [] — edgeless until it
  *  loads, NEVER invented edges. */
 export function deriveOrderTopology(
