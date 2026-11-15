@@ -158,7 +158,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
             args: { registeredBy: AUTHOR }, fromBlock: registerBlockBefore + 1n,
         });
         expect(registeredEvents, 'exactly one ClauseRegistered for the author this run').toHaveLength(1);
-        expect(registeredEvents[0].args.clauseKey?.toLowerCase(), 'the registration names the key of the pinned bytes').toBe(idHash.toLowerCase());
+        expect(registeredEvents[0].args.clauseKey?.toLowerCase(), 'the registration names the key of the pinned spec').toBe(idHash.toLowerCase());
         const registerReceipt = await publicClient.getTransactionReceipt({ hash: registeredEvents[0].transactionHash });
         expect(registerReceipt.status, 'the registration transaction succeeded').toBe('success');
         const registerGas = registerReceipt.gasUsed * registerReceipt.effectiveGasPrice;

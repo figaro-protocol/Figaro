@@ -258,6 +258,24 @@ use), no validator (a registered clause is immediately attestable). Stake,
 withdrawal, and the registry's other semantics are in `CONTRACTS.md`
 § Registries.
 
+**The canonical form, exactly.** `canonicalize` is ECMAScript's
+`JSON.stringify` with no whitespace, applied after each object's keys are
+sorted (`sdk/src/agreement.ts`, `sortedReplacer`). A tool that builds a key
+or a witness without the SDK reproduces five things:
+
+1. Keys that are array indexes (`"2"`, `"10"`) come first, in numeric order;
+   `{"10":…,"2":…}` serializes with `2` before `10`.
+2. Every other key follows, sorted by UTF-16 code unit.
+3. A number is written as ECMAScript prints it (`1.5`, `1e+21`); an integer
+   above 2^53 is rounded to the nearest double, so a spec carries none.
+4. A string is escaped as `JSON.stringify` escapes it: `"`, the backslash and the
+   control characters only; every other character stays raw UTF-8.
+5. The SDK's readers drop the keys `__proto__`, `constructor` and `prototype`
+   at every depth before they hash, so a spec carries none of them.
+
+Array order is kept. A generic sorted-keys serializer differs on the first
+and third points and yields another key.
+
 On a public chain a registered spec is immutable — a change outside `block`
 is a new spec and therefore a new key. On a local devnet the registry is re-seeded fresh on
 every `devup`, so specs in `clauses/` are edited in place during development;
@@ -507,6 +525,6 @@ reality — and need a sovereign event log as evidence (`figaro-merchant-process
 `commit` and `resolveProcess`, and `FigaroCore`'s events are its evidence. There
 is no buyer-process clause, because it would duplicate `FigaroCore`'s events.
 
-If the spec and the registration drift — bytes at `contentURI` that do not
-hash to the registered key, or a registered key with no pinned spec — the
+If the spec and the registration drift — a document at `contentURI` whose
+spec, without `block`, does not hash to the registered key, or a registered key with no pinned spec — the
 clause does not surface. Keep them in lockstep.

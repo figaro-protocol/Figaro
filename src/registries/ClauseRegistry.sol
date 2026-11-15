@@ -53,7 +53,7 @@ pragma solidity 0.8.26;
 ///         convention-layer concern, not enforcement.
 ///
 ///         Grouping: a clause's group is `block.design.article` in its spec —
-///         inside the bytes the key hashes. There is NO on-chain group field
+///         in the `block`, outside the bytes the key hashes. There is NO on-chain group field
 ///         and never will be — grouping is a READER concern (the drawer's
 ///         headings), derived from the spec, never stored.
 ///

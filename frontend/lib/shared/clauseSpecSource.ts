@@ -74,8 +74,8 @@ let activeFetcher: ClauseSpecFetcher = async (uri) => {
     if (!url) throw new Error(`Cannot resolve clause spec URI: ${uri}`);
     // Size-capped fetch (F4): a permissionlessly-registered clause pointing at
     // a multi-GB pin aborts mid-stream instead of OOMing every clause surface —
-    // the DoS sibling of the MAX_FIELD_DEPTH parse cap. Byte-exact: a text
-    // decode round-trip could change what is hashed.
+    // the DoS sibling of the MAX_FIELD_DEPTH parse cap. The bytes go to
+    // `anchorClauseSpec` undecoded, which refuses invalid UTF-8.
     const response = await fetchCappedBinary(url);
     if (!response.ok || response.bytes === null) throw new Error(`Failed to fetch clause spec at ${uri}: ${response.status} ${response.statusText}`);
     return response.bytes;

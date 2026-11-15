@@ -17,7 +17,7 @@
  * `AttestationCoordinator` takes on the direct path: the `clauseDataHash`,
  * the agreement inclusion proof and the `contentRef` — fingerprints only,
  * so the relay sees what the chain sees and never the parties' data. The
- * plaintext form — the clause's pinned spec bytes, the content and the
+ * plaintext form — the clause's spec without `block` (`clauseKeyPreimage`), the content and the
  * committed clauseData — is sent only when the caller sets
  * `checkContentInProof`, to have the content validated inside the proof;
  * the relay then receives that plaintext and, when it proves on the

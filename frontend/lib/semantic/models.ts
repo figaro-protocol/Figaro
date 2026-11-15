@@ -54,8 +54,8 @@ export interface SubmitClauseAttestationCapabilityAction {
     executionType: "transaction";
     kind: "submit-clause-attestation";
     orderHash: string;
-    /** The clause key the agreement committed — the hash of the spec's pinned
-     *  bytes; the executor encodes and keys the attestation from exactly that
+    /** The clause key the agreement committed — the hash of the spec without
+     *  its `block`; the executor encodes and keys the attestation from exactly that
      *  spec, never another spec of the same name. */
     clauseKey: string;
     /** The on-chain uint8 stage — the enum ordinal for a ladder, the declared

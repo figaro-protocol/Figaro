@@ -37,7 +37,7 @@ function mkEvents(overrides: Partial<DiscoveryEvents> = {}): DiscoveryEvents {
 }
 
 describe("computeClauseKey", () => {
-    it("is keccak256 of the spec's canonical bytes (key order does not matter)", () => {
+    it("is keccak256 of the canonical bytes of the spec without block (key order does not matter)", () => {
         const spec = { clauseId: "clause-a", version: 1, fields: { b: 1, a: 2 } };
         expect(computeClauseKey(spec)).toBe(keccak256(toBytes(canonicalize(spec))));
         expect(computeClauseKey({ fields: { a: 2, b: 1 }, version: 1, clauseId: "clause-a" })).toBe(computeClauseKey(spec));
