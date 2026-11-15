@@ -95,8 +95,8 @@ The DAO's treasury wallet is designer of record of the two *scoring* mandatory c
 `figaro-commerce` and `figaro-topology`, and of every mandatory clause it develops
 and registers after them. It holds each as a registration by clause key —
 `keccak256` of the canonical spec without its `block` — so what it holds is
-the exact specs, never their names. That assignment is the DAO's incentive: an
-agreement is not an agreement without commerce and topology, so the designer's
+the exact specs, never their names. That assignment is the DAO's incentive: the
+reference tooling composes no agreement without topology, so the designer's
 canvas writes the DAO's live mandatory clauses into every agreement it
 registers, before the designer composes anything, and the treasury that
 developed them is rewarded, on the uniform meter, each time a trade under that

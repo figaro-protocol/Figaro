@@ -329,8 +329,6 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 payment: parseEther('1'),
                 overrides: {
                     [keyOf('figaro-commerce')]: {
-                        currency: token,
-                        payment: parseEther('1').toString(),
                         lineItems: [{ itemId: 'survey-flight', name: 'Aerial survey flight', quantity: 1, unitPrice: parseEther('1').toString() }],
                     },
                     [keyOf('figaro-schedule')]: { windowStart: '2026-09-15T09:00:00Z', windowEnd: '2026-09-15T13:00:00Z' },

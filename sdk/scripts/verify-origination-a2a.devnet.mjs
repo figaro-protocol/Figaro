@@ -143,7 +143,7 @@ const channel = new A2aChannel({ resolveEndpoint: async () => sellerUrl });
 const result = await originateProcess(buyerW, pub, addresses, {
     channel, assembly, seller: SELLER.address, currency: TOKEN, payment: PAYMENT, chainId, core: addresses.core, deadline,
     specs, // the merkle-leaf seam before the buyer signs
-    overrides: { [commerceClauseId]: { currency: TOKEN, payment: PAYMENT.toString(), lineItems: [{ itemId: "sku-1", name: "Autonomous order (HTTP)", quantity: 1, unitPrice: PAYMENT.toString() }] } },
+    overrides: { [commerceClauseId]: { lineItems: [{ itemId: "sku-1", name: "Autonomous order (HTTP)", quantity: 1, unitPrice: PAYMENT.toString() }] } },
 });
 check("origination returned a tx (offer traversed a real HTTP socket, seller counter-signed)", !!result?.hash);
 if (result?.hash) {

@@ -123,8 +123,8 @@ interface ClauseRung {
      *  async so a rung can verify out-of-band effects the leaf points at
      *  (e.g. the affixed document's IPFS pin). The second arg is every
      *  committed clause, for a rung whose assertion spans more than one
-     *  leaf (e.g. the utility-token pin vs. the commerce leaf's currency —
-     *  the provenance pair). */
+     *  leaf (e.g. the utility-token pin beside the commerce leaf, which
+     *  restates no token). */
     leaf: (data: Record<string, unknown>, clauses: { clause: string; data: Record<string, unknown> }[]) => void | Promise<void>;
     /** Witness-stage form input (TEST INPUT, like `design`) — REQUIRED when the
      *  registered spec declares `stages`; the trigger is the spec, this is only
@@ -263,8 +263,7 @@ const RUNGS: ClauseRung[] = [
         // assemblyHash. Generic: the clause names no token and carries no
         // economics. Checkout resolves the process currency from the pin,
         // ahead of the buyer's payment-token pick and the seller default; the
-        // committed root's commerce clause carries the SAME currency — the
-        // match is the provenance the pin exists to record.
+        // commerce clause restates neither the token nor the payment.
         clauseId: 'figaro-utility-token',
         design: async (page) => {
             const token = readLocalDeploymentConfig().tokenAddress as string;
@@ -274,15 +273,12 @@ const RUNGS: ClauseRung[] = [
         leaf: (data, clauseEntries) => {
             const token = readLocalDeploymentConfig().tokenAddress as string;
             expect(String(data.currency).toLowerCase(), 'the committed pin is the designer\'s token').toBe(token.toLowerCase());
-            // The provenance pair: the commerce leaf's currency matches the
-            // pin — proving the denomination was designer-determined, not a
-            // buyer/seller checkout-time choice that happens to coincide.
+            // The commerce leaf holds the line items only: the token is the
+            // commitment's own field, and the pin is its one committed source.
             const commerce = clauseEntries.find((s) => s.clause.toLowerCase() === keyOf('figaro-commerce'));
             expect(commerce, 'the commerce leaf is committed alongside the pin').toBeTruthy();
-            expect(
-                String(commerce!.data.currency).toLowerCase(),
-                'commerce.currency matches the pin — the provenance pair',
-            ).toBe(token.toLowerCase());
+            expect(commerce!.data.currency, 'the commerce leaf restates no token').toBeUndefined();
+            expect(commerce!.data.payment, 'the commerce leaf restates no payment').toBeUndefined();
         },
     },
     {

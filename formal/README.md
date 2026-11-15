@@ -72,7 +72,7 @@ margin by which performing beats holding out at maximal retention is `Pᵢ + G�
 and `holdout_when_dead` (where the process will not close, holding out beats performing, so the
 conclusion stays conditional). The hypotheses are two, carried by every order as fields of the
 `Order` structure and nowhere else, and they are the mechanism's own facts: `payment_floor`,
-`1 ≤ payment` (the `figaro-commerce` clause's floor), and `cumulative_inclusive`,
+`1 ≤ payment` (`FigaroCore.commit` reverts `ZeroPayment` on a payment of zero), and `cumulative_inclusive`,
 `payment ≤ cumulative` (the accumulator includes the order's own payment). Subgame perfection, the
 second equilibrium and the co-sellers' selection are argued in `/papers/asymmetric-bonding` and
 are not claimed by the file. `lake build` in `formal/lean/` checks it with core Lean 4 and `omega`,

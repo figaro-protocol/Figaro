@@ -29,7 +29,7 @@ token-only. The paper's net buyer figures add the delivery credit +Pᵢ, a
 constant common to both branches, so the inequality proved is the same one.
 
 Hypotheses carried by every order, from the mechanism itself:
-  1 ≤ payment          — the `figaro-commerce` clause floor (payment ≥ 1);
+  1 ≤ payment          — `FigaroCore.commit` reverts `ZeroPayment` on zero;
   payment ≤ cumulative — the accumulator is INCLUSIVE of the order's own
                          payment (`Gᵢ = ∑_{j≤i} Pⱼ`, THEORY.md).
 

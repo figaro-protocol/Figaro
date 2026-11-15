@@ -136,7 +136,7 @@ channel.register(SELLER.address, makeSellerOfferHandler(sellerW, pub, addresses,
 const result = await originateProcess(buyerW, pub, addresses, {
     channel, assembly, seller: SELLER.address, currency: TOKEN, payment: PAYMENT, chainId, core: addresses.core, deadline,
     specs, // the merkle-leaf seam before the buyer signs
-    overrides: { [commerceClauseId]: { currency: TOKEN, payment: PAYMENT.toString(), lineItems: [{ itemId: "sku-1", name: "Autonomous order", quantity: 1, unitPrice: PAYMENT.toString() }] } },
+    overrides: { [commerceClauseId]: { lineItems: [{ itemId: "sku-1", name: "Autonomous order", quantity: 1, unitPrice: PAYMENT.toString() }] } },
 });
 check("origination returned a tx (seller counter-signed, commit submitted)", !!result?.hash);
 if (result?.hash) {
