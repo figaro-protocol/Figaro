@@ -105,7 +105,7 @@ export interface ExplorerRow {
      *  member's own and not anchored by a registration hash. */
     contentURI: string;
     /** The digest the CHAIN anchors for this row: the clause key (the hash of
-     *  the pinned spec bytes) for a clause, `AgreementRegistry`'s agreement
+     *  the spec without its `block`) for a clause, `AgreementRegistry`'s agreement
      *  hash for an agreement, `AssemblyRegistry`'s `assemblyHash` for an
      *  assembly.
      *  Empty where the family anchors none. */

@@ -258,7 +258,7 @@ concern resolved off-chain, consistent with the event-sourced architecture.
 **Reward escalation, accepted:**
 once designer rewards reach designers, the registering wallet is also the reward CLAIMANT key
 (`RpgfMinter._isAuthor`), so a front-runner who copies an in-flight registration
-captures its future reward, not just a discovery slot. This was weighed and the
+captures its future reward, not just a discovery slot. The front-runner also chooses the `contentURI`, and with it the `block` that tooling reads for that key, since the clause key covers the spec without `block`: it can mislabel fields and steer a tool's collection of the data, and it cannot change the fields, the stages, the key or any hash a party signs. A wallet that uses only the Core and the registries loses nothing by this; a frontend that reads `block` chooses how far to trust it. This was weighed and the
 first-write-wins design KEPT, for two reasons. First, the shared flat keyspace
 IS the coordination commons — namespacing keys under the designer's address
 (the structural fix) would fragment it, and signature-based registration breaks the designer-is-staker assumption the reward's live-stake gate rests on. Second, reward

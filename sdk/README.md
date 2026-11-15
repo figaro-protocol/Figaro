@@ -2834,7 +2834,7 @@ import { USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE, RPGF_MINT
 
 // Each entry is a (kind, key) pair: the kind names the one registry the
 // minter checks you against, so a stake in one family never earns the
-// other's. A clause's key is the hash of its pinned spec bytes; a registered
+// other's. A clause's key is computeClauseKey(spec), the hash of the spec without its block; a registered
 // agreement's is agreementHashOf(document); an assembly's is its assemblyHash. (`computeRpgfAllocations` hands back this list per
 // wallet as `allocation.claims`.)
 const mine = [

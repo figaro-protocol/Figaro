@@ -87,7 +87,7 @@ export interface AgreementProvenance {
 // ── The provenance leaf — the agreement format's own, not a clause ──────────
 
 /** The label the reserved leaf's key is the hash of. Not a clause: a clause's
- *  key is `keccak256` of its pinned spec bytes (a JSON object), this is
+ *  key is `keccak256` of its spec's canonical bytes without `block` (a JSON object), this is
  *  `keccak256(bytes(label))` of a bare string no spec serializes to. */
 export const PROVENANCE_LEAF_LABEL = "figaro-agreement-provenance";
 

@@ -225,8 +225,9 @@ export interface AgreementWithdrawnEvent {
 // the SDK stays viem-only and never fetches off-chain documents.
 
 export interface RegisteredClause {
-    /** The clause key — `keccak256` of the pinned spec bytes at `contentURI`;
-     *  a reader verifies the fetched bytes against it. */
+    /** The clause key — `keccak256` of the canonical bytes of the spec at
+     *  `contentURI` without its top-level `block` (`computeClauseKey`); a
+     *  reader verifies the fetched spec against it (`anchorClauseSpec`). */
     clauseKey: Hex;
     contentURI: string;
     registeredBy: Address;
