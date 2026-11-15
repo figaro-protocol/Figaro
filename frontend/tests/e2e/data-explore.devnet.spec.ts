@@ -1166,8 +1166,8 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             [orderHash, processId, surveyor.address, geoKey, stage, contentRef],
         ));
         // The verifier's open-world gate: the spec binding is the clause key,
-        // which IS the hash of the pinned bytes of the document the proof
-        // validated against.
+        // which IS the hash of the canonical spec, without its `block`, the
+        // proof validated against.
         const specBindingsHash = keccak256(encodePacked(['bytes32'], [geoKey]));
         const emptyPositionsHash = keccak256('0x');
         const emptyUsageHash = keccak256(encodePacked(['uint8', 'bytes32', 'uint64'], [0, zeroHash, 0n]));

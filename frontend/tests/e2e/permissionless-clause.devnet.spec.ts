@@ -24,7 +24,7 @@
  * pre-computed slugs, no UI-bypassing place/accept shortcuts); the only
  * non-UI step is the documented permissionless
  * clause registration (ClauseRegistry.registerClause — the clause key, which
- * is the hash of the pinned spec bytes, + their URI, NO merkle tree, NO per-clause validator, no on-chain content
+ * is the hash of the canonical spec without `block`, + its URI, NO merkle tree, NO per-clause validator, no on-chain content
  * validation) — network seeding, the same path the protocol's own clauses use,
  * NOT a bypass. That a never-seen clause attests with zero per-clause on-chain
  * code IS the open-world property, now structural: there is no validator to register.

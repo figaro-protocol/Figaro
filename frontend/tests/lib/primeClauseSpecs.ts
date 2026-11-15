@@ -1,7 +1,8 @@
 /**
  * Prime the clauseSpecSource cache from the canonical off-chain specs
  * (`clauses/*.json`) — the same specs the seeding pins as canonical bytes and
- * registers under `keccak256` of those bytes. Vitest has no chain, so the
+ * registers under their clause key (`computeClauseKey`, the hash of the spec
+ * without its `block`). Vitest has no chain, so the
  * fetcher stub reads the file the URI names and hands back its canonical
  * bytes; everything downstream of the cache behaves exactly as it does after
  * `useClauseSpecs` warms it from the registry.
@@ -31,8 +32,8 @@ import { listKnownClauses, loadClauseSpec, mandatoryClausesForCanvas, setClauseS
 // Vitest runs with cwd = frontend/ (the vitest config root).
 const EXAMPLES_DIR = path.resolve(process.cwd(), "../clauses");
 
-/** The bytes a designer pins for `spec` — its canonical JSON — and the clause
- *  key they hash to. Tests that serve a spec of their own pin it through this. */
+/** The bytes a designer pins for `spec` — its canonical JSON, `block`
+ *  included — and its clause key (the spec without `block`, hashed). Tests that serve a spec of their own pin it through this. */
 export function pinSpec(spec: unknown): { clauseKey: Hex; bytes: string } {
     return { clauseKey: computeClauseKey(spec), bytes: canonicalize(spec) };
 }
@@ -79,7 +80,7 @@ export function keyOf(name: string, version?: number): Hex {
 }
 
 /** The specs in `clauses/` as the seeding's authored spec set — each with the
- *  key its canonical bytes hash to — for tests that load the maintainer's
+ *  its clause key — for tests that load the maintainer's
  *  name-authored `agreements/*.json` / `assemblies/*.json` / `members/*.json`. */
 export function authoredSpecSet(): { list(): { clauseKey: Hex; clauseId: string; version: number; spec: Record<string, unknown> }[] } {
     const specs = readdirSync(EXAMPLES_DIR)

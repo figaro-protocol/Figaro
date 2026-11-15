@@ -11,16 +11,16 @@ import * as http from "node:http";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { keccak256, toBytes } from "viem";
-import { agreementHashOf, canonicalize, assemblyHashOf } from "@figaro-protocol/sdk";
+import { agreementHashOf, canonicalize, computeClauseKey, assemblyHashOf } from "@figaro-protocol/sdk";
 import { fetchAnchoredClauseSpec, fetchAnchoredRegisteredAgreement, fetchAnchoredAssembly } from "../anchoredContent.mjs";
 import { fetchIpfsBytes } from "../ipfsRead.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// The bytes a clause is pinned as — its canonical serialization — and its key,
-// keccak256 of exactly those bytes.
+// The bytes a clause is pinned as — its canonical serialization, `block`
+// included — and its key, keccak256 of the canonical spec without `block`.
 const SPEC = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "..", "clauses", "figaro-commerce.json"), "utf8"));
 const SPEC_TEXT = canonicalize(SPEC);
-const SPEC_KEY = keccak256(toBytes(SPEC_TEXT));
+const SPEC_KEY = computeClauseKey(SPEC);
 const COMMERCE = SPEC_KEY;
 const TOPOLOGY = `0x${"7c".repeat(32)}`;
 const COMPOSED = { name: "One order", clauses: { [COMMERCE]: {}, [TOPOLOGY]: {} } };
@@ -39,7 +39,7 @@ async function gateway(bodies) {
     return { url: `http://127.0.0.1:${server.address().port}`, close: () => new Promise((r) => server.close(r)) };
 }
 
-test("a clause spec whose fetched bytes hash to its key is read", async () => {
+test("a clause spec whose protocol half hashes to its key is read, in any byte form and with any block", async () => {
     const gw = await gateway({ spec: SPEC_TEXT });
     try {
         const clause = { contentURI: "ipfs://spec", clauseKey: SPEC_KEY };
@@ -47,26 +47,32 @@ test("a clause spec whose fetched bytes hash to its key is read", async () => {
         assert.equal(hit.absent, undefined, hit.absent);
         assert.equal(hit.raw.clauseId, "figaro-commerce");
         assert.equal(hit.text, SPEC_TEXT);
+        assert.notEqual(keccak256(toBytes(SPEC_TEXT)), SPEC_KEY);
     } finally { await gw.close(); }
+    const restyled = canonicalize({ ...SPEC, block: { ...SPEC.block, design: { ...SPEC.block.design, article: "another-article" } } });
+    const gw2 = await gateway({ pretty: JSON.stringify(SPEC, null, 2), restyled });
+    try {
+        for (const cid of ["pretty", "restyled"]) {
+            const hit = await fetchAnchoredClauseSpec({ contentURI: `ipfs://${cid}`, clauseKey: SPEC_KEY }, { gateways: [gw2.url] });
+            assert.equal(hit.absent, undefined, hit.absent);
+            assert.equal(hit.raw.clauseId, "figaro-commerce");
+        }
+    } finally { await gw2.close(); }
 });
 
 test("a clause spec a gateway substituted reads as absence", async () => {
     // One field changed: valid JSON, a valid-looking spec, not the anchored one.
     const forged = canonicalize({ ...SPEC, description: "the gateway's own text" });
-    // The same document in another byte form is other bytes: another key.
-    const reformatted = JSON.stringify(SPEC, null, 2);
-    const gw = await gateway({ spec: forged, pretty: reformatted, notjson: "<html>not a spec</html>" });
+    const gw = await gateway({ spec: forged, notjson: "<html>not a spec</html>" });
     try {
         const clause = { contentURI: "ipfs://spec", clauseKey: SPEC_KEY };
         const hit = await fetchAnchoredClauseSpec(clause, { gateways: [gw.url] });
-        assert.match(hit.absent, /bytes hash to 0x[0-9a-f]+, not the clause key/);
+        assert.match(hit.absent, /not the spec the clause key 0x[0-9a-f]+ names/);
         assert.equal(hit.raw, undefined);
-        const pretty = await fetchAnchoredClauseSpec({ ...clause, contentURI: "ipfs://pretty" }, { gateways: [gw.url] });
-        assert.match(pretty.absent, /not the clause key/);
 
         const notJsonText = "<html>not a spec</html>";
         const notJson = await fetchAnchoredClauseSpec({ contentURI: "ipfs://notjson", clauseKey: keccak256(toBytes(notJsonText)) }, { gateways: [gw.url] });
-        assert.equal(notJson.absent, "not JSON");
+        assert.match(notJson.absent, /not the spec the clause key/);
         const missing = await fetchAnchoredClauseSpec({ ...clause, contentURI: "ipfs://missing" }, { gateways: [gw.url] });
         assert.equal(missing.absent, "not served");
     } finally { await gw.close(); }

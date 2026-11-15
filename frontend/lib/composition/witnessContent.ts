@@ -39,8 +39,8 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { hexEqual, isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
 
 export interface PublishWitnessContentParams {
-    /** The clause attested — its clause key, the hash of the pinned spec
-     *  bytes, as the Attestation event carries it. */
+    /** The clause attested — its clause key, the hash of the canonical spec
+     *  without `block`, as the Attestation event carries it. */
     clauseId: Hex;
     /** Lifecycle stage the content was encoded at — drives the same
      *  `contentFieldsFor` selection the encoder applied. */

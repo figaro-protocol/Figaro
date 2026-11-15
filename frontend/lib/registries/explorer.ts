@@ -14,8 +14,7 @@
  * speak one shape.
  */
 
-import { agreementHashOf, canonicalize, assemblyHashOf } from "@figaro-protocol/sdk";
-import { keccak256 } from "viem";
+import { agreementHashOf, canonicalize, assemblyHashOf, computeClauseKey } from "@figaro-protocol/sdk";
 import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
 import { safeJsonParse, strippingReviver } from "@/lib/shared/safeJson";
 import { pick, queryParam } from "@/lib/shared/urlQuery";
@@ -153,9 +152,10 @@ function compareRows(a: ExplorerRow, b: ExplorerRow, sort: RegistrySort): number
  * of them:
  *
  *   `content-hash` — clauses. The clause KEY `ClauseRegistry` registers is the
- *   keccak256 of exactly the bytes the designer pinned (the spec's canonical
- *   JSON), so hashing the bytes the gateway served — as served, nothing
- *   re-canonicalized — must reproduce it.
+ *   keccak256 of the canonical bytes of the spec without its top-level `block`
+ *   (`computeClauseKey`), so parsing what the gateway served, dropping `block`,
+ *   canonicalizing and hashing must reproduce it. The `block` rides in the same
+ *   document outside the key.
  *
  *   `agreement-hash` — registered agreements. `AgreementRegistry`'s key is the
  *   merkle root over the document's composed clauses alone
@@ -186,7 +186,7 @@ export function anchorForFamily(family: RegistryFamily): StoredDocumentAnchor | 
  *  beside the hash so a reader re-deriving it knows what to hash. */
 export const STORED_DOCUMENT_NOTE: Record<StoredDocumentAnchor, string> = {
     "content-hash":
-        "The hash on chain is the clause key: the keccak256 of exactly these bytes, as pinned. The designer pins the spec's canonical form — object keys sorted at every depth, no whitespace — so anyone can hash the bytes the gateway serves and reproduce the key; the same document in any other byte form is another key.",
+        "The hash on chain is the clause key: the keccak256 of this spec's canonical form without its block — object keys sorted at every depth, no whitespace, the top-level block left out. Anyone can parse the document the gateway serves, drop the block, canonicalize it and reproduce the key. The block is presentation: it rides in the same document and is deliberately outside the key.",
     "agreement-hash":
         "The hash on chain is the agreement hash: the merkle root over this document's clauses, one leaf per clause with the designer's fills. The designer's editorial wording rides in the same document and is deliberately outside the key.",
     "assembly-hash":
@@ -200,9 +200,9 @@ export interface StoredDocument {
     /** The digest the registration event carries. */
     anchored: string;
     /** Recomputed from the served bytes; null when they will not parse as
-     *  JSON, which is a permanent failure and not a hash disagreement. A
-     *  clause's is the hash of the bytes themselves; an agreement's and an
-     *  assembly's, of the parsed document. */
+     *  JSON, which is a permanent failure and not a hash disagreement. Each is
+     *  recomputed from the parsed document: a clause's is the hash of the spec
+     *  without its `block`, an agreement's and an assembly's their roots. */
     recomputed: string | null;
     /** True only when the recomputation reproduced the anchor. A false here is
      *  a real finding — the pin does not answer for what the chain claims. */
@@ -265,7 +265,6 @@ function textDifferences(text: string): StoredDocumentDifference[] {
  * their exact text.
  */
 export function storedDocument(fetched: Uint8Array | string, anchored: string, anchor: StoredDocumentAnchor): StoredDocument {
-    const bytes = typeof fetched === "string" ? new TextEncoder().encode(fetched) : fetched;
     const text = typeof fetched === "string" ? fetched : new TextDecoder().decode(fetched);
     const parsed = safeJsonParse<Record<string, unknown>>(text);
     if (parsed === null) {
@@ -276,7 +275,7 @@ export function storedDocument(fetched: Uint8Array | string, anchored: string, a
     try {
         recomputed =
             anchor === "content-hash"
-                ? keccak256(bytes)
+                ? computeClauseKey(parsed)
                 : anchor === "agreement-hash"
                     ? agreementHashOf(parsed as unknown as Parameters<typeof agreementHashOf>[0])
                     : assemblyHashOf(parsed as unknown as Parameters<typeof assemblyHashOf>[0]);

@@ -2,7 +2,7 @@
  * StoredDocument.test.tsx — the "as stored" disclosure on `/registries`.
  *
  * What this surface owes a reader who has to reason about what a registration
- * BINDS: the pinned bytes exactly as served, the digest the chain anchors, and
+ * BINDS: the pinned document exactly as served, the digest the chain anchors, and
  * the recomputation shown rather than asserted. Three things must hold or the
  * disclosure is worse than nothing —
  *
@@ -20,7 +20,7 @@ import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { canonicalize, computeClauseKey, assemblyHashOf } from "@figaro-protocol/sdk";
-import { keccak256, stringToBytes } from "viem";
+import { stringToBytes } from "viem";
 
 const fetchCappedContentMock = vi.fn();
 const resolveFetchUrlMock = vi.fn();
@@ -38,7 +38,8 @@ const SPEC = {
     description: "The law the parties named.",
     fields: [{ name: "jurisdiction", type: "string" }],
 };
-// What the designer pins: the spec's canonical bytes; the clause key is their hash.
+// What the designer pins: the spec's canonical bytes; the clause key is the hash
+// of the canonical spec without its top-level `block`.
 const SPEC_JSON = canonicalize(SPEC);
 const SPEC_HASH = computeClauseKey(SPEC);
 const URI = "ipfs://bafyspec";
@@ -95,7 +96,7 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         expect(fetchCappedContentMock).toHaveBeenCalledTimes(1);
     });
 
-    it("states that the anchor is the keccak256 of exactly the pinned bytes, and shows the recomputation agreeing", async () => {
+    it("states that the anchor is the keccak256 of the spec without its block, and shows the recomputation agreeing", async () => {
         mount();
         screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
 
@@ -103,15 +104,16 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         expect(verdict.textContent).toContain(SPEC_HASH);
         expect(verdict.textContent).toMatch(/reproduces the anchor/i);
         expect(screen.getByTestId("stored-panel-clause-figaro-applicable-law").textContent).toMatch(/keccak256/);
-        expect(screen.getByTestId("stored-panel-clause-figaro-applicable-law").textContent).toMatch(/exactly these bytes/i);
+        expect(screen.getByTestId("stored-panel-clause-figaro-applicable-law").textContent).toMatch(/without its block/i);
     });
 
-    it("the same document re-formatted is not the clause: the exact bytes are what hash", async () => {
-        fetchCappedContentMock.mockResolvedValue(served(JSON.stringify(SPEC, null, 2)));
+    it("the same spec re-formatted, or with another block, is the clause: the spec without its block is what hashes", async () => {
+        fetchCappedContentMock.mockResolvedValue(served(JSON.stringify({ ...SPEC, block: { design: { article: "resolution" } } }, null, 2)));
         mount();
         screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
         const verdict = await screen.findByTestId("stored-verdict-clause-figaro-applicable-law");
-        expect(verdict.textContent).toMatch(/does NOT reproduce the anchor/i);
+        expect(verdict.textContent).toMatch(/reproduces the anchor/i);
+        expect(verdict.textContent).not.toMatch(/does NOT reproduce/i);
     });
 
     it("a document that is served but does NOT hash to the anchor is called out", async () => {
@@ -148,7 +150,7 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         const text = `{"clauseId":"${SPEC.clauseId}","version":1,"title":"Applicable law","title":"Something else","description":"${SPEC.description}","fields":${JSON.stringify(SPEC.fields)}}`;
         const hashed = { ...SPEC, title: "Something else" };
         fetchCappedContentMock.mockResolvedValue(served(text));
-        mount({ anchoredHash: keccak256(stringToBytes(text)) });
+        mount({ anchoredHash: computeClauseKey(hashed) });
         screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
 
         // The served bytes stay verbatim; the difference is stated, not hidden.

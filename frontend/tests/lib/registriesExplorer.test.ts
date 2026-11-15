@@ -75,8 +75,8 @@ describe("facetValues + explorerBreadcrumb", () => {
 });
 
 describe("the document as stored — the reader re-derives the anchor themselves", () => {
-    // A clause's key is the hash of its exact pinned bytes (the canonical
-    // form the designer pins); an assembly's anchor covers its composition
+    // A clause's key is the hash of its canonical spec without `block`
+    // (`computeClauseKey`); an assembly's anchor covers its composition
     // slice alone. Both fixtures are hashed with the SAME
     // functions the loaders use, so the test cannot drift from the chain's
     // arithmetic by restating it.
@@ -104,7 +104,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
 
     it("every anchor has the one-line note that says what it covers", () => {
         expect(STORED_DOCUMENT_NOTE["content-hash"]).toMatch(/keccak256/);
-        expect(STORED_DOCUMENT_NOTE["content-hash"]).toMatch(/exactly these bytes/i);
+        expect(STORED_DOCUMENT_NOTE["content-hash"]).toMatch(/without its block/i);
         expect(STORED_DOCUMENT_NOTE["agreement-hash"]).toMatch(/merkle root/);
         expect(STORED_DOCUMENT_NOTE["assembly-hash"]).toMatch(/merkle root/);
     });
@@ -119,7 +119,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
         expect(storedDocument(stringToBytes(canonicalize(SPEC)), anchored, "content-hash").matches).toBe(true);
     });
 
-    it("the check is on the EXACT bytes: the same document reformatted is not the clause", () => {
+    it("the check is on the spec without its block: a reformatted document, or another block, is the same clause", () => {
         const anchored = computeClauseKey(SPEC);
         const reordered = JSON.stringify(
             { version: 1, title: "Applicable law", fields: SPEC.fields, clauseId: SPEC.clauseId },
@@ -127,8 +127,11 @@ describe("the document as stored — the reader re-derives the anchor themselves
             4,
         );
         const v = storedDocument(reordered, anchored, "content-hash");
-        expect(v.matches).toBe(false);
-        expect(v.recomputed).toBe(keccak256(stringToBytes(reordered)));
+        expect(v.matches).toBe(true);
+        expect(v.recomputed).toBe(anchored);
+        const restyled = canonicalize({ ...SPEC, block: { design: { article: "resolution" } } });
+        expect(storedDocument(restyled, anchored, "content-hash").matches).toBe(true);
+        expect(keccak256(stringToBytes(restyled))).not.toBe(anchored);
     });
 
     it("a drifted pin does NOT match, and says what it hashed to", () => {
@@ -186,7 +189,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
             '"title":"Applicable law","title":"Something else"',
         );
         const hashed = { ...SPEC, title: "Something else" };
-        const v = storedDocument(text, keccak256(stringToBytes(text)), "content-hash");
+        const v = storedDocument(text, computeClauseKey(hashed), "content-hash");
         expect(v.matches).toBe(true);
         expect(v.differences).toEqual(["repeated-key"]);
         expect(v.parsedCanonical).toBe(canonicalize(hashed));
@@ -200,7 +203,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
 
     it("a key the parse DROPS is named, and the hashed value carries none of it", () => {
         const text = JSON.stringify(SPEC).replace("{", '{"__proto__":{"admin":true},');
-        const v = storedDocument(text, keccak256(stringToBytes(text)), "content-hash");
+        const v = storedDocument(text, computeClauseKey(SPEC), "content-hash");
         expect(v.matches).toBe(true);
         expect(v.differences).toEqual(["dropped-key"]);
         expect(v.parsedCanonical).not.toContain("admin");

@@ -229,9 +229,10 @@ key and any URI, placing the fixed registration stake
 First write wins per key (`AlreadyRegistered` revert) and
 the binding is permanent — `withdrawDeposit` returns the stake without
 clearing it; readers de-surface a withdrawn clause for new compositions.
-The key is `keccak256` of the spec's pinned canonical bytes
-(`computeClauseKey(spec)`); the spec's `clauseId` and `version` are
-presentation fields inside the document.
+The key is `keccak256` of the canonical bytes of the spec without its
+top-level `block` (`computeClauseKey(spec)`); `block` is presentation and
+stays outside the key, and the spec's `clauseId` and `version` are words
+inside the document.
 
 **Why it looks wrong**: Permissionless registration looks like it enables
 namespace squatting and spam: a well-known clause name is public, so a
@@ -247,7 +248,7 @@ same permanence is what every committed agreement and the batch verifier read:
 integrity routes through `checkoutHash` and the clause key, never through
 the registry, so a garbage entry can pollute discovery only, and the stake
 prices that. There is nothing to squat but bytes: the registry holds no name,
-a reader verifies a fetched spec by checking `keccak256(bytes) == clauseKey`,
+a reader verifies a fetched spec by recomputing `computeClauseKey` from it,
 two specs with one name are two clauses, and a lookalike shares nothing with
 the original but its label.
 
@@ -1212,7 +1213,7 @@ outside the trade reads the designed edges from the registered assembly
 | 4 | Buyer key loss is terminal | Core-critical | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium; code the party's wallet installed with its key resolves (the buyer) and attests (either party) on both paths (`msg.sender` on the Core, ERC-1271 asked by the verifier on the batch path: a refused resolve and a refused attestation each revert the batch) |
 | 5 | No prevrandao salt | Core-critical | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
 | 6 | Attestation reverts on resolved orders | evidence-layer | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed data |
-| 7 | Permissionless clause registry | registry/discovery | Namespace squatting | The key is the hash of the spec's pinned bytes: there is nothing to squat but bytes, two specs with one name are two clauses; integrity routes through the key, never the registry; garbage pollutes discovery only, priced by the stake |
+| 7 | Permissionless clause registry | registry/discovery | Namespace squatting | The key is the hash of the canonical spec without its `block`: there is nothing to squat but bytes, two specs with one name are two clauses; integrity routes through the key, never the registry; garbage pollutes discovery only, priced by the stake |
 | 8 | No competitive-pricing contract | — | A market protocol without a price primitive looks unfinished | Mid-chain unknown price or counterparty is incompatible with the exact-match accumulator; pricing is a catalog concern |
 | 9 | Strict token compatibility rejection | Core-critical | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
 | 10 | Single currency per process | Core-critical | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |

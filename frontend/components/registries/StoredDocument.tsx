@@ -76,8 +76,8 @@ export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredD
                 return;
             }
             try {
-                // Byte-exact: a clause key is the hash of the pinned bytes
-                // themselves, so the verdict is computed over what was served.
+                // The verdict is computed over what was served: a clause key
+                // is the hash of the parsed spec without its `block`.
                 const response = await fetchCappedBinary(url);
                 if (canceled) return;
                 if (!response.ok || response.bytes === null) {

@@ -51,20 +51,40 @@ import type {
     RegisteredAssembly,
     AgreementBinding,
 } from "./types.js";
-import { canonicalContentHash } from "./agreement.js";
+import { canonicalContentHash, canonicalize } from "./agreement.js";
 
 // ── Clause key ───────────────────────────────────────────────────────────────
 
+/** The protocol half of a spec: the document without its top-level `block`.
+ *  A value that is not a plain object is returned as it is. */
+function protocolHalf(spec: unknown): unknown {
+    if (spec === null || typeof spec !== "object" || Array.isArray(spec)) return spec;
+    return Object.fromEntries(Object.entries(spec).filter(([name]) => name !== "block"));
+}
+
 /**
- * The on-chain clause key: `keccak256` of the spec's canonical bytes
- * (`canonicalContentHash(spec)`) — the key `ClauseRegistry.registerClause`
- * takes and every leaf, attestation and usage count is keyed by. A clause IS
- * its spec: the key is the content address, so a reader verifies a fetched
- * spec by hashing it, and the spec's `clauseId` / `version` are its own
- * presentation fields, never part of the identity.
+ * The bytes a clause key hashes: the canonical serialization
+ * (`canonicalize`) of the spec without its top-level `block`. They cover
+ * `clauseId`, `version`, `title`, `description`, `fields`, `stages` and every
+ * other top-level attribute; `block` is presentation, which any frontend may
+ * replace. These are the bytes a plaintext attestation's witness carries as
+ * `spec_json`, which the proof program hashes to the clause key.
+ */
+export function clauseKeyPreimage(spec: unknown): string {
+    return canonicalize(protocolHalf(spec));
+}
+
+/**
+ * The on-chain clause key: `keccak256` of `clauseKeyPreimage(spec)` — the key
+ * `ClauseRegistry.registerClause` takes and every leaf, attestation and usage
+ * count is keyed by. A clause IS the protocol half of its spec: a reader
+ * verifies a fetched spec by parsing it, dropping `block`, canonicalizing and
+ * hashing (`anchorClauseSpec`), so the bytes pinned may carry any `block` and
+ * any byte form. The spec's `clauseId` and `version` are words inside the
+ * document; they reach the key only as bytes, like every other attribute.
  */
 export function computeClauseKey(spec: unknown): Hex {
-    return canonicalContentHash(spec);
+    return canonicalContentHash(protocolHalf(spec));
 }
 
 // ── Log decoders ─────────────────────────────────────────────────────────────

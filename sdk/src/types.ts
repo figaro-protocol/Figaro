@@ -134,7 +134,7 @@ export interface AttestationEvent {
 // process events whose block-ordering suffices.
 
 /** ClauseRegistry `ClauseRegistered`. `clauseKey` is the clause's identity,
- *  `keccak256` of the spec's pinned canonical bytes (`computeClauseKey`). */
+ *  `keccak256` of the canonical spec without `block` (`computeClauseKey`). */
 export interface ClauseRegisteredEvent {
     clauseKey: Hex;
     contentURI: string;

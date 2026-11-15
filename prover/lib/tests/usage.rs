@@ -20,7 +20,7 @@ use figaro_kernel::kernel::{
 };
 use figaro_kernel::types::*;
 
-/// A clause key: `keccak256` of a clause spec's pinned bytes. Only the leaf
+/// A clause key: `keccak256` of a clause spec without `block`. Only the leaf
 /// math matters here, so the bytes are synthetic.
 fn clause_key(spec_bytes: &[u8]) -> B256 {
     keccak256(spec_bytes)

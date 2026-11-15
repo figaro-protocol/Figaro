@@ -855,7 +855,8 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
 
 /** The pinned BYTES behind a registration's content URI: Kubo's `cat` for an
  *  `ipfs://` locator (the gateway when the API refuses), the URL otherwise.
- *  The key is the hash of exactly these bytes, so nothing re-encodes them. */
+ *  The cache parses them and checks the spec, without its `block`, against
+ *  the key. */
 async function fetchPinnedBytes(uri: string): Promise<Uint8Array> {
     if (uri.startsWith('ipfs://')) {
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
@@ -883,7 +884,7 @@ async function fetchPinnedBytes(uri: string): Promise<Uint8Array> {
 /**
  * Prime the spec cache from the CHAIN: read every `ClauseRegistered` event of
  * the ClauseRegistry, fetch each registration's pinned bytes, and load them
- * under their key (the cache verifies `keccak256(bytes) == key`). A
+ * under their key (the cache verifies `computeClauseKey(spec) == key`). A
  * registration whose bytes fail to fetch, hash or parse is skipped — anyone
  * can register a garbage URI. Re-callable: a re-call picks up registrations
  * made since (loads are idempotent). After it, `keyOf(name)` locates a clause

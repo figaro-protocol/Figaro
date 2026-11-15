@@ -261,7 +261,7 @@ describe("both sign flows read and verify the design the agreement names", () =>
 
 describe("the sign gate refuses what it cannot read — and reads a registered spec the cache had not warmed", () => {
     // A clause whose spec this file never primes: its key is the hash of the
-    // spec's pinned bytes, the bytes `clauses/figaro-geolocation.json` holds.
+    // canonical spec `clauses/figaro-geolocation.json` holds, without `block`.
     const raw = readFileSync(path.resolve(process.cwd(), "../clauses/figaro-geolocation.json"), "utf8");
     const geoBytes = canonicalize(JSON.parse(raw));
     const geoKey = computeClauseKey(JSON.parse(raw));

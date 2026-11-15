@@ -3,10 +3,11 @@
  * chain → IPFS.
  *
  * The on-chain `ClauseRegistry.ClauseRegistered` event carries the clause KEY
- * — `keccak256` of the spec's pinned canonical bytes — and a `contentURI`
- * (IPFS) locator. `loadClauseSpec(clauseKey, uri)` fetches the BYTES at that
- * locator, checks they hash to the key, parses them, and caches the spec under
- * the key; every sync read below names a key and resolves against that cache.
+ * — `keccak256` of the canonical bytes of the spec without its top-level
+ * `block` — and a `contentURI` (IPFS) locator. `loadClauseSpec(clauseKey, uri)`
+ * fetches the bytes at that locator, parses them, checks that the spec without
+ * `block` hashes to the key, and caches the spec under the key; every sync read
+ * below names a key and resolves against that cache.
  * The spec's own `clauseId` and `version` are its presentation fields — a
  * title and a lineage counter a reader shows — never an identity: two specs
  * with one name are two clauses. There is NO bundled spec set and NO fallback
@@ -25,7 +26,6 @@ import { PROVENANCE_LEAF_KEY, anchorClauseSpec, deriveAnchored, specIsMandatory,
     mandatoryClauses,
     type ClauseRegistrationRow,
 } from "@figaro-protocol/sdk";
-import { keccak256 } from "viem";
 import { DEFAULT_IPFS_SERVICE, fetchCappedBinary } from "@/lib/shared/ipfsService";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { hexEqual } from "@/lib/shared/evm";
@@ -33,8 +33,8 @@ import { pageRecord } from "@/lib/shared/chains";
 
 /** A loaded clause spec: the SDK `ClauseSpec` (content-only — `fields`/`stages`),
  *  its frontend-parsed `block` slice (pure presentation the frontend owns —
- *  `clauseBlockBinding`, parsed off the same verified bytes at load), and the
- *  clause KEY it was loaded under — the hash of those bytes. */
+ *  `clauseBlockBinding`, parsed off the same fetched document at load; the
+ *  clause key does not cover it), and the clause KEY it was loaded under. */
 export type ClauseSpecWithBlock = ClauseSpec & { clauseKey: Hex; block?: ClauseBlockBinding };
 
 /** Every map below is keyed by the lower-cased clause key. */
@@ -62,8 +62,8 @@ const NESTS_UNDER = new Map<string, string>();
 // ── Loading (chain → IPFS) ───────────────────────────────────────────────────
 
 /**
- * Fetcher hook — URI → the pinned BYTES (or their exact text). The key is the
- * hash of exactly the bytes pinned, so the fetcher hands them over unparsed.
+ * Fetcher hook — URI → the pinned BYTES (or their exact text), handed over
+ * unparsed; `anchorClauseSpec` parses them and checks the spec against the key.
  * Default resolves an `ipfs://` locator through the gateway and fetches it;
  * tests swap in a stub via `setClauseSpecFetcher`.
  */
@@ -103,15 +103,17 @@ function cacheSpec(spec: Anchored<ClauseSpecWithBlock>): void {
 }
 
 /**
- * Async load — fetch a spec's pinned bytes from its IPFS locator, verify they
- * hash to `clauseKey`, parse, cache, and return the spec. Idempotent: a spec
+ * Async load — fetch a spec's pinned bytes from its IPFS locator, verify the
+ * spec they hold against `clauseKey`, parse, cache, and return the spec. Idempotent: a spec
  * already cached resolves immediately. Throws on parse / network failure /
  * integrity mismatch (no silent fallback). PERMANENT failures — the bytes are
  * wrong, not merely not served yet: integrity mismatch, unparseable spec or
  * block — are recorded under `getClauseSpecLoadError`, so a re-reading
  * consumer can leave them alone; a network miss keeps nothing and is re-read.
- * The check runs on the bytes fetched (`anchorClauseSpec`) and
- * re-canonicalizes nothing — a drifted or tampered pin never enters the cache.
+ * The check (`anchorClauseSpec`) parses the fetched bytes, drops the top-level
+ * `block`, canonicalizes and hashes: a spec whose protocol half differs from
+ * the key never enters the cache, while its `block` and its byte form may be
+ * any.
  */
 export async function loadClauseSpec(clauseKey: Hex, uri: string, registration?: ClauseRegistration): Promise<Anchored<ClauseSpecWithBlock>> {
     if (registration) {
@@ -125,8 +127,7 @@ export async function loadClauseSpec(clauseKey: Hex, uri: string, registration?:
     const fetched = await activeFetcher(uri);
     const anchored = anchorClauseSpec(fetched, clauseKey);
     if (anchored === null) {
-        const bytes = typeof fetched === "string" ? new TextEncoder().encode(fetched) : fetched;
-        const detail = `bytes at ${uri} hash to ${keccak256(bytes)}, the clause key is ${clauseKey}`;
+        const detail = `the spec at ${uri}, without its block, does not hash to the clause key ${clauseKey}`;
         SPEC_LOAD_ERRORS.set(norm(clauseKey), `integrity failure: ${detail}`);
         throw new Error(`Clause spec integrity failure: ${detail}`);
     }
@@ -135,8 +136,8 @@ export async function loadClauseSpec(clauseKey: Hex, uri: string, registration?:
     return spec;
 }
 
-/** The spec and its `block` slice, read out of bytes already verified against
- *  the clause key. Throws, recording a permanent load error, when the bytes
+/** The spec and its `block` slice, read out of a document already verified
+ *  against the clause key (the key covers the spec without `block`). Throws, recording a permanent load error, when the bytes
  *  are not a well-formed spec. */
 function specFromAnchoredDocument(raw: unknown, clauseKey: Hex, uri: string): ClauseSpecWithBlock {
     const parsed = parseClauseSpec(raw);
@@ -261,8 +262,11 @@ export function listKnownClauses(): readonly KnownClause[] {
 }
 
 /** A cached spec as the SDK projection sees it: the off-chain spec plus the
- *  hash-load-bearing `block` hints (design.article, design.fills,
- *  checkout.catalogueFills, checkout.profileFills, checkout.catalogueMeasures). */
+ *  `block` hints the reference tooling collects the data by (design.article,
+ *  design.scope, design.fills, checkout.catalogueFills, checkout.profileFills,
+ *  checkout.catalogueMeasures). Another frontend may collect the data
+ *  differently; both parties sign one `checkoutHash`, which either recomputes
+ *  from the agreement alone. */
 function toProjectionView(spec: ClauseSpecWithBlock): ProjectionSpecView {
     const hints: ProjectionHints = {};
     if (spec.block !== undefined) {

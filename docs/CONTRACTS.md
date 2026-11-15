@@ -206,13 +206,15 @@ never qualifies — the Core gates nothing on registry state. All four are here;
 
 **`src/registries/ClauseRegistry.sol`** — Permissionless clause
 anchoring under a stake.
-- Key: `clauseKey = keccak256` of the spec's pinned canonical bytes (the SDK's
-  `computeClauseKey(spec)`, which is `canonicalContentHash(spec)`). The key is
-  the clause's identity and its content hash at once; the spec's `clauseId`
-  and `version` are presentation fields inside the document that nothing on
-  chain reads. `contentURI` is where readers fetch the bytes, and a reader
-  verifies them by checking `keccak256(bytes) == clauseKey`. Two specs that
-  carry one name are two clauses.
+- Key: `clauseKey = keccak256` of the canonical bytes of the spec without its
+  top-level `block` (the SDK's `computeClauseKey(spec)`). The key is the
+  clause's identity and its content hash at once; `block` is presentation and
+  stays outside it, and the spec's `clauseId` and `version` are words inside
+  the document that nothing on chain reads. `contentURI` is where readers
+  fetch the document, and a reader verifies it by parsing it, dropping
+  `block`, canonicalizing and checking the hash against `clauseKey`
+  (`anchorClauseSpec`). The registry itself takes a key and a URI and reads
+  neither. Two specs that carry one name are two clauses.
 - `registerClause(clauseKey, contentURI)` — first-write-wins on the key,
   immutable, `payable`, requires exactly `registrationDeposit`
   (`WrongDeposit`); refuses the zero key (`ZeroClauseKey`) and an empty URI

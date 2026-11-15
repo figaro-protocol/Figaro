@@ -137,7 +137,7 @@ const views = new Map();
 for (const c of ctx.getClauses()) {                 // the synced registry catalog: { clauseKey, contentURI, ... }
   if (c.stakeWithdrawn) continue;                   // live stake only, for a new composition
   const bytes = await hydrateBytes(c.contentURI);   // your IPFS read, the raw bytes; skip unreachable ones
-  const anchored = anchorClauseSpec(bytes, c.clauseKey); // null unless keccak256(bytes) == clauseKey
+  const anchored = anchorClauseSpec(bytes, c.clauseKey); // null unless computeClauseKey(parsed) == clauseKey
   if (!anchored) continue;                          // other bytes are absence, never this clause
   const parsed = parseClauseSpec(anchored);
   if (parsed.ok) views.set(c.clauseKey.toLowerCase(),

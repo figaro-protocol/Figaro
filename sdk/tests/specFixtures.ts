@@ -2,8 +2,8 @@
  * Fixture SpecSource for SDK tests — built from the canonical off-chain specs
  * (`clauses/*.json`) via `parseClauseSpec` + `parseProjectionHints`, the same
  * construction any consumer performs on registry-fetched spec JSON, each view
- * carrying its clause key (`computeClauseKey` = keccak256 of the spec's
- * canonical bytes, the bytes the reference tooling pins).
+ * carrying its clause key (`computeClauseKey` = keccak256 of the canonical
+ * bytes of the spec without its top-level `block`).
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";

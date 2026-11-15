@@ -172,7 +172,7 @@ impl FieldSpec {
 pub struct ClauseSpec {
     /// The bare human-readable clause name (e.g. `figaro-emissions`) — no
     /// version suffix. Presentation: the clause key is `keccak256` of the
-    /// spec's pinned bytes, and nothing keys on this name.
+    /// canonical spec without `block`, and nothing keys on this name.
     pub clause_id: String,
     /// Clause version — a separate field, never embedded in `clauseId`;
     /// presentation, like the name.
@@ -186,8 +186,8 @@ pub struct ClauseSpec {
     pub stages: Option<std::collections::BTreeMap<u8, Vec<FieldSpec>>>,
     // The `block` slice of the spec JSON (designer/runtime composition
     // metadata) is NOT parsed here — pure presentation, matching Layer A.
-    // The on-chain `contentHash` covers the RAW canonical document
-    // including `block`; hash the raw bytes, never a re-serialization.
+    // The clause key covers the canonical document WITHOUT `block`; the
+    // witness carries exactly those bytes, and they are hashed as carried.
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

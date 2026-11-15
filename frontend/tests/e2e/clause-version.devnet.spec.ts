@@ -1,9 +1,9 @@
 /**
- * LOOKALIKE — a clause is its pinned bytes; its name and version are labels.
+ * LOOKALIKE — a clause is its spec; its name and version are labels.
  *
  * Registers a probe clause, then a LOOKALIKE: a spec carrying the SAME
- * `clauseId`, `version` and title, differing only in its description — so
- * different bytes, so a different key. Drives the real designer UI: both
+ * `clauseId`, `version` and title, differing only in its description — a
+ * top-level attribute the key covers, so a different key. Drives the real designer UI: both
  * registrations surface as two drawer rows under two keys, each labeled by
  * its spec's own title and version (the labels a reader cannot tell apart —
  * the key is the identity); composing the lookalike's row publishes an

@@ -155,7 +155,7 @@ export type FieldSpec =
 export interface ClauseSpec {
     /** The human-readable clause name (e.g. `figaro-emissions`) — PRESENTATION:
      *  a title a reader shows. The clause's identity is its key, `keccak256` of
-     *  the spec's pinned bytes (`computeClauseKey`); two specs sharing a name
+     *  the canonical spec without `block` (`computeClauseKey`); two specs sharing a name
      *  are two clauses. */
     clauseId: string;
     /** A lineage counter a human reads — PRESENTATION, a separate field never
@@ -172,9 +172,9 @@ export interface ClauseSpec {
     // The `block` slice of the spec JSON (designer/runtime composition metadata)
     // is NOT parsed here — it's pure presentation the SDK never reads. The
     // frontend parses it off the same JSON (`lib/shared/clauseBlockBinding`).
-    // AUTHORS: the clause key covers the RAW document's pinned bytes,
-    // including `block` — pin `canonicalize(raw)`; re-serializing the parsed
-    // spec would silently drop `block` and change the key.
+    // AUTHORS: the clause key covers the RAW document without its top-level
+    // `block` (`computeClauseKey(raw)`); pin `canonicalize(raw)` so a reader
+    // gets the presentation too. The parsed spec here carries no `block`.
 }
 
 export interface SpecParseError {

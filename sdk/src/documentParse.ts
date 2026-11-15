@@ -82,8 +82,8 @@ export function asOptionalAddress(value: unknown, path: string): `0x${string}` |
     return asAddress(value, path);
 }
 
-/** A clause key — the 32-byte keccak digest of the clause's pinned spec
- *  (`computeClauseKey`). An authored document's clause NAMES resolve to keys
+/** A clause key — the 32-byte keccak digest of the clause's canonical spec
+ *  without `block` (`computeClauseKey`). An authored document's clause NAMES resolve to keys
  *  through `resolveAuthoredClauseKeys` before the document is published. */
 export function asClauseKey(value: unknown, path: string): `0x${string}` {
     if (!isBytes32Hex(value)) {

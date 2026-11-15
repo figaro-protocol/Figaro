@@ -21,8 +21,7 @@
  * (which anchors the reference assemblies and registers the seeded members).
  */
 import { test, expect } from '@playwright/test';
-import { keccak256 } from 'viem';
-import { AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import { AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, computeClauseKey } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assembly';
 import { discoverAnchoredAssemblies, localPublicClient, readAgreementBinding, readLocalDeploymentConfig, resolveIpfsURI } from './devnet-helpers';
 
@@ -60,12 +59,12 @@ test.describe('Registry explorer (devnet) — the disclosures and facets over th
         const found = subject!;
 
         // The key IS the anchor: the registry holds a live registration under
-        // it, and the served bytes hash to it — exactly as served, nothing
-        // re-canonicalized.
+        // it, and the served spec, parsed with its top-level `block` dropped,
+        // canonicalized and hashed, reproduces it.
         expect(await publicClient.readContract({
             address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [found.clauseKey],
         }), 'the event key is a live registration').toBe(true);
-        expect(keccak256(found.bytes).toLowerCase(), 'the pinned bytes hash to the clause key out-of-band')
+        expect(computeClauseKey(JSON.parse(found.text)).toLowerCase(), 'the served spec, without its block, hashes to the clause key out-of-band')
             .toBe(found.clauseKey);
         const spec = JSON.parse(found.text) as { clauseId: string; version: number };
 

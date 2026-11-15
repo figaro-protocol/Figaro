@@ -44,8 +44,8 @@ treasury aligns the treasury's interest with every trade (`docs/DAO.md`
 **Registering is the whole of the claim.** First-write-wins: whoever
 registers a clause key under their wallet holds that registration for good, and
 the binding is irreversible; what the stake decides is whether the registrant
-earns on it (§ "Who earns", above). The key is the hash of the spec's pinned bytes, so
-what is registered is one exact document, never a name. Competing with a better clause under one's own wallet is
+earns on it (§ "Who earns", above). The key is the hash of the canonical spec without its `block`, so
+what is registered is one exact spec, never a name. Competing with a better clause under one's own wallet is
 equally permissionless and equally welcome.
 
 ---

@@ -14,6 +14,18 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **The clause key leaves `block` out; every clause is re-keyed.** `computeClauseKey(spec)` is
+  `keccak256` of `clauseKeyPreimage(spec)`, the canonical bytes of the spec without its top-level
+  `block`. It covers `clauseId`, `version`, `title`, `description`, `fields`, `stages` and every
+  other top-level attribute. An edit to presentation alone keeps the clause, and so its count of
+  use. `anchorClauseSpec` parses the fetched bytes, drops `block`, canonicalizes and hashes, so the
+  byte form a spec is pinned in does not change its key; the pinned document carries `block`. A
+  plaintext attestation's witness `spec_json` is `clauseKeyPreimage(spec)`; the proof program's
+  Gate S hashes it as carried and its code is unchanged. `ClauseRegistry` is unchanged. All 27
+  keys in `test/fixtures/clause-keys.json` move, and so do the hashes of every reference agreement
+  and assembly and the vectors that carry them. The Sepolia registry holds keys of the earlier
+  form until the redeploy.
+
 - **Clause `figaro-credential`: the seller names the issuer of its own credential; the clause is
   re-keyed.** The agreement names no institution, so one agreement accommodates every issuer.
   `credentialRegisterUri` (the issuing institution's register, a URI template with `{id}`) and

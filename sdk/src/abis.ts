@@ -224,9 +224,9 @@ export const UNISWAP_V3_FEE_TIERS = [100, 500, 3000, 10000] as const;
 
 // ── ClauseRegistry ABI ──────────────────────────────────────────────────────
 
-// A clause is its spec: the key is keccak256 of the spec's pinned (canonical)
-// bytes — `computeClauseKey(spec)` — and a reader verifies a fetched spec by
-// hashing the bytes it fetched against the key.
+// A clause is its spec: the key is keccak256 of the canonical bytes of the
+// spec without its top-level `block` — `computeClauseKey(spec)` — and a reader
+// verifies a fetched spec by recomputing that key (`anchorClauseSpec`).
 export const CLAUSE_REGISTRY_ABI = parseAbi([
     "function registered(bytes32 clauseKey) view returns (bool)",
     "function registerClause(bytes32 clauseKey, string contentURI) external payable",

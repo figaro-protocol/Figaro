@@ -105,7 +105,7 @@ pub enum AttestationWitness {
 /// In-proof gates (see `kernel::validate_attestation_content`):
 ///
 ///   S. Spec identity + binding — `spec_json` parses as a `ClauseSpec`
-///      and `keccak256(spec_json bytes)`, hashed verbatim as pinned,
+///      and `keccak256(spec_json bytes)`, hashed verbatim as carried,
 ///      equals the op's `clause_id` (a clause key IS its spec's hash);
 ///      the key is committed as a `SpecBinding` public value. The on-chain
 ///      verifier accepts the batch only if
@@ -132,9 +132,9 @@ pub enum AttestationWitness {
 /// guest's deserializer; see `tests/bincode_roundtrip.rs`).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AttestationContentProof {
-    /// The clause's canonical spec JSON, as registered (exact bytes —
-    /// `keccak256` of them must equal the registry's anchored
-    /// `contentHash`).
+    /// The clause's canonical spec JSON without its top-level `block`
+    /// (exact bytes — `keccak256` of them must equal the clause key the
+    /// registry holds).
     pub spec_json: String,
     /// The structured content the engine validates and (for a runtime
     /// witness) re-encodes to canonical ABI bytes.
@@ -366,7 +366,7 @@ pub struct UsageClaim {
     /// The order's commitment struct, exactly as signed.
     pub order: Commitment,
     /// The key the claim credits, each family's own registry key: the
-    /// clause key (keccak256 of the spec's pinned bytes), the agreementHash,
+    /// clause key (keccak256 of the spec without `block`), the agreementHash,
     /// or the assemblyHash — never a new identifier.
     pub clause_or_assembly: B256,
     pub kind: UsageClaimKind,

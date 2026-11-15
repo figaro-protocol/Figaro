@@ -124,7 +124,7 @@ The air service's operating events are a process-log clause: the `attestations` 
 }
 ```
 
-`parseClauseSpec` validates it against the format ([Clauses and agreements](/protocol/clauses/) owns the format); the clause key is `computeClauseKey(spec)`, the keccak256 of the canonical bytes, so the script pins exactly those bytes and registers the key on `ClauseRegistry` under the registry's stake. Registration is first write wins: the same spec registered twice is one clause. The designer is Anvil index 37.
+`parseClauseSpec` validates it against the format ([Clauses and agreements](/protocol/clauses/) owns the format); the clause key is `computeClauseKey(spec)`, the keccak256 of the canonical bytes of the spec without its `block`, so the script pins the canonical document and registers the key on `ClauseRegistry` under the registry's stake. Registration is first write wins: the same spec registered twice is one clause. The designer is Anvil index 37.
 
 ```js title="publish-clause.mjs"
 // publish-clause.mjs — validate the spec, pin its canonical bytes, register the key.
@@ -138,7 +138,7 @@ const spec = JSON.parse(readFileSync("air-service-events.json", "utf8"));
 const parsed = parseClauseSpec(spec);
 if (!parsed.ok) throw new Error(parsed.errors.map((e) => `${e.path}: ${e.message}`).join("; "));
 
-// The clause key is the keccak256 of the pinned bytes, so pin the canonical form.
+// The clause key is the keccak256 of the canonical spec without its block; pin the canonical form.
 const clauseKey = computeClauseKey(spec);
 const contentURI = await pin(canonicalize(spec), "air-service-events.json");
 if (await pub.readContract({ address: addresses.clauseRegistry, abi: CLAUSE_REGISTRY_ABI, functionName: "registered", args: [clauseKey] })) {
