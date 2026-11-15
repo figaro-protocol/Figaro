@@ -674,9 +674,13 @@ The default on both paths binds hashes: the coordinator takes the
 `clauseDataHash`, the inclusion proof and the `contentRef`, and a batched
 attestation in its default hash-only form carries exactly those. There are
 no per-clause validator contracts, and a never-seen clause is attestable and
-batch-resolvable with zero per-clause code (`CLAUSES.md`). Usage for designer
-rewards is counted as it happens; there is no posted root, no reward bond, no
-challenge window, and no reward referee. Clause-tier arbitration
+batch-resolvable with zero per-clause code (`CLAUSES.md`). A use for designer
+rewards is counted by a call made after its process resolves: on the direct
+path a separate transaction to `UsageCounter` (`recordClauseUsage`,
+`recordAgreementUsage`, `recordAssemblyUsage`, each refusing an order the Core
+has not resolved), on the batch path `applyBatchAccrual`, which
+`FigaroBatchVerifier` calls after the batch's resolutions. There is no posted
+root, no reward bond, no challenge window, and no reward referee. Clause-tier arbitration
 (`figaro-arbitration-<provider>` clauses, `block.design.composes.forumUrl`) is a
 different object and is untouched. There is no factory, router, governance,
 compliance, vesting, airdrop, or proxy contract; no protocol-level

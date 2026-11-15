@@ -107,13 +107,13 @@ breaks buyer dominance. Breaking buyer dominance breaks the MAD equilibrium
 becomes a viable strategy).
 
 **The mitigation matches `FigaroCore`**: `FigaroCore` verifies
-both parties by ECDSA recovery alone (`FigaroCore.sol:159-163`), so a contract
+both parties by ECDSA recovery alone (`FigaroCore.sol:155-160`), so a contract
 wallet — multi-sig, ERC-1271 smart account — can never hold the buyer role,
 and `FigaroCore` as deployed forecloses adding contract-signature support. The live
 mitigation is **pre-installed EIP-7702 delegation**: while it still holds its key, the
 buyer sets a delegation (carrying its own guardian/recovery authorization) on
 the buyer EOA. `resolveProcess` authorizes by `msg.sender`
-(`FigaroCore.sol:260`), so after key loss the delegated code can still
+(`FigaroCore.sol:255`), so after key loss the delegated code can still
 originate the resolve call from the buyer's address — every active process the
 buyer opened through `FigaroCore` remains resolvable and none of its bonds is
 stranded. The same code reaches the proof-batched path: a batched resolve
@@ -472,7 +472,7 @@ buyer commits upfront.
 
 **Pattern**: The `Commitment` struct carries both a `salt` and a `deadline`;
 `commit` rejects expired commitments (`DeadlineExpired`,
-`FigaroCore.sol:151`) and nothing else in `FigaroCore` reads the field.
+`FigaroCore.sol:147`) and nothing else in `FigaroCore` reads the field.
 
 **Why it looks wrong**: `salt` already appears to "secure" the commitment,
 so `deadline` reads as leftover plumbing from an earlier design (it is not).
@@ -945,7 +945,7 @@ the one registry the kind names, reverting `UnknownKind` on a kind above 2.
 seller(20)` per use, so the proof commits the kind.
 
 **Why it looks wrong**: The registry families are parallel and carry no
-edge between them (CLAUDE.md § "Separation of Concerns"), so a discriminator
+edge between them (CLAUDE.md § "The six layers"), so a discriminator
 that names which registry a key belongs to looks like the reward reaching
 across the boundary — and all three hash-keyed registries already key by
 content, so the bytes look like they should suffice.
@@ -1017,8 +1017,8 @@ supplied by the caller reads like trust handed to the caller.
 
 **Why it is correct**: A list stored in `AssemblyRegistry`, or a lookup into
 `AgreementRegistry` at assembly registration, is an edge between two
-registry families, and the families are parallel (CLAUDE.md § "Separation of
-Concerns"): assemblies use agreements, agreements use clauses, and neither
+registry families, and the families are parallel (CLAUDE.md § "The six
+layers"): assemblies use agreements, agreements use clauses, and neither
 knows what uses it. The root carries the membership instead: an agreement leaf
 either hashes up to the registered `assemblyHash` or it does not, so the
 caller can supply nothing the root did not already commit, and a wrong
