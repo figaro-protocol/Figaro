@@ -13,7 +13,7 @@ pragma solidity 0.8.26;
 ///         identity IS its composition: assemblyHash is the merkle root,
 ///         under the assembly tree's own leaf convention (the leaf domain
 ///         `keccak256("figaro-assembly-leaf")` mixed in), over one leaf per
-///         agreement (key: its agreementHash; bytes: `{"clauses":…,"slot":i}`)
+///         agreement (key: its agreementHash; bytes: `{"clauses":{…},"follows":[…],"slot":i}`)
 ///         and the terms leaf when assembly-scoped clauses are composed
 ///         (editorial prose excluded). The registry keys bindings by assemblyHash:
 ///         identical compositions collapse to one binding, and no

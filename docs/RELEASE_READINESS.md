@@ -66,6 +66,26 @@ neither line does not delay either.
      recorded with its transaction hashes in `docs/VERIFICATION_MAP.md` § 14;
    - [maintainer] one trade resolved through the site with a real wallet — check: the resolved
      process's transaction hash, recorded in `docs/VERIFICATION_MAP.md` § 14.
+
+   The orders an order follows are a leaf of the agreement format (`Agreement.follows`,
+   `sdk/src/agreement.ts`), and no clause carries them. A network seeded with the clause
+   `figaro-topology` carrying them breaks in three places:
+   - The DAO wallet's live `figaro-topology` registration is picked: its spec declares the
+     mandatory article at agreement scope, and `mandatoryClauses` (`sdk/src/projection.ts`)
+     takes every such live clause the DAO wallet registered. The canvas writes it into every
+     agreement with `{}`. Checkout fills `Agreement.follows`, never that clause's required
+     `follows` field, so the sign gate refuses the agreement for the missing field unless a
+     party fills it by hand.
+   - An assembly pinned in the entry bytes `{"clauses":{…},"slot":i}` does not hash to its
+     registered key: the key is computed over `{"clauses":{…},"follows":[…],"slot":i}`
+     (`agreementLeafBytes`, `sdk/src/assembly.ts`). `anchorAssembly` (`sdk/src/anchored.ts`)
+     recomputes the key from the fetched document and refuses it.
+   - An order whose edges sit in a `figaro-topology` clause shows no edges: every reader
+     reads `Agreement.follows` only.
+
+   So the site built from this code goes up only against a deployment seeded in the present
+   format: the clause `figaro-topology` not registered by the DAO wallet, and every
+   reference assembly pinned and registered in the present entry bytes.
 5. **The flip.** Robots' `Disallow` and the noindex meta are lifted, a sitemap of the
    canonical public pages is published, and the deployed headers are checked on the
    live host (Task 12). Before it, the testnet pinning key the bundle ships is reissued

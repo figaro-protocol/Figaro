@@ -106,6 +106,9 @@ describe("the composition tree", () => {
         expect(assemblyHashOf(root)).not.toBe(assemblyHashOf(flat));
         expect(() => agreementLeafBytes({ clauses: {} }, -1)).toThrow(/non-negative/);
         expect(() => agreementLeafBytes({ clauses: {}, follows: [1 as unknown as string] }, 0)).toThrow(/list of entry labels/);
+        // One label named twice: the design could register but never check
+        // out, since checkout's topology leaf refuses the repeated order hash.
+        expect(() => agreementLeafBytes({ clauses: {}, follows: ["agreement-0", "agreement-0"] }, 1)).toThrow(/names entry agreement-0 twice/);
     });
 
     it("a one-entry assembly's root is its agreement's leaf; terms add a leaf", () => {

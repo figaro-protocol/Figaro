@@ -111,8 +111,9 @@ check fails on it until it is decided. The comparison is byte for byte, and
 the compiler's metadata hash covers the source text, comments included: a
 tree whose NatSpec differs from the deployed build reports that contract as
 differing, with no change in what it executes. Against Sepolia this holds for
-`ClauseRegistry`, `AttestationCoordinator` and `FigaroBatchVerifier`, and for
-every clause key, which is derived as above, until the redeploy.
+`ClauseRegistry`, `AttestationCoordinator`, `FigaroBatchVerifier`,
+`AgreementRegistry` and `AssemblyRegistry`, and for every clause key, which is
+derived as above, until the redeploy.
 
 - `1.expected.json` — mainnet. The deposits, the cooldown and the wallets are
   `null` today.

@@ -15,10 +15,13 @@
 <div class="tsd-comment tsd-typography"><p>The domain mixed into the topology leaf, <code>keccak256(&quot;figaro-agreement-topology&quot;)</code>.
 No contract and no proof program holds it: the leaf is read by the
 parties and the readers that rebuild the root, never attested and never
-counted.</p>
+counted. An assembly leaf's inner preimage is also 96 bytes (domain, key,
+data hash), and it is kept apart from the topology leaf by its first
+word, the domain: <code>ASSEMBLY_LEAF_DOMAIN</code> (<code>keccak256(&quot;figaro-assembly-leaf&quot;)</code>,
+sdk/src/assembly.ts) against this one.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agreement.ts#L183">agreement.ts:183</a></li></ul></aside></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agreement.ts#L186">agreement.ts:186</a></li></ul></aside></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

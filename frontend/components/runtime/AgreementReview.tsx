@@ -288,6 +288,30 @@ export function AgreementReview({ commitment, agreement }: Props) {
                 </section>
             )}
 
+            {/* The orders this order follows — the topology leaf, written by
+                checkout from the assembly entry and committed under the
+                checkoutHash beside the provenance. An empty list says the
+                order follows none; an absent leaf renders nothing, since an
+                absent leaf is not an empty list. */}
+            {agreement?.follows !== undefined && (
+                <section data-testid="preview-follows">
+                    <h3 className="text-xs font-semibold text-ink-muted mb-2">Follows</h3>
+                    {agreement.follows.length === 0 ? (
+                        <p className="text-xs text-ink-primary" data-testid="preview-follows-none">
+                            This order follows no other order.
+                        </p>
+                    ) : (
+                        <ul className="space-y-1 text-xs">
+                            {agreement.follows.map((orderHash) => (
+                                <li key={orderHash} className="font-mono text-ink-primary break-all" data-testid="preview-follows-edge">
+                                    {orderHash}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
+            )}
+
             {/* Hash */}
             <section className="border-t border-default pt-4">
                 <h3 className="text-xs font-semibold text-ink-muted mb-2">

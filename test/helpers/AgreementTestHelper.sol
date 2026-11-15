@@ -34,11 +34,19 @@ library AgreementTestHelper {
         );
     }
 
-    /// @dev An agreement leaf's canonical-JSON bytes: `{"clauses":{…},"slot":i}`
-    ///      — the agreement's own clause fills and its index. `clausesJson` is
-    ///      the fills as canonical JSON (e.g. `{}`).
-    function agreementLeafBytes(uint256 entry, string memory clausesJson) internal pure returns (bytes memory) {
-        return abi.encodePacked('{"clauses":', clausesJson, ',"slot":', VM.toString(entry), "}");
+    /// @dev An agreement leaf's canonical-JSON bytes: `{"clauses":{…},"follows":[…],"slot":i}`
+    ///      — the agreement's own clause fills, the labels of the entries it
+    ///      follows, and its index (the SDK's `agreementLeafBytes`).
+    ///      `clausesJson` is the fills as canonical JSON (e.g. `{}`);
+    ///      `followsJson` is the labels as a JSON list (`[]` for a root).
+    function agreementLeafBytes(uint256 entry, string memory clausesJson, string memory followsJson)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return abi.encodePacked(
+            '{"clauses":', clausesJson, ',"follows":', followsJson, ',"slot":', VM.toString(entry), "}"
+        );
     }
 
     /// @dev Compute the merkle leaf for one clause.
