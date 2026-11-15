@@ -257,7 +257,10 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
             composedByOrderId[order.orderHash] = byAgreement[entry.id] ?? {};
             composedClausesByOrderId[order.orderHash] = clausesByAgreement[entry.id] ?? [];
             const carried = Object.keys(agreementClauses(hydrated, entry));
-            if (!carried.some((clauseKey) => clauseDeclaresField(clauseKey, "lineItems"))) withoutLineItems.push(order.orderHash);
+            // An unread spec says nothing either way: the order is named only
+            // when every carried clause's spec is read and none declares the list.
+            const everySpecRead = carried.every((clauseKey) => getClauseSpec(clauseKey) !== undefined);
+            if (everySpecRead && !carried.some((clauseKey) => clauseDeclaresField(clauseKey, "lineItems"))) withoutLineItems.push(order.orderHash);
         });
         return {
             ok: true,

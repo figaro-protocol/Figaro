@@ -276,6 +276,14 @@ describe("projectSnapshotForReview — an agreement with no line items", () => {
         expect(review.withoutLineItems).toEqual([drawn.orders[0].orderHash]);
     });
 
+    it("does not name an order while one of its clauses' specs is unread", () => {
+        const unread = `0x${"ab".repeat(32)}`;
+        const bound = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [keyOf("figaro-topology")]: {}, [unread]: {} } });
+        const review = projectSnapshotForReview(snapshotOf(drawn, { registeredByOrderId: { [drawn.orders[0].orderHash]: bound } }));
+        if (!review.ok) throw new Error(review.error);
+        expect(review.withoutLineItems).toEqual([]);
+    });
+
     it("names none when every agreement composes line items", () => {
         const review = projectSnapshotForReview(snapshotOf(drawn));
         if (!review.ok) throw new Error(review.error);
