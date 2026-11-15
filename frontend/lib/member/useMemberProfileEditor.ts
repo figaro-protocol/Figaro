@@ -190,7 +190,8 @@ export function useMemberProfileEditor(
         gate = { kind: "waiting", message: "Loading…" };
     } else if (!isConnected) {
         gate = { kind: "waiting", message: "Connect your wallet to edit." };
-    } else if (registration.status === "absent" || readAbsent) {
+    } else if (registration.status === "absent" || readAbsent || (registration.status === "present" && !registration.value.registered)) {
+        // The read answered (failed, or "not registered", which redirects): no wait line.
         gate = { kind: "absent" };
     } else if (!metadataURI) {
         gate = { kind: "waiting", message: "Reading registry…" };
