@@ -19,6 +19,7 @@
 #   certora/RpgfMinter.spec             — RPGF payout conservation, no-double-claim,
 #                                         eligibility + budget monotonicity
 #   certora/RpgfMinterAuthor.spec       — `_isAuthor` reads the one registry its kind names
+#   certora/SwapCoordinatorTokenOps.spec — the swap coordinator keeps no token across swapAndCommit
 #
 # Conf flag note:
 #   Any spec whose rules pass symbolic `bytes` (dynamic-length) to a function
@@ -88,7 +89,7 @@ fi
 if [ "$#" -gt 0 ]; then
     SPECS=("$@")
 else
-    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification FlorinToken BatchVerifierTokenOps BatchVerifierStateRoot RpgfMinter RpgfMinterAuthor)
+    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification FlorinToken BatchVerifierTokenOps BatchVerifierStateRoot RpgfMinter RpgfMinterAuthor SwapCoordinatorTokenOps)
 fi
 
 for spec in "${SPECS[@]}"; do

@@ -661,9 +661,17 @@ load-bearing, not vacuous.
 
 Verified, both rules, on the non-via-IR build (under via-IR the prover's call resolution fails on `_isAuthor`'s decoding of the dynamic `string` that `bindings` returns): https://prover.certora.com/output/9512759/f62a013cbdb44692b77bf04219670f75. The `FigaroCore` rules `noDoubleCommit` and `activeCountRisesOrDropsToZero` verified in the same sitting: https://prover.certora.com/output/9512759/024d183244654c348229ee01814292ca.
 
+**SwapCoordinatorTokenOps (1 declared rule — `WitnessSwapAndCommitCoordinator` linked to `FigaroCore`, `MockWitnessPermit2` and `MockSwapVenue`)**
+
+| CVL rule | Maps to | Type |
+|---|---|---|
+| `coordinatorTokenConservation` | — | On every completing path of `swapAndCommit`, the coordinator holds after the call what it held before of both tokens: the Permit2 pull, the venue's output and the input residual all leave it |
+
+The three `_fund` entries of `certora/token-ops.inventory` cite this rule. §14 carries its run.
+
 ### Status
 
-**Eight of eight specs green** with `--wait_for_results all`
+The runner lists nine specs. **Nine of nine green** with `--wait_for_results all`
 (exit 0 = every rule verified; every `Violated` line in the stream is the
 `rule_not_vacuous` healthy polarity). `BatchVerifierTokenOps` and
 `BatchVerifierStateRoot` run since each was narrowed to the step it is about:
@@ -718,7 +726,7 @@ table maps each layer to what it covers.
 |---|---|---|
 | **TLA+ model checking** | `TESTING.md` § TLA+ — `./scripts/test-tla.sh` | `FigaroCore` safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, cap-below-max-supply, supply-equals-sum-minted, deployer-cannot-mint-after-renounce) + the swap-funded on-ramp (zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact `FigaroCore` deposits) + the two paths composed (no cross-path double payout, per-pool deposits, score composition, `FigaroCore` blindness) |
 | **Halmos symbolic testing** | `TESTING.md` § Halmos — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. MembersRegistry (7): the stake-machine properties behind E-5. UsageCounter (9): the accrual arithmetic — route-blind counting, one tally read by `scoreOf`, period bucketing, isolation, the three kinds never sharing or disturbing an accrual, the unknown kind skipped. ClauseRegistry + AssemblyRegistry + AgreementRegistry (6 each): the designer-side stake machines designer-reward eligibility reads. |
-| **Certora formal verification** | `TESTING.md` § Certora — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. BatchVerifierStateRoot: the batch state root's unbroken, gap-free chain. RpgfMinter: mint conservation, no-double-claim, duplicate rejection, live-stake eligibility. RpgfMinterAuthor: `_isAuthor` reads the one registry its kind names and refuses an unknown kind. |
+| **Certora formal verification** | `TESTING.md` § Certora — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. BatchVerifierStateRoot: the batch state root's unbroken, gap-free chain. RpgfMinter: mint conservation, no-double-claim, duplicate rejection, live-stake eligibility. RpgfMinterAuthor: `_isAuthor` reads the one registry its kind names and refuses an unknown kind. SwapCoordinatorTokenOps: the swap coordinator keeps no token across `swapAndCommit`. |
 | **Echidna fuzzing** | `TESTING.md` § Echidna — `./scripts/test-echidna.sh` | `EchidnaFuzzer` (`FigaroCore`, 7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFlorinToken` (8): FlorinToken supply/minter fuzzing. (`EchidnaToken` is the `FigaroCore` harness's support ERC-20, not a harness.) |
 | **Foundry unit tests** | derive: `forge test --via-ir` (the summary line is the census; the fork suite skips without `MAINNET_RPC_URL`) | Core lifecycle, revert branches, coordinators (incl. the Permit2 witness + its mainnet-fork parity suite), gas, florin |
 | **SDK Vitest** | derive: `cd sdk && npx vitest run` | Event parsing, state reconstruction, bond math, commitments, discovery, clauses, swap-funding witness parity, agent origination |
@@ -830,6 +838,7 @@ One row per component and bench. The components are the tree's: every contract u
 | `FlorinToken` (the model) | the 8 invariants of `formal/FlorinToken.tla` | TLA+ pass 2 of 7: 1,030,818 states generated, 160,844 distinct, no error | pass | `1d39092c` |
 | `WitnessSwapAndCommitCoordinator` | the witness binding, zero retention, allowance hygiene, swap and commit atomic | Foundry `WitnessSwapAndCommitCoordinatorTest` | pass | `04611ead` |
 | `WitnessSwapAndCommitCoordinator` | the same against the live Permit2 and SwapRouter02 | Foundry fork suites, skipped: no `MAINNET_RPC_URL` or `SEPOLIA_RPC_URL` in the run | owed | `04611ead` |
+| `WitnessSwapAndCommitCoordinator` | the coordinator keeps no token across `swapAndCommit`: 1 declared rule | Certora `SwapCoordinatorTokenOps.spec`, the rule and the envfree check, "No errors found by Prover!" (job `a5e497700c5d416cb829db04eee9bf9e`) | pass | `41c4f367` |
 | `WitnessSwapAndCommitCoordinator` (the model) | the 10 invariants of `formal/WitnessSwapAndCommitCoordinator.tla` | TLA+ pass 3 of 7: 38,028,525 states generated, 1,979,101 distinct, depth 17, no error | pass | `1d39092c` |
 | the proof program (`prover/program`, `prover/lib`, `prover/clause`) | the guest's rules against the Core (`parity` 41, `usage` 33, `transition_vectors` 1, `attestation_vectors` 1, `merkle_parity` 8, `operation_stream` 5, `operation_stream_vectors` 1, `packers` 3, `eip712_vectors` 2, `bincode_roundtrip` 8, unit 6), the clause engine (`conformance` 37, `encode_conformance` 14, `engine_vectors` 5), the clause keys (1) and the guest run in the executor (`guest_program` 6); 3 ignored by design, run by the fuzz script | Rust, `cargo test` over the prover workspace | pass | `1d39092c` |
 | the proof program | that the guest implements the model, by proof | no formal proof of the Rust crates | owed | — |
