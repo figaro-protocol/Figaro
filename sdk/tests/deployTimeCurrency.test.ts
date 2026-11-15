@@ -23,7 +23,7 @@ import {
     type RegisteredAgreement,
 } from "../src/index.js";
 import { validateContent } from "../src/clauses/index.js";
-import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
+import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
 
 const ROOT = path.join(__dirname, "../..");
 const readJson = (p: string) => JSON.parse(readFileSync(p, "utf8")) as object;
@@ -116,13 +116,15 @@ describe("fillDeployTimeCurrency — the deployment's token, read by the spec's 
     });
 
     it("reads the pin by shape: a clause of another article with an address field is left alone", () => {
-        // figaro-commerce declares an address-hex `currency` too, but it is
-        // agreement-scoped and of the mandatory article: composed at assembly
-        // scope by mistake, it is still no denomination pin.
+        // A registration that declares a designer-filled address-hex
+        // `currency` at assembly scope, under another article than the
+        // denomination: composed at assembly scope, it is still no pin.
+        const raw = rawSpecOf("figaro-utility-token") as { block: { design: Record<string, unknown> } };
+        const other = viewOf({ ...raw, title: "another article", block: { ...raw.block, design: { ...raw.block.design, article: "coordination" } } });
+        const specs = specSourceWithRegistrations(SPECS, [other]);
         const { assembly } = built("equipment-hire.json");
-        const commerceKey = Object.keys(AGREEMENTS["counter-sale"].clauses).find((k) => SPECS.get(k as `0x${string}`)?.hints?.article === "mandatory" && SPECS.get(k as `0x${string}`)?.fields.some((f) => f.name === "currency"))!;
-        const odd = { ...assembly, assemblyClauses: { ...(assembly.assemblyClauses ?? {}), [commerceKey]: {} } };
-        const filled = fillDeployTimeCurrency(odd, TOKEN, SPECS);
-        expect(filled.assemblyClauses?.[commerceKey]).toEqual({});
+        const odd = { ...assembly, assemblyClauses: { ...(assembly.assemblyClauses ?? {}), [other.clauseKey]: {} } };
+        const filled = fillDeployTimeCurrency(odd, TOKEN, specs);
+        expect(filled.assemblyClauses?.[other.clauseKey]).toEqual({});
     });
 });

@@ -28,8 +28,8 @@ free-form values, never a closed set this code may branch on).</p>
 resolved through the rate-quantity-source registry from the order's OWN
 clause fields (e.g. committed geolocation endpoints) or the buyer's
 checkout-entered units — billed per started unit. An unresolvable quantity
-yields payment 0n + <code>issue</code>, and the surface refuses to commit (the
-commerce clause's <code>payment ≥ 1</code> would reject it during off-chain validation regardless).</p>
+yields payment 0n + <code>issue</code>, and the surface refuses to commit (FigaroCore
+refuses a payment of zero at commit regardless).</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -57,7 +57,7 @@ source's input), when the surface collected one.</p>
 <h5><span class="tsd-kind-property">tokenDecimals</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></h5></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/index.SubOrderPricing.html" class="tsd-signature-type tsd-kind-interface">SubOrderPricing</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L594">checkoutPlan.ts:594</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L570">checkoutPlan.ts:570</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

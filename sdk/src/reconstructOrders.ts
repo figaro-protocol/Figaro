@@ -41,12 +41,8 @@ import {
 } from "./commitments.js";
 import {
     buildOrderAgreement,
-    specDeclaresContentField,
-    specDeclaresField,
-    type ProjectionSpecView,
     type SpecSource,
 } from "./projection.js";
-import { composedClauseWhere } from "./checkoutPlan.js";
 import { topologicalOrder } from "./topology.js";
 import type { Address, Commitment, Hex } from "./types.js";
 
@@ -128,8 +124,9 @@ export interface ReconstructNodeSpec {
     /** This node's payment (the value it adds). */
     payment: bigint;
     /** Per-clause field values merged onto the assembly's clause data (e.g.
-     *  the commerce clause's `{ currency, payment, lineItems }`). Keyed by
-     *  clause key; the SDK names none. */
+     *  the line-items clause's `{ lineItems }`). Keyed by clause key; the SDK
+     *  names none. The payment and the token are the commitment's, never a
+     *  clause's. */
     overrides?: Record<string, Record<string, unknown>>;
 }
 
@@ -143,25 +140,10 @@ export interface ReconstructParams {
     /**
      * When supplied, agreements build through the spec-default projection
      * (`buildOrderAgreement` — checkout semantics: registry-declared defaults
-     * fill omitted fields, process-log clauses stay empty anchors), and the
-     * walk ALSO fills `currency` (matched by declared field, never clause id)
-     * into the commerce clause of EVERY realized order — the one term that
-     * must equal the commitment struct's `currency` field
-     * (docs/CLAUSES.md § "Every clause is a merkle leaf"). A caller override
-     * that already names a currency is accepted only when it matches; a
-     * CONTRADICTING override throws before hashing, so the walk never signs a
-     * leaf that disagrees with its struct.
-     *
+     * fill omitted fields, process-log clauses stay empty anchors).
      * Without `specs`, the raw override-merge (`agreementFromClauses`)
-     * applies — the agent-origination semantics — and currency-leaf routing is
-     * impossible (no spec to find the commerce clause by declared field). A
-     * spec-less caller OWNS that leaf: it must supply the commerce clause's
-     * `currency` itself, via `ReconstructNodeSpec.overrides`, equal to the
-     * `currency` this walk is called with. The sign gate
-     * (`assertAgreementSignable`) is the net that catches a spec-less caller
-     * that forgets — it refuses to sign a leaf that disagrees with the struct
-     * — but this walk cannot fill or check the leaf itself with no spec to
-     * find it by.
+     * applies — the agent-origination semantics. Either way the token and
+     * the payment go into the commitment only, never into a clause.
      */
     specs?: SpecSource;
     /** Optional deterministic salt per node (testing). */
@@ -236,12 +218,7 @@ export async function reconstructOrdersFromAssembly(
             ? buildOrderAgreement(
                   params.buyer,
                   spec.seller,
-                  fillWalkCurrency(
-                      mergeOverrides(clauses, spec.overrides),
-                      params.currency,
-                      params.specs,
-                      node.nodeId,
-                  ),
+                  mergeOverrides(clauses, spec.overrides),
                   params.specs,
               ).agreement
             : agreementFromClauses(
@@ -315,58 +292,6 @@ function withRealParents(
         }
     }
     return out;
-}
-
-/** The ONE guarded walk fill: write a derived `field` value onto the composed
- *  clause whose loaded spec satisfies `predicate` — the same spec-routed lookup
- *  the checkout fills run (`composedClauseWhere`); no clause is ever
- *  named. No match (nothing composed, or a cold spec cache) is a no-op,
- *  matching every other spec-routed fill in this SDK. An existing value is
- *  accepted only when IDENTICAL to `value` (case-insensitive — every tenant
- *  is hex); a CONTRADICTION throws with the caller's message — the walk owns
- *  these leaves whenever specs are available, so a mismatched override is
- *  caller error to surface immediately, not a value to silently reconcile or
- *  overwrite. */
-function fillWalkField(
-    clauses: Record<string, Record<string, unknown>>,
-    field: string,
-    value: string,
-    specs: SpecSource,
-    nodeId: string,
-    opts: {
-        predicate: (spec: ProjectionSpecView) => boolean;
-        contradiction: (existing: string) => string;
-    },
-): Record<string, Record<string, unknown>> {
-    const clauseKey = composedClauseWhere(clauses, specs, opts.predicate);
-    if (!clauseKey) return clauses;
-    const existing = clauses[clauseKey]?.[field];
-    if (typeof existing === "string" && existing.length > 0 && existing.toLowerCase() !== value.toLowerCase()) {
-        throw new Error(`node "${nodeId}": ${opts.contradiction(existing)}`);
-    }
-    return { ...clauses, [clauseKey]: { ...clauses[clauseKey], [field]: value } };
-}
-
-/** Write the process's denomination into the commerce clause BEFORE
- *  hashing, so the leaf every party signs never diverges from the commitment
- *  struct's `currency` field (docs/CLAUSES.md § "Every clause is a merkle
- *  leaf"). The commerce clause is found the same way
- *  `checkoutPlan.fillCommerceClause` finds it: the composed clause whose
- *  loaded spec declares `payment` and declares `currency` as plain content
- *  (never a design-fill denomination pin — that is a different clause, a
- *  different term). */
-function fillWalkCurrency(
-    clauses: Record<string, Record<string, unknown>>,
-    currency: Address,
-    specs: SpecSource,
-    nodeId: string,
-): Record<string, Record<string, unknown>> {
-    return fillWalkField(clauses, "currency", currency, specs, nodeId, {
-        predicate: (spec) => specDeclaresField(spec, "payment") && specDeclaresContentField(spec, "currency"),
-        contradiction: (existing) =>
-            `override names commerce currency ${existing}, which contradicts this process's ` +
-            `currency ${currency} — refusing to build a leaf that disagrees with the commitment struct`,
-    });
 }
 
 /** Write the order's provenance — the registered agreement its agreement

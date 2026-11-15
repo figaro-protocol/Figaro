@@ -136,10 +136,11 @@ What it does, in order:
 3. **Runs the buyer loop.** `originateProcess(…)` instantiates the discovered
    assembly's root agreement with the buyer's overrides, runs the merkle-leaf
    sign gate (`assertAgreementSignable` — every clause conforms to its spec,
-   the currency/payment TERMS equal the commitment struct's mirrors, the order
+   a composed denomination pin equals the commitment's token, the order
    carries every clause of the design it names, and every designer value the
-   assembly sets arrives unchanged; a missing required term, a leaf/struct
-   contradiction, a dropped clause or a changed designer value refuses to sign), signs
+   assembly sets arrives unchanged; a missing required term, a clause restating
+   the token or the payment, a pin contradiction, a dropped clause or a changed
+   designer value refuses to sign), signs
    the EIP-712 commitment against a CHAIN-time deadline (`readChainTimestamp` +
    `computeDeadline` — never the machine clock), and hands the offer to the
    channel. The seller re-hashes the agreement against the committed
@@ -335,10 +336,10 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildDomain` | root | The EIP-712 domain for a chain id + `FigaroCore` address. |
 | `buildOrderAgreement` | root | Build one order's agreement document and its merkle tree from its clause map. |
 | `buildQuoteRequest` | `/agent` | Build an UNSIGNED RFQ draft, priced at the buyer's ceiling. |
-| `buildAssembly` | root | Design time: the assembly of agreements plus the new agreements to register; the mandatory clauses (`mandatory`, from `mandatoryClauses`) are written into every new agreement first; binds a registered agreement as is (it must carry both mandatory shapes) or composes a new one. |
-| `composeOrderAgreement` | root | ONE agreement's registered agreement from the mandatory clauses written in and the clauses a designer selected — the scope check, the value-free rule, one clause of commerce's shape and one of topology's — and its `agreementHash`; `buildAssembly` composes every new agreement through it, and a designer registers one on its own through it. |
+| `buildAssembly` | root | Design time: the assembly of agreements plus the new agreements to register; the mandatory clauses (`mandatory`, from `mandatoryClauses`) are written into every new agreement first; binds a registered agreement as is (it must carry a clause of topology's shape) or composes a new one. |
+| `composeOrderAgreement` | root | ONE agreement's registered agreement from the mandatory clauses written in and the clauses a designer selected — the scope check, the value-free rule, one clause of topology's shape — and its `agreementHash`; `buildAssembly` composes every new agreement through it, and a designer registers one on its own through it. |
 | `mandatoryClauses` | root | The mandatory clauses a canvas writes into every agreement, read from the DAO wallet's live `ClauseRegistry` registrations (docs/CLAUSES.md § "The mandatory clauses"); `clauseKey → {}`. |
-| `specIsCommerceShape` / `specIsTopologyShape` | root | Mandatory is a shape, never a name: a spec declaring `payment`, `currency` and `lineItems` as content is commerce; one declaring `follows` is topology. |
+| `specIsTopologyShape` | root | Topology is a shape, never a name: a spec declaring `follows` as content is topology, the one clause every agreement carries. |
 | `buildProvenanceInclusionProof` | root | Merkle proof that the agreement's provenance leaf sits under a signed `checkoutHash`. |
 | `buildAgreementInclusionProof` | root | An agreement's membership proof under `assemblyHash`, with its `slotContentHash` — what the assembly reward claim carries. |
 | `buildSignedClauseInclusionProof` | root | Merkle proof that one clause sits under a signed `checkoutHash`. |
@@ -368,7 +369,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `deriveAssemblyWithdrawGate` | `/derive` | Whether an assembly's stake is withdrawable: in-flight processes whose provenance names its assembly hash. |
 | `deriveClauseWithdrawGate` | `/derive` | Whether a clause's stake is withdrawable, and what still blocks it. |
 | `deriveInFlightOrders` | `/derive` | Every committed order whose process has not resolved. |
-| `derivePricedFields` | root | The fields a quote prices, read from the composed clauses' specs: the commercial clause's `payment` and each line's `unitPrice`; empty when no commercial clause is composed or the specs are not cached. |
+| `derivePricedFields` | root | The copies of a quoted figure inside the clauses, read from the composed clauses' specs: each line's `unitPrice` in the clause declaring `lineItems`; empty when no such clause is composed or the specs are not cached. The quote itself moves the commitment's payment, so an empty list still quotes. |
 | `deriveSharedSecretAsReceiver` | `/handoff` | ECDH shared secret from the sender's public key and your private key. |
 | `deriveSharedSecretAsSender` | `/handoff` | ECDH shared secret from your private key and the receiver's public key. |
 | `deserializeCommitmentPayload` | `/agent` | Parse a wire envelope back into a `CommitmentPayload`. |
@@ -388,7 +389,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalog and process set. |
 | `fillCatalogueMeasures` | root | Fold the measures each composed spec declares in `block.checkout.catalogueMeasures` from the lines' catalog items; a missing measure stays missing. |
 | `fillClassClauses` | root | Fold catalog-filled class values (freight class, hazmat, cold chain, …) onto their leaves. |
-| `fillCommerceClause` | root | Write payment, currency and (root only) the cart's line items into the commerce leaf. |
+| `fillCommerceClause` | root | Write the order's line items into the clause declaring `lineItems`; nothing when no such clause is composed. The payment and the token stay in the commitment. |
 | `fillDerivedClauses` | root | Run every logistics fill the order composes — catalog measures, class, profile, then dimweight. |
 | `fillDimweightClause` | root | Billed weight = max(gross mass, volumetric) onto the dimweight leaf. DERIVED, never hand-filled; skipped while the gross mass or a dimension is missing. |
 | `fillProfileClauses` | root | Fold the seller's profile-filled clause values onto their leaves. |
@@ -1059,8 +1060,8 @@ channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, 
     accept: (offer) => offer.commitment.currency === myAcceptedToken
         && offer.commitment.expectedCumulativeValue <= myMaxBond,
     policy: { requireRootShape: true, currencyAllowlist: [myAcceptedToken], maxValue: myMaxBond },
-    specs, // the merkle-leaf sign gate, required — a leaf/struct contradiction
-           // or missing required term REFUSES before counter-signing; omit it
+    specs, // the merkle-leaf sign gate, required — a spec violation, a pin
+           // contradiction or a missing required term REFUSES before counter-signing; omit it
            // and every offer is REFUSED
     readDesign, // (provenance) => the hydrated assembly the offer names, read
            // by its assembly hash and verified (`anchorAssembly` +
@@ -1137,8 +1138,8 @@ const { status, body } = await respond(rawRequestBody); // status is always 200 
 // the same bound-assembly check (`readProfile`, the candidate's own profile —
 // a draft under an assembly it has not bound is refused, so a buyer races only
 // candidates whose profiles bind the assembly), and the same required `specs`
-// merkle-leaf gate (no SpecSource, no signature): a draft whose commerce leaf contradicts
-// the struct, which drops a clause of the design it names, or whose designer
+// merkle-leaf gate (no SpecSource, no signature): a draft whose clause breaks its spec
+// or whose pin contradicts the token, which drops a clause of the design it names, or whose designer
 // values differ from it
 // (`design`, the hydrated assembly; null refuses a draft naming one), is
 // refused before any signature.
@@ -1161,8 +1162,9 @@ const race = await requestCounterSignatures(channel, drafts, { chainId, core });
 // jobs, thin markets — no posted figure fits). The request goes out at the
 // buyer's CEILING (their reservation price, inside the signed struct so the
 // cap is enforceable); the candidate's pricing function quotes below it; the
-// counter-draft re-prices ONLY the fields the buyer named (`pricedFields` —
-// the buyer names their own clause, the SDK names none). The buyer verifies
+// counter-draft moves the commitment's payment and re-prices ONLY the copies
+// of the figure the buyer named inside the clauses (`pricedFields` — the
+// buyer names their own clause, the SDK names none; possibly none at all). The buyer verifies
 // by RECONSTRUCTION: the same substitution applied to their OWN draft must
 // reproduce the reply hash-for-hash — a quote can change the price and
 // nothing else. Cheapest verified quote wins; the buyer signs exactly one.
@@ -1177,12 +1179,11 @@ channel.register(courierAddr, makeSellerQuoteHandler(courierWallet, { chainId, c
 // A priced field names its clause by KEY — the keccak256 of the canonical
 // spec without its `block`, the same key the agreement's clause entry carries — never by name.
 // `derivePricedFields(clauseEntries, specs)` derives the list from the clause
-// declaring `lineItems`.
+// declaring `lineItems`; an agreement composing no line items quotes with [].
 const commerceKey = computeClauseKey(commerceSpec); // the spec you fetched and verified
 const drafts = candidates.map((seller) => buildQuoteRequest({
     assembly, buyer, seller, currency, ceiling, chainId, core,
-    pricedFields: [{ clause: commerceKey, path: "payment" },
-                   { clause: commerceKey, path: "lineItems.0.unitPrice" }],
+    pricedFields: [{ clause: commerceKey, path: "lineItems.0.unitPrice" }],
     overrides,
 }));
 const { winner: quoted } = await requestQuotes(channel, drafts, { chainId, core });
@@ -2017,12 +2018,11 @@ content-withheld clause (`dataHash` with no `data`) — a signer binds no leaf i
 cannot read; `publicForm` withholds at the pin, after the signatures. A
 process-log clause's empty anchor is read as what it is. A value the design sets
 is the designer's and arrives unchanged; a design field the designer left
-unset is a party's to fill. The mirror check is why the gate takes the commitment's
-`{ currency, payment }` pair (a full `Commitment` satisfies it): both are
-clause leaves under `checkoutHash` (the commerce clause's `currency` and
-`payment` fields) AND fields of the commitment, and the gate asserts
-each leaf equals its struct mirror — plus, where the assembly composes a
-denomination pin, that the pin equals the currency leaf. The negative half matters just as much: `buildOrderAgreement`
+unset is a party's to fill. The gate takes the commitment being signed: the
+token and the payment are its fields alone, no clause restates them (a clause
+carrying `payment` or `currency` beside its declared fields is refused by its
+own spec), and where the assembly composes a denomination pin the gate
+asserts that the pin equals the commitment's token. The negative half matters just as much: `buildOrderAgreement`
 itself validates NOTHING — it is pure projection (apply spec defaults, sort,
 hash) — so a caller that builds an agreement and skips `assertAgreementSignable`
 can still produce a signable-looking object with content that violates its own
@@ -2034,9 +2034,8 @@ import { buildOrderAgreement, assertAgreementSignable, clauseByField } from "@fi
 // clauses: clauseKey → field values (design-time ∪ runtime fill). Each clause
 // reads the spec its key names.
 const { agreement, checkoutHash } = buildOrderAgreement(buyer, seller, clauses, specs);
-// The 4th argument is the commitment's mirrored pair (currency + payment) —
-// the struct side of the leaf==struct assertion; a full Commitment satisfies
-// it. The 5th is the hydrated assembly the agreement's provenance names (null
+// The 4th argument is the commitment being signed (the gate reads its token
+// against any composed denomination pin). The 5th is the hydrated assembly the agreement's provenance names (null
 // for an agreement naming none). The last argument is the label used in the error.
 assertAgreementSignable(agreement, checkoutHash, specs, commitment, hydrated, "checkout"); // throws on any validation issue
 
@@ -2079,7 +2078,7 @@ import {
 // over the ClauseRegistered rows, the specs and the DAO wallet's address);
 // then per canvas order either bind a registered agreement as is
 // (`registeredByOrderId`, the hydrated document — refused if it lacks a clause
-// of commerce's or topology's shape) or compose clauses (`clausesByOrderId`),
+// of topology's shape) or compose clauses (`clausesByOrderId`),
 // which become a NEW agreement with the mandatory clauses written in first.
 const mandatory = mandatoryClauses(rows, specs, daoTreasury);
 const { assembly, agreements } = buildAssembly({
@@ -2127,9 +2126,9 @@ const { leaf, proof, slotContentHash } = buildAgreementInclusionProof(assembly.a
 
 `composeAuthoredAgreement(doc, specs)`, `composeAuthoredAgreements(docsByName, specs)` and `assembleAuthored(doc, agreementsByName, specs)`
 are the SEED-TIME derivation for the reference set written by hand: an agreement file (`agreements/*.json`, clause names with the
-designer's fills, the two mandatory clauses named like any other) resolves its names (`resolveAuthoredClauseKeys`) and composes
+designer's fills, the mandatory clauses named like any other) resolves its names (`resolveAuthoredClauseKeys`) and composes
 through the one composition rule (`composeOrderAgreement`: the scope check, the
-value-free rule, one clause of commerce's shape and one of topology's) into the document the seeding pins and its
+value-free rule, one clause of topology's shape) into the document the seeding pins and its
 key (`composeAuthoredAgreements` composes a whole set by name); an assembly file (agreements naming the written agreements they bind
 and carrying their own `follows`) binds each named agreement's hash
 and takes the topology parents as the agreement's fill, returning each DISTINCT
@@ -2186,13 +2185,13 @@ const orders = await reconstructOrdersFromAssembly(assembly, {
   nodes: (node) => ({
     seller: sellerFor(node.nodeId),
     payment: paymentFor(node.nodeId),
-    // The token is a TERM (a merkle leaf on the commerce
-    // clause) that the commitment's `currency` param above MIRRORS — write
-    // the same address into both, or the sign gate refuses the agreement.
-    // A pinned assembly's value comes from its denomination clause
-    // (`readUtilityTokenPin` resolves it); otherwise it is the buyer's pick
-    // from the seller's accepted tokens, else the seller's default.
-    overrides: { [commerceKey]: { currency, payment: paymentFor(node.nodeId).toString(), lineItems } },
+    // The token is the commitment's `currency` param above and the payment
+    // is `payment` here: neither enters a clause. A pinned assembly's token
+    // comes from its denomination clause (`readUtilityTokenPin` resolves it);
+    // otherwise it is the buyer's pick from the seller's accepted tokens,
+    // else the seller's default. Where the design composes a clause
+    // declaring `lineItems`, the lines go there.
+    overrides: { [commerceKey]: { lineItems } },
   }),
   // Per-node seam, invoked in commit order as each order is realized — sign,
   // pin the party-private agreement, share, or compose here. SHARING is
@@ -2254,7 +2253,7 @@ import {
 } from "@figaro-protocol/sdk";
 ```
 
-- **Clause fills** (by declared field): `fillCommerceClause` (payment terms — `lineItems` supplied only for the root cart), `writeTopologyClause`
+- **Clause fills** (by declared field): `fillCommerceClause` (the order's line items, where a clause declaring `lineItems` is composed; the payment and the token stay in the commitment), `writeTopologyClause`
   (the REAL order hashes of the orders followed into `follows`), and the logistics
   fills `fillDerivedClauses` folds together — `fillCatalogueMeasures` (each
   field a spec declares in `block.checkout.catalogueMeasures`, read from the
@@ -2330,7 +2329,7 @@ await reconstructOrdersFromAssembly(assembly, {
     // you build yourself.
     const filled = fillProfileClauses(
       fillClassClauses(
-        fillCommerceClause(planned.clauses, payment, currency, specs, lineItems),
+        fillCommerceClause(planned.clauses, specs, lineItems),
         lineItems, specs,
       ),
       profileValuesFor(seller, memberCatalogs), specs,
@@ -2610,7 +2609,7 @@ item names the source processes in the license clause, whichever side it held.
 
 ### 2. COMPOSE — the sale is an order like any other
 
-The sale composes the commerce clause plus, typically, a license clause and a
+The sale composes, typically, the line-items clause, a license clause and a
 hand-off clause; where the subject is **this process's own** co-produced data
 rather than someone else's, a data-terms clause composes into that process
 instead, fixing the disclosure regime the parties co-sign.
@@ -2618,7 +2617,7 @@ instead, fixing the disclosure regime the parties co-sign.
 ```ts
 const clauses = {
   // Keyed by clause key — the keys of the specs your SpecSource holds.
-  [commerceKey]: { currency, payment: price.toString(), lineItems },
+  [commerceKey]: { lineItems },        // the price is the commitment's payment
   [licenseKey]:  {
     licenseScope:   "Flight telemetry — 2026 Q3 survey window",
     purpose:        "internal analytics only; model training excluded",

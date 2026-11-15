@@ -20,7 +20,7 @@
  * agreements the designer bound to agreements, read from `AgreementRegistry`
  * and verified against their keys (`getRegisteredAgreement`). It VERIFIES
  * scope placement, refuses an agreement that both binds and composes,
- * refuses an agreement lacking a clause of commerce's or topology's shape,
+ * refuses an agreement lacking a clause of topology's shape,
  * and throws on a cold spec cache or an unread bound agreement — loud
  * failures the callers
  * surface, never silently swallowed here.
@@ -36,7 +36,7 @@ import {
     type HydratedAssembly,
 } from "@figaro-protocol/sdk";
 import { getRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
-import { clauseDesignFills, clauseIsMandatory, getClauseSpec, mandatoryClausesForCanvas, specSource } from "@/lib/shared/clauseSpecSource";
+import { clauseDeclaresField, clauseDesignFills, clauseIsMandatory, getClauseSpec, mandatoryClausesForCanvas, specSource } from "@/lib/shared/clauseSpecSource";
 import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
 import { deriveAssemblySlug, type Assembly } from "@/lib/shared/assembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -60,12 +60,12 @@ function readAgreements(byOrderId: Record<string, `0x${string}`> | undefined, us
 
 /** Project a design snapshot onto the canonical assembly and the
  *  agreements newly composed for it (the ones publish registers before the
- *  assembly). The mandatory clauses are the DAO's live commerce and topology
+ *  assembly). The mandatory clauses are the DAO's live mandatory clauses
  *  (`mandatoryClausesForCanvas`), written into every agreement it composes
  *  before the designer's selection. Throws when a clause's spec is not loaded
  *  or is composed at the wrong scope, an agreement both binds and composes, a
- *  bound agreement is unread, or an agreement lacks a clause of commerce's or
- *  topology's shape — the SDK's own refusals, and this file's one. */
+ *  bound agreement is unread, or an agreement lacks a clause of topology's
+ *  shape — the SDK's own refusals, and this file's one. */
 export function snapshotToAssembly(snapshot: DesignSnapshot): BuiltAssembly {
     return buildAssembly({
         name: snapshot.name.trim() || undefined,
@@ -228,6 +228,10 @@ export type SnapshotReview =
         /** The mandatory clauses the assembly carries, by key — what
          *  the designer confirms before publish. */
         mandatory: MandatoryClause[];
+        /** The canvas order ids whose agreement composes no clause declaring
+         *  `lineItems`: each such order commits its payment in the
+         *  commitment and no list of what the payment buys. */
+        withoutLineItems: string[];
     }
     | { ok: false; error: string };
 
@@ -246,11 +250,14 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
         const boundIds = new Set(Object.keys(snapshot.registeredByOrderId ?? {}));
         const composedByOrderId: Record<string, Record<string, Record<string, unknown>>> = {};
         const composedClausesByOrderId: Record<string, ComposedClause[]> = {};
+        const withoutLineItems: string[] = [];
         snapshot.orders.forEach((order, index) => {
-            const agreementId = assembly.agreements[index]?.id;
-            if (agreementId === undefined) return;
-            composedByOrderId[order.orderHash] = byAgreement[agreementId] ?? {};
-            composedClausesByOrderId[order.orderHash] = clausesByAgreement[agreementId] ?? [];
+            const entry = assembly.agreements[index];
+            if (entry === undefined) return;
+            composedByOrderId[order.orderHash] = byAgreement[entry.id] ?? {};
+            composedClausesByOrderId[order.orderHash] = clausesByAgreement[entry.id] ?? [];
+            const carried = Object.keys(agreementClauses(hydrated, entry));
+            if (!carried.some((clauseKey) => clauseDeclaresField(clauseKey, "lineItems"))) withoutLineItems.push(order.orderHash);
         });
         return {
             ok: true,
@@ -268,6 +275,7 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
             composedClausesByOrderId,
             assemblyClauses: assembly.assemblyClauses ?? {},
             mandatory: assemblyMandatoryClauses(hydrated),
+            withoutLineItems,
         };
     } catch (cause) {
         return {

@@ -371,7 +371,7 @@ function checkoutNodes(
     },
 ): (planned: PlannedAssemblyOrder) => ReconstructNodeSpec {
     const { rootId, boundSellerByNode, compositionByNode, specs, onMissingMeasure } = ctx;
-    const { leadSellerAddress, currency, payment, lineItems, sellerCatalogs, tokenDecimals, subOrderSelections } = params;
+    const { leadSellerAddress, payment, lineItems, sellerCatalogs, tokenDecimals, subOrderSelections } = params;
     const hydrated = params.assembly.hydratedAssembly;
     return (planned) => {
         // The agreement's own clauses — its registered agreement's, with the
@@ -383,16 +383,16 @@ function checkoutNodes(
             // The root's clause map: the derived LOGISTICS clauses (cargo /
             // class leaves / dimweight) filled from the cart — wherever
             // composed, by declared field, never by clause name — then the
-            // denomination terms. `currency` is the ONE process currency (the
-            // FigaroCore enforces single-denomination, FigaroCore
-            // CurrencyMismatch), never a per-order input.
+            // cart's line items, where a clause declaring them is composed.
+            // The payment (the cart total) and the token go into the
+            // commitment only.
             const filled = fillCommerceClause(
                 fillDerivedClauses(
                     { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) },
                     lineItems, specs,
                     profileValuesFor(leadSellerAddress, sellerCatalogs),
                 ),
-                payment, currency, specs, lineItems,
+                specs, lineItems,
             );
             refuseMissingMeasures(filled, specs, onMissingMeasure);
             return {
@@ -452,13 +452,15 @@ function checkoutNodes(
             : translatedUnit !== undefined
                 ? translatedUnit * BigInt(pricing!.billedQuantity)
                 : pricing!.payment;
-        // The sub-order's commerce clause states WHAT the payment buys: the
-        // contributor's resolved catalog item (the same item the payment
-        // was priced from), or the buyer's picked item on the unbound path.
-        // The commerce clause requires lineItems on EVERY order, subs
-        // included. Rate items commit their derivation: quantity = billed
-        // units (per started unit), unitPrice = the rate — quantity ×
-        // unitPrice replays the payment from the committed leaf alone.
+        // Where a clause declaring `lineItems` is composed, the sub-order
+        // commits WHAT the payment buys: the contributor's resolved catalog
+        // item (the same item the payment was priced from), or the buyer's
+        // picked item on the unbound path. Rate items commit their
+        // derivation: quantity = billed units (per started unit), unitPrice =
+        // the rate — so quantity × unitPrice replays the payment from the
+        // committed leaf alone. That replay holds only where such a clause is
+        // composed: an agreement without one commits the payment in the
+        // commitment and no line from which to replay it.
         const subLineItems: AssemblyCheckoutLineItem[] | undefined = selection
             ? [{ itemId: selection.item.id, name: selection.item.name, quantity: 1, unitPrice: subPayment.toString() }]
             : pricing!.item
@@ -483,7 +485,7 @@ function checkoutNodes(
                 subLineItems ?? [], specs,
                 profileValuesFor(subSeller, sellerCatalogs),
             ),
-            subPayment, currency, specs, subLineItems,
+            specs, subLineItems,
         );
         refuseMissingMeasures(filled, specs, onMissingMeasure);
         return {

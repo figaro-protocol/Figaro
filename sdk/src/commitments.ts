@@ -4,8 +4,8 @@
  * Produces the EIP-712 typed data of the unified Commitment struct, for any
  * wallet to sign (MetaMask, Safe, a programmatic signer) — AFTER the sign
  * gate: no signature leaves without `assertAgreementSignable` over the
- * agreement the struct's `checkoutHash` roots (the clause checks, the term
- * mirror, the designer's values, the merkle root). The agent helpers
+ * agreement the struct's `checkoutHash` roots (the clause checks, the
+ * denomination pin, the designer's values, the merkle root). The agent helpers
  * (`@figaro-protocol/sdk/agent`: `originate`, `counterSignOffer`,
  * `counterSignDraft`, `quoteDraft`) and the frontend's sign step run that gate
  * for you; a caller that signs `typedData` itself runs it first.

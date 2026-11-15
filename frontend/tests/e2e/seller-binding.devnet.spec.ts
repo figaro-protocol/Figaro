@@ -85,12 +85,12 @@ test.describe('a seller refuses an order under an assembly it has not bound (dev
         const { notBound } = pair!;
 
         // The buyer's order under that assembly, built through the SDK's
-        // assembly walk with its commerce terms filled, signed out of band.
+        // assembly walk with its line items filled, signed out of band.
         const specs = specSource();
         const [root] = planAssemblyOrders(notBound.hydrated);
         const currency = (readUtilityTokenPin(root.clauses, specs) ?? token) as Hex;
         const payment = 1_000_000n;
-        const filled = fillCommerceClause(root.clauses, payment, currency, specs, [
+        const filled = fillCommerceClause(root.clauses, specs, [
             { itemId: 'seller-binding', name: 'Under an assembly the seller has not bound', quantity: 1, unitPrice: payment.toString() },
         ]);
         const chainNow = (await publicClient.getBlock({ blockTag: 'latest' })).timestamp;

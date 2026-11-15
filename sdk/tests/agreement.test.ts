@@ -20,7 +20,7 @@ const CURRENCY = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
 
 const COMMERCE: AgreementClause = {
     clause: K("figaro-commerce"),
-    data: { currency: CURRENCY, payment: "1000000000000000000", lineItems: [] },
+    data: { lineItems: [{ itemId: "i-1", name: "Item", quantity: 1, unitPrice: "1000000000000000000" }] },
 };
 const GEO: AgreementClause = {
     clause: K("figaro-geolocation"),
@@ -60,7 +60,7 @@ describe("computeClauseLeaf", () => {
     });
 
     it("changes when clause data changes", () => {
-        const modified = { ...COMMERCE, data: { ...COMMERCE.data, payment: "2000000000000000000" } };
+        const modified = { ...COMMERCE, data: { lineItems: [{ itemId: "i-1", name: "Item", quantity: 2, unitPrice: "1000000000000000000" }] } };
         expect(computeClauseLeaf(COMMERCE)).not.toBe(computeClauseLeaf(modified));
     });
 

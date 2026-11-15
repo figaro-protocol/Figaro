@@ -153,8 +153,6 @@ function payloadUnder(d: ReturnType<typeof design> | null, opts: { buyerSig?: bo
     const payment = opts.payment ?? 1000n;
     const { agreement: built } = buildOrderAgreement(BUYER, SELLER, {
         [keyOf("figaro-commerce")]: {
-            currency: CURRENCY,
-            payment: payment.toString(),
             lineItems: [{ itemId: "item-1", name: "Item", quantity: 1, unitPrice: payment.toString() }],
         },
         ...(d ? { [keyOf("figaro-consent")]: { documents: d.documents } } : {}),
@@ -179,7 +177,7 @@ function payloadUnder(d: ReturnType<typeof design> | null, opts: { buyerSig?: bo
 function quoteRequestUnder(d: ReturnType<typeof design>): CommitmentPayload {
     return {
         ...payloadUnder(d, { buyerSig: false }),
-        quoteRequest: { pricedFields: [{ clause: keyOf("figaro-commerce"), path: "payment" }, { clause: keyOf("figaro-commerce"), path: "lineItems.0.unitPrice" }] },
+        quoteRequest: { pricedFields: [{ clause: keyOf("figaro-commerce"), path: "lineItems.0.unitPrice" }] },
     };
 }
 

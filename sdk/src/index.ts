@@ -264,7 +264,6 @@ export {
     specIsProcessLog,
     specIsAssemblyScoped,
     specIsMandatory,
-    specIsCommerceShape,
     specIsTopologyShape,
     mandatoryClauses,
     type ClauseRegistrationRow,
@@ -274,7 +273,6 @@ export {
 } from "./projection.js";
 export type {
     CommitmentAgreementIssue,
-    CommitmentMirror,
     OrderAgreement,
     CatalogueMeasure,
     ProjectionHints,

@@ -26,7 +26,7 @@ const sellerW = createWalletClient({ account: SELLER, transport: http("http://12
 const assembly = hydrateAuthored({
     agreements: [{
         id: "root",
-        clauses: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: PAYMENT.toString(), lineItems: [] } },
+        clauses: { [keyOf("figaro-commerce")]: { lineItems: [] } },
     }],
 });
 

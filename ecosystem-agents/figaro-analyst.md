@@ -36,9 +36,9 @@ analysis. Five graphs are NAMED there, and they are the canonical grouping you p
 answers in — but **the class itself is open**, and treating the five as a closed enum is
 the single mistake that makes an analyst wrong about a market it has never seen.
 
-- **Process** and **Resolution** are BASE graphs. They fall out of the must-have clauses by
-  construction — topology (who comes before whom) and commerce (who pays whom, in what
-  token, how much) — so every deployment has them and nothing has to be registered for
+- **Process** and **Resolution** are BASE graphs. They fall out of what every order
+  carries by construction — the topology clause (who comes before whom) and the
+  commitment (who pays whom, in what token, how much) — so every deployment has them and nothing has to be registered for
   them to exist. Truth boundary: **protocol-enforced**. Every node is economically backed;
   every bond and payout is on chain and checked by contract invariants.
 - **OVERLAYS are spec-derived, one per attestable clause family in USE.** Geo and GHG are

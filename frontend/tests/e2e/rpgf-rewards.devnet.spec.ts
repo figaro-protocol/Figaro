@@ -161,8 +161,6 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
                     {
                         clause: COMMERCE_CLAUSE,
                         data: {
-                            currency: token,
-                            payment: payment.toString(),
                             lineItems: [{ itemId: 'rpgf-e2e', name: 'RPGF e2e item', quantity: 1, unitPrice: payment.toString() }],
                         },
                     },
@@ -173,11 +171,6 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
                 ],
             };
             const checkoutHash = computeCheckoutHash(agreement);
-            // THE MERKLE-LEAF SEAM (docs/CLAUSES.md § "Every clause is a merkle
-            // leaf"): the commerce clause's currency and payment TERMS must
-            // equal the commitment struct's mirrors BEFORE either party signs.
-            // The agreement names no design (no provenance leaf), so no design is read.
-            assertAgreementSignable(agreement, checkoutHash, specSource(), { currency: token, payment }, null);
 
             // 3. Sign + commit (both parties bond; the buyer broadcasts). Root
             //    orders sign processId = 0 — the chain derives the real id.
@@ -197,6 +190,9 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
                 },
                 domain,
             );
+            // The sign gate runs before either party signs. The agreement
+            // names no design (no provenance leaf), so no design is read.
+            assertAgreementSignable(agreement, checkoutHash, specSource(), commitment, null);
             const buyerSig = await buyerWallet.signTypedData(typedData);
             const sellerSig = await sellerWallet.signTypedData(typedData);
             const { buyerBond, sellerBond } = calculateBonds(payment, payment);

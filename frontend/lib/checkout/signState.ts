@@ -40,7 +40,7 @@ export function deriveSignState(
     const hasSellerSig = !!parsed?.sellerSig;
     const isDraft = !!parsed && !hasBuyerSig && !hasSellerSig;
     const quoteTerms = isDraft ? parsed?.quoteRequest : undefined;
-    const isQuoteRequest = !!quoteTerms && quoteTerms.pricedFields.length > 0;
+    const isQuoteRequest = !!quoteTerms;
 
     const isBuyer = hexEqual(address, commitment?.buyer);
     const isSeller = hexEqual(address, commitment?.seller);

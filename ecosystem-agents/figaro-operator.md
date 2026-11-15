@@ -167,8 +167,7 @@ without the clause, term and designer checks.
 
 - **Buyer side:** `originateProcess` / `originateChain` take `specs` beside `deadline`
   (the builders under them, `buildBuyerOffer` / `buildChainOffers`, take the same field).
-  The walk also fills the currency leaf from the figure the struct signs and THROWS on an
-  override that contradicts it.
+  The token and the payment go into the commitment only; no clause carries them.
 - **Seller side:** `makeSellerOfferHandler(wallet, publicClient, addresses, { accept,
   policy, specs, readDesign, readProfile })`, or `counterSignOffer(wallet, offer, ctx, specs,
   accept, policy, design, readProfile)` directly. The market-formation legs take them in the
@@ -223,8 +222,8 @@ const overrides = {};
 const root = assembly.assembly.agreements[0];
 for (const clauseKey of Object.keys(agreementClauses(assembly, root))) {
   const fields = specs.get(clauseKey)?.fields ?? [];
-  if (fields.some((f) => f.name === "lineItems"))          // the commerce clause, by field
-    overrides[clauseKey] = { currency, payment: payment.toString(), lineItems };
+  if (fields.some((f) => f.name === "lineItems"))          // the line items, by field
+    overrides[clauseKey] = { lineItems };                    // payment and token: the commitment's
   if (fields.some((f) => f.name === "modality"))            // a modality clause, if composed
     overrides[clauseKey] = { modality: "virtual" };         // the BUYER's request
 }
@@ -277,7 +276,7 @@ agent that resolves without this credits no clause, agreement or assembly design
 the 600M reward's uniformity across actors is exactly this call. Only the clause FINGERPRINT
 reaches calldata, so a private clause's plaintext never becomes public. Read the report,
 not the absence of an exception. **Every clause EARNS**, the mandatory ones included:
-commerce and topology ride on every order and are scored for their designer of record like
+commerce and topology ride on every agreement the reference canvas composes and are scored for their designer of record like
 any other, and `recordProcessUsage` sends one clause leg per distinct clause key the
 process carries (`attempted` / `recorded`). The once-per-process agreement and assembly credits are
 INDEPENDENT legs (`agreementRecorded`, `assemblyRecorded`): `recordAgreementUsage` is called
@@ -394,8 +393,8 @@ root `@figaro-protocol/sdk` exports and the document you were handed:
    sig, address, { chainId, core })` answers "did this address really sign this struct?".
 
 **Recomputing the hash stays necessary — and it is not sufficient.** A document can hash
-correctly and still be wrong: the terms inside it can contradict the struct you bond
-against, omit a term the clause requires, drop a clause of its design, or change a designer's
+correctly and still be wrong: a clause inside it can restate the token or the payment,
+a pin can contradict the token you bond in, it can omit a term the clause requires, drop a clause of its design, or change a designer's
 value.
 `assertAgreementSignable(agreement, checkoutHash, specs, commitment, design, label)` is the
 one off-chain gate every signature in the SDK routes through, and it refuses five things the
@@ -404,13 +403,12 @@ hash comparison cannot see:
 - **A clause that violates its own clause spec** — including a MISSING REQUIRED term. An
   agreement can carry a clause the designer composed and the buyer never filled; the gate
   refuses to sign it rather than committing an empty term.
-- **A leaf that contradicts the struct, on BOTH mirrored terms.** `currency` and `payment`
-  live in two places at once: as merkle leaves under `checkoutHash` (the commerce clause's
-  fields — the TERMS) and as fields of the commitment (the EXECUTION data). The gate
-  asserts each leaf equals its struct mirror; a mismatch on either is a refusal.
-- **A broken pin chain.** Where the assembly composes a denomination pin (an
+- **A clause that restates the token or the payment.** `currency` and `payment` are the
+  commitment's fields and nothing else's: `figaro-commerce` declares only `lineItems`, so
+  a clause carrying either beside its declared fields breaks its own spec and is refused.
+- **A broken pin.** Where the assembly composes a denomination pin (an
   assembly-scoped clause declaring `currency` as a designer fill), the gate asserts
-  pin == commerce leaf == struct — so an assembly denominated by design cannot be resolved
+  pin == the commitment's token — so an assembly denominated by design cannot be resolved
   in a token the designer did not pin.
 - **A designer value a party changed.** `design` is the hydrated assembly the agreement's
   provenance leaf names. Every field a clause declares in `block.design.fills` that the

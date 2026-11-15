@@ -47,17 +47,19 @@ export interface CommitmentPayload {
     buyerFunding?: SwapFundingLeg;
     /** Present on an RFQ quote-request draft: the candidate authors the price.
      *  `commitment.payment` is the buyer's CEILING (their reservation price —
-     *  a quote above it is invalid), and `pricedFields` names where the figure
-     *  lives in the agreement — the BUYER names their own clause (the SDK
-     *  names none); both sides apply the same mechanical substitution, so the
-     *  buyer verifies a quote by RECONSTRUCTION, never by diffing. Absent on
+     *  a quote above it is invalid), and the quote moves that payment;
+     *  `pricedFields` names where copies of the figure live inside the
+     *  agreement's clauses, possibly none — the BUYER names their own clause
+     *  (the SDK names none); both sides apply the same mechanical
+     *  substitution, so the buyer verifies a quote by RECONSTRUCTION, never by
+     *  diffing. Absent on
      *  every other payload (a race draft prices at the candidate's posted
      *  figure; an offer is already priced). */
     quoteRequest?: QuoteRequestTerms;
 }
 
-/** A field of the agreement that carries the transaction figure — named by
- *  the BUYER in their quote request. `path` is dotted into the clause's
+/** A field inside the agreement's clauses that carries a copy of the quoted
+ *  figure — named by the BUYER in their quote request. `path` is dotted into the clause's
  *  `data` (numeric segments index arrays, e.g. `lineItems.0.unitPrice`); the
  *  substituted value is the quote's decimal string in raw token units. */
 export interface PricedField {

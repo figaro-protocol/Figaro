@@ -21,7 +21,8 @@ import type { DocumentLayout } from "@/lib/audit/documentProjection";
 
 /** Commercial invoice, EN 16931 core — one per SELLER (BG-4 single supplier). The
  *  interpretive VAT class is jurisdiction/graph-supplied and absent from the core.
- *  Applies wherever a commerce leaf (declaring `lineItems`) was committed. */
+ *  Applies wherever a clause declaring `lineItems` was committed; its currency
+ *  is the commitment's token, never a clause's. */
 const COMMERCIAL_INVOICE: DocumentLayout = {
     genre: "commercial-invoice",
     title: "Commercial invoice (EN 16931 core)",
@@ -33,7 +34,7 @@ const COMMERCIAL_INVOICE: DocumentLayout = {
         { label: "Type (BT-3)", ref: { const: "380 — commercial invoice" } },
         { label: "Seller (BG-4)", ref: { party: "seller" } },
         { label: "Buyer (BG-7)", ref: { party: "buyer" } },
-        { label: "Currency (BT-5)", ref: { leafField: { byField: "lineItems", field: "currency" } } },
+        { label: "Currency (BT-5)", ref: { currency: true } },
     ],
     lines: {
         fields: [

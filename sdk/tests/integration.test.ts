@@ -286,7 +286,6 @@ describe.skipIf(!ALIVE)(ALIVE ? "SDK Integration (Anvil)" : `SDK Integration (An
         });
         const GATE_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
         const pricedFields = [
-            { clause: keyOf("figaro-commerce"), path: "payment" },
             { clause: keyOf("figaro-commerce"), path: "lineItems.0.unitPrice" },
         ];
         const requestFor = (candidate: Address) => buildQuoteRequest({
@@ -295,7 +294,6 @@ describe.skipIf(!ALIVE)(ALIVE ? "SDK Integration (Anvil)" : `SDK Integration (An
             deadline: chainNow + 3600n,
             overrides: {
                 [keyOf("figaro-commerce")]: {
-                    currency: tokenAddress, payment: "0",
                     lineItems: [{ itemId: "job", name: "Bespoke job", quantity: 1, unitPrice: "0" }],
                 },
             },

@@ -18,7 +18,6 @@
 import { parseUnits } from "viem";
 import { geohashCentroidDistanceKm } from "./derive/geo.js";
 import {
-    specDeclaresContentField,
     specDeclaresDesignFill,
     specDeclaresField,
     specCatalogFills,
@@ -58,10 +57,9 @@ export interface AssemblyCheckoutLineItem {
  *  composed key reads its own spec (`specs.get(clauseKey)`). Undefined while
  *  the spec is unloaded — the fill degrades to a no-op, exactly as the
  *  registry-reading frontend does before its cache warms. The ONE lookup
- *  every spec-routed fill runs — this module's clause writers, its
- *  rate-quantity resolvers and the assembly walk's guarded fills
- *  (`reconstructOrders.ts` `fillWalkField`) alike. */
-export function composedClauseWhere(
+ *  every spec-routed fill runs — this module's clause writers and its
+ *  rate-quantity resolvers alike. */
+function composedClauseWhere(
     clauses: ClauseFields,
     specs: SpecSource,
     predicate: (spec: ProjectionSpecView) => boolean,
@@ -83,13 +81,13 @@ function composedClauseDeclaring(
 }
 
 /**
- * The RFQ's priced fields, DERIVED from an agreement by declared field — the
- * clause that carries the commercial terms (declared `lineItems`) prices at
- * `payment` and each committed line's `unitPrice`. Spec-routed like every
- * fill, naming no clause; empty when no commercial clause is composed
- * (nothing to quote) or the spec cache is cold. The returned paths are the
- * SAME fields `fillCommerceClause` writes, so a quote's substitution and the
- * checkout walk at the quoted price produce identical agreements.
+ * The RFQ's priced fields inside the clauses, DERIVED from an agreement by
+ * declared field — each committed line's `unitPrice` in the clause declaring
+ * `lineItems`. The quoted figure itself is the commitment's payment, which
+ * the quote always moves; these are only the copies of it a clause carries.
+ * Spec-routed like every fill, naming no clause; empty when no clause
+ * declaring `lineItems` is composed or the spec cache is cold, and an empty
+ * list still quotes (the commitment's payment alone moves).
  */
 export function derivePricedFields(
     clauseEntries: readonly { clause: Hex; data?: Record<string, unknown> }[],
@@ -102,50 +100,30 @@ export function derivePricedFields(
     if (!commerce) return [];
     const lineItems = clauses[commerce]?.lineItems;
     const count = Array.isArray(lineItems) ? lineItems.length : 0;
-    return [
-        { clause: commerce, path: "payment" },
-        ...Array.from({ length: count }, (_, i) => ({ clause: commerce, path: `lineItems.${i}.unitPrice` })),
-    ];
+    return Array.from({ length: count }, (_, i) => ({ clause: commerce, path: `lineItems.${i}.unitPrice` }));
 }
 
 /**
- * Write the order's resolution terms into the commerce clause, found by its
- * declared `lineItems` field (never by clause id; gracefully skipped when the
- * assembly composes no commerce clause). `payment` is stored as the clause
- * spec wants it (decimal string); `lineItems` is supplied only for the root
- * (the buyer's cart) and stripped to the commerce clause's closed shape —
- * the cart's physical attributes belong to the cargo collapse, not here.
- *
- * `currency` — the RESOLVED denomination (the assembly's utility-token
- * pin when composed, else the buyer's pick from the seller's accepted tokens,
- * else the seller's default) — is written exactly as `payment` is: it is a
- * TERM of the agreement, a merkle leaf under `checkoutHash`, which the
- * commitment's currency field then mirrors. Written only where the
- * commerce clause declares `currency` as content, so a third-party commerce
- * clause that declares no such field keeps its closed shape.
+ * Write the order's line items into the clause declaring `lineItems` (found
+ * by the declared field, never by clause id), stripped to that field's closed
+ * shape — the cart's physical attributes belong to the cargo collapse, not
+ * here. Writes nothing when no composed clause declares `lineItems`, or when
+ * no lines are given. The payment and the token are the commitment's own
+ * fields and never enter a clause.
  */
 export function fillCommerceClause(
     clauses: ClauseFields,
-    payment: bigint,
-    currency: `0x${string}`,
     specs: SpecSource,
     lineItems?: AssemblyCheckoutLineItem[],
 ): ClauseFields {
     const commerceClauseId = composedClauseDeclaring(clauses, "lineItems", specs);
-    if (!commerceClauseId) return clauses;
-    const spec = specs.get(commerceClauseId);
+    if (!commerceClauseId || !lineItems) return clauses;
     return {
         ...clauses,
         [commerceClauseId]: {
             ...clauses[commerceClauseId],
-            ...(spec && specDeclaresContentField(spec, "currency") ? { currency } : {}),
-            payment: payment.toString(),
-            ...(lineItems
-                ? {
-                    lineItems: lineItems.map(({ itemId, name, quantity, unitPrice }) =>
-                        ({ itemId, name, quantity, unitPrice })),
-                }
-                : {}),
+            lineItems: lineItems.map(({ itemId, name, quantity, unitPrice }) =>
+                ({ itemId, name, quantity, unitPrice })),
         },
     };
 }
@@ -154,11 +132,9 @@ export function fillCommerceClause(
  * The designer's utility-token pin, read from a registered agreement's composed
  * clauses — the composed clause declaring `currency` as a DESIGNER FILL
  * (`block.design.fills`), with a well-formed value. The design-fill
- * declaration is the whole routing rule, and it is what disambiguates the two
- * clauses that legitimately carry a `currency` field: the commerce clause
- * declares it as plain CONTENT (one order's resolution term, written at
- * checkout) and is never a pin, while ANY clause — including one this code
- * has never seen — declaring a `currency` design fill IS one. The pin
+ * declaration is the whole routing rule: ANY clause — including one this
+ * code has never seen — declaring a `currency` design fill IS one, and a
+ * clause declaring `currency` as plain content is never a pin. The pin
  * survives the value-free assembly build and is part of the assemblyHash:
  * the assembly's one-token tailoring.
  *
@@ -180,13 +156,13 @@ export function readUtilityTokenPin(
 
 /** The field names this module's fills write MECHANICALLY — derived or
  *  rewritten by the checkout walk regardless of any buyer input: the
- *  commercial terms (`fillCommerceClause`), the topology rewrite
+ *  line items (`fillCommerceClause`), the topology rewrite
  *  (`writeTopologyClause`), and the dimweight derivation
  *  (`fillDimweightClause`). ONE list, owned beside the fills it describes.
  *  The instantiated assembly's assembly hash is no field here: it is the
  *  agreement format's provenance leaf (`Agreement.provenance`), which the
  *  assembly walk writes, never a clause. */
-const MECHANICAL_FILL_FIELDS = ["currency", "payment", "lineItems", "follows", "billedMassGrams"] as const;
+const MECHANICAL_FILL_FIELDS = ["lineItems", "follows", "billedMassGrams"] as const;
 
 /**
  * The field names the checkout walk fills mechanically for THIS composed
@@ -588,8 +564,8 @@ export interface SubOrderPricing {
  * resolved through the rate-quantity-source registry from the order's OWN
  * clause fields (e.g. committed geolocation endpoints) or the buyer's
  * checkout-entered units — billed per started unit. An unresolvable quantity
- * yields payment 0n + `issue`, and the surface refuses to commit (the
- * commerce clause's `payment ≥ 1` would reject it during off-chain validation regardless).
+ * yields payment 0n + `issue`, and the surface refuses to commit (FigaroCore
+ * refuses a payment of zero at commit regardless).
  */
 export function resolveSubOrderPricing(args: {
     node: Pick<PlannedAssemblyOrder, "clauses">;

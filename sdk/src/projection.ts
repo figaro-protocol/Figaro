@@ -54,7 +54,7 @@ import {
     type HydratedAssembly,
 } from "./assembly.js";
 import { validateContent, type ClauseSpec } from "./clauses/index.js";
-import { isAddressHex, isBytes32Hex, type Address, type Hex } from "./types.js";
+import { isAddressHex, isBytes32Hex, type Address, type Commitment, type Hex } from "./types.js";
 
 // ── The spec seam ───────────────────────────────────────────────────────────
 
@@ -184,11 +184,11 @@ export function specDeclaresField(spec: ProjectionSpecView, fieldName: string): 
 /** Whether a spec declares `fieldName` as PLAIN CONTENT — declared, and NOT a
  *  designer fill (`block.design.fills`). The disambiguating half of
  *  `specDeclaresField` for a field name two clauses legitimately share: an
- *  order's denomination `currency` is plain content on the commerce clause
- *  (written at checkout, one term of one order), and a DESIGNER FILL on a
- *  denomination-pin clause (authored into the assembly, a term of the
- *  composition). Same field name, two different terms — so surfaces that mean
- *  one of them route on the declaration, never on a clause id. */
+ *  field may be plain content on one clause (written at checkout, one term
+ *  of one order) and a DESIGNER FILL on another (authored into the assembly,
+ *  a term of the composition, as a denomination pin's `currency` is). Same
+ *  field name, two different terms — so surfaces that mean one of them route
+ *  on the declaration, never on a clause id. */
 export function specDeclaresContentField(spec: ProjectionSpecView, fieldName: string): boolean {
     return specDeclaresField(spec, fieldName) && !specDesignFills(spec).includes(fieldName);
 }
@@ -250,10 +250,11 @@ export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
 }
 
 /** True for the MANDATORY clauses (`block.design.article: "mandatory"` —
- *  commerce, topology). An agreement is not an agreement without them, so a
- *  designer never selects one: the canvas writes the DAO's live mandatory
- *  clauses into every agreement it registers (`mandatoryClauses`), and the
- *  designer composes the rest. Never name this article "structural" — that
+ *  topology, and commerce as the reference specs declare it). A designer
+ *  never selects one: the canvas writes the DAO's live mandatory clauses
+ *  into every agreement it registers (`mandatoryClauses`), and the designer
+ *  composes the rest. The build requires topology's shape only
+ *  (`assertMandatoryShapes`). Never name this article "structural" — that
  *  word collides with the design/DAG sense.
  *
  *  The article is read from the spec's `block`, which whoever registered the
@@ -265,15 +266,6 @@ export function specIsMandatory(spec: ProjectionSpecView): boolean {
     return spec.hints?.article === "mandatory";
 }
 
-/** The SHAPE of commerce: a clause declaring `payment`, `currency` and
- *  `lineItems` as content — the fields checkout fills and the sign gate holds
- *  equal to the signed struct. Mandatory is a shape, never a name: any
- *  well-formed clause of this shape is commerce to every reader, and an
- *  agreement carries exactly one. */
-export function specIsCommerceShape(spec: ProjectionSpecView): boolean {
-    return ["payment", "currency", "lineItems"].every((f) => specDeclaresContentField(spec, f));
-}
-
 /** The SHAPE of topology: a clause declaring `follows` as content —
  *  the orders this order follows, the process's DAG. An agreement carries
  *  exactly one. */
@@ -281,12 +273,11 @@ export function specIsTopologyShape(spec: ProjectionSpecView): boolean {
     return specDeclaresContentField(spec, "follows");
 }
 
-/** The shape a mandatory-article spec has: commerce's, topology's, or (for a
- *  mandatory clause of another shape) the sorted names of the content fields
- *  it declares. Two mandatory specs of one shape are two versions of one
- *  clause to the canvas, whatever their names. */
+/** The shape a mandatory-article spec has: topology's, or (for a mandatory
+ *  clause of another shape) the sorted names of the content fields it
+ *  declares. Two mandatory specs of one shape are two versions of one clause
+ *  to the canvas, whatever their names. */
 function mandatoryShape(spec: ProjectionSpecView): string {
-    if (specIsCommerceShape(spec)) return "commerce";
     if (specIsTopologyShape(spec)) return "topology";
     return spec.fields.map((f) => f.name).filter((f) => specDeclaresContentField(spec, f)).sort().join(",");
 }
@@ -309,9 +300,8 @@ export interface ClauseRegistrationRow {
  *  chain's deployment record) registered whose stake is live and whose spec
  *  declares the mandatory article at agreement scope — all of them, one per
  *  shape, the later registration winning where the DAO holds two live
- *  clauses of one shape (its own transition; never the version word). An
- *  agreement is not an agreement without commerce and topology, so the DAO
- *  develops them and earns wherever they are used; a mandatory-article
+ *  clauses of one shape (its own transition; never the version word). The
+ *  DAO develops them and earns wherever they are used; a mandatory-article
  *  registration by any other wallet is an ordinary clause and enters no
  *  agreement by this route. Empty when the registrant holds no live
  *  mandatory clause: the canvas then publishes nothing. */
@@ -514,29 +504,6 @@ function addressLeaf(clauseEntry: AgreementClause | undefined, field: string): `
     return isAddressHex(value) ? value : undefined;
 }
 
-/** A bigint-valued leaf (stored as its canonical decimal string), or undefined
- *  when the clause carries none or the value is malformed — the malformed
- *  case is already an off-chain validation failure of its own. */
-function bigintLeaf(clauseEntry: AgreementClause | undefined, field: string): bigint | undefined {
-    const value = clauseEntry?.data?.[field];
-    return typeof value === "string" && /^\d+$/.test(value) ? BigInt(value) : undefined;
-}
-
-/** The clause carrying the ORDER's denomination: the composed clause
- *  declaring `payment` and declaring `currency` as plain content. Spec-routed,
- *  naming no clause — a second commerce clause anyone registers participates
- *  identically, and a denomination pin (whose `currency` is a designer fill)
- *  is excluded by construction. */
-function commerceCurrencyClause(
-    agreement: Agreement,
-    specs: SpecSource,
-): AgreementClause | undefined {
-    return agreement.clauses.find((s) => {
-        const spec = specs.get(s.clause);
-        return !!spec && specDeclaresField(spec, "payment") && specDeclaresContentField(spec, "currency");
-    });
-}
-
 /** The clause carrying the COMPOSITION's denomination pin: the composed
  *  clause declaring `currency` as a designer fill. */
 function currencyPinClause(
@@ -547,38 +514,6 @@ function currencyPinClause(
         const spec = specs.get(s.clause);
         return !!spec && specDeclaresDesignFill(spec, "currency");
     });
-}
-
-/**
- * The off-chain layer of the verification stack, run on BOTH sides of the bilateral commit
- * (buyer before initiating, seller before counter-signing) so neither party
- * signs an invalid agreement. Four checks: every present clause conforms to
- * its clause spec (validateContent; process-log clauses are presence-markers,
- * skipped); the denomination AND payment the parties are about to sign
- * as TERMS equal the ones they are about to sign as EXECUTION data
- * (leaf == struct for both mirrored fields, and where a denomination pin is
- * composed, pin == leaf); the order carries every clause of the design its
- * provenance names (the registered agreement's and the assembly-scoped ones)
- * and every designer value (`block.design.fills`) the design sets arrives
- * unchanged — `design` is the hydrated assembly the agreement's provenance
- * names, `null` when none was read, and an agreement naming a design then
- * fails (a buyer or a seller never drops a designed clause or changes a
- * designer's value); and the `checkoutHash` about to be signed equals
- * the merkle root recomputed from the clauses. Catches a malformed agreement
- * before a chain round-trip.
- *
- * `struct` is the commitment's mirrored pair — the struct side of the
- * leaf==struct assertion (a full `Commitment` satisfies it). Evidence and
- * execution are different layers, so the copy across them is the binding, and
- * asserting it is this gate's job (docs/CLAUSES.md § "Every clause is a
- * merkle leaf"). Object-shaped on purpose: a stale caller still passing the
- * bare currency string fails at compile, not silently.
- */
-export interface CommitmentMirror {
-    /** The commitment's `currency` field. */
-    currency: `0x${string}`;
-    /** The commitment's `payment` field. */
-    payment: bigint;
 }
 
 /** One order the design gives a registered agreement: its clause bag, and
@@ -743,11 +678,31 @@ function designIssues(
     return first ?? [];
 }
 
+/**
+ * The off-chain layer of the verification stack, run on BOTH sides of the bilateral commit
+ * (buyer before initiating, seller before counter-signing) so neither party
+ * signs an invalid agreement. Four checks: every present clause conforms to
+ * its clause spec (validateContent; process-log clauses are presence-markers,
+ * skipped); where a denomination pin is composed, the pin equals the token of
+ * the commitment about to be signed; the order carries every clause of the
+ * design its provenance names (the registered agreement's and the
+ * assembly-scoped ones) and every designer value (`block.design.fills`) the
+ * design sets arrives unchanged — `design` is the hydrated assembly the
+ * agreement's provenance names, `null` when none was read, and an agreement
+ * naming a design then fails (a buyer or a seller never drops a designed
+ * clause or changes a designer's value); and the `checkoutHash` about to be
+ * signed equals the merkle root recomputed from the clauses. Catches a
+ * malformed agreement before a chain round-trip.
+ *
+ * `commitment` is the commitment being signed. It alone carries the payment
+ * and the token: no clause restates either, so there is no copy across the
+ * two to compare.
+ */
 export function validateCommitmentAgreement(
     agreement: Agreement,
     expectedHash: `0x${string}`,
     specs: SpecSource,
-    struct: CommitmentMirror,
+    commitment: Commitment,
     design: HydratedAssembly | null,
 ): { ok: boolean; issues: CommitmentAgreementIssue[] } {
     const issues: CommitmentAgreementIssue[] = [];
@@ -801,47 +756,17 @@ export function validateCommitmentAgreement(
         }
     }
 
-    // The denomination chain: pin (when composed) == commerce leaf ==
-    // commitment struct. A missing or malformed leaf on a composed commerce
-    // clause is already reported above (the field is required by its spec), so
-    // there is nothing extra to say here — this compares the values that ARE
-    // present, and each comparison is skipped when its clause isn't composed.
-    const leafClause = commerceCurrencyClause(agreement, specs);
-    const leaf = addressLeaf(leafClause, "currency");
-    if (leafClause && leaf && leaf.toLowerCase() !== struct.currency.toLowerCase()) {
-        issues.push({
-            clause: leafClause.clause,
-            path: "currency",
-            message: `the signed term names ${leaf} as the denomination; the commitment currency ${struct.currency} contradicts it`,
-        });
-    }
-    // The payment mirror, from the SAME clauseEntry: the commerce clause's
-    // `payment` leaf is the term the commitment struct's `payment` mirrors
-    // (both homes, by the same ruling as currency). Same posture — compare the
-    // value that IS present; a missing/malformed leaf already failed its spec.
-    const leafPayment = bigintLeaf(leafClause, "payment");
-    if (leafClause && leafPayment !== undefined && leafPayment !== struct.payment) {
-        issues.push({
-            clause: leafClause.clause,
-            path: "payment",
-            message: `the signed term names ${leafPayment} as the payment; the commitment payment ${struct.payment} contradicts it`,
-        });
-    }
+    // The denomination pin (when composed) == the commitment's token. A
+    // missing or malformed pin is already reported above (the field is
+    // required by its spec), so only a pin that IS present is compared.
     const pinClause = currencyPinClause(agreement, specs);
     const pin = addressLeaf(pinClause, "currency");
-    if (pinClause && pin) {
-        // Against the leaf when a commerce clause is composed, else against
-        // the struct directly — the chain is transitive, so the pin is
-        // asserted either way.
-        const against = leaf ?? struct.currency;
-        const againstLabel = leaf ? "the order's committed currency" : "the commitment currency";
-        if (pin.toLowerCase() !== against.toLowerCase()) {
-            issues.push({
-                clause: pinClause.clause,
-                path: "currency",
-                message: `this assembly is denominated by design (${pin}); ${againstLabel} ${against} contradicts the pinned term`,
-            });
-        }
+    if (pinClause && pin && pin.toLowerCase() !== commitment.currency.toLowerCase()) {
+        issues.push({
+            clause: pinClause.clause,
+            path: "currency",
+            message: `this assembly is denominated by design (${pin}); the commitment currency ${commitment.currency} contradicts the pinned term`,
+        });
     }
 
     issues.push(...designIssues(agreement, specs, design));
@@ -873,24 +798,23 @@ export function validateCommitmentAgreement(
  * The ONE off-chain validation thrower every signature routes through — buyer sign, seller
  * counter-sign, and the checkout's early pre-wallet check all call this, so no
  * path signs an agreement whose clauses violate their clause specs, whose
- * denomination or payment differs between the signed term and the
- * signed struct, whose designer values differ from the design it names, or
- * whose hash doesn't match its recomputed merkle root.
+ * denomination pin differs from the commitment's token, whose designer values
+ * differ from the design it names, or whose hash doesn't match its recomputed
+ * merkle root.
  *
- * `struct` is the mirrored pair of the commitment being signed (a full
- * `Commitment` satisfies it). `design` is the hydrated assembly the
- * agreement's provenance names, or `null` when the caller read none — which
- * refuses any agreement naming a design.
+ * `commitment` is the commitment being signed. `design` is the hydrated
+ * assembly the agreement's provenance names, or `null` when the caller read
+ * none — which refuses any agreement naming a design.
  */
 export function assertAgreementSignable(
     agreement: Agreement,
     expectedHash: `0x${string}`,
     specs: SpecSource,
-    struct: CommitmentMirror,
+    commitment: Commitment,
     design: HydratedAssembly | null,
     label = "This order",
 ): void {
-    const check = validateCommitmentAgreement(agreement, expectedHash, specs, struct, design);
+    const check = validateCommitmentAgreement(agreement, expectedHash, specs, commitment, design);
     if (!check.ok) {
         throw new Error(
             `${label} isn't valid to sign yet: ${check.issues
@@ -957,26 +881,23 @@ function agreementTopologyFills(
     return out;
 }
 
-/** An agreement is not an agreement without commerce and topology: the
- *  composed clauses carry exactly one clause of commerce's shape and one of
- *  topology's, whatever their keys. Throws, naming `label`, on none or two of
- *  either. */
+/** An agreement is not an agreement without topology: the composed clauses
+ *  carry exactly one clause of topology's shape, whatever its key. Throws,
+ *  naming `label`, on none or two. No clause of commerce is required: the
+ *  commitment carries the payment and the token, so an agreement composing
+ *  no line items is whole. */
 function assertMandatoryShapes(clauses: Readonly<Record<Hex, Record<string, unknown>>>, specs: SpecSource, label: string): void {
     const keys = Object.keys(clauses) as Hex[];
-    for (const [shape, has] of [["commerce", specIsCommerceShape], ["topology", specIsTopologyShape]] as const) {
-        const found = keys.filter((k) => { const spec = specs.get(k); return spec !== undefined && has(spec); });
-        if (found.length === 0) {
-            throw new Error(
-                `${label}: no clause of ${shape}'s shape — an agreement is not an agreement without ${
-                    shape === "commerce" ? "the payment, the token and what is bought" : "the orders it follows"
-                }; the canvas writes the DAO's live ${shape} into every agreement`,
-            );
-        }
-        if (found.length > 1) {
-            throw new Error(
-                `${label}: two clauses of ${shape}'s shape (${found.map((k) => clauseLabel(k, specs.get(k))).join(", ")}) — one per agreement`,
-            );
-        }
+    const found = keys.filter((k) => { const spec = specs.get(k); return spec !== undefined && specIsTopologyShape(spec); });
+    if (found.length === 0) {
+        throw new Error(
+            `${label}: no clause of topology's shape — an agreement is not an agreement without the orders it follows; the canvas writes the DAO's live topology into every agreement`,
+        );
+    }
+    if (found.length > 1) {
+        throw new Error(
+            `${label}: two clauses of topology's shape (${found.map((k) => clauseLabel(k, specs.get(k))).join(", ")}) — one per agreement`,
+        );
     }
 }
 
@@ -1014,20 +935,19 @@ export interface BuiltAssembly {
  *  writes in and the clauses a designer selected: the scope check (an
  *  assembly-scoped clause never composes on an order; a composed key's spec
  *  must be loaded), the value-free rule (only `block.design.fills` values
- *  survive), and the shape rule (exactly one clause of commerce's shape and
- *  one of topology's; a clause both carry keeps the designer's composition).
+ *  survive), and the shape rule (exactly one clause of topology's shape; a
+ *  clause both carry keeps the designer's composition).
  *  The result is the registered agreement's
  *  document and its key — what `AgreementRegistry` takes, whether the
  *  designer registers it on its own or an assembly's publish registers it
  *  for an agreement. `buildAssembly` composes every new agreement through
  *  this one function.
  *
- *  The mandatory clauses (`mandatory`, the DAO's live commerce and topology
- *  the canvas reads from the registry — `mandatoryClauses`) are written in
- *  first and the designer's selection over them; the result carries exactly
- *  one clause of commerce's shape and one of topology's, or it is refused
- *  (`assertMandatoryShapes`). An authored agreement names the two clauses
- *  itself and passes none. */
+ *  The mandatory clauses (`mandatory`, the DAO's live mandatory clauses the
+ *  canvas reads from the registry — `mandatoryClauses`) are written in first
+ *  and the designer's selection over them; the result carries exactly one
+ *  clause of topology's shape, or it is refused (`assertMandatoryShapes`).
+ *  An authored agreement names its clauses itself and passes none. */
 export function composeOrderAgreement(args: {
     /** clauseKey → the designer's composed values for this order. */
     clauses: Readonly<Record<Hex, Record<string, unknown>>>;
@@ -1076,13 +996,12 @@ export function composeOrderAgreement(args: {
  *  registered agreement bound as is (`registeredByOrderId`), OR the clauses
  *  the designer composed for it (`clausesByOrderId`), which become a new
  *  agreement — value-free, with the mandatory clauses (`mandatory`, the
- *  DAO's live commerce and topology the canvas reads from the registry)
+ *  DAO's live mandatory clauses the canvas reads from the registry)
  *  written in first (composition time is the only place; checkout adds no
- *  clause). Every agreement carries one clause of commerce's shape and one
- *  of topology's, or the build is refused: an agreement is not an agreement
- *  without them. A bound registered agreement must carry both shapes
- *  itself, whatever their keys. The topology's parents are the agreement's
- *  own fill. */
+ *  clause). Every agreement carries one clause of topology's shape, or the
+ *  build is refused: an agreement is not an agreement without the orders it
+ *  follows. A bound registered agreement must carry it itself, whatever its
+ *  key. The topology's parents are the agreement's own fill. */
 export function buildAssembly(args: {
     name?: string;
     summary?: string;
@@ -1202,7 +1121,7 @@ export interface AuthoredAgreement {
  * registered agreement it names: the names resolved to keys
  * (`resolveAuthoredClauseKeys`), then the one composition rule
  * (`composeOrderAgreement`: the scope check, the value-free rule, one clause
- * of commerce's shape and one of topology's). Returns the document the
+ * of topology's shape). Returns the document the
  * seeding pins — the designer's words beside the composed clauses — and its
  * key. Seed time only.
  */
@@ -1252,8 +1171,7 @@ export function composeAuthoredAgreements(
  * whether a designer registers that agreement on its own or this seeding
  * registers it — and its fill is the topology clause's parents
  * (`agreementTopologyFills`). A bound agreement must carry one clause of
- * commerce's shape and one of topology's (`assertMandatoryShapes`), or it is
- * refused. Returns the assembly and each DISTINCT agreement once, keyed.
+ * topology's shape (`assertMandatoryShapes`), or it is refused. Returns the assembly and each DISTINCT agreement once, keyed.
  * Seed time only.
  */
 export function assembleAuthored(

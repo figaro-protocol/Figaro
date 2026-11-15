@@ -2,22 +2,8 @@
     "clauseId": "figaro-commerce",
     "version": 1,
     "title": "Commerce terms",
-    "description": "The denomination, payment amount, and itemized line items for the commercial half of an order. The currency is a TERM of the agreement — a merkle leaf under checkoutHash like every other term — and it is written by the checkout walk exactly as payment is: the assembly's figaro-utility-token pin when the designer composed one, else the buyer's pick from the seller's accepted tokens, else the seller's default. The commitment's currency field MIRRORS this leaf (execution data beside the signed term), and the sign gate asserts the two match before either party signs.",
+    "description": "The itemized line items of an order: what its payment buys. The payment and the token are the commitment's own fields, and this clause restates neither. A designer composes it where the parties commit the list, or leaves it out.",
     "fields": [
-        {
-            "name": "currency",
-            "type": "string",
-            "format": "address-hex",
-            "required": true,
-            "description": "ERC-20 denomination address — the term the commitment's currency field mirrors."
-        },
-        {
-            "name": "payment",
-            "type": "bigint",
-            "required": true,
-            "min": "1",
-            "description": "Payment amount in the currency's smallest unit. Must be > 0."
-        },
         {
             "name": "lineItems",
             "type": "array",

@@ -239,7 +239,7 @@ describe("projectSnapshotForReview — malformed and empty compositions", () => 
             const review = projectSnapshotForReview(snapshotOf(drawn));
             expect(review.ok).toBe(false);
             if (review.ok) return;
-            expect(review.error).toMatch(/no clause of commerce's shape/);
+            expect(review.error).toMatch(/no clause of topology's shape/);
         } finally {
             process.env.NEXT_PUBLIC_DAO_TREASURY = dao ?? TEST_DAO_TREASURY;
         }
@@ -255,6 +255,31 @@ describe("projectSnapshotForReview — malformed and empty compositions", () => 
         for (const clauseKey of keys(ASSEMBLY_CLAUSES)) {
             expect(review.assemblyClauses).not.toHaveProperty(clauseKey);
         }
+    });
+});
+
+// An agreement that composes no clause declaring `lineItems` still carries its
+// payment in the commitment; what it does not commit is the list of what the
+// payment buys. The review names each such order before publish.
+describe("projectSnapshotForReview — an agreement with no line items", () => {
+    let drawn: ReturnType<typeof drawCanvas>;
+
+    beforeAll(async () => {
+        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY]);
+        drawn = drawCanvas();
+    });
+
+    it("names the order whose agreement composes no line items, and no other", () => {
+        const bare = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [keyOf("figaro-topology")]: {} } });
+        const review = projectSnapshotForReview(snapshotOf(drawn, { registeredByOrderId: { [drawn.orders[0].orderHash]: bare } }));
+        if (!review.ok) throw new Error(review.error);
+        expect(review.withoutLineItems).toEqual([drawn.orders[0].orderHash]);
+    });
+
+    it("names none when every agreement composes line items", () => {
+        const review = projectSnapshotForReview(snapshotOf(drawn));
+        if (!review.ok) throw new Error(review.error);
+        expect(review.withoutLineItems).toEqual([]);
     });
 });
 

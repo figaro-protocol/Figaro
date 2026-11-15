@@ -14,8 +14,8 @@
  *
  * The SDK names no clause: instantiation reads the assembly's clause bag
  * verbatim and merges the buyer's per-clause overrides keyed by the clause keys
- * the buyer composed. Which clause carries payment is the buyer's decision, not
- * FigaroCore's.
+ * the buyer composed. The payment and the token are the commitment's own
+ * fields; no clause carries them.
  */
 
 import type { WalletClient, PublicClient } from "viem";
@@ -49,8 +49,8 @@ export interface InstantiateParams {
     buyer: Address;
     seller: Address;
     /** Per-clause field overrides merged onto the assembly's clause data — the
-     *  buyer supplies its terms (typically the commerce clause's
-     *  `{ currency, payment, lineItems }`). Keyed by clause key; the SDK names none. */
+     *  buyer supplies its terms (typically the line-items clause's
+     *  `{ lineItems }`). Keyed by clause key; the SDK names none. */
     overrides?: Record<string, Record<string, unknown>>;
 }
 
@@ -197,9 +197,8 @@ export interface SellerSignCtx {
  *
  * With `specs` supplied, ALSO runs the merkle-leaf seam
  * (`assertAgreementSignable` — docs/CLAUSES.md § "Every clause is a merkle
- * leaf"): every clause conforms to its clause spec, and the offer's
- * denomination TERM (the commerce clause leaf, and any composed
- * denomination pin) equals the currency the seller is about to bond against —
+ * leaf"): every clause conforms to its clause spec, and any composed
+ * denomination pin equals the currency the seller is about to bond against —
  * the commitment struct's `currency` field. This is off-chain validation run on the
  * SELLER's side of the handshake (the buyer-side builders —
  * `buildBuyerOffer`, `buildChainOffers` — run the same gate when given
@@ -415,9 +414,9 @@ export function checkDeadlineCap(c: Commitment, policy: OfferPolicy, chainNow: b
  *
  * SPEC FLOOR: `specs` is required. The anti-tamper gate runs the merkle-leaf
  * seam (`validateOffer`'s `assertAgreementSignable` check): an offer whose
- * commerce-clause currency LEAF disagrees with the commitment struct's
- * `currency` field THROWS here too, before any signature — the same treatment
- * as every other structural tamper. Without `specs` it THROWS.
+ * clause breaks its spec, or whose denomination pin disagrees with the
+ * commitment's `currency`, THROWS here too, before any signature — the same
+ * treatment as every other structural tamper. Without `specs` it THROWS.
  */
 export async function counterSignOffer(
     wallet: WalletClient,
@@ -549,8 +548,8 @@ export interface SellerOfferHandlerOpts {
     policy?: OfferPolicy;
     /** The clause-spec source for the merkle-leaf seam (`assertAgreementSignable`,
      *  wired through `validateOffer`'s anti-tamper gate): an offer whose
-     *  commerce-clause currency LEAF disagrees with the commitment struct's
-     *  `currency` is refused (thrown) before counter-signing. OMIT it and the
+     *  clause breaks its spec, or whose denomination pin disagrees with the
+     *  commitment's `currency`, is refused (thrown) before counter-signing. OMIT it and the
      *  handler refuses every offer — the caller's own SpecSource (the same one
      *  used to originate or display the offer) is the one to pass here. */
     specs: SpecSource;
@@ -641,7 +640,7 @@ export interface ChainNodeSpec {
     seller: Address;
     /** This node's payment (the value it adds). */
     payment: bigint;
-    /** Per-clause overrides for this node (e.g. its commerce lineItems). */
+    /** Per-clause overrides for this node (e.g. its line items). */
     overrides?: Record<string, Record<string, unknown>>;
 }
 
@@ -658,10 +657,9 @@ export interface BuildChainParams {
     salt?: (nodeId: string) => bigint | undefined;
     /** CHAIN-time deadline (readChainTimestamp) — never the machine clock. */
     deadline: bigint;
-    /** The clause-spec source, required: the walk's currency-leaf fill engages
-     *  (`reconstructOrdersFromAssembly` writes the commerce leaf from the same
-     *  figure the struct signs, and THROWS on a contradicting override) and
-     *  every order passes the merkle-leaf sign gate before the buyer signs. */
+    /** The clause-spec source, required: the walk builds each agreement
+     *  through the spec-default projection and every order passes the
+     *  merkle-leaf sign gate before the buyer signs. */
     specs: SpecSource;
 }
 

@@ -13,7 +13,7 @@
 <h1>Interface ReconstructParams</h1></div>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">ReconstructParams</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#buyer">buyer</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#chainid">chainId</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#core">core</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#currency">currency</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#deadline">deadline</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#nodes">nodes</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">planned</span><span class="tsd-signature-symbol">:</span> <a href="index.PlannedAssemblyOrder.html" class="tsd-signature-type tsd-kind-interface">PlannedAssemblyOrder</a><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <a href="index.ReconstructNodeSpec.html" class="tsd-signature-type tsd-kind-interface">ReconstructNodeSpec</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#onorder">onOrder</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">order</span><span class="tsd-signature-symbol">:</span> <a href="index.ReconstructedOrder.html" class="tsd-signature-type tsd-kind-interface">ReconstructedOrder</a><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">void</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#salt">salt</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#specs">specs</a><span class="tsd-signature-symbol">?:</span> <a href="index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L136">reconstructOrders.ts:136</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L133">reconstructOrders.ts:133</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -38,22 +38,22 @@
 <h3 class="tsd-anchor-link" id="buyer"><span>buyer</span><a href="#buyer" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">buyer</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L137">reconstructOrders.ts:137</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L134">reconstructOrders.ts:134</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="chainid"><span>chain<wbr/>Id</span><a href="#chainid" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">chainId</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L139">reconstructOrders.ts:139</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L136">reconstructOrders.ts:136</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="core"><span>core</span><a href="#core" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">core</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L140">reconstructOrders.ts:140</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L137">reconstructOrders.ts:137</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="currency"><span>currency</span><a href="#currency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">currency</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L138">reconstructOrders.ts:138</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L135">reconstructOrders.ts:135</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="deadline"><span>deadline</span><a href="#deadline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">deadline</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
@@ -61,14 +61,14 @@
 rule): <code>computeDeadline(await readChainTimestamp(client))</code>.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L171">reconstructOrders.ts:171</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L153">reconstructOrders.ts:153</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="nodes"><span>nodes</span><a href="#nodes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">nodes</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">planned</span><span class="tsd-signature-symbol">:</span> <a href="index.PlannedAssemblyOrder.html" class="tsd-signature-type tsd-kind-interface">PlannedAssemblyOrder</a><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <a href="index.ReconstructNodeSpec.html" class="tsd-signature-type tsd-kind-interface">ReconstructNodeSpec</a></div>
 <div class="tsd-comment tsd-typography"><p>One spec per assembly node id.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L142">reconstructOrders.ts:142</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L139">reconstructOrders.ts:139</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="onorder"><code class="tsd-tag">Optional</code><span>on<wbr/>Order</span><a href="#onorder" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">onOrder</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">order</span><span class="tsd-signature-symbol">:</span> <a href="index.ReconstructedOrder.html" class="tsd-signature-type tsd-kind-interface">ReconstructedOrder</a><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">void</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></div>
@@ -76,40 +76,26 @@ rule): <code>computeDeadline(await readChainTimestamp(client))</code>.</p>
 where a caller signs (<code>order.typedData</code>), shares, or composes.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L174">reconstructOrders.ts:174</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L156">reconstructOrders.ts:156</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="salt"><code class="tsd-tag">Optional</code><span>salt</span><a href="#salt" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">salt</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">bigint</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></div>
 <div class="tsd-comment tsd-typography"><p>Optional deterministic salt per node (testing).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L168">reconstructOrders.ts:168</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L150">reconstructOrders.ts:150</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="specs"><code class="tsd-tag">Optional</code><span>specs</span><a href="#specs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">specs</span><span class="tsd-signature-symbol">?:</span> <a href="index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a></div>
 <div class="tsd-comment tsd-typography"><p>When supplied, agreements build through the spec-default projection
 (<code>buildOrderAgreement</code> — checkout semantics: registry-declared defaults
-fill omitted fields, process-log clauses stay empty anchors), and the
-walk ALSO fills <code>currency</code> (matched by declared field, never clause id)
-into the commerce clause of EVERY realized order — the one term that
-must equal the commitment struct's <code>currency</code> field
-(docs/CLAUSES.md § &quot;Every clause is a merkle leaf&quot;). A caller override
-that already names a currency is accepted only when it matches; a
-CONTRADICTING override throws before hashing, so the walk never signs a
-leaf that disagrees with its struct.</p>
-<p>Without <code>specs</code>, the raw override-merge (<code>agreementFromClauses</code>)
-applies — the agent-origination semantics — and currency-leaf routing is
-impossible (no spec to find the commerce clause by declared field). A
-spec-less caller OWNS that leaf: it must supply the commerce clause's
-<code>currency</code> itself, via <code>ReconstructNodeSpec.overrides</code>, equal to the
-<code>currency</code> this walk is called with. The sign gate
-(<code>assertAgreementSignable</code>) is the net that catches a spec-less caller
-that forgets — it refuses to sign a leaf that disagrees with the struct
-— but this walk cannot fill or check the leaf itself with no spec to
-find it by.</p>
+fill omitted fields, process-log clauses stay empty anchors).
+Without <code>specs</code>, the raw override-merge (<code>agreementFromClauses</code>)
+applies — the agent-origination semantics. Either way the token and
+the payment go into the commitment only, never into a clause.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L166">reconstructOrders.ts:166</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/reconstructOrders.ts#L148">reconstructOrders.ts:148</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

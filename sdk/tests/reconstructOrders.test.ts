@@ -13,7 +13,7 @@ import {
 } from "../src/reconstructOrders.js";
 import { assemblyHashOf } from "../src/assembly.js";
 import { computeCheckoutHash, buildProvenanceInclusionProof, verifyInclusionProof } from "../src/agreement.js";
-import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
+import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { hydrateAuthored } from "./hydrate.js";
 
 const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
@@ -96,12 +96,14 @@ describe("reconstructOrdersFromAssembly — realization", () => {
         // The sub's topology clause carries the root's REAL order hash.
         const topo = sub.agreement.clauses.find((s) => s.clause === keyOf("figaro-topology"));
         expect(topo?.data.follows).toEqual([root.orderHash]);
-        // THE MERKLE-LEAF SEAM: with specs supplied, the walk fills the
-        // commerce clause's currency leaf to match the commitment struct —
-        // on EVERY realized order, root and sub alike.
+        // The token and the payment live in the commitment only: no
+        // realized order's clause carries either, root and sub alike.
         for (const order of orders) {
-            const commerceClause = order.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"));
-            expect(commerceClause?.data.currency).toBe(order.commitment.currency);
+            expect(order.commitment.currency).toBe(CURRENCY);
+            for (const clause of order.agreement.clauses) {
+                expect(clause.data).not.toHaveProperty("currency");
+                expect(clause.data).not.toHaveProperty("payment");
+            }
         }
     });
 
@@ -115,8 +117,8 @@ describe("reconstructOrdersFromAssembly — realization", () => {
                 specs,
                 nodes: (p) =>
                     p.nodeId === "merchant"
-                        ? { seller: SELLER_A, payment: 100n, overrides: specs ? undefined : { [keyOf("figaro-commerce")]: { currency: CURRENCY } } }
-                        : { seller: SELLER_B, payment: 40n, overrides: specs ? undefined : { [keyOf("figaro-commerce")]: { currency: CURRENCY } } },
+                        ? { seller: SELLER_A, payment: 100n }
+                        : { seller: SELLER_B, payment: 40n },
                 salt: () => 1n,
                 deadline: 1770000000n,
             });
@@ -152,44 +154,3 @@ describe("reconstructOrdersFromAssembly — realization", () => {
     });
 });
 
-describe("reconstructOrdersFromAssembly — the walk's fills read the spec each key names", () => {
-    // A lookalike of the commerce clause (same clauseId and version, other
-    // bytes) that declares `currency` as a DESIGN FILL — a pin, not content.
-    // It is another clause: a assembly composing the real key fills the real
-    // currency leaf, and only one composing the lookalike's key reads it.
-    const raw = rawSpecOf("figaro-commerce");
-    const lookalike = viewOf({
-        ...raw,
-        title: "a stranger's registration",
-        block: { ...(raw.block as Record<string, Record<string, unknown>>), design: { ...((raw.block as { design?: object }).design ?? {}), fills: ["currency"] } },
-    });
-    const specs = specSourceWithRegistrations(SPECS, [lookalike]);
-    const params = {
-        buyer: BUYER,
-        currency: CURRENCY,
-        chainId: 31337,
-        core: CORE,
-        specs,
-        nodes: () => ({ seller: SELLER_A, payment: 1n }),
-        salt: () => 1n,
-        deadline: 1770000000n,
-    };
-
-    it("the real key fills the real currency leaf", async () => {
-        const [root] = await reconstructOrdersFromAssembly(
-            hydrateAuthored({ agreements: [{ id: "only", clauses: { [keyOf("figaro-commerce")]: {} } }] }),
-            params,
-        );
-        const commerce = root.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"));
-        expect(commerce?.data?.currency).toBe(CURRENCY);
-    });
-
-    it("the lookalike's key is read as the lookalike, whose currency is no content leaf", async () => {
-        const [root] = await reconstructOrdersFromAssembly(
-            hydrateAuthored({ agreements: [{ id: "only", clauses: { [lookalike.clauseKey]: {} } }] }),
-            params,
-        );
-        const commerce = root.agreement.clauses.find((s) => s.clause === lookalike.clauseKey);
-        expect(commerce?.data?.currency).toBeUndefined();
-    });
-});

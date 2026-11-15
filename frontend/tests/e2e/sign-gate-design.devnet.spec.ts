@@ -99,7 +99,7 @@ async function rootOrder(found: DiscoveredAssembly, forged: Record<string, Recor
     const [root] = planAssemblyOrders(hydrated);
     const currency = (readUtilityTokenPin(root.clauses, specs) ?? config.tokenAddress) as Hex;
     const payment = 1_000_000n;
-    const filled = fillCommerceClause(root.clauses, payment, currency, specs, [
+    const filled = fillCommerceClause(root.clauses, specs, [
         { itemId: 'sign-gate-design', name: 'Signed out of band', quantity: 1, unitPrice: payment.toString() },
     ]);
     const chainNow = (await localPublicClient().getBlock({ blockTag: 'latest' })).timestamp;

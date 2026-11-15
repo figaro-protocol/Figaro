@@ -110,10 +110,13 @@ describe("reconstructOrdersFromAssembly — payment conservation", () => {
                     // …and it is exactly what the signed struct names.
                     expect(order.commitment.expectedCumulativeValue).toBe(order.cumulativeValue);
                     expect(order.commitment.payment).toBe(order.payment);
-                    // THE MERKLE-LEAF SEAM: the commerce clause's currency leaf
-                    // never diverges from the commitment struct, on every order.
-                    const commerce = order.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"));
-                    expect(commerce?.data.currency).toBe(order.commitment.currency);
+                    // The commitment alone carries the token and the payment:
+                    // no clause of any order restates either.
+                    expect(order.commitment.currency).toBe(CURRENCY);
+                    for (const clause of order.agreement.clauses) {
+                        expect(clause.data).not.toHaveProperty("currency");
+                        expect(clause.data).not.toHaveProperty("payment");
+                    }
                 }
                 // The final order's total is the sum of ALL node payments.
                 const total = payments.reduce((s, p) => s + p, 0n);
@@ -144,9 +147,8 @@ describe("reconstructOrdersFromAssembly — payment conservation", () => {
                     expect(topo?.data.follows).toEqual(
                         parents[i].map((p) => hashOf.get(`n${p}`)),
                     );
-                    // THE MERKLE-LEAF SEAM: same guarantee on this property too.
-                    const commerce = order.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"));
-                    expect(commerce?.data.currency).toBe(order.commitment.currency);
+                    // Same guarantee on this property too.
+                    for (const clause of order.agreement.clauses) expect(clause.data).not.toHaveProperty("currency");
                 }
             }),
         );

@@ -19,11 +19,9 @@
 <div class="tsd-comment tsd-typography"><p>The designer's utility-token pin, read from a registered agreement's composed
 clauses — the composed clause declaring <code>currency</code> as a DESIGNER FILL
 (<code>block.design.fills</code>), with a well-formed value. The design-fill
-declaration is the whole routing rule, and it is what disambiguates the two
-clauses that legitimately carry a <code>currency</code> field: the commerce clause
-declares it as plain CONTENT (one order's resolution term, written at
-checkout) and is never a pin, while ANY clause — including one this code
-has never seen — declaring a <code>currency</code> design fill IS one. The pin
+declaration is the whole routing rule: ANY clause — including one this
+code has never seen — declaring a <code>currency</code> design fill IS one, and a
+clause declaring <code>currency</code> as plain content is never a pin. The pin
 survives the value-free assembly build and is part of the assemblyHash:
 the assembly's one-token tailoring.</p>
 <p>Undefined = unpinned (the buyer's payment-token pick, else the seller's
@@ -36,7 +34,7 @@ default, denominates) or spec cache cold.</p>
 <li><span><span class="tsd-kind-parameter">specs</span>: <a href="../interfaces/index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L168">checkoutPlan.ts:168</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L144">checkoutPlan.ts:144</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

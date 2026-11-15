@@ -124,8 +124,8 @@ export async function registerAgreement(args: {
  * clauses the designer selected for the order compose through the SDK's one
  * composition rule (`composeOrderAgreement` — the DAO's mandatory clauses
  * written in first (`mandatoryClausesForCanvas`), value-free but for design
- * fills, the scope check, one clause of commerce's shape and one of
- * topology's), then `registerAgreement`.
+ * fills, the scope check, one clause of topology's shape), then
+ * `registerAgreement`.
  * The registered key is what the agreement then binds, and what any other
  * assembly's drawer offers from the live registry.
  */

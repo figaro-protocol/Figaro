@@ -56,8 +56,9 @@ import type { MemberProfileReader } from "../memberProfile.js";
  * and commit another), and the agreement's parties match the commitment. With
  * `specs`, ALSO runs the merkle-leaf seam (`assertAgreementSignable` —
  * docs/CLAUSES.md § "Every clause is a merkle leaf"), exactly as
- * `validateOffer` does: a draft whose commerce leaf contradicts the struct the
- * candidate would bond against is refused before any signature. ALWAYS checks,
+ * `validateOffer` does: a draft whose clause breaks its spec, or whose
+ * denomination pin contradicts the token the candidate would bond against, is
+ * refused before any signature. ALWAYS checks,
  * as `validateOffer` does, that the candidate has bound the assembly the draft
  * instantiates (`checkSellerBindsAssembly`, the candidate's OWN profile read
  * through `readProfile` at acceptance time); a draft with no provenance leaf,
@@ -161,15 +162,16 @@ export function selectRaceWinner(replies: readonly RaceReply[]): RaceReply | nul
  * sides share (the candidate builds the counter-draft with it; the buyer
  * rebuilds the expectation with it). Each priced field — named by the BUYER
  * in the request; the SDK names no clause — is set to the quote's decimal
- * string in raw token units. Throws on a missing clause or path: a request
- * pricing a field the agreement doesn't carry is malformed.
+ * string in raw token units. The quoted figure itself is the commitment's
+ * payment (`buildCounterDraft`), so an empty list leaves the agreement as it
+ * is. Throws on a missing clause or path: a request pricing a field the
+ * agreement doesn't carry is malformed.
  */
 export function substitutePricedValue(
     agreement: Agreement,
     pricedFields: readonly PricedField[],
     value: bigint,
 ): Agreement {
-    if (pricedFields.length === 0) throw new Error("substitutePricedValue: the request names no priced fields");
     let clauseEntries = agreement.clauses;
     for (const field of pricedFields) {
         const index = clauseEntries.findIndex((s) => s.clause.toLowerCase() === field.clause.toLowerCase());
@@ -219,9 +221,10 @@ export interface BuildQuoteRequestParams {
     ceiling: bigint;
     chainId: number;
     core: Address;
-    /** Where the figure lives in the agreement — the buyer names their own
-     *  clause(s); the ceiling is substituted here at build time so draft and
-     *  quote differ ONLY through the same substitution. */
+    /** Where copies of the figure live inside the agreement's clauses — the
+     *  buyer names their own clause(s), possibly none; the ceiling is
+     *  substituted here at build time so draft and quote differ ONLY through
+     *  the same substitution. The figure itself is the commitment's payment. */
     pricedFields: readonly PricedField[];
     /** Per-clause overrides merged onto the root agreement's clause bag (the
      *  non-price terms of the job). */
@@ -291,7 +294,7 @@ export async function quoteDraft(
     const gateSpecs = requireSpecs(specs, "quoteDraft");
     await gateSeller(wallet, "quoteDraft", "the quote request", (seller) => validateDraft(draft, seller, undefined, gateSpecs, design, readProfile));
     const terms = draft.quoteRequest;
-    if (!terms || terms.pricedFields.length === 0) {
+    if (!terms) {
         throw new Error("quoteDraft: payload carries no quote request — a race draft countersigns via counterSignDraft");
     }
 
@@ -352,7 +355,7 @@ export async function verifyQuoteReply(
 ): Promise<OfferCheck> {
     if (!reply.sellerSig) return { ok: false, reason: "quote carries no seller signature" };
     const terms = draft.quoteRequest;
-    if (!terms || terms.pricedFields.length === 0) return { ok: false, reason: "the draft carries no quote request" };
+    if (!terms) return { ok: false, reason: "the draft carries no quote request" };
     const q = reply.commitment.payment;
     if (q < 1n) return { ok: false, reason: "quote is below the payment floor" };
     if (q > draft.commitment.payment) return { ok: false, reason: "quote exceeds the request's ceiling" };

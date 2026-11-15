@@ -87,16 +87,15 @@ never silently declines — on a tampered one:
 - the agreement **hashes to the committed `checkoutHash`** (a buyer cannot sign one
   agreement and pin another);
 - the agreement's parties match the commitment;
-- **and, when the checker holds the clause specs, the terms inside the agreement do not
-  contradict the struct.** The hash check above proves the document is the one the buyer
-  signed; it says nothing about whether that document's TERMS match the execution data.
-  Currency and payment live in both places at once — as merkle leaves under
-  `checkoutHash` and as fields of the commitment — so the gate additionally
-  asserts leaf == struct on both, plus pin == leaf wherever the assembly composes a
-  denomination pin, and refuses any clause that violates its own spec (a missing
-  required term included). In the SDK this is `validateOffer`'s fourth parameter, a
-  `SpecSource` built from the live `ClauseRegistry → IPFS` specs; **a leaf/struct
-  contradiction is treated as TAMPER — it throws, exactly like a forged signature.**
+- **and, when the checker holds the clause specs, every clause conforms to its own spec
+  and the terms do not contradict the struct.** The hash check above proves the document
+  is the one the buyer signed; it says nothing about whether that document's terms are
+  well formed. The token and the payment live only in the commitment, so a clause that
+  restates either declares a field its spec does not and is refused; where the assembly
+  composes a denomination pin, the gate asserts pin == the commitment's token. A missing
+  required term is refused too. In the SDK this is `validateOffer`'s fourth parameter, a
+  `SpecSource` built from the live `ClauseRegistry → IPFS` specs; **a spec violation or a
+  pin contradiction is treated as TAMPER — it throws, exactly like a forged signature.**
   Without a `SpecSource` this half is skipped, and the offer is counter-signed with no
   content check whatsoever: the check is only as present as the specs the checker loaded.
 

@@ -88,7 +88,6 @@ import SignPage from "@/app/(app)/sign/page";
 function payload(opts: { tamper?: boolean; salt?: bigint } = {}): CommitmentPayload {
     const { agreement } = buildOrderAgreement(BUYER, SELLER, {
         [keyOf("figaro-commerce")]: {
-            currency: CURRENCY, payment: "1000",
             lineItems: [{ itemId: "item-1", name: "Item", quantity: 1, unitPrice: "1000" }],
         },
     }, specSource());

@@ -267,8 +267,9 @@ echo "   Deployment: $CORE_DEPLOYMENT"
 # to IPFS (Deploy.s.sol:77-80). populate-clauses.mjs is the single clause-population
 # path (same script prod/testnet/mainnet use) and is idempotent: a clause already on
 # the registry is skipped. Running it HERE makes a bare `deploy-local.sh` self-
-# sufficient — every deploy ends with the structural clauses (figaro-commerce,
-# figaro-topology, required by EVERY order) pinned + anchored. Without it the
+# sufficient — every deploy ends with the mandatory-article clauses
+# (figaro-commerce, figaro-topology; topology is required by every agreement)
+# pinned + anchored. Without it the
 # frontend's useClauseSpecs() never loads and the designer/checkout surfaces crash
 # with "clause specs not loaded: no structural clauses in the cache".
 # The same invocation registers the reference assemblies, as the Sepolia

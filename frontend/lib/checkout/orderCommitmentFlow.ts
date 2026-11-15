@@ -530,7 +530,7 @@ export function useOrderCommitmentFlow() {
             const check = await validateDraft(incoming, address, undefined, specSource(), await readSigningDesign(incoming.agreement), profileReaderForChain(publicClient, chainId));
             if (!check.ok) throw new Error(`Refusing this draft — ${check.reason}`);
             const terms = incoming.quoteRequest;
-            if (!terms || terms.pricedFields.length === 0) {
+            if (!terms) {
                 throw new Error("This draft carries no quote request — counter-sign it instead.");
             }
             if (quotedPayment < 1n) throw new Error("A quote must be at least 1 unit.");
