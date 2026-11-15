@@ -58,6 +58,8 @@ import {
     buildDomain,
     calculateBonds,
     computeOrderHash,
+    computeDeadline,
+    readChainTimestamp,
 } from "../src/index.js";
 import { parseClauseSpec } from "../src/clauses/index.js";
 import { SequencerClient } from "../src/agent/sequencer.js";
@@ -265,7 +267,7 @@ describe.skipIf(SKIP)("Batch E2E: a revocation mid-flight dead-letters the revok
                     expectedCumulativeValue: PAYMENT,
                     checkoutHash: keccak256(`0x${salt.toString(16).padStart(64, "0")}`),
                     salt,
-                    deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+                    deadline: computeDeadline(await readChainTimestamp(publicClient)),
                 },
                 domain,
             );

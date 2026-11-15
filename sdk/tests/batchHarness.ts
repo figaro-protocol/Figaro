@@ -28,7 +28,7 @@ import { ChildProcess, spawn, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { BATCH_VERIFIER_ABI } from "../src/index.js";
+import { BATCH_VERIFIER_ABI, readChainTimestamp } from "../src/index.js";
 import { clauseKeyPreimage } from "../src/discovery.js";
 import type { SequencerClient } from "../src/agent/sequencer.js";
 
@@ -251,7 +251,9 @@ export async function deployBatchStack(
             // proven in UsageCounterTest's floor clause and driven at the
             // mainnet value by rpgf-rewards.devnet.spec.ts.
             1n,
-            [BigInt(Math.floor(Date.now() / 1000) + 3600)],
+            // The period ends an hour after the chain's clock, which
+            // UsageCounter compares against block.timestamp.
+            [(await readChainTimestamp(publicClient)) + 3600n],
         ],
     });
     const usageCounterAddress = (
