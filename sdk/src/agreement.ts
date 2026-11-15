@@ -179,7 +179,10 @@ export const TOPOLOGY_LEAF_LABEL = "figaro-agreement-topology";
 /** The domain mixed into the topology leaf, `keccak256("figaro-agreement-topology")`.
  *  No contract and no proof program holds it: the leaf is read by the
  *  parties and the readers that rebuild the root, never attested and never
- *  counted. */
+ *  counted. An assembly leaf's inner preimage is also 96 bytes (domain, key,
+ *  data hash), and it is kept apart from the topology leaf by its first
+ *  word, the domain: `ASSEMBLY_LEAF_DOMAIN` (`keccak256("figaro-assembly-leaf")`,
+ *  sdk/src/assembly.ts) against this one. */
 export const TOPOLOGY_LEAF_DOMAIN: Hex = keccak256(toHex(TOPOLOGY_LEAF_LABEL));
 
 /** The topology leaf's committed bytes — canonical JSON of the edges,

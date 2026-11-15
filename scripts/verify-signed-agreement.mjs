@@ -9,6 +9,8 @@
 // displayed, and it recomputes, from the SDK's canonical primitives alone:
 //
 //   1. every per-clause merkle leaf (so you can see WHAT each hash covers),
+//      and the topology leaf — the orders this order follows — when the
+//      agreement carries `follows`,
 //   2. the agreement merkle root (`computeCheckoutHash`),
 //   3. a MATCH/MISMATCH verdict against the `checkoutHash` field inside the
 //      typed data your wallet displayed,
@@ -24,8 +26,13 @@
 //     [--buyer-sig 0x…] [--seller-sig 0x…]
 //
 //   <agreement.json>  The agreement you were shown: {version:"a1", buyer,
-//                     seller, clauses:[…]} — a pinned payload envelope
-//                     carrying it under `.agreement` is also accepted.
+//                     seller, clauses:[{clause, data | dataHash}, …],
+//                     provenance?: {agreementHash, assemblyHash},
+//                     follows?: [orderHash, …]} — the `Agreement` type of
+//                     sdk/src/agreement.ts. Each `clause` is a clause key; a
+//                     clause carries its `data` or, content-withheld, its
+//                     `dataHash`. A pinned payload envelope carrying it under
+//                     `.agreement` is also accepted.
 //   <typedData.json>  The EIP-712 payload your wallet displayed:
 //                     {domain, types, primaryType, message}.
 //
@@ -42,6 +49,8 @@ const {
     computeCheckoutHash,
     computeOrderHash,
     computeClauseLeaf,
+    computeTopologyLeaf,
+    topologyContentRef,
     hashCommitmentStruct,
     hashClauseData,
     verifyCommitmentSignature,
@@ -124,9 +133,23 @@ const lower = (h) => String(h).toLowerCase();
 console.log("Agreement clauses — the leaves the checkoutHash commits to:");
 for (const clauseEntry of agreement.clauses) {
     const withheld = clauseEntry.data === undefined;
-    console.log(`  ${clauseEntry.clause}@${clauseEntry.version}${withheld ? "  (content-withheld: fingerprint only)" : ""}`);
+    console.log(`  ${clauseEntry.clause}${withheld ? "  (content-withheld: fingerprint only)" : ""}`);
     console.log(`    data hash: ${hashClauseData(clauseEntry)}`);
     console.log(`    leaf:      ${computeClauseLeaf(clauseEntry)}`);
+}
+
+// The topology leaf — the orders this order follows, a leaf of the format's
+// own shape. Printed only when the agreement carries `follows`: an absent
+// leaf is not an empty list, and an agreement without one has no such leaf.
+if (agreement.follows !== undefined) {
+    console.log("\nTopology — the orders this order follows:");
+    if (agreement.follows.length === 0) {
+        console.log("  (none: this order follows no other order)");
+    } else {
+        for (const orderHash of agreement.follows) console.log(`  ${orderHash}`);
+    }
+    console.log(`    data hash: ${topologyContentRef(agreement.follows)}`);
+    console.log(`    leaf:      ${computeTopologyLeaf(agreement.follows)}`);
 }
 
 const recomputedHash = computeCheckoutHash(agreement);

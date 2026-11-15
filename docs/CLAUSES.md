@@ -84,6 +84,27 @@ process). A tool without the SDK rebuilds it from these bytes:
   inner preimage of 96 bytes. A root's leaf is
   `0xa17e1e2abf5a5709c413cce584db7e38200a19361ad5e98542a85c44a06b8709`.
 
+The `checkoutHash` is the merkle root over every leaf of the agreement: one per
+clause (an agreement naming one clause key twice is refused), the provenance
+leaf when the agreement names a design, and the topology leaf when it carries
+`follows`. A tool without the SDK rebuilds the root by these rules
+(`sortLeaves`, `hashPair` and `buildMerkleRoot` in `sdk/src/agreement.ts`):
+
+- the leaves are sorted in ascending order of their 32-byte values read as
+  unsigned integers (the SDK compares their lowercase hex, which gives the
+  same order);
+- each layer pairs its nodes left to right, the first with the second, the
+  third with the fourth, and so on, and a pair hashes as
+  `keccak256(min(a,b) ‖ max(a,b))`, the smaller value first, a 64-byte
+  preimage;
+- a node left without a partner at the end of a layer goes up to the next
+  layer unchanged; it is never hashed with itself;
+- the root is the one node left: a one-leaf tree's root is its leaf, and an
+  empty tree's is `bytes32(0)`.
+
+An assembly's root is built by the same rules over the assembly tree's leaves
+(`assemblyHashOf`, `sdk/src/assembly.ts`).
+
 The inner preimage of a clause leaf, and of the provenance leaf, is 64 bytes,
 a key and a data hash. No pair of a 32-byte key and a 32-byte data hash
 reproduces a 96-byte preimage's hash, so no clause key opens the topology
@@ -92,7 +113,13 @@ it (`AttestationCoordinator` rebuilds the clause shape), and no usage claim
 counts it. A reserved key in the clause-leaf shape would not hold this,
 because `ClauseRegistry.registerClause` accepts any nonzero key and
 `UsageCounter` and the guest refuse only the two reserved keys
-(`is_reserved_key`, `prover/lib/src/kernel.rs`). The edges are fixed at
+(`is_reserved_key`, `prover/lib/src/kernel.rs`). An assembly leaf's inner
+preimage is also 96 bytes (domain, key, data hash), and it is kept apart from
+the topology leaf by its first word, the domain: `ASSEMBLY_LEAF_DOMAIN` =
+`keccak256("figaro-assembly-leaf")` =
+`0xb44cab2cf6dbf97cfe57060c8f30ee31552bc93f52859b4f32bd145f2882dfc6`, against
+`TOPOLOGY_LEAF_DOMAIN` =
+`0xbb19ab0597c6d28223160cd73f765e7ab09fb47de53be100cb982aec5ebc63af`. The edges are fixed at
 commit and have no later stage, so no attestation of them is lost. The leaf stays
 double-hashed, so it never passes as an internal node.
 

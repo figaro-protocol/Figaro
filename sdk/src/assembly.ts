@@ -259,6 +259,14 @@ export function agreementLeafBytes(entry: Pick<AssemblyAgreement, "clauses" | "f
     if (!Array.isArray(follows) || follows.some((label) => typeof label !== "string")) {
         throw new Error(`entry ${i} follows is not a list of entry labels`);
     }
+    // One label named twice would register but never check out: checkout
+    // writes each label's order hash, and the topology leaf refuses an order
+    // hash named twice (`topologyLeafBytes`).
+    const seen = new Set<string>();
+    for (const label of follows) {
+        if (seen.has(label)) throw new Error(`entry ${i} follows names entry ${label} twice`);
+        seen.add(label);
+    }
     return toHex(new TextEncoder().encode(canonicalize({ clauses: entry.clauses ?? {}, follows, slot: i })));
 }
 

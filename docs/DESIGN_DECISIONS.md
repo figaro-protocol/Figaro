@@ -1229,7 +1229,11 @@ shape would let a stranger register it and earn on every order, or would
 need a contract and a guest change to refuse it. A leaf of another length
 opens under no clause key, so it is registered nowhere, attested nowhere and
 counted nowhere, with no contract and no verification key moved. The leaf
-stays double-hashed, so it never passes as an internal node. The cost is
+stays double-hashed, so it never passes as an internal node. An assembly
+leaf's inner preimage is also 96 bytes (domain, key, data hash), and it is
+kept apart from the topology leaf by its first word, the domain:
+`ASSEMBLY_LEAF_DOMAIN` = `keccak256("figaro-assembly-leaf")` against
+`TOPOLOGY_LEAF_DOMAIN` = `keccak256("figaro-agreement-topology")`. The cost is
 that no attestation can name it, and none is lost: the edges are fixed at
 commit and have no later stage. A reader proves them by rebuilding the root
 from the signed agreement, which carries them in full.

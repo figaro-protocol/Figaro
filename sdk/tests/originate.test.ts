@@ -80,6 +80,17 @@ describe("instantiateRootAgreement", () => {
         expect(a.clauses.some((s) => s.clause === keyOf("figaro-commerce"))).toBe(true);
     });
 
+    it("refuses a design with no root entry, never signing an empty topology for an entry that follows another", () => {
+        const rootless = hydrateAuthored({
+            agreements: [
+                { id: "agreement-0", clauses: { [keyOf("figaro-commerce")]: {} }, follows: ["agreement-1"] },
+                { id: "agreement-1", clauses: {}, follows: ["agreement-0"] },
+            ],
+        });
+        expect(() => instantiateRootAgreement(rootless, { buyer: BUYER.address, seller: SELLER.address }))
+            .toThrow(/no root entry/);
+    });
+
 });
 
 describe("origination handshake (real signatures, no chain)", () => {

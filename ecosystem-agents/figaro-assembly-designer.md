@@ -184,7 +184,10 @@ derive identity.
   own `follows` — `composeAuthoredAgreement(doc, specs)` from `@figaro-protocol/sdk`
   resolves the names (`resolveAuthoredClauseKeys`: the keys of the specs in `specs.list()` whose
   `clauseId` matches; write `name@version` to match the `version` too), composes them through
-  the one composition rule (the mandatory clause named like any other; or compose
+  the one composition rule (a written agreement names each mandatory clause like any other
+  clause; the canvas writes in whatever mandatory clauses the DAO wallet has live on the
+  network, read at runtime by `mandatoryClauses`, which on the reference seeding is
+  `figaro-commerce`; or compose
   the whole set by name with `composeAuthoredAgreements(docsByName, specs)`) and keys the agreement, and `assembleAuthored(doc, agreementsByName, specs)`
   binds each one to the named agreement's hash and returns `{ assembly, agreements }` with each
   DISTINCT agreement once. They refuse a name two loaded specs share unless the file

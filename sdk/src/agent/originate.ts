@@ -61,8 +61,13 @@ export interface InstantiateParams {
  */
 export function instantiateRootAgreement(hydrated: HydratedAssembly, params: InstantiateParams): Agreement {
     const { assembly } = hydrated;
-    const root = assembly.agreements.find(isRootEntry) ?? assembly.agreements[0];
-    if (!root) throw new Error("assembly has no agreements to instantiate");
+    if (assembly.agreements.length === 0) throw new Error("assembly has no agreements to instantiate");
+    // A root follows no other entry, so it signs the empty topology. A design
+    // whose every entry follows another has none; signing `[]` for an entry
+    // whose design names its predecessors would commit a topology the design
+    // never stated, so it is refused.
+    const root = assembly.agreements.find(isRootEntry);
+    if (!root) throw new Error("assembly has no root entry to instantiate: every entry follows another");
     // THE ASSEMBLY-SCOPE FOLD, exactly as the walk performs
     // it: the assembly's assembly-scoped clauses — terms of the composition
     // itself (a denomination pin, a dispute forum) — fold into the root

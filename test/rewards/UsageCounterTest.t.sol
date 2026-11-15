@@ -55,9 +55,9 @@ contract UsageCounterTest is Test {
     ///      AGR_KEY, agreement 1 instantiates AGR2_KEY after agreement 0.
     bytes32 constant AGR_KEY = keccak256("an-agreement");
     bytes32 constant AGR2_KEY = keccak256("a-second-agreement");
-    /// @dev Agreement 1's own fills: the topology clause naming agreement 0.
-    string constant TOPOLOGY_FILL =
-        '{"0x7070000000000000000000000000000000000000000000000000000000000000":{"follows":["agreement-0"]}}';
+    /// @dev Agreement 1's edges in the assembly: the label of agreement 0,
+    ///      the entry it follows — the entry bytes' `follows`, never a clause.
+    string constant AGR2_FOLLOWS = '["agreement-0"]';
     /// @dev The canonical JSON of the test assembly's `assemblyClauses`.
     bytes constant TERMS = '{"0xabc0000000000000000000000000000000000000000000000000000000000000":{}}';
 
@@ -229,10 +229,10 @@ contract UsageCounterTest is Test {
         core.resolveProcess(processId, all);
     }
 
-    /// @dev The test assembly's agreement bytes: agreement 0 fills nothing,
-    ///      agreement 1 fills the topology clause to follow agreement 0.
+    /// @dev The test assembly's agreement bytes: neither agreement fills a
+    ///      clause; agreement 0 is the root and agreement 1 follows it.
     function _agreementLeafBytes(uint256 entry) internal pure returns (bytes memory) {
-        return AgreementTestHelper.agreementLeafBytes(entry, entry == 0 ? "{}" : TOPOLOGY_FILL);
+        return AgreementTestHelper.agreementLeafBytes(entry, "{}", entry == 0 ? "[]" : AGR2_FOLLOWS);
     }
 
     /// @dev The registered agreement each agreement of the test assembly instantiates.
@@ -666,7 +666,8 @@ contract UsageCounterTest is Test {
     /// with its proof from the test assembly's tree fails under its root.
     function test_anAgreementLeafUnderADifferentAssemblyHashFails() public {
         bytes32[] memory otherLeaves = new bytes32[](1);
-        otherLeaves[0] = AgreementTestHelper.assemblyLeafFor(AGR2_KEY, AgreementTestHelper.agreementLeafBytes(0, "{}"));
+        otherLeaves[0] =
+            AgreementTestHelper.assemblyLeafFor(AGR2_KEY, AgreementTestHelper.agreementLeafBytes(0, "{}", "[]"));
         bytes32 otherRoot = AgreementTestHelper.rootFor(otherLeaves);
 
         (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderAgreement(AGR_KEY, otherRoot, 1);
@@ -886,9 +887,11 @@ contract UsageCounterTest is Test {
     }
 
     function test_mandatoryClausesEarnForTheirAuthor() public {
-        // figaro-commerce and figaro-topology ride on EVERY order and earn like
-        // any other clause: scoring them rewards their designer of record on
-        // every resolved process.
+        // The mandatory clauses ride on EVERY order: the canvas writes in
+        // whatever mandatory clauses the DAO wallet has live on the network
+        // (`mandatoryClauses`, sdk/src/projection.ts), on the reference seeding
+        // figaro-commerce. They earn like any other clause: scoring them
+        // rewards their designer of record on every resolved process.
         bytes32 commerceKey = keccak256('{"clauseId":"figaro-commerce","version":1}');
 
         CommitmentTypes.Commitment memory c = _settledOrder(commerceKey, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);

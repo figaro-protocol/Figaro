@@ -16,8 +16,9 @@ pragma solidity 0.8.26;
 ///         IS its composition: agreementHash is the merkle root over one leaf per
 ///         composed clause, the clause key and the canonical bytes of the fills
 ///         the designer gave it, so a clause's membership is a merkle proof. The
-///         topology clause is composed with `{}` (who follows whom is the assembly's
-///         fact), and editorial prose is excluded, so renaming never forks identity. The registry keys
+///         document names no topology: who follows whom is the assembly entry's
+///         `follows`, and a signed agreement carries it as the format's topology
+///         leaf. Editorial prose is excluded, so renaming never forks identity. The registry keys
 ///         bindings by agreementHash: identical compositions collapse to one
 ///         binding, and no caller-chosen name exists on-chain to squat.
 ///
