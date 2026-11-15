@@ -27,15 +27,15 @@ You do not need it — every call below is reachable with raw `cast` — but it 
 
 ```solidity
 function commit(CommitmentTypes.Commitment calldata c, bytes calldata buyerSig, bytes calldata sellerSig)
-    external returns (bytes32 processId, bytes32 orderHash);          // src/core/kernel/FigaroCore.sol:146
+    external returns (bytes32 processId, bytes32 orderHash);          // src/core/kernel/FigaroCore.sol:142
 
 function resolveProcess(bytes32 processId, CommitmentTypes.Commitment[] calldata commitments)
-    external;                                                          // src/core/kernel/FigaroCore.sol:254
+    external;                                                          // src/core/kernel/FigaroCore.sol:249
 ```
 
 Both are `nonReentrant`. `commit` verifies both EIP-712 signatures over `c`, then pulls `2 × payment` from the buyer and `2 × expectedCumulativeValue` from the seller. A root order (`c.processId == 0`) opens a process; any other order extends one and must carry the same `c.buyer` as the process's root buyer and an `expectedCumulativeValue` equal to the live accumulator plus this order's `payment`. `resolveProcess` requires `msg.sender` to be the root buyer and the complete active-order list, then pays every seller `2 × expectedCumulativeValue + payment` and refunds the buyer `payment` — every deposited token leaves in one call; `FigaroCore` never holds a withdrawable balance.
 
-**Public reads:** `orderStatus(bytes32 orderHash) → uint8` (0 unknown, 1 committed, 2 resolved), the `processes` mapping (`ProcessState{rootBuyer, currency, cumulativeValue, activeOrderCount}`), and `DOMAIN_SEPARATOR() → bytes32` (`src/core/kernel/FigaroCore.sol:52-109`). `orderStatus` answers for the **direct path only** — a batch-resolved order reads `0` here forever, so `0` means "not on this path," never "not resolved."
+**Public reads:** `orderStatus(bytes32 orderHash) → uint8` (0 unknown, 1 committed, 2 resolved), the `processes` mapping (`ProcessState{rootBuyer, currency, cumulativeValue, activeOrderCount}`), and `DOMAIN_SEPARATOR() → bytes32` (`src/core/kernel/FigaroCore.sol:81-111`). `orderStatus` answers for the **direct path only** — a batch-resolved order reads `0` here forever, so `0` means "not on this path," never "not resolved."
 
 **The EIP-712 domain is `{ name: "FigaroCore", version: "3", chainId, verifyingContract }`** (`src/core/kernel/FigaroCore.sol:101`). The version counts changes to the commitment struct's layout, not deploys.
 
