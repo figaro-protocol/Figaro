@@ -81,6 +81,15 @@ neither line does not delay either.
    - An order whose edges sit in a `figaro-topology` clause shows no edges: every reader
      reads `Agreement.follows` only.
 
+   The commerce clause's key leaves `block` out (`computeClauseKey`; the contract notice of
+   `src/registries/ClauseRegistry.sol`), and a key has one content URI and no update:
+   `registerClause` refuses a key already registered (`AlreadyRegistered`). A chain whose
+   registered `figaro-commerce` document declares another `block.design.article` keeps
+   serving that document under the same key. The drawer groups the clause under the word
+   that document declares (`groupClausesByArticle`, `frontend/lib/shared/clauseSpecSource.ts`),
+   and `/registries` lists it under that word (`frontend/lib/registries/explorer.ts`). The
+   clause stays selectable, and a designer composes it like any clause.
+
    So the site built from this code goes up only against a deployment seeded in the present
    format: every reference assembly pinned and registered in the present entry bytes, and
    no reference agreement composing `figaro-topology`.

@@ -440,6 +440,25 @@ export function readBuiltAssembly(file, authored = loadAuthoredSpecs(), agreemen
 }
 
 /**
+ * The authored clauses a founder's Ledger run leaves out: those the chain's
+ * registration plan (`registrations` of `deployments/<chainId>.expected.json`)
+ * gives a wallet other than its default. A first registration is permanent
+ * (`ClauseRegistry`, `AlreadyRegistered`), so with no expectations file, or
+ * one with no `registrations`, this throws before any transaction: a run
+ * with no plan would register every clause under the founder's wallet.
+ * @param expected the parsed expectations file, or undefined when none exists
+ * @param specs    the authored clause list (`loadAuthoredSpecs().list()`)
+ * @param planFile the expectations file's path, for the message
+ */
+export function clausesPlannedForOthers(expected, specs, planFile) {
+    const plan = expected?.registrations;
+    if (!plan || typeof plan !== 'object') {
+        throw new Error(`no registration plan for this chain: ${planFile} ${expected ? 'has no registrations' : 'does not exist'} — a Ledger run registers nothing until the plan says which wallet registers each clause, since a first registration is permanent`);
+    }
+    return specs.filter((s) => plan.byClause?.[s.clauseId] !== undefined && plan.byClause[s.clauseId] !== plan.default);
+}
+
+/**
  * Pin + register every clause spec. Reusable from the test-data script.
  * `only` is a set of clause KEYS (resolved from authored names by the caller).
  * @returns the number of clauses newly registered.
@@ -769,15 +788,17 @@ async function main() {
     // Task 13): first write wins forever. An assembly's prerequisite set
     // carries every clause its agreements name, so such a clause is taken back
     // out here unless SEED_CLAUSES names it by hand (a deliberate act, logged
-    // as such). The devnet's one-key seeding (no Ledger, no vault) is untouched.
+    // as such). A chain with no plan stops the run here, before any
+    // transaction (`clausesPlannedForOthers`). The devnet's one-key seeding
+    // (no Ledger, no vault) is untouched.
     if (process.env.REGISTRAR_LEDGER_HD_PATH && !vault) {
         const authored = loadAuthoredSpecs();
         const named = process.env.SEED_CLAUSES
             ? new Set(resolveAuthoredClauseNames(process.env.SEED_CLAUSES.split(',').map((s) => s.trim()).filter(Boolean)).map((k) => k.toLowerCase()))
             : new Set();
         const planFile = path.resolve(__dirname, `../../deployments/${chain.id}.expected.json`);
-        const plan = fs.existsSync(planFile) ? JSON.parse(fs.readFileSync(planFile, 'utf8')).registrations : undefined;
-        const others = authored.list().filter((s) => plan?.byClause?.[s.clauseId] !== undefined && plan.byClause[s.clauseId] !== plan.default);
+        const expected = fs.existsSync(planFile) ? JSON.parse(fs.readFileSync(planFile, 'utf8')) : undefined;
+        const others = clausesPlannedForOthers(expected, authored.list(), planFile);
         const skipped = [];
         onlyClauses ??= new Set(authored.list().map((s) => s.clauseKey));
         for (const m of others) {

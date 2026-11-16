@@ -13,7 +13,7 @@ No reference assembly covers air service: the devnet's genesis publishes none, a
 
 One order per resource market, each a buyer↔seller relationship between the passenger and one provider's wallet. No order joins one provider to another: the Core requires the process's buyer on every order, so the process is a linear sequence of commits that all run to the passenger. The first order opens the process; each order's topology leaf (`follows` on its agreement) states its own account of what it follows, here the aircraft order, for anyone who reads the process off-chain.
 
-| # | Provider wallet | P | Terms beside commerce |
+| # | Provider wallet | P | Terms |
 |---|---|---:|---|
 | 0 | aircraft | 65 | `figaro-schedule`, `figaro-geolocation`, `figaro-credential` (airworthiness), `figaro-emissions`, the air-service event log |
 | 1 | fuel supplier | 45 | `figaro-schedule`, `figaro-merchant-process`, `figaro-emissions` |
@@ -242,7 +242,7 @@ console.log("hydrates:", Boolean(hydrated), `${hydrated?.assembly.agreements.len
 node compose.mjs
 ```
 
-Seven `agreement … success` lines, one `assembly … success` line and `hydrates: true 10 agreements`. Ten orders bind seven registrations because the four orders whose only term beside commerce is the schedule compose identical agreements, and an agreement's key is its content: two orders composing the same clauses bind one registration. The `assemblyHash` is content-derived too, so the same design composed by anyone collapses onto the same binding.
+Seven `agreement … success` lines, one `assembly … success` line and `hydrates: true 10 agreements`. Ten orders bind seven registrations because the four orders whose only term is the schedule compose identical agreements, and an agreement's key is its content: two orders composing the same clauses bind one registration. The `assemblyHash` is content-derived too, so the same design composed by anyone collapses onto the same binding.
 
 ## 6. Bind sellers and run it
 
