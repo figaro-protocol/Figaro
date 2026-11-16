@@ -58,8 +58,8 @@ import {
     fetchHydratedAssembly,
     getAssemblyRegistry,
     usePublishedAssemblies,
-    useWithdrawAssembly,
 } from "@/lib/protocol/useAssemblyRegistry";
+import { useWithdrawAssembly } from "@/lib/protocol/useWithdrawStake";
 import { readNetwork } from "@/lib/shared/networkRead";
 import { useWithdrawGate, withdrawBlockedReason, withdrawGateOpen, withdrawUnverifiedCaveat } from "@/lib/protocol/withdrawGate";
 import { usePublishAssembly } from "@/lib/designer/publishAssembly";

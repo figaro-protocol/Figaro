@@ -53,10 +53,12 @@ vi.mock("@/lib/protocol/useAgreementRegistry", () => ({
         mocks.scopedTo.push(registeredBy);
         return mocks.scan;
     },
-    useWithdrawAgreement: () => ({ withdraw: mocks.withdraw, isPending: false }),
     fetchRegisteredAgreement: async () => null,
     getRegisteredAgreement: (key: string) => mocks.docs.get(key.toLowerCase()),
     useRegisteredAgreementsVersion: () => 0,
+}));
+vi.mock("@/lib/protocol/useWithdrawStake", () => ({
+    useWithdrawAgreement: () => ({ withdraw: mocks.withdraw, isPending: false }),
 }));
 vi.mock("@/lib/protocol/withdrawGate", async () => {
     const actual = await vi.importActual<typeof import("@/lib/protocol/withdrawGate")>("@/lib/protocol/withdrawGate");

@@ -1,24 +1,31 @@
 "use client";
 
 /**
- * createUseWithdrawStake — factory for a K4 staked-intent registry's
- * `withdrawDeposit` write hook. `useWithdrawAssembly` (`useAssemblyRegistry.ts`)
- * and `useWithdrawClause` (`useClauseRegistry.ts`) were byte-identical per
- * their own "Mirrors X exactly" comments: resolve the registry address, then
- * the shared simulate → send → verify (`simulateWriteVerify`). This factory is the one shared shape;
- * each registry supplies its own address getter, ABI, not-configured
- * message, and revert-message table so its own errors keep surfacing as its
- * own copy.
+ * useWithdrawStake — the `withdrawDeposit` write hook of each K4
+ * staked-intent registry: `useWithdrawClause`, `useWithdrawAssembly` and
+ * `useWithdrawAgreement`. One factory, `createUseWithdrawStake`, builds all
+ * three: resolve the registry address, then the shared simulate → send →
+ * verify (`simulateWriteVerify`); each registry supplies its own address
+ * getter, ABI, not-configured message and revert-message table, so its own
+ * errors keep surfacing as its own copy.
  *
- * Lives outside both `useAssemblyRegistry.ts` and `useClauseRegistry.ts` so
- * neither registry file has to import the other.
+ * These hooks need a wallet provider, so they live apart from the registries'
+ * read modules (`useClauseRegistry.ts`, `useAssemblyRegistry.ts`,
+ * `useAgreementRegistry.ts`), which import nothing from `wagmi` and which a
+ * page with no wallet provider reads through.
  */
 
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import type { Abi } from "viem";
+import { AGREEMENT_REGISTRY_ABI } from "@figaro-protocol/sdk";
+import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
+import { withdrawRevertMessage } from "@/lib/protocol/registryRevertMessages";
+import { clauseWithdrawRevertMessage, getClauseRegistry } from "@/lib/protocol/useClauseRegistry";
+import { getAssemblyRegistry } from "@/lib/protocol/useAssemblyRegistry";
+import { getAgreementRegistry } from "@/lib/protocol/useAgreementRegistry";
 
-export interface WithdrawStakeConfig {
+interface WithdrawStakeConfig {
     /** The registry address if configured and well-formed, else null. */
     getRegistry: () => `0x${string}` | null;
     /** The registry's ABI — must declare `withdrawDeposit(bytes32)`. */
@@ -30,59 +37,10 @@ export interface WithdrawStakeConfig {
     revertMessage: (errorName: string | undefined) => string | null;
 }
 
-/**
- * The register/publish reverts every registry shares — the stake that changed
- * between read and send, and the empty pin — as a message, or null for a
- * revert only one registry has. Each register translator's table ends in it.
- */
-export function sharedRegisterRevertMessage(
-    errorName: string | undefined,
-    args: readonly unknown[] | undefined,
-): string | null {
-    switch (errorName) {
-        case "WrongDeposit": {
-            const provided = (args?.[0] as bigint | undefined)?.toString() ?? "?";
-            const required = (args?.[1] as bigint | undefined)?.toString() ?? "?";
-            return `Registration stake mismatch (provided ${provided} wei, required ${required} wei). The stake amount changed between the read and the send — retry.`;
-        }
-        case "EmptyContentURI":
-            return "The IPFS pin returned an empty URI.";
-        default:
-            return null;
-    }
-}
-
-/**
- * The shared `withdrawDeposit` revert table — the on-chain guards only
- * (registeredBy-only, once-only, must-exist; the commits==resolves gate is
- * off-chain/advisory via `useWithdrawGate`). The registries' tables
- * differed only by noun, so the noun is the parameter; the assembly keeps
- * "composition" for the must-exist case because the binding's identity IS
- * the composition.
- */
-export function withdrawRevertMessage(noun: "clause" | "assembly" | "agreement") {
-    return (errorName: string | undefined): string | null => {
-        switch (errorName) {
-            case "AlreadyWithdrawn":
-                return `This ${noun}'s registration stake has already been reclaimed.`;
-            case "NotRegisteredBy":
-                return `Only the wallet that registered this ${noun} can reclaim its registration stake.`;
-            case "NotRegistered":
-                return noun === "assembly"
-                    ? "No registration binding exists for this composition."
-                    : `No registration binding exists for this ${noun}.`;
-            case "TransferFailed":
-                return "The stake refund transfer failed. No state changed — retry.";
-            default:
-                return null;
-        }
-    };
-}
-
 /** Build a `useWithdrawX()` hook bound to one registry's config. The
  *  returned function is itself the hook — call it unconditionally at a
  *  component's top level, same as any other hook. */
-export function createUseWithdrawStake(config: WithdrawStakeConfig) {
+function createUseWithdrawStake(config: WithdrawStakeConfig) {
     const { getRegistry, abi, notConfiguredMessage, revertMessage } = config;
 
     return function useWithdrawStake() {
@@ -114,3 +72,48 @@ export function createUseWithdrawStake(config: WithdrawStakeConfig) {
         return { withdraw, isPending };
     };
 }
+
+/**
+ * Reclaim a clause's registration stake (`ClauseRegistry.withdrawDeposit`).
+ * Mirrors `useWithdrawAssembly` exactly: the binding is permanent — withdraw
+ * only moves the stake and de-surfaces the clause for NEW compositions;
+ * committed orders keep resolving under the clause. Gating on in-flight trades is
+ * the caller's job via `useWithdrawGate` (advisory, off-chain); this hook is the
+ * plain registeredBy-only write. Simulates first to surface a typed revert before
+ * opening the wallet, sends, then waits for a `success` receipt. Throws on any
+ * failure.
+ */
+export const useWithdrawClause = createUseWithdrawStake({
+    getRegistry: getClauseRegistry,
+    abi: CLAUSE_REGISTRY_ABI,
+    notConfiguredMessage: "ClauseRegistry address not configured (NEXT_PUBLIC_CLAUSE_REGISTRY).",
+    revertMessage: clauseWithdrawRevertMessage,
+});
+
+/**
+ * Reclaim an assembly's registration stake (`AssemblyRegistry.withdrawDeposit`).
+ * The binding is permanent — withdraw only moves the stake and de-surfaces
+ * the assembly for NEW orders; committed processes keep resolving. Gating on
+ * in-flight trades is the caller's job via `useWithdrawGate` (advisory,
+ * off-chain); this hook is the plain registeredBy-only write. Simulates first to
+ * surface a typed revert before opening the wallet, sends, then waits for a
+ * `success` receipt. Throws on any failure.
+ */
+export const useWithdrawAssembly = createUseWithdrawStake({
+    getRegistry: getAssemblyRegistry,
+    abi: ASSEMBLY_REGISTRY_ABI,
+    notConfiguredMessage: "AssemblyRegistry address not configured (NEXT_PUBLIC_ASSEMBLY_REGISTRY).",
+    revertMessage: withdrawRevertMessage("assembly"),
+});
+
+/** Reclaim an agreement's registration stake (`AgreementRegistry.withdrawDeposit`).
+ *  The binding is permanent; withdraw de-surfaces the agreement for new
+ *  compositions while every assembly already composed from it keeps reading it.
+ *  Consumed by `RegisteredAgreementsReclaim` on the designer landing (gated per
+ *  row by `useWithdrawGate({ kind: "agreement", agreementHash })`). */
+export const useWithdrawAgreement = createUseWithdrawStake({
+    getRegistry: getAgreementRegistry,
+    abi: AGREEMENT_REGISTRY_ABI,
+    notConfiguredMessage: "AgreementRegistry address not configured (NEXT_PUBLIC_AGREEMENT_REGISTRY).",
+    revertMessage: withdrawRevertMessage("agreement"),
+});

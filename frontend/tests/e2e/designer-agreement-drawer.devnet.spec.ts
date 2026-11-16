@@ -31,6 +31,12 @@
  * guards is a review that showed every order as "No terms yet" while the
  * draft — and the assembly publish would have anchored — carried them.
  *
+ * Another test covers unsaved work: orders, an edge, a clause composed in the
+ * drawer, an assembly term and the editorial identity (the description half
+ * typed), with no Save. A reload brings every piece back, and so does leaving
+ * for the designer hub and returning with the browser's back button: the
+ * canvas resumes the autosaved current session on /assemblies/designer/new.
+ *
  * A second test covers what a design fill's VALUE does to the composition:
  * the enum options render through the spec's own valueLabels (a labeled
  * choice, not a raw token), and changing the chosen value MOVES the canvas's
@@ -157,6 +163,88 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await reopenDraft(page, slug);
         const geoAfterOff = await openGeoToggle(page);
         await expect(geoAfterOff, 'the removed geo clause stays removed after reload').not.toBeChecked();
+    });
+
+    test('unsaved work on the canvas survives a reload, and leaving the page and coming back with the back button', async ({ page }) => {
+        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+
+        // ── Orders and an edge: two children under the root, the second also
+        //    following the first (the add-parent affordance). ────────────────
+        const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
+        await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
+        const idsOf = () => orderNodes.evaluateAll((els) =>
+            els.map((el) => el.getAttribute('data-testid')!.replace('order-node-', '')));
+        const [rootId] = await idsOf();
+        await page.getByTestId(`btn-add-suborder-${rootId}`).click();
+        await expect(orderNodes).toHaveCount(2, { timeout: 10000 });
+        const bId = (await idsOf()).find((id) => id !== rootId)!;
+        await page.getByTestId(`btn-add-suborder-${rootId}`).click();
+        await expect(orderNodes).toHaveCount(3, { timeout: 10000 });
+        const cId = (await idsOf()).find((id) => id !== rootId && id !== bId)!;
+        await page.getByTestId(`select-add-parent-${cId}`).selectOption(bId);
+
+        // ── A clause composed on the root in the drawer ───────────────────────
+        const geoToggle = await openGeoToggle(page);
+        await geoToggle.check();
+
+        // ── An assembly-scoped term ──────────────────────────────────────────
+        const forumToggle = page.getByTestId(`assembly-terms-clause-${FORUM_CLAUSE_KEY}`);
+        await expect(forumToggle, 'the assembly-terms panel surfaces the forum clause').toHaveCount(1, { timeout: 20000 });
+        await forumToggle.check();
+
+        // ── The editorial identity; the description left half typed, no blur ─
+        const name = `Reload keeps work ${Date.now()}`;
+        await page.getByTestId('designer-name-input').fill(name);
+        await page.getByTestId('designer-summary-input').fill('Two legs, one join');
+        await page.getByTestId('designer-description-input').pressSequentially('The buyer rec');
+
+        // The composition's identity, as the canvas states it before leaving:
+        // its slug and hash, or the reason the build refuses it.
+        const identity = page.getByTestId('designer-composition-identity');
+        await expect(identity).toBeVisible({ timeout: 30000 });
+        const identityBefore = (await identity.innerText()).trim();
+        expect(identityBefore.length, 'the canvas states the composition identity').toBeGreaterThan(0);
+
+        // Nothing was saved as a named draft: this is unsaved work.
+        const namedDrafts = await page.evaluate(() => window.localStorage.getItem('figaro:designer:drafts'));
+        expect(JSON.parse(namedDrafts ?? '[]') as unknown[], 'no Save was pressed').toHaveLength(0);
+
+        const expectWorkBack = async (when: string) => {
+            await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+            await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+            await expect(orderNodes, `${when}: the three orders are back`).toHaveCount(3, { timeout: 10000 });
+            expect((await idsOf()).sort(), `${when}: the same orders`).toEqual([rootId, bId, cId].sort());
+            // The edges, read out of the autosave the canvas wrote.
+            const follows = await page.evaluate(() => {
+                const raw = window.localStorage.getItem('figaro:designer:current');
+                const snap = raw ? JSON.parse(raw) as { orders: Array<{ orderHash: string; follows?: string[] }> } : null;
+                return Object.fromEntries((snap?.orders ?? []).map((o) => [o.orderHash, o.follows ?? []]));
+            });
+            expect(follows[cId], `${when}: the third order still follows the root and the second`).toEqual([rootId, bId]);
+            expect(follows[bId], `${when}: the second order still follows the root`).toEqual([rootId]);
+            await expect(page.getByTestId('designer-name-input'), `${when}: the name`).toHaveValue(name);
+            await expect(page.getByTestId('designer-summary-input'), `${when}: the summary`).toHaveValue('Two legs, one join');
+            await expect(page.getByTestId('designer-description-input'), `${when}: the half-typed description`).toHaveValue('The buyer rec');
+            await expect(
+                page.getByTestId(`assembly-terms-clause-${FORUM_CLAUSE_KEY}`),
+                `${when}: the assembly term`,
+            ).toBeChecked({ timeout: 20000 });
+            await expect(identity, `${when}: the same composition identity`).toHaveText(identityBefore, { timeout: 30000 });
+            await expect(await openGeoToggle(page), `${when}: the clause composed on the root`).toBeChecked();
+        };
+
+        // ── Reload ───────────────────────────────────────────────────────────
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await expectWorkBack('after a reload');
+
+        // ── Away to another route, then back with the browser's back button ──
+        await page.goto('/assemblies/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await expect(page.getByTestId('designer-canvas-toolbar')).toHaveCount(0);
+        await page.goBack({ waitUntil: 'domcontentloaded' });
+        await expect(page).toHaveURL(/\/assemblies\/designer\/new/);
+        await expectWorkBack('after the back button');
     });
 
     test('an enum design fill renders its spec labels, and changing its value moves the composition identity', async ({ page }) => {

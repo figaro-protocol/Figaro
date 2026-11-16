@@ -4,8 +4,8 @@
  * createRegistryEventScan — factory for a K4 staked-intent registry's paired
  * event scan: the `registered` stream plus the `withdrawn` stream (surfacing
  * derives from the LIVE stake, so no reader folds one without the other).
- * `useRegisteredClausesByWallet` / `useAllRegisteredClauses`
- * (`useClauseRegistry.ts`) and `usePublishedAssemblies`
+ * `useRegisteredClausesByWallet` (`useRegisterClause.ts`) /
+ * `useAllRegisteredClauses` (`useClauseRegistry.ts`) and `usePublishedAssemblies`
  * (`useAssemblyRegistry.ts`) each restated the same shape: read both streams
  * through the event cache, narrow to a registering wallet client-side over
  * the ONE cached scan, decode with the SDK's per-family parser, sort, and

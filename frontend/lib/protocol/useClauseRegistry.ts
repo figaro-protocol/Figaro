@@ -11,35 +11,27 @@
  * spec set. `registeredBy` is indexed. (Grouping is `block.design.article` in
  * the spec JSON — no on-chain group field.)
  *
- * Two readers:
- *   - `useRegisteredClausesByWallet` — wallet-scoped (the designer's "clauses you
- *     registered" list).
- *   - `useAllRegisteredClauses` — the whole registry, unfiltered. Drives the
- *     `/clauses` inventory and feeds the clause-spec loader (`useClauseSpecs`).
- *     Reads through the standalone `publicClient` so it works on the marketing
- *     tier, which mounts no wallet provider.
+ * `useAllRegisteredClauses` reads the whole registry, unfiltered. It drives
+ * the `/clauses` inventory and feeds the clause-spec loader (`useClauseSpecs`),
+ * and reads through the standalone `publicClient`, so it works on the
+ * marketing tier, which mounts no wallet provider. This file imports nothing
+ * from `wagmi`. The clause registry's hooks that need a wallet provider live
+ * beside it: `useRegisteredClausesByWallet` and `useRegisterClause` in
+ * `@/lib/protocol/useRegisterClause`, `useWithdrawClause` in
+ * `@/lib/protocol/useWithdrawStake`.
  */
 
-import { type Abi, type Log } from "viem";
-import { canonicalize, computeClauseKey, parseClauseRegistryLogs } from "@figaro-protocol/sdk";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { type Log } from "viem";
+import { parseClauseRegistryLogs } from "@figaro-protocol/sdk";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
-import { publicClient } from "@/lib/shared/wagmi";
-import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { isValidAddress } from "@/lib/shared/evm";
-import {
-    createUseWithdrawStake,
-    sharedRegisterRevertMessage,
-    withdrawRevertMessage,
-} from "@/lib/protocol/useWithdrawStake";
+import { sharedRegisterRevertMessage, withdrawRevertMessage } from "@/lib/protocol/registryRevertMessages";
 import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
-import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 
 
 /** The ClauseRegistry address if it's a well-formed address, else null.
- *  Mirrors `getAssemblyRegistry` / `getMembersRegistry`. Internal — the write
- *  hooks below are the only callers. */
-function getClauseRegistry(): `0x${string}` | null {
+ *  Mirrors `getAssemblyRegistry` / `getMembersRegistry`. */
+export function getClauseRegistry(): `0x${string}` | null {
     const a = CONTRACTS.clauseRegistry;
     return isValidAddress(a) ? a : null;
 }
@@ -82,10 +74,11 @@ function toRegisteredClauseEvents(registeredLogs: Log[], withdrawnLogs: Log[]): 
 }
 
 /** The one paired (ClauseRegistered + DepositWithdrawn) cached scan behind
- *  both readers — the shared factory shape (`createRegistryEventScan`), so
- *  the fetch, the registeredBy narrowing, the `failed` contract and the row
- *  projection can't drift between them. */
-const useClauseRegistryScan = createRegistryEventScan<RegisteredClauseEvent>({
+ *  both readers, `useAllRegisteredClauses` here and the wallet-scoped
+ *  `useRegisteredClausesByWallet` — the shared factory shape
+ *  (`createRegistryEventScan`), so the fetch, the registeredBy narrowing, the
+ *  `failed` contract and the row projection can't drift between them. */
+export const useClauseRegistryScan = createRegistryEventScan<RegisteredClauseEvent>({
     getRegistry: getClauseRegistry,
     abi: CLAUSE_REGISTRY_ABI,
     registeredEventName: "ClauseRegistered",
@@ -97,17 +90,6 @@ const useClauseRegistryScan = createRegistryEventScan<RegisteredClauseEvent>({
         return items;
     },
 });
-
-/** Read all `ClauseRegistered` events filtered by the registering wallet. Sorts
- *  most-recent block first. Call `refetch` to pick up newly registered clauses. */
-export function useRegisteredClausesByWallet(registeredBy: `0x${string}` | undefined) {
-    const client = usePublicClient();
-    return useClauseRegistryScan({
-        registeredBy,
-        enabled: !!client && !!registeredBy,
-        client: client as typeof publicClient | undefined,
-    });
-}
 
 /**
  * Read every `ClauseRegistered` event in the registry — the whole on-chain
@@ -145,105 +127,3 @@ export function clauseRegisterRevertMessage(
  *  (`withdrawRevertMessage` — the on-chain guards only; the commits==resolves
  *  gate is off-chain/advisory via `useWithdrawGate`). */
 export const clauseWithdrawRevertMessage = withdrawRevertMessage("clause");
-
-// ── Write hooks ──────────────────────────────────────────────────────────────
-
-/** The confirmed outcome of a `registerClause` — the registered identity plus
- *  the anchored locator, enough to render a receipt and link to the live
- *  `/clauses` inventory where the clause now appears. */
-export interface RegisterClauseOutcome {
-    hash: `0x${string}`;
-    /** The spec's own presentation fields — what a receipt shows. */
-    clauseId: string;
-    version: number;
-    /** `computeClauseKey` of the spec — the on-chain key. */
-    clauseKey: `0x${string}`;
-    contentURI: string;
-}
-
-/**
- * Register a clause on `ClauseRegistry.registerClause` (payable). Mirrors the
- * assembly publish flow (`usePublishAssembly`) for clauses: pin the RAW spec
- * document's canonical bytes (`canonicalize`, `block` included, so a reader
- * gets the presentation with the spec), take the clause key as `keccak256` of
- * the canonical bytes of the spec without `block` (`computeClauseKey`), read the
- * registry's stake ON DEMAND, simulate to surface a typed revert before
- * opening the wallet, send, then wait for a `success` receipt.
- *
- * The caller validates well-formedness via `@figaro-protocol/sdk/clauses`
- * (`parseClauseSpec`) BEFORE calling this — the same off-chain gate that runs
- * at sign-time. This hook takes the already-parsed raw document and does the
- * pin + anchor. Throws on any failure (no wallet, IPFS down, wrong deposit,
- * already-registered collision, on-chain revert).
- */
-export function useRegisterClause() {
-    const client = usePublicClient();
-    const { address } = useAccount();
-    const { writeContractAsync, isPending } = useWriteContract();
-
-    async function register(rawSpec: Record<string, unknown>): Promise<RegisterClauseOutcome> {
-        const registry = getClauseRegistry();
-        if (!registry) {
-            throw new Error("ClauseRegistry address not configured (NEXT_PUBLIC_CLAUSE_REGISTRY).");
-        }
-        if (!client) throw new Error("No public client available to read the registration stake.");
-        if (!address) throw new Error("Connect a wallet before registering a clause.");
-
-        const clauseId = rawSpec.clauseId as string;
-        const version = Number(rawSpec.version);
-
-        // The key covers the spec without `block`; a reader parses the bytes
-        // it fetches, drops `block` and recomputes it. The bytes pinned are the
-        // canonical form (sorted keys, no whitespace) with `block` included —
-        // the convention populate-clauses.mjs pins too.
-        const bytes = canonicalize(rawSpec);
-        const clauseKey = computeClauseKey(rawSpec);
-        const cid = await DEFAULT_IPFS_SERVICE.pinBlob(new Blob([bytes], { type: "application/json" }));
-        const uri = DEFAULT_IPFS_SERVICE.buildURI(cid);
-
-        // No reward tag is anchored: the 600M reward is UNIFORM
-        // — every clause and assembly scores on its real usage
-        // alone, with no category or weight — so the registry stores no
-        // incentive input. The only classification a clause carries is
-        // `block.design.article`, a reader grouping that stays off-chain
-        // entirely.
-        const deposit = await client.readContract({
-            address: registry,
-            abi: CLAUSE_REGISTRY_ABI,
-            functionName: "registrationDeposit",
-        });
-
-        const txHash = await simulateWriteVerify({
-            client,
-            writeContractAsync,
-            address: registry,
-            abi: CLAUSE_REGISTRY_ABI as Abi,
-            functionName: "registerClause",
-            args: [clauseKey, uri],
-            value: deposit,
-            account: address,
-            revertMessage: (errorName, args) => clauseRegisterRevertMessage(errorName, args, `${clauseId}@${version}`),
-            failureMessage: "The clause was not registered.",
-        });
-        return { hash: txHash, clauseId, version, clauseKey, contentURI: uri };
-    }
-
-    return { register, isPending };
-}
-
-/**
- * Reclaim a clause's registration stake (`ClauseRegistry.withdrawDeposit`).
- * Mirrors `useWithdrawAssembly` exactly: the binding is permanent — withdraw
- * only moves the stake and de-surfaces the clause for NEW compositions;
- * committed orders keep resolving under the clause. Gating on in-flight trades is
- * the caller's job via `useWithdrawGate` (advisory, off-chain); this hook is the
- * plain registeredBy-only write. Simulates first to surface a typed revert before
- * opening the wallet, sends, then waits for a `success` receipt. Throws on any
- * failure.
- */
-export const useWithdrawClause = createUseWithdrawStake({
-    getRegistry: getClauseRegistry,
-    abi: CLAUSE_REGISTRY_ABI,
-    notConfiguredMessage: "ClauseRegistry address not configured (NEXT_PUBLIC_CLAUSE_REGISTRY).",
-    revertMessage: clauseWithdrawRevertMessage,
-});

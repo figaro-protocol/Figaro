@@ -36,9 +36,9 @@ vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({
 }));
 vi.mock("@/lib/core/indexer", () => ({
     getCoreEvents: (...a: unknown[]) => mocks.getCoreEvents(...a),
-    useWatchOrderEvents: () => undefined,
     walletOrders: () => [],
 }));
+vi.mock("@/lib/core/useWatchOrderEvents", () => ({ useWatchOrderEvents: () => undefined }));
 vi.mock("@/lib/core/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return {

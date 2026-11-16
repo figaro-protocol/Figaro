@@ -33,7 +33,8 @@ import {
 } from "@figaro-protocol/sdk/agent";
 import { verifyCommitmentSignature, type CoreEvents } from "@figaro-protocol/sdk";
 import { CONTRACTS } from "@/lib/core/contracts";
-import { getCoreEvents, useWatchOrderEvents } from "@/lib/core/indexer";
+import { getCoreEvents } from "@/lib/core/indexer";
+import { useWatchOrderEvents } from "@/lib/core/useWatchOrderEvents";
 import { commitmentOrderHashes } from "@/lib/core/signedCommitment";
 import { publishAgreement } from "@/lib/core/agreementFetch";
 import { extractErrorMessage } from "@/lib/shared/errors";

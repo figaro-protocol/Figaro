@@ -15,16 +15,16 @@
  *
  * The hooks never touch getLogs directly, so a backend migration is a
  * single-file change. The order consumers read the parsed history through
- * `getCoreEvents` and live updates through `useWatchOrderEvents`, both over
- * every order emitter.
+ * `getCoreEvents` and live updates through `useWatchOrderEvents`
+ * (`@/lib/core/useWatchOrderEvents`), both over every order emitter. This
+ * file imports nothing from `wagmi`, so a page with no wallet provider reads
+ * through it; the live watcher is a wagmi hook and lives apart.
  */
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useWatchContractEvent } from "wagmi";
 import type { PublicClient } from "viem";
 import { cachedGetLogs, cachedGetReceiptLogs } from "./eventCache";
 import { hexEqual } from "@/lib/shared/evm";
-import { CONTRACTS, CORE_ABI } from "./contracts";
+import { CONTRACTS } from "./contracts";
 import {
     EV_ORDER_COMMITTED,
     EV_ORDER_SELLER,
@@ -40,7 +40,7 @@ import {
 import { projectProcessGraph, walletRecord } from "@figaro-protocol/sdk/derive";
 
 /** Every contract that emits the Core's order and process events. */
-const ORDER_EMITTERS = (): string[] => [CONTRACTS.core, CONTRACTS.batchVerifier];
+export const ORDER_EMITTERS = (): string[] => [CONTRACTS.core, CONTRACTS.batchVerifier];
 
 export type IndexedLog = Awaited<ReturnType<typeof cachedGetLogs>>[number];
 type IndexedLogWithArgs = IndexedLog & { args?: Record<string, unknown> };
@@ -120,7 +120,7 @@ async function getAllProcessResolved(client: PublicClient, chainId: number) {
 }
 
 // ---------------------------------------------------------------------------
-// Parsed: the SDK's `CoreEvents` triple, history and live
+// Parsed: the SDK's `CoreEvents` triple (live: `useWatchOrderEvents`)
 // ---------------------------------------------------------------------------
 
 /** The raw-log shape the SDK parsers take — cached rows and watcher logs both
@@ -129,7 +129,7 @@ type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
 
 /** Decode raw order-emitter logs into the SDK's `CoreEvents` triple; each
  *  parser keeps only its own event, so a mixed batch decodes in one pass. */
-function parseCoreLogs(logs: {
+export function parseCoreLogs(logs: {
     committed: readonly unknown[];
     resolved: readonly unknown[];
     processResolved: readonly unknown[];
@@ -171,37 +171,6 @@ export function walletOrders(events: CoreEvents, wallet: string): Order[] {
         orders.push(o);
     }
     return orders.sort((a, b) => a.blockNumber - b.blockNumber);
-}
-
-/**
- * Live order and process events from every order emitter, parsed, delivered
- * to `onEvents` as they land. One watcher over the emitters' addresses and
- * the Core's ABI: a batch-path order reaches a reader exactly as a direct
- * one does. `onEvents` may change between renders; the watcher holds the
- * latest through a ref, because wagmi keys its watcher effect on `onLogs` and
- * a filter recreated every render drops the events that land between
- * recreations.
- */
-export function useWatchOrderEvents(onEvents: (events: CoreEvents) => void, enabled = true): void {
-    const onEventsRef = useRef(onEvents);
-    useEffect(() => {
-        onEventsRef.current = onEvents;
-    }, [onEvents]);
-    // A stable array per emitter set, so the watcher is not recreated per render.
-    const emittersKey = ORDER_EMITTERS().filter((a) => !!a).join(",");
-    const address = useMemo(
-        () => (emittersKey ? (emittersKey.split(",") as `0x${string}`[]) : []),
-        [emittersKey],
-    );
-    const onLogs = useCallback((logs: readonly unknown[]) => {
-        onEventsRef.current(parseCoreLogs({ committed: logs, resolved: logs, processResolved: logs }));
-    }, []);
-    useWatchContractEvent({
-        address: address.length > 0 ? address : undefined,
-        abi: CORE_ABI,
-        onLogs,
-        enabled: enabled && address.length > 0,
-    });
 }
 
 // ---------------------------------------------------------------------------

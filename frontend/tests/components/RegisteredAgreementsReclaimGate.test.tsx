@@ -58,10 +58,12 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => ({
 vi.mock("@/lib/shared/wagmi", () => ({ publicClient: CLIENT, activeChain: { id: 31337 } }));
 vi.mock("@/lib/protocol/useAgreementRegistry", () => ({
     usePublishedAgreements: () => scan,
-    useWithdrawAgreement: () => ({ withdraw: vi.fn(), isPending: false }),
     fetchRegisteredAgreement: async () => null,
     getRegisteredAgreement: () => undefined,
     useRegisteredAgreementsVersion: () => 0,
+}));
+vi.mock("@/lib/protocol/useWithdrawStake", () => ({
+    useWithdrawAgreement: () => ({ withdraw: vi.fn(), isPending: false }),
 }));
 vi.mock("@/lib/core/agreementFetch", () => ({
     witnessedAgreementUri: (checkoutHash: string) => (bodies.has(checkoutHash.toLowerCase()) ? `ipfs://witnessed-${checkoutHash.slice(2, 10)}` : null),

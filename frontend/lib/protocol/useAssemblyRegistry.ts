@@ -8,18 +8,16 @@
  * fetch. The publish-build + assembly-enrichment orchestration lives one
  * layer up in `@/lib/protocol/assemblyChoices`; the member-profile
  * resolution lives in `@/lib/member/useMemberBoundAssemblies`. This file
- * imports only viem / wagmi / `@/lib/shared/*` / `@/lib/core/*`.
+ * imports nothing from `wagmi`, so a page with no wallet provider reads
+ * through it; the withdraw hook, which needs a wallet, is
+ * `useWithdrawAssembly` in `@/lib/protocol/useWithdrawStake`.
  */
 
 import { isValidAddress } from "@/lib/shared/evm";
 import { anchorAssembly, parseAssemblyRegistryLogs, type Anchored, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/core/contracts";
 import { safeJsonParse } from "@/lib/shared/safeJson";
-import {
-    createUseWithdrawStake,
-    sharedRegisterRevertMessage,
-    withdrawRevertMessage,
-} from "@/lib/protocol/useWithdrawStake";
+import { sharedRegisterRevertMessage } from "@/lib/protocol/registryRevertMessages";
 import type { RevertMessage } from "@/lib/shared/errors";
 import { createRegistryEventScan, useDesurfaced } from "@/lib/protocol/registryEventScan";
 import { fetchPinnedDocument, readRegistryBinding } from "@/lib/protocol/registryDocument";
@@ -89,22 +87,6 @@ export function assemblyRegisterRevertMessage(attemptedSlug: string): RevertMess
         }
     };
 }
-
-/**
- * Reclaim an assembly's registration stake (`AssemblyRegistry.withdrawDeposit`).
- * The binding is permanent — withdraw only moves the stake and de-surfaces
- * the assembly for NEW orders; committed processes keep resolving. Gating on
- * in-flight trades is the caller's job via `useWithdrawGate` (advisory,
- * off-chain); this hook is the plain registeredBy-only write. Simulates first to
- * surface a typed revert before opening the wallet, sends, then waits for a
- * `success` receipt. Throws on any failure.
- */
-export const useWithdrawAssembly = createUseWithdrawStake({
-    getRegistry: getAssemblyRegistry,
-    abi: ASSEMBLY_REGISTRY_ABI,
-    notConfiguredMessage: "AssemblyRegistry address not configured (NEXT_PUBLIC_ASSEMBLY_REGISTRY).",
-    revertMessage: withdrawRevertMessage("assembly"),
-});
 
 /**
  * Reads `AssemblyRegistered` events from the registry, optionally filtered

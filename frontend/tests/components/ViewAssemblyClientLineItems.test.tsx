@@ -58,8 +58,8 @@ vi.mock("@/lib/protocol/useAssemblyRegistry", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/protocol/useAssemblyRegistry")>()),
     getAssemblyRegistry: () => undefined,
     usePublishedAssemblies: () => STABLE.published,
-    useWithdrawAssembly: () => ({ withdraw: vi.fn() }),
 }));
+vi.mock("@/lib/protocol/useWithdrawStake", () => ({ useWithdrawAssembly: () => ({ withdraw: vi.fn() }) }));
 vi.mock("@/lib/protocol/withdrawGate", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/protocol/withdrawGate")>()),
     useWithdrawGate: () => STABLE.gate,

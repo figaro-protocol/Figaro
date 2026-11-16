@@ -5,7 +5,7 @@
  * its own anchor, its own events and its own reader.
  *
  * This is the thin on-chain layer: the registry-address resolution, the
- * event-derived read hook, the revert translators, the withdraw hook, and the
+ * event-derived read hook, the register revert translator, and the
  * one reader of a registered agreement — `fetchRegisteredAgreement`, which reads
  * the binding BY KEY (whatever its stake: bindings are never cleared, so an
  * assembly composed from an agreement keeps working after its stake is
@@ -13,7 +13,9 @@
  * the key (`anchorRegisteredAgreement`). `hydrateAnchoredAssembly` runs the SDK's
  * `hydrateAssembly` over that reader: an assembly is offered only when every
  * agreement's agreement reads and verifies — any absence is the assembly's
- * absence, never a fallback to another copy.
+ * absence, never a fallback to another copy. This file imports nothing from
+ * `wagmi`; the withdraw hook, which needs a wallet, is `useWithdrawAgreement`
+ * in `@/lib/protocol/useWithdrawStake`.
  */
 
 import { createVersionStore } from "@/lib/shared/versionStore";
@@ -32,11 +34,7 @@ import {
 import { isValidAddress } from "@/lib/shared/evm";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { publicClient } from "@/lib/shared/wagmi";
-import {
-    createUseWithdrawStake,
-    sharedRegisterRevertMessage,
-    withdrawRevertMessage,
-} from "@/lib/protocol/useWithdrawStake";
+import { sharedRegisterRevertMessage } from "@/lib/protocol/registryRevertMessages";
 import type { RevertMessage } from "@/lib/shared/errors";
 import { createRegistryEventScan, useDesurfaced } from "@/lib/protocol/registryEventScan";
 import { fetchPinnedDocument, readRegistryBinding } from "@/lib/protocol/registryDocument";
@@ -72,18 +70,6 @@ export function agreementRegisterRevertMessage(agreementHash: string): RevertMes
         }
     };
 }
-
-/** Reclaim an agreement's registration stake (`AgreementRegistry.withdrawDeposit`).
- *  The binding is permanent; withdraw de-surfaces the agreement for new
- *  compositions while every assembly already composed from it keeps reading it.
- *  Consumed by `RegisteredAgreementsReclaim` on the designer landing (gated per
- *  row by `useWithdrawGate({ kind: "agreement", agreementHash })`). */
-export const useWithdrawAgreement = createUseWithdrawStake({
-    getRegistry: getAgreementRegistry,
-    abi: AGREEMENT_REGISTRY_ABI,
-    notConfiguredMessage: "AgreementRegistry address not configured (NEXT_PUBLIC_AGREEMENT_REGISTRY).",
-    revertMessage: withdrawRevertMessage("agreement"),
-});
 
 const useAgreementRegistryScan = createRegistryEventScan<PublishedAgreement>({
     getRegistry: getAgreementRegistry,

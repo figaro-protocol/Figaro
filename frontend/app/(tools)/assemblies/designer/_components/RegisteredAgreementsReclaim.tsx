@@ -26,9 +26,9 @@ import {
     getRegisteredAgreement,
     usePublishedAgreements,
     useRegisteredAgreementsVersion,
-    useWithdrawAgreement,
     type PublishedAgreement,
 } from "@/lib/protocol/useAgreementRegistry";
+import { useWithdrawAgreement } from "@/lib/protocol/useWithdrawStake";
 import { ReclaimStakeRow } from "@/components/registries/ReclaimStakeRow";
 import { hexEqual } from "@/lib/shared/evm";
 

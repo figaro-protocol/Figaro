@@ -21,8 +21,8 @@ vi.mock("wagmi", () => ({
 vi.mock("@/lib/core/indexer", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/core/indexer")>()),
     getCoreEvents: (...a: unknown[]) => mocks.coreEvents(...a),
-    useWatchOrderEvents: () => undefined,
 }));
+vi.mock("@/lib/core/useWatchOrderEvents", () => ({ useWatchOrderEvents: () => undefined }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/lib/shared/viewedWallet", () => ({ useViewedWallet: (a: string) => a }));
 vi.mock("@/lib/member/useMemberListings", () => ({ useMemberListings: () => ({ read: { status: "absent" }, listings: [] }) }));
