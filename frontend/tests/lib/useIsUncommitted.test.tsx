@@ -32,8 +32,8 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => ({
 vi.mock("@/lib/core/indexer", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/core/indexer")>()),
     getCoreEvents: (...a: unknown[]) => getCoreEventsMock(...a),
-    useWatchOrderEvents: () => undefined,
 }));
+vi.mock("@/lib/core/useWatchOrderEvents", () => ({ useWatchOrderEvents: () => undefined }));
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({ useRuntimeServices: () => ({}) }));
 

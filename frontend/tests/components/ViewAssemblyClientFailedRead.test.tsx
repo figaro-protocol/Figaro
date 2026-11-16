@@ -32,8 +32,8 @@ vi.mock("@/lib/protocol/useAssemblyRegistry", async (importOriginal) => ({
     getAssemblyRegistry: () => "0x3333333333333333333333333333333333333333",
     usePublishedAssemblies: () => PUBLISHED.value,
     fetchHydratedAssembly: async () => ({ assembly: { name: "Point of sale", agreements: [] }, agreements: {} }),
-    useWithdrawAssembly: () => ({ withdraw: vi.fn() }),
 }));
+vi.mock("@/lib/protocol/useWithdrawStake", () => ({ useWithdrawAssembly: () => ({ withdraw: vi.fn() }) }));
 vi.mock("@/lib/protocol/withdrawGate", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/protocol/withdrawGate")>();
     const gate = { status: "present", value: { canWithdraw: true, inFlightCount: 0, unverifiedCount: 0 } };

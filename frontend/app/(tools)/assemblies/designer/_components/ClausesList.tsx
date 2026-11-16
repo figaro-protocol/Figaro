@@ -16,7 +16,8 @@
 
 import Link from "@/components/shared/Link";
 import { useAccount } from "wagmi";
-import { useRegisteredClausesByWallet, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
+import type { RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
+import { useRegisteredClausesByWallet } from "@/lib/protocol/useRegisterClause";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";

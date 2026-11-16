@@ -16,7 +16,8 @@ import { usePublicClient } from "wagmi";
 import type { CoreEvents } from "@figaro-protocol/sdk";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { Order, OrderState, orderFromSdk, useOrderStore } from "@/lib/core/store";
-import { getCoreEvents, useWatchOrderEvents, walletOrders } from "@/lib/core/indexer";
+import { getCoreEvents, walletOrders } from "@/lib/core/indexer";
+import { useWatchOrderEvents } from "@/lib/core/useWatchOrderEvents";
 import type { ProcessSummary } from "@/lib/core/walletProcessQueries";
 
 function summarize(orders: Order[]): ProcessSummary[] {

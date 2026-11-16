@@ -28,7 +28,7 @@ import { noteRegistryWrite } from "@/lib/protocol/registryWrites";
 import {
     useRegisterClause,
     type RegisterClauseOutcome,
-} from "@/lib/protocol/useClauseRegistry";
+} from "@/lib/protocol/useRegisterClause";
 
 export type Validation =
     | { state: "empty" }

@@ -22,11 +22,9 @@ import Link from "@/components/shared/Link";
 import { useAccount } from "wagmi";
 import { RegistryListState } from "@/components/shared/RegistryListState";
 import { useRegistryWriteVersion } from "@/lib/protocol/registryWrites";
-import {
-    useRegisteredClausesByWallet,
-    useWithdrawClause,
-    type RegisteredClauseEvent,
-} from "@/lib/protocol/useClauseRegistry";
+import type { RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
+import { useRegisteredClausesByWallet } from "@/lib/protocol/useRegisterClause";
+import { useWithdrawClause } from "@/lib/protocol/useWithdrawStake";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { ReclaimStakeRow } from "@/components/registries/ReclaimStakeRow";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";

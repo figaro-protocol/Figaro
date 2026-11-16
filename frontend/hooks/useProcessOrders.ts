@@ -27,7 +27,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { Order, orderFromSdk, useOrderStore } from "@/lib/core/store";
-import { getCoreEvents, useWatchOrderEvents, walletOrders } from "@/lib/core/indexer";
+import { getCoreEvents, walletOrders } from "@/lib/core/indexer";
+import { useWatchOrderEvents } from "@/lib/core/useWatchOrderEvents";
 import { Topology, type CoreEvents, type Hex } from "@figaro-protocol/sdk";
 import { PENDING, present, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 

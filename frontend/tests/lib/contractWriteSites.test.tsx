@@ -121,7 +121,7 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
 
 import { activeChain } from "@/lib/shared/chains";
 import { useRegisterMember, useUpdateProfile } from "@/lib/member/useMembersRegistry";
-import { useRegisterClause, useWithdrawClause } from "@/lib/protocol/useClauseRegistry";
+import { useRegisterClause } from "@/lib/protocol/useRegisterClause";
 import { usePayoutRoutingActions } from "@/lib/composition/usePayoutRoutingActions";
 import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActions";
 import { useFigaroActions } from "@/lib/core/useFigaroActions";
@@ -129,8 +129,7 @@ import { useUsageRecorder, type UsageWrite } from "@/lib/protocol/useUsageRecord
 import { useRpgfRewards } from "@/lib/composition/useRpgfRewards";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
 import { useRequestWithdrawal, useWithdrawDeposit } from "@/lib/member/useMembersRegistry";
-import { useWithdrawAssembly } from "@/lib/protocol/useAssemblyRegistry";
-import { useWithdrawAgreement } from "@/lib/protocol/useAgreementRegistry";
+import { useWithdrawAgreement, useWithdrawAssembly, useWithdrawClause } from "@/lib/protocol/useWithdrawStake";
 import { createCapabilityExecutors, type CapabilityExecutorDeps } from "@/lib/semantic/createCapabilityExecutors";
 
 // The configured addresses each write is sent to (set in the hoisted block
@@ -482,7 +481,7 @@ const CENSUS: Census = {
     "lib/core/useFigaroActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useFigaroActions.commit", "useFigaroActions.resolveProcess"], pinnedBy: THIS_FILE },
     "lib/member/useMembersRegistry.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRegisterMember", "useUpdateProfile", "useRequestWithdrawal", "useWithdrawDeposit"], pinnedBy: THIS_FILE },
     "lib/member/usePublishMemberProfile.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 2 }, sites: ["register", "updateProfile"], pinnedBy: "tests/lib/publishMemberProfileNoCatalog.test.tsx" },
-    "lib/protocol/useClauseRegistry.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRegisterClause"], pinnedBy: THIS_FILE },
+        "lib/protocol/useRegisterClause.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRegisterClause"], pinnedBy: THIS_FILE },
     "lib/protocol/useUsageRecorder.ts": { tokens: { useWriteContract: 1, simulateWrite: 1, simulateWriteVerify: 1 }, sites: ["useUsageRecorder.recordUsage (clause)", "useUsageRecorder.recordUsage (agreement)", "useUsageRecorder.recordUsage (assembly)"], pinnedBy: THIS_FILE },
     "lib/protocol/useWithdrawStake.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useWithdrawClause", "useWithdrawAssembly", "useWithdrawAgreement"], pinnedBy: THIS_FILE },
     "lib/shared/contractWrite.ts": { tokens: { simulateWrite: 2, simulateWriteVerify: 1 }, notASite: "the shared helper itself: its two definitions and simulateWriteVerify's own simulate" },

@@ -22,7 +22,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { OrderState, isProcessRoot, type Address, type Order } from "@figaro-protocol/sdk";
 import { projectProcessGraph, walletRecord } from "@figaro-protocol/sdk/derive";
-import { getCoreEvents, useWatchOrderEvents } from "@/lib/core/indexer";
+import { getCoreEvents } from "@/lib/core/indexer";
+import { useWatchOrderEvents } from "@/lib/core/useWatchOrderEvents";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 

@@ -18,11 +18,10 @@
  * Allowed on a marketing path: `lib/shared/wagmi.ts`'s standalone
  * `publicClient` (it builds on `createConfig`, neither a provider nor a hook).
  *
- * The walk follows names, not whole files, because several library modules
- * keep a read hook a marketing page calls beside a write hook it never calls
- * (`lib/protocol/useClauseRegistry.ts`: `useAllRegisteredClauses` beside
- * `useRegisterClause`). A file-level walk fails on those modules; that
- * stricter reading is reported apart, not held here.
+ * The walk follows names, not whole files: it holds what a marketing page
+ * calls. The stricter reading, by whole file, is
+ * `marketingWalletScopeFileLevel.test.ts`: no module a marketing page
+ * imports keeps a wallet hook beside the reads the page uses.
  *
  * The other half: the same walk from the `(app)` and `(tools)` layouts
  * reaches `Providers` and `WagmiProvider`.

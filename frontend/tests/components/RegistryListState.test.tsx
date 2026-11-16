@@ -29,16 +29,18 @@ vi.mock("wagmi", () => ({
     useAccount: () => ({ address: mocks.address, isConnected: !!mocks.address }),
 }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
-vi.mock("@/lib/protocol/useClauseRegistry", () => ({
+vi.mock("@/lib/protocol/useRegisterClause", () => ({
     useRegisteredClausesByWallet: () => mocks.scan,
+}));
+vi.mock("@/lib/protocol/useWithdrawStake", () => ({
     useWithdrawClause: () => ({ withdraw: async () => undefined }),
+    useWithdrawAgreement: () => ({ withdraw: async () => undefined }),
 }));
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({}) }));
 vi.mock("@/lib/protocol/registryWrites", () => ({ useRegistryWriteVersion: () => 0 }));
 vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => mocks.scan }));
 vi.mock("@/lib/protocol/useAgreementRegistry", () => ({
     usePublishedAgreements: () => mocks.scan,
-    useWithdrawAgreement: () => ({ withdraw: async () => undefined }),
     fetchRegisteredAgreement: async () => null,
     getRegisteredAgreement: () => undefined,
     useRegisteredAgreementsVersion: () => 0,
