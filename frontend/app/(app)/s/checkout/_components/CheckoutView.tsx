@@ -265,7 +265,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     // for this draft and kept with it (`withCheckoutBlinding`), so every
     // rebuild before signing builds the same checkoutHash. A race draws
     // anew for each candidate's draft and the winner's values replace the
-    // raced order's here; a failed attempt starts a new store.
+    // raced order's here. A failed attempt starts a new store, unless a race
+    // fixed the orders: then it keeps this one (`freshBlindingStore`).
     const blindingKept = useRef<CheckoutFills>({});
     const setClauseFill = (nodeId: string, clauseKey: string, field: string, value: unknown) =>
         setClauseFills((prev) => ({
@@ -811,10 +812,12 @@ export function CheckoutView({ sellerAddress }: Props) {
                 },
             );
         } catch (cause: unknown) {
-            // A retry is a new attempt: its orders draw new blinding values,
-            // since an order this attempt signed and relayed may be in a
-            // seller's hands (`freshBlindingStore`).
-            blindingKept.current = freshBlindingStore(raceOutcome);
+            // A retry with no race outcome draws new blinding values for every
+            // order, since an order this attempt signed and relayed may be in
+            // a seller's hands. After a race, the salts and the deadline are
+            // fixed, so the retry keeps every value and rebuilds the same
+            // orders (`freshBlindingStore`).
+            blindingKept.current = freshBlindingStore(blindingKept.current, raceOutcome);
             const msg = extractErrorMessage(cause, "Signing failed");
             setCheckoutError(msg);
         }

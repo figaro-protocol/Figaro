@@ -152,15 +152,16 @@ describe("a retry after a failed checkout attempt draws again", () => {
         const kept: CheckoutFills = {};
         const fills: CheckoutFills = { "agreement-0": { [PRIVATE.clauseKey]: { grade: "b" } } };
         const failed = withCheckoutBlinding(hydrated, fills, specSource(), kept);
-        const retried = withCheckoutBlinding(hydrated, fills, specSource(), freshBlindingStore(null));
+        const retried = withCheckoutBlinding(hydrated, fills, specSource(), freshBlindingStore(kept, null));
         expect(isBlindingValue(retried["agreement-0"][PRIVATE.clauseKey].blinding)).toBe(true);
         expect(retried["agreement-0"][PRIVATE.clauseKey].blinding).not.toBe(failed["agreement-0"][PRIVATE.clauseKey].blinding);
     });
 
-    it("keeps a race winner's values for its order: its struct is fixed by the winner's signature, and a retry rebuilds the same order", () => {
+    it("after a race keeps the whole store, the winner's values for its order: the race fixed every order", () => {
         const won = { [PRIVATE.clauseKey]: { blinding: `0x${"9a".repeat(32)}` } };
-        const store = freshBlindingStore({ nodeId: "agreement-0", blinding: won });
-        expect(store).toEqual({ "agreement-0": won });
+        const other = { [PRIVATE.clauseKey]: { blinding: `0x${"3c".repeat(32)}` } };
+        const store = freshBlindingStore({ "agreement-0": {}, "agreement-9": other }, { nodeId: "agreement-0", blinding: won });
+        expect(store).toEqual({ "agreement-0": won, "agreement-9": other });
         const out = withCheckoutBlinding(hydrated, { "agreement-0": { [PRIVATE.clauseKey]: { grade: "b" } } }, specSource(), store);
         expect(out["agreement-0"][PRIVATE.clauseKey].blinding).toBe(won[PRIVATE.clauseKey].blinding);
     });
