@@ -37,6 +37,23 @@ export function reconstruct(events: CoreEvents): Map<Hex, Process> {
     return topology.processes;
 }
 
+// ── The root of a process, from the chain ───────────────────────────────────
+
+/**
+ * Whether a committed order is its process's root, read from the
+ * `OrderCommitted` event alone: the root's `cumulativeValue` equals its own
+ * `payment`. Both paths emit the two fields (`FigaroCore._emitCommitted`,
+ * `FigaroBatchVerifier._emitCommitted`), and both refuse a root whose declared
+ * cumulative value is not its payment (`InvalidRootCumulativeValue`, in
+ * `FigaroCore.commit` and in the proof program). A later order adds a
+ * non-zero payment to the running total, so its cumulative value is larger
+ * than its payment. The agreement's topology leaf is never read here: it is
+ * off the chain, and it may be absent or unread.
+ */
+export function isProcessRoot(order: { payment: bigint; cumulativeValue: bigint }): boolean {
+    return order.cumulativeValue === order.payment;
+}
+
 // ── Incremental process topology ───────────────────────────────────────────────
 
 /**

@@ -1,6 +1,6 @@
 import { Order, OrderState } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro-protocol/sdk";
-import { clauseByField } from "@figaro-protocol/sdk";
+import { clauseByField, isProcessRoot } from "@figaro-protocol/sdk";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
@@ -16,9 +16,10 @@ import {
     ProcessModel,
 } from "@/lib/semantic/models";
 
-// Rootness is a TOPOLOGY concept (no parent edges in the committed topology
-// clause) — never derived from bond arithmetic. Bonding is Core-layer,
-// linear, and has nothing to do with topology.
+// The root of a process is the chain's: the order whose cumulative value is
+// its own payment (`isProcessRoot`, read from OrderCommitted on either path).
+// It is never read off a topology leaf, which is off the chain and may be
+// absent or unread; an order with unknown edges is never named the root.
 
 function runtimeSource(sourceLabel: string, referenceId?: string) {
     return {
@@ -367,7 +368,7 @@ function deriveProcessCapabilities(
     return capabilities;
 }
 
-function deriveResolutionBreakdown(order: Order, follows: string[], address?: string): EconomicBreakdownModel | undefined {
+function deriveResolutionBreakdown(order: Order, follows: string[] | null, address?: string): EconomicBreakdownModel | undefined {
     if (!address) return undefined;
     const normalized = address.toLowerCase();
     const isBuyer = hexEqual(order.buyer, normalized);
@@ -437,7 +438,7 @@ function deriveResolutionBreakdown(order: Order, follows: string[], address?: st
             },
         },
         typedOutputs,
-        downstreamReferencedAmount: follows.length > 0
+        downstreamReferencedAmount: follows !== null && follows.length > 0
             ? {
                 label: "Downstream referenced value",
                 amount: order.payment,
@@ -458,7 +459,8 @@ function deriveOrderNodeModelFromOrder(
     indexes: RuntimeIndexes,
     address?: string,
 ): OrderNodeModel {
-    const follows = topology.get(order.orderHash) ?? [];
+    // Unknown edges stay unknown (null), apart from an empty leaf ([]).
+    const follows = topology.get(order.orderHash) ?? null;
 
     return {
         orderId: order.orderHash.toString(),
@@ -491,8 +493,8 @@ export function deriveProcessModelFromRuntime(
     // whole model stays O(orders + attestations) at the resolve ceiling.
     const indexes = buildRuntimeIndexes(processOrders, topology, agreements, attestations);
     const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, agreements, indexes, address));
-    const rootOrderId = semanticOrders.find((order) => order.follows.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
-    const rootOrder = processOrders.find((order) => order.orderHash.toString() === rootOrderId);
+    const rootOrder = processOrders.find(isProcessRoot);
+    const rootOrderId = rootOrder ? rootOrder.orderHash.toString() : null;
     const rootAgreement = rootOrder?.checkoutHash ? agreements.get(rootOrder.checkoutHash) : undefined;
     // The modality clause is found by its declared field, never by name.
     // Single-select: one scalar value per order.

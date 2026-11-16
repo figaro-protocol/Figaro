@@ -18,8 +18,8 @@ import * as fs from "node:fs";
 import * as http from "node:http";
 import * as os from "node:os";
 import * as path from "node:path";
-import { keccak256 } from "viem";
-import { computeCheckoutHash, PROVENANCE_LEAF_KEY, provenanceContentRef, provenanceLeafBytes } from "@figaro-protocol/sdk";
+import { encodeAbiParameters, encodeEventTopics, keccak256 } from "viem";
+import { CORE_ABI, computeCheckoutHash, fetchCoreEvents, PROVENANCE_LEAF_KEY, provenanceContentRef, provenanceLeafBytes } from "@figaro-protocol/sdk";
 import {
     projectProcessGraph, projectResolutionGraph, extractOverlays, projectValueFlow,
     witnessContentCid,
@@ -313,6 +313,84 @@ test("market-shape reads each held agreement's own topology leaf for the chain's
     assert.deepEqual(shapeOf([], { follows: [] }).map((x) => [x.depth, x.maxWidth]), [[0, 2]]);
     // A clause carrying a follows field names no edge: B reads as a root.
     assert.deepEqual(shapeOf([], { follows: [], clauseData: { follows: [ORDER_A] } }).map((x) => [x.depth, x.maxWidth]), [[0, 2]]);
+});
+
+// Unknown edges are not "no edges". The sub-order's agreement can be absent
+// from the operator's holdings, fail to load, or carry no topology leaf; then
+// the process's shape is unknown, and no order becomes a depth-0 root for it.
+// A sub-order whose leaf is [] follows nothing, and is shown as that.
+const TWO_ORDER_PROVENANCE = { agreementHash: `0x${"6b".repeat(32)}`, assemblyHash: `0x${"5a".repeat(32)}` };
+const heldAgreement = (order, follows) => ({
+    agreement: {
+        version: "a1", buyer: BUYER, seller: order.seller,
+        clauses: [{ clause: X_DEMO, data: {} }],
+        provenance: TWO_ORDER_PROVENANCE, ...(follows === undefined ? {} : { follows }),
+    },
+    order,
+});
+/** The market shape of the fixture's two-order process with the given holdings. */
+function twoOrderShape(corpus, held) {
+    corpus.held = held;
+    const [group] = marketShapeAnswer(corpus).groups;
+    return { shapes: group.shapes.map((x) => [x.depth, x.maxWidth]), unshaped: group.unshapedProcessCount };
+}
+/** The holdings: the root's agreement with its [] leaf, and the sub-order's as given. */
+function holdings(corpus, sub) {
+    const [orderA, orderB] = corpus.core.orderCommitted;
+    const byHash = new Map([["0x01", heldAgreement(orderA, [])]]);
+    if (sub.held) byHash.set("0x02", heldAgreement(orderB, sub.follows));
+    return { byHash, rejected: sub.rejected ?? [], committedRoots: 2 };
+}
+
+test("market-shape: a sub-order whose agreement is absent leaves the process unshaped — never a second root", () => {
+    const corpus = fixtureCorpus();
+    assert.deepEqual(twoOrderShape(corpus, holdings(corpus, { held: false })), { shapes: [], unshaped: 1 });
+});
+
+test("market-shape: a sub-order whose agreement failed to load leaves the process unshaped", () => {
+    const corpus = fixtureCorpus();
+    const rejected = [{ file: "sub-order.json", reason: "not JSON" }];
+    assert.deepEqual(twoOrderShape(corpus, holdings(corpus, { held: false, rejected })), { shapes: [], unshaped: 1 });
+});
+
+test("market-shape: a sub-order whose agreement carries no topology leaf leaves the process unshaped", () => {
+    const corpus = fixtureCorpus();
+    assert.deepEqual(twoOrderShape(corpus, holdings(corpus, { held: true, follows: undefined })), { shapes: [], unshaped: 1 });
+});
+
+test("market-shape: a sub-order whose leaf is [] follows nothing — depth 0, two wide, no edge invented", () => {
+    const corpus = fixtureCorpus();
+    assert.deepEqual(twoOrderShape(corpus, holdings(corpus, { held: true, follows: [] })), { shapes: [[0, 2]], unshaped: 0 });
+});
+
+test("market-shape: the batched path's events read the same — an absent sub-order agreement leaves the process unshaped", async () => {
+    // The two commits come from the verifier's address only, as
+    // FigaroBatchVerifier emits them (the Core's own OrderCommitted, same
+    // fields), folded by the SDK's fetchCoreEvents.
+    const verifier = "0x000000000000000000000000000000000000ba7c";
+    const fixture = fixtureCorpus();
+    const event = CORE_ABI.find((x) => x.type === "event" && x.name === "OrderCommitted");
+    const logs = fixture.core.orderCommitted.map((o, i) => ({
+        address: verifier,
+        blockNumber: BigInt(o.blockNumber),
+        logIndex: i,
+        transactionHash: `0x${String(i + 1).padStart(64, "0")}`,
+        topics: encodeEventTopics({ abi: [event], eventName: "OrderCommitted", args: { orderHash: o.orderHash, processId: o.processId, buyer: o.buyer } }),
+        data: encodeAbiParameters(
+            event.inputs.filter((p) => !p.indexed),
+            [o.seller, o.currency, o.payment, o.cumulativeValue, o.checkoutHash, o.salt, o.deadline],
+        ),
+    }));
+    const client = {
+        getBlockNumber: async () => 99n,
+        getLogs: async ({ address }) => (address.toLowerCase() === verifier ? logs : []),
+    };
+    const fetched = await fetchCoreEvents(client, { core: "0x000000000000000000000000000000000000c0de", batchVerifier: verifier }, 0n, 99n);
+    assert.equal(fetched.orderCommitted.length, 2, "both commits read from the verifier's address");
+    const core = { ...fetched, orderSeller: [] };
+    const resolution = projectResolutionGraph(core);
+    const corpus = { ...fixture, core, graphs: { ...fixture.graphs, process: projectProcessGraph(core), resolution } };
+    assert.deepEqual(twoOrderShape(corpus, holdings(corpus, { held: false })), { shapes: [], unshaped: 1 });
 });
 
 test("the buyer's attestation of the provenance leaf is named as the agreement's provenance leaf, decoded to both keys", () => {

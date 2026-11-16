@@ -67,9 +67,8 @@ export function OrderTimelineView({ processId }: Props) {
 
     const rootOrder = useMemo(() => {
         if (!processModel) return null;
-        return processModel.orders.find((order) => order.orderId === processModel.rootOrderId)
-            ?? processModel.orders[0]
-            ?? null;
+        // The chain's root only; no other order stands in for it.
+        return processModel.orders.find((order) => order.orderId === processModel.rootOrderId) ?? null;
     }, [processModel]);
 
     const sellerOrder = useMemo(() => {

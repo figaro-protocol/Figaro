@@ -20,7 +20,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
-import { OrderState, type Address, type Order } from "@figaro-protocol/sdk";
+import { OrderState, isProcessRoot, type Address, type Order } from "@figaro-protocol/sdk";
 import { projectProcessGraph, walletRecord } from "@figaro-protocol/sdk/derive";
 import { getCoreEvents, useWatchOrderEvents } from "@/lib/kernel/indexer";
 import { CONTRACTS } from "@/lib/kernel/contracts";
@@ -101,19 +101,14 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
 
             // BUYER rows dedupe to the root commit — the buyer is buyer
             // on every order in its process (star shape), so the
-            // fold's per-root-buyer processes give one row each. Root
-            // detection within the process: cumulativeValue == payment
-            // iff this is the root commit (the `InvalidRootCumulativeValue` check in
-            // `FigaroCore.commit`; every
-            // sub-order accumulates parent + payment > payment).
+            // fold's per-root-buyer processes give one row each. The root
+            // within the process is the chain's (`isProcessRoot`).
             // SELLER rows are per-order: a seller holds only its own
             // order(s), and a sub-order seller in someone else's process
             // must still see what it is fulfilling — no root filter.
             const built: ProcessRow[] = role === "buyer"
                 ? record.processesAsRootBuyer.flatMap((process) => {
-                    const root = [...process.orders.values()].find(
-                        (o) => o.cumulativeValue === o.payment,
-                    );
+                    const root = [...process.orders.values()].find(isProcessRoot);
                     return root ? [toRow(root, (o) => o.seller)] : [];
                 })
                 : record.ordersAsSeller.map((o) => toRow(o, (order) => order.buyer));

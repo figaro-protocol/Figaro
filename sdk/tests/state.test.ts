@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { reconstruct, Topology } from "../src/state.js";
+import { reconstruct, Topology, isProcessRoot } from "../src/state.js";
 import type { CoreEvents } from "../src/state.js";
 import { OrderState } from "../src/types.js";
 import type {
@@ -161,5 +161,13 @@ describe("Topology", () => {
         const topology = new Topology();
         const ctx = topology.buildAgentContext(PID);
         expect(ctx).toBeNull();
+    });
+});
+
+describe("isProcessRoot — the root read from OrderCommitted alone", () => {
+    it("names the order whose cumulative value is its own payment, on either path's event", () => {
+        // The two paths emit the same OrderCommitted fields; the test reads only those.
+        expect(isProcessRoot({ payment: 100n, cumulativeValue: 100n })).toBe(true);
+        expect(isProcessRoot({ payment: 50n, cumulativeValue: 150n })).toBe(false);
     });
 });

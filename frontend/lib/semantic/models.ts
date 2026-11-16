@@ -199,7 +199,10 @@ export interface OrderNodeModel {
     currency?: `0x${string}`;
     payment: bigint;
     state: string;
-    follows: string[]; // bytes32 order hashes
+    /** The bytes32 order hashes this order follows, from its agreement's
+     *  topology leaf; `[]` when the leaf is empty, `null` when the edges are
+     *  unknown (the agreement absent, unread, or carrying no leaf). */
+    follows: string[] | null;
     /** The order's committed checkout hash — lets consumers load the
      *  agreement and read its clauses (e.g. a courier handoff's
      *  proximity-policy band). */
@@ -210,7 +213,8 @@ export interface OrderNodeModel {
 
 export interface ProcessModel {
     processId: string;
-    rootOrderId: string;
+    /** The chain's root (`isProcessRoot`); null when the read holds no root. */
+    rootOrderId: string | null;
     currency?: `0x${string}`;
     /** The root order's committed modality code (the modality clause's
      *  single-select `modality` value), surfaced by the builder so the order

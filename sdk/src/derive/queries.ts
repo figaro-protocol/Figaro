@@ -11,7 +11,8 @@
  *   guesses, and an unattributed process is counted as such, never binned
  *   under a fabricated key. Chain shapes come from caller-supplied parent
  *   edges (each agreement's `follows`) via `depthsOverParents`; without them
- *   FigaroCore's own linear view stands.
+ *   FigaroCore's own linear view stands. A process holding an order whose
+ *   edges the caller does not know takes no shape and is counted as such.
  * - Wallet-record: one wallet's public trading history — the processes it
  *   resolves as root buyer and the orders it holds either side of.
  *
@@ -60,6 +61,10 @@ export interface MarketShapeGroup {
     processCommitBlocks: number[];
     /** Distinct chain shapes with per-shape process counts. */
     shapes: ChainShape[];
+    /** Processes that take no shape: parent edges were supplied, and at least
+     *  one of the process's orders has edges the caller does not know (its
+     *  agreement absent or unread, or carrying no topology leaf). */
+    unshapedProcessCount: number;
 }
 
 /** The market-shape answer. Protocol-derived: the underlying events are
@@ -76,10 +81,17 @@ export interface MarketShape {
  *  0-rooted via `depthsOverParents`. */
 function chainShapeOf(
     orders: readonly Order[],
-    followsOf: (orderHash: Hex) => readonly Hex[],
-): { orderCount: number; depth: number; maxWidth: number } {
+    followsOf: (orderHash: Hex) => readonly Hex[] | undefined,
+): { orderCount: number; depth: number; maxWidth: number } | undefined {
     const ids = orders.map((o) => o.orderHash);
-    const depths = depthsOverParents(ids, (id) => [...followsOf(id as Hex)]);
+    const parents = new Map<string, string[]>();
+    for (const id of ids) {
+        const follows = followsOf(id);
+        // Unknown edges are not "no edges": the process has no known shape.
+        if (follows === undefined) return undefined;
+        parents.set(id, [...follows]);
+    }
+    const depths = depthsOverParents(ids, (id) => parents.get(id) ?? []);
     let depth = 0;
     const widthAt = new Map<number, number>();
     for (const d of depths.values()) {
@@ -97,12 +109,14 @@ function chainShapeOf(
  * @param assemblyKeyOf    caller-supplied attribution: processId → assembly
  *                         key, `undefined` when the process is unattributed
  * @param followsOf  caller-supplied parent edges from each
- *                         agreement's `follows`; omitted = FigaroCore's linear view
+ *                         agreement's `follows`, `undefined` for an order whose
+ *                         edges the caller does not know (its process then
+ *                         takes no shape); omitted = FigaroCore's linear view
  */
 export function marketShape(
     graph: ProcessGraph,
     assemblyKeyOf: (processId: Hex) => string | undefined,
-    followsOf?: (orderHash: Hex) => readonly Hex[],
+    followsOf?: (orderHash: Hex) => readonly Hex[] | undefined,
 ): MarketShape {
     const groups = new Map<string, MarketShapeGroup>();
     // Per-group working state kept off the public shape.
@@ -126,6 +140,7 @@ export function marketShape(
                 volumeByDenomination: new Map(),
                 processCommitBlocks: [],
                 shapes: [],
+                unshapedProcessCount: 0,
             };
             groups.set(key, group);
             pairsOf.set(key, new Set());
@@ -159,6 +174,10 @@ export function marketShape(
                 depth: Math.max(0, orders.length - 1),
                 maxWidth: orders.length > 0 ? 1 : 0,
             };
+        if (shape === undefined) {
+            group.unshapedProcessCount += 1;
+            continue;
+        }
         const shapeKey = `${shape.orderCount}|${shape.depth}|${shape.maxWidth}`;
         const shapes = shapesOf.get(key)!;
         const existing = shapes.get(shapeKey);

@@ -327,7 +327,10 @@ and each one is admitted only if its recomputed root IS a committed `checkoutHas
 chain. A document that fails is REJECTED and named in `GET /status` to the bearer of the token, whoever handed it over.
 Admitted documents unlock assembly attribution and real chain shapes in market-shape;
 without them a process is attributed only when its buyer attested the provenance leaf, and
-every other process is reported as unattributed.
+every other process is reported as unattributed. A chain shape needs every order's edges:
+a process holding an order whose agreement was not admitted, or carries no topology leaf,
+takes no shape and is counted in its group's `unshapedProcessCount`. Its edges are
+unknown, so no order of it is read as a root for want of them.
 
 `node --test tests/analyst.test.mjs` covers the address derivation against a vector a real
 Kubo produced, the projections and queries over a fixture corpus, the absence cases, and

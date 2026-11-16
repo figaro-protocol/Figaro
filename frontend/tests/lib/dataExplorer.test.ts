@@ -92,6 +92,7 @@ describe("marketRows", () => {
         volumeByDenomination: new Map([[TOKEN_A, { committed: 30n, settled: 10n }]]),
         processCommitBlocks: [10],
         shapes: [{ orderCount: 2, depth: 2, maxWidth: 1, processCount: 1 }],
+        unshapedProcessCount: 0,
         ...over,
     });
     const shape = (groups: MarketShapeGroup[], unattributed = 0): MarketShape => ({
