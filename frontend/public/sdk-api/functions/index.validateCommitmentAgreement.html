@@ -30,7 +30,11 @@ naming a design then fails (a buyer or a seller never drops a designed
 clause or changes a designer's value); and the <code>checkoutHash</code> about to be
 signed equals the merkle root recomputed from the clauses. The agreement's
 topology leaf is well formed, and present wherever a design is named
-(<code>topologyIssues</code>). Catches a
+(<code>topologyIssues</code>). A private clause's blinding value blinds: its spec
+names the blinding field in no list another actor fills
+(<code>block.design.fills</code>, <code>block.checkout.catalogueFills</code>, <code>profileFills</code>,
+<code>catalogueMeasures</code>), the value is not zero, and no two clauses of the
+agreement share one. Catches a
 malformed agreement before a chain round-trip.</p>
 <p><code>commitment</code> is the commitment being signed. It alone carries the payment
 and the token: no clause restates either, so there is no copy across the
@@ -46,7 +50,7 @@ two to compare.</p>
 <li><span><span class="tsd-kind-parameter">design</span>: <a href="../interfaces/index.HydratedAssembly.html" class="tsd-signature-type tsd-kind-interface">HydratedAssembly</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">issues</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.CommitmentAgreementIssue.html" class="tsd-signature-type tsd-kind-interface">CommitmentAgreementIssue</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">ok</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span> <span class="tsd-signature-symbol">}</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L687">projection.ts:687</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L756">projection.ts:756</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

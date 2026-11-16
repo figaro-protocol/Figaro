@@ -662,6 +662,71 @@ function topologyIssues(agreement: Agreement): CommitmentAgreementIssue[] {
     }
 }
 
+/** The blinding fields of a clause's committed set that its `block` names in a
+ *  list another actor fills: a designer's, catalog's or profile's value is
+ *  public and the same in every order, so it blinds nothing. One issue per
+ *  field and list. */
+function namedBlindingIssues(clause: string, spec: ProjectionSpecView): CommitmentAgreementIssue[] {
+    const lists: [string, readonly string[]][] = [
+        ["block.design.fills", specDesignFills(spec)],
+        ["block.checkout.catalogueFills", specCatalogFills(spec)],
+        ["block.checkout.profileFills", specProfileFills(spec)],
+        ["block.checkout.catalogueMeasures", Object.keys(specCatalogueMeasures(spec))],
+    ];
+    const issues: CommitmentAgreementIssue[] = [];
+    for (const field of spec.fields) {
+        if (field.blinding !== true) continue;
+        for (const [list, names] of lists) {
+            if (!names.includes(field.name)) continue;
+            issues.push({
+                clause,
+                path: field.name,
+                message: `the clause's spec names its blinding field in ${list}, so the value is public and the same in every order; do not sign this clause — use a spec whose blinding field the party that fills the private set draws`,
+            });
+        }
+    }
+    return issues;
+}
+
+/** The blinding values of a clause's committed data that blind nothing: a
+ *  zero value, and a value another clause of the same agreement carries (one
+ *  guess would then confirm both). `seen` collects the values met so far in
+ *  the agreement. A value that is not 32 bytes of hex is `validateContent`'s
+ *  to report. */
+function blindingValueIssues(
+    clause: string,
+    data: Record<string, unknown>,
+    spec: ProjectionSpecView,
+    seen: Map<string, string>,
+): CommitmentAgreementIssue[] {
+    const issues: CommitmentAgreementIssue[] = [];
+    for (const field of spec.fields) {
+        if (field.blinding !== true) continue;
+        const value = data[field.name];
+        if (!isBytes32Hex(value)) continue;
+        const key = value.toLowerCase();
+        if (/^0x0{64}$/.test(key)) {
+            issues.push({
+                clause,
+                path: field.name,
+                message: "the blinding value is zero, which blinds nothing; draw a fresh 32-byte value (withFreshBlinding) before signing",
+            });
+            continue;
+        }
+        const other = seen.get(key);
+        if (other !== undefined) {
+            issues.push({
+                clause,
+                path: field.name,
+                message: `the clause carries the same blinding value as clause ${other} of this agreement; draw a fresh value for each clause (withFreshBlinding) before signing`,
+            });
+            continue;
+        }
+        seen.set(key, clause);
+    }
+    return issues;
+}
+
 /**
  * The off-chain layer of the verification stack, run on BOTH sides of the bilateral commit
  * (buyer before initiating, seller before counter-signing) so neither party
@@ -677,7 +742,11 @@ function topologyIssues(agreement: Agreement): CommitmentAgreementIssue[] {
  * clause or changes a designer's value); and the `checkoutHash` about to be
  * signed equals the merkle root recomputed from the clauses. The agreement's
  * topology leaf is well formed, and present wherever a design is named
- * (`topologyIssues`). Catches a
+ * (`topologyIssues`). A private clause's blinding value blinds: its spec
+ * names the blinding field in no list another actor fills
+ * (`block.design.fills`, `block.checkout.catalogueFills`, `profileFills`,
+ * `catalogueMeasures`), the value is not zero, and no two clauses of the
+ * agreement share one. Catches a
  * malformed agreement before a chain round-trip.
  *
  * `commitment` is the commitment being signed. It alone carries the payment
@@ -692,6 +761,8 @@ export function validateCommitmentAgreement(
     design: HydratedAssembly | null,
 ): { ok: boolean; issues: CommitmentAgreementIssue[] } {
     const issues: CommitmentAgreementIssue[] = [];
+    // Each blinding value met so far in this agreement, lowercased → its clause.
+    const blindingSeen = new Map<string, string>();
 
     for (const clauseEntry of agreement.clauses) {
         // Structural, before any spec lookup (an attacker can withhold the spec
@@ -731,6 +802,7 @@ export function validateCommitmentAgreement(
             });
             continue;
         }
+        issues.push(...namedBlindingIssues(clauseEntry.clause, spec));
         // A runtime-lifecycle clause is an empty anchor at commit — its content
         // is attested later, so there is nothing to validate here.
         if (specIsProcessLog(spec)) continue;
@@ -740,6 +812,7 @@ export function validateCommitmentAgreement(
                 issues.push({ clause: clauseEntry.clause, path: e.path, message: e.message });
             }
         }
+        issues.push(...blindingValueIssues(clauseEntry.clause, clauseEntry.data, spec, blindingSeen));
     }
 
     // The denomination pin (when composed) == the commitment's token. A

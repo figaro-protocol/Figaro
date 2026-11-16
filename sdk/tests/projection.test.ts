@@ -893,3 +893,69 @@ describe("the sign gate's design check — the designer's values against the des
             .toThrow(/provenance/);
     });
 });
+
+describe("the sign gate and the blinding value of a private clause", () => {
+    const BLINDING = { name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true };
+    /** A private clause no one has seen; `block` carries the fill lists under test. */
+    const privateRaw = (clauseId: string, block?: Record<string, unknown>) => ({
+        clauseId, version: 1, title: "Private", description: "A private value of few possibilities.",
+        fields: [{ name: "grade", type: "enum", values: ["a", "b", "c"], required: true, disposition: "private" }, BLINDING],
+        ...(block !== undefined && { block }),
+    });
+    const ONE = viewOf(privateRaw("test-private-one"));
+    const TWO = viewOf(privateRaw("test-private-two"));
+    const value = (byte: string) => `0x${byte.repeat(32)}`;
+    const gate = (specs: SpecSource, clauses: Record<`0x${string}`, Record<string, unknown>>) => {
+        const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, clauses, specs);
+        return validateCommitmentAgreement(agreement, checkoutHash, specs, COMMITMENT, null);
+    };
+
+    it("passes a private clause whose blinding value is fresh", () => {
+        const check = gate(specSourceOf([ONE]), { [ONE.clauseKey]: { grade: "b", blinding: value("3c") } });
+        expect(check.issues).toEqual([]);
+    });
+
+    it.each([
+        ["block.design.fills", { design: { article: "terms", fills: ["blinding"] } }],
+        ["block.checkout.catalogueFills", { design: { article: "terms" }, checkout: { catalogueFills: ["blinding"] } }],
+        ["block.checkout.profileFills", { design: { article: "terms" }, checkout: { profileFills: ["blinding"] } }],
+        ["block.checkout.catalogueMeasures", { design: { article: "terms" }, checkout: { catalogueMeasures: { blinding: { from: "massGrams", combine: "sum" } } } }],
+    ])("refuses a blinding field named in %s: its value would be public and the same in every order", (list, block) => {
+        const named = viewOf(privateRaw("test-private-named", block));
+        const check = gate(specSourceOf([named]), { [named.clauseKey]: { grade: "b", blinding: value("3c") } });
+        expect(check.ok).toBe(false);
+        const issue = check.issues.find((i) => i.path === "blinding");
+        expect(issue?.clause).toBe(named.clauseKey);
+        expect(issue?.message).toContain(list);
+        expect(issue?.message).toMatch(/party that fills/);
+    });
+
+    it("refuses a zero blinding value", () => {
+        const check = gate(specSourceOf([ONE]), { [ONE.clauseKey]: { grade: "b", blinding: value("00") } });
+        expect(check.ok).toBe(false);
+        expect(check.issues).toEqual([expect.objectContaining({ clause: ONE.clauseKey, path: "blinding", message: expect.stringMatching(/zero.*draw a fresh/) })]);
+    });
+
+    it("refuses two clauses of one agreement that share a blinding value", () => {
+        const shared = value("3c");
+        const check = gate(specSourceOf([ONE, TWO]), {
+            [ONE.clauseKey]: { grade: "b", blinding: shared },
+            [TWO.clauseKey]: { grade: "a", blinding: shared.toUpperCase().replace("0X", "0x") },
+        });
+        expect(check.ok).toBe(false);
+        expect(check.issues).toHaveLength(1);
+        expect(check.issues[0]).toEqual(expect.objectContaining({ path: "blinding", message: expect.stringMatching(/same blinding value.*draw a fresh/) }));
+    });
+
+    it("the public form keeps the checkoutHash, withholds the blinding value with the clause, and its dataHash covers the value", () => {
+        const specs = specSourceOf([ONE]);
+        const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, { [ONE.clauseKey]: { grade: "b", blinding: value("3c") } }, specs);
+        const pinned = publicForm(agreement, specs);
+        expect(computeCheckoutHash(pinned)).toBe(checkoutHash);
+        expect(pinned.clauses[0].data).toBeUndefined();
+        expect(JSON.stringify(pinned)).not.toContain("3c3c");
+        expect(pinned.clauses[0].dataHash).toBe(hashClauseData(agreement.clauses[0]));
+        const other = buildOrderAgreement(BUYER, SELLER, { [ONE.clauseKey]: { grade: "b", blinding: value("4d") } }, specs);
+        expect(hashClauseData(other.agreement.clauses[0])).not.toBe(pinned.clauses[0].dataHash);
+    });
+});
