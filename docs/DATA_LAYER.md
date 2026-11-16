@@ -33,11 +33,13 @@ revelation. Raw coordinates and stable device identifiers never land on a
 public artifact. Where the rule caps a public field's precision, the cap is a
 rule of the SDK's content validation, never one frontend's taste. The spec
 carries the structural ceiling (`maxLength`) and the attributes the cap reads:
-the field's `disposition`, and `formatFromField`, which names the sibling whose
-committed value is the standard (the `figaro-geolocation` spec in `clauses/`).
-When that standard is geohash, `validateContent` (`sdk/src/clauses/grain.ts`)
-refuses a public value longer than 6 characters and a private one longer than
-12; a standard it carries no grain knowledge of is bounded by `maxLength` only.
+the field's `disposition`, and its resolved format, static or named by a
+sibling: the static `format`, or the value of the sibling `formatFromField`
+names, which is the standard (the `figaro-geolocation` spec in `clauses/`).
+When that format is geohash, `validateContent` (`sdk/src/clauses/validate.ts`,
+with the cap in `sdk/src/clauses/grain.ts`) refuses a public value longer than
+6 characters and a private one longer than 12; a standard it carries no grain
+knowledge of is bounded by `maxLength` only.
 The sign gate (`assertAgreementSignable`) runs that validation, so a party whose
 tool uses the SDK refuses to sign a finer value. The limit of the rule: the
 chain holds a fingerprint, so two parties whose tools skip this validation can

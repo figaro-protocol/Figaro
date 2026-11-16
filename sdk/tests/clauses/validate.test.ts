@@ -47,9 +47,9 @@ describe("validateContent — happy paths", () => {
 
     it("an unknown (permissionlessly-declared) format validates as a plain string — the open format axis", () => {
         const spec = specOf([
-            { name: "loc", type: "string", required: true, format: "geohash" },
+            { name: "loc", type: "string", required: true, format: "s2-cell-token" },
         ]);
-        expect(validateContent({ loc: "9q8yyk8yu" }, spec).ok).toBe(true);
+        expect(validateContent({ loc: "89c25a31" }, spec).ok).toBe(true);
         // Non-strings still fail on TYPE, not format.
         expect(validateContent({ loc: 42 }, spec).ok).toBe(false);
     });
@@ -215,10 +215,43 @@ describe("validateContent — the geohash grain cap, keyed on the spec's own att
         expect(validateContent({ pickup: "dr5reg" }, spec).ok).toBe(true);
     });
 
-    it("leaves a field whose static format is geohash, with no formatFromField, to maxLength", () => {
-        // The cap keys on the value-driven format only; a static geohash
-        // format is the open format axis above.
-        const spec = specOf([{ name: "loc", type: "string", required: true, format: "geohash" }]);
-        expect(validateContent({ loc: "9q8yyk8yu" }, spec).ok).toBe(true);
+    it("caps a field whose static format is geohash: a public one takes six characters and refuses seven", () => {
+        // The cap reads the resolved format, static or named by a sibling;
+        // `maxLength` stays the structural ceiling.
+        for (const disposition of ["public", undefined] as const) {
+            const spec = specOf([{
+                name: "loc", type: "string", required: true, format: "geohash", maxLength: 12,
+                ...(disposition !== undefined && { disposition }),
+            }]);
+            expect(validateContent({ loc: "dr5reg" }, spec).ok).toBe(true);
+            const result = validateContent({ loc: "dr5regw" }, spec);
+            expect(result.ok).toBe(false);
+            if (!result.ok) expect(result.errors.map((e) => e.path)).toEqual(["$.loc"]);
+        }
+    });
+
+    it("lets a private field whose static format is geohash keep twelve characters and refuses thirteen", () => {
+        const spec = specOf([
+            { name: "loc", type: "string", required: true, format: "geohash", disposition: "private" },
+        ]);
+        expect(validateContent({ loc: "dr5regw3pzzz" }, spec).ok).toBe(true);
+        expect(validateContent({ loc: "dr5regw3pzzzz" }, spec).ok).toBe(false);
+    });
+
+    it("caps each item of an array whose item spec is a static geohash, by the array field's disposition", () => {
+        const arrayOf = (disposition?: "public" | "private") => specOf([{
+            name: "stops", type: "array", required: true,
+            ...(disposition !== undefined && { disposition }),
+            items: { name: "*", type: "string", required: true, format: "geohash" },
+        }]);
+        for (const spec of [arrayOf("public"), arrayOf()]) {
+            expect(validateContent({ stops: ["dr5reg", "u4pruy"] }, spec).ok).toBe(true);
+            const result = validateContent({ stops: ["dr5reg", "u4pruyd"] }, spec);
+            expect(result.ok).toBe(false);
+            if (!result.ok) expect(result.errors.map((e) => e.path)).toEqual(["$.stops[1]"]);
+        }
+        const fine = arrayOf("private");
+        expect(validateContent({ stops: ["dr5regw3pzzz"] }, fine).ok).toBe(true);
+        expect(validateContent({ stops: ["dr5regw3pzzzz"] }, fine).ok).toBe(false);
     });
 });

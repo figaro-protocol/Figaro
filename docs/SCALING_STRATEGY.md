@@ -140,8 +140,11 @@ verification with byte-exact parity to the Solidity.
 
 **Generic clause engine** (`prover/clause/`): parse + validate + encode over
 any clause spec supplied as witness input — the Rust mirror of the SDK's
-off-chain module (`@figaro-protocol/sdk/clauses`), conformance-locked against
-the TypeScript side. No per-clause code, by design ("Prover Clause
+off-chain module (`@figaro-protocol/sdk/clauses`). The two engines give the
+same verdict on every rule of the shared vectors. One rule is the SDK's alone,
+the geohash grain cap by disposition, which the guest's engine does not apply;
+a proof of a plaintext attestation therefore binds the spec and the content's
+shape, and does not attest the grain. No per-clause code, by design ("Prover Clause
 Architecture" below).
 
 **SP1 guest program** (`prover/program/`): reads the batch with the witness of

@@ -698,7 +698,14 @@ spec declares, the specs that parse and the ones that do not — and freezes Lay
 into `test/fixtures/clause-engine-vectors.json`
 (`HARVEST_CLAUSE_ENGINE_VECTORS=1` regenerates);
 `prover/clause/tests/engine_vectors.rs` asserts the guest's engine gives the
-same verdicts and the same bytes. The EIP-712 fixture carries the batch
+same verdicts and the same bytes on every rule of the shared vectors. One rule
+is the SDK's alone, the geohash grain cap by disposition, which the guest's
+engine does not apply; a proof of a plaintext attestation therefore binds the
+spec and the content's shape, and does not attest the grain. The test "Rules
+the SDK applies beyond the shared vectors", in the same file, lists that rule
+and fails if the SDK's engine refuses a case the vectors mark valid; the generated
+clause stream (`clauseFuzzVectors.test.ts`) keeps each drawn geohash inside
+its cap, so it holds only the shared rules. The EIP-712 fixture carries the batch
 path's three authorizations — `ResolveProcess` (over the process id and the
 cumulative value the buyer accepts), `AttestSeller`, `AttestBuyer`, hashed by
 viem from the type strings — and

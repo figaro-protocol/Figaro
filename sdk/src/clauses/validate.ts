@@ -2,11 +2,15 @@
  * Content validator — validates a content value against a parsed ClauseSpec.
  *
  * Call sites: frontend form gates, SDK agent-action preflight. This is the
- * off-chain reference implementation: the Rust prover mirror (`prover/clause`,
- * conformance-locked byte-for-byte) re-runs the same validation inside the SP1
- * proof on the batched resolution path, except the geohash grain cap
- * (`validateGrain`), which the Rust mirror does not apply: it parses neither
- * `disposition` nor `formatFromField`. The DIRECT path validates no content
+ * off-chain reference implementation. The Rust prover mirror (`prover/clause`)
+ * re-runs the validation inside the SP1 proof on the batched resolution path,
+ * and the two engines give the same verdict on every rule of the shared
+ * vectors (`test/fixtures/clause-engine-vectors.json`). One rule is the SDK's
+ * alone: the geohash grain cap by disposition (`validateGrain`), which the
+ * guest's engine does not apply. A proof of a plaintext attestation therefore
+ * binds the spec and the content's shape, and does not attest the grain
+ * (`tests/clauses/engineVectors.test.ts`, the rules beyond the shared
+ * vectors). The DIRECT path validates no content
  * shape on-chain — the coordinator merkle-binds an attestation to its signed
  * agreement and content-hash-binds the evidence; well-formedness there is this
  * layer's job + a read-time concern. There are no per-clause validator
@@ -22,6 +26,7 @@ import type {
     EnumFieldSpec,
     ArrayFieldSpec,
     ObjectFieldSpec,
+    FieldDisposition,
 } from "./spec.js";
 import { resolveInputFormat } from "./spec.js";
 import { safeRegexTest } from "./safeRegex.js";
@@ -164,8 +169,13 @@ function validateArray(value: unknown, spec: ArrayFieldSpec, path: string, error
     if (spec.maxItems !== undefined && value.length > spec.maxItems) {
         errors.push({ path, message: `array longer than maxItems ${spec.maxItems}` });
     }
+    // An item has no siblings: its format resolves to its static `format`, and
+    // the array field's own disposition governs how the whole list publishes.
+    const itemFormat = resolveInputFormat(spec.items, [], undefined);
     for (let i = 0; i < value.length; i++) {
-        validateField(value[i], spec.items, `${path}[${i}]`, errors);
+        const itemPath = `${path}[${i}]`;
+        validateField(value[i], spec.items, itemPath, errors);
+        validateGrain(value[i], itemFormat, spec.disposition, itemPath, errors);
     }
 }
 
@@ -186,7 +196,7 @@ function validateObject(value: unknown, spec: ObjectFieldSpec, path: string, err
             continue;
         }
         validateField(childValue, field, childPath, errors);
-        validateGrain(childValue, field, spec.fields, value, childPath, errors);
+        validateGrain(childValue, resolveInputFormat(field, spec.fields, value), field.disposition, childPath, errors);
     }
     // Reject unknown fields — clause is a closed contract.
     for (const key of Object.keys(value)) {
@@ -198,31 +208,28 @@ function validateObject(value: unknown, spec: ObjectFieldSpec, path: string, err
 }
 
 /**
- * The geohash grain cap, cap(disposition, geocodeStandard). For a string field
- * that declares `formatFromField`, the format is resolved from the named
- * sibling's committed value (then its default, then `format`); when it
- * resolves to geohash, a value longer than its disposition's cap is refused.
- * It keys on the spec's own attributes, never on a clause id or a field name.
- * A standard this reader carries no grain knowledge of is bounded by
- * `maxLength` only, and so is a field with a static `format` and no
- * `formatFromField` (the open format axis, `grain.ts`).
+ * The geohash grain cap, cap(disposition, geocodeStandard). The caller passes
+ * the field's resolved format (`resolveInputFormat`: the static `format`, or
+ * the value of the sibling `formatFromField` names, then that sibling's
+ * default, then `format`) and the disposition that governs the value. When
+ * the resolved format is geohash, a string longer than that disposition's cap
+ * is refused; `maxLength` stays the structural ceiling. It keys on the spec's
+ * own attributes, never on a clause id or a field name. A standard this reader
+ * carries no grain knowledge of is bounded by `maxLength` only (`grain.ts`).
  */
 function validateGrain(
     value: unknown,
-    field: FieldSpec,
-    siblings: readonly FieldSpec[],
-    siblingValues: Record<string, unknown>,
+    resolvedFormat: string | undefined,
+    disposition: FieldDisposition | undefined,
     path: string,
     errors: ValidationError[],
 ): void {
-    if (field.type !== "string" || !field.formatFromField || typeof value !== "string") return;
-    if (resolveInputFormat(field, siblings, siblingValues) !== GEOHASH_FORMAT) return;
-    const cap = geohashCapturePrecision(field.disposition);
+    if (resolvedFormat !== GEOHASH_FORMAT || typeof value !== "string") return;
+    const cap = geohashCapturePrecision(disposition);
     if (value.length > cap) {
-        const disposition = field.disposition ?? "public";
         errors.push({
             path,
-            message: `a ${disposition} geohash carries at most ${cap} characters; give the cell's first ${cap} characters`,
+            message: `a ${disposition ?? "public"} geohash carries at most ${cap} characters; give the cell's first ${cap} characters`,
         });
     }
 }

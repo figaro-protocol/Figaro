@@ -17,6 +17,7 @@
 
 import { parseUnits } from "viem";
 import { geohashCentroidDistanceKm } from "./derive/geo.js";
+import { GEOHASH_FORMAT } from "./clauses/index.js";
 import {
     specDeclaresDesignFill,
     specDeclaresField,
@@ -672,7 +673,7 @@ function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
     if (!geoClauseId) return null;
     const clauseEntry = ctx.clauses[geoClauseId];
     const standard = clauseEntry?.geocodeStandard;
-    if (standard !== "geohash") return null;
+    if (standard !== GEOHASH_FORMAT) return null;
     const origin = clauseEntry?.origin;
     const destination = clauseEntry?.destination;
     if (typeof origin !== "string" || typeof destination !== "string" || !origin || !destination) {

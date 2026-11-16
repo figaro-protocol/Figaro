@@ -371,7 +371,8 @@ Y", not as an open-ended build.)
   resolves its input from the committed VALUE of a named sibling
   (`resolveInputFormat`, `@figaro-protocol/sdk/clauses`) — `figaro-geolocation`'s origin/destination follow
   `geocodeStandard`, so the geohash picker renders only when the committed
-  standard is geohash. The picker applies the `cap(disposition, geocodeStandard)`
+  standard is geohash. On every geohash field, its format static or named by a
+  sibling, the picker applies the `cap(disposition, geocodeStandard)`
   grain cap — a `public` geohash is coarsened to neighborhood grain, a `private`
   one keeps fine grain. The cap is the SDK's (`@figaro-protocol/sdk/clauses`,
   `sdk/src/clauses/grain.ts`): the picker truncates to it, and the SDK's

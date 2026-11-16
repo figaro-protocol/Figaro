@@ -802,13 +802,28 @@ describe("example clause specs — parse + validate sample content", () => {
             event: "inspected-intact",
             unitIdentifier: "MSKU1234567",
             sealIdentifier: "SL-4471",
-            locationGeohash: "u4pruyd",
+            locationGeohash: "u4pruy",
             occurredAt: "2026-08-01T10:00:00Z",
             evidenceUri: "ipfs://bafyseal",
         };
         expect(validateContent(event, parsed.spec, { stage: 1 }).ok).toBe(true);
         const encoded = encodeContentFromSpec(parsed.spec, event, { stage: 1 });
         expect(decodeContentFromSpec(parsed.spec, encoded, { stage: 1 })).toEqual(event);
+    });
+
+    it("figaro-chain-of-custody stage 1 refuses a public locationGeohash finer than the six-character cap", () => {
+        // The field declares the static format geohash and no disposition, so
+        // it is public: the grain cap applies, under the spec's maxLength of 12.
+        const parsed = parseClauseSpec(chainOfCustodySpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        const result = validateContent({
+            event: "inspected-intact",
+            unitIdentifier: "MSKU1234567",
+            locationGeohash: "u4pruydqq",
+            occurredAt: "2026-08-01T10:00:00Z",
+        }, parsed.spec, { stage: 1 });
+        expect(result.ok).toBe(false);
+        if (!result.ok) expect(result.errors.map((e) => e.path)).toEqual(["$.locationGeohash"]);
     });
 
     it("figaro-chain-of-custody rejects a missing scheme and an undeclared custody event", () => {

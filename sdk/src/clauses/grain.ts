@@ -3,8 +3,10 @@
  * is geohash.
  *
  * A clause spec carries the structural ceiling (`maxLength`) and the
- * attributes the cap reads: a field's `disposition` and its resolved format
- * (`format`, or the sibling value `formatFromField` names). A PUBLIC geohash
+ * attributes the cap reads: a field's `disposition` and its resolved format,
+ * static or named by a sibling (`format`, or the sibling value
+ * `formatFromField` names). An array item's format is its static `format`,
+ * and the array field's disposition governs it. A PUBLIC geohash
  * is neighborhood grade, never door grade, because its plaintext lands on a
  * public artifact (a pinned profile, a plaintext agreement field). A PRIVATE
  * one keeps fine grain, because its plaintext never lands on a public
