@@ -18,6 +18,8 @@ on:
             # The ABI parity test reads the compiled ABIs: a contract that
             # re-emits abi/ re-runs it against the SDK's.
             - "abi/**"
+            # The same test reads the event-field table of docs/DATA_LAYER.md.
+            - "docs/DATA_LAYER.md"
             - ".github/workflows/sdk-ci.yml"
     pull_request:
         branches: [main, develop]
@@ -28,6 +30,7 @@ on:
             - "scripts/generate-encode-conformance-vectors.mjs"
             - "ecosystem-agents/runtime/**"
             - "abi/**"
+            - "docs/DATA_LAYER.md"
 
 permissions:
     contents: read

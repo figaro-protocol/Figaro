@@ -340,3 +340,87 @@ describe("data: the chain holds a fingerprint, never content; the protocol holds
         expect(dynamicFields(withContent)).toEqual(["event Attestation(detail.content): string"]);
     });
 });
+
+/** The contracts whose events a trade causes: the Core's three that declare
+ *  events (`CommitmentTypes` is a library) and the counter a resolution calls. */
+const TRADE_EMITTERS = ["FigaroCore", "AttestationCoordinator", "FigaroBatchVerifier", "UsageCounter"];
+
+/** The table of docs/DATA_LAYER.md § "The fields the chain's events carry, and
+ *  who reads them": one row per field, its reader and its grain. */
+const DATA_LAYER = path.join(ROOT, "docs", "DATA_LAYER.md");
+const FIELD_TABLE_HEADING = "## The fields the chain's events carry, and who reads them";
+
+interface FieldRow { emitters: string[]; event: string; position: string; field: string; type: string; reader: string; grain: string }
+
+function fieldTable(markdown: string): FieldRow[] {
+    const start = markdown.indexOf(FIELD_TABLE_HEADING);
+    if (start < 0) throw new Error(`docs/DATA_LAYER.md has no heading "${FIELD_TABLE_HEADING}"`);
+    const rest = markdown.slice(start + FIELD_TABLE_HEADING.length);
+    const end = rest.search(/\n## /);
+    const tableText = end < 0 ? rest : rest.slice(0, end);
+    const code = (cell: string) => cell.replace(/`/g, "").trim();
+    return tableText
+        .split("\n")
+        .filter((line) => line.startsWith("| `"))
+        .map((line) => {
+            const cells = line.slice(1, line.endsWith("|") ? -1 : undefined).split(" | ").map((c) => c.trim());
+            if (cells.length !== 7) throw new Error(`a row of the field table has ${cells.length} cells, not 7: ${line}`);
+            const [emitters, event, position, field, type, reader, grain] = cells;
+            return { emitters: emitters.split(",").map(code), event: code(event), position, field: code(field), type: code(type), reader, grain };
+        });
+}
+
+/** Each event field as `Contract.Event #position field: type[ indexed]`, and an
+ *  event with no field as `Contract.Event (no field)`. */
+function eventFields(contract: string, abi: Abi): string[] {
+    return abi
+        .filter((i): i is Extract<Abi[number], { type: "event" }> => i.type === "event")
+        .flatMap((e) => e.inputs.length === 0
+            ? [`${contract}.${e.name} (no field)`]
+            : e.inputs.map((p, n) => `${contract}.${e.name} #${n} ${p.name}: ${typeOf(p)}${(p as { indexed?: boolean }).indexed ? " indexed" : ""}`));
+}
+
+function tableFields(rows: FieldRow[]): string[] {
+    return rows.flatMap((r) => r.emitters.map((c) => r.field === "—"
+        ? `${c}.${r.event} (no field)`
+        : `${c}.${r.event} #${r.position} ${r.field}: ${r.type}`));
+}
+
+describe("data: every field an event carries has a row in docs/DATA_LAYER.md, with its reader and its grain", () => {
+    const rows = fieldTable(readFileSync(DATA_LAYER, "utf8"));
+
+    it("the table and the compiled events list the same fields, at the same positions, with the same types", () => {
+        const compiledFields = TRADE_EMITTERS.flatMap((c) => eventFields(c, compiled(c))).sort();
+        expect(tableFields(rows).sort(), "docs/DATA_LAYER.md field table against abi/*.json").toEqual(compiledFields);
+    });
+
+    it("the table names no contract outside the trade's emitters", () => {
+        expect(rows.flatMap((r) => r.emitters).filter((c) => !TRADE_EMITTERS.includes(c))).toEqual([]);
+    });
+
+    it("every row says who reads the field, citing the code, or says no reader was found; and states a grain", () => {
+        const bare = rows.filter((r) =>
+            !r.grain || !(r.reader.startsWith("no reader found") || /`[\w./-]+\.(ts|tsx|rs|sol):\d+`/.test(r.reader)));
+        expect(bare.map((r) => `${r.event}.${r.field}`)).toEqual([]);
+    });
+
+    it("the check reads what it claims to: a field added to an event, or one retyped, is caught", () => {
+        const added = compiled("FigaroCore").map((i) =>
+            i.type === "event" && i.name === "OrderCommitted"
+                ? { ...i, inputs: [...i.inputs, { name: "note", type: "bytes32", indexed: false }] }
+                : i,
+        ) as Abi;
+        const retyped = compiled("UsageCounter").map((i) =>
+            i.type === "event" && i.name === "UsageRecorded"
+                ? { ...i, inputs: i.inputs.map((p) => (p.name === "c" ? { ...p, type: "uint256" } : p)) }
+                : i,
+        ) as Abi;
+        const documented = new Set(tableFields(rows));
+        expect(eventFields("FigaroCore", added).filter((f) => !documented.has(f))).toEqual([
+            "FigaroCore.OrderCommitted #10 note: bytes32",
+        ]);
+        expect(eventFields("UsageCounter", retyped).filter((f) => !documented.has(f))).toEqual([
+            "UsageCounter.UsageRecorded #5 c: uint256",
+        ]);
+    });
+});

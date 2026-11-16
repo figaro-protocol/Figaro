@@ -35,6 +35,70 @@ protocol-tier rule, never one frontend's taste: the spec carries the structural
 ceiling and every reader derives the public grain from the committed spec
 (the `figaro-geolocation` spec in `clauses/` states the derivation).
 
+## The fields the chain's events carry, and who reads them
+
+The rule above, applied to the chain itself. Every event a trade causes is
+listed here, field by field, from the ABIs the contracts compile to (`abi/*.json`):
+the Core's four contracts (`CommitmentTypes` is a library and declares none) and
+the designer-rewards counter `UsageCounter`, whose `UsageRecorded` a resolution
+causes. Each row says who reads the field and where in the code, and the grain the
+chain carries it at. A reader cell names the code that reads the field; where the
+only reader found is one of the order's own two parties, the cell says so; where no
+code reads the field, the cell says "no reader found", and the field is an open
+question under the rule above, whatever a contract's NatSpec says it is for. The
+events `FigaroCore` and `FigaroBatchVerifier` share have the same fields and the
+same readers, since a reader folds the two paths by address. `sdk/tests/abiParity.test.ts`
+("data: every field an event carries has a row") fails when a compiled event gains,
+loses, moves or retypes a field and this table does not move with it.
+
+| Emitted by | Event | # | Field | Type | Who reads it, and where | Grain |
+|---|---|---|---|---|---|---|
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 0 | `orderHash` | `bytes32 indexed` | Any reader of the public data joins an order's later events to it: resolution (`sdk/src/state.ts:188`), attestations (`sdk/src/derive/attestation.ts:41`) | A fingerprint: the order's EIP-712 digest |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 1 | `processId` | `bytes32 indexed` | Every co-seller and any reader groups a process's orders by it (`sdk/src/derive/graphs.ts:129`) | A fingerprint: the root order's digest |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 2 | `buyer` | `address indexed` | Any reader of the public data: the resolution graph (`sdk/src/derive/graphs.ts:117`) and the buyer-to-seller pairs (`sdk/src/derive/queries.ts:165`) | The wallet's address |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 3 | `seller` | `address` | The same readers (`sdk/src/derive/graphs.ts:118`, `sdk/src/derive/queries.ts:165`); a co-seller sees the other sellers of its process | The wallet's address |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 4 | `currency` | `address` | A forum's evidence file names the token the chain moved (`frontend/lib/audit/contractExtract.ts:153`); the resolution graph's denomination (`sdk/src/derive/graphs.ts:131`) | The token's address |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 5 | `payment` | `uint256` | Any reader: the volume per denomination (`sdk/src/derive/queries.ts:166`) and the bonds locked (`sdk/src/derive/graphs.ts:114`) | The exact amount, in the token's smallest unit |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 6 | `cumulativeValue` | `uint256` | Any reader derives each seller's bond from it (`sdk/src/derive/graphs.ts:114`); a software agent of a party reads it to know a seller's bond (`sdk/src/agent/proposer.ts:133`) | The exact amount |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 7 | `checkoutHash` | `bytes32` | A forum checks the agreement body against it (`frontend/lib/audit/hashAppendix.ts:87`) and looks the agreement up by it (`frontend/lib/audit/auditBundlePdf.ts:111`) | A fingerprint: the agreement's merkle root |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 8 | `salt` | `uint256` | Whoever rebuilds the signed commitment from events alone: the buyer's resolution (`sdk/src/commitments.ts:279`, called by `sdk/src/agent/proposer.ts:154`) and a forum's evidence file (`frontend/lib/audit/contractExtract.ts:156`) | A random 256-bit number (`sdk/src/commitments.ts:308`), no party's data |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderCommitted` | 9 | `deadline` | `uint256` | The same readers (`sdk/src/commitments.ts:280`, `frontend/lib/audit/contractExtract.ts:157`) | A time in seconds |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderSeller` | 0 | `orderHash` | `bytes32 indexed` | A reader listing the orders a wallet sold, the seller itself among them (`frontend/lib/kernel/indexer.ts:238`) | A fingerprint, repeated from `OrderCommitted` |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderSeller` | 1 | `seller` | `address indexed` | The same reader (`frontend/lib/kernel/indexer.ts:237`) | The wallet's address, repeated from `OrderCommitted` so it can be indexed |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 0 | `orderHash` | `bytes32 indexed` | Any reader marks the order resolved (`sdk/src/state.ts:188`); a forum's timeline (`frontend/lib/audit/processTimeline.ts:290`) | A fingerprint |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 1 | `processId` | `bytes32 indexed` | Only the order's own parties: a party purges its sealed-channel keys for the process (`frontend/lib/handoff/useHandoffCleanup.ts:88`) | A fingerprint |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 2 | `sellerPayout` | `uint256` | Any reader of the resolution graph (`sdk/src/state.ts:192`); a forum's timeline (`frontend/lib/audit/processTimeline.ts:281`) | The exact amount |
+| `FigaroCore`, `FigaroBatchVerifier` | `OrderResolved` | 3 | `buyerPayout` | `uint256` | The same readers (`sdk/src/state.ts:193`, `frontend/lib/audit/processTimeline.ts:282`) | The exact amount |
+| `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 0 | `processId` | `bytes32 indexed` | Any reader marks the process resolved (`sdk/src/state.ts:197`); a party waits on it after a batched resolution (`sdk/src/relay/index.ts:149`) | A fingerprint |
+| `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 1 | `buyer` | `address indexed` | no reader found: decoded (`sdk/src/events.ts:90`) and never read | The wallet's address, repeated from `OrderCommitted` |
+| `FigaroCore`, `FigaroBatchVerifier` | `ProcessResolved` | 2 | `orderCount` | `uint256` | no reader found: decoded (`sdk/src/events.ts:91`) and never read | A count |
+| `FigaroCore`, `FigaroBatchVerifier` | `EIP712DomainChanged` | — | — | — | no reader found: OpenZeppelin's `EIP712` declares the event and nothing in `src/` emits it | No field |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 0 | `orderHash` | `bytes32 indexed` | Any reader groups attestations by order (`sdk/src/derive/attestation.ts:41`) | A fingerprint |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 1 | `processId` | `bytes32 indexed` | Any reader: attestations by process (`sdk/src/derive/attestation.ts:31`); the data explorer attributes a process to its assembly (`frontend/lib/data/graphCorpus.ts:246`) | A fingerprint |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 2 | `attester` | `address indexed` | The data explorer counts distinct attesters per clause (`frontend/lib/data/explorer.ts:344`); a forum's evidence file names the attester (`frontend/lib/audit/processLogsExtract.ts:104`) | The wallet's address |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 3 | `clauseId` | `bytes32` | Any reader groups attestations by clause (`sdk/src/derive/overlay.ts:112`); a forum's evidence file (`frontend/lib/audit/processLogsExtract.ts:81`) | A fingerprint: the clause key |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 4 | `stage` | `uint8` | Any reader decodes the content by the stage's shape (`sdk/src/derive/overlay.ts:133`); a forum's evidence file (`frontend/lib/audit/processLogsExtract.ts:85`) | A small number |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 5 | `contentRef` | `bytes32` | Any reader fetches the content by it (`frontend/lib/data/graphCorpus.ts:303`) and checks the bytes against it (`sdk/src/anchored.ts:191`) | A fingerprint: `keccak256` of the content, unsalted |
+| `FigaroBatchVerifier` | `BatchOperations` | 0 | `batchId` | `uint64 indexed` | A relay rebuilding the batch path's state from the chain pairs the log with its `BatchSettled` (`prover/sequencer/src/rebuild.rs:91`) | A counter |
+| `FigaroBatchVerifier` | `BatchOperations` | 1 | `blockTimestamp` | `uint64` | The same relay replays the batch at that clock (`prover/sequencer/src/rebuild.rs:105`) | A time in seconds |
+| `FigaroBatchVerifier` | `BatchOperations` | 2 | `usagePeriod` | `uint8` | no reader found: written only by the relay's test fixtures (`prover/sequencer/src/rebuild.rs:218`) | A period number |
+| `FigaroBatchVerifier` | `BatchOperations` | 3 | `provenanceLeaf` | `bytes32` | no reader found: written only by the relay's test fixtures (`prover/sequencer/src/rebuild.rs:219`) | A fixed key, the same for every batch |
+| `FigaroBatchVerifier` | `BatchOperations` | 4 | `operations` | `bytes` | The same relay decodes and replays them (`prover/sequencer/src/rebuild.rs:103`) | Every commitment field, signature and fingerprint of the batch; no clause content (`sdk/tests/abiParity.test.ts`, "data: the chain holds a fingerprint") |
+| `FigaroBatchVerifier` | `BatchSettled` | 0 | `batchId` | `uint64 indexed` | A party waiting on its batched resolution (`sdk/src/relay/index.ts:167`); a rebuilding relay (`prover/sequencer/src/rebuild.rs:91`) | A counter |
+| `FigaroBatchVerifier` | `BatchSettled` | 1 | `prevStateRoot` | `bytes32 indexed` | A rebuilding relay checks the chain of roots (`prover/sequencer/src/rebuild.rs:94`) | A fingerprint: a state root |
+| `FigaroBatchVerifier` | `BatchSettled` | 2 | `newStateRoot` | `bytes32 indexed` | The same relay (`prover/sequencer/src/rebuild.rs:110`) | A fingerprint: a state root |
+| `FigaroBatchVerifier` | `BatchSettled` | 3 | `positionCount` | `uint256` | no reader found | A count |
+| `FigaroBatchVerifier` | `BatchAccrualSkipped` | 0 | `batchId` | `uint64 indexed` | no reader found | A counter |
+| `FigaroBatchVerifier` | `BatchAccrualSkipped` | 1 | `reason` | `bytes` | no reader found | The counter's revert data |
+| `UsageCounter` | `UsageRecorded` | 0 | `kind` | `uint8` | A designer's reward accrual keys each use by kind and key (`sdk/src/rpgf/index.ts:207`) | A small number |
+| `UsageCounter` | `UsageRecorded` | 1 | `clauseOrAssembly` | `bytes32 indexed` | The same accrual (`sdk/src/rpgf/index.ts:206`) | A fingerprint: a clause key, an `agreementHash` or an `assemblyHash` |
+| `UsageCounter` | `UsageRecorded` | 2 | `period` | `uint8 indexed` | The same accrual (`sdk/src/rpgf/index.ts:208`) | A period number |
+| `UsageCounter` | `UsageRecorded` | 3 | `processId` | `bytes32 indexed` | The same accrual counts a process once (`sdk/src/rpgf/index.ts:211`) | A fingerprint |
+| `UsageCounter` | `UsageRecorded` | 4 | `seller` | `address` | The same accrual counts distinct sellers (`sdk/src/rpgf/index.ts:213`) | The wallet's address |
+| `UsageCounter` | `UsageRecorded` | 5 | `c` | `uint64` | no reader found: decoded (`sdk/src/rpgf/index.ts:318`); the accrual counts it again from the events | A count |
+| `UsageCounter` | `UsageRecorded` | 6 | `d` | `uint64` | no reader found: decoded (`sdk/src/rpgf/index.ts:319`); the accrual counts it again from the events | A count |
+| `UsageCounter` | `UsageRecorded` | 7 | `score` | `uint256` | no reader found: decoded (`sdk/src/rpgf/index.ts:320`); the accrual computes it again from the events | A score |
+
 ## The sealed side is the owner's asset
 
 The split above generalizes: everything the chain anchors is a fingerprint, and
