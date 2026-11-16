@@ -291,7 +291,7 @@ describe.skipIf(!ALIVE)(ALIVE ? "SDK Integration (Anvil)" : `SDK Integration (An
         const requestFor = (candidate: Address) => buildQuoteRequest({
             assembly: assembly, buyer: buyerAccount.address, seller: candidate, currency: tokenAddress,
             ceiling: CEILING, chainId: 31337, core: coreAddress, pricedFields,
-            deadline: chainNow + 3600n,
+            deadline: chainNow + 3600n, specs: GATE_SPECS,
             overrides: {
                 [keyOf("figaro-commerce")]: {
                     lineItems: [{ itemId: "job", name: "Bespoke job", quantity: 1, unitPrice: "0" }],

@@ -16,7 +16,8 @@
 import type { WalletClient, PublicClient } from "viem";
 import { keccak256 } from "viem";
 import { CORE_ABI, ATTESTATION_COORDINATOR_ABI, USAGE_COUNTER_ABI } from "../abis.js";
-import { validateContent, encodeContentFromSpec, type ClauseSpec } from "../clauses/index.js";
+import { validateContent, encodeContentFromSpec, contentFieldsFor, type ClauseSpec } from "../clauses/index.js";
+import { withFreshBlinding } from "../projection.js";
 import { assertOrderFitsResolveCap } from "../gasCeilings.js";
 import { restoreSignedProcessId } from "../commitments.js";
 import type { Agreement } from "../agreement.js";
@@ -249,22 +250,27 @@ export async function recordProcessUsage(
  * agent that skips this anchors whatever bytes it produced; run it, then pass
  * `contentRef` to `attestAsSeller`/`attestAsBuyer`. Throws with the exact
  * failing paths, mirroring the rail.
+ *
+ * The attesting party collects this content, so the blinding value of a
+ * private set is drawn here where `values` leaves it absent
+ * (`withFreshBlinding`): two preparations of one private value give two
+ * content references, and a public set's content is the same every time.
+ * `values` in the result is the content as encoded, blinding value included:
+ * the party keeps it to show the content later.
  */
 export function prepareAttestationContent(
     spec: ClauseSpec,
     values: Record<string, unknown>,
     opts?: { stage?: number },
-): { content: Hex; contentRef: Hex } {
-    const validation = opts?.stage !== undefined
-        ? validateContent(values, spec, { stage: opts.stage })
-        : validateContent(values, spec);
+): { content: Hex; contentRef: Hex; values: Record<string, unknown> } {
+    const options = opts?.stage !== undefined ? { stage: opts.stage } : {};
+    const filled = withFreshBlinding(contentFieldsFor(spec, options), values);
+    const validation = validateContent(filled, spec, options);
     if (!validation.ok) {
         throw new Error(validation.errors.map((e) => `${e.path}: ${e.message}`).join("; "));
     }
-    const content = opts?.stage !== undefined
-        ? encodeContentFromSpec(spec, values, { stage: opts.stage })
-        : encodeContentFromSpec(spec, values);
-    return { content, contentRef: keccak256(content) };
+    const content = encodeContentFromSpec(spec, filled, options);
+    return { content, contentRef: keccak256(content), values: filled };
 }
 
 /**

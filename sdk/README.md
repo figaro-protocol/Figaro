@@ -335,6 +335,9 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildCommitment` | root | Build the `Commitment` struct and the EIP-712 typed data to sign. |
 | `buildDomain` | root | The EIP-712 domain for a chain id + `FigaroCore` address. |
 | `buildOrderAgreement` | root | Build one order's agreement document and its merkle tree from its clause map. |
+| `withClauseBlinding` | root | One clause's committed values with the blinding value of its private set drawn where absent (`blinding: true` in the spec), read by the clause key from a `SpecSource`; a public clause, a process-log clause and an unloaded spec pass unchanged. |
+| `withFreshBlinding` | root | One set of fields' values (a clause's `fields` or one `stages[N]`) with its blinding value drawn where absent; never overwrites a value present. |
+| `freshBlindingHex` | root | 32 random bytes as `bytes32-hex`, from `generateSalt`; throws without Web Crypto. |
 | `buildQuoteRequest` | `/agent` | Build an UNSIGNED RFQ draft, priced at the buyer's ceiling. |
 | `buildAssembly` | root | Design time: the assembly of agreements plus the new agreements to register; each new agreement carries exactly the clauses composed for its order; binds a registered agreement as is or composes a new one; each entry carries its own `follows`. |
 | `composeOrderAgreement` | root | ONE agreement's registered agreement from the clauses a designer selected — the scope check, the value-free rule, at least one clause — and its `agreementHash`; `buildAssembly` composes every new agreement through it, and a designer registers one on its own through it. |
@@ -1190,6 +1193,7 @@ const drafts = candidates.map((seller) => buildQuoteRequest({
     assembly, buyer, seller, currency, ceiling, chainId, core,
     pricedFields: [{ clause: commerceKey, path: "lineItems.0.unitPrice" }],
     overrides,
+    specs,                                         // required: each private clause's blinding value is drawn here, once
 }));
 const { winner: quoted } = await requestQuotes(channel, drafts, { chainId, core });
 

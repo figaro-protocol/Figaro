@@ -17,7 +17,7 @@
  */
 
 import Link from "@/components/shared/Link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useChainId, usePublicClient } from "wagmi";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
@@ -67,6 +67,7 @@ import { useMemberBoundAssemblies, withBoundCoSellers } from "@/lib/member/useMe
 import { displayNameForAddress } from "@/lib/member/memberListing";
 import { formatMass, formatVolume } from "@/lib/member/unitConversion";
 import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
+import { withCheckoutBlinding, type CheckoutFills } from "@/lib/checkout/checkoutBlinding";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import { resolveInputFormat, type FieldSpec } from "@figaro-protocol/sdk/clauses";
@@ -260,6 +261,10 @@ export function CheckoutView({ sellerAddress }: Props) {
     // from the assembly as `{}`; their transaction particulars are filled
     // here, at checkout. Spec-routed — the checkout names no clause.
     const [clauseFills, setClauseFills] = useState<Record<string, Record<string, Record<string, unknown>>>>({});
+    // The blinding value of each private clause of each order, drawn once
+    // for this draft and kept with it (`withCheckoutBlinding`), so the race's
+    // dry walk and the commit walk build the same checkoutHash.
+    const blindingKept = useRef<CheckoutFills>({});
     const setClauseFill = (nodeId: string, clauseKey: string, field: string, value: unknown) =>
         setClauseFills((prev) => ({
             ...prev,
@@ -331,12 +336,15 @@ export function CheckoutView({ sellerAddress }: Props) {
             mergeAssemblyTermFills(assemblyClauseFills[clauseKey], assemblyFills[clauseKey]),
         ]),
     );
-    const expandedClauseFills: typeof clauseFills = Object.fromEntries(
+    const mergedClauseFills: typeof clauseFills = Object.fromEntries(
         (pickedAssembly?.hydratedAssembly.assembly.agreements ?? []).map((o, i) => {
             const nodeId = String(o.id ?? i);
             return [nodeId, { ...mergedAssemblyEntries, ...(clauseFills[nodeId] ?? {}) }];
         }),
     );
+    const expandedClauseFills: typeof clauseFills = pickedAssembly
+        ? withCheckoutBlinding(pickedAssembly.hydratedAssembly, mergedClauseFills, specSource(), blindingKept.current)
+        : mergedClauseFills;
     const subOrderPlan = (() => {
         if (!pickedAssembly || pickedAssembly.hydratedAssembly.assembly.agreements.length <= 1) return [];
         try {

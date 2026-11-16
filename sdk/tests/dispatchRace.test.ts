@@ -197,7 +197,7 @@ const CEILING = 1000n;
 function requestFor(candidate: Address): CommitmentPayload {
     return buildQuoteRequest({
         assembly: assembly, buyer: BUYER.address, seller: candidate, currency: CURRENCY,
-        ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n,
+        ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n, specs: SPECS,
         overrides: {
             [keyOf("figaro-commerce")]: {
                 lineItems: [{ itemId: "job", name: "Bespoke job", quantity: 1, unitPrice: "0" }],
@@ -333,13 +333,13 @@ describe("an agreement that composes no line items is quoted and committed on th
     it("the buyer drafts at its ceiling, the candidate quotes, the buyer verifies and signs the quoted commitment", async () => {
         const unpriced = buildQuoteRequest({
             assembly: bare, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
-            ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: [], deadline: 1_900_000_000n,
+            ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: [], deadline: 1_900_000_000n, specs: NO_CLAUSES,
         });
         const priced = derivePricedFields(unpriced.agreement.clauses, NO_CLAUSES);
         expect(priced).toEqual([]);
         const req = buildQuoteRequest({
             assembly: bare, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
-            ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: priced, deadline: 1_900_000_000n,
+            ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: priced, deadline: 1_900_000_000n, specs: NO_CLAUSES,
         });
         expect(req.commitment.payment).toBe(CEILING);
         expect(req.quoteRequest).toEqual({ pricedFields: [] });
@@ -485,7 +485,7 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
         expect(reply?.sellerSig).toBeDefined();
         const tampered = buildQuoteRequest({
             assembly: assembly, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
-            ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n,
+            ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n, specs: SPECS,
             overrides: restatedCommerce(BAD_CURRENCY, "0"),
         });
         await expect(quoteDraft(courierAW, tampered, CTX, SPECS, () => 700n, quotePolicy, assembly, BOUND))
