@@ -155,7 +155,10 @@ fields, and the blinding field").
   and keeps the value while the draft is rebuilt. Each candidate of a
   dispatch race receives a draft with values of its own, and the winner's are
   the ones signed. A new attempt after a failed one draws again, since an
-  order the failed attempt signed may already be in a seller's hands.
+  order the failed attempt signed may already be in a seller's hands. After
+  a race, the new attempt keeps every value: the race fixed every salt and
+  the deadline, so the attempt rebuilds the same orders, and the winner's
+  countersignature still matches the raced order.
 - **It travels with the content.** It is a field of the set, so it is inside
   the committed `data` the counterparty receives in the commitment payload,
   inside the encoded bytes of a witness, and inside whatever a party discloses
@@ -169,7 +172,7 @@ fields, and the blinding field").
   value would hide nothing, and public fingerprints stay reproducible by
   anyone from what is published.
 
-Two limits, stated plainly:
+Four limits, stated plainly:
 
 1. The party that fills the set draws the value, and both parties sign the
    clause. A careless or hostile filler weakens the other party's privacy in
@@ -186,10 +189,17 @@ Two limits, stated plainly:
    (`localStorage`, `keepPrivateWitnessContent` in
    `frontend/lib/composition/witnessContent.ts`), written before the
    attestation is sent, and refuses to send where the browser will not keep
-   it. A party that clears its browser's storage loses it: the content is its
-   own to keep, and the evidence file is how it carries it out. A software
-   agent keeps the `values` and `content` that `prepareAttestationContent`
-   returns.
+   it. It keeps the bytes only, one entry per attestation, and every reader
+   decodes the values, blinding value included, from the bytes it has checked
+   against the content reference. A party that clears its browser's storage
+   loses it: the content is its own to keep, and the evidence file is how it
+   carries it out. A software agent keeps the `values` and `content` that
+   `prepareAttestationContent` returns.
+4. The kept copy belongs to the browser profile, not to a wallet. Anyone who
+   opens that browser profile reads the decoded private content on the order
+   page and the audit page, with any wallet connected or none. A party on a
+   shared device clears the copy once it has carried it out in its evidence
+   file, or attests from a browser profile of its own that no one else opens.
 
 What the blinding value does not hide: that a clause, a private stage and a
 field set were used; the spec's structure, since the spec is public; who

@@ -23,8 +23,7 @@ import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import type { ExtractedDocument, MissingPart } from "./types";
-import { contentFieldsFor } from "@figaro-protocol/sdk/clauses";
-import { clauseIsProcessLog, clauseWitnessStages, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { attestationContentFields, attestationIsWitness, clauseIsProcessLog, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
 interface ProcessLogEntry {
     clauseKey: string;
@@ -43,8 +42,9 @@ interface ProcessLogEntry {
     /** The path that emitted the attestation, when the reader knows it. */
     universe?: ResolutionUniverse;
     /** A private attestation's content, as its holder kept it: the bytes
-     *  whose keccak256 is `contentRef`, and the values encoded, the blinding
-     *  value included. Present only where the file's builder holds them. */
+     *  whose keccak256 is `contentRef`, and the values decoded from those
+     *  bytes, the blinding value included. Present only where the file's
+     *  builder holds them. */
     heldContent?: `0x${string}`;
     heldValues?: Record<string, unknown>;
 }
@@ -108,16 +108,17 @@ export function extractProcessLogs(
         // (attestations article) and declared WITNESS stages (spec.stages[N] —
         // a temperature reading, measured grams, a detected band). Both are
         // spec-declared; neither is named here.
-        const isWitness = clauseWitnessStages(clauseKey).some((w) => w.stage === att.stage);
-        if (!clauseIsProcessLog(clauseKey) && !isWitness) continue;
+        if (!clauseIsProcessLog(clauseKey) && !attestationIsWitness(clauseKey, att.stage)) continue;
         let group = groups.get(clauseKey);
         if (!group) {
             group = { clauseKey, title: spec.title, events: [] };
             groups.set(clauseKey, group);
         }
         // A private set's content is never published: the file holds it
-        // where its builder kept it, and names it missing otherwise.
-        const isPrivate = contentFieldsFor(spec, { stage: att.stage }).some((f) => f.disposition === "private");
+        // where its builder kept it, and names it missing otherwise. The set
+        // is the one the content was encoded from: a ladder event's is the
+        // clause's top-level set, whatever its stage index.
+        const isPrivate = (attestationContentFields(clauseKey, att.stage) ?? []).some((f) => f.disposition === "private");
         const held = isPrivate ? heldWitness?.(att) ?? null : null;
         if (isPrivate && !held) {
             missing.push({

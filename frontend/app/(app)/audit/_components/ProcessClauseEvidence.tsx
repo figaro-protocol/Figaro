@@ -7,7 +7,7 @@ import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { getAttestationsByOrder, type AttestationRecord } from "@/lib/composition/indexer";
 import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
-import { resolveHeldWitnessContent } from "@/lib/composition/witnessContent";
+import { readHeldWitness, resolveHeldWitnessContent } from "@/lib/composition/witnessContent";
 import { decodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { WitnessPinErasure } from "@/components/runtime/WitnessPinErasure";
 import {
@@ -16,7 +16,7 @@ import {
 } from "@/lib/audit/signatureVerdicts";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
-import { clauseWitnessStages, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { attestationEncodeOptions, attestationIsWitness, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { MissingParts } from "./MissingParts";
 import type { MissingPart } from "@/lib/audit/types";
@@ -220,7 +220,9 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                 for (const att of records) {
                     if (!att.contentRef) continue;
                     // The event carries the clause KEY; spec reads key on it.
-                    if (!clauseWitnessStages(att.clauseId).some((w) => w.stage === att.stage)) continue;
+                    // A witness only: a ladder event is not encoded over its
+                    // stage index's fields (`attestationIsWitness`).
+                    if (!attestationIsWitness(att.clauseId, att.stage)) continue;
                     const witnessSpec = getClauseSpec(att.clauseId);
                     if (!witnessSpec) continue;
                     const key = `${att.clauseId.toLowerCase()}:${att.stage}:${att.contentRef}`;
@@ -240,7 +242,7 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                             return;
                         }
                         try {
-                            next.set(key, decodeContentFromSpec(witnessSpec, content, { stage: att.stage }));
+                            next.set(key, decodeContentFromSpec(witnessSpec, content, attestationEncodeOptions(att.clauseId, att.stage)));
                         } catch {
                             // Garbage content — leave undecoded; the receipt row still renders.
                             next.delete(key);
@@ -262,7 +264,7 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
         return orders.map((order) => {
             const agreement = order.checkoutHash ? agreements.get(order.checkoutHash) : undefined;
             const clauseData = agreement ? extractClauseData(order, agreement) : null;
-            const processLogs = extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? []);
+            const processLogs = extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? [], readHeldWitness);
             return { order, clauseData, processLogs };
         }).filter(({ clauseData, processLogs }) =>
             (clauseData && clauseData.clauses.length > 0) || processLogs.logs.length > 0,
@@ -287,7 +289,10 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                 });
             }
             if (agreement) parts.push(...extractClauseData(order, agreement).missing);
-            parts.push(...extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? []).missing);
+            // The same held-content reader the evidence file passes: what
+            // this browser holds is shown as held, and only what it does not
+            // hold is named missing.
+            parts.push(...extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? [], readHeldWitness).missing);
         }
         return parts;
     }, [orders, agreements, attestationsRead.status, attestationsByOrder, clauseSpecsVersion]);
