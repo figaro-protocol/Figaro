@@ -127,6 +127,21 @@ The chain holds fingerprints, never preimages, so each clause is anchored by its
 
 **A clause carries `data` XOR `dataHash`, never both.** The hashing function refuses a clause with both, at the hashing locus, so no consumer — leaf, root, or the sign gate — can pass a clause that signs one thing and shows another (`sdk/src/agreement.ts:221-236`). Per-field disposition (`"public"` default, or `"private"`) is declared in the spec and governs publication and grain policy; the chain carries only the clause data hash either way. Withholding is fail-closed: an unknown spec, or any private field in the encoded set, publishes nothing, and a lookup that resolves empty reads as absence.
 
+**A private set carries one blinding field.** A withheld clause still publishes its fingerprint, and the spec is public, so a private value with few possibilities could be confirmed by hashing each guess. Every set of fields that declares a private field (the top-level `fields`, or one `stages[N]`) therefore declares exactly one blinding field, at its top level:
+
+```json
+{ "name": "blinding", "type": "string", "format": "bytes32-hex",
+  "required": true, "disposition": "private", "blinding": true }
+```
+
+What you declare, and what the tooling does:
+
+1. One blinding field per private set, of exactly that shape, with no `default`; any name, since tooling reads `"blinding": true`. A set with no other private field declares none, and no set mixes public and private fields. `parseClauseSpec` refuses a spec that breaks a rule (`sdk/src/clauses/spec.ts`), and the published definition states the same (`sdk/src/clauses/clause-spec.schema.json`).
+2. Name it in no fills list. The party that fills the set draws the value: the buyer's tooling at checkout, the attesting party's for a witness stage. `withClauseBlinding` and `withFreshBlinding` draw 32 random bytes through `generateSalt` where the value is absent and never overwrite one; `buildBuyerOffer`, `buildQuoteRequest`, `buildChainOffers` and `prepareAttestationContent` call them for you.
+3. The sign gate (`validateCommitmentAgreement`) refuses a spec that names the blinding field in `block.design.fills`, `block.checkout.catalogueFills`, `profileFills` or `catalogueMeasures`, a zero value, and one value two clauses of the agreement share.
+
+The value is a field like any other: it enters the canonical JSON of stage 0 and the ABI bytes of a stage, so the leaf, the `checkoutHash`, `contentRef` and its CID are computed as before, and whoever holds the content reproduces the fingerprint from the content alone. It is not a term: a form offers no input for it, and a comparison of two parties' filings reads past it. A public set carries none, so public content stays reproducible by anyone. The commitment's own `salt` is no substitute: it is the order's identity, emitted in `OrderCommitted`. The guest's engine does not apply these spec rules; it validates the value as a `bytes32-hex` string, so a proof of a plaintext attestation does not attest that a blinding value is present.
+
 ## Registration — permissionless, first-write-wins, ETH-staked
 
 A new clause is a spec plus a registration, nothing else — no validator contract, no interface step; the proof engine is generic and takes the spec as a witness input anchored by the registered clause key.

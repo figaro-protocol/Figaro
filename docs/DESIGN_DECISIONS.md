@@ -1287,6 +1287,64 @@ and a batched process read from the verifier's events);
 
 ---
 
+## 33. A private set carries its own blinding value
+
+**Pattern**: A set of fields (a clause's top-level `fields`, or one
+`stages[N]`) that declares a private field declares exactly one blinding
+field: a top-level `string` of format `bytes32-hex`, required, private, with
+no `default`, marked `"blinding": true`. A set with no other private field
+declares none, and no set mixes public and private fields
+(`parseClauseSpec`, `sdk/src/clauses/spec.ts`; the published definition,
+`sdk/src/clauses/clause-spec.schema.json`). The party that fills the set draws
+the value fresh for each commitment or attestation (`withFreshBlinding`,
+`withClauseBlinding`, `sdk/src/projection.ts`; `prepareAttestationContent`,
+`sdk/src/agent/autonomous.ts`). The sign gate refuses a spec that names the
+blinding field in a designer's, catalog's or profile's fills list, a zero
+value, and one value carried by two clauses of one agreement
+(`validateCommitmentAgreement`).
+
+**Why it looks wrong**: The commitment already carries a random 32-byte
+`salt`, so a second random value reads as a duplicate. A value declared in
+every private spec reads as boilerplate the SDK could add on its own, under a
+reserved key. And a public clause carrying none reads as an inconsistency.
+
+**Why it is correct**: The commitment's `salt` is the order's identity, not a
+secret: `OrderCommitted` emits it on both paths (§ 5, § 12), so a value
+derived from it is public and blinds nothing. A private value of few
+possibilities is published only as a fingerprint: the clause's data hash
+under the `checkoutHash`, and a witness's `contentRef`, while the spec is
+public. Without a random value inside the hashed bytes, anyone confirms the
+value by hashing each guess. The value sits inside the set as a declared
+field, so it enters the canonical JSON of stage 0 and the ABI bytes of a
+stage like any field: no hash function, leaf, content reference, CID,
+contract or proof program changes, and both engines already validate and
+encode a `bytes32-hex` string. A reserved key that no spec declares would be
+refused as an undeclared field by both validators, dropped by the encoder
+from a witness's bytes, and refused by a stranger's validator written from
+the published format, so the rule would live outside the spec a tool fetches.
+A public set's content is published, so a random value there hides nothing,
+and it would make public fingerprints unreproducible from what is published.
+The cost is stated in `docs/DATA_LAYER.md` § "A private fingerprint carries a
+blinding value": the filler draws the value, so a careless or hostile filler
+weakens the other party's privacy in that clause, and the gate catches only
+a zero or a repeat.
+
+**Tests**: `sdk/tests/clauses/spec.test.ts` and
+`sdk/tests/clauses/schema-conformance.test.ts` (each rule, in the parser and
+in the published definition); `sdk/tests/clauses/engineVectors.test.ts` (the
+rules are the SDK's alone, and the shared vectors carry none);
+`sdk/tests/blinding.test.ts` (two commitments of one private value differ in
+data hash and `checkoutHash`; the holder reproduces the fingerprint through
+`anchorAgreement` and a guess of the value alone does not; a public clause
+gains nothing; a present value is kept; private-stage preparations differ and
+public-stage ones agree; without Web Crypto the fill throws; the agent paths
+draw it); `sdk/tests/projection.test.ts` (the sign gate's three refusals;
+the public form keeps the `checkoutHash` and withholds the value with the
+clause); `frontend/tests/lib/checkoutBlinding.test.ts` (a rebuild of a
+checkout draft keeps its `checkoutHash`).
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -1323,3 +1381,4 @@ and a batched process read from the verifier's events);
 | 30 | Topology is not in the commitment struct | Core-critical | The process's shape reads as part of what is bonded, and the events alone do not show the graph of orders | The bonds are sized by the running total alone; the parties sign the edges through the `checkoutHash`; a wallet outside the trade reads the designed edges from the registered assembly |
 | 31 | The topology leaf has a shape of its own | agreement format/reward-path | The provenance leaf takes the clause-leaf shape under a reserved key, and a leaf no contract rebuilds reads as unprovable | A reserved key in the clause-leaf shape could be registered by anyone and earn on every order; a 96-byte inner preimage opens under no clause key, with no contract or verification key moved, and the edges have no stage after commit to attest |
 | 32 | A reader names the opening order from the chain, and the edges from the agreement | reader/frontend | A test on `cumulativeValue` in a reader of the process's shape reads as bond arithmetic deciding the graph | It decides no edge: it answers which order opened the process, the Core's own fact at commit; the edges come only from the agreement's topology leaf, and unknown edges are shown as none |
+| 33 | A private set carries its own blinding value | data/spec format | The commitment's `salt` looks like the same random value, a declared field looks like boilerplate, and a public clause carries none | The commitment's `salt` is emitted in `OrderCommitted` and blinds nothing; a declared field enters the hashed bytes with no hash, contract or proof change and is what a stranger's tool reads from the spec; public content is published, so a random value there hides nothing |

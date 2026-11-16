@@ -90,7 +90,7 @@ loses, moves or retypes a field and this table does not move with it.
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 2 | `attester` | `address indexed` | The data explorer counts distinct attesters per clause (`frontend/lib/data/explorer.ts:344`); a forum's evidence file names the attester (`frontend/lib/audit/processLogsExtract.ts:104`) | The wallet's address |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 3 | `clauseId` | `bytes32` | Any reader groups attestations by clause (`sdk/src/derive/overlay.ts:112`); a forum's evidence file (`frontend/lib/audit/processLogsExtract.ts:81`) | A fingerprint: the clause key |
 | `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 4 | `stage` | `uint8` | Any reader decodes the content by the stage's shape (`sdk/src/derive/overlay.ts:133`); a forum's evidence file (`frontend/lib/audit/processLogsExtract.ts:85`) | A small number |
-| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 5 | `contentRef` | `bytes32` | Any reader fetches the content by it (`frontend/lib/data/graphCorpus.ts:303`) and checks the bytes against it (`sdk/src/anchored.ts:191`) | A fingerprint: `keccak256` of the content, unsalted |
+| `AttestationCoordinator`, `FigaroBatchVerifier` | `Attestation` | 5 | `contentRef` | `bytes32` | Any reader fetches the content by it (`frontend/lib/data/graphCorpus.ts:303`) and checks the bytes against it (`sdk/src/anchored.ts:191`) | A fingerprint: `keccak256` of the content; a private set's content carries its blinding value, a public set's carries none |
 | `FigaroBatchVerifier` | `BatchOperations` | 0 | `batchId` | `uint64 indexed` | A relay rebuilding the batch path's state from the chain pairs the log with its `BatchSettled` (`prover/sequencer/src/rebuild.rs:91`) | A counter |
 | `FigaroBatchVerifier` | `BatchOperations` | 1 | `blockTimestamp` | `uint64` | The same relay replays the batch at that clock (`prover/sequencer/src/rebuild.rs:105`) | A time in seconds |
 | `FigaroBatchVerifier` | `BatchOperations` | 2 | `usagePeriod` | `uint8` | no reader found: written only by the relay's test fixtures (`prover/sequencer/src/rebuild.rs:218`) | A period number |
@@ -125,6 +125,54 @@ as digital value-added, delivered over the sealed channel.
 
 The evidence file a party hands a forum names each part it does not contain,
 with the reason given, and fills no gap with content it does not hold.
+
+### A private fingerprint carries a blinding value
+
+A private field is withheld from every public place, and only a fingerprint
+of its set is published: the clause's data hash, under the `checkoutHash`,
+in the attestation calls and in the usage claims, and a witness's
+`contentRef` in the `Attestation` event. The spec is public too. A value with
+few possibilities would then be confirmed by hashing each guess with the rest
+of the set and comparing. So every set that declares a private field declares
+one blinding field, and the fingerprint over the set includes its value: 32
+random bytes (`docs/CLAUSES.md` § "Clause-spec format", "Public and private
+fields, and the blinding field").
+
+- **Who draws it.** The party that fills the set: the buyer at checkout for a
+  committed clause, the attesting party for a private witness stage. Its
+  tooling draws it once, fresh for each commitment or attestation, through the
+  SDK's one entropy source (`withFreshBlinding`, `withClauseBlinding`,
+  `prepareAttestationContent`, on `generateSalt`, which refuses to run without
+  Web Crypto). No designer, catalog or profile value can stand in for it: the
+  sign gate refuses a spec that names it in a fills list.
+- **It travels with the content.** It is a field of the set, so it is inside
+  the committed `data` the counterparty receives in the commitment payload,
+  inside the encoded bytes of a witness, and inside whatever a party discloses
+  to a forum or sells to a buyer. Whoever holds the content reproduces the
+  fingerprint from the content alone; a data buyer checks a disclosed leaf
+  against the source process's `checkoutHash` as before, and before the sale
+  cannot confirm a guess.
+- **A public set carries none.** Public content is published, so a random
+  value would hide nothing, and public fingerprints stay reproducible by
+  anyone from what is published.
+
+Two limits, stated plainly:
+
+1. The party that fills the set draws the value, and both parties sign the
+   clause. A careless or hostile filler weakens the other party's privacy in
+   that clause: a predictable value lets anyone who can predict it confirm
+   guesses again. The sign gate catches only a zero value and a value repeated
+   inside one agreement; a counterparty that distrusts the value refuses to
+   sign.
+2. The value proves nothing alone. A party that loses its own private content,
+   blinding value included, cannot show what it signed or attested from the
+   fingerprint, and cannot recover the value from it.
+
+What the blinding value does not hide: that a clause, a private stage and a
+field set were used; the spec's structure, since the spec is public; who
+traded, when, and the clause key and stage of every attestation; and, on the
+batch path's plaintext form, the content and its blinding value from the relay
+and the proving network the attesting party chose to show it to.
 
 The voluntary data market around that capacity is Core-native and needs no
 contract of its own: data products are catalog items; the disclosure regime for

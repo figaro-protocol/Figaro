@@ -1997,7 +1997,11 @@ warm before projecting.
 (`{ [clauseKey]: fieldValues }`), injects each spec's own declared-field defaults
 for omitted fields (the SPEC speaks; the code injects nothing of its own), sorts
 clauses deterministically, and returns the `Agreement` + its merkle-root
-`checkoutHash`. `assertAgreementSignable` is the single off-chain gate every
+`checkoutHash`. A clause whose spec declares a private set carries a blinding
+field (`"blinding": true`), drawn by the code that collects the party's data and
+never by the builder: `withClauseBlinding(specs, clauseKey, data)` fills it where
+absent, once per draft, so every rebuild reproduces the same `checkoutHash`.
+`assertAgreementSignable` is the single off-chain gate every
 signature routes through — buyer sign, seller counter-sign, and the checkout's
 pre-wallet check all call it, so no path signs an agreement whose clauses
 violate their specs, whose denomination differs between the signed TERM

@@ -254,7 +254,15 @@ its manual.
   `array`, `object`). A string field's `format` is an open axis: any non-empty
   string is a valid value; the validator enforces the formats it knows
   and treats the rest as plain strings; an interface may map a known format to
-  a richer input.
+  a richer input. It applies the private set's rules (§ "Clause-spec format",
+  "Public and private fields, and the blinding field"): a set that declares a
+  private field declares exactly one blinding field, of one shape, at its top
+  level, and no set mixes public and private fields. These rules are the SDK's
+  alone, as the grain cap below is: the guest's parser reads no `disposition`
+  and no `blinding` attribute, so it parses a spec that breaks them, and a
+  proof of a plaintext attestation does not attest that a blinding value is
+  present (`sdk/tests/clauses/engineVectors.test.ts`, the rules beyond the
+  shared vectors).
 - `validateContent(content, spec, { stage? })` — validates a value against a
   parsed spec; rejects unknown fields; applies `spec.stages[stage]` when a
   stage is named. It applies the geohash grain cap, cap(disposition,
@@ -445,6 +453,53 @@ registry's seed data; the published definition of the format is
   measured field, or the agreement build would invent the number the catalog
   lacks. `figaro-cargo` declares its mass and volume as sums and its packaged
   dimensions as single-unit measures, with no `default` on any of them.
+
+**Public and private fields, and the blinding field.** A field's
+`disposition` is `"public"` (the default) or `"private"`. The leaf model
+withholds a whole set, never one field, so a set (the top-level `fields`, or
+one `stages[N]`) never mixes the two (`parseClauseSpec`). A private field is
+withheld from every public place, and only its fingerprint is published:
+a clause's data hash under the `checkoutHash`, or a witness's `contentRef`.
+A value with few possibilities (a grade, a band, a yes or no) could then be
+confirmed by hashing each guess, so a set that declares a private field also
+declares exactly one **blinding field**:
+
+```json
+{ "name": "blinding", "type": "string", "format": "bytes32-hex",
+  "required": true, "disposition": "private", "blinding": true }
+```
+
+The rules, each checked by the SDK (`sdk/src/clauses/spec.ts`,
+`sdk/src/projection.ts`) and stated by the published definition of the
+format (`sdk/src/clauses/clause-spec.schema.json`):
+
+1. A set that declares a private field declares exactly one blinding field,
+   at its top level (never inside an object or an array), of type `string`,
+   format `bytes32-hex`, required, private, with no `default`. The name is the
+   spec designer's; readers key on `"blinding": true`.
+2. A set with no other private field declares none.
+3. No set mixes public and private fields; each stage's set is held to the
+   rule as the top-level set is.
+4. The sign gate (`validateCommitmentAgreement`) refuses an agreement whose
+   clause spec names the blinding field in `block.design.fills`,
+   `block.checkout.catalogueFills`, `block.checkout.profileFills` or
+   `block.checkout.catalogueMeasures` (a designer's, catalog's or profile's
+   value is public and the same in every order), a zero blinding value, and
+   two clauses of one agreement that carry the same value.
+
+The value is content like any other field: it enters the canonical JSON of
+stage 0 and the ABI bytes of a stage, so no hash function, leaf, content
+reference, CID or contract treats it apart, and the holder of the content
+reproduces the fingerprint from the content alone. The party that fills the
+set draws it, fresh for each commitment or attestation, through the SDK's one
+entropy source (`withFreshBlinding`, `withClauseBlinding`, built on
+`generateSalt`); a builder and a hash function never draw it, so a rebuild of
+the same data reproduces the same hash. It is no term: no form offers an
+input for it, a comparison of two parties' filings reads past it, and a
+review says the clause carries one. A public set carries none, so public
+content stays reproducible by anyone from what is published. The commitment's
+own `salt` is another thing: it is the order's identity, emitted in
+`OrderCommitted`, and blinds nothing (`docs/DESIGN_DECISIONS.md` § 33).
 
 `fields` are the protocol; everything in `block` is replaceable presentation.
 Anyone can build a different frontend — ignore `block`, invent their own

@@ -344,6 +344,15 @@ Y", not as an open-ended build.)
   declaring `spec.stages[N]` → a form generated from the declared fields via
   the one `FieldControl`, offered to both parties, repeatable while the order
   is active — mechanism owned by `docs/CLAUSES.md` § "Witness stages").
+  A blinding field (`blinding: true`, a private set's random value) is no
+  one's input: `FieldControl` renders nothing for it, `buyerAuthoredFields`
+  and the rail's `inputFields` leave it out, and its value is drawn where the
+  data is collected (`lib/checkout/checkoutBlinding.ts`, once per checkout
+  draft; `prepareAttestationContent` for the rail's attestations).
+  `compareStageContent` reads past it, and `describeClause` /
+  `describeWitness` list no blinding field and mark the description `blinded`,
+  which `AgreementReview` states in words (`docs/CLAUSES.md` § "Clause-spec
+  format").
   Order ARRIVAL + acceptance + resolution are CORE (the `OrderCommitted` event +
   the your-turn badge, `components/shared/YourTurnBadge.tsx` in the Header) — never a clause
   lifecycle stage or a capability; clause state/labels surface from the clause
