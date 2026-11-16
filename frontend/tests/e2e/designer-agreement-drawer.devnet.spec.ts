@@ -204,7 +204,8 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         // its slug and hash, or the reason the build refuses it.
         const identity = page.getByTestId('designer-composition-identity');
         await expect(identity).toBeVisible({ timeout: 30000 });
-        const identityBefore = (await identity.innerText()).trim();
+        // textContent, as toHaveText reads it: innerText adds line breaks between blocks.
+        const identityBefore = ((await identity.textContent()) ?? '').trim();
         expect(identityBefore.length, 'the canvas states the composition identity').toBeGreaterThan(0);
 
         // Nothing was saved as a named draft: this is unsaved work.
