@@ -5,12 +5,14 @@
  * off-chain reference implementation. The Rust prover mirror (`prover/clause`)
  * re-runs the validation inside the SP1 proof on the batched resolution path,
  * and the two engines give the same verdict on every rule of the shared
- * vectors (`test/fixtures/clause-engine-vectors.json`). Two rules are the
- * SDK's alone, and the guest's engine applies neither: the geohash grain cap
- * by disposition (`validateGrain`, here), and the private set's rules
+ * vectors (`test/fixtures/clause-engine-vectors.json`). Three rules are the
+ * SDK's alone, and the guest's engine applies none of them: the geohash grain
+ * cap by disposition (`validateGrain`, here); the private set's rules
  * (`parseClauseSpec`: a set that declares a private field declares exactly one
  * blinding field, of one shape, at its top level, and never mixes public and
- * private fields). A proof of a plaintext attestation therefore binds the spec
+ * private fields); and the blinding attribute's one value (`parseClauseSpec`
+ * refuses a field carrying `"blinding": false`, which the guest reads past).
+ * A proof of a plaintext attestation therefore binds the spec
  * and the content's shape, and attests neither the grain nor the presence of
  * a blinding value (`tests/clauses/engineVectors.test.ts`, the rules beyond
  * the shared vectors). The DIRECT path validates no content

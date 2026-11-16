@@ -576,6 +576,7 @@ describe("Clause-engine vectors — the hand-written leg of the clause-engine lo
 const SDK_ONLY_RULES = [
     "the geohash grain cap by disposition",
     "a field set that declares a private field declares exactly one blinding field, of one shape, at its top level, and does not mix public and private fields",
+    "the blinding attribute is present only as true: a field carrying \"blinding\": false is refused",
 ] as const;
 
 /** The message `validateContent` gives when the grain cap refuses a value. */
@@ -586,10 +587,17 @@ describe("Rules the SDK applies beyond the shared vectors", () => {
         ? (JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as ReturnType<typeof build>)
         : null;
 
-    it("lists exactly two rules: the geohash grain cap, and the private set's blinding field", () => {
-        expect(SDK_ONLY_RULES).toHaveLength(2);
+    it("lists exactly three rules: the geohash grain cap, the private set's blinding field, and the blinding attribute's one value", () => {
+        expect(SDK_ONLY_RULES).toHaveLength(3);
         expect(SDK_ONLY_RULES[0]).toBe("the geohash grain cap by disposition");
         expect(SDK_ONLY_RULES[1]).toMatch(/blinding field/);
+        expect(SDK_ONLY_RULES[2]).toMatch(/"blinding": false/);
+    });
+
+    it("\"blinding\": false is refused at parse, where the guest's parser reads past the attribute", () => {
+        // The guest reads no blinding attribute, so without it the same field parses.
+        expect(parseClauseSpec(specOf([str({ name: "s", blinding: false })])).ok).toBe(false);
+        expect(parseClauseSpec(specOf([str({ name: "s" })])).ok).toBe(true);
     });
 
     it("the frozen vectors hold no blinding attribute and no private disposition, so the private set's rules never reach them", () => {

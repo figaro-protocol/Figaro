@@ -29,7 +29,9 @@ private set is drawn here where <code>values</code> leaves it absent
 (<code>withFreshBlinding</code>): two preparations of one private value give two
 content references, and a public set's content is the same every time.
 <code>values</code> in the result is the content as encoded, blinding value included:
-the party keeps it to show the content later.</p>
+the party keeps it to show the content later. The set's rules
+(<code>fieldSetRuleErrors</code>) are re-checked on the spec view handed in, so a
+hand-built view with a private set and no blinding field throws.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -39,7 +41,7 @@ the party keeps it to show the content later.</p>
 <li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">opts</span>: <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">stage</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span> <span class="tsd-signature-symbol">}</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">{</span><br/>    <span class="tsd-kind-property">content</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-property">contentRef</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-property">values</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/autonomous.ts#L261">agent/autonomous.ts:261</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/autonomous.ts#L263">agent/autonomous.ts:263</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

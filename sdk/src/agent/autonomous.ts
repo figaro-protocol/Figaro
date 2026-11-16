@@ -16,7 +16,7 @@
 import type { WalletClient, PublicClient } from "viem";
 import { keccak256 } from "viem";
 import { CORE_ABI, ATTESTATION_COORDINATOR_ABI, USAGE_COUNTER_ABI } from "../abis.js";
-import { validateContent, encodeContentFromSpec, contentFieldsFor, type ClauseSpec } from "../clauses/index.js";
+import { validateContent, encodeContentFromSpec, contentFieldsFor, fieldSetRuleErrors, type ClauseSpec } from "../clauses/index.js";
 import { withFreshBlinding } from "../projection.js";
 import { assertOrderFitsResolveCap } from "../gasCeilings.js";
 import { restoreSignedProcessId } from "../commitments.js";
@@ -256,7 +256,9 @@ export async function recordProcessUsage(
  * (`withFreshBlinding`): two preparations of one private value give two
  * content references, and a public set's content is the same every time.
  * `values` in the result is the content as encoded, blinding value included:
- * the party keeps it to show the content later.
+ * the party keeps it to show the content later. The set's rules
+ * (`fieldSetRuleErrors`) are re-checked on the spec view handed in, so a
+ * hand-built view with a private set and no blinding field throws.
  */
 export function prepareAttestationContent(
     spec: ClauseSpec,
@@ -264,7 +266,15 @@ export function prepareAttestationContent(
     opts?: { stage?: number },
 ): { content: Hex; contentRef: Hex; values: Record<string, unknown> } {
     const options = opts?.stage !== undefined ? { stage: opts.stage } : {};
-    const filled = withFreshBlinding(contentFieldsFor(spec, options), values);
+    const fields = contentFieldsFor(spec, options);
+    // The spec view may not have come through `parseClauseSpec`: the set's
+    // rules are re-checked here, so a private set with no blinding field is
+    // refused, never encoded unblinded.
+    const setErrors = fieldSetRuleErrors(fields, opts?.stage !== undefined ? `$.stages.${opts.stage}` : "$.fields");
+    if (setErrors.length > 0) {
+        throw new Error(setErrors.map((e) => `${e.path}: ${e.message}`).join("; "));
+    }
+    const filled = withFreshBlinding(fields, values);
     const validation = validateContent(filled, spec, options);
     if (!validation.ok) {
         throw new Error(validation.errors.map((e) => `${e.path}: ${e.message}`).join("; "));

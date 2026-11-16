@@ -257,8 +257,9 @@ its manual.
   a richer input. It applies the private set's rules (§ "Clause-spec format",
   "Public and private fields, and the blinding field"): a set that declares a
   private field declares exactly one blinding field, of one shape, at its top
-  level, and no set mixes public and private fields. These rules are the SDK's
-  alone, as the grain cap below is: the guest's parser reads no `disposition`
+  level, and no set mixes public and private fields. The attribute is present
+  only as `true`: the SDK refuses a field carrying `"blinding": false`. These
+  rules are the SDK's alone, as the grain cap below is: the guest's parser reads no `disposition`
   and no `blinding` attribute, so it parses a spec that breaks them, and a
   proof of a plaintext attestation does not attest that a blinding value is
   present (`sdk/tests/clauses/engineVectors.test.ts`, the rules beyond the

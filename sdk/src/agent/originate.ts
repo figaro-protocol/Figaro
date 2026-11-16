@@ -95,16 +95,28 @@ export function instantiateRootAgreement(hydrated: HydratedAssembly, params: Ins
 
 /**
  * The buyer's agreement with the blinding value of each private clause drawn
- * where the buyer's data left it absent (`withClauseBlinding`). The buyer is
- * the party that collects this data, so the draw happens here, once, before
- * the `checkoutHash` is computed; `instantiateRootAgreement` stays a pure
- * builder. A clause whose content is withheld is left as it is.
+ * by the buyer (`withClauseBlinding`). `own` is the buyer's own data, keyed
+ * by clause key (the overrides it instantiated the agreement with): a value
+ * it carries is kept (a counter-draft, a draft the buyer's tooling drew
+ * earlier), and any other value, one the design's clause data carried among
+ * them, is replaced by a fresh draw. The buyer is the party that collects
+ * this data, so the draw happens here, once, before the `checkoutHash` is
+ * computed; `instantiateRootAgreement` stays a pure builder. A clause whose
+ * content is withheld is left as it is.
  */
-export function withAgreementBlinding(agreement: Agreement, specs: SpecSource): Agreement {
+export function withAgreementBlinding(
+    agreement: Agreement,
+    specs: SpecSource,
+    own: Readonly<Record<string, Record<string, unknown>>> = {},
+): Agreement {
+    const ownByKey = new Map(Object.entries(own).map(([key, data]) => [key.toLowerCase(), data]));
     return {
         ...agreement,
         clauses: agreement.clauses.map((entry) =>
-            entry.data === undefined ? entry : { ...entry, data: withClauseBlinding(specs, entry.clause, entry.data) }),
+            entry.data === undefined ? entry : {
+                ...entry,
+                data: withClauseBlinding(specs, entry.clause, entry.data, ownByKey.get(entry.clause.toLowerCase()) ?? {}),
+            }),
     };
 }
 
@@ -143,7 +155,7 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
     const specs = requireSpecs(params.specs, "buildBuyerOffer");
     const agreement = withAgreementBlinding(instantiateRootAgreement(params.assembly, {
         buyer, seller: params.seller, overrides: params.overrides,
-    }), specs);
+    }), specs, params.overrides);
     const checkoutHash = computeCheckoutHash(agreement);
     const domain = buildDomain(params.chainId, params.core);
     const { commitment, typedData } = buildCommitment({
@@ -721,10 +733,13 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
             if (!spec) throw new Error(`no seller/payment spec for assembly node "${planned.nodeId}"`);
             // The buyer collects this order's data here: each private
             // clause's blinding value is drawn once, over the order's whole
-            // clause bag, before the walk hashes it.
+            // clause bag, before the walk hashes it. Only a value the buyer's
+            // own overrides carry is kept; one the design's clause bag
+            // carried is drawn over.
             const merged = mergeOverrides(planned.clauses, spec.overrides);
+            const ownByKey = new Map(Object.entries(spec.overrides ?? {}).map(([key, data]) => [key.toLowerCase(), data]));
             const overrides = Object.fromEntries(Object.entries(merged).map(([clauseKey, data]) =>
-                [clauseKey, withClauseBlinding(specs, clauseKey as Hex, data)]));
+                [clauseKey, withClauseBlinding(specs, clauseKey as Hex, data, ownByKey.get(clauseKey.toLowerCase()) ?? {})]));
             return { ...spec, overrides };
         },
         salt: params.salt,
