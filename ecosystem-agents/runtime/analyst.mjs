@@ -479,7 +479,10 @@ function assemblyAttribution(corpus) {
  * the order hashes each order follows, the agreement format's own field).
  * Returns `undefined` when NO held agreement carries edges — the caller then
  * omits the argument and `marketShape` reports FigaroCore's own linear view
- * rather than a fabricated DAG.
+ * rather than a fabricated DAG. An order whose agreement is not held, failed
+ * to load or carries no topology leaf has unknown edges: the reader answers
+ * `undefined` for it, never `[]`, so `marketShape` counts its process as
+ * unshaped and never reads the order as a depth-0 root.
  */
 function parentEdges(corpus) {
     const byOrder = new Map();
@@ -488,7 +491,7 @@ function parentEdges(corpus) {
         if (Array.isArray(parents)) byOrder.set(order.orderHash.toLowerCase(), parents.filter((p) => typeof p === "string"));
     }
     if (byOrder.size === 0) return undefined;
-    return (orderHash) => byOrder.get(orderHash.toLowerCase()) ?? [];
+    return (orderHash) => byOrder.get(orderHash.toLowerCase());
 }
 
 // ── The canonical queries ───────────────────────────────────────────────────

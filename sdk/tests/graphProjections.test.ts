@@ -241,6 +241,22 @@ describe("marketShape", () => {
             { orderCount: 3, depth: 1, maxWidth: 2, processCount: 1 },
         ]);
     });
+
+    it("an order whose edges the caller does not know leaves its process unshaped, never a second root", () => {
+        const twoOrders = mkEvents({
+            orderCommitted: [
+                mkCommit({ blockNumber: 1 }),
+                mkCommit({ orderHash: OHASH2, seller: SELLER2, payment: 50n, cumulativeValue: 150n, blockNumber: 2 }),
+            ],
+        });
+        // The root's leaf is known ([]); the sub-order's is not (undefined).
+        const known = new Map<Hex, Hex[]>([[OHASH, []]]);
+        const group = marketShape(projectProcessGraph(twoOrders), () => "assembly-z", (h) => known.get(h))
+            .groups.get("assembly-z")!;
+        expect(group.shapes).toEqual([]);
+        expect(group.unshapedProcessCount).toBe(1);
+        expect(group.processCount).toBe(1);
+    });
 });
 
 describe("walletRecord", () => {

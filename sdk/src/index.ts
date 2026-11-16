@@ -130,7 +130,7 @@ export type {
 } from "./logAgreement.js";
 
 // State reconstruction
-export { reconstruct, Topology } from "./state.js";
+export { reconstruct, Topology, isProcessRoot } from "./state.js";
 export type { CoreEvents } from "./state.js";
 
 // Discovery — the cold-start catalog (clauses, members, assemblies)

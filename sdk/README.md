@@ -403,6 +403,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `instantiateRootAgreement` | `/agent` | Instantiate a hydrated assembly's ROOT agreement into the signable agreement; same inputs rebuild it identically. |
 | `isAddressHex` | root | Is this value a 20-byte hex string? The one home for the address-shape regex. |
 | `isBytes32Hex` | root | Is this value a 32-byte hex string? The one home for the bytes32-shape regex. |
+| `isProcessRoot` | root | Whether a committed order is its process's root, from its `OrderCommitted` fields: `cumulativeValue == payment`. Reads no agreement, so an absent or unread topology leaf never decides it. |
 | `makeA2aOfferResponder` | `/agent` | Turn a seller's `OfferHandler` into a framework-agnostic A2A responder. |
 | `makeSellerOfferHandler` | `/agent` | SELLER LOOP: validate, apply both refusal floors, approve the bond, counter-sign. |
 | `makeSellerQuoteHandler` | `/agent` | Mountable seller responder for the RFQ quote leg. |

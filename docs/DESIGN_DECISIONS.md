@@ -1246,6 +1246,47 @@ design-built agreement whose topology leaf is absent or malformed).
 
 ---
 
+## 32. A reader names the opening order from the chain, and the edges from the agreement
+
+**Pattern**: Two facts about a process's orders have two sources, and a
+reader keeps them apart. Which order opened the process is the Core's fact:
+the opening order is committed with a zero `processId`, and its cumulative
+value is its own payment (`InvalidRootCumulativeValue`, `FigaroCore.commit`;
+the same refusal in the proof program, `prover/lib/src/kernel.rs`). Both
+paths carry `payment` and `cumulativeValue` in `OrderCommitted`, and
+`isProcessRoot` (`sdk/src/state.ts`) reads them. Which order follows which is
+the agreement's fact: the topology leaf, `Agreement.follows`
+(`sdk/src/agreement.ts`), off the chain. A reader takes the opening order
+from the event and the edges from the leaf, and derives no edge from the
+event's figures. While an agreement is absent or unread, its order's edges
+are unknown: the page shows none, and the order is never named the opening
+order on that ground.
+
+**Why it looks wrong**: Bonding and topology are separate layers (§ 30), so a
+test on `cumulativeValue` in a reader of the process's shape reads as the
+Core's arithmetic deciding the graph. And an order with no known edges reads
+as an order that follows nothing.
+
+**Why it's correct**: The test decides no edge. It answers one question the
+Core itself answers at commit, which order opened the process, and a later
+order always carries a cumulative value above its payment, since `commit`
+refuses a zero payment (`ZeroPayment`). The edges stay the parties' own,
+signed under the `checkoutHash` and absent from every event. Reading
+"unknown" as "follows nothing" names a later order's seller as the opening
+order's whenever one agreement has not loaded; an agreement is content off
+the chain, and a failed or pending read of it is the ordinary case
+(`docs/OPEN_WORLD.md` § 1).
+
+**Tests**: `frontend/tests/lib/processModelRoot.test.ts` and
+`frontend/tests/components/OrderTimelineRoot.test.tsx` (a two-order process
+whose later order's agreement carries no leaf, is unread, or carries an
+empty list: the opening order named is the chain's, and no edge is shown for
+unknown edges); `ecosystem-agents/runtime/tests/analyst.test.mjs` (the same,
+and a batched process read from the verifier's events);
+`sdk/tests/state.test.ts` (`isProcessRoot`).
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -1281,3 +1322,4 @@ design-built agreement whose topology leaf is absent or malformed).
 | 29 | Public pieces no code of ours reads | registry/reward-path/token | Surface nothing reads is surface to audit for nothing | Each answers a stranger's question of the chain: who may mint, which keys are reserved, where a stake went, which sellers counted |
 | 30 | Topology is not in the commitment struct | Core-critical | The process's shape reads as part of what is bonded, and the events alone do not show the graph of orders | The bonds are sized by the running total alone; the parties sign the edges through the `checkoutHash`; a wallet outside the trade reads the designed edges from the registered assembly |
 | 31 | The topology leaf has a shape of its own | agreement format/reward-path | The provenance leaf takes the clause-leaf shape under a reserved key, and a leaf no contract rebuilds reads as unprovable | A reserved key in the clause-leaf shape could be registered by anyone and earn on every order; a 96-byte inner preimage opens under no clause key, with no contract or verification key moved, and the edges have no stage after commit to attest |
+| 32 | A reader names the opening order from the chain, and the edges from the agreement | reader/frontend | A test on `cumulativeValue` in a reader of the process's shape reads as bond arithmetic deciding the graph | It decides no edge: it answers which order opened the process, the Core's own fact at commit; the edges come only from the agreement's topology leaf, and unknown edges are shown as none |

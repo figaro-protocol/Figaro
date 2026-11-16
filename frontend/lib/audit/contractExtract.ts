@@ -15,7 +15,7 @@ import {
     type AgreementClause,
     computeClauseLeaf,
 } from "@figaro-protocol/sdk";
-import { clauseByField } from "@figaro-protocol/sdk";
+import { clauseByField, isProcessRoot } from "@figaro-protocol/sdk";
 import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -116,7 +116,7 @@ function extractJurisdictionSummary(agreement: Agreement) {
 function extractTopology(order: Order, agreement: Agreement): ContractDocument["topology"] {
     const follows = topologyFollows(agreement);
     return {
-        position: order.cumulativeValue === order.payment ? "root" : "sub-order",
+        position: isProcessRoot(order) ? "root" : "sub-order",
         composed: follows !== null,
         follows: follows ?? [],
     };

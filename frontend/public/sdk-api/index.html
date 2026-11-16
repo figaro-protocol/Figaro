@@ -733,6 +733,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td>Is this value a 32-byte hex string? The one home for the bytes32-shape regex.</td>
 </tr>
 <tr>
+<td><code>isProcessRoot</code></td>
+<td>root</td>
+<td>Whether a committed order is its process's root, from its <code>OrderCommitted</code> fields: <code>cumulativeValue == payment</code>. Reads no agreement, so an absent or unread topology leaf never decides it.</td>
+</tr>
+<tr>
 <td><code>makeA2aOfferResponder</code></td>
 <td><code>/agent</code></td>
 <td>Turn a seller's <code>OfferHandler</code> into a framework-agnostic A2A responder.</td>
