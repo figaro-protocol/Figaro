@@ -165,7 +165,11 @@ const nodes = orderedIds.map((id, i) => ({
     nodeId: id, seller: NODE_SELLERS[i].address, payment: PAYMENTS[i],
     overrides: {
         ...rootParticulars(id),
-        [commerceClauseId]: { lineItems: [{ itemId: `n${i}`, name: `Node ${i}`, quantity: 1, unitPrice: PAYMENTS[i].toString() }] },
+        // Only where this order's agreement composes the clause: the sign gate
+        // refuses an order carrying a clause its design does not compose.
+        ...(commerceClauseId && commerceClauseId in (agreementClausesById.get(id) ?? {})
+            ? { [commerceClauseId]: { lineItems: [{ itemId: `n${i}`, name: `Node ${i}`, quantity: 1, unitPrice: PAYMENTS[i].toString() }] } }
+            : {}),
     },
 }));
 

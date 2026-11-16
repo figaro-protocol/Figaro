@@ -470,7 +470,7 @@ contract UsageCounterTest is Test {
         assertEq(repeatScore, _score(8, 1));
     }
 
-    // ── The provenance leaf and the mandatory clauses ───────────────
+    // ── The provenance leaf ─────────────────────────────────────────
 
     function test_provenanceLeafIsAConstantOfTheFormat() public view {
         // The link from a resolved process to the assembly it instantiated is

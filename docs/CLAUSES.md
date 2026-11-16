@@ -453,6 +453,10 @@ field shape:
   same structure at length). These are coordination attestations between
   sellers — the same runtime-evidence category as witness stages, differing in
   shape.
+- **`consent`** — documents a party accepts by signing: the agreement review
+  shown before signing lists each value of a clause of this article under a
+  consent notice, a fetchable document linked
+  (`frontend/components/runtime/AgreementReview.tsx`).
 - **`coordination`** — committed statements of which scenario everyone runs
   and what an order covers: the modality, the time window, the localities, the
   line items (`figaro-commerce`). Committed content, not a runtime lifecycle;
@@ -464,7 +468,7 @@ field shape:
   recourse reader keeps the clauses of this article
   (`frontend/lib/semantic/processRecourse.ts`).
 
-Code routes on three of these: `attestations`, `denomination` and
+Code routes on four of these: `attestations`, `consent`, `denomination` and
 `dispute-resolution`. Any other word, a stranger's included, is a grouping
 word only: the drawer and the inventory group the clause under it
 (`groupClausesByArticle`, `frontend/lib/shared/clauseSpecSource.ts`), and the

@@ -281,10 +281,13 @@ echo "   Deployment: $CORE_DEPLOYMENT"
 # devnet the treasury is MockTreasuryMultisig with anvil[0..2] as 2-of-3
 # owners, so the same vault-mode run the Sepolia genesis uses runs here with
 # two anvil owner keys; the vault pays the deposit from its own balance,
-# funded first. Devnet only: the keys are anvil's.
-if [ "$(cast chain-id --rpc-url "$RPC_URL")" = "31337" ]; then
+# funded first. Devnet only: the keys are anvil's. The clause names are read
+# from the plan, the clauses it gives the wallet "dao"; when it gives none,
+# the vault run is skipped, since an empty SEED_CLAUSES would seed them all.
+DAO_CLAUSES="$(node -p "Object.entries(require('$REPO_ROOT/deployments/31337.expected.json').registrations?.byClause ?? {}).filter(([, w]) => w === 'dao').map(([c]) => c).join(',')")"
+if [ "$(cast chain-id --rpc-url "$RPC_URL")" = "31337" ] && [ -n "$DAO_CLAUSES" ]; then
     echo ""
-    echo "📎 Registering the DAO's clause under the DAO treasury $DAO_TREASURY_ADDR (vault mode)..."
+    echo "📎 Registering the DAO's clauses ($DAO_CLAUSES) under the DAO treasury $DAO_TREASURY_ADDR (vault mode)..."
     cast send --rpc-url "$RPC_URL" --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
         "$DAO_TREASURY_ADDR" --value 0.1ether > /dev/null
     (cd "$REPO_ROOT/frontend" && \
@@ -292,7 +295,7 @@ if [ "$(cast chain-id --rpc-url "$RPC_URL")" = "31337" ]; then
         NEXT_PUBLIC_AGREEMENT_REGISTRY="$AGREEMENT_ADDR" \
         REGISTRAR_VAULT="$DAO_TREASURY_ADDR" \
         VAULT_OWNER_KEYS="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80,0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" \
-        SEED_CLAUSES="figaro-commerce" \
+        SEED_CLAUSES="$DAO_CLAUSES" \
         node scripts/populate-clauses.mjs)
 fi
 

@@ -2183,8 +2183,11 @@ const orders = await reconstructOrdersFromAssembly(assembly, {
     // comes from its denomination clause (`readUtilityTokenPin` resolves it);
     // otherwise it is the buyer's pick from the seller's accepted tokens,
     // else the seller's default. Where the design composes a clause
-    // declaring `lineItems`, the lines go there.
-    overrides: { [commerceKey]: { lineItems } },
+    // declaring `lineItems`, the lines go there. The override is passed only
+    // for an order whose clause bag holds that clause: an override adds its
+    // key to the order, and the sign gate refuses an order carrying a clause
+    // its design does not compose.
+    overrides: commerceKey in node.clauses ? { [commerceKey]: { lineItems } } : {},
   }),
   // Per-node seam, invoked in commit order as each order is realized — sign,
   // pin the party-private agreement, share, or compose here. SHARING is

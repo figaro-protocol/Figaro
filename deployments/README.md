@@ -112,7 +112,7 @@ the compiler's metadata hash covers the source text, comments included: a
 tree whose NatSpec differs from the deployed build reports that contract as
 differing, with no change in what it executes. Against Sepolia this holds for
 `ClauseRegistry`, `AttestationCoordinator`, `FigaroBatchVerifier`,
-`AgreementRegistry` and `AssemblyRegistry`, and for every clause key, which is
+`AgreementRegistry`, `AssemblyRegistry` and `UsageCounter`, and for every clause key, which is
 derived as above, until the redeploy.
 
 - `1.expected.json` — mainnet. The deposits, the cooldown and the wallets are
