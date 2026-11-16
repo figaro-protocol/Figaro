@@ -22,8 +22,7 @@ import { getDeviceLocation } from "@/lib/shared/deviceLocation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { encodeGeohash } from "@figaro-protocol/sdk/derive";
-import { safeRegexTest } from "@figaro-protocol/sdk/clauses";
-import { capGeohashGrain, geohashCapturePrecision, PUBLIC_GEOHASH_MAX_PRECISION, PRIVATE_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
+import { safeRegexTest, capGeohashGrain, geohashCapturePrecision } from "@figaro-protocol/sdk/clauses";
 import type { FieldFormatInputProps } from "@/components/runtime/fieldFormatInputs";
 
 export function GeohashFieldInput({ value, onChange, testId, pattern, disposition, presets }: FieldFormatInputProps) {
@@ -32,7 +31,8 @@ export function GeohashFieldInput({ value, onChange, testId, pattern, dispositio
     // Grain cap by disposition: a PUBLIC geohash is coarsened to neighborhood
     // grain (it lands in a plaintext, pinned agreement); a PRIVATE one keeps
     // fine grain (factory/machine — it lives encrypted / content-withheld).
-    const maxChars = disposition === "private" ? PRIVATE_GEOHASH_MAX_PRECISION : PUBLIC_GEOHASH_MAX_PRECISION;
+    // The SDK's content validation refuses a value past the same cap.
+    const maxChars = geohashCapturePrecision(disposition);
 
     async function fillFromDevice() {
         setLocating(true);

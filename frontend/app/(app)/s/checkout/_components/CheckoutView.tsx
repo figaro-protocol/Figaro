@@ -56,7 +56,7 @@ import { useFundingMargin, marginBlocksTheAct } from "@/lib/composition/useFundi
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 import { FieldControl } from "@/components/runtime/FieldControl";
-import { isSiblingFormatSource, resolveInputFormat, type FormatPreset } from "@/components/runtime/fieldFormatInputs";
+import { isSiblingFormatSource, type FormatPreset } from "@/components/runtime/fieldFormatInputs";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { calculateBonds } from "@figaro-protocol/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -69,7 +69,7 @@ import { formatMass, formatVolume } from "@/lib/member/unitConversion";
 import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
-import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
+import { resolveInputFormat, type FieldSpec } from "@figaro-protocol/sdk/clauses";
 
 interface Props {
     sellerAddress: string;

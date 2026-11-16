@@ -90,8 +90,10 @@ export interface StringFieldSpec extends BaseFieldSpec {
      *  `formatFromField: "geocodeStandard"`, so the geohash picker (with its
      *  grain cap) renders when the committed standard is `geohash` and degrades
      *  to plain text for standards this frontend registered no input for. A
-     *  reader resolves it as `values[formatFromField] ?? <sibling default> ??
-     *  format`; unresolved ⇒ falls back to `format`. */
+     *  reader resolves it with {@link resolveInputFormat}, as
+     *  `values[formatFromField] ?? <sibling default> ?? format`; content
+     *  validation applies the geohash grain cap to the resolved format
+     *  (`grain.ts`). */
     formatFromField?: string;
     minLength?: number;
     maxLength?: number;
@@ -151,6 +153,28 @@ export type FieldSpec =
     | EnumFieldSpec
     | ArrayFieldSpec
     | ObjectFieldSpec;
+
+/**
+ * Resolve a string field's format: the static `format`, unless the field
+ * declares `formatFromField`, in which case the format is the committed VALUE
+ * of the named sibling, then that sibling's spec `default`, then `format`.
+ * One resolution for every reader: `validateContent` applies the grain cap
+ * through it, and a form picks a field's input through it. It reads only
+ * spec-declared names and sibling values, never a clause id.
+ */
+export function resolveInputFormat(
+    field: FieldSpec,
+    siblings: readonly FieldSpec[],
+    values: Record<string, unknown> | undefined,
+): string | undefined {
+    if (field.type !== "string") return undefined;
+    if (!field.formatFromField) return field.format;
+    const live = values?.[field.formatFromField];
+    if (typeof live === "string" && live.length > 0) return live;
+    const source = siblings.find((s) => s.name === field.formatFromField);
+    if (source && typeof source.default === "string" && source.default.length > 0) return source.default;
+    return field.format;
+}
 
 export interface ClauseSpec {
     /** The human-readable clause name (e.g. `figaro-emissions`) — PRESENTATION:

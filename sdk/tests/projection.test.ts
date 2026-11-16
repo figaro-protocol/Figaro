@@ -192,6 +192,17 @@ describe("the sign gate reads the token and the payment from the commitment, nev
             .not.toThrow();
     });
 
+    it("refuses a public geohash finer than the grain cap at the sign gate, and signs one at the cap", () => {
+        const geo = (origin: string) => build({
+            [keyOf("figaro-geolocation")]: { geocodeStandard: "geohash", origin, destination: "9q8yyk" },
+        });
+        const fine = geo("u4pruydqq");
+        expect(() => assertAgreementSignable(fine.agreement, fine.checkoutHash, SPECS, COMMITMENT, null))
+            .toThrow(/figaro-geolocation \$\.origin: .*geohash/);
+        const coarse = geo("u4pruy");
+        expect(() => assertAgreementSignable(coarse.agreement, coarse.checkoutHash, SPECS, COMMITMENT, null)).not.toThrow();
+    });
+
     it("signs an agreement that composes no line items: the commitment alone carries the payment", () => {
         const { agreement, checkoutHash } = build({ [keyOf("figaro-merchant-process")]: {} });
         expect(validateCommitmentAgreement(agreement, checkoutHash, SPECS, COMMITMENT, null).issues).toEqual([]);

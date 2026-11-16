@@ -12,11 +12,16 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
+import {
+    resolveInputFormat,
+    validateContent,
+    parseClauseSpec,
+    PUBLIC_GEOHASH_MAX_PRECISION,
+    PRIVATE_GEOHASH_MAX_PRECISION,
+    type FieldSpec,
+} from "@figaro-protocol/sdk/clauses";
 import { FieldControl } from "@/components/runtime/FieldControl";
-import { resolveInputFormat } from "@/components/runtime/fieldFormatInputs";
 import { encodeGeohash } from "@figaro-protocol/sdk/derive";
-import { PUBLIC_GEOHASH_MAX_PRECISION, PRIVATE_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
 
 const geohashField: FieldSpec = {
     name: "origin",
@@ -178,8 +183,9 @@ describe("FieldControl value-driven format + disposition grain cap", () => {
 
 // The canonical geolocation spec, read as the checkout reads it: its two public
 // codes follow the standard's default (geohash), and a door-grade geohash a
-// party types is committed at the neighborhood cell. The cap is this
-// checkout's (`lib/shared/geohash.ts`); the spec's own `maxLength` is wider.
+// party types is committed at the neighborhood cell. The cap is the SDK's
+// (`@figaro-protocol/sdk/clauses`): the form truncates to it, and the SDK's
+// content validation refuses a value past it. The spec's `maxLength` is wider.
 describe("the geolocation spec's public codes, as this checkout writes them", () => {
     const spec = JSON.parse(
         readFileSync(path.resolve(process.cwd(), "../clauses/figaro-geolocation.json"), "utf8"),
@@ -201,6 +207,14 @@ describe("the geolocation spec's public codes, as this checkout writes them", ()
             expect((onChange.mock.calls.at(-1)![0] as string).length).toBe(PUBLIC_GEOHASH_MAX_PRECISION);
         },
     );
+
+    it("what the form commits passes the SDK's validation, and the door-grade string it truncated does not", () => {
+        const parsed = parseClauseSpec(spec);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        const content = (origin: string) => ({ geocodeStandard: "geohash", origin, destination: "9q8yyk" });
+        expect(validateContent(content("dr5reg"), parsed.spec).ok).toBe(true);
+        expect(validateContent(content("dr5regw3p"), parsed.spec).ok).toBe(false);
+    });
 });
 
 // Spec-declared constraints surface AT the input (display-only guidance —

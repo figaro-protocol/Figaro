@@ -31,9 +31,19 @@ mechanism-sufficient grain (the geohash cell, hashed device identifiers) plus
 the hash of the raw capture; full fidelity stays party-held for dispute-time
 revelation. Raw coordinates and stable device identifiers never land on a
 public artifact. Where the rule caps a public field's precision, the cap is a
-protocol-tier rule, never one frontend's taste: the spec carries the structural
-ceiling and every reader derives the public grain from the committed spec
-(the `figaro-geolocation` spec in `clauses/` states the derivation).
+rule of the SDK's content validation, never one frontend's taste. The spec
+carries the structural ceiling (`maxLength`) and the attributes the cap reads:
+the field's `disposition`, and `formatFromField`, which names the sibling whose
+committed value is the standard (the `figaro-geolocation` spec in `clauses/`).
+When that standard is geohash, `validateContent` (`sdk/src/clauses/grain.ts`)
+refuses a public value longer than 6 characters and a private one longer than
+12; a standard it carries no grain knowledge of is bounded by `maxLength` only.
+The sign gate (`assertAgreementSignable`) runs that validation, so a party whose
+tool uses the SDK refuses to sign a finer value. The limit of the rule: the
+chain holds a fingerprint, so two parties whose tools skip this validation can
+commit a finer value, and every reader of the SDK then shows it as it is,
+because no read path of committed content validates it; the batch path's
+engine (`prover/clause`) does not apply the cap either.
 
 ## The fields the chain's events carry, and who reads them
 

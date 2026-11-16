@@ -168,3 +168,57 @@ describe("validateContent — happy paths", () => {
         expect(validateContent({ x: "ok" }, spec, { stage: 5 }).ok).toBe(true);
     });
 });
+
+describe("validateContent — the geohash grain cap, keyed on the spec's own attributes", () => {
+    // A stranger's clause: no figaro id, other field names, the same
+    // attributes. The rule reads `disposition` and the resolved format, never a
+    // name, so the stranger's spec gets the rule the geolocation spec gets.
+    const stranger = (disposition?: "public" | "private") => specOf([
+        {
+            name: "grid", type: "string", required: true, maxLength: 40,
+            ...(disposition !== undefined && { disposition }),
+        },
+        {
+            name: "pickup", type: "string", required: true, maxLength: 40,
+            ...(disposition !== undefined && { disposition }),
+            formatFromField: "grid",
+        },
+    ]);
+
+    it("refuses a public geohash finer than six characters, and an absent disposition reads as public", () => {
+        for (const spec of [stranger("public"), stranger()]) {
+            const result = validateContent({ grid: "geohash", pickup: "dr5regw3p" }, spec);
+            expect(result.ok).toBe(false);
+            if (!result.ok) expect(result.errors.map((e) => e.path)).toEqual(["$.pickup"]);
+            expect(validateContent({ grid: "geohash", pickup: "dr5reg" }, spec).ok).toBe(true);
+        }
+    });
+
+    it("lets a private geohash keep twelve characters and refuses thirteen", () => {
+        const spec = stranger("private");
+        expect(validateContent({ grid: "geohash", pickup: "dr5regw3pzzz" }, spec).ok).toBe(true);
+        expect(validateContent({ grid: "geohash", pickup: "dr5regw3pzzzz" }, spec).ok).toBe(false);
+    });
+
+    it("bounds a standard it carries no grain knowledge of by maxLength only", () => {
+        const spec = stranger("public");
+        expect(validateContent({ grid: "s2", pickup: "x".repeat(40) }, spec).ok).toBe(true);
+        expect(validateContent({ grid: "s2", pickup: "x".repeat(41) }, spec).ok).toBe(false);
+    });
+
+    it("resolves the format from the sibling's default when the sibling is absent", () => {
+        const spec = specOf([
+            { name: "grid", type: "string", required: false, default: "geohash" },
+            { name: "pickup", type: "string", required: true, formatFromField: "grid" },
+        ]);
+        expect(validateContent({ pickup: "dr5regw3p" }, spec).ok).toBe(false);
+        expect(validateContent({ pickup: "dr5reg" }, spec).ok).toBe(true);
+    });
+
+    it("leaves a field whose static format is geohash, with no formatFromField, to maxLength", () => {
+        // The cap keys on the value-driven format only; a static geohash
+        // format is the open format axis above.
+        const spec = specOf([{ name: "loc", type: "string", required: true, format: "geohash" }]);
+        expect(validateContent({ loc: "9q8yyk8yu" }, spec).ok).toBe(true);
+    });
+});

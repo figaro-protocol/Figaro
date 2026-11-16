@@ -27,7 +27,18 @@ export type {
     ParseClauseSpecResult,
 } from "./spec.js";
 
-export { parseClauseSpec, parseFieldSpec } from "./spec.js";
+export { parseClauseSpec, parseFieldSpec, resolveInputFormat } from "./spec.js";
+
+// The geohash grain cap, cap(disposition, geocodeStandard): the one home of the
+// rule `validateContent` applies and a form input truncates to.
+export {
+    GEOHASH_FORMAT,
+    PUBLIC_GEOHASH_MAX_PRECISION,
+    PRIVATE_GEOHASH_MAX_PRECISION,
+    geohashCapturePrecision,
+    clampPublicGeohash,
+    capGeohashGrain,
+} from "./grain.js";
 
 export type {
     ValidationError,

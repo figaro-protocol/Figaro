@@ -4,7 +4,9 @@
  * Call sites: frontend form gates, SDK agent-action preflight. This is the
  * off-chain reference implementation: the Rust prover mirror (`prover/clause`,
  * conformance-locked byte-for-byte) re-runs the same validation inside the SP1
- * proof on the batched resolution path. The DIRECT path validates no content
+ * proof on the batched resolution path, except the geohash grain cap
+ * (`validateGrain`), which the Rust mirror does not apply: it parses neither
+ * `disposition` nor `formatFromField`. The DIRECT path validates no content
  * shape on-chain — the coordinator merkle-binds an attestation to its signed
  * agreement and content-hash-binds the evidence; well-formedness there is this
  * layer's job + a read-time concern. There are no per-clause validator
@@ -21,7 +23,9 @@ import type {
     ArrayFieldSpec,
     ObjectFieldSpec,
 } from "./spec.js";
+import { resolveInputFormat } from "./spec.js";
 import { safeRegexTest } from "./safeRegex.js";
+import { GEOHASH_FORMAT, geohashCapturePrecision } from "./grain.js";
 import { isBytes32Hex, isAddressHex } from "../types.js";
 
 export interface ValidationError {
@@ -182,6 +186,7 @@ function validateObject(value: unknown, spec: ObjectFieldSpec, path: string, err
             continue;
         }
         validateField(childValue, field, childPath, errors);
+        validateGrain(childValue, field, spec.fields, value, childPath, errors);
     }
     // Reject unknown fields — clause is a closed contract.
     for (const key of Object.keys(value)) {
@@ -189,6 +194,36 @@ function validateObject(value: unknown, spec: ObjectFieldSpec, path: string, err
             const childPath = path === "$" ? `$.${key}` : `${path}.${key}`;
             errors.push({ path: childPath, message: `unknown field "${key}" not declared in clause` });
         }
+    }
+}
+
+/**
+ * The geohash grain cap, cap(disposition, geocodeStandard). For a string field
+ * that declares `formatFromField`, the format is resolved from the named
+ * sibling's committed value (then its default, then `format`); when it
+ * resolves to geohash, a value longer than its disposition's cap is refused.
+ * It keys on the spec's own attributes, never on a clause id or a field name.
+ * A standard this reader carries no grain knowledge of is bounded by
+ * `maxLength` only, and so is a field with a static `format` and no
+ * `formatFromField` (the open format axis, `grain.ts`).
+ */
+function validateGrain(
+    value: unknown,
+    field: FieldSpec,
+    siblings: readonly FieldSpec[],
+    siblingValues: Record<string, unknown>,
+    path: string,
+    errors: ValidationError[],
+): void {
+    if (field.type !== "string" || !field.formatFromField || typeof value !== "string") return;
+    if (resolveInputFormat(field, siblings, siblingValues) !== GEOHASH_FORMAT) return;
+    const cap = geohashCapturePrecision(field.disposition);
+    if (value.length > cap) {
+        const disposition = field.disposition ?? "public";
+        errors.push({
+            path,
+            message: `a ${disposition} geohash carries at most ${cap} characters; give the cell's first ${cap} characters`,
+        });
     }
 }
 
