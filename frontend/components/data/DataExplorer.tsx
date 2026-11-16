@@ -165,9 +165,9 @@ function CorpusLine({ corpus }: { corpus: GraphCorpus }) {
             clause famil{corpus.overlays.length === 1 ? "y" : "ies"} · substance recovered for{" "}
             {corpus.substance.recovered} of the {corpus.substance.attempted} most recent
             {corpus.substance.total > corpus.substance.attempted ? ` (of ${corpus.substance.total})` : ""}.
-            {" "}Order events are the DIRECT path only: a batch resolves token positions and
-            re-emits none, so batch-resolved trade reaches these graphs through its
-            attestations alone.
+            {" "}Order and process events are read from FigaroCore and from FigaroBatchVerifier,
+            which emits the same events for a batched trade, so both paths reach these
+            graphs.
         </p>
     );
 }
@@ -562,9 +562,9 @@ function WalletView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
             ) : summary?.empty ? (
                 <p className="text-sm text-ink-muted" data-testid="wallet-empty">
                     No orders for <code className="font-mono">{truncateHex(subject)}</code> in this
-                    reader&apos;s data. That is an answer, not an error: the wallet may have traded
-                    on the batch path, which emits no order events, or outside the block range
-                    this browser scanned.
+                    reader&apos;s data. This page reads the order events of both the direct and the
+                    batch path; neither holds an order of this wallet in the block range this
+                    browser scanned.
                 </p>
             ) : summary ? (
                 <>

@@ -3,7 +3,7 @@
  * returns, decoded by the SDK's own parsers in the code under test.
  */
 import { encodeAbiParameters, encodeEventTopics, toEventSelector, type Hex } from "viem";
-import { EV_ATTESTATION, EV_ORDER_COMMITTED, EV_ORDER_RESOLVED } from "@figaro-protocol/sdk";
+import { EV_ATTESTATION, EV_ORDER_COMMITTED, EV_ORDER_RESOLVED, EV_PROCESS_RESOLVED } from "@figaro-protocol/sdk";
 
 export interface FixtureLog {
     /** The decoded arguments the event cache attaches to each row it returns. */
@@ -116,5 +116,26 @@ export function orderResolvedLog(args: {
         },
         address: args.address, topics, data, blockNumber: args.blockNumber, logIndex: 0,
         transactionHash: word(Number(args.blockNumber) + 0xb000), blockHash: word(Number(args.blockNumber)),
+    };
+}
+
+/** A `ProcessResolved` log at `address` (the Core's, or the batch verifier's). */
+export function processResolvedLog(args: {
+    address: string;
+    blockNumber: bigint;
+    processId: Hex;
+    buyer: `0x${string}`;
+    orderCount?: bigint;
+}): FixtureLog {
+    const topics = encodeEventTopics({
+        abi: [EV_PROCESS_RESOLVED],
+        eventName: "ProcessResolved",
+        args: { processId: args.processId, buyer: args.buyer },
+    }) as Hex[];
+    const data = encodeAbiParameters([{ type: "uint256" }], [args.orderCount ?? 1n]);
+    return {
+        args: { processId: args.processId, buyer: args.buyer, orderCount: args.orderCount ?? 1n },
+        address: args.address, topics, data, blockNumber: args.blockNumber, logIndex: 0,
+        transactionHash: word(Number(args.blockNumber) + 0xc000), blockHash: word(Number(args.blockNumber)),
     };
 }

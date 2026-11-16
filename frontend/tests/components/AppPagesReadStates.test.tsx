@@ -34,6 +34,7 @@ const m = vi.hoisted(() => ({
     decimals: undefined as number | undefined,
     ordersRead: undefined as unknown,
     timeline: (async () => undefined) as () => Promise<unknown>,
+    corpusRead: undefined as unknown,
 }));
 
 vi.mock("wagmi", () => ({
@@ -45,6 +46,7 @@ vi.mock("wagmi", () => ({
 vi.mock("next/navigation", () => ({
     useSearchParams: () => m.params,
     useRouter: () => ({ push: () => undefined, replace: () => undefined }),
+    usePathname: () => "/",
 }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 vi.mock("@/lib/shared/viewedWallet", () => ({ useViewedWallet: (connected: unknown) => connected }));
@@ -85,11 +87,19 @@ vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => m.a
 // /evidence-display
 vi.mock("@/lib/audit/processTimeline", () => ({ buildProcessTimeline: () => m.timeline() }));
 
+// /data/explore: the graph corpus is the page's one network read; no analyst
+// endpoint is configured, so the prompt box reads nothing.
+vi.mock("@/lib/data/graphCorpus", () => ({ useGraphCorpus: () => m.corpusRead }));
+vi.mock("@/lib/data/analystEndpoint", () => ({ getAnalystUrl: () => null, readAnalystStatus: async () => null, askAnalyst: async () => null }));
+
 import { OrderTimelineView } from "@/app/(app)/orders/_components/OrderTimelineView";
 import { RewardsView } from "@/app/(app)/rewards/_components/RewardsView";
 import { ProcessAuditClient } from "@/app/(app)/audit/view/ProcessAuditClient";
 import { HashVerifier } from "@/app/(app)/audit/_components/HashVerifier";
 import EvidenceDisplayPage from "@/app/(app)/evidence-display/page";
+import { DataExplorer } from "@/components/data/DataExplorer";
+import type { GraphCorpus } from "@/lib/data/graphCorpus";
+import { projectProcessGraph, projectResolutionGraph } from "@figaro-protocol/sdk/derive";
 
 /** Words a page may not show in a read's place when the read failed or came back empty. */
 const ERROR_TEXT = /\bfail(s|ed|ure)?\b|\berror\b|could ?n[o']t|unavailable|unable|unreachable/i;
@@ -107,6 +117,23 @@ const EMPTY_TIMELINE: ProcessTimeline = {
     summary: { orderCount: 0, resolvedCount: 0, totalPayment: "0", totalSellerPayout: "0", totalBuyerPayout: "0" },
 } as unknown as ProcessTimeline;
 
+/** The network's own answer that nothing was committed, attested or resolved:
+ *  the graphs the SDK projects from no events. */
+const NO_EVENTS = { orderCommitted: [], orderResolved: [], processResolved: [] };
+const EMPTY_CORPUS = {
+    chainId: 31337,
+    process: projectProcessGraph(NO_EVENTS),
+    resolution: projectResolutionGraph(NO_EVENTS),
+    overlays: [],
+    valueFlow: { boundary: "composition-derived", nodes: [], edges: [] },
+    market: { boundary: "protocol-derived", groups: new Map(), unattributedProcessCount: 0 },
+    substance: { attempted: 0, recovered: 0, total: 0 },
+    tokenMeta: new Map(),
+    venue: null,
+    assemblyNames: new Map(),
+    attributionByProcess: new Map(),
+} as unknown as GraphCorpus;
+
 function setReads(c: ReadCase) {
     const read = <T,>(value: T): NetworkRead<T> => (c === "failed" ? ABSENT : c === "pending" ? PENDING : present(value));
     m.workspaceRead = read(null);
@@ -115,6 +142,7 @@ function setReads(c: ReadCase) {
     m.balanceRead = read(0n);
     m.decimals = c === "empty" ? 18 : undefined;
     m.ordersRead = read([]);
+    m.corpusRead = read(EMPTY_CORPUS);
     m.timeline = c === "failed"
         ? async () => { throw new Error("fetch failed: RPC unreachable"); }
         : c === "pending"
@@ -197,6 +225,21 @@ const PAGES: PageRow[] = [
         viewIsThePlace: true,
         readTestIds: [],
     },
+    // /data/explore, one row per layer: each layer is the corpus read's place.
+    ...([
+        ["market", /0 markets attributed[\s\S]*No attributed market on the network this site reads/, ["market-count", "market-empty"]],
+        ["overlays", /0 overlays in this corpus[\s\S]*No attestation has been recorded on the network this site reads/, ["overlay-count", "overlay-empty"]],
+        ["value-flow", /Nothing has resolved on the network this site reads[\s\S]*No swap venue is composed/, ["denomination-empty", "venue-posture"]],
+        ["trade", /0 processes · 0 order chains · 0 attestations/, []],
+    ] as const).map(([view, emptyState, ids]): PageRow => ({
+        route: `/data/explore (${view})`,
+        view: () => <DataExplorer />,
+        params: { view },
+        emptyState,
+        loading: /Reading the data and projecting the graphs/,
+        viewIsThePlace: false,
+        readTestIds: ["corpus-line", "corpus-loading", ...ids],
+    })),
 ];
 
 async function renderPage(row: PageRow) {

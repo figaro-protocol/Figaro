@@ -446,8 +446,10 @@ on the batch path never acquires `FigaroCore` status and emits no `FigaroCore` e
 `core.orderStatus(orderHash)` returns `0` for it, permanently. The converse holds too — a
 process resolved on `FigaroCore` is never inside a batch. Nothing migrates between them.
 
-What that costs you if you forget it: step 1's `sync()` reconstructs from `FigaroCore`
-events, so **it sees the direct path only** — not late, not at all. `orderStatus == 0`
+What that costs you if you forget it: step 1's `sync()` reads the order events of
+`addresses.core` and, only when `addresses` carries `batchVerifier`, of the verifier too
+(`fetchCoreEvents`; `addressesFromDeploymentRecord` maps it from the deployment record).
+Without that address **it sees the direct path only** — not late, not at all. `orderStatus == 0`
 means *"not on this path"*, never *"not resolved"*. Read it as "not resolved" and you may
 re-attest a finished order, re-quote a filled request, chase a counterparty who already
 performed, or tell the owner a payment never arrived when it did.

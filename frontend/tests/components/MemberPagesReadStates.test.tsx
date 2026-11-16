@@ -23,6 +23,7 @@ const m = vi.hoisted(() => ({
     registration: undefined as unknown,
     profile: (async () => null) as () => Promise<unknown>,
     choices: undefined as unknown,
+    catalog: (async () => null) as () => Promise<unknown>,
     onboarding: {
         state: {},
         loaded: true,
@@ -44,6 +45,7 @@ vi.mock("@/lib/member/useMembersRegistry", () => ({
     useUpdateProfile: () => ({ updateProfile: async () => undefined, isPending: false, isConfirming: false, isSuccess: false, error: null, hash: undefined }),
 }));
 vi.mock("@/lib/member/profileFetcher", () => ({ fetchMemberProfile: () => m.profile() }));
+vi.mock("@/lib/member/catalogFetcher", () => ({ fetchMemberCatalog: () => m.catalog() }));
 vi.mock("@/lib/member/onboardingState", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/member/onboardingState")>()),
     useOnboardingState: () => m.onboarding,
@@ -114,6 +116,48 @@ describe("member edit pages: a failed read renders nothing", () => {
         const { container } = render(<Page />);
         await flush();
         expect(container.textContent).toBe("Reading registry…");
+    });
+});
+
+/** /members/edit/catalog reads a second document once the profile has loaded:
+ *  the catalog behind the profile's `catalogURI`. Its failure leaves the page
+ *  as the profile's does: no text, no form (a blind save would clobber the
+ *  catalog's items). Its read in flight shows its own wait line. */
+describe("/members/edit/catalog: the registry and the profile answered, the catalog document did not", () => {
+    beforeEach(() => {
+        m.registration = REGISTERED;
+        m.profile = async () => ({ name: "Kitchen", subjectAddress: WALLET, catalogURI: "ipfs://QmCatalog" });
+    });
+
+    it("the catalog document loads: the editor renders past the gate (the read reaches the page)", async () => {
+        m.catalog = async () => ({ subjectAddress: WALLET, items: [], version: "1.0.0" });
+        const { container } = render(<MemberEditCatalog />);
+        await flush();
+        expect(container.textContent).not.toBe("");
+        expect(container.textContent).not.toMatch(/Fetching catalog from IPFS…|Reading registry…/);
+    });
+
+    it("the catalog document fails to read: no text, no form", async () => {
+        m.catalog = async () => { throw new Error("fetch failed: gateway unreachable"); };
+        const { container } = render(<MemberEditCatalog />);
+        await flush();
+        expect(container.textContent).toBe("");
+        expect(container.querySelector("form")).toBeNull();
+    });
+
+    it("the catalog document resolves empty: no text, no form", async () => {
+        m.catalog = async () => null;
+        const { container } = render(<MemberEditCatalog />);
+        await flush();
+        expect(container.textContent).toBe("");
+        expect(container.querySelector("form")).toBeNull();
+    });
+
+    it("the catalog document is in flight: its wait line only", async () => {
+        m.catalog = () => new Promise(() => undefined);
+        const { container } = render(<MemberEditCatalog />);
+        await flush();
+        expect(container.textContent).toBe("Fetching catalog from IPFS…");
     });
 });
 
