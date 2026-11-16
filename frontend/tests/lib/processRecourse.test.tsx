@@ -19,7 +19,7 @@ import type { Agreement } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/kernel/store";
 import { _resetClauseSpecCache_TESTING_ONLY, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
-import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs, TEST_DAO_TREASURY } from "./primeClauseSpecs";
+import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 
 const agreementsState = vi.hoisted(() => ({ map: new Map<string, unknown>() }));
 vi.mock("wagmi", () => ({ usePublicClient: () => undefined, useChainId: () => 31337 }));
@@ -55,7 +55,7 @@ beforeAll(async () => {
     const { clauseKey, bytes } = pinSpec(second);
     acme = clauseKey;
     setClauseSpecFetcher(async (uri) => (uri === "mem://acme-forum" ? bytes : canonicalFileBytes(uri)));
-    await loadClauseSpec(acme, "mem://acme-forum", { registeredBy: TEST_DAO_TREASURY, blockNumber: 50n, stakeWithdrawn: false });
+    await loadClauseSpec(acme, "mem://acme-forum");
 });
 
 const orderOf = (checkoutHash: string | undefined) => ({ checkoutHash }) as unknown as Order;
@@ -126,7 +126,7 @@ describe("RecoursePanel — shows each forum from its own spec", () => {
         };
         const { bytes } = pinSpec(second);
         setClauseSpecFetcher(async (uri) => (uri === "mem://acme-forum" ? bytes : canonicalFileBytes(uri)));
-        await loadClauseSpec(acme, "mem://acme-forum", { registeredBy: TEST_DAO_TREASURY, blockNumber: 50n, stakeWithdrawn: false });
+        await loadClauseSpec(acme, "mem://acme-forum");
     });
 
     it("shows the Kleros clause's title, its chosen court and the forum link its spec declares", async () => {

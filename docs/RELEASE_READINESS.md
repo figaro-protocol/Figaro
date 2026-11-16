@@ -31,18 +31,18 @@ neither line does not delay either.
 ## Public on testnet
 
 1. **The model is coherent.** Each open design thread is ruled, built, and held by a
-   test that fails on the old behavior: the mandatory clauses, the DAO wallet's live
-   commerce written by the designer's canvas into every agreement, nothing
-   picked; dispute resolution chosen by the buyer at checkout for every agreement of the
+   test that fails on the old behavior: no clause written into an agreement the
+   designer did not compose, `figaro-commerce` composed or left out like any
+   clause; dispute resolution chosen by the buyer at checkout for every agreement of the
    process, its field required once the clause is composed; the utility token as the
    designer's assembly-level pin that overrides the buyer's selection, the assembly-wide
    mechanism kept; topology as the agreement format's own leaf; and a seller's attestation only about
    a clause of its own order.
    Who verifies, piece by piece (an agent is given only a piece with a machine check):
-   - [agent] the mandatory clauses — `frontend/tests/components/AgreementDrawerMandatoryArticle.test.tsx`
-     and `frontend/tests/e2e/designer-agreement-drawer.devnet.spec.ts` green;
-   - [agent] the DAO wallet's commerce written by the canvas, nothing picked —
-     `frontend/tests/lib/referenceAssemblies.test.ts` and `draftToReviewProjection.test.ts` green;
+   - [agent] no clause written in, commerce composed like any clause —
+     `frontend/tests/lib/designerComposesEveryClause.test.ts`,
+     `frontend/tests/components/AgreementDrawerOffersEveryClause.test.tsx`,
+     `sdk/tests/projection.test.ts` and `frontend/tests/e2e/designer-agreement-drawer.devnet.spec.ts` green;
    - [agent] dispute resolution chosen by the buyer at checkout, its field required once
      composed — `frontend/tests/lib/checkoutBuyerFieldComplement.test.ts` and
      `frontend/tests/e2e/local-commerce.devnet.spec.ts` green;
@@ -70,12 +70,10 @@ neither line does not delay either.
    The orders an order follows are a leaf of the agreement format (`Agreement.follows`,
    `sdk/src/agreement.ts`), and no clause carries them. A network seeded with the clause
    `figaro-topology` carrying them breaks in three places:
-   - The DAO wallet's live `figaro-topology` registration is picked: its spec declares the
-     mandatory article at agreement scope, and `mandatoryClauses` (`sdk/src/projection.ts`)
-     takes every such live clause the DAO wallet registered. The canvas writes it into every
-     agreement with `{}`. Checkout fills `Agreement.follows`, never that clause's required
-     `follows` field, so the sign gate refuses the agreement for the missing field unless a
-     party fills it by hand.
+   - A registered `figaro-topology` is an ordinary clause: the drawer offers it, and nothing
+     writes it into an agreement. An agreement a designer composed with it is refused at the
+     sign gate for its required `follows` field, since checkout fills `Agreement.follows`
+     and never that field, unless a party fills it by hand.
    - An assembly pinned in the entry bytes `{"clauses":{…},"slot":i}` does not hash to its
      registered key: the key is computed over `{"clauses":{…},"follows":[…],"slot":i}`
      (`agreementLeafBytes`, `sdk/src/assembly.ts`). `anchorAssembly` (`sdk/src/anchored.ts`)
@@ -84,8 +82,8 @@ neither line does not delay either.
      reads `Agreement.follows` only.
 
    So the site built from this code goes up only against a deployment seeded in the present
-   format: the clause `figaro-topology` not registered by the DAO wallet, and every
-   reference assembly pinned and registered in the present entry bytes.
+   format: every reference assembly pinned and registered in the present entry bytes, and
+   no reference agreement composing `figaro-topology`.
 5. **The flip.** Robots' `Disallow` and the noindex meta are lifted, a sitemap of the
    canonical public pages is published, and the deployed headers are checked on the
    live host (Task 12). Before it, the testnet pinning key the bundle ships is reissued
@@ -319,8 +317,8 @@ deploy environment before the export is uploaded.
 ### Task 13: Genesis Registration Ownership — the mainnet gate
 
 The rule: the DAO treasury vault is the designer of record for
-the **mandatory clauses only** (`figaro-commerce`) and,
-after genesis, any mandatory clause it develops and
+`figaro-commerce` only (`deployments/<chainId>.expected.json`
+§ registrations.byClause) and, after genesis, any clause it develops and
 registers; every
 other reference clause and every reference assembly is registered by the founder's
 wallet, from the founder's own balance; each member profile is registered by its
@@ -336,8 +334,8 @@ Before mainnet genesis seeding:
 1. The seeding run is a WRITTEN registration plan — each clause key (with the
    spec name and version it was resolved from) and its registrar — that the
    maintainer reviews BEFORE the first broadcast; the vault-registrar mode is
-   invoked with `SEED_CLAUSES` naming exactly the mandatory two as `name` or
-   `name@version`, which `populate-clauses.mjs` resolves to keys over the specs
+   invoked with `SEED_CLAUSES` naming exactly the clauses the plan gives the vault, as
+   `name` or `name@version`, which `populate-clauses.mjs` resolves to keys over the specs
    it loads from `clauses/`, and every other run uses the founder's Ledger as
    direct registrar.
 2. Rehearse the plan on an Anvil fork with the real devices before mainnet.

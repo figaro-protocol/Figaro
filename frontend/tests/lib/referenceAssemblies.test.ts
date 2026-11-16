@@ -3,11 +3,12 @@
  * (`agreements/*.json` and `assemblies/*.json`, the siblings of `clauses/`).
  * Each authored agreement is written by clause name and composed at seed
  * time (`composeAuthoredAgreement` over `clauses/`: names resolved to keys,
- * the mandatory clauses folded, keyed); each reference assembly names the
+ * keyed); each reference assembly names the
  * agreements its agreements bind and is built over them (`assembleAuthored`:
  * the entry binds the agreement's hash and carries its own parents). Built, it
  * must parse, hash, resolve its topology, compose only clauses that exist,
- * carry the mandatory clauses on every order, and carry the editorial
+ * carry on every order exactly the clauses its authored agreement names, and
+ * carry the editorial
  * identity a stranger reads first; every authored agreement must be bound
  * by at least one assembly and carry its own words. Affixed documents must
  * reproduce their committed keccak from the shipped bytes.
@@ -18,7 +19,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { keccak256 } from "viem";
 import { canonicalize, planAssemblyOrders, agreementClauses, assemblyHashOf, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { parseAssemblyJson } from "@/lib/designer/assemblyToDraft";
-import { authoredAgreements, authoredSpecSet, primeClauseSpecs, referenceAssembly } from "./primeClauseSpecs";
+import { authoredAgreements, authoredSpecSet, primeClauseSpecs, referenceAssembly, resolveAuthored } from "./primeClauseSpecs";
 
 const ASSEMBLIES_DIR = path.resolve(process.cwd(), "../assemblies");
 const AGREEMENTS_DIR = path.resolve(process.cwd(), "../agreements");
@@ -28,13 +29,6 @@ const referenceFiles = readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith(".js
 const agreementFiles = readdirSync(AGREEMENTS_DIR).filter((f) => f.endsWith(".json")).sort();
 const authored = authoredSpecSet().list();
 const registeredClauseKeys = new Set<string>(authored.map((a) => a.clauseKey));
-// Every reference agreement picks the reference agreement holding the
-// mandatory clauses alone, so every ORDER carries each agreement-scoped
-// mandatory clause clauses/ holds.
-type Design = { block?: { design?: { article?: string; scope?: string } } };
-const mandatoryClauseKeys = authored
-    .filter((a) => (a.spec as Design).block?.design?.article === "mandatory" && (a.spec as Design).block?.design?.scope !== "assembly")
-    .map((a) => a.clauseKey);
 const consentKey = authored.find((a) => a.clauseId === "figaro-consent")?.clauseKey;
 
 describe("reference assemblies — the onboarding set", () => {
@@ -47,7 +41,7 @@ describe("reference assemblies — the onboarding set", () => {
         }
     });
 
-    it("every authored agreement carries its own words and is bound by at least one reference assembly or picked in the mandatory article", () => {
+    it("every authored agreement carries its own words and is bound by at least one reference assembly", () => {
         const bound = new Set<string>();
         for (const file of referenceFiles) {
             const authored = JSON.parse(readFileSync(path.join(ASSEMBLIES_DIR, file), "utf8")) as { agreements: { agreement: string }[] };
@@ -55,15 +49,11 @@ describe("reference assemblies — the onboarding set", () => {
         }
         expect(agreementFiles.length).toBeGreaterThan(0);
         for (const file of agreementFiles) {
-            const doc = JSON.parse(readFileSync(path.join(AGREEMENTS_DIR, file), "utf8")) as { mandatory?: string };
-            if (doc.mandatory) bound.add(doc.mandatory);
-        }
-        for (const file of agreementFiles) {
             const doc = JSON.parse(readFileSync(path.join(AGREEMENTS_DIR, file), "utf8")) as { name?: string; summary?: string; clauses?: object };
             expect((doc.name ?? "").trim().length, `${file} names itself`).toBeGreaterThan(0);
             expect((doc.summary ?? "").trim().length, `${file} says what it is`).toBeGreaterThan(0);
             expect(doc.clauses, `${file} composes clauses`).toBeTypeOf("object");
-            expect(bound.has(file.replace(/\.json$/, "")), `${file} is bound by a reference assembly or picked`).toBe(true);
+            expect(bound.has(file.replace(/\.json$/, "")), `${file} is bound by a reference assembly`).toBe(true);
         }
         // The shared ones are shared: a name bound by two assemblies keys once.
         const keys = new Map(Object.entries(authoredAgreements()).map(([name, doc]) => [name, doc.clauses]));
@@ -87,18 +77,18 @@ describe("reference assemblies — the onboarding set", () => {
                 expect(planAssemblyOrders(assembly).length).toBe(assembly.assembly.agreements.length);
             });
 
-            it("composes only clauses that exist, mandatory clauses on every order", () => {
+            it("composes only clauses that exist, each order exactly the clauses its authored agreement names", () => {
                 const hydratedAssembly = hydrated();
                 const assembly = hydratedAssembly.assembly;
-                for (const entry of assembly.agreements) {
+                const written = JSON.parse(readFileSync(path.join(ASSEMBLIES_DIR, file), "utf8")) as { agreements: { agreement: string }[] };
+                assembly.agreements.forEach((entry, i) => {
                     const order = { id: entry.id, clauses: agreementClauses(hydratedAssembly, entry) };
                     for (const clauseKey of Object.keys(order.clauses)) {
                         expect(registeredClauseKeys.has(clauseKey), `${order.id} composes unknown clause ${clauseKey}`).toBe(true);
                     }
-                    for (const mandatory of mandatoryClauseKeys) {
-                        expect(order.clauses, `${order.id} carries mandatory ${mandatory}`).toHaveProperty(mandatory);
-                    }
-                }
+                    const named = resolveAuthored(JSON.parse(readFileSync(path.join(AGREEMENTS_DIR, `${written.agreements[i].agreement}.json`), "utf8")) as { clauses: object });
+                    expect(Object.keys(order.clauses).sort(), `${order.id} carries what ${written.agreements[i].agreement} names`).toEqual(Object.keys(named.clauses).sort());
+                });
             });
 
             it("carries the editorial identity a stranger reads first", () => {

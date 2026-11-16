@@ -19,14 +19,13 @@ import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { serializeAssembly } from "@figaro-protocol/sdk";
 import { _primeRegisteredAgreement_TESTING_ONLY } from "@/lib/protocol/useAgreementRegistry";
-import { TEST_DAO_TREASURY, canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
+import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 import {
     projectSnapshotForReview,
     snapshotAssemblyIdentity,
     snapshotToAssembly,
     assemblyComposedByAgreement,
     assemblyComposedClauses,
-    assemblyMandatoryClauses,
     unfilledAssemblyTerms,
     assemblyClauseDefaults,
 } from "@/lib/designer/draftToAssembly";
@@ -48,7 +47,7 @@ const ASSEMBLY_CLAUSES = [
     "figaro-applicable-law",
     "figaro-utility-token",
 ] as const;
-const MANDATORY = ["figaro-commerce"] as const;
+const COMMERCE = ["figaro-commerce"] as const;
 const keys = (names: readonly string[]) => names.map((n) => keyOf(n));
 
 /** A canvas session: root + one sub-order, exactly as the designer draws them. */
@@ -61,8 +60,7 @@ function drawCanvas(): { orders: Order[]; processId: string; session: ReturnType
 
 
 /** Wrap drawn orders + a clause composition into the snapshot the canvas
- *  autosaves. The mandatory clauses come from the registry (the primed specs
- *  are the DAO's), never from the snapshot. */
+ *  autosaves. */
 function snapshotOf(
     drawn: ReturnType<typeof drawCanvas>,
     composition: Partial<Pick<DesignSnapshot, "clausesByOrderId" | "assemblyClauses" | "registeredByOrderId">> = {},
@@ -87,7 +85,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
     let composed: DesignSnapshot;
 
     beforeAll(async () => {
-        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY]);
+        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...COMMERCE]);
         drawn = drawCanvas();
         composed = snapshotOf(drawn, {
             // What ticking a checkbox in the order drawer leaves behind: the
@@ -156,22 +154,6 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
         expect(snapshotAssemblyIdentity(composed).assemblyHash).toBe(review.assemblyHash);
     });
 
-    it("shows the designer's composed clauses while the bytes still carry the mandatory pick's clauses", () => {
-        const review = projectSnapshotForReview(composed);
-        if (!review.ok) throw new Error(review.error);
-        for (const clauseId of keys(MANDATORY)) {
-            expect(
-                review.composedByOrderId[drawn.orders[0].orderHash],
-                "a clause the mandatory pick merged is listed apart from the designer's composition",
-            ).not.toHaveProperty(clauseId);
-            const entry = review.assembly.agreements[0];
-            expect(
-                review.newAgreements[entry.agreementHash].clauses,
-                "…but the agreement the agreement binds carries it",
-            ).toHaveProperty(clauseId);
-        }
-    });
-
     it("carries the assembly-scoped terms and their design fills", () => {
         const review = projectSnapshotForReview(composed);
         if (!review.ok) throw new Error(review.error);
@@ -199,7 +181,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
         const review = projectSnapshotForReview(composed);
         if (!review.ok) throw new Error(review.error);
         // The `/view` path reads the pinned bytes directly — keyed by the
-        // assembly's agreement ids, the mandatory clauses listed apart.
+        // assembly's agreement ids.
         const byAgreement = assemblyComposedByAgreement(review.hydrated);
         expect(Object.keys(byAgreement)).toEqual(["agreement-0", "agreement-1"]);
         expect(Object.keys(byAgreement["agreement-0"]).sort()).toEqual(keys(ORDER_CLAUSES).sort());
@@ -210,7 +192,7 @@ describe("projectSnapshotForReview — malformed and empty compositions", () => 
     let drawn: ReturnType<typeof drawCanvas>;
 
     beforeAll(async () => {
-        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY]);
+        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...COMMERCE]);
         drawn = drawCanvas();
     });
 
@@ -232,29 +214,11 @@ describe("projectSnapshotForReview — malformed and empty compositions", () => 
         expect(review.error).toContain("figaro-schedule");
     });
 
-    it("refuses, without throwing, when the DAO's wallet holds no live mandatory clause on this network", () => {
-        const dao = process.env.NEXT_PUBLIC_DAO_TREASURY;
-        process.env.NEXT_PUBLIC_DAO_TREASURY = "0x1111111111111111111111111111111111111111";
-        try {
-            const review = projectSnapshotForReview(snapshotOf(drawn));
-            expect(review.ok).toBe(false);
-            if (review.ok) return;
-            expect(review.error).toMatch(/composes no clause/);
-        } finally {
-            process.env.NEXT_PUBLIC_DAO_TREASURY = dao ?? TEST_DAO_TREASURY;
-        }
-    });
-
-    it("handles a draft that composed nothing — every order projects to an empty map", () => {
+    it("refuses, without throwing, a draft whose orders compose no clause", () => {
         const review = projectSnapshotForReview(snapshotOf(drawn));
-        expect(review.ok).toBe(true);
-        if (!review.ok) return;
-        for (const order of drawn.orders) {
-            expect(review.composedByOrderId[order.orderHash]).toEqual({});
-        }
-        for (const clauseKey of keys(ASSEMBLY_CLAUSES)) {
-            expect(review.assemblyClauses).not.toHaveProperty(clauseKey);
-        }
+        expect(review.ok).toBe(false);
+        if (review.ok) return;
+        expect(review.error).toMatch(/composes no clause/);
     });
 });
 
@@ -265,13 +229,16 @@ describe("projectSnapshotForReview — an agreement with no line items", () => {
     let drawn: ReturnType<typeof drawCanvas>;
 
     beforeAll(async () => {
-        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY]);
+        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...COMMERCE]);
         drawn = drawCanvas();
     });
 
     it("names the order whose agreement composes no line items, and no other", () => {
         const bare = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [keyOf("figaro-schedule")]: {} } });
-        const review = projectSnapshotForReview(snapshotOf(drawn, { registeredByOrderId: { [drawn.orders[0].orderHash]: bare } }));
+        const review = projectSnapshotForReview(snapshotOf(drawn, {
+            registeredByOrderId: { [drawn.orders[0].orderHash]: bare },
+            clausesByOrderId: { [drawn.orders[1].orderHash]: { [keyOf("figaro-commerce")]: {} } },
+        }));
         if (!review.ok) throw new Error(review.error);
         expect(review.withoutLineItems).toEqual([drawn.orders[0].orderHash]);
     });
@@ -279,13 +246,18 @@ describe("projectSnapshotForReview — an agreement with no line items", () => {
     it("does not name an order while one of its clauses' specs is unread", () => {
         const unread = `0x${"ab".repeat(32)}`;
         const bound = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [unread]: {} } });
-        const review = projectSnapshotForReview(snapshotOf(drawn, { registeredByOrderId: { [drawn.orders[0].orderHash]: bound } }));
+        const review = projectSnapshotForReview(snapshotOf(drawn, {
+            registeredByOrderId: { [drawn.orders[0].orderHash]: bound },
+            clausesByOrderId: { [drawn.orders[1].orderHash]: { [keyOf("figaro-commerce")]: {} } },
+        }));
         if (!review.ok) throw new Error(review.error);
         expect(review.withoutLineItems).toEqual([]);
     });
 
     it("names none when every agreement composes line items", () => {
-        const review = projectSnapshotForReview(snapshotOf(drawn));
+        const review = projectSnapshotForReview(snapshotOf(drawn, {
+            clausesByOrderId: Object.fromEntries(drawn.orders.map((o) => [o.orderHash, { [keyOf("figaro-commerce")]: {} }])),
+        }));
         if (!review.ok) throw new Error(review.error);
         expect(review.withoutLineItems).toEqual([]);
     });
@@ -296,7 +268,7 @@ describe("projectSnapshotForReview — an agreement with no line items", () => {
 // published with no currency).
 describe("unfilledAssemblyTerms", () => {
     beforeAll(async () => {
-        await primeClauseSpecs([...ASSEMBLY_CLAUSES, ...MANDATORY]);
+        await primeClauseSpecs([...ASSEMBLY_CLAUSES, ...COMMERCE]);
     });
 
     it("names a selected term whose required design fill is empty", () => {
@@ -355,76 +327,5 @@ describe("assemblyClauseDefaults", () => {
     it("leaves a fill with no default empty, and an unknown clause seeds nothing", () => {
         expect(assemblyClauseDefaults(keyOf("figaro-utility-token"))).not.toHaveProperty("currency");
         expect(assemblyClauseDefaults(`0x${"ee".repeat(32)}`)).toEqual({});
-    });
-});
-
-// A spec marks itself mandatory in its own `block`, written by whoever
-// registered it, and any registration is anyone's. The canvas writes the DAO
-// wallet's live mandatory clauses into every agreement, nothing picked; a
-// stranger's mandatory registration enters an agreement only when a bound
-// registered agreement carries it. The review lists every mandatory clause the
-// bytes carry, by key, for the designer to confirm.
-// Runs LAST in this file: it adds strangers' specs to the module cache.
-describe("the mandatory clauses — written into every agreement, each listed on the review", () => {
-    let drawn: ReturnType<typeof drawCanvas>;
-    const CLAUSES_DIR = path.resolve(process.cwd(), "../clauses");
-    const commerce = JSON.parse(readFileSync(path.join(CLAUSES_DIR, "figaro-commerce.json"), "utf8")) as Record<string, unknown>;
-
-    /** Register (into the cache, as `useClauseSpecs` would from the chain) a
-     *  stranger's spec: the real commerce spec under another name or version. */
-    async function registerStranger(clauseId: string, version: number): Promise<`0x${string}`> {
-        const { clauseKey, bytes } = pinSpec({ ...commerce, clauseId, version, title: `${clauseId} v${version}` });
-        const uri = `stranger://${clauseId}/${version}`;
-        setClauseSpecFetcher(async (u) => (u === uri ? bytes : canonicalFileBytes(u)));
-        await loadClauseSpec(clauseKey, uri);
-        return clauseKey;
-    }
-
-    beforeAll(async () => {
-        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY]);
-        drawn = drawCanvas();
-    });
-
-    it("lists every mandatory clause the bytes carry, by key, with what carries it", () => {
-        const review = projectSnapshotForReview(snapshotOf(drawn));
-        if (!review.ok) throw new Error(review.error);
-        const listed = review.mandatory.map((f) => `${f.clauseId}#${f.version}:${f.carriedBy.join(",")}`).sort();
-        expect(listed).toEqual([
-            "figaro-commerce#1:agreement-0,agreement-1",
-        ]);
-        expect(review.mandatory.map((f) => f.clauseKey).sort()).toEqual(keys(MANDATORY).sort());
-        // The complement of the composed readout: together they are the assembly.
-        for (const entry of review.assembly.agreements) {
-            const composed = Object.keys(assemblyComposedByAgreement(review.hydrated)[entry.id]);
-            const mandatory = assemblyMandatoryClauses(review.hydrated)
-                .filter((f) => f.carriedBy.includes(entry.id)).map((f) => f.clauseKey);
-            const carried = review.hydrated.agreements[entry.agreementHash.toLowerCase() as `0x${string}`].clauses;
-            expect([...composed, ...mandatory].sort()).toEqual(Object.keys(carried).sort());
-        }
-    });
-
-    it("a stranger's mandatory registration — even one sharing commerce's name — enters no agreement by itself", async () => {
-        const before = projectSnapshotForReview(snapshotOf(drawn));
-        if (!before.ok) throw new Error(before.error);
-        const lookalike = await registerStranger("figaro-commerce", 99);
-        const after = projectSnapshotForReview(snapshotOf(drawn));
-        if (!after.ok) throw new Error(after.error);
-        expect(after.assemblyHash).toBe(before.assemblyHash);
-        expect(after.mandatory.map((f) => f.clauseKey)).not.toContain(lookalike);
-    });
-
-    it("a bound registered agreement carrying another wallet's commerce lists it by key — a shape, never a name", async () => {
-        const lookalike = await registerStranger("figaro-commerce", 98);
-        const theirs = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [lookalike]: {} } });
-        const review = projectSnapshotForReview(snapshotOf(drawn, { registeredByOrderId: { [drawn.orders[0].orderHash]: theirs } }));
-        if (!review.ok) throw new Error(review.error);
-        expect(review.mandatory).toContainEqual(expect.objectContaining({
-            clauseKey: lookalike,
-            clauseId: "figaro-commerce",
-            version: 98,
-            carriedBy: ["agreement-0"],
-        }));
-        // The DAO's commerce stays on the order the canvas composed.
-        expect(review.mandatory).toContainEqual(expect.objectContaining({ clauseId: "figaro-commerce", version: 1, carriedBy: ["agreement-1"] }));
     });
 });

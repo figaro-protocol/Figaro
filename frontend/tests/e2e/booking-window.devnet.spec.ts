@@ -34,6 +34,7 @@ import {
     anchoredAssemblyHash,
     isBindingOf,
     expectRelayedOrder,
+    composeCommerceOn,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import type { Page } from '@playwright/test';
@@ -177,6 +178,8 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
             const nodeIds = await orderNodes.evaluateAll((els) =>
                 els.map((el) => el.getAttribute('data-testid')!.replace('order-node-', '')));
             const subId = nodeIds.find((id) => id !== rootId)!;
+            // Each order composes the commerce clause, as any clause.
+            await composeCommerceOn(page, [rootId, subId]);
 
             await page.getByTestId(`drawer-node-tab-${subId}`).click();
             await page.getByTestId('drawer-tab-registry').click();

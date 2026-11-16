@@ -165,24 +165,23 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
 
         // The canvas states its composition identity as soon as there is a
         // composition to identify — derived from the same walk publish
-        // anchors, the DAO's mandatory clauses written in first.
+        // anchors. The designer composes the commerce clause first, as any
+        // clause: nothing is written in.
         const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
         await rootNode.waitFor({ state: 'visible', timeout: 10000 });
         await rootNode.click();
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+        await page.getByTestId('drawer-tab-registry').click();
+        await expect(page.getByTestId('drawer-mandatory-article'), 'no clause is written in without a choice').toHaveCount(0);
+        const commerceToggle = page.getByTestId(`drawer-registry-clause-${keyOf('figaro-commerce')}`);
+        await expect(commerceToggle, 'the drawer offers the commerce clause as a checkbox').toHaveCount(1, { timeout: 30000 });
+        await commerceToggle.check();
         const hashReadout = page.getByTestId('designer-assembly-hash');
         await expect(hashReadout).toBeVisible({ timeout: 30000 });
         const before = await hashReadout.getAttribute('title');
         expect(before, 'the identity readout carries the full assembly hash').toMatch(/^0x[0-9a-f]{64}$/);
 
         // Compose the regime clause on the root order.
-        await page.getByTestId('drawer-tab-registry').click();
-        // The mandatory article shows the DAO's live commerce clause, read
-        // from ClauseRegistry by registrant and stake, with nothing to
-        // choose: the canvas writes it into every agreement it registers.
-        const mandatoryArticle = page.getByTestId('drawer-mandatory-article');
-        await expect(mandatoryArticle.getByTestId(`drawer-mandatory-clause-${keyOf('figaro-commerce')}`)).toBeVisible({ timeout: 30000 });
-        await expect(mandatoryArticle.locator('input')).toHaveCount(0);
         const regimeToggle = page.getByTestId(`drawer-registry-clause-${REGIME_CLAUSE_KEY}`);
         await expect(regimeToggle, 'the drawer surfaces the regime clause').toHaveCount(1, { timeout: 20000 });
         await regimeToggle.check();

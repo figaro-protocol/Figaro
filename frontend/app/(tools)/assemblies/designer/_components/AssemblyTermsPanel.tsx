@@ -30,7 +30,6 @@ import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import {
     clauseDesignFills,
     clauseIsAssemblyScoped,
-    clauseIsCanvasMandatory,
     getClauseSpec,
     isLiveRegistration,
     listKnownClauses,
@@ -94,13 +93,8 @@ export function AssemblyTermsPanel({
         const live = new Set(
             (registered ?? []).filter(isLiveRegistration).map((e) => e.clauseKey.toLowerCase()),
         );
-        // The canvas's mandatory clauses are written, never chosen, so they
-        // are not offered here; a mandatory-article registration by another
-        // wallet is an ordinary clause.
         return listKnownClauses().filter(
-            (c) => live.has(c.clauseKey.toLowerCase())
-                && clauseIsAssemblyScoped(c.clauseKey)
-                && !clauseIsCanvasMandatory(c.clauseKey),
+            (c) => live.has(c.clauseKey.toLowerCase()) && clauseIsAssemblyScoped(c.clauseKey),
         );
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [registered, specsVersion]);

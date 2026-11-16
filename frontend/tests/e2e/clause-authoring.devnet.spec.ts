@@ -56,7 +56,7 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, publishOrAdoptReviewed, waitForConnected } from './devnet-helpers';
+import { readLocalDeploymentConfig, publishOrAdoptReviewed, waitForConnected, composeCommerceOn } from './devnet-helpers';
 import { makeProbeSpec } from './probeAssembly';
 import { calculateBonds, computeClauseKey, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -205,6 +205,8 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+        // The designer composes the commerce clause, as any clause.
+        await composeCommerceOn(page);
         const drawerClause = page.getByTestId(`drawer-registry-clause-${idHash}`);
         await expect(
             drawerClause,

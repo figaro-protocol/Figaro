@@ -156,7 +156,7 @@ describe("the designer binds a registered agreement to one agreement and compose
     }
 
     it("keeps the bound key, registers only the new agreement, and states both on the review", async () => {
-        // A registered agreement carrying the mandatory clause and one more.
+        // A registered agreement carrying the commerce clause and one more.
         const registered = { name: "Scheduled work", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-schedule")]: {} } };
         const boundKey = register(registered, "ipfs://scheduled-work");
         await fetchRegisteredAgreement(boundKey);
@@ -172,9 +172,9 @@ describe("the designer binds a registered agreement to one agreement and compose
         const newKeys = Object.keys(review.newAgreements);
         expect(newKeys).toHaveLength(1);
         expect(newKeys[0]).not.toBe(boundKey);
-        // The new agreement carries the DAO's mandatory clauses beside the designer's composition.
-        expect(Object.keys(review.newAgreements[newKeys[0] as Hex].clauses).sort())
-            .toEqual([keyOf("figaro-commerce"), keyOf("figaro-acceptance-criteria")].sort());
+        // The new agreement carries exactly the designer's composition.
+        expect(Object.keys(review.newAgreements[newKeys[0] as Hex].clauses))
+            .toEqual([keyOf("figaro-acceptance-criteria")]);
         // The bound agreement's entry carries no fill, and its own topology: the root's empty list.
         expect(review.assembly.agreements[0]).toMatchObject({ clauses: {}, follows: [] });
     });
@@ -198,7 +198,11 @@ describe("the designer binds a registered agreement to one agreement and compose
         const boundKey = register(plain, "ipfs://no-topology");
         await fetchRegisteredAgreement(boundKey);
         const base = snapshot({});
-        const review = projectSnapshotForReview({ ...base, registeredByOrderId: { [base.rootId]: boundKey } });
+        const review = projectSnapshotForReview({
+            ...base,
+            registeredByOrderId: { [base.rootId]: boundKey },
+            clausesByOrderId: { [base.subId]: { [keyOf("figaro-commerce")]: {} } },
+        });
         if (!review.ok) throw new Error(review.error);
         expect(review.assembly.agreements[0]).toMatchObject({ agreementHash: boundKey, clauses: {}, follows: [] });
         expect(review.assembly.agreements[1].follows).toEqual(["agreement-0"]);

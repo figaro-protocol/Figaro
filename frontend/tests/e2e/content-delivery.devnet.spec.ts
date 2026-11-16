@@ -38,7 +38,7 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, createWalletClient, defineChain, http, keccak256, parseAbi, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
+import { readLocalDeploymentConfig, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs, composeCommerceOn } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds, ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
@@ -132,6 +132,8 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+        // The designer composes the commerce clause, as any clause.
+        await composeCommerceOn(page);
         const checkbox = page.getByTestId(`drawer-registry-clause-${TARGET_CLAUSE}`);
         await expect(checkbox, `the drawer surfaces ${TARGET_CLAUSE} from the live registry`).toHaveCount(1, { timeout: 20000 });
         await checkbox.check();

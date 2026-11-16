@@ -201,14 +201,14 @@ describe("an agreement's clauses at checkout", () => {
 describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", () => {
     const names = ["figaro-commerce", "figaro-applicable-law", "figaro-handoff"];
     const specs = specSourceOf(names.map((n) => viewOf(rawSpecOf(n))));
-    /** The mandatory clause, named as the canvas would write it in. */
-    const MANDATORY = { "figaro-commerce": {} };
-    /** The mandatory clauses alone: a complete agreement with nothing else composed. */
-    const base = composeAuthoredAgreement({ name: "Mandatory clauses", clauses: { ...MANDATORY } }, specs).document;
+    /** The commerce clause, named as a designer composes it. */
+    const COMMERCE = { "figaro-commerce": {} };
+    /** The commerce clause alone: a complete agreement with nothing else composed. */
+    const base = composeAuthoredAgreement({ name: "Line items", clauses: { ...COMMERCE } }, specs).document;
 
     it("composes an authored agreement by name: the words ride beside the clauses, outside the key", () => {
         const { document, agreementHash } = composeAuthoredAgreement(
-            { name: "A hand-off", summary: "one hand-off", clauses: { ...MANDATORY, "figaro-handoff": {} } },
+            { name: "A hand-off", summary: "one hand-off", clauses: { ...COMMERCE, "figaro-handoff": {} } },
             specs,
         );
         expect(document.clauses).toEqual({ [keyOf("figaro-commerce")]: {}, [keyOf("figaro-handoff")]: {} });
@@ -226,15 +226,15 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
 
     it("composes a set of authored agreements by name", () => {
         const composed = composeAuthoredAgreements({
-            handoff: { clauses: { ...MANDATORY, "figaro-handoff": {} } },
-            base: { name: "Mandatory clauses", clauses: { ...MANDATORY } },
+            handoff: { clauses: { ...COMMERCE, "figaro-handoff": {} } },
+            base: { name: "Line items", clauses: { ...COMMERCE } },
         }, specs);
         expect(composed.base.agreementHash).toBe(agreementHashOf(base));
         expect(composed.handoff.document.clauses).toEqual({ ...base.clauses, [keyOf("figaro-handoff")]: {} });
     });
 
     it("assembles an authored assembly over named agreements: the entry binds the agreement's hash and carries its own parents", () => {
-        const handoff = composeAuthoredAgreement({ clauses: { ...MANDATORY, "figaro-handoff": {} } }, specs).document;
+        const handoff = composeAuthoredAgreement({ clauses: { ...COMMERCE, "figaro-handoff": {} } }, specs).document;
         const bare = base;
         const { assembly, agreements } = assembleAuthored({
             name: "editorial",

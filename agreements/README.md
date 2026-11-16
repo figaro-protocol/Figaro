@@ -4,18 +4,16 @@ Each file here is one agreement a designer would register and any
 assembly can bind: the clauses selected for one agreement, written by clause
 name (`name@version` where two specs share a name) with the designer's own
 fills (`block.design.fills` values only — a clause's other fields are the
-buyer's at checkout), beside the designer's words (`name`, `summary`), and the agreement it picks in
-the mandatory article (`mandatory`, a file name here): the pick's clauses merge
-in, so a file lists what the designer selects. That pick is the agreement of the
-mandatory clauses alone, the registration the designer drawer's mandatory
-article lists, composed and registered at seeding like any other agreement
-(`frontend/scripts/populate-clauses.mjs`); it has no file here and names no
-pick of its own. No file names a topology: who follows whom is each assembly
+buyer's at checkout), beside the designer's words (`name`, `summary`). A file
+lists every clause its agreement carries, and nothing is added to it: each
+file here names `figaro-commerce`, because each of these agreements commits
+its line items, and an agreement that commits none would leave it out. No file
+names a topology: who follows whom is each assembly
 entry's `follows`, and each signed agreement carries it as the format's
 topology leaf, never as a clause.
 
 The populate path composes each file at deploy (`composeAuthoredAgreement` in
-the SDK: names resolved to keys, the pick's clauses merged, the key derived
+the SDK: names resolved to keys, the key derived
 as the merkle root over the composed clauses), pins the document and registers
 it once on `AgreementRegistry` under its key (one stake; a key the registry
 already binds is skipped). A reference assembly (`assemblies/*.json`) names the

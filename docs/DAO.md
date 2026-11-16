@@ -91,36 +91,31 @@ gate owns the procedure that stands it up (`RELEASE_READINESS.md` Task 9).
 design. It carries no projected yield, no break-even model, and no income
 forecast, and none should ever be added.
 
-The DAO's treasury wallet is designer of record of the *scoring* mandatory clause,
-`figaro-commerce`, and of every mandatory clause it develops
-and registers after it. It holds each as a registration by clause key —
-`keccak256` of the canonical spec without its `block` — so what it holds is
-the exact specs, never their names. That assignment is the DAO's incentive: the designer's
-canvas writes the DAO's live mandatory clauses into every agreement it
-registers, before the designer composes anything, and the treasury that
-developed them is rewarded, on the uniform meter, each time a trade under that
-design resolves and a usage call for it reaches `UsageCounter`. On the direct
-path the usage call is a separate transaction after the resolve, which the buyer's
-wallet in this frontend and the SDK's agent (`recordProcessUsage`) send; a
-resolve that no usage call follows leaves the use uncounted until someone sends one
-(`DESIGNER_REWARDS.md` § "Counting follows the resolve"). The canvas reads them from `ClauseRegistry` by registrant and
-stake: the DAO wallet's live registrations whose spec declares the mandatory
-article, all of them, one per shape (`mandatoryClauses`, `sdk/src/projection.ts`).
-The treasury spends on development, marketing and clauses by judgment, and
-developing mandatory clauses for the community is one of those uses. Nothing is
-donated to the DAO but tokens, in any denomination: a clause registered by
-another wallet is that wallet's, and a mandatory-article registration by any
-other wallet is an ordinary clause, never mandatory.
+The DAO's treasury wallet is designer of record of `figaro-commerce` and of
+every clause it develops and registers after it. It holds each as a
+registration by clause key — `keccak256` of the canonical spec without its
+`block` — so what it holds is the exact specs, never their names. That
+assignment is the DAO's incentive: a clause it holds earns, on the uniform
+meter, each time a trade whose agreement a designer composed with it resolves
+and a usage call for it reaches `UsageCounter`. On the direct path the usage
+call is a separate transaction after the resolve, which the buyer's wallet in
+this frontend and the SDK's agent (`recordProcessUsage`) send; a resolve that
+no usage call follows leaves the use uncounted until someone sends one
+(`DESIGNER_REWARDS.md` § "Counting follows the resolve"). No tooling writes a
+DAO clause into an agreement: a designer composes it or leaves it out, as
+with any clause (`composeOrderAgreement`, `sdk/src/projection.ts`). The
+treasury spends on development, marketing and clauses by judgment, and
+developing clauses designers choose to compose is one of those uses. Nothing
+is donated to the DAO but tokens, in any denomination: a clause registered by
+another wallet is that wallet's.
 
-The convention is the registration layer's and this frontend's: nothing on
-chain requires the clauses or privileges the DAO's registrations
-(`DESIGNER_REWARDS.md` § "The mandatory clauses earn"), and another frontend
-may read the registry otherwise. Their usage accrues to the DAO exactly the way
-any designer's clauses accrue: **the commons is rewarded, from the reserve, for
-the use of what those trades carry.** The protocol takes nothing from a trade,
-and the DAO's registrations ride the same uniform meter as every other clause.
-A registered agreement that carries them earns under the agreement kind for its
-own designer of record, beside them; nothing is excluded.
+Nothing on chain privileges the DAO's registrations: their usage accrues to
+the DAO exactly the way any designer's clauses accrue: **the commons is
+rewarded, from the reserve, for the use of what those trades carry.** The
+protocol takes nothing from a trade, and the DAO's registrations ride the same
+uniform meter as every other clause. A registered agreement that carries them
+earns under the agreement kind for its own designer of record, beside them;
+nothing is excluded.
 
 The one thing the DAO's reward may not reach is the meter itself: the
 agreement format's reserved provenance leaf is no clause, and the counter
@@ -128,13 +123,11 @@ refuses its key, and the assembly terms leaf's, by comparison with the
 format's constants, so it meters without earning. `docs/DESIGNER_REWARDS.md` § "The boundary — the meter
 earns nothing" owns that line.
 
-**Countercyclical by construction.** Each period's budget divides pro rata over
-every clause, registered agreement and assembly that scored. Where third-party design thrives, the
-mandatory clauses' share is automatically diluted — and little DAO funding is
-needed, because the ecosystem is flourishing. Where little else emerged, the
-mandatory clauses dominate the period's score and the endowment income is large
-— exactly the world where the commons still needs the DAO. The sizing is
-automatic: no parameter, no vote, no one to lobby.
+**The share follows the use.** Each period's budget divides pro rata over
+every clause, registered agreement and assembly that scored. The DAO's
+clauses take the share their use earns, beside every other designer's: no
+clause rides on every order, so no designer's share, the DAO's included, is
+fixed by the format. No parameter, no vote, no one to lobby.
 
 **Beyond the sunset.** The designer-reward budgets end after the nine periods.
 What continues to fund the commons afterwards is the designer rewards it

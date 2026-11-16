@@ -59,7 +59,6 @@ import { CompositionAssist } from "./CompositionAssist";
 import { AssemblyIdentity } from "./AssemblyIdentity";
 import { assemblyToDraft } from "@/lib/designer/assemblyToDraft";
 import type { HydratedAssembly } from "@figaro-protocol/sdk";
-import { clauseIsCanvasMandatory, mandatoryClausesForCanvas, mandatoryClausesPending } from "@/lib/shared/clauseSpecSource";
 import {
     fetchRegisteredAgreement,
     getRegisteredAgreement,
@@ -600,10 +599,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         : name.trim() === "" ? "Name your assembly."
         : summary.trim() === "" ? "Add a short description."
         : description.trim() === "" ? "Add a full description."
-        : mandatoryClausesPending()
-            ? "A registration by the DAO's wallet is still being read; publishing waits for the mandatory clauses."
-        : Object.keys(mandatoryClausesForCanvas()).length === 0
-            ? "No live mandatory clause is registered by the DAO's wallet on this network; nothing publishes."
         : null;
     const canPublish = publishBlockedReason === null;
 
@@ -616,14 +611,14 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
 
     // What each node shows on the canvas: the clauses composed on it, or —
     // for an agreement binding a registered agreement — that agreement's
-    // clauses (the mandatory clauses left out, as the composed view leaves them).
+    // clauses.
     const canvasClausesByOrderId = useMemo(() => {
         const out = { ...clausesByOrderId };
         for (const [orderId, key] of Object.entries(registeredByOrderId)) {
             const doc = getRegisteredAgreement(key);
             if (!doc) continue;
             out[orderId] = {
-                ...Object.fromEntries(Object.entries(doc.clauses).filter(([clauseKey]) => !clauseIsCanvasMandatory(clauseKey))),
+                ...doc.clauses,
                 ...(clausesByOrderId[orderId] ?? {}),
             };
         }

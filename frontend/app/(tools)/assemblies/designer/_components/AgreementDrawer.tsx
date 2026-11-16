@@ -10,12 +10,8 @@
  *     the chain, each labeled by its pinned document's name with its key
  *     shown: the designer binds one to this agreement as is (a reusable
  *     unit), or unbinds it.
- *   - registry — first the mandatory article: the mandatory clauses the
- *     canvas writes into every agreement, the DAO's live mandatory clauses
- *     read from `ClauseRegistry` by registrant and stake
- *     (`mandatoryClausesForCanvas`), shown with nothing to choose. Then
- *     every other clause registered on `ClauseRegistry`, read live from the
- *     chain, grouped by `groupClausesByArticle()` (the single clause
+ *   - registry — every clause registered on `ClauseRegistry`, read live from
+ *     the chain, grouped by `groupClausesByArticle()` (the single clause
  *     classification, shared with the /clauses inventory — grouping + order
  *     come from the spec's `block.design.article`, never a hardcoded list), a
  *     checkbox per clause.
@@ -40,7 +36,7 @@ import {
 } from "@/lib/protocol/useAgreementRegistry";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsCanvasMandatory, clauseIsAssemblyScoped, clauseDesignFills, isLiveRegistration, mandatoryClauseRegistrant, mandatoryClausesForCanvas, mandatoryClausesPending, specSource } from "@/lib/shared/clauseSpecSource";
+import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsAssemblyScoped, clauseDesignFills, isLiveRegistration, specSource } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
@@ -363,14 +359,11 @@ export function AgreementDrawer({
                     )}
 
                     {openSection === "registry" && (
-                        <>
-                            <MandatoryArticlePanel />
-                            <ClauseRegistryPanel
-                                selectedClauseValues={selectedClauseValues}
-                                onToggleClause={onToggleClause}
-                                onSetClauseField={onSetClauseField}
-                            />
-                        </>
+                        <ClauseRegistryPanel
+                            selectedClauseValues={selectedClauseValues}
+                            onToggleClause={onToggleClause}
+                            onSetClauseField={onSetClauseField}
+                        />
                     )}
 
                     </fieldset>
@@ -544,66 +537,6 @@ function RegisteredAgreementsPanel({
 }
 
 /**
- * The drawer's mandatory article: THE mandatory clauses the canvas writes into
- * every agreement — the DAO wallet's live registrations whose spec declares
- * the mandatory article, one per shape (`mandatoryClausesForCanvas`) — listed
- * by title and key with nothing to choose. Says what stands instead when the
- * site names no DAO wallet, when a DAO registration's spec is still being
- * read, or when the DAO holds no live mandatory clause on this network.
- */
-function MandatoryArticlePanel() {
-    // The mandatory clauses are read from the registry: the DAO's live
-    // registrations whose spec declares the mandatory article, one per shape.
-    // A spec load or a registry read re-derives them.
-    const { version: clauseSpecsVersion, loaded, failed } = useClauseSpecs();
-    const registrant = mandatoryClauseRegistrant();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const mandatory = useMemo(() => Object.keys(mandatoryClausesForCanvas()) as `0x${string}`[], [clauseSpecsVersion]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const pending = useMemo(() => mandatoryClausesPending(), [clauseSpecsVersion]);
-    return (
-        <section data-testid="drawer-mandatory-article" className="mb-5">
-            <p className="text-sm font-medium text-ink-heading mb-2">mandatory</p>
-            <p className="text-xs text-ink-muted mb-2">
-                Written into every agreement before anything is composed. They are the
-                DAO&rsquo;s live registrations on the on-chain{" "}
-                <code className="font-mono">ClauseRegistry</code>, read by registrant and stake;
-                nothing here is chosen.
-            </p>
-            {failed ? null : !loaded ? (
-                <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-loading">
-                    Reading the registry&hellip;
-                </p>
-            ) : !registrant ? (
-                <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-empty">
-                    This site names no DAO wallet for the network it is reading, so no mandatory clause is known and nothing publishes.
-                </p>
-            ) : pending ? (
-                <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-empty">
-                    A registration by the DAO&rsquo;s wallet is still being read, so the mandatory clauses are not known yet and nothing publishes until it is.
-                </p>
-            ) : mandatory.length === 0 ? (
-                <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-empty">
-                    The DAO&rsquo;s wallet holds no live mandatory clause on the network this site is reading, so nothing publishes.
-                </p>
-            ) : (
-                <ul className="space-y-1" data-testid="drawer-mandatory-list">
-                    {mandatory.map((clauseKey) => {
-                        const spec = getClauseSpec(clauseKey);
-                        return (
-                            <li key={clauseKey} className="text-xs text-ink-body" title={clauseKey} data-testid={`drawer-mandatory-clause-${clauseKey}`}>
-                                <span className="text-ink-primary">{spec?.title ?? truncateHex(clauseKey, { head: 10, tail: 0 })}</span>
-                                <span className="font-mono text-[10px] text-ink-muted"> {truncateHex(clauseKey, { head: 10, tail: 4 })}</span>
-                            </li>
-                        );
-                    })}
-                </ul>
-            )}
-        </section>
-    );
-}
-
-/**
  * One registered clause on the registry tab: a checkbox to compose it onto the
  * order, plus — for fields named in design.fills only — its field editors when
  * selected (general clauses fill at checkout; runtime process clauses
@@ -656,14 +589,11 @@ function ClauseRegistryPanel({
             .map((g) => ({
                 article: g.article,
                 entries: g.clauses
-                    // The canvas's mandatory clauses are written into every
-                    // agreement, never chosen — a mandatory-article
-                    // registration by another wallet is an ordinary clause and
-                    // is offered; ASSEMBLY-SCOPED clauses (design.scope:
-                    // "assembly") compose once at the assembly level, never
-                    // per order — the drawer offering them here is how
-                    // duplicates would happen.
-                    .filter((c) => !clauseIsCanvasMandatory(c.clauseKey) && !clauseIsAssemblyScoped(c.clauseKey))
+                    // ASSEMBLY-SCOPED clauses (design.scope: "assembly")
+                    // compose once at the assembly level, never per order —
+                    // the drawer offering them here is how duplicates would
+                    // happen.
+                    .filter((c) => !clauseIsAssemblyScoped(c.clauseKey))
                     .map((c) => eventByKey.get(c.clauseKey.toLowerCase()))
                     .filter((e): e is RegisteredClauseEvent => e !== undefined),
             }))

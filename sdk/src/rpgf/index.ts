@@ -356,7 +356,7 @@ export interface UsageClaimContext {
  * THREE INDEPENDENT LEGS:
  *
  *  - the CLAUSE leg emits one claim per agreement clause — every committed
- *    clause earns, the mandatory ones included.
+ *    clause earns.
  *  - the AGREEMENT leg credits the registered agreement's designer from the
  *    agreement's provenance leaf (`Agreement.provenance`), proved with
  *    `buildProvenanceInclusionProof`: kind `{ Agreement: { assembly_hash } }`

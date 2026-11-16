@@ -2,7 +2,7 @@
  * The designer's two publish writes, as they reach the registries.
  *
  * `usePublishAgreement` composes one order's clauses through the SDK's one
- * composition rule (the DAO's mandatory clauses written in first), pins the
+ * composition rule (exactly the clauses the designer selected), pins the
  * document and sends `AgreementRegistry.registerAgreement(key, uri)` with the
  * registry's stake, the key being the pinned document's own agreement hash.
  *
@@ -136,8 +136,8 @@ describe("usePublishAgreement — one order's agreement registered on its own", 
         let outcome: Awaited<ReturnType<typeof result.current.publishAgreement>> | undefined;
         await act(async () => { outcome = await result.current.publishAgreement({ clauses: { [keyOf("figaro-schedule")]: {} }, name: "Scheduled work" }); });
         const pinned = s.pins[0] as RegisteredAgreement;
-        // The DAO's mandatory clauses are written in beside the designer's.
-        expect(Object.keys(pinned.clauses).sort()).toEqual([keyOf("figaro-commerce"), keyOf("figaro-schedule")].sort());
+        // Exactly the designer's clauses: nothing is written in.
+        expect(Object.keys(pinned.clauses)).toEqual([keyOf("figaro-schedule")]);
         expect(pinned.name).toBe("Scheduled work");
         const key = agreementHashOf(pinned);
         expect(s.write.mock.calls.map(([c]) => shape(c))).toEqual([

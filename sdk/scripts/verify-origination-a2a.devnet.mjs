@@ -114,7 +114,7 @@ const sellerUrl = `http://127.0.0.1:${server.address().port}/offer`;
 check("seller HTTP endpoint is listening", !!server.address().port);
 
 // ── Buyer discovers the network (the ctx synced above) ────────────────────────
-// The single-order assembly with the fewest clauses: the mandatory-only blank the harness
+// The single-order assembly with the fewest clauses: the commerce-only blank the harness
 // seeds, whatever else the genesis holds — no hardcoded id, no order of anchoring.
 let chosen = null, assembly = null, fewest = Infinity;
 for (const a of ctx.getAssemblies()) {

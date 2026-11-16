@@ -14,9 +14,9 @@
  * their cache being warm before projecting.
  *
  * Six `block` attributes are the reference tooling's rules for collecting
- * the data a party signs: `design.article` (`"mandatory"`: the canvas writes
- * the DAO's live mandatory clauses into each agreement;
- * `"attestations"`: a process-log clause stays an empty anchor at commit),
+ * the data a party signs: `design.article` (`"attestations"`: a process-log
+ * clause stays an empty anchor at commit; `"denomination"`: the deploy-time
+ * currency fill),
  * `design.scope` (`"assembly"`: composed once for the whole design and folded
  * into every agreement at checkout), `design.fills` (the fields whose values
  * the DESIGNER composes into the assembly; every other clause's assembly
@@ -65,7 +65,7 @@ import { isAddressHex, isBytes32Hex, type Address, type Commitment, type Hex } f
  *  sectioned block. Another frontend may collect the data differently; no
  *  fingerprint function reads these. */
 export interface ProjectionHints {
-    /** The spec's `block.design.article` (e.g. `"mandatory"`, `"attestations"`). */
+    /** The spec's `block.design.article` (e.g. `"attestations"`, `"denomination"`). */
     article?: string;
     /** The spec's `block.design.scope` — `"assembly"` marks a clause composed
      *  ONCE for the whole design (a term of the composition: a denomination
@@ -248,76 +248,6 @@ export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
             return isPrivate ? withholdClauseContent(clauseEntry) : clauseEntry;
         }),
     };
-}
-
-/** True for the MANDATORY clauses (`block.design.article: "mandatory"` —
- *  commerce, as the reference specs declare it). A designer never selects
- *  one: the canvas writes the DAO's live mandatory clauses into every
- *  agreement it registers (`mandatoryClauses`), and the designer composes
- *  the rest. The build requires none of them. Never name this article
- *  "structural" — that word collides with the design/DAG sense.
- *
- *  The article is read from the spec's `block`, which whoever registered the
- *  clause wrote: it confers no protocol standing. A surface that shows a
- *  composition before it is anchored or signed lists every clause this
- *  marks (by key, labeled with the spec's own `clauseId`), never leaves
- *  them out. */
-export function specIsMandatory(spec: ProjectionSpecView): boolean {
-    return spec.hints?.article === "mandatory";
-}
-
-/** The shape a mandatory-article spec has: the sorted names of the content
- *  fields it declares. Two mandatory specs of one shape are two versions of
- *  one clause to the canvas, whatever their names. */
-function mandatoryShape(spec: ProjectionSpecView): string {
-    return spec.fields.map((f) => f.name).filter((f) => specDeclaresContentField(spec, f)).sort().join(",");
-}
-
-/** One `ClauseRegistered` row as the registry reports it: the key, the wallet
- *  that registered it, the block of the registration, and whether its stake
- *  was withdrawn since. */
-export interface ClauseRegistrationRow {
-    clauseKey: Hex;
-    registeredBy: Hex;
-    blockNumber: bigint | number;
-    /** The event's index in its block: two registrations of one shape in one
-     *  block are ordered by it, the later winning. */
-    logIndex?: number;
-    stakeWithdrawn: boolean;
-}
-
-/** The MANDATORY clauses this canvas writes into every agreement it
- *  registers: the clauses `registrant` (the DAO's wallet, a fact of the
- *  chain's deployment record) registered whose stake is live and whose spec
- *  declares the mandatory article at agreement scope — all of them, one per
- *  shape, the later registration winning where the DAO holds two live
- *  clauses of one shape (its own transition; never the version word). The
- *  DAO develops them and earns wherever they are used; a mandatory-article
- *  registration by any other wallet is an ordinary clause and enters no
- *  agreement by this route. Empty when the registrant holds no live
- *  mandatory clause: the canvas then publishes nothing. */
-export function mandatoryClauses(
-    rows: readonly ClauseRegistrationRow[],
-    specs: SpecSource,
-    registrant: Hex,
-): Record<Hex, Record<string, unknown>> {
-    const byShape = new Map<string, { clauseKey: Hex; blockNumber: bigint; logIndex: number }>();
-    for (const row of rows) {
-        if (row.registeredBy.toLowerCase() !== registrant.toLowerCase() || row.stakeWithdrawn) continue;
-        const spec = specs.get(row.clauseKey);
-        if (!spec || !specIsMandatory(spec) || specIsAssemblyScoped(spec)) continue;
-        const shape = mandatoryShape(spec);
-        const block = BigInt(row.blockNumber);
-        const logIndex = row.logIndex ?? 0;
-        const prev = byShape.get(shape);
-        // Later wins: by block, then by the event's index within the block —
-        // the chain's own order, never the order the rows were read in.
-        const later = !prev || block > prev.blockNumber || (block === prev.blockNumber && logIndex > prev.logIndex);
-        if (later) byShape.set(shape, { clauseKey: row.clauseKey, blockNumber: block, logIndex });
-    }
-    const out: Record<Hex, Record<string, unknown>> = {};
-    for (const { clauseKey } of byShape.values()) out[clauseKey] = {};
-    return out;
 }
 
 /** The DESIGNER-authored field names of a clause (`block.design.fills`) —
@@ -917,32 +847,26 @@ export interface BuiltAssembly {
     agreements: Record<Hex, RegisteredAgreement>;
 }
 
-/** Compose ONE agreement's agreement from the mandatory clauses the canvas
- *  writes in and the clauses a designer selected: the scope check (an
- *  assembly-scoped clause never composes on an order; a composed key's spec
- *  must be loaded), the value-free rule (only `block.design.fills` values
- *  survive), and the floor (at least one clause, `assertComposesAClause`; a
- *  clause both carry keeps the designer's composition).
+/** Compose ONE agreement's registered agreement from the clauses a designer
+ *  selected: the scope check (an assembly-scoped clause never composes on an
+ *  order; a composed key's spec must be loaded), the value-free rule (only
+ *  `block.design.fills` values survive), and the floor (at least one clause,
+ *  `assertComposesAClause`).
  *  The result is the registered agreement's
  *  document and its key — what `AgreementRegistry` takes, whether the
  *  designer registers it on its own or an assembly's publish registers it
  *  for an agreement. `buildAssembly` composes every new agreement through
  *  this one function.
  *
- *  The mandatory clauses (`mandatory`, the DAO's live mandatory clauses the
- *  canvas reads from the registry — `mandatoryClauses`) are written in first
- *  and the designer's selection over them. No topology is composed: who
- *  follows whom is the assembly entry's `follows`. An authored agreement names its clauses itself and passes none. */
+ *  The agreement carries exactly the clauses the designer selected: nothing
+ *  is written in. No topology is composed: who follows whom is the assembly
+ *  entry's `follows`. */
 export function composeOrderAgreement(args: {
     /** clauseKey → the designer's composed values for this order. */
     clauses: Readonly<Record<Hex, Record<string, unknown>>>;
-    /** The mandatory clauses the canvas writes into every agreement
-     *  (`mandatoryClauses`): clauseKey → `{}`. Optional for an authored
-     *  agreement that names them itself. */
-    mandatory?: Readonly<Record<Hex, Record<string, unknown>>>;
     specs: SpecSource;
 }): { composed: RegisteredAgreement; agreementHash: Hex } {
-    const { clauses: composedClauses, mandatory, specs } = args;
+    const { clauses: composedClauses, specs } = args;
     for (const clauseKey of Object.keys(composedClauses) as Hex[]) {
         const spec = specs.get(clauseKey);
         if (!spec) {
@@ -960,17 +884,10 @@ export function composeOrderAgreement(args: {
     // fills (block.design.fills — the designer's tailoring, consent's
     // affixed documents) keep their composed values; everything else
     // strips to `{}` here, so agreements are value-free by construction.
-    const selection: Record<Hex, Record<string, unknown>> = {};
+    const clauses: Record<Hex, Record<string, unknown>> = {};
     for (const [clauseKey, values] of Object.entries(composedClauses) as [Hex, Record<string, unknown>][]) {
-        selection[clauseKey] = designFillValues(specs.get(clauseKey), values);
+        clauses[clauseKey] = designFillValues(specs.get(clauseKey), values);
     }
-    const defaults: Record<Hex, Record<string, unknown>> = {};
-    for (const [clauseKey, values] of Object.entries(mandatory ?? {}) as [Hex, Record<string, unknown>][]) {
-        const spec = specs.get(clauseKey);
-        if (!spec) throw new Error(`mandatory clause ${clauseKey} is not loaded`);
-        defaults[clauseKey] = designFillValues(spec, values);
-    }
-    const clauses: Record<Hex, Record<string, unknown>> = { ...defaults, ...selection };
     assertComposesAClause(clauses, "the agreement");
     const composed: RegisteredAgreement = { clauses };
     return { composed, agreementHash: agreementHashOf(composed) };
@@ -980,10 +897,8 @@ export function composeOrderAgreement(args: {
  *  becomes one agreement binding a registered agreement: EITHER a
  *  registered agreement bound as is (`registeredByOrderId`), OR the clauses
  *  the designer composed for it (`clausesByOrderId`), which become a new
- *  agreement — value-free, with the mandatory clauses (`mandatory`, the
- *  DAO's live mandatory clauses the canvas reads from the registry)
- *  written in first (composition time is the only place; checkout adds no
- *  clause). Each entry carries its own topology as `follows`, the local
+ *  agreement — value-free, carrying exactly the clauses composed for it
+ *  (composition time is the only place; checkout adds no clause). Each entry carries its own topology as `follows`, the local
  *  labels of the entries whose orders it follows (`[]` on the root); a
  *  registered agreement names none. */
 export function buildAssembly(args: {
@@ -1001,12 +916,9 @@ export function buildAssembly(args: {
      *  `block.design.scope: "assembly"`, composed ONCE for the whole design
      *  (clauseKey → the designer's values). Optional; absent = none. */
     assemblyClauses?: Readonly<Record<Hex, Record<string, unknown>>>;
-    /** The mandatory clauses the canvas writes into every agreement it
-     *  composes (`mandatoryClauses`): clauseKey → `{}`. */
-    mandatory?: Readonly<Record<Hex, Record<string, unknown>>>;
     specs: SpecSource;
 }): BuiltAssembly {
-    const { name, summary, description, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, mandatory, specs } = args;
+    const { name, summary, description, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, specs } = args;
     // SCOPE VERIFICATION: a clause binds where its spec
     // declares — an assembly-scoped clause composed on an order (or an
     // agreement-scoped clause composed at assembly level) is a build error,
@@ -1061,12 +973,10 @@ export function buildAssembly(args: {
             assertNotReservedKey(agreementHash, `${id} agreementHash`);
             return { id, agreementHash, clauses: {}, follows: parents };
         }
-        // The one composition rule (`composeOrderAgreement`): the mandatory
-        // clauses written in first, the designer's clause SELECTION over them,
-        // value-free but for design fills.
+        // The one composition rule (`composeOrderAgreement`): the designer's
+        // clause SELECTION, value-free but for design fills.
         const { composed: registeredAgreement, agreementHash } = composeOrderAgreement({
             clauses: clausesByOrderId[order.orderHash] ?? {},
-            mandatory,
             specs,
         });
         agreements[agreementHash] = registeredAgreement;
@@ -1087,9 +997,7 @@ export function buildAssembly(args: {
 /**
  * An authored agreement (`agreements/<name>.json`): the clauses a
  * designer composes into it, written by clause NAME with the
- * designer's fills, beside the designer's own words. The mandatory
- * clauses are named like any other: an authored agreement states what the
- * canvas would write in. Seed time only.
+ * designer's fills, beside the designer's own words. Seed time only.
  */
 export interface AuthoredAgreement {
     name?: string;

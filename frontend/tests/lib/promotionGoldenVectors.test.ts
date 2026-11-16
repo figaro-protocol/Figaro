@@ -12,7 +12,7 @@
  *   3. agreement projection → checkoutHash (since Phase 3: @figaro-protocol/sdk
  *      projection — spec-default injection, process-log skip, clause sort),
  *   4. assembly composition → assemblyHash (since Phase 3: @figaro-protocol/sdk
- *      projection — the mandatory pick's clauses merged, sparse-version
+ *      projection — the designer's composed clauses, sparse-version
  *      normalization, editorial exclusion).
  *
  * The fixture lives in `sdk/tests/fixtures/promotion-golden-vectors.json` so
@@ -42,7 +42,7 @@ import {
 } from "@figaro-protocol/sdk/agent";
 import { canonicalize, buildOrderAgreement, buildAssembly, serializeAssembly } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
-import { mandatoryDefaults, primeClauseSpecs, resolveAuthored } from "./primeClauseSpecs";
+import { primeClauseSpecs, resolveAuthored } from "./primeClauseSpecs";
 
 /** A clause map authored by NAME, resolved to clause keys over `clauses/` —
  *  the seeding's resolution (`resolveAuthoredClauseKeys`); the inputs below
@@ -90,9 +90,8 @@ function projectionCases() {
     };
 }
 
-/** Two-node parent-edged design (root + child) exercising the mandatory
- *  clauses the canvas writes into every agreement (the DAO's live mandatory
- *  clauses, nothing picked), the local relabeling, the sparse-version
+/** Two-node parent-edged design (root + child), each order composing the
+ *  commerce clause, exercising the local relabeling, the sparse-version
  *  normalization, and the ASSEMBLY-SCOPE placement (applicable-law declares
  *  design.scope "assembly" and no design fill — the designer composes it once
  *  at the assembly level with no values, and the buyer fills it at checkout). */
@@ -104,9 +103,8 @@ function assemblyCase() {
     const built = buildAssembly({
         name: "Golden Vector Chain",
         orders,
-        clausesByOrderId: {},
+        clausesByOrderId: { "synthetic-root": byKey({ "figaro-commerce": {} }), "synthetic-child": byKey({ "figaro-commerce": {} }) },
         assemblyClauses: byKey({ "figaro-applicable-law": {} }),
-        mandatory: mandatoryDefaults(),
         specs: specSource(),
     });
     return {
@@ -274,7 +272,7 @@ describe("SDK-promotion golden vectors — the live bytes, frozen", () => {
         expect(checkoutHash).toBe(v.checkoutHash);
     });
 
-    it("assembly: the mandatory pick + relabeling reproduce the frozen assembly, its agreements + assemblyHash", () => {
+    it("assembly: the composed clauses + relabeling reproduce the frozen assembly, its agreements + assemblyHash", () => {
         const v = loadVectors().assembly;
         const assembly = assemblyCase();
         expect(assembly.json).toBe(v.canonicalJson);

@@ -177,7 +177,6 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_AGREEMENT_REGISTRY"        "$AGREEMENT_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS"         "$FLORIN_TOKEN_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_USAGE_COUNTER"             "$USAGE_COUNTER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_MINTER"               "$RPGF_MINTER_ADDR"
-update_env "$CORE_ENV" "NEXT_PUBLIC_DAO_TREASURY"              "$DAO_TREASURY_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_BATCH_VERIFIER"            "$BATCH_VERIFIER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_MULTISENDER"               "$MULTISENDER_ADDR"
 
@@ -258,7 +257,6 @@ echo "   NEXT_PUBLIC_AGREEMENT_REGISTRY=$AGREEMENT_ADDR"
 echo "   NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=$FLORIN_TOKEN_ADDR"
 echo "   NEXT_PUBLIC_USAGE_COUNTER=$USAGE_COUNTER_ADDR"
 echo "   NEXT_PUBLIC_RPGF_MINTER=$RPGF_MINTER_ADDR"
-echo "   NEXT_PUBLIC_DAO_TREASURY=$DAO_TREASURY_ADDR"
 echo "   NEXT_PUBLIC_IPFS_API_URL / NEXT_PUBLIC_IPFS_GATEWAY_URL / NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL — local Kubo defaults (set only if absent)"
 echo "   Deployment: $CORE_DEPLOYMENT"
 
@@ -267,8 +265,8 @@ echo "   Deployment: $CORE_DEPLOYMENT"
 # to IPFS (Deploy.s.sol:77-80). populate-clauses.mjs is the single clause-population
 # path (same script prod/testnet/mainnet use) and is idempotent: a clause already on
 # the registry is skipped. Running it HERE makes a bare `deploy-local.sh` self-
-# sufficient — every deploy ends with the mandatory-article clause
-# (figaro-commerce) pinned + anchored. Without it the
+# sufficient — every deploy ends with the reference clauses pinned + anchored.
+# Without it the
 # frontend's useClauseSpecs() never loads and the designer/checkout surfaces crash
 # with "clause specs not loaded: no structural clauses in the cache".
 # The same invocation registers the reference assemblies, as the Sepolia
@@ -276,19 +274,17 @@ echo "   Deployment: $CORE_DEPLOYMENT"
 # AgreementRegistry, then the assembly on AssemblyRegistry, with the devnet's
 # MockERC20 filled into the denomination pin a written reference leaves
 # unfilled (the token populate-test-data.mjs and the e2e specs fill too).
-# ── The mandatory clauses are the DAO's ──────────────────────────────────────
-# figaro-commerce is registered by the DAO's wallet, the
-# treasury multisig (deployments/31337.expected.json § registrations.byClause),
-# because the frontend reads the mandatory clauses as the DAO's live
-# registrations whose spec declares the mandatory article. On a devnet the
-# treasury is MockTreasuryMultisig with anvil[0..2] as 2-of-3 owners, so the
-# same vault-mode run the Sepolia genesis uses (work/deploy/seed-sepolia-2-
-# vault-mandatory.sh) runs here with two anvil owner keys; the vault pays the
-# deposit from its own balance, funded first. Devnet only: the keys are
-# anvil's.
+# ── The DAO's clause ─────────────────────────────────────────────────────────
+# figaro-commerce is registered by the DAO's wallet, the treasury multisig
+# (deployments/31337.expected.json § registrations.byClause), so the DAO is
+# its designer of record and earns wherever a designer composes it. On a
+# devnet the treasury is MockTreasuryMultisig with anvil[0..2] as 2-of-3
+# owners, so the same vault-mode run the Sepolia genesis uses runs here with
+# two anvil owner keys; the vault pays the deposit from its own balance,
+# funded first. Devnet only: the keys are anvil's.
 if [ "$(cast chain-id --rpc-url "$RPC_URL")" = "31337" ]; then
     echo ""
-    echo "📎 Registering the mandatory clauses under the DAO treasury $DAO_TREASURY_ADDR (vault mode)..."
+    echo "📎 Registering the DAO's clause under the DAO treasury $DAO_TREASURY_ADDR (vault mode)..."
     cast send --rpc-url "$RPC_URL" --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
         "$DAO_TREASURY_ADDR" --value 0.1ether > /dev/null
     (cd "$REPO_ROOT/frontend" && \

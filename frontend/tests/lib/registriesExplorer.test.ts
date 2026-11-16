@@ -14,7 +14,7 @@ const row = (over: Partial<ExplorerRow>): ExplorerRow => ({
 });
 
 const ROWS: ExplorerRow[] = [
-    row({ key: "c1", id: "figaro-commerce", name: "Commerce", article: "mandatory", registeredBy: "0xDAO", blockNumber: 10n, text: "figaro-commerce Commerce mandatory 0xDAO" }),
+    row({ key: "c1", id: "figaro-cargo", name: "Cargo", article: "logistics", registeredBy: "0xDAO", blockNumber: 10n, text: "figaro-cargo Cargo logistics 0xDAO" }),
     row({ key: "c2", id: "figaro-schedule", name: "Schedule", article: "coordination", registeredBy: "0xFounder", blockNumber: 30n, text: "figaro-schedule Schedule coordination 0xFounder" }),
     row({ key: "c3", id: "figaro-old", name: "Old", article: "coordination", registeredBy: "0xFounder", blockNumber: 5n, stakeWithdrawn: true, text: "figaro-old Old coordination" }),
     row({ family: "assemblies", key: "a1", id: "asm-1", name: "Equipment hire", registeredBy: "0xFounder", blockNumber: 40n, clauses: ["figaro-commerce", "figaro-utility-token"], text: "asm-1 Equipment hire figaro-commerce figaro-utility-token" }),
@@ -39,14 +39,14 @@ describe("parseExplorerQuery / serializeExplorerQuery", () => {
 describe("selectRows", () => {
     it("filters by family and hides withdrawn stakes by default (K4 de-surfacing)", () => {
         const out = selectRows(ROWS, parseExplorerQuery({ family: "clauses" }));
-        expect(out.map((r) => r.id)).toEqual(["figaro-schedule", "figaro-commerce"]); // article asc: coordination, mandatory
+        expect(out.map((r) => r.id)).toEqual(["figaro-schedule", "figaro-cargo"]); // article asc: coordination, logistics
     });
     it("shows withdrawn only when asked", () => {
         expect(selectRows(ROWS, parseExplorerQuery({ family: "clauses", stake: "withdrawn" })).map((r) => r.id)).toEqual(["figaro-old"]);
         expect(selectRows(ROWS, parseExplorerQuery({ family: "clauses", stake: "all" })).length).toBe(3);
     });
     it("facets: article, registeredBy (case-insensitive), composing clause, and free text", () => {
-        expect(selectRows(ROWS, parseExplorerQuery({ family: "clauses", article: "mandatory" })).map((r) => r.id)).toEqual(["figaro-commerce"]);
+        expect(selectRows(ROWS, parseExplorerQuery({ family: "clauses", article: "logistics" })).map((r) => r.id)).toEqual(["figaro-cargo"]);
         expect(selectRows(ROWS, parseExplorerQuery({ family: "assemblies", registeredBy: "0xfounder" })).map((r) => r.id)).toEqual(["asm-1"]);
         expect(selectRows(ROWS, parseExplorerQuery({ family: "assemblies", clause: "figaro-geolocation" })).map((r) => r.id)).toEqual(["asm-2"]);
         expect(selectRows(ROWS, parseExplorerQuery({ family: "assemblies", q: "SALE" })).map((r) => r.id)).toEqual(["asm-2"]);
@@ -63,12 +63,12 @@ describe("selectRows", () => {
 
 describe("facetValues + explorerBreadcrumb", () => {
     it("derives facet values from the rows, never a fixed list", () => {
-        expect(facetValues(ROWS, "clauses", "article")).toEqual(["coordination", "mandatory"]);
+        expect(facetValues(ROWS, "clauses", "article")).toEqual(["coordination", "logistics"]);
         expect(facetValues(ROWS, "assemblies", "registeredBy")).toEqual(["0xdao", "0xfounder"]);
     });
     it("builds the deep-link trail from the active facet", () => {
-        expect(explorerBreadcrumb(parseExplorerQuery({ family: "clauses", article: "mandatory" })).map((b) => b.label))
-            .toEqual(["Terms", "Registries", "Clauses", "mandatory"]);
+        expect(explorerBreadcrumb(parseExplorerQuery({ family: "clauses", article: "logistics" })).map((b) => b.label))
+            .toEqual(["Terms", "Registries", "Clauses", "logistics"]);
         expect(explorerBreadcrumb(parseExplorerQuery({ family: "members" })).map((b) => b.label))
             .toEqual(["Terms", "Registries", "Members"]);
     });

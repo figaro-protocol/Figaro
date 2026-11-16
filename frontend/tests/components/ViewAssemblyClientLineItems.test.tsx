@@ -51,7 +51,6 @@ vi.mock("@/lib/designer/draftToAssembly", async (importOriginal) => ({
         composedByOrderId: {},
         composedClausesByOrderId: {},
         assemblyClauses: {},
-        mandatory: [],
         withoutLineItems: REVIEW.withoutLineItems,
     }),
 }));

@@ -118,8 +118,7 @@ One build serves every deployment it lists, and **a page shows one of them,
 resolved once when the page loads** (`lib/shared/chains.ts`, `pageDeployment`).
 Because it is resolved once, the wagmi config still lists one chain and every
 module still reads one address set: `activeChain`, `CONTRACTS`, the composition
-resolvers, `publicClient`, `deploymentBlock()`, `mandatoryClauseRegistrant()`
-and `deploymentFingerprint()` are the page's deployment's, and a signature is
+resolvers, `publicClient`, `deploymentBlock()` and `deploymentFingerprint()` are the page's deployment's, and a signature is
 bound to its chain. Moving to another deployment is a navigation that loads the
 page again (`showDeployment`).
 
@@ -234,7 +233,6 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     `components/runtime/PayoutRoutingPanel.tsx` beside what resolution paid out.
 - **`designer/`** — assembly authoring: synthetic DAG session + autosave + fork + publish (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyToDraft.ts`, `draftToAssembly.ts` — the authoring mirror of `assemblyToDraft.ts` and the ONE draft→assembly walk that publish, the hand-off panel, the canvas identity readout, and the review screen share (`projectSnapshotForReview` is that walk's review face: the composition a review renders comes out of the assembly publish anchors, never a second reading of the draft) — `publishAssembly.ts`; the assembly build itself — `buildAssembly`/`serializeAssembly` — is `@figaro-protocol/sdk`)
   - *The designer's picks, by key:* `assemblyComposedClauses` lists each agreement's composed clauses by clause key, each labeled with the spec's own `clauseId`, `version` and title read from the spec the key names (`composedClauseLabel` shows the name and version beside a short form of the key — two specs may share a name, never a key); the review face re-keys it onto the canvas's order ids as `composedClausesByOrderId`, which the review listing, the canvas chips and the drawer read.
-  - *The mandatory clauses, listed:* `assemblyMandatoryClauses` lists every clause the assembly carries whose spec marks it mandatory (the DAO's, written in by the canvas — `mandatoryClausesForCanvas` — or carried by a bound agreement), by key, with its spec's label and the agreements carrying it, for the designer to confirm before publish.
 - **`handoff/`** — handoff-clause runtime TRANSPORTS + persistence: the channel factory (`channel.ts` — mock/null/XMTP chosen by DERIVED facts, never a setting: XMTP iff the wallet already has an inbox, `walletHasXmtpInbox` probe — one seam, one choreography, and no per-wallet transport setting), the transport implementations (`xmtpChannel.ts`, `mockChannel.ts`, `nullChannel.ts`), the relay adapter (`relayChannel.ts` — the handoff relay's PRE-COMMIT cell speaking the SDK's `CoordinationChannel`, so the dispatch race runs ONE choreography over every transport; also home of `relayCommitmentPayload`), per-order ECDH keypair sessionStorage (`ecdh.ts`), handoff-messaging + handoff-persistence services (`handoffMessagingService.ts`, `handoffPersistenceService.ts`). The anchor check (`handoffAnchorState.ts`) matches an attestation from either path, and `useHandoffCleanup.ts` watches `OrderResolved` at `FigaroCore` and at `FigaroBatchVerifier`. The wire protocol itself (message shapes, ECDH derivation, AES-GCM wrapping) is `@figaro-protocol/sdk/handoff`.
 - **`member/`** — the participant's own data: member-profile document family (`memberProfileMetadata.ts`), branding (`memberBranding*.ts`, `useMemberBranding.ts`), the MembersRegistry write/read hooks (`useMembersRegistry.ts`, `usePublishMemberProfile.ts`, `useUpdateMemberProfile.ts`), profile geocoding (`geocode.ts`), the cached URI-fetch pipeline (`uriFetcher.ts` — a single-layer reader, so it lives here), the cached profile read path (`profileFetcher.ts`) and its erasure half (`profileErasure.ts`); the catalog family — authoring/publication/reads (`catalog*.ts`, `memberCatalogMetadata*.ts`, on the same `uriFetcher.ts` pipeline), listings + discovery (`useMemberListings.ts`, `discoveryService.ts`), the enrollment-wizard state (`onboardingState.ts` — the wizard spans profile, catalog, seller and buyer steps), and the ONE counterparty-name resolver (`memberListing.ts` `displayNameForAddress`, over any `{address, name}` collection). Both sides live here: member = what a wallet IS, seller = which side of a trade it stands on.
 - **`semantic/`** — runtime derivation from committed state: `deriveProcessModelFromRuntime.ts`, `processTopology.ts`, `processRecourse.ts`, `models.ts`, capability execution
@@ -265,25 +263,16 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
   `registerAgreement`, the same path an assembly's publish takes per
   agreement) with no assembly published, then binds the agreement to the
   registered key. `DesignSnapshot.registeredByOrderId` holds the
-  bound key per agreement; the mandatory clauses are never in the snapshot,
-  they are read from the registry at build time. Publish pins and registers each new agreement
+  bound key per agreement. Publish pins and registers each new agreement
   (`registerAgreement`, one stake per distinct new agreement, a receipt row per
   registration) before the assembly. The review lists each agreement's
   `agreementHash`, whether it is bound or composed, and the assembly root;
   `AssemblyTermsPanel` takes a `composition` prop.
   - *Parties:* buyer, seller, DAG position (the entry's `follows`).
-  - *Registry — the mandatory article first:* the mandatory clauses the canvas
-    writes into every agreement, the DAO wallet's live `ClauseRegistry`
-    registrations whose spec declares the mandatory article
-    (`mandatoryClausesForCanvas`), shown with nothing to choose; a mandatory-article
-    registration by another wallet is an ordinary clause, offered like any other. They join
-    the clauses the order composes; a bound agreement must already carry them. The canvas
-    closes Review, and the review refuses publish, while the mandatory clauses are not known:
-    the site names no DAO wallet, a live DAO registration's spec is still being read
-    (`mandatoryClausesPending`), or the DAO holds no live mandatory clause on the network.
-  - *Registry — the clauses:* every other clause registered on `ClauseRegistry`, grouped by
+  - *Registry — the clauses:* every live clause registered on `ClauseRegistry`, grouped by
     `block.design.article`, each a checkbox — read from the network, never a
-    hardcoded roster. MANDATORY clauses are not offered one by one. ASSEMBLY-SCOPED clauses (`design.scope: "assembly"`) are
+    hardcoded roster; `figaro-commerce` is offered like any other, and nothing is
+    written into an agreement without the designer's check. ASSEMBLY-SCOPED clauses (`design.scope: "assembly"`) are
     EXCLUDED here: they compose once in the canvas's `AssemblyTermsPanel`. The two
     surfaces partition the registry by declared scope, so designer-side duplicates
     are structurally impossible, and `buildAssembly` re-verifies at
@@ -306,7 +295,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyToDraft.ts` (fork a published assembly's assembly into an editable draft).
 
-**The agreement build (composition rules).** The published **assembly is the faithful statement** of what the designer composed; `buildOrderAgreement` (`@figaro-protocol/sdk`, fed by the live-cache `specSource()` adapter) is a **pure, deterministic projection** of it — the composed clauses, plus the spec-declared mandatory defaults, and nothing more. It synthesizes no meaning the assembly + specs don't determine and reads no clause by name: mandatory clauses (`block.design.article: "mandatory"` — commerce) enter a new agreement as the DAO's live registrations the canvas reads from the registry (`mandatoryClausesForCanvas`), written in generically (`composeOrderAgreement`; a never-seen mandatory clause in a picked agreement merges with zero code). The merge is at composition only: `buildAssembly` refuses an order with no pick and a bound agreement lacking a clause of its pick, and checkout fills values and writes the topology leaf (`Agreement.follows`, from each entry's `follows`), never adding or dropping a clause. Never a hardcoded clause→clause map, a named-clause branch, or a checkout-time guess; and no clause auto-spawns a DAG node — nodes are the designer's, drawn on the canvas.
+**The agreement build (composition rules).** The published **assembly is the faithful statement** of what the designer composed; `buildOrderAgreement` (`@figaro-protocol/sdk`, fed by the live-cache `specSource()` adapter) is a **pure, deterministic projection** of it — the composed clauses, their spec-declared defaults, and nothing more. It synthesizes no meaning the assembly + specs don't determine and reads no clause by name; no clause is written into an agreement the designer did not compose (`composeOrderAgreement` keeps exactly the selection). Composition happens at design time only: `buildAssembly` refuses an agreement composing no clause and an order that both binds a registered agreement and composes clauses, and checkout fills values and writes the topology leaf (`Agreement.follows`, from each entry's `follows`), never adding or dropping a clause. Never a hardcoded clause→clause map, a named-clause branch, or a checkout-time guess; and no clause auto-spawns a DAG node — nodes are the designer's, drawn on the canvas.
 
 ## Clause validation in the frontend
 
@@ -318,7 +307,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
   spec-consuming surfaces gate on its `loaded`. The cache holds
   `Anchored` specs only: a spec enters after the SDK's `anchorClauseSpec`
   parsed the fetched bytes and checked that the canonical spec, without its
-  top-level `block`, hashes to the clause key. Every reader — `getClauseSpec`, `clauseIsMandatory`,
+  top-level `block`, hashes to the clause key. Every reader — `getClauseSpec`, `clauseIsAssemblyScoped`,
   `clauseNestsUnder`, `describeClause` and the rest — takes a clause key; the
   spec's `clauseId` and `version` are its label. The other registry reads type
   the same way — `fetchAssembly`, `fetchAgreement` and

@@ -886,12 +886,11 @@ contract UsageCounterTest is Test {
         assertEq(counter.totalScoreIn(0), liveScore);
     }
 
-    function test_mandatoryClausesEarnForTheirAuthor() public {
-        // The mandatory clauses ride on EVERY order: the canvas writes in
-        // whatever mandatory clauses the DAO wallet has live on the network
-        // (`mandatoryClauses`, sdk/src/projection.ts), on the reference seeding
-        // figaro-commerce. They earn like any other clause: scoring them
-        // rewards their designer of record on every resolved process.
+    function test_commerceClauseEarnsForItsDesignerWhereComposed() public {
+        // figaro-commerce is a clause like any other: where a designer
+        // composes it, each resolved process that carries it counts one use,
+        // and scoring it rewards its designer of record (the DAO's treasury
+        // on the reference seeding).
         bytes32 commerceKey = keccak256('{"clauseId":"figaro-commerce","version":1}');
 
         CommitmentTypes.Commitment memory c = _settledOrder(commerceKey, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);

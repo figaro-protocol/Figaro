@@ -1,11 +1,10 @@
 /**
  * deriveAgreementGroups reads each clause's spec by the KEY the assembly
  * composed — never another spec of the same name. A stranger may register a
- * `figaro-consent` lookalike (version 99) marked mandatory; it is another key,
- * and the assembly's own consent clause is still an ordinary, buyer-filled
- * clause. Every clause the agreement carries is listed: a clause composed
- * under a mandatory key is listed too, marked `mandatory` and never fillable,
- * since the buyer signs it.
+ * `figaro-consent` lookalike (version 99) under an article this reader has no
+ * rule for (`mandatory`), with no designer fill; it is another key, and both
+ * are ordinary clauses: each is listed, since the buyer signs it, and each is
+ * fillable exactly when its own spec leaves the buyer a field.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -13,7 +12,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buyerAuthoredFields, deriveAgreementGroups, unfilledRequiredFills } from "@/lib/checkout/checkoutDerivations";
 import {
     _resetClauseSpecCache_TESTING_ONLY,
-    clauseIsMandatory,
     getClauseSpec,
     loadClauseSpec,
     setClauseSpecFetcher,
@@ -22,7 +20,7 @@ import { hydrateAuthored, pinSpec } from "./primeClauseSpecs";
 
 const LEAD = "0x1111111111111111111111111111111111111111" as const;
 const v1 = JSON.parse(readFileSync(path.resolve(process.cwd(), "../clauses/figaro-consent.json"), "utf8"));
-const v99 = { ...v1, version: 99, block: { ...v1.block, design: { ...v1.block.design, article: "mandatory" } } };
+const v99 = { ...v1, version: 99, block: { ...v1.block, design: { ...v1.block.design, article: "mandatory", fills: [] } } };
 const SPEC_V1 = pinSpec(v1);
 const V99 = pinSpec(v99);
 const DOCUMENTS = { documents: [] };
@@ -30,7 +28,7 @@ const UNLOADED = `0x${"ee".repeat(32)}`;
 
 const groupsFor = (authored: Record<string, unknown>) =>
     deriveAgreementGroups({
-        pickedAssembly: { hydratedAssembly: hydrateAuthored(authored, { pick: false }), coSellerBindings: [] },
+        pickedAssembly: { hydratedAssembly: hydrateAuthored(authored, { compose: false }), coSellerBindings: [] },
         leadAddress: LEAD,
         sellerCatalogs: [] as never,
     });
@@ -51,47 +49,44 @@ describe("deriveAgreementGroups — spec reads by key", () => {
     beforeAll(async () => { await load(SPEC_V1, V99); });
     afterAll(() => _resetClauseSpecCache_TESTING_ONLY());
 
-    it("two specs of one name are loaded as two keys: the lookalike declares mandatory, the original does not", () => {
+    it("two specs of one name are loaded as two keys", () => {
         expect(SPEC_V1.clauseKey).not.toBe(V99.clauseKey);
-        expect(clauseIsMandatory(SPEC_V1.clauseKey)).toBe(false);
-        expect(clauseIsMandatory(V99.clauseKey)).toBe(true);
+        expect(getClauseSpec(V99.clauseKey)?.block?.design.article).toBe("mandatory");
     });
 
-    it("keeps an agreement's consent clause in the review, ordinary", () => {
+    it("keeps an agreement's consent clause in the review, with no field for the buyer", () => {
         const groups = groupsFor({ agreements: [{ id: "agreement-0", clauses: { [SPEC_V1.clauseKey]: DOCUMENTS } }] });
         expect(reviewed(groups, "agreement-0")).toEqual([SPEC_V1.clauseKey]);
-        expect(rowOf(groups, "agreement-0", SPEC_V1.clauseKey)?.mandatory).toBe(false);
+        expect(rowOf(groups, "agreement-0", SPEC_V1.clauseKey)?.fillable).toBe(false);
     });
 
-    it("lists the clause composed under the mandatory lookalike's key, marked mandatory and not fillable", () => {
+    it("reads the lookalike under the `mandatory` article as an ordinary clause, fillable by its own spec", () => {
         const groups = groupsFor({ agreements: [{ id: "agreement-0", clauses: { [V99.clauseKey]: DOCUMENTS } }] });
         expect(reviewed(groups, "agreement-0")).toEqual([V99.clauseKey]);
-        expect(rowOf(groups, "agreement-0", V99.clauseKey)).toMatchObject({ mandatory: true, fillable: false, data: DOCUMENTS });
-        expect(unfilledRequiredFills(groups, {})).toEqual([]);
+        expect(rowOf(groups, "agreement-0", V99.clauseKey)).toMatchObject({ fillable: true, data: DOCUMENTS });
+        expect(rowOf(groups, "agreement-0", V99.clauseKey)?.fields.map((f) => f.name)).toEqual(["documents"]);
     });
 
     it("keeps an assembly-scoped consent clause in the assembly terms", () => {
         const groups = groupsFor({ assemblyClauses: { [SPEC_V1.clauseKey]: DOCUMENTS }, agreements: [{ id: "agreement-0", clauses: {} }] });
         expect(reviewed(groups, "assembly")).toEqual([SPEC_V1.clauseKey]);
-        expect(rowOf(groups, "assembly", SPEC_V1.clauseKey)?.mandatory).toBe(false);
+        expect(rowOf(groups, "assembly", SPEC_V1.clauseKey)?.fillable).toBe(false);
     });
 
-    it("lists an assembly-scoped clause under the mandatory key, marked mandatory and not fillable", () => {
+    it("reads an assembly-scoped clause under the `mandatory` article as an ordinary assembly term", () => {
         const groups = groupsFor({
             assemblyClauses: { [V99.clauseKey]: DOCUMENTS },
             agreements: [{ id: "agreement-0", clauses: {} }],
         });
         expect(reviewed(groups, "assembly")).toEqual([V99.clauseKey]);
-        expect(rowOf(groups, "assembly", V99.clauseKey)).toMatchObject({ mandatory: true, fillable: false });
+        expect(rowOf(groups, "assembly", V99.clauseKey)).toMatchObject({ fillable: true });
     });
 
     it("lists every clause the agreement carries, in the assembly's order", () => {
         const groups = groupsFor({
             agreements: [{ id: "agreement-0", clauses: { [V99.clauseKey]: DOCUMENTS, [UNLOADED]: {} } }],
         });
-        // An unloaded spec is not mandatory: listed, read as an ordinary clause.
         expect(reviewed(groups, "agreement-0")).toEqual([V99.clauseKey, UNLOADED]);
-        expect(groups[0].clauses.map((c) => c.mandatory)).toEqual([true, false]);
     });
 });
 

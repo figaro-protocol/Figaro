@@ -606,9 +606,7 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     // Every order in the assembly — root + sub-orders — surfaced for review:
     // the buyer signs and bonds ALL of them. Each clause renders its COMPOSED
-    // values (the terms the buyer is agreeing to), spec-driven. Mandatory
-    // clauses (e.g. the commerce clause) are canvas-composed, not
-    // buyer-chosen terms; they stay out of the review.
+    // values (the terms the buyer is agreeing to), spec-driven.
     const agreementGroups = deriveAgreementGroups({
         pickedAssembly,
         leadAddress: memberCatalog.address as `0x${string}`,
@@ -1121,15 +1119,12 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             <p className="text-[11px] font-medium text-ink-muted">{group.label}</p>
                                         )}
                                         <ul className="text-xs text-ink-body space-y-0.5">
-                                            {group.clauses.map(({ clauseKey, values, data, fields, fillable, mandatory }) => {
+                                            {group.clauses.map(({ clauseKey, values, data, fields, fillable }) => {
                                                 const spec = getClauseSpec(clauseKey);
                                                 const specFields = spec?.fields ?? [];
                                                 return (
                                                 <li key={clauseKey} data-testid={`agreement-clause-${clauseKey}`}>
                                                     {spec?.title ?? clauseKey}
-                                                    {mandatory && (
-                                                        <span className="text-ink-muted text-xs" data-testid={`agreement-clause-${clauseKey}-required`}> · required by the assembly</span>
-                                                    )}
                                                     {values && <span className="text-ink-primary"> — {values}</span>}
                                                     <CredentialVerifyButton data={data} />
                                                     {fillable && (

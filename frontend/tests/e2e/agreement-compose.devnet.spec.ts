@@ -17,7 +17,7 @@
  *   order and press "Register this agreement on its own"; REACTION (UI) the
  *   agreement now binds the registered key and the agreements tab lists it;
  *   CHAIN FACT the registry binds that key to the publishing wallet, and the
- *   pinned document hashes to it (the clauses of its mandatory pick merged in).
+ *   pinned document hashes to it and carries exactly the composed clause.
  *
  *   CHAIN FACTS, read out of band: the anchored assembly's root entry binds
  *   the registered agreement's hash and its sub entry a key the registry now
@@ -119,10 +119,12 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         await expect(registeredRow).toHaveAttribute('aria-pressed', 'true');
         await expect(page.getByTestId('drawer-bound-agreement-hash')).toHaveAttribute('title', registeredKey);
 
-        // Sub-order: compose the probe clause — a new agreement.
+        // Sub-order: compose the commerce clause and the probe clause — a new
+        // agreement carrying exactly those two.
         await page.getByTestId(`drawer-node-tab-${subId}`).click();
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+        await page.getByTestId(`drawer-registry-clause-${keyOf('figaro-commerce')}`).check();
         await page.getByTestId(`drawer-registry-clause-${probeKey}`).check();
 
         await page.getByTestId('designer-name-input').fill(`Bound and composed ${nonce}`);
@@ -279,15 +281,14 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
             .toBeVisible({ timeout: 30000 });
 
         // ── CHAIN FACTS: the registry binds the key to the publishing wallet,
-        //    and the pinned document hashes to it with the pick's clauses merged. ──
+        //    and the pinned document hashes to it, carrying exactly what was composed. ──
         const read = await readRegisteredAgreementDocument(agreementHash);
         expect(read, 'AgreementRegistry binds the key').not.toBeNull();
         expect(read!.binding.registeredBy.toLowerCase()).toBe(ANVIL_ACCOUNTS[0].toLowerCase());
         expect(read!.binding.stakeWithdrawn).toBe(false);
         expect(agreementHashOf(read!.document).toLowerCase(), 'the pinned document keys to the registry key').toBe(agreementHash.toLowerCase());
         const composedKeys = Object.keys(read!.document.clauses).map((k) => k.toLowerCase());
-        expect(composedKeys, 'the probe clause is composed').toContain(probeKey.toLowerCase());
-        expect(composedKeys, 'the mandatory commerce clause merged from the pick').toContain(keyOf('figaro-commerce').toLowerCase());
+        expect(composedKeys, 'the probe clause alone is composed: nothing is written in').toEqual([probeKey.toLowerCase()]);
         expect(read!.document.name, 'the document carries the designer\'s name for it').toBe(`Alone ${nonce} · order 1`);
     });
 });

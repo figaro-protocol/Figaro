@@ -20,7 +20,7 @@ import { test, expect } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, type Hex } from 'viem';
 import { CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { makeProbeSpec, registerProbeClause } from './probeAssembly';
-import { discoverAnchoredAssemblies, readAgreementBinding, readLocalDeploymentConfig, publishOrAdoptReviewed } from './devnet-helpers';
+import { discoverAnchoredAssemblies, readAgreementBinding, readLocalDeploymentConfig, publishOrAdoptReviewed, composeCommerceOn } from './devnet-helpers';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -71,6 +71,8 @@ test.describe('clause lookalike (devnet)', () => {
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+        // The designer composes the commerce clause, as any clause.
+        await composeCommerceOn(page);
 
         // Two registrations, two rows — each under its own key, each labeled
         // by its OWN spec's title and version (identical labels: the key is

@@ -76,6 +76,7 @@ import {
     publishOrAdoptReviewed,
     anchoredAssemblyHash,
     isBindingOf,
+    composeCommerceOn,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -195,6 +196,8 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             };
             await orderNodes.first().click();
             await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+            // Each order composes the commerce clause, as any clause.
+            await composeCommerceOn(page, [rootId, bId, cId, dId]);
             // B — component supplier: merchant PROCESS ladder (the designation
             // key) + hand-off + the proximity witness.
             await openNode(bId);

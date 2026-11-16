@@ -44,6 +44,7 @@ import {
     publishOrAdoptReviewed,
     primeRegisteredClauseSpecs,
     isBindingOf,
+    composeCommerceOn,
 } from './devnet-helpers';
 import {
     C,
@@ -132,7 +133,9 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
             await page.getByTestId(`assembly-terms-clause-${C.law}`).check();
             await page.getByTestId(`assembly-terms-clause-${C.kleros}`).check();
 
-            // Compose each node's clauses through the drawer's registry tab.
+            // Each order composes the commerce clause, as any clause; then
+            // each node's clauses through the drawer's registry tab.
+            await composeCommerceOn(page, nodeIds);
             for (let i = 0; i < nodePlan().length; i++) {
                 await page.getByTestId(`drawer-node-tab-${nodeIds[i]}`).click();
                 await page.getByTestId('drawer-tab-registry').click();

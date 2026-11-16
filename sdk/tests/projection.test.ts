@@ -17,7 +17,6 @@ import {
     assertAgreementSignable,
     buildAssembly,
     composeOrderAgreement,
-    mandatoryClauses,
     deriveAssemblySlug,
     withholdClauseContent,
     buildOrderAgreement,
@@ -37,13 +36,11 @@ import {
     type SpecSource,
     type Commitment,
 } from "../src/index.js";
+import * as sdk from "../src/index.js";
 import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceOf, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 const SELLER = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
-/** The DAO's wallet, the registrant of the mandatory clauses. */
-const DAO = "0xFa648187d49B04fb093266DB0d49e57B3B2403A3" as const;
-const STRANGER = "0x1111111111111111111111111111111111111111" as const;
 /** The commitment's token — the token the golden vectors' envelope signs. */
 const CURRENCY = "0x0000000000000000000000000000000000000001" as const;
 const OTHER_TOKEN = "0x0000000000000000000000000000000000000002" as const;
@@ -70,9 +67,9 @@ const SPECS = specSourceFromFixtures([
     "figaro-utility-token",
 ]);
 
-/** The mandatory clauses the canvas writes into every agreement: the DAO's
- *  live mandatory clauses (`mandatoryClauses`), clauseKey → `{}`. */
-const MANDATORY = { [keyOf("figaro-commerce")]: {} };
+/** The commerce clause as a designer composes it on an order: selected,
+ *  with no design fill. */
+const COMMERCE = { [keyOf("figaro-commerce")]: {} };
 
 function commerceData() {
     return {
@@ -251,9 +248,8 @@ describe("projection — golden-vector byte-exactness", () => {
                     { orderHash: "synthetic-root", follows: [] },
                     { orderHash: "synthetic-child", follows: ["synthetic-root"] },
                 ],
-                clausesByOrderId: {},
+                clausesByOrderId: { "synthetic-root": COMMERCE, "synthetic-child": COMMERCE },
                 assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
-                mandatory: MANDATORY,
                 specs: SPECS,
             });
             const assembly = serializeAssembly(built.assembly);
@@ -297,7 +293,7 @@ describe("projection — golden-vector byte-exactness", () => {
         expect(checkoutHash).toBe(vectors.agreementProjection.processLog.checkoutHash);
     });
 
-    it("the mandatory clauses + relabeling + assembly terms reproduce the frozen assembly + assemblyHash", () => {
+    it("the composed clauses + relabeling + assembly terms reproduce the frozen assembly + assemblyHash", () => {
         // figaro-applicable-law is ASSEMBLY-SCOPED (design.scope: "assembly")
         // with no design fill: the designer composes it with no values and the
         // buyer fills it at checkout, so the assembly carries the clause under
@@ -308,9 +304,8 @@ describe("projection — golden-vector byte-exactness", () => {
                 { orderHash: "synthetic-root", follows: [] },
                 { orderHash: "synthetic-child", follows: ["synthetic-root"] },
             ],
-            clausesByOrderId: {},
+            clausesByOrderId: { "synthetic-root": COMMERCE, "synthetic-child": COMMERCE },
             assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
-            mandatory: MANDATORY,
             specs: SPECS,
         });
         const assembly = serializeAssembly(built.assembly);
@@ -326,15 +321,13 @@ describe("projection — golden-vector byte-exactness", () => {
         expect(() => buildAssembly({
             orders: [{ orderHash: "synthetic-root", follows: [] }],
             clausesByOrderId: { "synthetic-root": { [keyOf("figaro-applicable-law")]: {} } },
-            mandatory: MANDATORY,
             specs: SPECS,
         })).toThrow(/design\.scope "assembly"/);
         // …and an agreement-scoped clause at the assembly level likewise.
         expect(() => buildAssembly({
             orders: [{ orderHash: "synthetic-root", follows: [] }],
-            clausesByOrderId: {},
+            clausesByOrderId: { "synthetic-root": COMMERCE },
             assemblyClauses: { [keyOf("figaro-geolocation")]: {} },
-            mandatory: MANDATORY,
             specs: SPECS,
         })).toThrow(/does not declare design\.scope "assembly"/);
     });
@@ -524,12 +517,11 @@ describe("parseProjectionHints — block.checkout.catalogueMeasures", () => {
     });
 });
 
-describe("buildAssembly — the mandatory clauses: the DAO's live mandatory clauses, written into every agreement", () => {
-    // Nothing is picked: the canvas writes the mandatory clauses (the DAO's
-    // live ones, read from the registry) into every agreement before the
-    // designer composes anything. No clause of any shape is required: the
-    // commitment carries the payment and the token, and the format carries
-    // the topology (each entry's `follows`, each order's topology leaf).
+describe("buildAssembly — an agreement carries exactly the clauses its designer composed", () => {
+    // No clause is written in: commerce is a clause like any other, and an
+    // article word confers no standing. The commitment carries the payment
+    // and the token, and the format carries the topology (each entry's
+    // `follows`, each order's topology leaf).
     const ORDERS = [
         { orderHash: "synthetic-root", follows: [] },
         { orderHash: "synthetic-child", follows: ["synthetic-root"] },
@@ -540,41 +532,48 @@ describe("buildAssembly — the mandatory clauses: the DAO's live mandatory clau
     const lookalike = (name: string, edit: (raw: Record<string, unknown>) => Record<string, unknown> = (r) => r): ProjectionSpecView =>
         viewOf(edit({ ...rawSpecOf(name), title: `${name} (a stranger's registration)` }));
 
-    it("writes the mandatory clauses into each agreement composed", () => {
+    it("the SDK exports no rule that writes a clause into an agreement", () => {
+        expect(Object.keys(sdk).filter((name) => name.toLowerCase().includes("mandatory"))).toEqual([]);
+    });
+
+    it("composes an agreement without the commerce clause, and nothing writes it in", () => {
         const { assembly, agreements } = buildAssembly({
             orders: ORDERS,
-            clausesByOrderId: { "synthetic-child": { [keyOf("figaro-geolocation")]: { origin: "u4pru" } } },
-            mandatory: MANDATORY,
+            clausesByOrderId: { "synthetic-root": { [keyOf("figaro-geolocation")]: {} }, "synthetic-child": { [keyOf("figaro-geolocation")]: { origin: "u4pru" } } },
+            specs: base,
+        });
+        for (const entry of assembly.agreements) {
+            expect(agreements[entry.agreementHash].clauses).toEqual({ [keyOf("figaro-geolocation")]: {} });
+        }
+    });
+
+    it("composes the commerce clause as it composes any clause", () => {
+        const { assembly, agreements } = buildAssembly({
+            orders: ORDERS,
+            clausesByOrderId: { "synthetic-root": COMMERCE, "synthetic-child": { ...COMMERCE, [keyOf("figaro-geolocation")]: { origin: "u4pru" } } },
             specs: base,
         });
         const [root, child] = assembly.agreements;
-        expect(Object.keys(agreements[root.agreementHash].clauses).sort()).toEqual(Object.keys(MANDATORY).sort());
-        expect(agreements[child.agreementHash].clauses).toEqual({ ...MANDATORY, [keyOf("figaro-geolocation")]: {} });
+        expect(agreements[root.agreementHash].clauses).toEqual(COMMERCE);
+        expect(agreements[child.agreementHash].clauses).toEqual({ ...COMMERCE, [keyOf("figaro-geolocation")]: {} });
     });
 
-    it("refuses an agreement composing no clause, naming the agreement; commerce is not required", () => {
+    it("composes a stranger's clause whose article is `mandatory` only where the designer composes it", () => {
+        const theirs = lookalike("figaro-commerce", (r) => ({
+            ...r,
+            clauseId: "stranger-line-items",
+            block: { ...(r.block as Record<string, unknown>), design: { ...((r.block as { design?: object }).design ?? {}), article: "mandatory" } },
+        }));
+        const specs = specSourceWithRegistrations(base, [theirs]);
+        const without = buildAssembly({ orders: [ORDERS[0]], clausesByOrderId: { "synthetic-root": { [keyOf("figaro-geolocation")]: {} } }, specs });
+        expect(without.agreements[without.assembly.agreements[0].agreementHash].clauses).toEqual({ [keyOf("figaro-geolocation")]: {} });
+        const withIt = buildAssembly({ orders: [ORDERS[0]], clausesByOrderId: { "synthetic-root": { [theirs.clauseKey]: {} } }, specs });
+        expect(withIt.agreements[withIt.assembly.agreements[0].agreementHash].clauses).toEqual({ [theirs.clauseKey]: {} });
+    });
+
+    it("refuses an agreement composing no clause, naming the agreement", () => {
         expect(() => buildAssembly({ orders: ORDERS, clausesByOrderId: {}, specs: base }))
             .toThrow(/the agreement: composes no clause/);
-        const { agreements, assembly } = buildAssembly({
-            orders: ORDERS, clausesByOrderId: { "synthetic-root": { [keyOf("figaro-geolocation")]: {} }, "synthetic-child": { [keyOf("figaro-geolocation")]: {} } }, specs: base,
-        });
-        expect(agreements[assembly.agreements[0].agreementHash].clauses).toEqual({ [keyOf("figaro-geolocation")]: {} });
-    });
-
-    it("an assembly-scoped registration marking itself mandatory joins no composition", () => {
-        const floor = lookalike("figaro-applicable-law", (r) => ({
-            ...r,
-            clauseId: "stranger-assembly-floor",
-            block: { ...(r.block as Record<string, unknown>), design: { ...((r.block as { design?: object }).design ?? {}), article: "mandatory", scope: "assembly" } },
-        }));
-        const rows = [
-            { clauseKey: floor.clauseKey, registeredBy: DAO, blockNumber: 2n, stakeWithdrawn: false },
-            { clauseKey: keyOf("figaro-commerce"), registeredBy: DAO, blockNumber: 1n, stakeWithdrawn: false },
-        ];
-        const specs = specSourceWithRegistrations(base, [floor]);
-        expect(Object.keys(mandatoryClauses(rows, specs, DAO)).sort()).toEqual(Object.keys(MANDATORY).sort());
-        const { assembly } = buildAssembly({ orders: [ORDERS[0]], clausesByOrderId: {}, mandatory: mandatoryClauses(rows, specs, DAO), specs });
-        expect(assembly.assemblyClauses).toBeUndefined();
     });
 
     it("composes the key the design names, whatever else shares its name", () => {
@@ -583,7 +582,6 @@ describe("buildAssembly — the mandatory clauses: the DAO's live mandatory clau
         const { assembly, agreements } = buildAssembly({
             orders: [ORDERS[0]],
             clausesByOrderId: { "synthetic-root": { [keyOf("figaro-geolocation")]: {} } },
-            mandatory: MANDATORY,
             specs,
         });
         const composed = agreements[assembly.agreements[0].agreementHash].clauses;
@@ -591,47 +589,40 @@ describe("buildAssembly — the mandatory clauses: the DAO's live mandatory clau
         expect(composed).not.toHaveProperty(fake.clauseKey);
     });
 
-    it("a composed or picked key whose spec is not loaded is a build error", () => {
+    it("a composed key whose spec is not loaded is a build error", () => {
         const unloaded = `0x${"77".repeat(32)}` as const;
         expect(() => buildAssembly({
             orders: [ORDERS[0]],
             clausesByOrderId: { "synthetic-root": { [unloaded]: {} } },
-            mandatory: MANDATORY,
             specs: base,
         })).toThrow(new RegExp(`clause ${unloaded} is composed on an order but its spec is not loaded`));
         expect(() => buildAssembly({
             orders: [ORDERS[0]],
-            clausesByOrderId: {},
+            clausesByOrderId: { "synthetic-root": COMMERCE },
             assemblyClauses: { [unloaded]: {} },
-            mandatory: MANDATORY,
             specs: base,
         })).toThrow(new RegExp(`clause ${unloaded} is composed at the assembly level but its spec is not loaded`));
-        expect(() => buildAssembly({
-            orders: [ORDERS[0]], clausesByOrderId: {}, mandatory: { [unloaded]: {} }, specs: base,
-        })).toThrow(new RegExp(`mandatory clause ${unloaded} is not loaded`));
     });
 
     it("puts the topology's parents on each entry, and no topology in the registered agreement", () => {
-        const { assembly, agreements } = buildAssembly({ orders: ORDERS, clausesByOrderId: {}, mandatory: MANDATORY, specs: base });
+        const { assembly, agreements } = buildAssembly({ orders: ORDERS, clausesByOrderId: { "synthetic-root": COMMERCE, "synthetic-child": COMMERCE }, specs: base });
         // Both agreements compose the same clauses, so they bind one agreement.
         expect(Object.keys(agreements)).toHaveLength(1);
         const [root, child] = assembly.agreements;
         expect(root.agreementHash).toBe(child.agreementHash);
-        expect(agreements[root.agreementHash].clauses).toEqual(MANDATORY);
+        expect(agreements[root.agreementHash].clauses).toEqual(COMMERCE);
         expect(root).toMatchObject({ clauses: {}, follows: [] });
         expect(child).toMatchObject({ clauses: {}, follows: ["agreement-0"] });
         expect(agreementHashOf(agreements[root.agreementHash])).toBe(root.agreementHash);
-        // The mandatory clauses alone are a complete agreement: same key.
-        expect(root.agreementHash).toBe(agreementHashOf({ clauses: MANDATORY }));
+        expect(root.agreementHash).toBe(agreementHashOf({ clauses: COMMERCE }));
     });
 
     it("binds a registered agreement as is, whatever it composes", () => {
         const registered = { name: "Registered", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-geolocation")]: {} } };
         const { assembly, agreements } = buildAssembly({
             orders: ORDERS,
-            clausesByOrderId: {},
+            clausesByOrderId: { "synthetic-root": COMMERCE },
             registeredByOrderId: { "synthetic-child": registered },
-            mandatory: MANDATORY,
             specs: base,
         });
         expect(assembly.agreements[1].agreementHash).toBe(agreementHashOf(registered));
@@ -641,9 +632,8 @@ describe("buildAssembly — the mandatory clauses: the DAO's live mandatory clau
         // One order binding a registered agreement and composing clauses too is refused.
         expect(() => buildAssembly({
             orders: ORDERS,
-            clausesByOrderId: { "synthetic-child": { [keyOf("figaro-geolocation")]: {} } },
+            clausesByOrderId: { "synthetic-root": COMMERCE, "synthetic-child": { [keyOf("figaro-geolocation")]: {} } },
             registeredByOrderId: { "synthetic-child": registered },
-            mandatory: MANDATORY,
             specs: base,
         })).toThrow(/choose one/);
     });
@@ -677,21 +667,20 @@ describe("buildOrderAgreement — every clause reads the spec its key names", ()
 });
 
 describe("composeOrderAgreement — one agreement's registered agreement, on its own", () => {
-    it("keys exactly what buildAssembly keys for the same composed clauses and pick", () => {
-        const clauses = { [keyOf("figaro-geolocation")]: { ignored: "transaction particular" } };
-        const alone = composeOrderAgreement({ clauses, mandatory: MANDATORY, specs: SPECS });
+    it("keys exactly what buildAssembly keys for the same composed clauses", () => {
+        const clauses = { ...COMMERCE, [keyOf("figaro-geolocation")]: { ignored: "transaction particular" } };
+        const alone = composeOrderAgreement({ clauses, specs: SPECS });
         const built = buildAssembly({
             orders: [{ orderHash: "synthetic-root", follows: [] }],
             clausesByOrderId: { "synthetic-root": clauses },
-            mandatory: MANDATORY,
             specs: SPECS,
         });
         expect(built.assembly.agreements[0].agreementHash).toBe(alone.agreementHash);
         expect(built.agreements[alone.agreementHash]).toEqual(alone.composed);
     });
 
-    it("writes the mandatory clauses in and keeps the composition value-free", () => {
-        const { composed } = composeOrderAgreement({ clauses: { [keyOf("figaro-geolocation")]: { origin: "u4pru" } }, mandatory: MANDATORY, specs: SPECS });
+    it("keeps the composition value-free", () => {
+        const { composed } = composeOrderAgreement({ clauses: { ...COMMERCE, [keyOf("figaro-geolocation")]: { origin: "u4pru" } }, specs: SPECS });
         expect(Object.keys(composed.clauses).sort()).toEqual([keyOf("figaro-commerce"), keyOf("figaro-geolocation")].sort());
         expect(composed.clauses[keyOf("figaro-geolocation")]).toEqual({});
     });
@@ -699,45 +688,16 @@ describe("composeOrderAgreement — one agreement's registered agreement, on its
     it("refuses a composition of no clause, and composes one without commerce", () => {
         const bare = { [keyOf("figaro-geolocation")]: {} };
         expect(composeOrderAgreement({ clauses: bare, specs: SPECS }).composed.clauses).toEqual(bare);
-        // An authored agreement names its clauses itself and passes no `mandatory`.
-        expect(composeOrderAgreement({ clauses: MANDATORY, specs: SPECS }).agreementHash).toBe(agreementHashOf({ clauses: MANDATORY }));
+        expect(composeOrderAgreement({ clauses: COMMERCE, specs: SPECS }).agreementHash).toBe(agreementHashOf({ clauses: COMMERCE }));
         // An empty composition's key is bytes32(0), which the registry refuses.
         expect(agreementHashOf({ clauses: {} })).toBe(`0x${"00".repeat(32)}`);
         expect(() => composeOrderAgreement({ clauses: {}, specs: SPECS })).toThrow(/composes no clause/);
     });
 
-    it("mandatoryClauses: the registrant's live mandatory-article clauses at agreement scope, one per shape, the later registration winning", () => {
-        const newer = viewOf({ ...rawSpecOf("figaro-commerce"), title: "Commerce, the DAO's next" });
-        const specs = specSourceWithRegistrations(SPECS, [newer]);
-        const rows = [
-            { clauseKey: keyOf("figaro-commerce"), registeredBy: DAO, blockNumber: 10n, stakeWithdrawn: false },
-            // a stranger's commerce, live: an ordinary clause, never mandatory by this route
-            { clauseKey: viewOf({ ...rawSpecOf("figaro-commerce"), title: "a stranger's" }).clauseKey, registeredBy: STRANGER, blockNumber: 11n, stakeWithdrawn: false },
-            // the DAO's own next commerce, registered later: two live of one shape, the later wins
-            { clauseKey: newer.clauseKey, registeredBy: DAO, blockNumber: 12n, stakeWithdrawn: false },
-            // a withdrawn stake leaves view
-            { clauseKey: keyOf("figaro-geolocation"), registeredBy: DAO, blockNumber: 13n, stakeWithdrawn: true },
-        ];
-        expect(mandatoryClauses(rows, specs, DAO)).toEqual({ [newer.clauseKey]: {} });
-        // Case of the address is no difference; a registrant with nothing live yields nothing, and the canvas publishes nothing.
-        expect(mandatoryClauses(rows, specs, DAO.toLowerCase() as `0x${string}`)).toEqual({ [newer.clauseKey]: {} });
-        expect(mandatoryClauses(rows, specs, STRANGER)).toEqual({});
-        expect(() => buildAssembly({ orders: [{ orderHash: "r", follows: [] }], clausesByOrderId: {}, mandatory: mandatoryClauses(rows, specs, STRANGER), specs }))
-            .toThrow(/composes no clause/);
-        // Two of one shape in ONE block are ordered by the event's index in it
-        // — the chain's order, never the order the rows were read in.
-        const sameBlock = [
-            { clauseKey: newer.clauseKey, registeredBy: DAO, blockNumber: 20n, logIndex: 3, stakeWithdrawn: false },
-            { clauseKey: keyOf("figaro-commerce"), registeredBy: DAO, blockNumber: 20n, logIndex: 1, stakeWithdrawn: false },
-        ];
-        expect(mandatoryClauses(sameBlock, specs, DAO)).toEqual({ [newer.clauseKey]: {} });
-        expect(mandatoryClauses([...sameBlock].reverse(), specs, DAO)).toEqual({ [newer.clauseKey]: {} });
-    });
-
     it("refuses an assembly-scoped clause and a clause whose spec is not loaded", () => {
-        expect(() => composeOrderAgreement({ clauses: { [keyOf("figaro-applicable-law")]: {} }, mandatory: MANDATORY, specs: SPECS }))
+        expect(() => composeOrderAgreement({ clauses: { [keyOf("figaro-applicable-law")]: {} }, specs: SPECS }))
             .toThrow(/design\.scope "assembly"/);
-        expect(() => composeOrderAgreement({ clauses: { [`0x${"ab".repeat(32)}`]: {} }, mandatory: MANDATORY, specs: SPECS }))
+        expect(() => composeOrderAgreement({ clauses: { [`0x${"ab".repeat(32)}`]: {} }, specs: SPECS }))
             .toThrow(/spec is not loaded/);
     });
 });
@@ -827,14 +787,10 @@ describe("the sign gate's design check — the designer's values against the des
             .toThrow(/figaro-merchant-process clause: the order does not carry this clause/);
     });
 
-    it("refuses an order missing a mandatory clause the canvas wrote into its agreement", () => {
-        // The mandatory clauses are the registered agreement's own, so the
-        // design names them: an order dropping one is refused like any clause
-        // the designer composed.
+    it("refuses an order missing the commerce clause its agreement composes, as for any composed clause", () => {
         const built = buildAssembly({
             orders: [{ orderHash: "synthetic-root", follows: [] }],
-            clausesByOrderId: { "synthetic-root": { [keyOf("figaro-merchant-process")]: {} } },
-            mandatory: MANDATORY,
+            clausesByOrderId: { "synthetic-root": { ...COMMERCE, [keyOf("figaro-merchant-process")]: {} } },
             specs: SPECS,
         });
         const [entry] = built.assembly.agreements;
@@ -857,8 +813,7 @@ describe("the sign gate's design check — the designer's values against the des
     it("refuses, at each party's signature, a design-built agreement whose topology leaf is absent or not well formed", () => {
         const built = buildAssembly({
             orders: [{ orderHash: "synthetic-root", follows: [] }],
-            clausesByOrderId: {},
-            mandatory: MANDATORY,
+            clausesByOrderId: { "synthetic-root": COMMERCE },
             specs: SPECS,
         });
         const [entry] = built.assembly.agreements;
