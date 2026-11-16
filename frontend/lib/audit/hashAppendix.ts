@@ -16,7 +16,10 @@
  *   3. The `checkoutHash` matches the `checkoutHash` field on the
  *      `OrderCommitted` event emitted at `transactionHash` for the order.
  *   4. Each lifecycle attestation's content hashes to its `contentRef`
- *      via `keccak256(content)`. The contentRef is logged by the
+ *      via `keccak256(content)`; a private attestation's bytes, where the
+ *      file's builder holds them, are in the process logs, and a private
+ *      clause's blinding value is in the clause data. The contentRef is
+ *      logged by the
  *      `Attestation(orderHash, processId, attester, clauseId, stage,
  *      contentRef)` event on chain.
  *
@@ -95,7 +98,7 @@ export function buildHashAppendix(
             kind: "agreement-clause-leaf",
             label: `Clause leaf — ${clauseEntry.clause}`,
             hash: computeClauseLeaf(clauseEntry),
-            sourceLocation: `Merkle leaf under checkoutHash root. Reader recomputes via computeClauseLeaf({clause: "${clauseEntry.clause}", data}) and verifies inclusion in the checkoutHash tree.`,
+            sourceLocation: `Merkle leaf under checkoutHash root. Reader recomputes via computeClauseLeaf({clause: "${clauseEntry.clause}", data}) and verifies inclusion in the checkoutHash tree. A private clause's data includes its blinding value, which the clause-data page lists where this file holds it.`,
         });
     }
 
@@ -132,7 +135,7 @@ export function buildHashAppendix(
             kind: "attestation-content-ref",
             label: `Attestation contentRef — ${att.clauseId} stage ${att.stage}`,
             hash: att.contentRef,
-            sourceLocation: `Attestation(orderHash=${truncateHex(att.orderHash, { head: 8 })}, clauseId=${att.clauseId}, stage=${att.stage}).contentRef = keccak256(content). The coordinator takes and emits only this hash, never the content: the content is held off chain by the parties, and a copy is verified by recomputing keccak256(content) against it (anchorAttestationContent).`,
+            sourceLocation: `Attestation(orderHash=${truncateHex(att.orderHash, { head: 8 })}, clauseId=${att.clauseId}, stage=${att.stage}).contentRef = keccak256(content). The coordinator takes and emits only this hash, never the content: the content is held off chain by the parties, and a copy is verified by recomputing keccak256(content) against it (anchorAttestationContent). A private attestation's content bytes, where the builder of this file holds them, are on the process-log page.`,
             transactionHash: att.transactionHash ?? undefined,
         });
     }

@@ -18,6 +18,18 @@
  * The agreement format's provenance leaf (`PROVENANCE_LEAF_KEY`) has no spec:
  * its bytes pin as-is when they are the format's own, and not at all otherwise.
  *
+ * The private half: content whose encoded set is private is never pinned, so
+ * its attester keeps it, bytes and values (the blinding value included),
+ * before the attestation is sent (`keepPrivateWitnessContent`). It is kept
+ * where a party's device keeps its other raw evidence for a forum
+ * (`deviceEvidence.ts`'s retained captures): localStorage through the one
+ * storage seam, outliving the tab, keyed by order, clause, stage and content
+ * reference, and read back only when the bytes hash to the reference
+ * (`readKeptWitnessContent`). The attester's own pages and the evidence file
+ * read it (`resolveHeldWitnessContent`); no public reader does. A party that
+ * clears its browser's storage loses it: the content is its own to keep and
+ * export.
+ *
  * Erasure mirrors `profileErasure`/`unpinAgreement` (wallet pins → wallet
  * erases): best-effort unpin of the derived CID, idempotent, never throwing —
  * content addressing means only THIS node's copy is erased, and a resolved-
@@ -37,6 +49,7 @@ import {
 } from "@/lib/shared/ipfsService";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { hexEqual, isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
+import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 export interface PublishWitnessContentParams {
     /** The clause attested — its clause key, the hash of the canonical spec
@@ -145,4 +158,105 @@ export async function unpinWitnessContent(
 ): Promise<void> {
     if (!isBytes32Hex(contentRef)) return;
     await ipfs.unpin(witnessContentCid(contentRef as Hex));
+}
+
+// ── The private half: the attester keeps its own private witness content ──
+
+export const KEPT_WITNESS_STORAGE_KEY = "figaro-kept-witness-content";
+
+/** One kept private witness: its place on the chain, the encoded bytes
+ *  whose keccak256 is the content reference, and the values encoded, the
+ *  blinding value included. */
+interface KeptWitness {
+    orderHash: string;
+    clauseId: string;
+    stage: number;
+    contentRef: string;
+    content: string;
+    values?: Record<string, unknown>;
+}
+
+/** Where a witness sits on the chain: what an Attestation event carries. */
+export interface WitnessPlace {
+    orderHash: Hex | string;
+    clauseId: Hex | string;
+    stage: number;
+    contentRef: Hex | string;
+}
+
+function keptKey(place: WitnessPlace): string {
+    return [place.orderHash, place.clauseId, place.stage, place.contentRef].map((p) => String(p).toLowerCase()).join(":");
+}
+
+function readKept(): Record<string, KeptWitness> {
+    const parsed = readJsonStorage<unknown>(KEPT_WITNESS_STORAGE_KEY, {});
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, KeptWitness>) : {};
+}
+
+/** Whether the set a witness's content is encoded from holds a private
+ *  field, read from the spec the clause key names. An unknown spec counts as
+ *  private: its content is never published (`publishWitnessContent`), so it
+ *  is kept. The provenance leaf's bytes are the format's own and public. */
+function encodedSetIsPrivate(clauseId: Hex | string, stage: number): boolean {
+    if (hexEqual(clauseId, PROVENANCE_LEAF_KEY)) return false;
+    const spec = getClauseSpec(clauseId as Hex);
+    if (!spec) return true;
+    return contentFieldsFor(spec, { stage }).some((f) => f.disposition === "private");
+}
+
+/**
+ * Keep the attester's own private witness content, before the attestation is
+ * sent: the bytes are never pinned, so without this copy no one, the attester
+ * included, could open the attestation afterwards. Returns `"public"` when
+ * the encoded set holds no private field (its bytes publish at their
+ * reference, so nothing is kept), `"kept"` once stored, and `"refused"` when
+ * the browser refuses the write: the caller then sends nothing.
+ */
+export function keepPrivateWitnessContent(params: {
+    orderHash: Hex | string;
+    clauseId: Hex | string;
+    stage: number;
+    content: Hex;
+    values?: Record<string, unknown>;
+}): "public" | "kept" | "refused" {
+    if (!encodedSetIsPrivate(params.clauseId, params.stage)) return "public";
+    const contentRef = keccak256(params.content);
+    const entry: KeptWitness = {
+        orderHash: String(params.orderHash),
+        clauseId: String(params.clauseId),
+        stage: params.stage,
+        contentRef,
+        content: params.content,
+        ...(params.values ? { values: params.values } : {}),
+    };
+    const store = readKept();
+    store[keptKey(entry)] = entry;
+    return writeJsonStorage(KEPT_WITNESS_STORAGE_KEY, store) ? "kept" : "refused";
+}
+
+/** The kept bytes of a witness, checked against its content reference
+ *  (`anchorAttestationContent`); null where this browser keeps none, or
+ *  where the kept bytes do not hash to the reference. */
+export function readKeptWitnessContent(place: WitnessPlace): Anchored<Hex> | null {
+    if (!isBytes32Hex(place.contentRef)) return null;
+    const entry = readKept()[keptKey(place)];
+    if (!entry || typeof entry.content !== "string" || !/^0x([0-9a-fA-F]{2})*$/.test(entry.content)) return null;
+    return anchorAttestationContent(entry.content as Hex, place.contentRef);
+}
+
+/** The kept values of a witness, blinding value included; null unless its
+ *  kept bytes check against the reference. */
+export function readKeptWitnessValues(place: WitnessPlace): Record<string, unknown> | null {
+    if (readKeptWitnessContent(place) === null) return null;
+    return readKept()[keptKey(place)]?.values ?? null;
+}
+
+/**
+ * A witness's bytes for its holder's own pages: the copy this browser kept,
+ * else the public pin (`fetchWitnessContent`). Both are checked against the
+ * reference. Null where neither resolves; the page then shows nothing in
+ * their place.
+ */
+export async function resolveHeldWitnessContent(place: WitnessPlace, options: CappedFetchOptions = {}): Promise<Anchored<Hex> | null> {
+    return readKeptWitnessContent(place) ?? fetchWitnessContent(place.contentRef, options);
 }
