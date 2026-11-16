@@ -25,7 +25,7 @@
 import Link from "@/components/shared/Link";
 import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { walletRecord, type ValueFlowEdge } from "@figaro-protocol/sdk/derive";
+import { walletRecord, type TruthBoundary, type ValueFlowEdge } from "@figaro-protocol/sdk/derive";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 import { Card } from "@/components/ui/Card";
 import { Tabs } from "@/components/ui/Tabs";
@@ -89,6 +89,15 @@ function BoundaryLine({ view }: { view: GraphView }) {
             </div>
             <p className="text-sm text-ink-body leading-relaxed max-w-3xl">{layer.statement}</p>
         </div>
+    );
+}
+
+/** One row's own boundary, where a layer holds rows of more than one kind. */
+function RowBoundary({ boundary }: { boundary: TruthBoundary }) {
+    return (
+        <span className="block text-xs text-ink-muted font-mono" data-testid="row-boundary">
+            {boundary}
+        </span>
     );
 }
 
@@ -480,6 +489,9 @@ function ValueFlowView({ corpus }: { corpus: GraphCorpus }) {
                                         resolution
                                         {r.pinned ? " · pinned by a designer as an assembly's denomination" : ""}
                                     </span>
+                                    {/* The figures fold OrderCommitted and OrderResolved, the
+                                        resolution edges `projectValueFlow` marks protocol-enforced. */}
+                                    <RowBoundary boundary="protocol-enforced" />
                                 </li>
                             );
                         })}
@@ -516,6 +528,7 @@ function ValueFlowView({ corpus }: { corpus: GraphCorpus }) {
                                         <Amount value={e.volumeOut} token={e.tokenOut} corpus={corpus} /> out · venue{" "}
                                         <code className="font-mono">{truncateHex(e.venue)}</code>
                                     </span>
+                                    <RowBoundary boundary={e.basis} />
                                 </li>
                             );
                         })}

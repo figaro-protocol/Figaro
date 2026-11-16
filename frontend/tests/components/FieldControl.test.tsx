@@ -8,7 +8,9 @@
  * dispatch key is the spec's own declaration.
  */
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
 import { FieldControl } from "@/components/runtime/FieldControl";
@@ -172,6 +174,33 @@ describe("FieldControl value-driven format + disposition grain cap", () => {
         expect(fine).toBe(encodeGeohash(lat, lon, PRIVATE_GEOHASH_MAX_PRECISION));
         expect(fine.length).toBe(PRIVATE_GEOHASH_MAX_PRECISION);
     });
+});
+
+// The canonical geolocation spec, read as the checkout reads it: its two public
+// codes follow the standard's default (geohash), and a door-grade geohash a
+// party types is committed at the neighborhood cell. The cap is this
+// checkout's (`lib/shared/geohash.ts`); the spec's own `maxLength` is wider.
+describe("the geolocation spec's public codes, as this checkout writes them", () => {
+    const spec = JSON.parse(
+        readFileSync(path.resolve(process.cwd(), "../clauses/figaro-geolocation.json"), "utf8"),
+    ) as { fields: FieldSpec[] };
+
+    it.each(["origin", "destination"])(
+        "a door-grade geohash typed into the public %s is committed at six characters",
+        (name) => {
+            const field = spec.fields.find((f) => f.name === name)!;
+            expect(field.disposition).toBe("public");
+            const format = resolveInputFormat(field, spec.fields, {});
+            expect(format).toBe("geohash");
+            const onChange = vi.fn();
+            render(
+                <FieldControl field={field} value="" onChange={onChange} testId="f-geo-spec" resolvedFormat={format} />,
+            );
+            fireEvent.change(screen.getByTestId("f-geo-spec"), { target: { value: "dr5regw3p" } });
+            expect(onChange).toHaveBeenLastCalledWith("dr5reg");
+            expect((onChange.mock.calls.at(-1)![0] as string).length).toBe(PUBLIC_GEOHASH_MAX_PRECISION);
+        },
+    );
 });
 
 // Spec-declared constraints surface AT the input (display-only guidance —
