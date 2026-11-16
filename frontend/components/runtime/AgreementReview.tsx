@@ -254,6 +254,11 @@ export function AgreementReview({ commitment, agreement }: Props) {
                         {dumpedClauses.map((clauseEntry) => (
                             <li key={clauseEntry.clause} className="border border-default rounded px-3 py-2">
                                 <p className="font-mono text-ink-muted mb-1">{clauseEntry.clause}</p>
+                                {clauseEntry.data !== undefined && describeClause(clauseEntry.clause, clauseEntry.data as Record<string, unknown>).blinded && (
+                                    <p className="text-ink-muted mb-1" data-testid={`preview-clause-blinding-${clauseEntry.clause}`}>
+                                        This private clause carries a blinding value: a random value drawn for this order, so that no one can confirm its terms by guessing them against the fingerprint. It is not a term.
+                                    </p>
+                                )}
                                 {withheldLeafNotice(clauseEntry) ? (
                                     <p className="text-warning-fg break-words" data-testid={`preview-clause-withheld-${clauseEntry.clause}`}>
                                         {withheldLeafNotice(clauseEntry)}

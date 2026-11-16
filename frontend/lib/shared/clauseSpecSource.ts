@@ -454,6 +454,12 @@ export interface ClauseDescription {
     clauseKey: string;
     title: string;
     fields: ClauseFieldDescription[];
+    /** True when the described set declares a blinding field (`blinding:
+     *  true`) and the data carries its value: a random value drawn so the
+     *  set's fingerprint cannot be confirmed by guessing. It is no term, so
+     *  `fields` never lists it; a surface says in words that the clause
+     *  carries one. False for an unknown spec, whose raw data is listed. */
+    blinded: boolean;
 }
 
 
@@ -488,18 +494,39 @@ export function describeClause(clauseKey: string, data: Record<string, unknown> 
         return {
             clauseKey,
             title: truncateHex(clauseKey, { head: 10, tail: 0 }),
-            fields: Object.entries(d)
-                .map(([name, v]) => ({ name, label: name, values: Array.isArray(v) ? v.map(String) : v == null || v === "" ? [] : [String(v)] }))
-                .filter((f) => f.values.length > 0),
+            fields: rawFieldDescriptions(d),
+            blinded: false,
         };
     }
+    return { clauseKey, title: spec.title, ...describeFields(spec.fields, d) };
+}
+
+/** An unknown spec's data, described raw: each present key and its value. */
+function rawFieldDescriptions(d: Record<string, unknown>): ClauseFieldDescription[] {
+    return Object.entries(d)
+        .map(([name, v]) => ({ name, label: name, values: Array.isArray(v) ? v.map(String) : v == null || v === "" ? [] : [String(v)] }))
+        .filter((f) => f.values.length > 0);
+}
+
+/** One set of fields described through the spec: each present term, and
+ *  whether the set's blinding value is present (it is no term, so it is
+ *  never listed). */
+function describeFields(
+    specFields: readonly FieldSpec[],
+    d: Record<string, unknown>,
+): Pick<ClauseDescription, "fields" | "blinded"> {
     const fields: ClauseFieldDescription[] = [];
-    for (const field of spec.fields) {
+    let blinded = false;
+    for (const field of specFields) {
+        if (field.blinding === true) {
+            blinded ||= d[field.name] !== undefined;
+            continue;
+        }
         const values = renderFieldValues(field, d[field.name]);
         if (values.length === 0) continue;
         fields.push({ name: field.name, label: field.label ?? field.name, values });
     }
-    return { clauseKey, title: spec.title, fields };
+    return { fields, blinded };
 }
 
 /** Describe a runtime WITNESS attestation's decoded content through its
@@ -518,18 +545,11 @@ export function describeWitness(
         return {
             clauseKey,
             title: spec?.title ?? truncateHex(clauseKey, { head: 10, tail: 0 }),
-            fields: Object.entries(d)
-                .map(([name, v]) => ({ name, label: name, values: Array.isArray(v) ? v.map(String) : v == null || v === "" ? [] : [String(v)] }))
-                .filter((f) => f.values.length > 0),
+            fields: rawFieldDescriptions(d),
+            blinded: false,
         };
     }
-    const fields: ClauseFieldDescription[] = [];
-    for (const field of stageFields) {
-        const values = renderFieldValues(field, d[field.name]);
-        if (values.length === 0) continue;
-        fields.push({ name: field.name, label: field.label ?? field.name, values });
-    }
-    return { clauseKey, title: spec.title, fields };
+    return { clauseKey, title: spec.title, ...describeFields(stageFields, d) };
 }
 
 /** Module-internal: `clauseEnumValues` below needs it. */
