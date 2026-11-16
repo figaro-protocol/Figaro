@@ -22,7 +22,7 @@ import type { WalletClient, PublicClient } from "viem";
 import { verifyTypedData } from "viem";
 import { buildCommitment, buildDomain, hashCommitmentStruct, verifyCommitmentSignature, readChainTimestamp, ZERO_PROCESS_ID, COMMITMENT_TYPES } from "../commitments.js";
 import { computeCheckoutHash, type Agreement, type AgreementProvenance } from "../agreement.js";
-import { assertAgreementSignable, type SpecSource } from "../projection.js";
+import { assertAgreementSignable, withClauseBlinding, type SpecSource } from "../projection.js";
 import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
 import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
@@ -93,6 +93,21 @@ export function instantiateRootAgreement(hydrated: HydratedAssembly, params: Ins
     );
 }
 
+/**
+ * The buyer's agreement with the blinding value of each private clause drawn
+ * where the buyer's data left it absent (`withClauseBlinding`). The buyer is
+ * the party that collects this data, so the draw happens here, once, before
+ * the `checkoutHash` is computed; `instantiateRootAgreement` stays a pure
+ * builder. A clause whose content is withheld is left as it is.
+ */
+export function withAgreementBlinding(agreement: Agreement, specs: SpecSource): Agreement {
+    return {
+        ...agreement,
+        clauses: agreement.clauses.map((entry) =>
+            entry.data === undefined ? entry : { ...entry, data: withClauseBlinding(specs, entry.clause, entry.data) }),
+    };
+}
+
 // ── Buyer side: build + sign the offer ────────────────────────────────────────
 
 export interface BuildOfferParams extends InstantiateParams {
@@ -125,9 +140,10 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
     const account = wallet.account;
     if (!account) throw new Error("buildBuyerOffer: wallet has no account");
     const buyer = account.address;
-    const agreement = instantiateRootAgreement(params.assembly, {
+    const specs = requireSpecs(params.specs, "buildBuyerOffer");
+    const agreement = withAgreementBlinding(instantiateRootAgreement(params.assembly, {
         buyer, seller: params.seller, overrides: params.overrides,
-    });
+    }), specs);
     const checkoutHash = computeCheckoutHash(agreement);
     const domain = buildDomain(params.chainId, params.core);
     const { commitment, typedData } = buildCommitment({
@@ -135,7 +151,7 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
         payment: params.payment, expectedCumulativeValue: params.payment,
         checkoutHash, salt: params.salt, deadline: params.deadline,
     }, domain);
-    assertAgreementSignable(agreement, checkoutHash, requireSpecs(params.specs, "buildBuyerOffer"), commitment, params.assembly, "This offer");
+    assertAgreementSignable(agreement, checkoutHash, specs, commitment, params.assembly, "This offer");
     const buyerSig = await wallet.signTypedData({ account, ...typedData });
     return { commitment, agreement, buyerSig };
 }
@@ -703,7 +719,13 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
         nodes: (planned) => {
             const spec = specByNode.get(planned.nodeId);
             if (!spec) throw new Error(`no seller/payment spec for assembly node "${planned.nodeId}"`);
-            return spec;
+            // The buyer collects this order's data here: each private
+            // clause's blinding value is drawn once, over the order's whole
+            // clause bag, before the walk hashes it.
+            const merged = mergeOverrides(planned.clauses, spec.overrides);
+            const overrides = Object.fromEntries(Object.entries(merged).map(([clauseKey, data]) =>
+                [clauseKey, withClauseBlinding(specs, clauseKey as Hex, data)]));
+            return { ...spec, overrides };
         },
         salt: params.salt,
         deadline: params.deadline,

@@ -575,7 +575,9 @@ the next reply is the free fallback. Two legs, one choreography, from
   `makeSellerQuoteHandler(wallet, ctx, { chainClient, quote, policy, specs, readDesign, readProfile })` — `quote(draft)` is the
   owner's pricing function; `null` declines. Both handlers require `chainClient` (a viem
   `PublicClient`): each payload's deadline is checked against the chain's clock. Build the request with `deadline` in CHAIN
-  time here too: `buildQuoteRequest` requires it, like every other origination call.
+  time here too: `buildQuoteRequest` requires it, like every other origination call. It
+  requires `specs` as well: the draft draws the blinding value of each private clause
+  once, and the quote keeps it.
 
 **Declaring `services.rest` on the wallet's member profile makes it reachable by HUMAN
 buyers too:** a browser checkout that races or requests quotes POSTs the draft straight

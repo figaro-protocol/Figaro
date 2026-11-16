@@ -271,6 +271,9 @@ export {
     specDesignFills,
     warnProcessLogFillsTrap,
     validateCommitmentAgreement,
+    freshBlindingHex,
+    withFreshBlinding,
+    withClauseBlinding,
 } from "./projection.js";
 export type {
     CommitmentAgreementIssue,

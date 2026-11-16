@@ -35,7 +35,7 @@ import { buildCommitment, buildDomain, hashCommitmentStruct, readChainTimestamp,
 import { computeCheckoutHash, type Agreement, type AgreementProvenance } from "../agreement.js";
 import type { Hex, Address } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, PricedField, QuoteRequestTerms } from "./coordination.js";
-import { checkDeadlineCap, checkOfferPolicy, checkPayloadTerms, checkSellerSignature, countersignUnderFloors, gateSeller, instantiateRootAgreement, readOfferDesign, requireSpecs, signCommitmentAs, verifyRaceReply, type OfferCheck, type OfferPolicy, type SellerSignCtx } from "./originate.js";
+import { checkDeadlineCap, checkOfferPolicy, checkPayloadTerms, checkSellerSignature, countersignUnderFloors, gateSeller, instantiateRootAgreement, readOfferDesign, requireSpecs, withAgreementBlinding, signCommitmentAs, verifyRaceReply, type OfferCheck, type OfferPolicy, type SellerSignCtx } from "./originate.js";
 
 // One owner for the reply check: the offer loops and the race both use it.
 export { verifyRaceReply };
@@ -232,6 +232,10 @@ export interface BuildQuoteRequestParams {
     salt?: bigint;
     /** CHAIN-time deadline (readChainTimestamp) — never the machine clock. */
     deadline: bigint;
+    /** The clause-spec source the buyer reads its clauses by: the draft
+     *  draws each private clause's blinding value here, once, and the quote
+     *  keeps it (`buildCounterDraft` substitutes the priced fields alone). */
+    specs: SpecSource;
 }
 
 /**
@@ -241,9 +245,9 @@ export interface BuildQuoteRequestParams {
  * is the same payload shape built from the chain walk.
  */
 export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPayload {
-    const instantiated = instantiateRootAgreement(params.assembly, {
+    const instantiated = withAgreementBlinding(instantiateRootAgreement(params.assembly, {
         buyer: params.buyer, seller: params.seller, overrides: params.overrides,
-    });
+    }), requireSpecs(params.specs, "buildQuoteRequest"));
     const agreement = substitutePricedValue(instantiated, params.pricedFields, params.ceiling);
     const domain = buildDomain(params.chainId, params.core);
     const { commitment } = buildCommitment({

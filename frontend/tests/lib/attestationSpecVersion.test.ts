@@ -7,7 +7,7 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { hexToBytes, type Hex } from "viem";
 import { type Commitment } from "@figaro-protocol/sdk";
-import { encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
+import { decodeContentFromSpec, encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { pinSpec } from "./primeClauseSpecs";
 import { createCapabilityExecutors, type CapabilityExecutorDeps } from "@/lib/semantic/createCapabilityExecutors";
@@ -110,6 +110,44 @@ describe("attestation under the committed clause key, beside another spec of the
         expect(submitAttestation).toHaveBeenCalledExactlyOnceWith("buyer", expect.objectContaining({
             clauseId: SPEC_V1.clauseKey,
         }));
+    });
+
+    it("a witness on a private stage draws its blinding value: two attestations of one reading carry different content", async () => {
+        const submitAttestation = vi.fn(async () => undefined);
+        const { executorCallbacks } = executors(submitAttestation);
+        const action = {
+            executionType: "transaction" as const,
+            kind: "submit-clause-attestation" as const,
+            orderHash: `0x${"aa".repeat(32)}`,
+            clauseKey: SPEC_V2.clauseKey,
+            stage: 1,
+            party: "buyer" as const,
+        };
+        await executorCallbacks.submitClauseAttestation(action, { reading: "4C" });
+        await executorCallbacks.submitClauseAttestation(action, { reading: "4C" });
+        const contents = (submitAttestation.mock.calls as unknown as [string, { content: Hex }][]).map(([, args]) => args.content);
+        expect(contents[0]).not.toBe(contents[1]);
+        const decoded = decodeContentFromSpec(getClauseSpec(SPEC_V2.clauseKey)!, contents[0], { stage: 1 });
+        expect(decoded.reading).toBe("4C");
+        expect(decoded.blinding).toMatch(/^0x[0-9a-f]{64}$/);
+    });
+
+    it("a witness on a public stage carries the same content every time", async () => {
+        const submitAttestation = vi.fn(async () => undefined);
+        const { executorCallbacks } = executors(submitAttestation);
+        const action = {
+            executionType: "transaction" as const,
+            kind: "submit-clause-attestation" as const,
+            orderHash: `0x${"aa".repeat(32)}`,
+            clauseKey: SPEC_V1.clauseKey,
+            stage: 1,
+            party: "buyer" as const,
+        };
+        await executorCallbacks.submitClauseAttestation(action, { reading: "4C" });
+        await executorCallbacks.submitClauseAttestation(action, { reading: "4C" });
+        const contents = (submitAttestation.mock.calls as unknown as [string, { content: Hex }][]).map(([, args]) => args.content);
+        expect(contents[0]).toBe(contents[1]);
+        expect(contents[0]).toBe(encodeContentFromSpec(getClauseSpec(SPEC_V1.clauseKey)!, { reading: "4C" }, { stage: 1 }));
     });
 
     it("witness content publishes by the committed spec's disposition (public in v1, private in v2)", async () => {

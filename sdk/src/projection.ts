@@ -54,7 +54,8 @@ import {
     type AssemblyAgreement,
     type HydratedAssembly,
 } from "./assembly.js";
-import { validateContent, type ClauseSpec } from "./clauses/index.js";
+import { validateContent, type ClauseSpec, type FieldSpec } from "./clauses/index.js";
+import { generateSalt } from "./commitments.js";
 import { isAddressHex, isBytes32Hex, type Address, type Commitment, type Hex } from "./types.js";
 
 // ── The spec seam ───────────────────────────────────────────────────────────
@@ -376,6 +377,47 @@ export function withSpecDefaults(
         }
     }
     return out;
+}
+
+/** A fresh blinding value: 32 bytes from Web Crypto, as `bytes32-hex`.
+ *  `generateSalt` is the one entropy source underneath, and it throws where
+ *  Web Crypto is absent, so a guessable value is never returned. */
+export function freshBlindingHex(): Hex {
+    return `0x${generateSalt().toString(16).padStart(64, "0")}`;
+}
+
+/** Fill the blinding field of one set of fields (a clause's top-level
+ *  `fields`, or one `stages[N]`) where its value is absent, with a fresh
+ *  value (`freshBlindingHex`). A value already present is never overwritten,
+ *  and a set that declares no blinding field gains nothing. The code that
+ *  collects a party's data calls it once, before the data is hashed; a
+ *  builder and a hash function never do, so every rebuild of the same data
+ *  reproduces the same fingerprint. */
+export function withFreshBlinding(
+    fields: readonly FieldSpec[],
+    values: Record<string, unknown>,
+): Record<string, unknown> {
+    let out = values;
+    for (const field of fields) {
+        if (field.blinding !== true || out[field.name] !== undefined) continue;
+        if (out === values) out = { ...values };
+        out[field.name] = freshBlindingHex();
+    }
+    return out;
+}
+
+/** `withFreshBlinding` over one clause's committed set, read from the
+ *  clause's spec by its key, as `withSpecDefaults` reads it. A clause whose
+ *  spec is not loaded is left as it is (the sign gate refuses it), and a
+ *  process-log clause stays an empty anchor at commit. */
+export function withClauseBlinding(
+    specs: SpecSource,
+    clauseKey: Hex,
+    data: Record<string, unknown>,
+): Record<string, unknown> {
+    const spec = specs.get(clauseKey);
+    if (!spec || specIsProcessLog(spec)) return data;
+    return withFreshBlinding(spec.fields, data);
 }
 
 /**

@@ -22,7 +22,7 @@ import {
     type Commitment,
     type UsageClaimContext,
 } from "@figaro-protocol/sdk";
-import { encodeContentFromSpec, validateContent } from "@figaro-protocol/sdk/clauses";
+import { prepareAttestationContent } from "@figaro-protocol/sdk/agent";
 import { OrderState, type Order } from "@/lib/core/store";
 import { restoreSignedProcessId } from "@/lib/core/signedCommitment";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
@@ -205,22 +205,16 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         } else if (isLadder) {
             // LADDER: the event code plus any companion-field fills
             // from the rail's generic form (e.g. an evidence
-            // pointer), gated by the same off-chain validator.
+            // pointer), gated by the same off-chain validator. The SDK's
+            // preflight draws the blinding value of a private set, so two
+            // events of one private value carry two content references.
             const ladderValues = { ...(values ?? {}), [action.ladderField!]: action.eventCode };
-            const validation = validateContent(ladderValues, spec);
-            if (!validation.ok) {
-                throw new Error(validation.errors.map((e) => `${e.path}: ${e.message}`).join("; "));
-            }
-            content = encodeContentFromSpec(spec, ladderValues);
+            content = prepareAttestationContent(spec, ladderValues).content;
         } else {
             // WITNESS: values from the rail's generic form, gated by the
-            // same off-chain validator that gates every sign point.
-            const witnessValues = values ?? {};
-            const validation = validateContent(witnessValues, spec, { stage: action.stage });
-            if (!validation.ok) {
-                throw new Error(validation.errors.map((e) => `${e.path}: ${e.message}`).join("; "));
-            }
-            content = encodeContentFromSpec(spec, witnessValues, { stage: action.stage });
+            // same off-chain validator that gates every sign point, with a
+            // private stage's blinding value drawn here.
+            content = prepareAttestationContent(spec, values ?? {}, { stage: action.stage }).content;
         }
         const args: AttestationSubmitArgs = {
             orderHash: action.orderHash as Hex,
