@@ -935,7 +935,7 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <tr>
 <td><code>resolveInputFormat</code></td>
 <td><code>/clauses</code></td>
-<td>A string field's format: the sibling value <code>formatFromField</code> names, then that sibling's default, then <code>format</code>.</td>
+<td>A string field's resolved format, static or named by a sibling: the static <code>format</code>, or, under <code>formatFromField</code>, the named sibling's value, then that sibling's default, then <code>format</code>.</td>
 </tr>
 <tr>
 <td><code>resolveProcess</code></td>
@@ -1085,7 +1085,7 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <tr>
 <td><code>validateContent</code></td>
 <td><code>/clauses</code></td>
-<td>Validate clause content against its spec; on a closed clause, unknown fields are rejected; a geohash under <code>formatFromField</code> is refused past its disposition's grain cap.</td>
+<td>Validate clause content against its spec; on a closed clause, unknown fields are rejected; a geohash, its resolved format static or named by a sibling, is refused past its disposition's grain cap.</td>
 </tr>
 <tr>
 <td><code>validateDraft</code></td>

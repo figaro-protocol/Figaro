@@ -443,7 +443,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `requestCounterSignatures` | `/agent` | Fan out race drafts, verify each reply by exact struct match, rank cheapest first. |
 | `requestQuotes` | `/agent` | Fan out RFQ requests, verify each reply by reconstruction, rank cheapest first. |
 | `resolveDidWeb` | `/agent` | Resolve a `did:web` identifier — https-only, no redirects, size-capped (SSRF-hardened). |
-| `resolveInputFormat` | `/clauses` | A string field's format: the sibling value `formatFromField` names, then that sibling's default, then `format`. |
+| `resolveInputFormat` | `/clauses` | A string field's resolved format, static or named by a sibling: the static `format`, or, under `formatFromField`, the named sibling's value, then that sibling's default, then `format`. |
 | `resolveProcess` | `/agent` | The low-level buyer-only resolve. Does NOT restore signed root ids — prefer `executeAction`. |
 | `resolveAuthoredClauseKeys` | root | SEED-TIME authoring only: rewrite the clause NAMES in a assembly or member document you wrote by name to the keys of the specs you loaded (`name@version` disambiguates); never a read path. |
 | `resolveSubOrderPricing` | root | Price a sub-order live from its own contributor's catalog. |
@@ -473,7 +473,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `UNISWAP_V3_FEE_TIERS` | root | The Uniswap v3 fee tiers a quote probe walks: 100, 500, 3000, 10000. |
 | `unwrapWithSharedSecret` | `/handoff` | Decrypt what `wrapWithSharedSecret` produced. |
 | `validateCommitmentAgreement` | root | The non-throwing form of `assertAgreementSignable` — returns the findings instead. |
-| `validateContent` | `/clauses` | Validate clause content against its spec; on a closed clause, unknown fields are rejected; a geohash under `formatFromField` is refused past its disposition's grain cap. |
+| `validateContent` | `/clauses` | Validate clause content against its spec; on a closed clause, unknown fields are rejected; a geohash, its resolved format static or named by a sibling, is refused past its disposition's grain cap. |
 | `validateDraft` | `/agent` | The check a candidate runs before countersigning a race draft: structure, the bound assembly (`readProfile`), and with `specs` the merkle-leaf gate (`counterSignDraft` and `quoteDraft` run it themselves and refuse without `specs`). |
 | `verifyCommitmentSignature` | root | Does this signature over this commitment recover to this signer? Refuse early, off chain. |
 | `verifyResolveProcessSignature` | root | Does this buyer's resolve signature over this process id and cumulative value recover to the buyer? From the chain, the value is the sum of the listed commitments' payments. The first of the resolve's two forms; the second is checked by the verifier against the buyer's code. |

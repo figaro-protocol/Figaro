@@ -258,13 +258,20 @@ its manual.
 - `validateContent(content, spec, { stage? })` — validates a value against a
   parsed spec; rejects unknown fields; applies `spec.stages[stage]` when a
   stage is named. It applies the geohash grain cap, cap(disposition,
-  geocodeStandard) (`sdk/src/clauses/grain.ts`): for a string field that
-  declares `formatFromField`, the format is the named sibling's committed
-  value (`resolveInputFormat`), and when that is `geohash` a `public` value
-  carries at most 6 characters and a `private` one at most 12. A standard it
-  carries no grain knowledge of, and a field with a static `format` and no
-  `formatFromField`, are bounded by `maxLength` only. The guest's engine
-  (`prover/clause`) does not apply this cap. An `integer` value is a JSON number inside the safe range
+  geocodeStandard) (`sdk/src/clauses/grain.ts`), to the resolved format,
+  static or named by a sibling (`resolveInputFormat`): a string field's
+  static `format`, or, when it declares `formatFromField`, the named
+  sibling's committed value, then that sibling's default, then `format`. A
+  stage field's `formatFromField` names a field of the same stage, and
+  resolves among that stage's fields only. When the resolved format is
+  `geohash`, a `public` value carries at most 6 characters and a `private` one
+  at most 12, under the field's `maxLength`, which stays the structural
+  ceiling. An array whose item spec declares `format: "geohash"` caps each
+  item by the array field's disposition. A standard it carries no grain
+  knowledge of is bounded by `maxLength` only. This cap is the SDK's alone:
+  the guest's engine (`prover/clause`) does not apply it, so a proof of a
+  plaintext attestation binds the spec and the content's shape and does not
+  attest the grain. An `integer` value is a JSON number inside the safe range
   (±(2^53 − 1)), however the text writes it (`5`, `5.0` and `5e0` are one
   integer, read exactly by both engines); a `bigint` value is an unsigned decimal string inside the
   uint256 word. Content that validates encodes, in both engines. Every

@@ -30,11 +30,18 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
     encodeContentFromSpec,
+    GEOHASH_FORMAT,
+    geohashCapturePrecision,
     parseClauseSpec,
+    resolveInputFormat,
     validateContent,
     type ClauseSpec,
+    type FieldDisposition,
     type FieldSpec,
 } from "../../src/clauses/index.js";
+
+/** The message `validateContent` gives when the geohash grain cap refuses a value. */
+const GRAIN_REFUSAL = /geohash carries at most \d+ characters/;
 
 const CLAUSES_DIR = path.resolve(__dirname, "../../../clauses");
 const OUT_PATH = path.resolve(__dirname, "../../../test/fixtures/streams/clauses.jsonl");
@@ -55,6 +62,17 @@ const anyString = (min: number, max: number) =>
         { weight: 3, arbitrary: fc.string({ minLength: min, maxLength: max }) },
         { weight: 1, arbitrary: fc.string({ unit: "grapheme", minLength: min, maxLength: max }) },
     );
+
+/** Keep a drawn geohash inside its disposition's grain cap. The cap is the one
+ *  rule the guest's engine does not apply, so the shared stream stays on the
+ *  rules both engines hold. Whole code points are dropped, never half of one. */
+function withinGrain(value: unknown, format: string | undefined, disposition: FieldDisposition | undefined): unknown {
+    if (format !== GEOHASH_FORMAT || typeof value !== "string") return value;
+    const cap = geohashCapturePrecision(disposition);
+    const points = Array.from(value);
+    while (points.join("").length > cap) points.pop();
+    return points.join("");
+}
 
 /** `careful` draws aim inside the field's bounds; the others also cross them. */
 function stringArb(field: Extract<FieldSpec, { type: "string" }>, careful: boolean): fc.Arbitrary<unknown> {
@@ -131,11 +149,13 @@ function valueArb(field: FieldSpec, careful: boolean, depth = 0): fc.Arbitrary<u
         case "array": {
             const min = field.minItems ?? 0;
             const max = Math.max(min, Math.min(field.maxItems ?? min + 3, min + 3));
-            const inside = fc.array(valueArb(field.items, careful, depth + 1), { minLength: min, maxLength: max });
+            const itemFormat = resolveInputFormat(field.items, [], undefined);
+            const item = valueArb(field.items, careful, depth + 1).map((v) => withinGrain(v, itemFormat, field.disposition));
+            const inside = fc.array(item, { minLength: min, maxLength: max });
             if (careful) return inside;
             return fc.oneof(
                 { weight: 6, arbitrary: inside },
-                { weight: 1, arbitrary: fc.array(valueArb(field.items, careful, depth + 1), { maxLength: max + 2 }) },
+                { weight: 1, arbitrary: fc.array(item, { maxLength: max + 2 }) },
             );
         }
         case "object":
@@ -178,6 +198,9 @@ function contentArb(
     return fc.tuple(fc.tuple(...entries), extraArb).map(([pairs, extra]) => {
         const out: Record<string, unknown> = {};
         for (const pair of pairs) if (pair !== null) out[pair[0]] = pair[1];
+        for (const field of fields) {
+            if (field.name in out) out[field.name] = withinGrain(out[field.name], resolveInputFormat(field, fields, out), field.disposition);
+        }
         if (extra !== null && !["__proto__", "constructor", "prototype"].includes(extra[0])) {
             out[extra[0]] = extra[1];
         }
@@ -398,5 +421,22 @@ describe("Clause fuzz vectors — the generated leg of the clause-engine lock", 
         const b = build(1, 3, 6);
         expect(a.length).toBeGreaterThan(0);
         expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    });
+
+    it("no vector is refused by the geohash grain cap, the one rule the guest's engine does not apply", () => {
+        // The stream holds the rules both engines share; the grain cap is the
+        // SDK's alone (`engineVectors.test.ts`, the rules beyond the shared
+        // vectors), so a drawn geohash stays inside its disposition's cap.
+        for (const seed of [1, 2, 3]) {
+            for (const v of build(seed, 8, 6)) {
+                if (!v.specOk || v.validateOk !== false) continue;
+                const parsed = parseClauseSpec(v.spec);
+                if (!parsed.ok) continue;
+                const verdict = validateContent(v.content, parsed.spec, v.stage === null ? {} : { stage: v.stage });
+                // Refused by the cap alone: the guest's engine would accept it.
+                const capAlone = !verdict.ok && verdict.errors.every((e) => GRAIN_REFUSAL.test(e.message));
+                expect(capAlone, `${v.origin} stage ${v.stage}: ${JSON.stringify(v.content)}`).toBe(false);
+            }
+        }
     });
 });

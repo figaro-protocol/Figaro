@@ -565,3 +565,51 @@ describe("Clause-engine vectors — the hand-written leg of the clause-engine lo
         expect(built.specs.some((c) => !c.ok)).toBe(true);
     });
 });
+
+/**
+ * The rules Layer A applies beyond the shared vectors. Each one is the SDK's
+ * alone: the guest's engine does not apply it, and the frozen vectors hold no
+ * case of it. A proof of a plaintext attestation therefore binds the spec and
+ * the content's shape, and does not attest these rules. A new rule of this
+ * kind enters this list, or the tests below fail.
+ */
+const SDK_ONLY_RULES = ["the geohash grain cap by disposition"] as const;
+
+/** The message `validateContent` gives when the grain cap refuses a value. */
+const GRAIN_REFUSAL = /geohash carries at most \d+ characters/;
+
+describe("Rules the SDK applies beyond the shared vectors", () => {
+    const frozen = existsSync(FIXTURE_PATH)
+        ? (JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as ReturnType<typeof build>)
+        : null;
+
+    it("lists exactly one rule: the geohash grain cap by disposition", () => {
+        expect(SDK_ONLY_RULES).toEqual(["the geohash grain cap by disposition"]);
+    });
+
+    it("validateContent accepts every value and content the frozen vectors mark valid", () => {
+        expect(frozen, "fixture missing").not.toBeNull();
+        for (const c of frozen!.values.filter((v) => v.ok === true)) {
+            expect(verdict([c.field], { v: c.value }), `${c.group}: ${JSON.stringify(c.value)}`).toBe(true);
+        }
+        for (const c of frozen!.contents.filter((v) => v.ok === true)) {
+            expect(verdict(c.fields, c.content), c.label).toBe(true);
+        }
+    });
+
+    it("the frozen vectors hold no geohash format, no disposition and no formatFromField, so the cap never reaches them", () => {
+        const text = readFileSync(FIXTURE_PATH, "utf8");
+        expect(text).not.toMatch(/"geohash"|"disposition"|"formatFromField"/);
+    });
+
+    it("the grain cap is the single exception: a value every shared rule accepts is refused by the cap alone", () => {
+        const geohash = str({ format: "geohash", maxLength: 12 });
+        const parsed = parseClauseSpec(specOf([geohash]));
+        if (!parsed.ok) throw new Error("the spec does not parse");
+        const refused = validateContent({ v: "dr5regw" }, parsed.spec);
+        expect(refused.ok).toBe(false);
+        if (!refused.ok) expect(refused.errors.every((e) => GRAIN_REFUSAL.test(e.message))).toBe(true);
+        // The same value under a format the cap does not read: every shared rule accepts it.
+        expect(verdict([str({ format: "evidence-capture", maxLength: 12 })], { v: "dr5regw" })).toBe(true);
+    });
+});
