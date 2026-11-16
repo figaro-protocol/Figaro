@@ -18,8 +18,8 @@ vi.mock("wagmi", () => ({
     useWalletClient: () => ({ data: undefined }),
     useWatchContractEvent: () => undefined,
 }));
-vi.mock("@/lib/kernel/indexer", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/indexer")>()),
+vi.mock("@/lib/core/indexer", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/indexer")>()),
     getCoreEvents: (...a: unknown[]) => mocks.coreEvents(...a),
     useWatchOrderEvents: () => undefined,
 }));

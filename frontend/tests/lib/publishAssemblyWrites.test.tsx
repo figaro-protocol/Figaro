@@ -45,8 +45,8 @@ vi.mock("wagmi", () => ({
     useWriteContract: () => ({ writeContractAsync: s.write, data: undefined, isPending: false, error: null }),
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
 }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return {
         ...actual,
         CONTRACTS: { ...actual.CONTRACTS, assemblyRegistry: "0x00000000000000000000000000000000000a5501", agreementRegistry: "0x00000000000000000000000000000000000a9e01" },

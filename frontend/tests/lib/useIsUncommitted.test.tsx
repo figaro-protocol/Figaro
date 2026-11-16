@@ -24,13 +24,13 @@ vi.mock("wagmi", () => ({
     useWalletClient: () => ({ data: undefined }),
     useWatchContractEvent: () => undefined,
 }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/contracts")>()),
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
     getBatchVerifier: () => VERIFIER,
 }));
-vi.mock("@/lib/kernel/indexer", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/indexer")>()),
+vi.mock("@/lib/core/indexer", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/indexer")>()),
     getCoreEvents: (...a: unknown[]) => getCoreEventsMock(...a),
     useWatchOrderEvents: () => undefined,
 }));

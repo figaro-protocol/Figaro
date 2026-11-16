@@ -81,14 +81,14 @@ vi.mock("@/lib/composition/contracts", () => ({
     getRpgfMinter: () => "0x00000000000000000000000000000000000f1001",
     getUsageCounter: () => "0x00000000000000000000000000000000000c0c01",
 }));
-vi.mock("@/lib/kernel/eventCache", () => ({
+vi.mock("@/lib/core/eventCache", () => ({
     cachedGetContractEvents: async (_client: unknown, _chainId: number, { eventName }: { eventName: string }) => {
         if (eventName === "ClauseRegistered") return [{ args: { registeredBy: w.address, clauseKey: w.key } }];
         if (eventName === "UsageRecorded") return [{ args: { kind: 0, clauseOrAssembly: w.key, period: 0 } }];
         return [];
     },
 }));
-vi.mock("@/lib/kernel/indexer", () => ({
+vi.mock("@/lib/core/indexer", () => ({
     getAllOrderCommitted: async () => [{
         args: {
             orderHash: w.orderHash,
@@ -105,8 +105,8 @@ vi.mock("@/lib/kernel/indexer", () => ({
     }],
     getStringArg: (log: { args: Record<string, unknown> }, key: string) => String(log.args[key]),
 }));
-vi.mock("@/lib/kernel/signedCommitment", () => ({ restoreSignedProcessId: (c: unknown) => c }));
-vi.mock("@/lib/kernel/agreementFetch", () => ({
+vi.mock("@/lib/core/signedCommitment", () => ({ restoreSignedProcessId: (c: unknown) => c }));
+vi.mock("@/lib/core/agreementFetch", () => ({
     fetchAgreement: async () => ({ status: "present", value: { clauses: [], provenance: { agreementHash: w.key, assemblyHash: w.key } } }),
 }));
 vi.mock("@/lib/composition/witnessContent", () => ({ publishWitnessContent: async () => undefined }));
@@ -124,7 +124,7 @@ import { useRegisterMember, useUpdateProfile } from "@/lib/member/useMembersRegi
 import { useRegisterClause, useWithdrawClause } from "@/lib/protocol/useClauseRegistry";
 import { usePayoutRoutingActions } from "@/lib/composition/usePayoutRoutingActions";
 import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActions";
-import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
+import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { useUsageRecorder, type UsageWrite } from "@/lib/protocol/useUsageRecorder";
 import { useRpgfRewards } from "@/lib/composition/useRpgfRewards";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
@@ -479,7 +479,7 @@ const CENSUS: Census = {
     "lib/composition/useSwapAndCommitActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useSwapAndCommitActions"], pinnedBy: THIS_FILE },
     "lib/composition/useSwapFunding.ts": { tokens: {}, sites: ["useSwapFunding"], pinnedBy: "tests/lib/useSwapFunding.test.tsx" },
     "lib/designer/publishAssembly.ts": { tokens: { useWriteContract: 2, simulateWrite: 2, simulateWriteVerify: 3 }, sites: ["usePublishAgreement", "usePublishAssembly"], pinnedBy: "tests/lib/publishAssemblyWrites.test.tsx" },
-    "lib/kernel/useFigaroActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useFigaroActions.commit", "useFigaroActions.resolveProcess"], pinnedBy: THIS_FILE },
+    "lib/core/useFigaroActions.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useFigaroActions.commit", "useFigaroActions.resolveProcess"], pinnedBy: THIS_FILE },
     "lib/member/useMembersRegistry.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRegisterMember", "useUpdateProfile", "useRequestWithdrawal", "useWithdrawDeposit"], pinnedBy: THIS_FILE },
     "lib/member/usePublishMemberProfile.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 2 }, sites: ["register", "updateProfile"], pinnedBy: "tests/lib/publishMemberProfileNoCatalog.test.tsx" },
     "lib/protocol/useClauseRegistry.ts": { tokens: { useWriteContract: 1, simulateWriteVerify: 1 }, sites: ["useRegisterClause"], pinnedBy: THIS_FILE },

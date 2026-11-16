@@ -11,7 +11,7 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { computeCheckoutHash, type Agreement } from "@figaro-protocol/sdk";
-import { OrderState, type Order } from "@/lib/kernel/store";
+import { OrderState, type Order } from "@/lib/core/store";
 
 vi.mock("@react-pdf/renderer", () => {
     const passthrough = ({ children }: { children?: React.ReactNode }) => React.createElement("div", null, children);

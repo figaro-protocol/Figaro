@@ -37,7 +37,7 @@ import {
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import type { Page } from '@playwright/test';
 
 // Clause keys are located by the names their specs carry (`keyOf`), over

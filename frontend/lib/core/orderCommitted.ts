@@ -12,7 +12,7 @@ import { assertOrderFitsResolveCap } from "@figaro-protocol/sdk";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import type { Commitment, Hex } from "@figaro-protocol/sdk";
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 
 interface CommitBroadcaster {
     (commitment: Commitment, buyerSig: Hex, sellerSig: Hex): Promise<Hex>;

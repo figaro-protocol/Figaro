@@ -42,7 +42,7 @@
                         "message": "Typed-data signing lives in lib/checkout/orderCommitmentFlow.ts alone."
                     },
                     {
-                        "name": "@/lib/kernel/useFigaroActions",
+                        "name": "@/lib/core/useFigaroActions",
                         "message": "FigaroCore is written from lib/checkout/orderCommitmentFlow.ts (commit, behind the sign gate) and hooks/useSemanticProcessWorkspace.ts (the buyer's resolve) alone."
                     }
                 ]

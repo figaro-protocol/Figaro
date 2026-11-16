@@ -20,7 +20,7 @@
  */
 
 import type { ResolutionUniverse } from "@figaro-protocol/sdk";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import type { ExtractedDocument, MissingPart } from "./types";
 import { clauseIsProcessLog, clauseWitnessStages, getClauseSpec } from "@/lib/shared/clauseSpecSource";

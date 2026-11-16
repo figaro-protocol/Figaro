@@ -51,7 +51,7 @@ import {
 } from '@figaro-protocol/sdk';
 import { encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
 import { getClauseSpec, specSource } from '@/lib/shared/clauseSpecSource';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import { LOCAL_ANVIL, RPC_URL, keyOf, localPublicClient, pinWitnessBytes, primeRegisteredClauseSpecs, readLocalDeploymentConfig } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 

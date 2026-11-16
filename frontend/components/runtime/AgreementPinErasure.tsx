@@ -1,6 +1,6 @@
 "use client";
 
-import { unpinAgreement } from "@/lib/kernel/agreementFetch";
+import { unpinAgreement } from "@/lib/core/agreementFetch";
 import { PinErasureControl } from "@/components/runtime/PinErasureControl";
 
 /**

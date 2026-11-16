@@ -25,7 +25,7 @@ import type { Hex } from 'viem';
 import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { composedClauseChip, publishProbeAssembly } from './probeAssembly';
 import { discoverAnchoredAssemblies, localPublicClient, readLocalDeploymentConfig } from './devnet-helpers';
-import { ASSEMBLY_REGISTRY_ABI } from '@/lib/kernel/contracts';
+import { ASSEMBLY_REGISTRY_ABI } from '@/lib/core/contracts';
 import { deriveAssemblySlug } from '@/lib/shared/assembly';
 
 

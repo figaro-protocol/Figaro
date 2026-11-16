@@ -40,13 +40,13 @@ vi.mock("@/lib/shared/wagmi", () => ({
     publicClient: provider,
     activeChain: { id: 11155111 },
 }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/contracts")>()),
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
 }));
 // An un-witnessed order resolves to no agreement: the SDK gate counts it unverified.
 // No order here was witnessed by this wallet, so no body is read.
-vi.mock("@/lib/kernel/agreementFetch", () => ({ witnessedAgreementUri: () => null, fetchAgreement: async () => null }));
+vi.mock("@/lib/core/agreementFetch", () => ({ witnessedAgreementUri: () => null, fetchAgreement: async () => null }));
 
 import { useWithdrawGate } from "@/lib/protocol/withdrawGate";
 import { mapRead, present } from "@/lib/shared/networkRead";

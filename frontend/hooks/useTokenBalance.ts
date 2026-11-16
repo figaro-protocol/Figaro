@@ -1,7 +1,7 @@
 "use client";
 
 import { useReadContract } from "wagmi";
-import { ERC20_ABI } from "@/lib/kernel/contracts";
+import { ERC20_ABI } from "@/lib/core/contracts";
 import { queryRead, type NetworkRead } from "@/lib/shared/networkRead";
 
 /**

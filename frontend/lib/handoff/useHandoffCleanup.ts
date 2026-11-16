@@ -18,7 +18,7 @@
 
 import { useEffect, useRef } from "react";
 import { useAccount, usePublicClient } from "wagmi";
-import { CORE_ABI, CONTRACTS, getBatchVerifier } from "@/lib/kernel/contracts";
+import { CORE_ABI, CONTRACTS, getBatchVerifier } from "@/lib/core/contracts";
 import { ensureRpc } from "@/lib/handoff/rpc";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import type { HandoffPersistenceService } from "@/lib/handoff/handoffPersistenceService";

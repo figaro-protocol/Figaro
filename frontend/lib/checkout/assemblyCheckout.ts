@@ -47,7 +47,7 @@ import {
 } from "@figaro-protocol/sdk";
 import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { chainDeadline, type OrderPreview } from "@/lib/checkout/orderPreview";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { parseToken } from "@/lib/shared/utils";

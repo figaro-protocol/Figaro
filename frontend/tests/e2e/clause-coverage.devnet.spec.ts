@@ -61,7 +61,7 @@ import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { keccak256 } from 'viem';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import { calculateBonds, ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
 import { clauseIsAssemblyScoped, getClauseSpec } from '@/lib/shared/clauseSpecSource';
 import type { Page } from '@playwright/test';

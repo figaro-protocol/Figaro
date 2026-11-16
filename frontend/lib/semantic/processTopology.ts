@@ -17,7 +17,7 @@
  * (render path: `useProcessAgreements`); this module never fetches.
  */
 import type { Agreement } from "@figaro-protocol/sdk";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 
 // ── The read of the topology leaf ─────────────────────────────────────────────
 

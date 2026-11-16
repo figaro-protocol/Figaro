@@ -30,7 +30,7 @@ export function getE2EModeFromSearchParams(search: string | URLSearchParams): E2
  */
 export function getE2EModeSession(): E2EMode {
     if (typeof window === "undefined") return null;
-    // Same-layer sibling: testHelpers.ts is lib/shared/, not lib/kernel/, so
+    // Same-layer sibling: testHelpers.ts is lib/shared/, not lib/core/, so
     // importing it carries no cross-layer weight. Scoped to the production
     // branch only — TEST_HELPERS_ENABLED's own URL fallback is a MODULE-INIT-
     // TIME read of window.location.search, which would go stale across a

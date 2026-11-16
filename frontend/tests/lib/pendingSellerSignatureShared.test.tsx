@@ -24,7 +24,7 @@ vi.mock("wagmi", () => ({
 const CLIENT = { chain: { id: 31337 } };
 
 // The order history the committed-order filter reads: no order is on-chain yet.
-vi.mock("@/lib/kernel/indexer", () => ({
+vi.mock("@/lib/core/indexer", () => ({
     getCoreEvents: async () => ({ events: { orderCommitted: [], orderResolved: [], processResolved: [] }, committedLogs: [] }),
     useWatchOrderEvents: () => undefined,
 }));
@@ -34,8 +34,8 @@ vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
 // The pin gate verifies a counterparty signature before pinning;
 // these tests exercise dismiss/resubscription with fixture
 // sigs, so treat the signature as valid and give the gate a core domain.
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x00000000000000000000000000000000000000c0" } };
 });
 vi.mock("@figaro-protocol/sdk", async (importOriginal) => {
@@ -46,7 +46,7 @@ vi.mock("@figaro-protocol/sdk", async (importOriginal) => {
 // The payload fetch: return the serialized payload JSON so the REAL
 // deserializeCommitmentPayload runs (never mock the parse itself).
 // Agreement pinning is a side effect of witnessing — a no-op for this test.
-vi.mock("@/lib/kernel/agreementFetch", () => ({
+vi.mock("@/lib/core/agreementFetch", () => ({
     publishAgreement: vi.fn().mockResolvedValue(undefined),
 }));
 

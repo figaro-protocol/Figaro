@@ -10,7 +10,7 @@ import { AgreementPinErasure } from "@/components/runtime/AgreementPinErasure";
 import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 
 /**
  * Dispute escalation for the process. In the layered dispute model

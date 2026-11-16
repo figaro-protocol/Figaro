@@ -74,7 +74,7 @@ import {
     VENUE_ABI,
 } from './devnet-helpers';
 import { formatToken } from '@/lib/shared/utils';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import { truncateHex } from '@/lib/shared/formatHex';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import type { Page } from '@playwright/test';

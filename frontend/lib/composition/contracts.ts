@@ -2,8 +2,8 @@
  * lib/composition/contracts.ts — addresses + config for the contracts the
  * frontend COMPOSES with (attestation).
  *
- * Not core. `lib/composition/` may import from `lib/kernel/` (e.g. event-cache
- * primitives); `lib/kernel/` must NEVER import from here.
+ * Not core. `lib/composition/` may import from `lib/core/` (e.g. event-cache
+ * primitives); `lib/core/` must NEVER import from here.
  *
  * Addresses come from the page's deployment record (`lib/shared/chains.ts`,
  * `pageRecord`) — an address is not
@@ -13,7 +13,7 @@
  */
 import { isValidAddress } from "@/lib/shared/evm";
 import { pageRecord } from "@/lib/shared/chains";
-import { getUsageCounter as getKernelUsageCounter, getBatchVerifier as getKernelBatchVerifier } from "@/lib/kernel/contracts";
+import { getUsageCounter as getKernelUsageCounter, getBatchVerifier as getKernelBatchVerifier } from "@/lib/core/contracts";
 
 const record = pageRecord();
 const addressOf = (value: string | undefined) => (value || "") as `0x${string}`;
@@ -85,7 +85,7 @@ export function getUsageCounter(): `0x${string}` | null {
 }
 
 /** The FigaroBatchVerifier, the Core's batch path: read from the Core's
- *  configuration (`lib/kernel/contracts.ts`), its one source. */
+ *  configuration (`lib/core/contracts.ts`), its one source. */
 export function getBatchVerifier(): `0x${string}` | null {
     return getKernelBatchVerifier();
 }

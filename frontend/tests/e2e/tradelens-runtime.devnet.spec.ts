@@ -43,7 +43,7 @@ import {
     readLocalDeploymentConfig,
     waitForConnected,
 } from './devnet-helpers';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import {
     C,
     CARRIER,

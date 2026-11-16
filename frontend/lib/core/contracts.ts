@@ -67,7 +67,7 @@ export function getMembersRegistry(): `0x${string}` | null {
 
 /** The UsageCounter address if it's a well-formed address, else null. The
  *  canonical parse of the deployment record's `usageCounter` — `lib/composition/contracts.ts`'s
- *  `getUsageCounter()` delegates here (composition may import from lib/kernel; the
+ *  `getUsageCounter()` delegates here (composition may import from lib/core; the
  *  reverse never happens) instead of re-reading the env itself, and
  *  `useUsageRecorder` consumes this validated path so a malformed address
  *  resolves null and fails loudly at the call site, never reaching a

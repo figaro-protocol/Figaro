@@ -9,7 +9,7 @@ import type { CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useTokenBalance from "@/hooks/useTokenBalance";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import { rememberSignedUnsent } from "@/lib/checkout/signedUnsentOrders";
 import type { CheckoutHandle } from "./types";
 

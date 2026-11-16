@@ -52,12 +52,12 @@ vi.mock("wagmi", () => ({
     useWatchContractEvent: () => undefined,
     useReadContract: () => ({ data: undefined, isLoading: false }),
 }));
-vi.mock("@/lib/kernel/eventCache", () => ({
+vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),
     cachedGetReceiptLogs: vi.fn(),
 }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/contracts")>()),
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
 }));
 vi.mock("@/lib/shared/wagmi", () => ({ publicClient: CLIENT, activeChain: { id: 31337 } }));
@@ -76,7 +76,7 @@ vi.mock("@/hooks/useTokenSymbol", () => ({ useTokenSymbol: () => ({ data: "TKN" 
 
 // The action hooks: nothing is sent in this test.
 vi.mock("@/hooks/useTokenApproval", () => ({ default: () => ({ needsApproval: () => false, approve: vi.fn(), refetchAllowance: vi.fn() }) }));
-vi.mock("@/lib/kernel/useFigaroActions", () => ({ useFigaroActions: () => ({ resolveProcess: vi.fn(), hash: undefined, isPending: false }) }));
+vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ resolveProcess: vi.fn(), hash: undefined, isPending: false }) }));
 vi.mock("@/lib/protocol/useUsageRecorder", () => ({ useUsageRecorder: () => ({}) }));
 vi.mock("@/lib/composition/useAttestationCoordinatorActions", () => ({
     useAttestationCoordinatorActions: () => ({ isPending: false, isConfirming: false, isSuccess: false, submitAttestation: vi.fn() }),

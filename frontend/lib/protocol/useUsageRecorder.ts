@@ -3,7 +3,7 @@
 /**
  * useUsageRecorder — the usage-recording writes (protocol layer; the
  * UsageCounter is a protocol contract, not core, so its ABI stays out of
- * lib/kernel by the layer rule).
+ * lib/core by the layer rule).
  *
  * The three calls — a clause, a registered agreement, an assembly — are
  * PERMISSIONLESS by design: UsageCounter re-verifies every fact from state
@@ -26,7 +26,7 @@
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import type { Abi, PublicClient } from "viem";
 import { USAGE_COUNTER_ABI, fetchUsageClaimContext, type Commitment, type UsageClaimContext } from "@figaro-protocol/sdk";
-import { getUsageCounter } from "@/lib/kernel/contracts";
+import { getUsageCounter } from "@/lib/core/contracts";
 import { simulateWrite, simulateWriteVerify, type ContractCall } from "@/lib/shared/contractWrite";
 
 type Hex = `0x${string}`;

@@ -65,8 +65,8 @@ vi.mock("wagmi", () => ({
         },
     }),
 }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x00000000000000000000000000000000000000c0" } };
 });
 // The seller's binding is pinned by its own test (sellerBoundAssembly); here it
@@ -81,8 +81,8 @@ vi.mock("@/lib/checkout/orderPreview", async (importOriginal) => ({
     requestSignConfirmation: (...args: unknown[]) => confirm(...args),
 }));
 const commitSignedOrder = vi.fn(async (_args: { payload: CommitmentPayload }) => `0x${"cc".repeat(32)}` as Hex);
-vi.mock("@/lib/kernel/orderCommitted", () => ({ commitSignedOrder: (args: Parameters<typeof commitSignedOrder>[0]) => commitSignedOrder(args) }));
-vi.mock("@/lib/kernel/useFigaroActions", () => ({ useFigaroActions: () => ({ commit: vi.fn() }) }));
+vi.mock("@/lib/core/orderCommitted", () => ({ commitSignedOrder: (args: Parameters<typeof commitSignedOrder>[0]) => commitSignedOrder(args) }));
+vi.mock("@/lib/core/useFigaroActions", () => ({ useFigaroActions: () => ({ commit: vi.fn() }) }));
 vi.mock("@/lib/composition/useSwapAndCommitActions", () => ({ useSwapAndCommitActions: () => ({ swapAndCommit: vi.fn() }) }));
 vi.mock("@/lib/shared/runtimeServicesContext", () => ({ useRuntimeServices: () => ({}) }));
 

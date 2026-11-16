@@ -54,7 +54,7 @@ import {
 } from '@figaro-protocol/sdk';
 import { localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import { getClauseSpec, specSource } from '@/lib/shared/clauseSpecSource';
 import { RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro-protocol/sdk";
 import type { Page } from '@playwright/test';

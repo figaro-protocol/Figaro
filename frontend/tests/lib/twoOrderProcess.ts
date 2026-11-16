@@ -11,8 +11,8 @@
 import type { Agreement } from "@figaro-protocol/sdk";
 import { pinSpec } from "./primeClauseSpecs";
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
-import { OrderState, type Order } from "@/lib/kernel/store";
-import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
+import { OrderState, type Order } from "@/lib/core/store";
+import type { ProcessSummary } from "@/lib/core/walletProcessQueries";
 
 export const BUYER = "0x1111111111111111111111111111111111111111";
 export const ROOT_SELLER = "0x2222222222222222222222222222222222222222";

@@ -1,7 +1,7 @@
 import type { PublicClient } from 'viem';
 import { getActiveMembers } from '@/lib/protocol/membersRegistryIndexer';
 import type { MemberCatalog } from '@/lib/member/types';
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import { resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
 import type { MemberCatalogMetadata } from '@/lib/member/memberCatalogMetadata';
 import type { MemberProfileMetadata } from '@/lib/member/memberProfileMetadata';
