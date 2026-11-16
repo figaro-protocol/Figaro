@@ -36,7 +36,7 @@ import {
     type DeliveredContent,
 } from "@/lib/handoff/contentDelivery";
 import { useCeremonyPanel } from "@/lib/handoff/useCeremonyChannel";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { attestationEncodeOptions, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { Button } from "@/components/ui/Button";
 import { CeremonyPanelFrame } from "@/components/runtime/CeremonyPanelFrame";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
@@ -57,7 +57,7 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
             const spec = getClauseSpec(clauseKey);
             if (!spec) return null;
             return keccak256(
-                encodeContentFromSpec(spec, { contentHash: delivered.contentHash }, { stage: COMPLETION_STAGE }),
+                encodeContentFromSpec(spec, { contentHash: delivered.contentHash }, attestationEncodeOptions(clauseKey, COMPLETION_STAGE)),
             );
         },
         [clauseKey],
@@ -88,7 +88,7 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
             if (!spec) throw new Error(`Clause spec not loaded: ${clauseKey}`);
             return {
                 stage: COMPLETION_STAGE,
-                content: encodeContentFromSpec(spec, { contentHash }, { stage: COMPLETION_STAGE }),
+                content: encodeContentFromSpec(spec, { contentHash }, attestationEncodeOptions(clauseKey, COMPLETION_STAGE)),
                 anchorFailureMessage: "Anchoring the completion evidence failed",
                 result: contentHash as `0x${string}`,
             };

@@ -13,10 +13,11 @@
  * derived at read time (`lib/composition/stageAttestationComparison`) from
  * the process's attestation log and the content each fingerprint resolves to
  * — the same read path the audit's clause evidence uses: `resolveHeldWitnessContent`
- * reads the copy this browser kept of the viewer's own private filing, else
- * derives the keccak-CID from the event's `contentRef`; either way it verifies
- * the bytes hash back to it, and `decodeContentFromSpec` decodes them through
- * the stage's declared fields. Content that does not resolve (another party's
+ * reads the copy this browser kept of a private filing made from it (the copy
+ * belongs to the browser profile, so it shows with any wallet connected or
+ * none), else derives the keccak-CID from the event's `contentRef`; either way
+ * it verifies the bytes hash back to it, and `decodeContentFromSpec` decodes
+ * them through the stage's declared fields (`attestationEncodeOptions`). Content that does not resolve (another party's
  * private filing, withheld, erased) compares nothing. Nothing is stored.
  */
 
@@ -30,7 +31,7 @@ import {
     groupAttestationsByStage,
     type StageComparison,
 } from "@/lib/composition/stageAttestationComparison";
-import { clauseIsAssemblyScoped, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { attestationEncodeOptions, attestationIsWitness, clauseIsAssemblyScoped, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { truncateHex } from "@/lib/shared/formatHex";
 
@@ -46,10 +47,10 @@ const contentKey = (att: RuntimeAttestation) => `${att.clauseId.toLowerCase()}:$
 const shortenHex = (value: string) =>
     value.replace(/0x[0-9a-fA-F]{16,}/gu, (hex) => truncateHex(hex, { head: 8, tail: 6 }));
 
-/** True for a declared witness stage of an assembly-scoped clause — read from
- *  the clause's own spec. */
+/** True for a witness at a declared stage of an assembly-scoped clause —
+ *  read from the clause's own spec (`attestationIsWitness`). */
 function takesPart(clauseKey: string, stage: number): boolean {
-    return clauseIsAssemblyScoped(clauseKey) && getClauseSpec(clauseKey)?.stages?.[stage] !== undefined;
+    return clauseIsAssemblyScoped(clauseKey) && attestationIsWitness(clauseKey, stage);
 }
 
 function verdictText(comparison: StageComparison, labelOf: (name: string) => string): string {
@@ -87,7 +88,7 @@ export function StageAttestationComparison({ attestations }: Props) {
                 const content = spec ? await resolveHeldWitnessContent(att) : null;
                 if (!spec || !content) return;
                 try {
-                    next.set(key, decodeContentFromSpec(spec, content, { stage: att.stage }));
+                    next.set(key, decodeContentFromSpec(spec, content, attestationEncodeOptions(att.clauseId, att.stage)));
                 } catch {
                     // Bytes that do not decode under the declared fields read as not available.
                 }

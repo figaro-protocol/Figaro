@@ -15,7 +15,7 @@ import type { Order } from "@/lib/core/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 import { getAllMemberRegistered, getActiveMembers } from "@/lib/protocol/membersRegistryIndexer";
 import { getAttestationsByOrder } from "@/lib/composition/indexer";
-import { readKeptWitnessContent, readKeptWitnessValues } from "@/lib/composition/witnessContent";
+import { readHeldWitness } from "@/lib/composition/witnessContent";
 import { buildAuditBundle, type AuditBundle } from "@/lib/audit/auditBundle";
 import type {
     MemberRegisteredEvent,
@@ -147,12 +147,11 @@ export async function buildAuditBundleData(
 
         const bundle = buildAuditBundle(order, agreement, attestations, {
             memberRegistrationEvents: memberRegisteredAll,
-            // The private attestation content this browser kept for its own
-            // attestations, each checked against its contentRef.
-            heldWitness: (place) => {
-                const content = readKeptWitnessContent(place);
-                return content ? { content, values: readKeptWitnessValues(place) } : null;
-            },
+            // The private attestation content this browser kept, each
+            // checked against its contentRef and decoded from those bytes:
+            // the same reader the audit page passes, so both name the same
+            // pieces missing.
+            heldWitness: readHeldWitness,
         });
         perOrderBundles.push(bundle);
         missing.push(...bundle.missing);

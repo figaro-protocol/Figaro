@@ -186,7 +186,10 @@ function roleCapabilities(
         const orderLabel = `Order ${indexes.positionByOrder.get(orderIdStr)} of ${indexes.positionByOrder.size} · seller ${truncateHex(order.seller)}`;
         for (const clauseEntry of agreement.clauses) {
             const clauseKey = clauseEntry.clause;
-            if (clauseIsProcessLog(clauseKey)) continue; // a ladder's stage overrides shape its content, not a witness
+            // A process-log clause's attestations are its ladder events,
+            // encoded over its top-level fields (`attestationEncodeOptions`):
+            // a stage it declares offers no witness.
+            if (clauseIsProcessLog(clauseKey)) continue;
             for (const witness of clauseWitnessStages(clauseKey)) {
                 const title = getClauseSpec(clauseKey)?.title ?? clauseKey;
                 for (const party of ["seller", "buyer"] as const) {

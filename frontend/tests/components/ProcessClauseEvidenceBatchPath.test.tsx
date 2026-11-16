@@ -21,7 +21,7 @@ vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => new
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
 vi.mock("@/lib/composition/indexer", () => ({ getAttestationsByOrder: (...a: unknown[]) => getByOrderMock(...a) }));
 vi.mock("@/lib/audit/signatureVerdicts", () => ({ verifyOrderCommitSignatures: async () => { throw new Error("no verdict"); } }));
-vi.mock("@/lib/composition/witnessContent", () => ({ fetchWitnessContent: async () => null, resolveHeldWitnessContent: async () => null }));
+vi.mock("@/lib/composition/witnessContent", () => ({ fetchWitnessContent: async () => null, resolveHeldWitnessContent: async () => null, readHeldWitness: () => null }));
 vi.mock("@/components/runtime/WitnessPinErasure", () => ({ WitnessPinErasure: () => null }));
 vi.mock("@/components/runtime/CredentialVerifyButton", () => ({ CredentialVerifyButton: () => null }));
 

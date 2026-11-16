@@ -223,7 +223,7 @@ describe("the attester keeps its private witness content before the attestation 
             executionType: "transaction", kind: "submit-clause-attestation",
             orderHash: ORDER, clauseKey: SPEC_V1.clauseKey, stage: 1, party: "buyer",
         }, { reading: "4C" });
-        expect(window.localStorage.getItem(KEPT_WITNESS_STORAGE_KEY)).toBeNull();
+        expect(Object.keys(window.localStorage).filter((k) => k.startsWith(KEPT_WITNESS_STORAGE_KEY))).toEqual([]);
     });
 
     it("where the browser refuses to keep a private witness, nothing is sent", async () => {
