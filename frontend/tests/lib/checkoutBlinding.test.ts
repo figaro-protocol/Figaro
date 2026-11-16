@@ -4,11 +4,12 @@
  * (the dispatch race's dry walk, then the commit walk) reproduces the same
  * `checkoutHash`, and a new draft draws new values.
  */
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import { agreementHashOf, type Hex, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { agreementHashOf, validateCommitmentAgreement, type Hex, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { loadClauseSpec, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
 import { planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
-import { withCheckoutBlinding, type CheckoutFills } from "@/lib/checkout/checkoutBlinding";
+import { freshBlindingStore, withCheckoutBlinding, type CheckoutFills } from "@/lib/checkout/checkoutBlinding";
+import { mergeAssemblyTermFills } from "@/lib/checkout/checkoutDerivations";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
 import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 
@@ -69,10 +70,13 @@ describe("withCheckoutBlinding", () => {
         expect(two["agreement-0"][PRIVATE.clauseKey].grade).toBe("c");
     });
 
-    it("never overwrites a value the fills already carry", () => {
-        const held = `0x${"56".repeat(32)}`;
-        const out = withCheckoutBlinding(hydrated, { "agreement-0": { [PRIVATE.clauseKey]: { grade: "a", blinding: held } } }, specSource(), {});
-        expect(out["agreement-0"][PRIVATE.clauseKey].blinding).toBe(held);
+    it("keeps only the draft's own draw: a value the fills carry is drawn over, since the fills fold in the design's values", () => {
+        const designed = `0x${"56".repeat(32)}`;
+        const fills: CheckoutFills = { "agreement-0": { [PRIVATE.clauseKey]: mergeAssemblyTermFills({ blinding: designed }, { grade: "a" }) } };
+        const out = withCheckoutBlinding(hydrated, fills, specSource(), {});
+        expect(isBlindingValue(out["agreement-0"][PRIVATE.clauseKey].blinding)).toBe(true);
+        expect(out["agreement-0"][PRIVATE.clauseKey].blinding).not.toBe(designed);
+        expect(out["agreement-0"][PRIVATE.clauseKey].grade).toBe("a");
     });
 });
 
@@ -102,5 +106,86 @@ describe("a rebuild of a checkout draft keeps its checkoutHash", () => {
         expect(committed?.data?.blinding).toBe(draft["agreement-0"][PRIVATE.clauseKey].blinding);
         const [another] = await planAssemblyOrders(params(withCheckoutBlinding(hydrated, fills, specSource(), {})), { chainId: 31337 });
         expect(another.checkoutHash).not.toBe(first.checkoutHash);
+    });
+});
+
+describe("a design that carries a blinding value never gives the signed one", () => {
+    const DESIGNED = `0x${"5d".repeat(32)}`;
+    const designWith = (where: "agreement" | "assembly"): HydratedAssembly => {
+        const clauses = where === "agreement"
+            ? { [commerceKey]: {}, [PRIVATE.clauseKey]: { blinding: DESIGNED } }
+            : { [commerceKey]: {} };
+        const agreementHash = agreementHashOf({ clauses });
+        return {
+            assembly: {
+                ...(where === "assembly" ? { assemblyClauses: { [PRIVATE.clauseKey]: { blinding: DESIGNED } } } : {}),
+                agreements: [{ id: "agreement-0", agreementHash, clauses: {}, follows: [] }],
+            },
+            agreements: { [agreementHash.toLowerCase() as Hex]: { clauses } },
+        };
+    };
+
+    it.each(["agreement", "assembly"] as const)("the checkout draws its own value over the one the design's %s clause data carries", async (where) => {
+        const design = designWith(where);
+        // The checkout page's own merge: an assembly clause's designer values
+        // are the floor of the buyer's fills (`mergeAssemblyTermFills`).
+        const assemblyEntry = design.assembly.assemblyClauses?.[PRIVATE.clauseKey];
+        const fills: CheckoutFills = {
+            "agreement-0": { [PRIVATE.clauseKey]: assemblyEntry ? mergeAssemblyTermFills(assemblyEntry, { grade: "b" }) : { grade: "b" } },
+        };
+        const draft = withCheckoutBlinding(design, fills, specSource(), {});
+        const [order] = await planAssemblyOrders({
+            buyer: BUYER, leadSellerAddress: SELLER, currency: TOKEN, payment: 1_000_000n,
+            lineItems: [{ itemId: "i1", name: "Coffee", quantity: 1, unitPrice: "1000000" }],
+            assembly: { slug: "asm-test", name: "Private grade", hydratedAssembly: design, coSellerBindings: [] } as BoundAssembly,
+            sellerCatalogs: [], tokenDecimals: 6, salt: () => 1n, deadline: 4_000_000_000n, clauseFills: draft,
+        }, { chainId: 31337 });
+        const signed = order.agreement.clauses.find((c) => c.clause.toLowerCase() === PRIVATE.clauseKey.toLowerCase())?.data?.blinding;
+        expect(isBlindingValue(signed)).toBe(true);
+        expect(signed).not.toBe(DESIGNED);
+        expect(signed).toBe(draft["agreement-0"][PRIVATE.clauseKey].blinding);
+    });
+});
+
+describe("a retry after a failed checkout attempt draws again", () => {
+    it("freshBlindingStore gives a new attempt an empty store, so every order draws anew", () => {
+        const kept: CheckoutFills = {};
+        const fills: CheckoutFills = { "agreement-0": { [PRIVATE.clauseKey]: { grade: "b" } } };
+        const failed = withCheckoutBlinding(hydrated, fills, specSource(), kept);
+        const retried = withCheckoutBlinding(hydrated, fills, specSource(), freshBlindingStore(null));
+        expect(isBlindingValue(retried["agreement-0"][PRIVATE.clauseKey].blinding)).toBe(true);
+        expect(retried["agreement-0"][PRIVATE.clauseKey].blinding).not.toBe(failed["agreement-0"][PRIVATE.clauseKey].blinding);
+    });
+
+    it("keeps a race winner's values for its order: its struct is fixed by the winner's signature, and a retry rebuilds the same order", () => {
+        const won = { [PRIVATE.clauseKey]: { blinding: `0x${"9a".repeat(32)}` } };
+        const store = freshBlindingStore({ nodeId: "agreement-0", blinding: won });
+        expect(store).toEqual({ "agreement-0": won });
+        const out = withCheckoutBlinding(hydrated, { "agreement-0": { [PRIVATE.clauseKey]: { grade: "b" } } }, specSource(), store);
+        expect(out["agreement-0"][PRIVATE.clauseKey].blinding).toBe(won[PRIVATE.clauseKey].blinding);
+    });
+});
+
+describe("without Web Crypto the checkout refuses in words and never throws", () => {
+    afterEach(() => { vi.unstubAllGlobals(); });
+
+    it("withCheckoutBlinding draws nothing, names the refusal, and the sign gate refuses the order", async () => {
+        vi.stubGlobal("crypto", undefined);
+        const refusals: string[] = [];
+        const fills: CheckoutFills = { "agreement-0": { [PRIVATE.clauseKey]: { grade: "b" } } };
+        let out: CheckoutFills = {};
+        expect(() => { out = withCheckoutBlinding(hydrated, fills, specSource(), {}, (r) => refusals.push(r)); }).not.toThrow();
+        expect(out["agreement-0"]?.[PRIVATE.clauseKey]?.blinding).toBeUndefined();
+        expect(refusals).toEqual([expect.stringMatching(/cannot be placed.*random value/)]);
+        vi.unstubAllGlobals();
+        const [order] = await planAssemblyOrders({
+            buyer: BUYER, leadSellerAddress: SELLER, currency: TOKEN, payment: 1_000_000n,
+            lineItems: [{ itemId: "i1", name: "Coffee", quantity: 1, unitPrice: "1000000" }],
+            assembly: { slug: "asm-test", name: "Private grade", hydratedAssembly: hydrated, coSellerBindings: [] } as BoundAssembly,
+            sellerCatalogs: [], tokenDecimals: 6, salt: () => 1n, deadline: 4_000_000_000n, clauseFills: out,
+        }, { chainId: 31337 });
+        const check = validateCommitmentAgreement(order.agreement, order.checkoutHash, specSource(), order.commitment, hydrated);
+        expect(check.ok).toBe(false);
+        expect(check.issues).toContainEqual(expect.objectContaining({ path: expect.stringMatching(/blinding/) }));
     });
 });

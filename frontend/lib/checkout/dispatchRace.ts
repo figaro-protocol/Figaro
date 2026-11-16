@@ -65,6 +65,7 @@ import {
 import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
 import { generateSalt } from "@figaro-protocol/sdk";
 import { planAssemblyOrders, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
+import { redrawNodeBlinding } from "@/lib/checkout/checkoutBlinding";
 import { chainDeadline } from "@/lib/checkout/orderPreview";
 import { commitmentOrderHash } from "@/lib/core/signedCommitment";
 import { createRelayCoordinationChannel, type RelayCoordinationChannel } from "@/lib/handoff/relayChannel";
@@ -166,6 +167,66 @@ export function pricedRaceCandidates(args: {
         .slice(0, args.maxCandidates && args.maxCandidates > 0 ? args.maxCandidates : undefined);
 }
 
+/**
+ * One dry walk per candidate: the raced node's order IS the candidate's
+ * draft. Each draft draws its own blinding value for each private clause of
+ * the raced node (`redrawNodeBlinding`): a losing candidate receives a
+ * draft, so a value shared across drafts would let it confirm the winner's
+ * private content against the winner's published fingerprint. Every other
+ * node keeps the checkout's values, since no candidate receives them. On the
+ * quotes leg every draft prices at the buyer's CEILING: the quote moves the
+ * commitment's payment, and the copies of the figure inside the clauses
+ * (derived from the built agreement by the same spec-routed lookup the fills
+ * use, possibly none) are attached as the quote request's terms.
+ */
+export async function draftRaceCandidates(args: {
+    checkout: Omit<AssemblyCheckoutParams, "salt" | "deadline" | "subOrderRace">;
+    racedNodeId: string;
+    candidates: ReadonlyArray<{ address: Hex; endpoint: string | undefined; pricing: SubOrderPricing }>;
+    quote?: { ceiling: bigint };
+    salt: (nodeId: string) => bigint;
+    deadline: bigint;
+    chainId: number;
+}): Promise<RaceCandidateState[]> {
+    const { checkout, racedNodeId, chainId } = args;
+    const hydrated = checkout.assembly.hydratedAssembly;
+    const specs = specSource();
+    const drafts: RaceCandidateState[] = [];
+    for (const { address: candidate, endpoint, pricing } of args.candidates) {
+        const item = { id: pricing.item!.id, name: pricing.item!.name };
+        const price = formatToken(args.quote?.ceiling ?? pricing.payment, checkout.tokenDecimals);
+        const redrawn = redrawNodeBlinding(hydrated, checkout.clauseFills ?? {}, racedNodeId, specs);
+        const orders = await planAssemblyOrders({
+            ...checkout,
+            clauseFills: redrawn.fills,
+            subOrderSelections: {
+                ...checkout.subOrderSelections,
+                [racedNodeId]: { seller: candidate, price, item },
+            },
+            salt: args.salt,
+            deadline: args.deadline,
+        }, { chainId });
+        const order = orders.find((o) => o.nodeId === racedNodeId);
+        if (!order) throw new Error(`The walk produced no order for node "${racedNodeId}".`);
+        let payload: CommitmentPayload = { commitment: order.commitment, agreement: order.agreement };
+        if (args.quote) {
+            payload = { ...payload, quoteRequest: { pricedFields: derivePricedFields(order.agreement.clauses, specs) } };
+        }
+        drafts.push({
+            address: candidate,
+            item,
+            payment: order.payment,
+            price,
+            draft: payload,
+            blinding: redrawn.drawn,
+            structHash: hashCommitmentStruct(order.commitment) as Hex,
+            orderId: commitmentOrderHash(order.commitment, chainId),
+            endpoint,
+        });
+    }
+    return drafts;
+}
+
 /** A candidate in the running: their drafted struct + reply state (render model). */
 export interface RaceCandidateView {
     address: Hex;
@@ -187,6 +248,10 @@ export interface DispatchRaceResult {
     race: { structHash: Hex; sellerSig: Hex };
     salt: (nodeId: string) => bigint;
     deadline: bigint;
+    /** The blinding values the winner's draft was built with, for the raced
+     *  node (clause key → field → value). The checkout keeps them for that
+     *  node, so the signed agreement carries the values the winner saw. */
+    blinding: Record<string, Record<string, unknown>>;
     endpoint?: string;
 }
 
@@ -234,6 +299,11 @@ interface RaceCandidateState {
     payment: bigint;
     price: string;
     draft: CommitmentPayload;
+    /** The blinding values this candidate's draft was built with, for the
+     *  raced node (clause key → field → value): drawn for this draft alone,
+     *  and kept by the checkout when this candidate wins, so the commit walk
+     *  rebuilds the struct it countersigned. */
+    blinding: Record<string, Record<string, unknown>>;
     structHash: Hex;
     orderId: string;
     /** The candidate's declared agent REST endpoint — present makes them an
@@ -316,6 +386,7 @@ export function useDispatchRace() {
                 return s;
             },
             deadline: ctx.deadline,
+            blinding: state.blinding,
             endpoint: state.endpoint,
         });
         setStep("done");
@@ -382,42 +453,9 @@ export function useDispatchRace() {
             };
             ctxRef.current = { nodeId: racedNodeId, salts, deadline, decimals: checkout.tokenDecimals };
 
-            // One dry walk per candidate — the raced node's order IS the draft.
-            // On the quotes leg every draft prices at the buyer's CEILING: the
-            // quote moves the commitment's payment, and the copies of the
-            // figure inside the clauses (derived from the built agreement by
-            // the same spec-routed lookup the fills use, possibly none) are
-            // attached as the quote request's terms.
-            const drafts: RaceCandidateState[] = [];
-            for (const { address: candidate, endpoint, pricing } of routed) {
-                const item = { id: pricing.item!.id, name: pricing.item!.name };
-                const price = formatToken(args.quote?.ceiling ?? pricing.payment, checkout.tokenDecimals);
-                const orders = await planAssemblyOrders({
-                    ...checkout,
-                    subOrderSelections: {
-                        ...checkout.subOrderSelections,
-                        [racedNodeId]: { seller: candidate, price, item },
-                    },
-                    salt: saltFn,
-                    deadline,
-                }, { chainId });
-                const order = orders.find((o) => o.nodeId === racedNodeId);
-                if (!order) throw new Error(`The walk produced no order for node "${racedNodeId}".`);
-                let payload: CommitmentPayload = { commitment: order.commitment, agreement: order.agreement };
-                if (args.quote) {
-                    payload = { ...payload, quoteRequest: { pricedFields: derivePricedFields(order.agreement.clauses, specs) } };
-                }
-                drafts.push({
-                    address: candidate,
-                    item,
-                    payment: order.payment,
-                    price,
-                    draft: payload,
-                    structHash: hashCommitmentStruct(order.commitment) as Hex,
-                    orderId: commitmentOrderHash(order.commitment, chainId),
-                    endpoint,
-                });
-            }
+            const drafts = await draftRaceCandidates({
+                checkout, racedNodeId, candidates: routed, quote: args.quote, salt: saltFn, deadline, chainId,
+            });
             draftsRef.current = drafts;
             setCandidates(drafts.map((d) => ({ address: d.address, itemName: d.item.name, payment: d.payment, replied: false })));
 
