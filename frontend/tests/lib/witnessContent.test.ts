@@ -14,8 +14,13 @@ import { hexToBytes, keccak256, toHex, type Hex } from "viem";
 import { encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { witnessContentCid, witnessContentCidBase32 } from "@figaro-protocol/sdk/derive";
 import {
+    KEPT_WITNESS_STORAGE_KEY,
     fetchWitnessContent,
+    keepPrivateWitnessContent,
     publishWitnessContent,
+    readKeptWitnessContent,
+    readKeptWitnessValues,
+    resolveHeldWitnessContent,
     unpinWitnessContent,
 } from "@/lib/composition/witnessContent";
 import { PROVENANCE_LEAF_KEY, provenanceLeafBytes } from "@figaro-protocol/sdk";
@@ -224,5 +229,62 @@ describe("unpinWitnessContent", () => {
         const unpin = vi.fn();
         await unpinWitnessContent("not-a-ref", { unpin });
         expect(unpin).not.toHaveBeenCalled();
+    });
+});
+
+describe("the attester keeps its own private witness content", () => {
+    const ORDER = `0x${"0d".repeat(32)}` as Hex;
+    const values = { secretReading: "41.2", blinding: `0x${"c7".repeat(32)}` };
+    const privateContent = () => {
+        const spec = getClauseSpec(PRIVATE.clauseKey);
+        if (!spec) throw new Error("private spec not loaded");
+        return encodeContentFromSpec(spec, values, { stage: 1 });
+    };
+
+    it("keeps a private set's bytes and values before anything is sent, and reads them back checked against the content reference", () => {
+        window.localStorage.clear();
+        const content = privateContent();
+        expect(keepPrivateWitnessContent({ orderHash: ORDER, clauseId: PRIVATE.clauseKey, stage: 1, content, values })).toBe("kept");
+        const att = { orderHash: ORDER, clauseId: PRIVATE.clauseKey, stage: 1, contentRef: keccak256(content) };
+        expect(readKeptWitnessContent(att)).toBe(content);
+        expect(readKeptWitnessValues(att)).toEqual(values);
+        // Another order, clause, stage or reference reads nothing.
+        expect(readKeptWitnessContent({ ...att, orderHash: `0x${"0e".repeat(32)}` as Hex })).toBeNull();
+        expect(readKeptWitnessContent({ ...att, stage: 2 })).toBeNull();
+        expect(readKeptWitnessContent({ ...att, contentRef: keccak256(toHex("other")) })).toBeNull();
+    });
+
+    it("a kept entry whose bytes do not hash to the reference reads as absent", () => {
+        window.localStorage.clear();
+        const content = privateContent();
+        keepPrivateWitnessContent({ orderHash: ORDER, clauseId: PRIVATE.clauseKey, stage: 1, content, values });
+        const stored = JSON.parse(window.localStorage.getItem(KEPT_WITNESS_STORAGE_KEY)!) as Record<string, { content: string }>;
+        // Flip one hex digit of the kept bytes.
+        for (const entry of Object.values(stored)) entry.content = `${entry.content.slice(0, 65)}${entry.content[65] === "f" ? "0" : "f"}${entry.content.slice(66)}`;
+        window.localStorage.setItem(KEPT_WITNESS_STORAGE_KEY, JSON.stringify(stored));
+        expect(readKeptWitnessContent({ orderHash: ORDER, clauseId: PRIVATE.clauseKey, stage: 1, contentRef: keccak256(content) })).toBeNull();
+    });
+
+    it("keeps nothing for a public set: its bytes are published at their reference", () => {
+        window.localStorage.clear();
+        expect(keepPrivateWitnessContent({ orderHash: ORDER, clauseId: keyOf("figaro-proximity-policy"), stage: 1, content: proximityContent() })).toBe("public");
+        expect(window.localStorage.getItem(KEPT_WITNESS_STORAGE_KEY)).toBeNull();
+    });
+
+    it("says refused when the browser will not keep it, so the caller sends nothing", () => {
+        window.localStorage.clear();
+        const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota"); });
+        try {
+            expect(keepPrivateWitnessContent({ orderHash: ORDER, clauseId: PRIVATE.clauseKey, stage: 1, content: privateContent(), values })).toBe("refused");
+        } finally {
+            setItem.mockRestore();
+        }
+    });
+
+    it("resolveHeldWitnessContent reads the kept copy first, and the public pin otherwise", async () => {
+        window.localStorage.clear();
+        const content = privateContent();
+        keepPrivateWitnessContent({ orderHash: ORDER, clauseId: PRIVATE.clauseKey, stage: 1, content, values });
+        expect(await resolveHeldWitnessContent({ orderHash: ORDER, clauseId: PRIVATE.clauseKey, stage: 1, contentRef: keccak256(content) })).toBe(content);
     });
 });

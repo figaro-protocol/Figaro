@@ -449,6 +449,26 @@ function ClauseDataPage({ doc }: { doc: AuditBundle["clauseData"] }) {
             {doc.clauses.length === 0 && (
                 <Text style={styles.sectionBody}>No clause data committed on this order.</Text>
             )}
+            {doc.blindingValues.length > 0 && (
+                <View>
+                    <Text style={styles.h2}>Blinding values</Text>
+                    <Text style={styles.note}>
+                        A private clause carries a random value beside its terms, so its
+                        data hash cannot be confirmed by guessing the terms. It is no term,
+                        and the forum needs it to recompute the clause&apos;s data hash and
+                        leaf: the value goes into the clause&apos;s data with the terms above.
+                    </Text>
+                    <View style={styles.table}>
+                        {doc.blindingValues.map((b) => (
+                            <View key={`${b.clauseKey}-${b.field}`} style={styles.tableRow}>
+                                <Text style={[styles.tCellMono, { flex: 3 }]}>{b.clauseKey}</Text>
+                                <Text style={[styles.tCell, { flex: 1 }]}>{b.field}</Text>
+                                <Text style={[styles.tCellMono, { flex: 4 }]}>{b.value}</Text>
+                            </View>
+                        ))}
+                    </View>
+                </View>
+            )}
         </AuditPage>
     );
 }
@@ -513,6 +533,18 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                             </View>
                         ))}
                     </View>
+                    {group.events.filter((e) => e.heldContent).map((e, i) => (
+                        <View key={`held-${group.clauseKey}-${e.contentRef}-${i}`}>
+                            <Text style={styles.note}>
+                                Private content of the stage {e.stage} attestation, held by the
+                                builder of this file. keccak256(content bytes) = contentRef {e.contentRef}.
+                            </Text>
+                            {Object.entries(e.heldValues ?? {}).map(([name, value]) => (
+                                <MetaRow key={name} k={name} v={typeof value === "string" ? value : JSON.stringify(value, (_k, x) => (typeof x === "bigint" ? x.toString() : x))} mono />
+                            ))}
+                            <MetaRow k="content bytes" v={e.heldContent!} mono />
+                        </View>
+                    ))}
                 </View>
             ))}
 

@@ -27,7 +27,7 @@ import type { Agreement } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import { extractContract, type ContractDocument } from "./contractExtract";
-import { extractProcessLogs, type ProcessLogsDocument } from "./processLogsExtract";
+import { extractProcessLogs, type HeldWitnessReader, type ProcessLogsDocument } from "./processLogsExtract";
 import { extractClauseData, type ClauseDataDocument } from "./clauseDataExtract";
 import {
     extractMembersRegistry,
@@ -59,6 +59,11 @@ export interface AuditBundleInputs {
      *  seller and of its buyer; a party with no row is surfaced as an audit
      *  notice. */
     memberRegistrationEvents?: readonly MemberRegisteredEvent[];
+    /** The private attestation content the file's builder holds (its own,
+     *  kept when it attested), checked against each `contentRef`. Absent:
+     *  the builder holds none, and each private attestation is named
+     *  missing. */
+    heldWitness?: HeldWitnessReader;
 }
 
 export function buildAuditBundle(
@@ -68,7 +73,7 @@ export function buildAuditBundle(
     inputs: AuditBundleInputs = {},
 ): AuditBundle {
     const contract = extractContract(order, agreement);
-    const processLogs = extractProcessLogs(order, attestations);
+    const processLogs = extractProcessLogs(order, attestations, inputs.heldWitness);
     const clauseData = extractClauseData(order, agreement);
     return {
         contract,

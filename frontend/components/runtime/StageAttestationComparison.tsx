@@ -12,18 +12,19 @@
  * the latest per attester per order — and each row names its party and order. The comparison is
  * derived at read time (`lib/composition/stageAttestationComparison`) from
  * the process's attestation log and the content each fingerprint resolves to
- * — the same read path the audit's clause evidence uses: `fetchWitnessContent`
- * derives the keccak-CID from the event's `contentRef`, verifies the bytes hash
- * back to it, and `decodeContentFromSpec` decodes them through the stage's
- * declared fields. Content that does not resolve (private disposition,
- * withheld, erased) compares nothing. Nothing is stored.
+ * — the same read path the audit's clause evidence uses: `resolveHeldWitnessContent`
+ * reads the copy this browser kept of the viewer's own private filing, else
+ * derives the keccak-CID from the event's `contentRef`; either way it verifies
+ * the bytes hash back to it, and `decodeContentFromSpec` decodes them through
+ * the stage's declared fields. Content that does not resolve (another party's
+ * private filing, withheld, erased) compares nothing. Nothing is stored.
  */
 
 import { useEffect, useMemo, useState } from "react";
 import { decodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { attestationPathLabel } from "@/lib/composition/attestationPath";
-import { fetchWitnessContent } from "@/lib/composition/witnessContent";
+import { resolveHeldWitnessContent } from "@/lib/composition/witnessContent";
 import {
     compareStageContent,
     groupAttestationsByStage,
@@ -81,7 +82,9 @@ export function StageAttestationComparison({ attestations }: Props) {
                 if (next.has(key)) return;
                 next.set(key, null);
                 const spec = getClauseSpec(att.clauseId);
-                const content = spec ? await fetchWitnessContent(att.contentRef) : null;
+                // The copy this browser kept of its own private filing, else
+                // the public pin; a filing neither holds shows nothing.
+                const content = spec ? await resolveHeldWitnessContent(att) : null;
                 if (!spec || !content) return;
                 try {
                     next.set(key, decodeContentFromSpec(spec, content, { stage: att.stage }));

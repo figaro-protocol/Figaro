@@ -7,7 +7,7 @@ import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { getAttestationsByOrder, type AttestationRecord } from "@/lib/composition/indexer";
 import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
-import { fetchWitnessContent } from "@/lib/composition/witnessContent";
+import { resolveHeldWitnessContent } from "@/lib/composition/witnessContent";
 import { decodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { WitnessPinErasure } from "@/components/runtime/WitnessPinErasure";
 import {
@@ -199,9 +199,10 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
     // publication half lives in `lib/composition/witnessContent`), so a reader
     // derives the address from the event alone, verifies the bytes hash back
     // to the fingerprint, and decodes them through the same spec that declared
-    // the stage. Private-disposition, withheld, or erased content resolves
-    // absent — the receipt row still renders the fingerprint; a party holding
-    // the preimage proves the match off-chain.
+    // the stage. A party's own private witness resolves from the copy its
+    // browser kept (checked against the fingerprint); another party's
+    // private, withheld, or erased content resolves absent — the receipt row
+    // still renders the fingerprint.
     //
     // Keyed by (clause key, stage, contentRef) — NEVER the fingerprint alone:
     // the same bytes decode differently under different field sets, and two
@@ -225,10 +226,13 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                     const key = `${att.clauseId.toLowerCase()}:${att.stage}:${att.contentRef}`;
                     if (next.has(key)) continue;
                     next.set(key, {}); // claim the triple; overwritten on decode
-                    let pending = contentByRef.get(att.contentRef);
+                    // The copy this browser kept of its own private witness
+                    // (keyed by order too), else the public pin.
+                    const placeKey = `${att.orderHash.toLowerCase()}:${key}`;
+                    let pending = contentByRef.get(placeKey);
                     if (!pending) {
-                        pending = fetchWitnessContent(att.contentRef);
-                        contentByRef.set(att.contentRef, pending);
+                        pending = resolveHeldWitnessContent(att);
+                        contentByRef.set(placeKey, pending);
                     }
                     jobs.push(pending.then((content) => {
                         if (!content) {

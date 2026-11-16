@@ -18,8 +18,12 @@ import { encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { keccak256, type Hex } from "viem";
 
 const published = new Map<string, Hex>();
+// The copies this browser kept of its own private witnesses, by order and reference.
+const held = new Map<string, Hex>();
 vi.mock("@/lib/composition/witnessContent", () => ({
     fetchWitnessContent: async (ref: string) => published.get(ref.toLowerCase()) ?? null,
+    resolveHeldWitnessContent: async (place: { orderHash: string; contentRef: string }) =>
+        held.get(`${place.orderHash.toLowerCase()}:${place.contentRef.toLowerCase()}`) ?? published.get(place.contentRef.toLowerCase()) ?? null,
 }));
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
 
@@ -74,14 +78,26 @@ const specOf = (clauseId: string, scope: "assembly" | "agreement") => ({
 });
 
 const sharedPin = pinSpec(specOf("figaro-test-shared-variation", "assembly"));
+const privatePin = pinSpec({
+    ...specOf("figaro-test-private-reading", "assembly"),
+    title: "Private reading",
+    stages: {
+        "1": [
+            { name: "reading", type: "string", required: true, minLength: 1, maxLength: 40, label: "Reading", disposition: "private" },
+            { name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true },
+        ],
+    },
+});
+const PRIVATE_READING = privatePin.clauseKey;
 const perOrderPin = pinSpec(specOf("figaro-test-per-order-variation", "agreement"));
 const SHARED = sharedPin.clauseKey;
 const PER_ORDER = perOrderPin.clauseKey;
 
 beforeAll(async () => {
-    const bytes = new Map([["mem://shared", sharedPin.bytes], ["mem://per-order", perOrderPin.bytes]]);
+    const bytes = new Map([["mem://shared", sharedPin.bytes], ["mem://per-order", perOrderPin.bytes], ["mem://private", privatePin.bytes]]);
     setClauseSpecFetcher(async (uri) => bytes.get(uri) ?? "");
     await loadClauseSpec(SHARED, "mem://shared");
+    await loadClauseSpec(PRIVATE_READING, "mem://private");
     await loadClauseSpec(PER_ORDER, "mem://per-order");
 });
 
@@ -210,5 +226,26 @@ describe("StageAttestationComparison — the path that emitted each filing", () 
         expect(pathOf(BUYER).getAttribute("data-universe")).toBe("direct");
         expect(pathOf(SELLER).getAttribute("data-universe")).toBe("batch");
         expect(pathOf(SELLER).getAttribute("title")).toBe("Batch path — emitted by the batch verifier");
+    });
+});
+
+describe("StageAttestationComparison — a private stage, read by the party that holds its own filing", () => {
+    it("shows the holder's kept filing without its blinding value, and nothing in place of a filing it does not hold", async () => {
+        const spec = getClauseSpec(PRIVATE_READING)!;
+        const mine = encodeContentFromSpec(spec, { reading: "4C", blinding: `0x${"e1".repeat(32)}` }, { stage: 1 });
+        const theirs = encodeContentFromSpec(spec, { reading: "5C", blinding: `0x${"e2".repeat(32)}` }, { stage: 1 });
+        held.set(`${ORDER_B}:${keccak256(mine)}`, mine);
+        const attestation = (attester: string, content: Hex): RuntimeAttestation => ({
+            clauseId: PRIVATE_READING, orderHash: ORDER_B, stage: 1, attester, contentRef: keccak256(content), blockNumber: ++block, universe: "direct",
+        });
+        render(<StageAttestationComparison attestations={[attestation(BUYER, mine), attestation(SELLER, theirs)]} />);
+        await verdict(PRIVATE_READING);
+        const card = screen.getByTestId(`stage-comparison-${PRIVATE_READING.toLowerCase()}-1`);
+        const own = within(card).getByTestId(`stage-filing-${BUYER}-${ORDER_B}`);
+        expect(own.textContent).toContain("4C");
+        expect(own.textContent).not.toContain("e1e1");
+        const other = within(card).getByTestId(`stage-filing-${SELLER}-${ORDER_B}`);
+        expect(other.textContent).not.toContain("5C");
+        expect(other.querySelector("dl")).toBeNull();
     });
 });

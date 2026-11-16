@@ -23,6 +23,7 @@ import type { ResolutionUniverse } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import type { ExtractedDocument, MissingPart } from "./types";
+import { contentFieldsFor } from "@figaro-protocol/sdk/clauses";
 import { clauseIsProcessLog, clauseWitnessStages, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
 interface ProcessLogEntry {
@@ -41,7 +42,21 @@ interface ProcessLogEntry {
     transactionHash?: string;
     /** The path that emitted the attestation, when the reader knows it. */
     universe?: ResolutionUniverse;
+    /** A private attestation's content, as its holder kept it: the bytes
+     *  whose keccak256 is `contentRef`, and the values encoded, the blinding
+     *  value included. Present only where the file's builder holds them. */
+    heldContent?: `0x${string}`;
+    heldValues?: Record<string, unknown>;
 }
+
+/** The content a party holds for one attestation, checked against its
+ *  `contentRef` by the reader that supplies it; null where it holds none. */
+export type HeldWitnessReader = (place: {
+    orderHash: string;
+    clauseId: string;
+    stage: number;
+    contentRef: string;
+}) => { content: `0x${string}`; values: Record<string, unknown> | null } | null;
 
 /** One process clause's event timeline — the per-clause group the PDF
  *  renders as its own section. One group per clause key: two specs that
@@ -69,6 +84,7 @@ export interface ProcessLogsDocument extends ExtractedDocument {
 export function extractProcessLogs(
     order: Order,
     attestations: readonly AttestationRecord[],
+    heldWitness?: HeldWitnessReader,
 ): ProcessLogsDocument {
     const groups = new Map<string, ProcessLogGroup>();
     const missing: MissingPart[] = [];
@@ -99,6 +115,17 @@ export function extractProcessLogs(
             group = { clauseKey, title: spec.title, events: [] };
             groups.set(clauseKey, group);
         }
+        // A private set's content is never published: the file holds it
+        // where its builder kept it, and names it missing otherwise.
+        const isPrivate = contentFieldsFor(spec, { stage: att.stage }).some((f) => f.disposition === "private");
+        const held = isPrivate ? heldWitness?.(att) ?? null : null;
+        if (isPrivate && !held) {
+            missing.push({
+                part: `Content of the private attestation of clause ${clauseKey}, stage ${att.stage}, contentRef ${att.contentRef}`,
+                orderHash: order.orderHash,
+                reason: "the content of a private attestation is never published, and the builder of this file does not hold it; its attester keeps it",
+            });
+        }
         group.events.push({
             clauseKey,
             attester: att.attester,
@@ -107,6 +134,7 @@ export function extractProcessLogs(
             blockNumber: att.blockNumber,
             transactionHash: att.transactionHash ?? undefined,
             universe: att.universe,
+            ...(held ? { heldContent: held.content, ...(held.values ? { heldValues: held.values } : {}) } : {}),
         });
     }
 

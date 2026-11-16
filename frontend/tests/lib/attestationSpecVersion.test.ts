@@ -5,13 +5,13 @@
  * and its fields may encode and disclose differently.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { hexToBytes, type Hex } from "viem";
+import { hexToBytes, keccak256, type Hex } from "viem";
 import { type Commitment } from "@figaro-protocol/sdk";
 import { decodeContentFromSpec, encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { pinSpec } from "./primeClauseSpecs";
 import { createCapabilityExecutors, type CapabilityExecutorDeps } from "@/lib/semantic/createCapabilityExecutors";
-import { publishWitnessContent } from "@/lib/composition/witnessContent";
+import { KEPT_WITNESS_STORAGE_KEY, publishWitnessContent, readKeptWitnessContent, readKeptWitnessValues } from "@/lib/composition/witnessContent";
 
 vi.mock("@/lib/core/signedCommitment", () => ({ restoreSignedProcessId: (c: Commitment) => c }));
 
@@ -161,5 +161,84 @@ describe("attestation under the committed clause key, beside another spec of the
         await publishWitnessContent({ clauseId: SPEC_V2.clauseKey, stage: 1, content, ipfs: { pinKeccakRawBlock } });
         expect(pinKeccakRawBlock).not.toHaveBeenCalled();
         warn.mockRestore();
+    });
+});
+
+describe("the attester keeps its private witness content before the attestation is sent", () => {
+    const ORDER = `0x${"aa".repeat(32)}` as Hex;
+    /** A process-log clause whose top-level set is private: a ladder event
+     *  of it is private content too. */
+    const PRIVATE_LADDER = pinSpec({
+        clauseId: "test-private-ladder",
+        version: 1,
+        title: "Private ladder",
+        description: "A process-log clause whose events are private.",
+        fields: [
+            { name: "eventType", type: "enum", values: ["packed", "shipped"], required: true, disposition: "private" },
+            { name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true },
+        ],
+        block: { design: { article: "attestations" } },
+    });
+
+    beforeAll(async () => {
+        setClauseSpecFetcher(async (uri) => (uri === "mem://v1" ? SPEC_V1.bytes : uri === "mem://ladder" ? PRIVATE_LADDER.bytes : SPEC_V2.bytes));
+        await loadClauseSpec(PRIVATE_LADDER.clauseKey, "mem://ladder");
+    });
+
+    it("a private witness: the content is kept, values and blinding value included, when the attestation is sent", async () => {
+        window.localStorage.clear();
+        let keptAtSend: Hex | null = null;
+        const submitAttestation = vi.fn(async (_role: "buyer" | "seller", args: { content?: Hex; stage: number; clauseId: Hex }) => {
+            keptAtSend = readKeptWitnessContent({ orderHash: ORDER, clauseId: args.clauseId, stage: args.stage, contentRef: keccak256(args.content!) });
+            return undefined;
+        });
+        const { executorCallbacks } = executors(submitAttestation as CapabilityExecutorDeps["submitAttestation"]);
+        await executorCallbacks.submitClauseAttestation({
+            executionType: "transaction", kind: "submit-clause-attestation",
+            orderHash: ORDER, clauseKey: SPEC_V2.clauseKey, stage: 1, party: "buyer",
+        }, { reading: "4C" });
+        const sent = (submitAttestation.mock.calls[0][1] as { content: Hex }).content;
+        expect(keptAtSend).toBe(sent);
+        const values = readKeptWitnessValues({ orderHash: ORDER, clauseId: SPEC_V2.clauseKey, stage: 1, contentRef: keccak256(sent) });
+        expect(values?.reading).toBe("4C");
+        expect(values?.blinding).toMatch(/^0x[0-9a-f]{64}$/);
+    });
+
+    it("a ladder event of a clause whose top-level set is private is kept the same way", async () => {
+        window.localStorage.clear();
+        const submitAttestation = vi.fn(async () => undefined);
+        const { executorCallbacks } = executors(submitAttestation);
+        await executorCallbacks.submitClauseAttestation({
+            executionType: "transaction", kind: "submit-clause-attestation",
+            orderHash: ORDER, clauseKey: PRIVATE_LADDER.clauseKey, stage: 0, eventCode: "packed", ladderField: "eventType", party: "seller",
+        });
+        const sent = (submitAttestation.mock.calls[0] as unknown as [string, { content: Hex }])[1].content;
+        expect(readKeptWitnessContent({ orderHash: ORDER, clauseId: PRIVATE_LADDER.clauseKey, stage: 0, contentRef: keccak256(sent) })).toBe(sent);
+    });
+
+    it("a public witness keeps nothing", async () => {
+        window.localStorage.clear();
+        const { executorCallbacks } = executors(vi.fn(async () => undefined));
+        await executorCallbacks.submitClauseAttestation({
+            executionType: "transaction", kind: "submit-clause-attestation",
+            orderHash: ORDER, clauseKey: SPEC_V1.clauseKey, stage: 1, party: "buyer",
+        }, { reading: "4C" });
+        expect(window.localStorage.getItem(KEPT_WITNESS_STORAGE_KEY)).toBeNull();
+    });
+
+    it("where the browser refuses to keep a private witness, nothing is sent", async () => {
+        window.localStorage.clear();
+        const submitAttestation = vi.fn(async () => undefined);
+        const { executorCallbacks } = executors(submitAttestation);
+        const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota"); });
+        try {
+            await expect(executorCallbacks.submitClauseAttestation({
+                executionType: "transaction", kind: "submit-clause-attestation",
+                orderHash: ORDER, clauseKey: SPEC_V2.clauseKey, stage: 1, party: "buyer",
+            }, { reading: "4C" })).rejects.toThrow(/could not keep the private content/);
+        } finally {
+            setItem.mockRestore();
+        }
+        expect(submitAttestation).not.toHaveBeenCalled();
     });
 });
