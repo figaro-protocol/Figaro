@@ -35,6 +35,14 @@
 
     let _reqId = 1;
 
+    // The page cannot import the app's safeJson, so the reviver is inlined:
+    // it drops the keys `strippingReviver` (@figaro-protocol/sdk) drops, and a
+    // body that is not JSON still throws, as `.json()` did.
+    const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+    function strippingReviver(key, value) {
+        return DANGEROUS_KEYS.has(key) ? undefined : value;
+    }
+
     async function rpcCall(method, params) {
         const response = await fetch(RPC_URL, {
             method: 'POST',
@@ -46,7 +54,7 @@
                 params: params || [],
             }),
         });
-        const data = await response.json();
+        const data = JSON.parse(await response.text(), strippingReviver);
         if (data.error) {
             const err = new Error(data.error.message || 'RPC error');
             err.code = data.error.code;

@@ -14,6 +14,41 @@ import {FlorinToken} from "src/rewards/FlorinToken.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
 
+/// @notice Stands in for the DAO's treasury wallet, a contract wallet: its
+///         owner sends a list of calls, and the wallet makes them in order in
+///         one transaction, as a Safe does through a multi-send. A failed call
+///         reverts the whole list with that call's own revert data.
+contract TreasuryWalletStandIn {
+    struct Call {
+        address to;
+        uint256 value;
+        bytes data;
+    }
+
+    error NotOwner();
+
+    address public immutable owner;
+
+    constructor(address owner_) {
+        owner = owner_;
+    }
+
+    /// @dev Takes the members registry stake back after the cooldown.
+    receive() external payable {}
+
+    function execute(Call[] calldata calls) external {
+        if (msg.sender != owner) revert NotOwner();
+        for (uint256 i = 0; i < calls.length; ++i) {
+            (bool ok, bytes memory ret) = calls[i].to.call{value: calls[i].value}(calls[i].data);
+            if (!ok) {
+                assembly {
+                    revert(add(ret, 32), mload(ret))
+                }
+            }
+        }
+    }
+}
+
 /// @notice End to end with NO stubs: a real bonded process resolves, its usage is
 ///         recorded against the real counter, the period closes, and the real
 ///         minter pays real florins. RpgfMinterTest exercises payout maths
@@ -73,7 +108,6 @@ contract RpgfIntegrationTest is Test {
         agreements = new AgreementRegistry(0);
         ASM = AgreementTestHelper.assemblyLeafFor(AGR, AgreementTestHelper.agreementLeafBytes(0, "{}", "[]"));
         members = new MembersRegistry(0, 0);
-        florin = new FlorinToken();
 
         vm.prank(author);
         clauses.registerClause(GEO_KEY, "ipfs://geo");
@@ -94,6 +128,22 @@ contract RpgfIntegrationTest is Test {
         vm.prank(agreementDesigner);
         members.register("ipfs://agreement-designer");
 
+        _deployTheRewards();
+
+        token.mint(buyer, 1_000_000 ether);
+        token.mint(seller, 1_000_000 ether);
+        vm.prank(buyer);
+        token.approve(address(core), type(uint256).max);
+        vm.prank(seller);
+        token.approve(address(core), type(uint256).max);
+
+        vm.warp(P0_END - 1000);
+    }
+
+    /// @dev The counter, the token and the minter, over the `members` registry
+    ///      the test stands up.
+    function _deployTheRewards() internal {
+        florin = new FlorinToken();
         uint64[] memory periods = new uint64[](3);
         periods[0] = P0_END;
         periods[1] = P0_END * 2;
@@ -123,15 +173,6 @@ contract RpgfIntegrationTest is Test {
             amounts
         );
         florin.registerMinter(address(minter), 600_000_000 ether);
-
-        token.mint(buyer, 1_000_000 ether);
-        token.mint(seller, 1_000_000 ether);
-        vm.prank(buyer);
-        token.approve(address(core), type(uint256).max);
-        vm.prank(seller);
-        token.approve(address(core), type(uint256).max);
-
-        vm.warp(P0_END - 1000);
     }
 
     function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
@@ -450,5 +491,133 @@ contract RpgfIntegrationTest is Test {
         assertEq(
             minter.claimable(0, author, _clause(GEO_KEY)), T0 / 2, "the clause's designer of record is quoted its share"
         );
+    }
+
+    // ── The treasury wallet's claim ─────────────────────────────────
+    //
+    // The DAO's treasury wallet registers `figaro-commerce` and holds no
+    // member stake between claims; the DAO's member profile is its operator
+    // account's. The claim reads a live member stake on the claimant in the
+    // claim's block only (DESIGN_DECISIONS.md § 20a), so the treasury wallet
+    // registers a stake, claims and requests withdrawal in one transaction,
+    // and takes the stake back after the cooldown.
+
+    /// @dev The public networks' stake and cooldown (§ 20a).
+    uint256 constant STAKE = 0.05 ether;
+    uint256 constant COOLDOWN = 28 days;
+    bytes32 constant COMMERCE_KEY = keccak256('{"clauseId":"figaro-commerce","version":1}');
+    address constant TREASURY_OWNER = address(0x7E5);
+    address constant OPERATOR = address(0x0EA0);
+
+    /// @dev A members registry with a stake and a cooldown, read by a fresh
+    ///      counter and minter; the seller and the operator account are
+    ///      members. The treasury wallet registers the clause, one resolved
+    ///      process uses it, its use is counted, and the period closes.
+    function _treasuryClauseUsedInAClosedPeriod() internal returns (TreasuryWalletStandIn treasury) {
+        members = new MembersRegistry(STAKE, COOLDOWN);
+        vm.deal(seller, STAKE);
+        vm.prank(seller);
+        members.register{value: STAKE}("ipfs://seller");
+        vm.deal(OPERATOR, STAKE);
+        vm.prank(OPERATOR);
+        members.register{value: STAKE}("ipfs://dao-operator");
+        _deployTheRewards();
+
+        treasury = new TreasuryWalletStandIn(TREASURY_OWNER);
+        _execute(
+            treasury,
+            _one(address(clauses), 0, abi.encodeCall(ClauseRegistry.registerClause, (COMMERCE_KEY, "ipfs://commerce")))
+        );
+        (address registeredBy,) = clauses.depositOf(COMMERCE_KEY);
+        assertEq(registeredBy, address(treasury), "the treasury wallet registered the clause");
+
+        CommitmentTypes.Commitment memory p = _settle(COMMERCE_KEY, 1);
+        counter.recordClauseUsage(p, COMMERCE_KEY, keccak256(CLAUSE_DATA), new bytes32[](0));
+        vm.warp(P0_END + 1);
+    }
+
+    function _one(address to, uint256 value, bytes memory data)
+        internal
+        pure
+        returns (TreasuryWalletStandIn.Call[] memory calls)
+    {
+        calls = new TreasuryWalletStandIn.Call[](1);
+        calls[0] = TreasuryWalletStandIn.Call(to, value, data);
+    }
+
+    function _execute(TreasuryWalletStandIn treasury, TreasuryWalletStandIn.Call[] memory calls) internal {
+        vm.prank(TREASURY_OWNER);
+        treasury.execute(calls);
+    }
+
+    function _claimCommerce() internal view returns (TreasuryWalletStandIn.Call memory) {
+        return TreasuryWalletStandIn.Call(
+            address(minter), 0, abi.encodeCall(RpgfMinter.claim, (uint8(0), _clause(COMMERCE_KEY)))
+        );
+    }
+
+    /// (a) The registrant with no member stake is refused at the claim, and
+    /// quoted zero.
+    function test_theTreasuryWalletWithNoMemberStakeIsRefusedAtTheClaim() public {
+        TreasuryWalletStandIn treasury = _treasuryClauseUsedInAClosedPeriod();
+        assertFalse(members.registered(address(treasury)));
+        assertEq(minter.claimable(0, address(treasury), _clause(COMMERCE_KEY)), 0);
+
+        TreasuryWalletStandIn.Call[] memory claimOnly = new TreasuryWalletStandIn.Call[](1);
+        claimOnly[0] = _claimCommerce();
+        vm.prank(TREASURY_OWNER);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotLiveMember.selector, address(treasury)));
+        treasury.execute(claimOnly);
+        assertEq(florin.balanceOf(address(treasury)), 0);
+    }
+
+    /// (b) In one transaction the treasury wallet registers a member stake
+    /// with no profile document, claims and requests withdrawal, and holds the
+    /// florins and no live membership at its end. (c) The stake stays locked
+    /// for the cooldown and comes back after it.
+    function test_theTreasuryWalletRegistersClaimsAndRequestsWithdrawalInOneTransaction() public {
+        TreasuryWalletStandIn treasury = _treasuryClauseUsedInAClosedPeriod();
+        vm.deal(address(treasury), STAKE);
+
+        TreasuryWalletStandIn.Call[] memory calls = new TreasuryWalletStandIn.Call[](3);
+        calls[0] = TreasuryWalletStandIn.Call(address(members), STAKE, abi.encodeCall(MembersRegistry.register, ("")));
+        calls[1] = _claimCommerce();
+        calls[2] =
+            TreasuryWalletStandIn.Call(address(members), 0, abi.encodeCall(MembersRegistry.requestWithdrawal, ()));
+        _execute(treasury, calls);
+
+        assertEq(florin.balanceOf(address(treasury)), T0, "the sole scorer takes the period's budget");
+        assertEq(minter.minted(0), T0);
+        assertFalse(members.registered(address(treasury)), "no live membership after the transaction");
+        assertEq(members.pendingDeposit(address(treasury)), STAKE);
+        uint256 releaseAt = block.timestamp + COOLDOWN;
+        assertEq(members.releaseAt(address(treasury)), releaseAt);
+        assertEq(address(treasury).balance, 0, "the stake is locked");
+
+        TreasuryWalletStandIn.Call[] memory withdrawCall =
+            _one(address(members), 0, abi.encodeCall(MembersRegistry.withdraw, ()));
+        vm.prank(TREASURY_OWNER);
+        vm.expectRevert(abi.encodeWithSelector(MembersRegistry.CooldownActive.selector, releaseAt));
+        treasury.execute(withdrawCall);
+
+        vm.warp(releaseAt);
+        _execute(treasury, withdrawCall);
+        assertEq(address(treasury).balance, STAKE, "the stake comes back after the cooldown");
+        assertEq(members.pendingDeposit(address(treasury)), 0);
+        assertEq(florin.balanceOf(address(treasury)), T0);
+    }
+
+    /// (d) The operator account holds the DAO's member profile and a live
+    /// stake, and is not the clause's registrant: its claim is refused on the key.
+    function test_theOperatorAccountCannotClaimTheTreasuryWalletsClause() public {
+        _treasuryClauseUsedInAClosedPeriod();
+        assertTrue(members.registered(OPERATOR));
+
+        vm.prank(OPERATOR);
+        vm.expectRevert(
+            abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_CLAUSE, COMMERCE_KEY, OPERATOR)
+        );
+        minter.claim(0, _clause(COMMERCE_KEY));
+        assertEq(florin.balanceOf(OPERATOR), 0);
     }
 }

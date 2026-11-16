@@ -11,6 +11,8 @@ on:
             - "lib/**"
             - ".gitmodules"
             - "foundry.toml"
+            - "abi/**"
+            - "scripts/emit-abi-bundle.sh"
             - ".github/workflows/foundry-ci.yml"
     pull_request:
         branches: [main, develop]
@@ -21,6 +23,8 @@ on:
             - "lib/**"
             - ".gitmodules"
             - "foundry.toml"
+            - "abi/**"
+            - "scripts/emit-abi-bundle.sh"
 
 permissions:
     contents: read
@@ -42,6 +46,67 @@ jobs:
 
             - name: Run forge build
               run: forge build --via-ir
+
+            # The tracked ABI bundle (abi/*.json) is what the SDK's parity test
+            # reads in place of a build. The bundle's own script writes it again
+            # from this build into a scratch directory, and any difference from
+            # the tracked files fails the job. Each ABI is compared as parsed
+            # JSON, entry by entry and in order, so formatting never counts.
+            - name: Check the tracked ABI bundle against the build
+              run: |
+                  ./scripts/emit-abi-bundle.sh "$RUNNER_TEMP/abi"
+                  python3 - "$RUNNER_TEMP/abi" <<'PY'
+                  import json, os, sys
+                  emitted_dir = sys.argv[1]
+
+                  def names(d):
+                      return {f for f in os.listdir(d) if f.endswith(".json")}
+
+                  def label(entry):
+                      if entry is None:
+                          return "no entry"
+                      return (entry.get("type", "?") + " " + entry.get("name", "")).strip()
+
+                  def first_difference(a, b, path=""):
+                      if type(a) is not type(b):
+                          return path, a, b
+                      if isinstance(a, dict):
+                          for k in list(a) + [k for k in b if k not in a]:
+                              if a.get(k) != b.get(k):
+                                  return first_difference(a.get(k), b.get(k), f"{path}.{k}")
+                      elif isinstance(a, list):
+                          for i in range(max(len(a), len(b))):
+                              x = a[i] if i < len(a) else None
+                              y = b[i] if i < len(b) else None
+                              if x != y:
+                                  return first_difference(x, y, f"{path}[{i}]")
+                      return path, a, b
+
+                  tracked, emitted = names("abi"), names(emitted_dir)
+                  failed = False
+                  for f in sorted(tracked - emitted):
+                      print(f"{f[:-5]}: tracked in abi/, not emitted from the build")
+                      failed = True
+                  for f in sorted(emitted - tracked):
+                      print(f"{f[:-5]}: emitted from the build, not tracked in abi/")
+                      failed = True
+                  for f in sorted(tracked & emitted):
+                      old = json.load(open(os.path.join("abi", f)))
+                      new = json.load(open(os.path.join(emitted_dir, f)))
+                      if old == new:
+                          continue
+                      failed = True
+                      for i in range(max(len(old), len(new))):
+                          a = old[i] if i < len(old) else None
+                          b = new[i] if i < len(new) else None
+                          if a != b:
+                              where, x, y = first_difference(a, b)
+                              print(f"{f[:-5]}: entry {i} ({label(a)} in abi/, {label(b)} in the build) differs at {where or 'the entry'}: abi/ has {json.dumps(x)}, the build has {json.dumps(y)}")
+                  if failed:
+                      print("abi/*.json differs from the build: run forge build, then ./scripts/emit-abi-bundle.sh, and commit abi/")
+                      sys.exit(1)
+                  print(f"abi/: {len(tracked)} ABIs equal to the build")
+                  PY
 
             # The suite runs at -vv. Tracing (-vvv) turns on forge's revert
             # diagnostic, which hands a test the text "call to non-contract

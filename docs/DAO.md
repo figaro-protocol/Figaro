@@ -77,6 +77,18 @@ hands it for one trade. The operator account is created, and the treasury's
 authority over it granted, before the DAO's member profile is registered under
 it; the treasury wallet itself holds no profile.
 
+The treasury wallet claims the designer rewards of the clauses it registered
+itself: `RpgfMinter.claim` pays only the registrant of each key it names, so
+the operator account cannot claim them. The claim also needs a live member
+stake on the claimant in the claim's block (`NotLiveMember`), and the treasury
+wallet holds none between claims. For each claim it registers a member stake
+with an empty profile URI, claims, and requests withdrawal of the stake. A
+wallet that batches calls makes the three in one transaction; a wallet that
+makes one call per transaction makes them in sequence. Either way the cost is
+the registration stake, locked for the members registry's cooldown
+(`DESIGN_DECISIONS.md` § 20a). `test/rewards/RpgfIntegrationTest.t.sol` holds
+the sequence.
+
 The concrete form of all this (the multisig's signer set and threshold, the
 code the operator account carries, the addresses) is deployment configuration,
 recorded for each network when that network deploys and changed as the DAO
