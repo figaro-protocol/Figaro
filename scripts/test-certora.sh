@@ -82,6 +82,9 @@ echo ""
 if [ -x "./scripts/lint-token-ops.sh" ]; then
     ./scripts/lint-token-ops.sh || exit $?
     echo ""
+else
+    echo "⚠️  Token-ops inventory gate skipped: scripts/lint-token-ops.sh is not in this tree."
+    echo ""
 fi
 
 # Default spec list; callers can override by passing spec basenames as args

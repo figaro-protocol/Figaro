@@ -1079,7 +1079,11 @@ Per workflow, what it runs and when:
   CERTORAKEY, never stored), and Static Analysis — Slither 0.11.3 over the
   audit scope, gated to exactly the High and Medium results
   `AUDITOR_HANDOVER.md` § "Static analysis" triages, and Semgrep's
-  `p/smart-contracts` rules, failing on any WARNING or ERROR.
+  `p/smart-contracts` rules, failing on any WARNING or ERROR. After the
+  build, the test job writes the ABI bundle again with
+  `scripts/emit-abi-bundle.sh` and fails when any ABI differs from the tracked
+  `abi/*.json`, compared as parsed JSON in order; the workflow also runs on
+  `abi/**`, so the bundle `sdk/tests/abiParity.test.ts` reads is the build's.
 - **`prover-ci`** — path-filtered. Three jobs: `test` on every push/PR —
   `cargo test`, Clippy and Semgrep on the two host-only prover crates
   (`figaro-clause`, `figaro-kernel`); `cross-impl-fuzz` on every push — four
