@@ -189,7 +189,7 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 74 invariants across 5 models in 9 configurations, each configuration's type invariant counted (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 8 + its deferral 10 + its resolve authorization 3 + its attestation authorization 2, `RTypeOK` and `OnlyPartyAttests`, `formal/RelayStateAttest.cfg` + its isolation 3, `ITypeOK`, `HonestNeverDroppedForAnother` and `IsolationBounded`, `formal/RelayStateIsolate.cfg`)
+## TLA+ (`formal/`) — 75 invariants across 5 models in 9 configurations, each configuration's type invariant counted (FigaroCore 9 + FlorinToken 9 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 8 + its deferral 10 + its resolve authorization 3 + its attestation authorization 2, `RTypeOK` and `OnlyPartyAttests`, `formal/RelayStateAttest.cfg` + its isolation 3, `ITypeOK`, `HonestNeverDroppedForAnother` and `IsolationBounded`, `formal/RelayStateIsolate.cfg`)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -202,7 +202,15 @@ buyer → seller and returns both bonds whole).
 FlorinToken (`FlorinToken.tla` + `FlorinToken.cfg`): `Inv_MaxSupply`,
 `Inv_DeployerCannotMintAfterRenounce`, `Inv_MinterCap`,
 `Inv_CapBelowMaxSupply`, `Inv_SupplyEqualsSumMinted`, `Inv_NonNegative`,
-`Inv_NoMintToZero`, `Inv_BalancesSumToSupply`.
+`Inv_NoMintToZero`, `Inv_BalancesSumToSupply`, `Inv_RegisteredCapsWithinMaxSupply`
+(`totalRegisteredCap` is the sum of the registered caps, and that sum is at most
+`MAX_SUPPLY`). The model starts with no minter, as the constructor does, refuses a
+registration that would carry `totalRegisteredCap` past `MAX_SUPPLY`, as
+`registerMinter` does, and moves balances by the inherited ERC-20 transfer —
+582,688 states generated, 25,454 distinct, depth 10. Mutation-checked: a
+registration checked against the supply in place of the registered caps fails
+`Inv_RegisteredCapsWithinMaxSupply` in three states (two registrations, caps 1
+and 5, at `MAX_SUPPLY = 5`).
 
 WitnessSwapAndCommitCoordinator (`WitnessSwapAndCommitCoordinator.tla` + `.cfg`):
 the swap-funded on-ramp at EVM-step granularity (revert frames
@@ -221,7 +229,7 @@ see where the two paths meet (every other layer is per-contract).
 exact per-pool deposits, one route-blind tally (`scoreOf == accrualOf.score`, `c`
 the size of the one counted-process set, `d` the size of the period's one seller
 set, counted only for resolved trade), `FigaroCore` blindness (`settleBatch` writes
-no `FigaroCore` `orderStatus`) — 45,000,639 states generated, 12,828,199 distinct, depth 18, ~29 min. Mutation-checked: four mutated actions, each failing the invariant it targets — the batch counting a process already counted (`CountIsDistinctProcesses`), the batch adding a seller already in the period's set to `d` (`SellersCountedOnce`), a score that ignores the floor at `MinSellers = 2` (`FloorApplied`), a claim proved on a committed but unresolved order (`AccrualNeverOverPays`); and four reachability witnesses, each violated as expected — a key counted from both routes, one seller carrying uses on both routes as one unit of `d`, a sub-floor tally with uses, a batch-path process in the counted set. The `MinSellers = 2` pass of the shipped model: no error, 45,000,639 states generated, 12,828,199 distinct, depth 18.
+no `FigaroCore` `orderStatus`) — 45,000,639 states generated, 12,828,199 distinct, depth 18, ~29 min, for the shipped `.cfg` (`MinSellers = 1`). Mutation-checked: four mutated actions, each failing the invariant it targets — the batch counting a process already counted (`CountIsDistinctProcesses`), the batch adding a seller already in the period's set to `d` (`SellersCountedOnce`), a score that ignores the floor at `MinSellers = 2` (`FloorApplied`), a claim proved on a committed but unresolved order (`AccrualNeverOverPays`); and four reachability witnesses, each violated as expected — a key counted from both routes, one seller carrying uses on both routes as one unit of `d`, a sub-floor tally with uses, a batch-path process in the counted set. The floor case runs as a second pass with `MinSellers = 2` set by hand; this document gives no state counts for that pass.
 The model's `Artifacts` are one abstract keyspace; it does not model the
 reward's kind, so the separation of clause and assembly accruals by (kind,
 key) is held by Foundry, Halmos (`check_theKindsNeverShareAKey`, `check_aKindNeverDisturbsAnotherKindsAccrual`, `check_anUnknownKindIsSkipped`), Certora (`RpgfMinterAuthor.spec`) and the

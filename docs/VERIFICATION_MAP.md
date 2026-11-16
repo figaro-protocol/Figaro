@@ -24,7 +24,7 @@ a test file). Where a check runs, and what shows it is load-bearing:
 | Halmos | `scripts/test-halmos.sh` | `foundry-ci` | the properties marked MUTATION-CHECKED in §9 (MembersRegistry 2, UsageCounter 2, the two designer registries 4); the seven `HalmosFigaroCore` properties are not mutation-checked |
 | Certora | `scripts/test-certora.sh` | the maintainer's gate — needs `CERTORAKEY`, never CI | `RpgfMinter`'s conservation, double-claim and eligibility rules all three `BatchVerifierStateRoot` rules and all four `BatchVerifierTokenOps` rules (§10); the other four specs are not mutation-checked |
 | Echidna | `scripts/test-echidna.sh` | the gate | not mutation-checked |
-| TLA+ | `scripts/test-tla.sh` | the gate | `WitnessSwapAndCommitCoordinator` 6 mutations, `ResolutionUniverses` 4 mutations + 4 reachability witnesses (§7), `RelayState` 18 (§7: the design switch, four lifecycle switches, nine deferral switches, two resolve-authorization switches, the attestation switch, the isolation switch); `FigaroCore.tla` and `FlorinToken.tla` are not mutation-checked |
+| TLA+ | `scripts/test-tla.sh` | the gate | `WitnessSwapAndCommitCoordinator` 6 mutations, `ResolutionUniverses` 4 mutations + 4 reachability witnesses (§7), `RelayState` 18 (§7: the design switch, four lifecycle switches, nine deferral switches, two resolve-authorization switches, the attestation switch, the isolation switch), `FlorinToken` 1 (§7: a registration checked against the supply); `FigaroCore.tla` is not mutation-checked |
 | Lean 4 | `lake build` in `formal/lean/` | the gate | proof-checked; a mutation is a build failure. The two data lemmas are mutation-checked: a single-hashed clause leaf fails `FigaroMerkle.lean`; the state tree without its `0x00`/`0x01` prefixes, without the lone leaf's rise, or without the depth-256 refusal fails `FigaroStateTree.lean` |
 | Rust | `cargo test` | `prover-ci`: the guest crates on every push, the relay and the batch end-to-end on main | `cargo-mutants` over the guest crates: 617 mutants, 12 survivors each read as equivalent (`AUDITOR_HANDOVER.md` § "Verification evidence"); the relay is not mutation-tested |
 | SDK Vitest | `cd sdk && npm test` | `sdk-ci` | not mutation-checked; the encoders are held by the cross-language vectors and the differential fuzz (`prover-ci`) |
@@ -227,8 +227,11 @@ This section tracks features that are not protocol invariants but are significan
 
 ## 7) TLA+ formal models — current posture
 
-Five models: `FigaroCore.tla` (detailed below), `FlorinToken.tla` (its 8
-invariants are the E-6 rows), `WitnessSwapAndCommitCoordinator.tla`,
+Five models: `FigaroCore.tla` (detailed below), `FlorinToken.tla` (its 9
+invariants are the E-6 rows; among them `Inv_RegisteredCapsWithinMaxSupply`,
+the contract's own rule that `totalRegisteredCap` is the sum of the registered
+caps and is at most `MAX_SUPPLY`. Mutation-checked: a registration checked
+against the supply in place of `totalRegisteredCap` fails it), `WitnessSwapAndCommitCoordinator.tla`,
 `ResolutionUniverses.tla` and `RelayState.tla` (all three detailed below;
 harness inventory + state counts: `TESTING.md` § TLA+).
 
@@ -315,11 +318,11 @@ can see where the two paths meet (every other layer is per-contract). 21 invaria
 | Only resolved trade is counted; a batch refused for its period under-pays, never over-pays, and its uses may be proved again | `settleBatch`'s try/catch around `applyBatchAccrual`; the guest keeps no counted set | `AccrualNeverOverPays` (unconditional) vs `AccrualNotLost` — carried by **`AssumeAccrualGatesAligned`** (NOT contract-enforced — the documented conservative-under-pay posture) |
 
 Both assumptions ship TRUE in the `.cfg`; flipping either to FALSE is the
-model's experiment and is EXPECTED to fail. Mutation-checked: four mutated actions, each failing the invariant it targets — the batch counting a process already counted (`CountIsDistinctProcesses`), the batch adding a seller already in the period's set to `d` (`SellersCountedOnce`), a score that ignores the floor at `MinSellers = 2` (`FloorApplied`), a claim proved on a committed but unresolved order (`AccrualNeverOverPays`); and four reachability witnesses, each violated as expected — a key counted from both routes, one seller carrying uses on both routes as one unit of `d`, a sub-floor tally with uses, a batch-path process in the counted set. The `MinSellers = 2` pass of the shipped model: no error, 45,000,639 states generated, 12,828,199 distinct, depth 18.
+model's experiment and is EXPECTED to fail. Mutation-checked: four mutated actions, each failing the invariant it targets — the batch counting a process already counted (`CountIsDistinctProcesses`), the batch adding a seller already in the period's set to `d` (`SellersCountedOnce`), a score that ignores the floor at `MinSellers = 2` (`FloorApplied`), a claim proved on a committed but unresolved order (`AccrualNeverOverPays`); and four reachability witnesses, each violated as expected — a key counted from both routes, one seller carrying uses on both routes as one unit of `d`, a sub-floor tally with uses, a batch-path process in the counted set. The shipped `.cfg` (`MinSellers = 1`): no error, 45,000,639 states generated, 12,828,199 distinct, depth 18.
 
 Known cost, accepted: `ResolutionUniverses.cfg` ships `MinSellers=1`; the
-minimum-support floor case runs as a second pass at `MinSellers=2` (no error,
-45,000,639 states generated, 12,828,199 distinct).
+minimum-support floor case runs as a second pass at `MinSellers=2`; this
+document gives no state counts for that pass.
 `AssumeAccrualGatesAligned` is not contract-enforced — a batch whose period
 passed in flight has its uses uncounted until a later batch proves them again,
 under-pay only.
@@ -724,7 +727,7 @@ table maps each layer to what it covers.
 
 | Layer | Census | What it covers |
 |---|---|---|
-| **TLA+ model checking** | `TESTING.md` § TLA+ — `./scripts/test-tla.sh` | `FigaroCore` safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, cap-below-max-supply, supply-equals-sum-minted, deployer-cannot-mint-after-renounce) + the swap-funded on-ramp (zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact `FigaroCore` deposits) + the two paths composed (no cross-path double payout, per-pool deposits, score composition, `FigaroCore` blindness) |
+| **TLA+ model checking** | `TESTING.md` § TLA+ — `./scripts/test-tla.sh` | `FigaroCore` safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, cap-below-max-supply, supply-equals-sum-minted, deployer-cannot-mint-after-renounce, registered-caps-within-max-supply) + the swap-funded on-ramp (zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact `FigaroCore` deposits) + the two paths composed (no cross-path double payout, per-pool deposits, score composition, `FigaroCore` blindness) |
 | **Halmos symbolic testing** | `TESTING.md` § Halmos — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. MembersRegistry (7): the stake-machine properties behind E-5. UsageCounter (9): the accrual arithmetic — route-blind counting, one tally read by `scoreOf`, period bucketing, isolation, the three kinds never sharing or disturbing an accrual, the unknown kind skipped. ClauseRegistry + AssemblyRegistry + AgreementRegistry (6 each): the designer-side stake machines designer-reward eligibility reads. |
 | **Certora formal verification** | `TESTING.md` § Certora — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. BatchVerifierStateRoot: the batch state root's unbroken, gap-free chain. RpgfMinter: mint conservation, no-double-claim, duplicate rejection, live-stake eligibility. RpgfMinterAuthor: `_isAuthor` reads the one registry its kind names and refuses an unknown kind. SwapCoordinatorTokenOps: the swap coordinator keeps no token across `swapAndCommit`. |
 | **Echidna fuzzing** | `TESTING.md` § Echidna — `./scripts/test-echidna.sh` | `EchidnaFuzzer` (`FigaroCore`, 7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFlorinToken` (8): FlorinToken supply/minter fuzzing. (`EchidnaToken` is the `FigaroCore` harness's support ERC-20, not a harness.) |
@@ -835,7 +838,7 @@ One row per component and bench. The components are the tree's: every contract u
 | `FlorinToken` | E-6: the cap on every mint path, multi-minter, renounce; the treasury procurement | Foundry: `FlorinTokenTest`, `TreasuryProcurementTest` | pass | `04611ead` |
 | `FlorinToken` | supply within the cap, the minter registry: 6 declared rules and the envfree check | Certora `FlorinToken.spec`, 7 of 7 (job `daf5f571efa44957921945a121b800c2`) | pass | `1d39092c` |
 | `FlorinToken` | supply and minter properties under random call sequences | Echidna `EchidnaFlorinToken`, 8 of 8 passing | pass | `1d39092c` |
-| `FlorinToken` (the model) | the 8 invariants of `formal/FlorinToken.tla` | TLA+ pass 2 of 9: 1,030,818 states generated, 160,844 distinct, depth 9, no error | pass | `b75fec07` |
+| `FlorinToken` (the model) | the 9 invariants of `formal/FlorinToken.tla` | TLA+ pass 2 of 9: 582,688 states generated, 25,454 distinct, depth 10, no error | pass | `fd393b2a` with the model of this row's change |
 | `WitnessSwapAndCommitCoordinator` | the witness binding, zero retention, allowance hygiene, swap and commit atomic | Foundry `WitnessSwapAndCommitCoordinatorTest` | pass | `04611ead` |
 | `WitnessSwapAndCommitCoordinator` | the same against the live Permit2 and SwapRouter02 | Foundry fork suites, skipped: no `MAINNET_RPC_URL` or `SEPOLIA_RPC_URL` in the run | owed | `04611ead` |
 | `WitnessSwapAndCommitCoordinator` | the coordinator keeps no token across `swapAndCommit`: 1 declared rule | Certora `SwapCoordinatorTokenOps.spec`, the rule and the envfree check, "No errors found by Prover!" (https://prover.certora.com/output/9512759/a5e497700c5d416cb829db04eee9bf9e) | pass | `41c4f367` |

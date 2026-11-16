@@ -49,13 +49,13 @@
  *        both universes."
  *       STATUS: CONTRACT-ENFORCED, not a sequencer promise.
  *       FigaroBatchVerifier.settleBatch requires
- *         pv.verifyingContract == address(this)   (FigaroBatchVerifier.sol:265)
+ *         pv.verifyingContract == address(this)   (its `VerifyingContractMismatch` check)
  *       and the guest builds its EIP-712 domain separator from exactly that
  *       address (prover/lib/src/eip712.rs domain_separator(chain_id,
  *       verifying_contract) — same name "FigaroCore", same version "3", but a
- *       DIFFERENT verifyingContract from FigaroCore's own EIP712 domain,
- *       FigaroCore.sol:105). A root order's processId IS the typed-data
- *       digest (FigaroCore.sol:168, kernel.rs derive_commitment_ids), so the
+ *       DIFFERENT verifyingContract from FigaroCore's own EIP712 domain, set in
+ *       FigaroCore's constructor as EIP712("FigaroCore", "3")). A root order's processId IS the typed-data
+ *       digest (FigaroCore.commit, kernel.rs derive_commitment_ids), so the
  *       two universes' processId spaces are disjoint by construction, and a
  *       sub-order is confined to the universe whose process exists (each side
  *       reverts UnknownProcess otherwise).
@@ -147,7 +147,7 @@ ASSUME AssumeAccrualGatesAligned \in BOOLEAN
 
 \* Order identities are laid out in per-process blocks. An order's identity is
 \* a function of (process, position) plus its content — which is exactly what
-\* keccak256(processId ++ structHash) is (FigaroCore.sol:200).
+\* keccak256(processId ++ structHash) is (the `orderHash` of FigaroCore.commit).
 BlockOf(pid) == ( ( pid - 1 ) * OrdersPerProc + 1 ) .. ( pid * OrdersPerProc )
 RootOrd(pid) == ( pid - 1 ) * OrdersPerProc + 1
 MinOf(S) == CHOOSE x \in S: \A y \in S: x <= y
