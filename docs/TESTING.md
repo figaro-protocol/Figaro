@@ -1084,7 +1084,9 @@ Per workflow, what it runs and when:
   `REQUIRE_BATCH_E2E=1`, so a missing chain or binary fails instead of
   skipping.
 - **`sdk-ci`** — push/PR, path-filtered (re-triggers on
-  `frontend/public/sdk-api/**` and the encoder vectors too): tsc type-check,
+  `frontend/public/sdk-api/**`, the encoder vectors, `abi/**` and
+  `docs/DATA_LAYER.md`, whose event-field table `sdk/tests/abiParity.test.ts`
+  reads, too): tsc type-check,
   `npm test`, build, the typedoc freshness gate — the committed API reference
   (`frontend/public/sdk-api`) must equal what typedoc emits from source — and
   the encoder-vector freshness gate — the committed Rust conformance vectors
@@ -1097,7 +1099,12 @@ Per workflow, what it runs and when:
 - **`frontend-ci`** — push/PR, path-filtered: type-check, ESLint, Vitest
   (+coverage), the **mobile** Playwright project, production build (its
   postbuild typesets the paper PDFs; the job installs Tectonic, pinned by
-  version and checksum).
+  version and checksum). The production build is the static export, built from
+  a clean checkout with every package installed from its lockfile and no
+  secret set; the job then serves `frontend/out` with
+  `frontend/scripts/serve-export.mjs` and fails unless `/` and the app page
+  `/orders/` each answer 200 with a body. That export targets the local chain
+  (`NEXT_PUBLIC_CHAIN` unset), and the job runs only when `frontend/**` changes.
 - **`devnet-e2e-ci`** — push/PR, path-filtered: the **bilateral spine**
   (`orders-accept`) end to end in the runner — Kubo (IPFS, CORS-configured),
   Anvil (`--accounts` at the count `scripts/lint-anvil-accounts-lockstep.sh` holds), a full `deploy-local.sh` stack,

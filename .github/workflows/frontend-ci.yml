@@ -97,6 +97,27 @@ jobs:
           # A build that is not a deploy: next.config.mjs requires the network named.
           NEXT_PUBLIC_XMTP_ENV: dev
 
+      # The export just built, from a clean checkout and public inputs only (no
+      # secret is set above), served as any host would serve it: a static file
+      # server over frontend/out. A marketing page and an app page must each
+      # answer 200 with a body, or the job fails.
+      - name: Serve the static export and fetch a marketing page and an app page
+        run: |
+          node scripts/serve-export.mjs out 3200 > "$RUNNER_TEMP/serve-export.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -s -o /dev/null http://127.0.0.1:3200/ && break
+            sleep 1
+          done
+          for route in / /orders/; do
+            code=$(curl -s -o "$RUNNER_TEMP/page.html" -w '%{http_code}' "http://127.0.0.1:3200$route")
+            size=$(wc -c < "$RUNNER_TEMP/page.html")
+            echo "$route -> HTTP $code, $size bytes"
+            if [ "$code" != "200" ] || [ "$size" -eq 0 ]; then
+              cat "$RUNNER_TEMP/serve-export.log"
+              exit 1
+            fi
+          done
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
