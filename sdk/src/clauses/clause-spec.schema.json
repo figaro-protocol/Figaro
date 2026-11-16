@@ -16,14 +16,13 @@
         "title": { "type": "string", "minLength": 1 },
         "description": { "type": "string" },
         "fields": {
-            "type": "array",
-            "items": { "$ref": "#/$defs/field" },
+            "$ref": "#/$defs/fieldSet",
             "description": "The clause's content fields — the terms-and-conditions blanks. Filled in for a transaction, they become one CLAUSE of the signed agreement (a merkle leaf under the on-chain checkoutHash). This is the committed content: stage 0. WHO fills each blank is declared by the block phase sections' `fills` lists and `checkout.catalogueMeasures`; any field named in none of them is the buyer's, authored at checkout (the default — always derived as the complement, never stored)."
         },
         "stages": {
             "type": "object",
             "description": "Runtime-evidence field shapes, keyed by stage number (uint8, matching AttestationCoordinator's stage). Stage 0 IS the committed content and is declared by `fields` — declare entries here only for stages ≥ 1: the coordination attestations filed during execution against the committed term (a measured-grams record, a temperature reading, a detected proximity band). Any composed clause declaring a stage surfaces a repeatable witness capability for it, offered to both parties, with zero per-clause code. Express as {} when the clause declares no runtime-evidence stages.",
-            "patternProperties": { "^[0-9]+$": { "type": "array", "items": { "$ref": "#/$defs/field" } } }
+            "patternProperties": { "^[0-9]+$": { "$ref": "#/$defs/fieldSet" } }
         },
         "block": { "$ref": "#/$defs/block" }
     },
@@ -38,6 +37,7 @@
                 "description": { "type": "string" },
                 "label": { "type": "string", "description": "Cosmetic display label (Layer-A only; nothing on-chain reads it)." },
                 "disposition": { "enum": ["public", "private"], "description": "The public/private disposition of this field's committed value — the clause-spec side of the data seam. \"public\" (the default when absent): coordination commons, learnable free, published plaintext. \"private\": paid-edge data, published only behind the fingerprint (encrypted IPFS / content-withheld clause). The chain carries only the clause data HASH either way; disposition governs publication and per-field grain policy (see figaro-geolocation)." },
+                "blinding": { "const": true, "description": "Marks the set's BLINDING FIELD. A field set (the top-level `fields`, or one `stages` entry) that declares a private field declares exactly one, at its top level: type \"string\", format \"bytes32-hex\", required true, disposition \"private\", no default. A set with no other private field declares none, and a set never mixes public and private fields. Its value is 32 random bytes the party that fills the set draws fresh for each commitment or attestation (never a designer, catalog or profile value, never zero, never repeated across the clauses of one agreement), so the set's fingerprint (a clause's data hash, a witness's contentRef) cannot be confirmed by hashing guesses of a value with few possibilities. It is content like any other field: it enters the canonical JSON of stage 0 and the ABI bytes of a stage, and travels with the content to whoever is shown it. Present only as true." },
                 "default": {
                     "type": ["string", "number", "boolean", "array"],
                     "description": "Build/UI default (composition metadata; the ABI encoder ignores it). Shape must match the field type."
@@ -52,20 +52,50 @@
                 "values": { "type": "array", "items": { "type": "string" }, "description": "enum only — the ordered value codes." },
                 "sentinel": { "type": "string", "description": "enum only — an ABI position-as-index placeholder, never a valid input." },
                 "valueLabels": { "type": "object", "additionalProperties": { "type": "string" }, "description": "enum only — cosmetic per-value labels." },
-                "items": { "$ref": "#/$defs/itemField", "description": "array only — the element field spec (its name/required are injected, so omit them)." },
+                "items": { "allOf": [{ "$ref": "#/$defs/itemField" }, { "not": { "required": ["blinding"] } }], "description": "array only — the element field spec (its name/required are injected, so omit them). A blinding field is never an array element." },
                 "minItems": { "type": "integer", "description": "array only." },
                 "maxItems": { "type": "integer", "description": "array only." },
-                "fields": { "type": "array", "items": { "$ref": "#/$defs/field" }, "description": "object only — the nested (named) field specs." }
+                "fields": { "type": "array", "items": { "$ref": "#/$defs/nestedField" }, "description": "object only — the nested (named) field specs. A blinding field is never nested." }
             },
             "allOf": [
                 { "if": { "properties": { "type": { "const": "enum" } } }, "then": { "required": ["values"] } },
                 { "if": { "properties": { "type": { "const": "array" } } }, "then": { "required": ["items"] } },
-                { "if": { "properties": { "type": { "const": "object" } } }, "then": { "required": ["fields"] } }
+                { "if": { "properties": { "type": { "const": "object" } } }, "then": { "required": ["fields"] } },
+                {
+                    "if": { "required": ["blinding"] },
+                    "then": {
+                        "required": ["format", "disposition"],
+                        "properties": {
+                            "type": { "const": "string" },
+                            "format": { "const": "bytes32-hex" },
+                            "required": { "const": true },
+                            "disposition": { "const": "private" }
+                        },
+                        "not": { "required": ["default"] }
+                    }
+                }
             ]
         },
         "field": {
             "description": "A named field — top-level, stage-override, or object property. Requires name + type + required.",
             "allOf": [{ "$ref": "#/$defs/fieldProps" }, { "required": ["name", "type", "required"] }]
+        },
+        "nestedField": {
+            "description": "A field nested in an object field. A blinding field is a top-level field of its set, so it is never nested.",
+            "allOf": [{ "$ref": "#/$defs/field" }, { "not": { "required": ["blinding"] } }]
+        },
+        "fieldSet": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/field" },
+            "description": "One field set: the top-level `fields`, or one `stages` entry. The leaf model withholds a whole set, never one field, so a set does not mix public and private fields. A set that declares a private field declares exactly one blinding field; a set with no other private field declares none.",
+            "if": { "contains": { "required": ["disposition"], "properties": { "disposition": { "const": "private" } }, "not": { "required": ["blinding"] } } },
+            "then": {
+                "items": { "required": ["disposition"], "properties": { "disposition": { "const": "private" } } },
+                "contains": { "required": ["blinding"] },
+                "minContains": 1,
+                "maxContains": 1
+            },
+            "else": { "not": { "contains": { "required": ["blinding"] } } }
         },
         "itemField": {
             "description": "An array ELEMENT spec. The parser injects name + required, so only type is required here.",

@@ -141,10 +141,14 @@ verification with byte-exact parity to the Solidity.
 **Generic clause engine** (`prover/clause/`): parse + validate + encode over
 any clause spec supplied as witness input — the Rust mirror of the SDK's
 off-chain module (`@figaro-protocol/sdk/clauses`). The two engines give the
-same verdict on every rule of the shared vectors. One rule is the SDK's alone,
-the geohash grain cap by disposition, which the guest's engine does not apply;
-a proof of a plaintext attestation therefore binds the spec and the content's
-shape, and does not attest the grain. No per-clause code, by design ("Prover Clause
+same verdict on every rule of the shared vectors. Two rules are the SDK's
+alone, and the guest's engine applies neither: the geohash grain cap by
+disposition, and the private set's rules (a set that declares a private field
+declares exactly one blinding field, of one shape, at its top level, and never
+mixes public and private fields). The guest's parser reads no `disposition`
+and no `blinding` attribute. A proof of a plaintext attestation therefore binds
+the spec and the content's shape, and attests neither the grain nor the
+presence of a blinding value. No per-clause code, by design ("Prover Clause
 Architecture" below).
 
 **SP1 guest program** (`prover/program/`): reads the batch with the witness of

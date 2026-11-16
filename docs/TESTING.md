@@ -698,14 +698,21 @@ spec declares, the specs that parse and the ones that do not — and freezes Lay
 into `test/fixtures/clause-engine-vectors.json`
 (`HARVEST_CLAUSE_ENGINE_VECTORS=1` regenerates);
 `prover/clause/tests/engine_vectors.rs` asserts the guest's engine gives the
-same verdicts and the same bytes on every rule of the shared vectors. One rule
-is the SDK's alone, the geohash grain cap by disposition, which the guest's
-engine does not apply; a proof of a plaintext attestation therefore binds the
-spec and the content's shape, and does not attest the grain. The test "Rules
-the SDK applies beyond the shared vectors", in the same file, lists that rule
-and fails if the SDK's engine refuses a case the vectors mark valid; the generated
-clause stream (`clauseFuzzVectors.test.ts`) keeps each drawn geohash inside
-its cap, so it holds only the shared rules. The EIP-712 fixture carries the batch
+same verdicts and the same bytes on every rule of the shared vectors. Two
+rules are the SDK's alone, and the guest's engine applies neither: the geohash
+grain cap by disposition, and the private set's rules (a set that declares a
+private field declares exactly one blinding field, of one shape, at its top
+level, and never mixes public and private fields; the guest's parser reads no
+`disposition` and no `blinding` attribute). A proof of a plaintext attestation
+therefore binds the spec and the content's shape, and attests neither the grain
+nor the presence of a blinding value. The test "Rules the SDK applies beyond
+the shared vectors", in the same file, lists both rules, fails if the SDK's
+engine refuses a case the vectors mark valid, and fails if the vectors hold a
+`blinding` attribute or a private disposition; the generated clause stream
+(`clauseFuzzVectors.test.ts`) keeps each drawn geohash inside its cap and draws
+no disposition and no blinding attribute, and a test there fails if any spec
+it holds is refused by the private set's rules alone, so it holds only the
+shared rules. The EIP-712 fixture carries the batch
 path's three authorizations — `ResolveProcess` (over the process id and the
 cumulative value the buyer accepts), `AttestSeller`, `AttestBuyer`, hashed by
 viem from the type strings — and

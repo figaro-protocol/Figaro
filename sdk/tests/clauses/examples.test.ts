@@ -164,8 +164,12 @@ describe("example clause specs — parse + validate sample content", () => {
     it("figaro-geolocation with a private disposition accepts twelve geohash characters and refuses thirteen", () => {
         const privateRaw = {
             ...geolocationSpecRaw,
-            // A clause is withheld as a whole, so every field turns private.
-            fields: geolocationSpecRaw.fields.map((f) => ({ ...f, disposition: "private" })),
+            // A clause is withheld as a whole, so every field turns private,
+            // and the private set declares its blinding field.
+            fields: [
+                ...geolocationSpecRaw.fields.map((f) => ({ ...f, disposition: "private" })),
+                { name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true },
+            ],
         };
         const parsed = parseClauseSpec(privateRaw);
         if (!parsed.ok) throw new Error("spec failed to parse: " + JSON.stringify(parsed.errors));
@@ -173,11 +177,13 @@ describe("example clause specs — parse + validate sample content", () => {
             geocodeStandard: "geohash",
             origin: "u4pruydqqvj8",
             destination: "9q8yyk8yuv2z",
+            blinding: `0x${"5a".repeat(32)}`,
         }, parsed.spec).ok).toBe(true);
         const finer = validateContent({
             geocodeStandard: "geohash",
             origin: "u4pruydqqvj8p",
             destination: "9q8yyk8yuv2z",
+            blinding: `0x${"5a".repeat(32)}`,
         }, parsed.spec);
         expect(finer.ok).toBe(false);
         if (!finer.ok) expect(finer.errors.map((e) => e.path)).toEqual(["$.origin"]);

@@ -41,6 +41,43 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         expect(parseClauseSpec(spec).ok).toBe(false);
     });
 
+    // The blinding field of a private set: one per private set, of one shape,
+    // at the top level of its set, and only where the set holds another
+    // private field. The schema and the parser state the same rules.
+    const blinding = { name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true };
+    const secret = { name: "secret", type: "string", required: true, disposition: "private" };
+    const open = { name: "open", type: "string", required: true };
+    const withFields = (fields: unknown[], stages?: Record<string, unknown[]>) => ({
+        clauseId: "x", version: 1, title: "T", description: "D", fields, ...(stages !== undefined && { stages }),
+    });
+    const blindingPositives: ReadonlyArray<readonly [string, unknown]> = [
+        ["a private set with its blinding field", withFields([secret, blinding])],
+        ["a public set beside a private stage set with its blinding field", withFields([open], { "1": [secret, blinding] })],
+    ];
+    it.each(blindingPositives)("accepts (%s) in BOTH schema and parser", (_name, spec) => {
+        expect(validateAgainstSchema(spec), JSON.stringify(validateAgainstSchema.errors)).toBe(true);
+        expect(parseClauseSpec(spec).ok).toBe(true);
+    });
+    const blindingNegatives: ReadonlyArray<readonly [string, unknown]> = [
+        ["a private set with no blinding field", withFields([secret])],
+        ["a private set with two blinding fields", withFields([secret, blinding, { ...blinding, name: "b2" }])],
+        ["a blinding field with no other private field", withFields([blinding])],
+        ["a set that mixes public and private fields", withFields([open, secret, blinding])],
+        ["a blinding field with a default", withFields([secret, { ...blinding, default: `0x${"11".repeat(32)}` }])],
+        ["a blinding field not required", withFields([secret, { ...blinding, required: false }])],
+        ["a blinding field of another format", withFields([secret, { ...blinding, format: "bytes-hex" }])],
+        ["a blinding field of another type", withFields([secret, { ...blinding, type: "bigint", format: undefined }])],
+        ["a public blinding field", withFields([secret, { ...blinding, disposition: "public" }])],
+        ["a blinding attribute that is false", withFields([secret, blinding, { ...secret, name: "s2", blinding: false }])],
+        ["a nested blinding field", withFields([secret, blinding, { name: "o", type: "object", required: true, disposition: "private", fields: [blinding] }])],
+        ["a private stage set with no blinding field", withFields([open], { "1": [secret] })],
+        ["a stage set that mixes public and private fields", withFields([open], { "1": [open, secret, blinding] })],
+    ];
+    it.each(blindingNegatives)("rejects (%s) in BOTH schema and parser", (_name, spec) => {
+        expect(validateAgainstSchema(JSON.parse(JSON.stringify(spec)))).toBe(false);
+        expect(parseClauseSpec(JSON.parse(JSON.stringify(spec))).ok).toBe(false);
+    });
+
     // `block` is presentation metadata the SDK parser does NOT own (see spec.ts) —
     // it is validated by this schema and the frontend's clauseBlockBinding, never by
     // parseClauseSpec. So a malformed block (e.g. missing the required design

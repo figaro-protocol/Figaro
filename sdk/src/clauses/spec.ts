@@ -67,6 +67,18 @@ export interface BaseFieldSpec {
     /** The public/private disposition of this field's committed value. Absent
      *  ⇒ "public". See {@link FieldDisposition}. */
     disposition?: FieldDisposition;
+    /** Marks the set's blinding field: a random 32-byte value the party that
+     *  fills the set draws fresh for each commitment or attestation, so the
+     *  set's fingerprint (a clause's data hash, a witness's `contentRef`)
+     *  cannot be confirmed by hashing guesses of a value with few
+     *  possibilities. A set (the top-level `fields`, or one `stages[N]`) that
+     *  declares a private field declares exactly one, at its top level, of
+     *  type `string`, format `bytes32-hex`, required, private and with no
+     *  `default`; a set with no other private field declares none
+     *  (`parseClauseSpec`). Present only as `true`. The value is content like
+     *  any other field: it enters the data hash and the encoded bytes, and
+     *  tooling draws it, never a person's form. */
+    blinding?: true;
     /** Build/UI default applied when the composing input omits this field.
      *  Purely composition metadata — the ABI encoder ignores it (an absent
      *  optional still encodes as the ABI zero-value), so Layers B/C are
@@ -277,7 +289,71 @@ export function parseFieldSpec(raw: unknown, path: string, errors: SpecParseErro
         }
         spec.default = rawDefault as BaseFieldSpec["default"];
     }
+    if (spec.blinding === true && !blindingShapeHolds(spec, path, errors, depth)) return null;
     return spec;
+}
+
+/** The format a blinding field carries: 32 bytes as hex, which both engines
+ *  validate and encode as `bytes32`. */
+const BLINDING_FORMAT = "bytes32-hex";
+
+/** The one shape of a blinding field (`BaseFieldSpec.blinding`): a top-level
+ *  string of format `bytes32-hex`, required, private, with no default. Pushes
+ *  one error per broken rule and returns whether all hold. */
+function blindingShapeHolds(spec: FieldSpec, path: string, errors: SpecParseError[], depth: number): boolean {
+    const before = errors.length;
+    if (depth > 0) {
+        errors.push({ path: `${path}.blinding`, message: "a blinding field is a top-level field of its set, never nested in an object or an array" });
+    }
+    if (spec.type !== "string") {
+        errors.push({ path: `${path}.type`, message: `a blinding field is of type "string"` });
+    } else if (spec.format !== BLINDING_FORMAT) {
+        errors.push({ path: `${path}.format`, message: `a blinding field carries format "${BLINDING_FORMAT}"` });
+    }
+    if (!spec.required) {
+        errors.push({ path: `${path}.required`, message: "a blinding field is required" });
+    }
+    if (spec.disposition !== "private") {
+        errors.push({ path: `${path}.disposition`, message: `a blinding field is "private"` });
+    }
+    if (spec.default !== undefined) {
+        errors.push({ path: `${path}.default`, message: "a blinding field carries no default: a default is the same in every order, so it blinds nothing" });
+    }
+    return errors.length === before;
+}
+
+/**
+ * The rules of one field set (the top-level `fields`, or one `stages[N]`):
+ * it does not mix public and private fields, and a set that declares a
+ * private field declares exactly one blinding field, while a set with no
+ * other private field declares none. The leaf model withholds a whole set,
+ * never one field (`agreement.ts`), so a mixed set either over-redacts its
+ * public fields or leaks its private ones; and a private set's fingerprint
+ * without a fresh random value can be confirmed by hashing guesses.
+ */
+function fieldSetRulesHold(fields: readonly FieldSpec[], path: string, errors: SpecParseError[]): void {
+    if (fields.length === 0) return;
+    const blindingCount = fields.filter((f) => f.blinding === true).length;
+    const privateValues = fields.filter((f) => f.disposition === "private" && f.blinding !== true).length;
+    const anyPublic = fields.some((f) => f.disposition !== "private");
+    if (anyPublic && (privateValues > 0 || blindingCount > 0)) {
+        errors.push({
+            path,
+            message: "a clause may not mix public and private field dispositions — a clause is withheld as a whole; author private fields as their own clause",
+        });
+    }
+    if (privateValues > 0 && blindingCount !== 1) {
+        errors.push({
+            path,
+            message: `a set that declares a private field declares exactly one blinding field ("blinding": true); this set declares ${blindingCount}`,
+        });
+    }
+    if (privateValues === 0 && blindingCount > 0) {
+        errors.push({
+            path,
+            message: "a blinding field stands only beside another private field; this set declares no private field",
+        });
+    }
 }
 
 function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[], depth: number): FieldSpec | null {
@@ -310,6 +386,11 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
         errors.push({ path: `${path}.disposition`, message: 'disposition must be "public" or "private" when present' });
         return null;
     }
+    const blinding = raw.blinding;
+    if (blinding !== undefined && blinding !== true) {
+        errors.push({ path: `${path}.blinding`, message: "blinding must be true when present" });
+        return null;
+    }
     const type = raw.type;
     if (typeof type !== "string" || !VALID_FIELD_TYPES.has(type)) {
         errors.push({ path: `${path}.type`, message: `type must be one of: ${[...VALID_FIELD_TYPES].join(", ")}` });
@@ -321,6 +402,7 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
         ...(description !== undefined && { description }),
         ...(label !== undefined && { label }),
         ...(disposition !== undefined && { disposition: disposition as FieldDisposition }),
+        ...(blinding === true && { blinding: true as const }),
     };
 
     switch (type) {
@@ -539,16 +621,9 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
     // be published safely: withholding it for a public pin over-redacts its
     // public fields, and NOT withholding leaks its private ones. Author private
     // data as its own clause (see `figaro-geolocation`'s "private version" note).
-    if (parsedFields.length > 0) {
-        const anyPrivate = parsedFields.some((f) => f.disposition === "private");
-        const anyPublic = parsedFields.some((f) => f.disposition !== "private");
-        if (anyPrivate && anyPublic) {
-            errors.push({
-                path: "$.fields",
-                message: "a clause may not mix public and private field dispositions — a clause is withheld as a whole; author private fields as their own clause",
-            });
-        }
-    }
+    // A private set carries its one blinding field. Each stage's set is held
+    // to the same rules below.
+    fieldSetRulesHold(parsedFields, "$.fields", errors);
     let parsedStages: Record<number, readonly FieldSpec[]> | undefined;
     if (stages !== undefined) {
         if (!isObject(stages)) {
@@ -570,6 +645,7 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
                     const child = parseFieldSpec(value[i], `$.stages.${key}[${i}]`, errors);
                     if (child !== null) stageFields.push(child);
                 }
+                fieldSetRulesHold(stageFields, `$.stages.${key}`, errors);
                 parsedStages[stageNum] = stageFields;
             }
         }

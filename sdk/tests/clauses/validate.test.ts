@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { parseClauseSpec } from "../../src/clauses/spec.js";
 import { validateContent } from "../../src/clauses/validate.js";
 
+/** The blinding field a private set declares (`parseClauseSpec`), and a value for it. */
+const BLINDING = { name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true };
+const BLINDING_VALUE = `0x${"5a".repeat(32)}`;
+
 function specOf(fields: object[], stages?: Record<number, object[]>) {
     const result = parseClauseSpec({
         clauseId: "t", version: 1, title: "T", description: "D",
@@ -183,6 +187,7 @@ describe("validateContent — the geohash grain cap, keyed on the spec's own att
             ...(disposition !== undefined && { disposition }),
             formatFromField: "grid",
         },
+        ...(disposition === "private" ? [BLINDING] : []),
     ]);
 
     it("refuses a public geohash finer than six characters, and an absent disposition reads as public", () => {
@@ -196,8 +201,8 @@ describe("validateContent — the geohash grain cap, keyed on the spec's own att
 
     it("lets a private geohash keep twelve characters and refuses thirteen", () => {
         const spec = stranger("private");
-        expect(validateContent({ grid: "geohash", pickup: "dr5regw3pzzz" }, spec).ok).toBe(true);
-        expect(validateContent({ grid: "geohash", pickup: "dr5regw3pzzzz" }, spec).ok).toBe(false);
+        expect(validateContent({ grid: "geohash", pickup: "dr5regw3pzzz", blinding: BLINDING_VALUE }, spec).ok).toBe(true);
+        expect(validateContent({ grid: "geohash", pickup: "dr5regw3pzzzz", blinding: BLINDING_VALUE }, spec).ok).toBe(false);
     });
 
     it("bounds a standard it carries no grain knowledge of by maxLength only", () => {
@@ -233,9 +238,10 @@ describe("validateContent — the geohash grain cap, keyed on the spec's own att
     it("lets a private field whose static format is geohash keep twelve characters and refuses thirteen", () => {
         const spec = specOf([
             { name: "loc", type: "string", required: true, format: "geohash", disposition: "private" },
+            BLINDING,
         ]);
-        expect(validateContent({ loc: "dr5regw3pzzz" }, spec).ok).toBe(true);
-        expect(validateContent({ loc: "dr5regw3pzzzz" }, spec).ok).toBe(false);
+        expect(validateContent({ loc: "dr5regw3pzzz", blinding: BLINDING_VALUE }, spec).ok).toBe(true);
+        expect(validateContent({ loc: "dr5regw3pzzzz", blinding: BLINDING_VALUE }, spec).ok).toBe(false);
     });
 
     it("caps each item of an array whose item spec is a static geohash, by the array field's disposition", () => {
@@ -243,7 +249,7 @@ describe("validateContent — the geohash grain cap, keyed on the spec's own att
             name: "stops", type: "array", required: true,
             ...(disposition !== undefined && { disposition }),
             items: { name: "*", type: "string", required: true, format: "geohash" },
-        }]);
+        }, ...(disposition === "private" ? [BLINDING] : [])]);
         for (const spec of [arrayOf("public"), arrayOf()]) {
             expect(validateContent({ stops: ["dr5reg", "u4pruy"] }, spec).ok).toBe(true);
             const result = validateContent({ stops: ["dr5reg", "u4pruyd"] }, spec);
@@ -251,7 +257,7 @@ describe("validateContent — the geohash grain cap, keyed on the spec's own att
             if (!result.ok) expect(result.errors.map((e) => e.path)).toEqual(["$.stops[1]"]);
         }
         const fine = arrayOf("private");
-        expect(validateContent({ stops: ["dr5regw3pzzz"] }, fine).ok).toBe(true);
-        expect(validateContent({ stops: ["dr5regw3pzzzz"] }, fine).ok).toBe(false);
+        expect(validateContent({ stops: ["dr5regw3pzzz"], blinding: BLINDING_VALUE }, fine).ok).toBe(true);
+        expect(validateContent({ stops: ["dr5regw3pzzzz"], blinding: BLINDING_VALUE }, fine).ok).toBe(false);
     });
 });
