@@ -53,7 +53,7 @@ export default function Assemblies() {
 
             <MarketingSection title="How one is composed.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    An assembly is composed from registered agreements: each order in it holds one, a reusable composition of clauses registered once on <code>AgreementRegistry</code> and bound as is by any assembly that needs it. A designer spawns sub-orders from any node and fills each with a registered agreement &mdash; or composes the clauses that define that edge into a new agreement, registered when the assembly is published: geolocation, modalities, schedule, handoff, proximity, emissions, applicable law and forum, and more. Every agreement carries two mandatory clauses: commerce terms, the payment and the denomination committed at buy time; and order topology, which seller follows which. Clauses and agreements are read live from their registries, never a fixed menu &mdash; one registered tomorrow is available to compose immediately, no code change. The checkout writes which registered agreement and which assembly an order instantiates into its agreement &mdash; one reserved leaf of the agreement&apos;s merkle tree that the chain can prove by inclusion &mdash; so both designers are credited without any clause carrying it.
+                    An assembly is composed from registered agreements: each order in it holds one, a reusable composition of clauses registered once on <code>AgreementRegistry</code> and bound as is by any assembly that needs it. A designer spawns sub-orders from any node and fills each with a registered agreement &mdash; or composes the clauses that define that edge into a new agreement, registered when the assembly is published: geolocation, modalities, schedule, handoff, proximity, emissions, applicable law and forum, and more. No single clause is mandatory, though an agreement composes at least one: the payment and the token are in the commitment each party signs, and which seller follows which is the agreement&apos;s own topology leaf, written at checkout from the design. Clauses and agreements are read live from their registries, never a fixed menu &mdash; one registered tomorrow is available to compose immediately, no code change. The checkout writes which registered agreement and which assembly an order instantiates into its agreement &mdash; one reserved leaf of the agreement&apos;s merkle tree that the chain can prove by inclusion &mdash; so both designers are credited without any clause carrying it.
                 </p>
                 <DesignGraphCollapseFigure
                     idPrefix="assemblies-design-collapse"
@@ -81,7 +81,7 @@ export default function Assemblies() {
                         "G is the cumulative value at a link — the running total the Core keeps,",
                         "and the only quantity it accumulates. Each seller bonds 2 × G at its own",
                         "commit, so G6 is the whole chain's value. The parent-child links ride in",
-                        "the agreement as a topology clause: merkle-bound at commit, never a field",
+                        "the agreement as its topology leaf: merkle-bound at commit, never a field",
                         "the Core stores — which is why agreement-1 can hang off agreement-0 at design",
                         "time while agreement-2 carries the line onward.",
                     ]}
@@ -153,7 +153,7 @@ export default function Assemblies() {
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     An assembly&apos;s identity is a merkle root computed over a <em>subset</em> of
                     the document you pin &mdash; one leaf per order, keyed by the registered
-                    agreement it holds, and one for the assembly-scoped terms &mdash; and knowing which subset is what lets you rename an assembly without
+                    agreement it holds and covering that order&apos;s fills, its <code>follows</code> and its position, and one for the assembly-scoped terms &mdash; and knowing which subset is what lets you rename an assembly without
                     forking it &mdash; or accidentally fork it by touching one field. This is the
                     assembly half of the same question the clause registry answers on{" "}
                     <Link href="/clauses" className="underline">Clauses</Link>:
@@ -179,9 +179,9 @@ export default function Assemblies() {
                                 <td className="py-2">An agreement&apos;s key is the hash of the clause keys it composes and the designer&apos;s fills. A different clause set, one different design fill, or another clause that shares a name is a different agreement, so a different assembly.</td>
                             </tr>
                             <tr>
-                                <td className="py-2 pr-4">the topology, carried as a clause in each order (<code>follows</code>)</td>
+                                <td className="py-2 pr-4">the topology, each order&apos;s <code>follows</code></td>
                                 <td className="py-2 pr-4 font-semibold">Yes</td>
-                                <td className="py-2">The registered agreement leaves it empty; each order fills it in its own leaf. Re-wire the chain, get a new assembly from the same agreements.</td>
+                                <td className="py-2">The registered agreement carries none; each order&apos;s leaf carries its own. Re-wire the chain, get a new assembly from the same agreements.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>assemblyClauses</code> &mdash; the assembly-scoped terms composed once for the whole design</td>
@@ -196,7 +196,7 @@ export default function Assemblies() {
                             <tr>
                                 <td className="py-2 pr-4">the exact bytes you pin</td>
                                 <td className="py-2 pr-4 font-semibold">No</td>
-                                <td className="py-2"><strong>The opposite of a clause.</strong> A clause&apos;s key is the hash of its whole pinned document, so its bytes must be canonical. An assembly&apos;s hash is recomputed over the composition subset, so pin readable JSON &mdash; just never hand-roll the hash over raw bytes.</td>
+                                <td className="py-2"><strong>As with a clause.</strong> A clause&apos;s key is recomputed from the parsed spec without its <code>block</code>, and an assembly&apos;s hash over the composition subset, so neither depends on the byte form. Pin readable JSON &mdash; just never hand-roll the hash over raw bytes.</td>
                             </tr>
                         </tbody>
                     </table>

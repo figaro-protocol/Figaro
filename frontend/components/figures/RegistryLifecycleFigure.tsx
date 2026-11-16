@@ -38,8 +38,8 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  *    lookalike spec of the same name is another key. What the registry
  *    guarantees is that a binding, once made, cannot be rebound. (An assembly
  *    key is the assembly hash of its pinned document, so both families key
- *    by the hash of what was pinned and neither has a caller-chosen name. They
- *    differ in what the hash covers — every byte of a clause spec, the
+ *    by a hash of what was pinned and neither has a caller-chosen name. They
+ *    differ in what the hash covers — a clause spec without its `block`, the
  *    composition subset of an assembly document — and that is why this
  *    panel's subheading names each family's key on its own line.)
  *  - The withdraw gate lives at the PROTOCOL SURFACE, not in the contract:
@@ -108,7 +108,7 @@ const MEMBER: Machine = {
 const CLAUSE: Machine = {
     heading: "A clause, agreement or assembly",
     subheading: [
-        "ClauseRegistry — hash of the pinned spec",
+        "ClauseRegistry — hash of the spec without block",
         "AgreementRegistry — root of its composed clauses",
         "AssemblyRegistry — hash of the pinned composition",
     ],
@@ -183,7 +183,7 @@ export function RegistryLifecycleFigure({
                     requested, and releases the deposit only after a cooldown
                     fixed at deployment; re-registering is open immediately and
                     costs a second deposit while the first stays locked. A
-                    clause, keyed by the hash of its pinned spec, an agreement,
+                    clause, keyed by the hash of its spec without its block, an agreement,
                     keyed by the merkle root over its composed clauses, or an
                     assembly, keyed by the assembly hash of its pinned document, moves from
                     unregistered to live on the same kind of deposit, and its
