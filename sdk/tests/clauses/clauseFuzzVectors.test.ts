@@ -43,6 +43,10 @@ import {
 /** The message `validateContent` gives when the geohash grain cap refuses a value. */
 const GRAIN_REFUSAL = /geohash carries at most \d+ characters/;
 
+/** The messages `parseClauseSpec` gives when a private set's rules refuse a
+ *  spec: its blinding field, and the mix of public and private fields. */
+const PRIVATE_SET_REFUSAL = /blinding|mix public and private/;
+
 const CLAUSES_DIR = path.resolve(__dirname, "../../../clauses");
 const OUT_PATH = path.resolve(__dirname, "../../../test/fixtures/streams/clauses.jsonl");
 
@@ -436,6 +440,21 @@ describe("Clause fuzz vectors — the generated leg of the clause-engine lock", 
                 // Refused by the cap alone: the guest's engine would accept it.
                 const capAlone = !verdict.ok && verdict.errors.every((e) => GRAIN_REFUSAL.test(e.message));
                 expect(capAlone, `${v.origin} stage ${v.stage}: ${JSON.stringify(v.content)}`).toBe(false);
+            }
+        }
+    });
+
+    it("no spec is refused by the private set's rules, which the guest's parser does not apply", () => {
+        // The guest's parser reads no disposition and no blinding attribute
+        // (`engineVectors.test.ts`, the rules beyond the shared vectors), so
+        // the generator draws neither, and a protocol clause that declares a
+        // private set keeps every rule of it.
+        for (const seed of [1, 2, 3]) {
+            for (const v of build(seed, 2, 6)) {
+                if (v.specOk) continue;
+                const parsed = parseClauseSpec(v.spec);
+                const byPrivateSetRules = !parsed.ok && parsed.errors.every((e) => PRIVATE_SET_REFUSAL.test(e.message));
+                expect(byPrivateSetRules, `${v.origin}: ${JSON.stringify(parsed.ok ? [] : parsed.errors)}`).toBe(false);
             }
         }
     });

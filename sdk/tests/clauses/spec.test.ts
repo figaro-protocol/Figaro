@@ -67,7 +67,7 @@ describe("parseClauseSpec — meta-clause validation", () => {
     it("parses a field disposition and rejects an unknown one", () => {
         const priv = parseClauseSpec({
             clauseId: "t", version: 1, title: "T", description: "D",
-            fields: [{ name: "coords", type: "string", required: true, disposition: "private" }],
+            fields: [{ name: "coords", type: "string", required: true, disposition: "private" }, BLINDING],
         });
         expect(priv.ok).toBe(true);
         if (priv.ok) expect(priv.spec.fields[0].disposition).toBe("private");
@@ -289,9 +289,108 @@ describe("parseClauseSpec — meta-clause validation", () => {
     it("accepts an all-private clause (homogeneous disposition)", () => {
         const result = parseClauseSpec({
             clauseId: "figaro-private-only", version: 1, title: "P", description: "D",
-            fields: [{ name: "secret", required: false, type: "string", disposition: "private" }],
+            fields: [{ name: "secret", required: false, type: "string", disposition: "private" }, BLINDING],
         });
         expect(result.ok).toBe(true);
     });
 
+});
+
+/** The blinding field a private set declares: the shape rule R1 names. */
+const BLINDING = {
+    name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true,
+} as const;
+
+const SECRET = { name: "secret", type: "string", required: true, disposition: "private" } as const;
+const OPEN = { name: "open", type: "string", required: true } as const;
+
+const specWith = (fields: unknown[], stages?: Record<string, unknown[]>) => ({
+    clauseId: "t", version: 1, title: "T", description: "D", fields,
+    ...(stages !== undefined && { stages }),
+});
+
+const refusedAt = (raw: unknown, path: string, message: RegExp): void => {
+    const result = parseClauseSpec(raw);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+        expect(
+            result.errors.some((e) => e.path === path && message.test(e.message)),
+            JSON.stringify(result.errors),
+        ).toBe(true);
+    }
+};
+
+describe("parseClauseSpec — the blinding field of a private set", () => {
+    it("parses a private set that declares exactly one blinding field, and keeps the attribute", () => {
+        const result = parseClauseSpec(specWith([SECRET, BLINDING]));
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+            expect(result.spec.fields.find((f) => f.name === "blinding")?.blinding).toBe(true);
+            expect(result.spec.fields.find((f) => f.name === "secret")?.blinding).toBeUndefined();
+        }
+    });
+
+    it("refuses a private set that declares no blinding field", () => {
+        refusedAt(specWith([SECRET]), "$.fields", /exactly one blinding field/);
+    });
+
+    it("refuses a private set that declares two blinding fields", () => {
+        refusedAt(specWith([SECRET, BLINDING, { ...BLINDING, name: "blinding2" }]), "$.fields", /exactly one blinding field/);
+    });
+
+    it("refuses a blinding field in a set that declares no other private field", () => {
+        refusedAt(specWith([BLINDING]), "$.fields", /no private field/);
+        refusedAt(specWith([OPEN, BLINDING]), "$.fields", /no private field/);
+    });
+
+    it("refuses a blinding field with a default, not required, or of another type, format or disposition", () => {
+        const cases: [Record<string, unknown>, string][] = [
+            [{ ...BLINDING, default: `0x${"11".repeat(32)}` }, "default"],
+            [{ ...BLINDING, required: false }, "required"],
+            [{ name: "blinding", type: "bigint", required: true, disposition: "private", blinding: true }, "type"],
+            [{ ...BLINDING, format: "bytes-hex" }, "format"],
+            [{ name: "blinding", type: "string", required: true, disposition: "private", blinding: true }, "format"],
+            [{ ...BLINDING, disposition: "public" }, "disposition"],
+        ];
+        for (const [field, key] of cases) {
+            refusedAt(specWith([SECRET, field]), `$.fields[1].${key}`, /blinding field/);
+        }
+    });
+
+    it("refuses a blinding attribute that is not true", () => {
+        refusedAt(specWith([SECRET, BLINDING, { ...OPEN, name: "x", disposition: "private", blinding: false }]), "$.fields[2].blinding", /true/);
+        refusedAt(specWith([SECRET, { ...BLINDING, blinding: "yes" }]), "$.fields[1].blinding", /true/);
+    });
+
+    it("refuses a blinding field nested below the top level of its set", () => {
+        const nested = { name: "inner", type: "object", required: true, disposition: "private", fields: [BLINDING] };
+        refusedAt(specWith([SECRET, BLINDING, nested]), "$.fields[2].fields[0].blinding", /top-level field/);
+        const item = { name: "list", type: "array", required: true, disposition: "private", items: { ...BLINDING } };
+        refusedAt(specWith([SECRET, BLINDING, item]), "$.fields[2].items.blinding", /top-level field/);
+    });
+
+    it("refuses a private stage set that declares no blinding field, and parses one that declares it", () => {
+        refusedAt(specWith([OPEN], { "1": [SECRET] }), "$.stages.1", /exactly one blinding field/);
+        const ok = parseClauseSpec(specWith([OPEN], { "1": [SECRET, BLINDING] }));
+        expect(ok.ok).toBe(true);
+        if (ok.ok) expect(ok.spec.stages?.[1]?.some((f) => f.blinding === true)).toBe(true);
+    });
+
+    it("refuses a stage set that mixes public and private fields, as it refuses the top-level set", () => {
+        refusedAt(specWith([OPEN], { "2": [OPEN, SECRET, BLINDING] }), "$.stages.2", /mix public and private/);
+    });
+
+    it("refuses a blinding field in a public stage set", () => {
+        refusedAt(specWith([OPEN], { "1": [BLINDING] }), "$.stages.1", /no private field/);
+    });
+
+    it("parses a public spec unchanged: no field gains a blinding attribute", () => {
+        const raw = specWith([OPEN, { name: "n", type: "integer", required: false }], { "1": [OPEN] });
+        const result = parseClauseSpec(raw);
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+            expect(result.spec.fields).toEqual(raw.fields);
+            expect(result.spec.stages?.[1]).toEqual([OPEN]);
+        }
+    });
 });

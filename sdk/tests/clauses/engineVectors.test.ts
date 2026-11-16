@@ -573,7 +573,10 @@ describe("Clause-engine vectors — the hand-written leg of the clause-engine lo
  * the content's shape, and does not attest these rules. A new rule of this
  * kind enters this list, or the tests below fail.
  */
-const SDK_ONLY_RULES = ["the geohash grain cap by disposition"] as const;
+const SDK_ONLY_RULES = [
+    "the geohash grain cap by disposition",
+    "a field set that declares a private field declares exactly one blinding field, of one shape, at its top level, and does not mix public and private fields",
+] as const;
 
 /** The message `validateContent` gives when the grain cap refuses a value. */
 const GRAIN_REFUSAL = /geohash carries at most \d+ characters/;
@@ -583,8 +586,35 @@ describe("Rules the SDK applies beyond the shared vectors", () => {
         ? (JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as ReturnType<typeof build>)
         : null;
 
-    it("lists exactly one rule: the geohash grain cap by disposition", () => {
-        expect(SDK_ONLY_RULES).toEqual(["the geohash grain cap by disposition"]);
+    it("lists exactly two rules: the geohash grain cap, and the private set's blinding field", () => {
+        expect(SDK_ONLY_RULES).toHaveLength(2);
+        expect(SDK_ONLY_RULES[0]).toBe("the geohash grain cap by disposition");
+        expect(SDK_ONLY_RULES[1]).toMatch(/blinding field/);
+    });
+
+    it("the frozen vectors hold no blinding attribute and no private disposition, so the private set's rules never reach them", () => {
+        const text = readFileSync(FIXTURE_PATH, "utf8");
+        expect(text).not.toMatch(/"blinding"|"private"/);
+    });
+
+    it("the private set's rules are the exception at parse: a spec the guest's parser accepts is refused by them alone", () => {
+        // The guest's parser reads no disposition and no blinding attribute,
+        // so each of these specs parses there; the SDK refuses each.
+        const secret = str({ name: "s", disposition: "private" });
+        const blinding = str({ name: "b", format: "bytes32-hex", disposition: "private", blinding: true });
+        for (const fields of [[secret], [secret, blinding, { ...blinding, name: "b2" }], [blinding], [str(), secret, blinding]]) {
+            expect(parseClauseSpec(specOf(fields)).ok, JSON.stringify(fields)).toBe(false);
+            // Without the two attributes the guest reads past, the same fields parse.
+            const bare = fields.map(({ disposition: _d, blinding: _b, ...rest }) => rest);
+            const names = new Set(bare.map((f) => f.name));
+            if (names.size === bare.length) expect(parseClauseSpec(specOf(bare)).ok, JSON.stringify(bare)).toBe(true);
+        }
+        // A private set that keeps every rule parses in both, and its blinding
+        // value validates as a bytes32-hex string, a rule both engines share.
+        const parsed = parseClauseSpec(specOf([secret, blinding]));
+        if (!parsed.ok) throw new Error("the spec does not parse");
+        expect(validateContent({ s: "x", b: `0x${"ab".repeat(32)}` }, parsed.spec).ok).toBe(true);
+        expect(validateContent({ s: "x", b: "0xab" }, parsed.spec).ok).toBe(false);
     });
 
     it("validateContent accepts every value and content the frozen vectors mark valid", () => {

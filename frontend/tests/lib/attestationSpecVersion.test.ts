@@ -30,7 +30,12 @@ const SPEC_VERSION_2 = {
     version: 2,
     description: "A later registered version: a longer ladder and a private reading.",
     fields: [{ name: "eventType", type: "enum", values: ["prepared", "packed", "shipped"], required: true }],
-    stages: { "1": [{ name: "reading", type: "string", required: true, disposition: "private" }] },
+    stages: {
+        "1": [
+            { name: "reading", type: "string", required: true, disposition: "private" },
+            { name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true },
+        ],
+    },
 };
 
 const SPEC_V1 = pinSpec(SPEC_VERSION_1);

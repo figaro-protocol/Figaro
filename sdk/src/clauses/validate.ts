@@ -5,12 +5,15 @@
  * off-chain reference implementation. The Rust prover mirror (`prover/clause`)
  * re-runs the validation inside the SP1 proof on the batched resolution path,
  * and the two engines give the same verdict on every rule of the shared
- * vectors (`test/fixtures/clause-engine-vectors.json`). One rule is the SDK's
- * alone: the geohash grain cap by disposition (`validateGrain`), which the
- * guest's engine does not apply. A proof of a plaintext attestation therefore
- * binds the spec and the content's shape, and does not attest the grain
- * (`tests/clauses/engineVectors.test.ts`, the rules beyond the shared
- * vectors). The DIRECT path validates no content
+ * vectors (`test/fixtures/clause-engine-vectors.json`). Two rules are the
+ * SDK's alone, and the guest's engine applies neither: the geohash grain cap
+ * by disposition (`validateGrain`, here), and the private set's rules
+ * (`parseClauseSpec`: a set that declares a private field declares exactly one
+ * blinding field, of one shape, at its top level, and never mixes public and
+ * private fields). A proof of a plaintext attestation therefore binds the spec
+ * and the content's shape, and attests neither the grain nor the presence of
+ * a blinding value (`tests/clauses/engineVectors.test.ts`, the rules beyond
+ * the shared vectors). The DIRECT path validates no content
  * shape on-chain — the coordinator merkle-binds an attestation to its signed
  * agreement and content-hash-binds the evidence; well-formedness there is this
  * layer's job + a read-time concern. There are no per-clause validator

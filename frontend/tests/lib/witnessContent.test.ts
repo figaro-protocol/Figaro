@@ -34,10 +34,12 @@ const PRIVATE_SPEC = {
     description: "All-private stage fields — publication must withhold.",
     fields: [
         { name: "secret", type: "string", required: true, disposition: "private" },
+        { name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true },
     ],
     stages: {
         "1": [
             { name: "secretReading", type: "string", required: true, disposition: "private" },
+            { name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true },
         ],
     },
 };
