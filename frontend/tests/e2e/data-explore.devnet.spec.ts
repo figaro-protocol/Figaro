@@ -99,7 +99,6 @@ import {
     encodeAbiParameters,
     encodePacked,
     formatUnits,
-    hexToBytes,
     http,
     keccak256,
     parseAbi,
@@ -137,7 +136,7 @@ import {
     type VenueEvent,
 } from '@figaro-protocol/sdk/derive';
 import { formatToken } from '@/lib/shared/utils';
-import { LOCAL_ANVIL, RPC_URL, discoverAnchoredAssemblies, localPublicClient, readAgreementBinding, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
+import { LOCAL_ANVIL, RPC_URL, discoverAnchoredAssemblies, localPublicClient, pinWitnessBytes, readAgreementBinding, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 
@@ -215,20 +214,10 @@ async function expectedLegEdges(
     );
 }
 
-// ── The out-of-band substance seam, shared by all three tests: pin / recover
-//    witness bytes the way any stranger derives them from the event alone. ──
-const IPFS_API = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+// ── The out-of-band substance seam, shared by all three tests: pin
+//    (`pinWitnessBytes`, devnet-helpers) / recover witness bytes the way any
+//    stranger derives them from the event alone. ──
 const GATEWAY = (process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080').replace(/\/$/, '');
-
-const pinWitnessBytes = async (content: Hex) => {
-    const form = new FormData();
-    form.append('file', new Blob([hexToBytes(content) as unknown as BlobPart]));
-    const res = await fetch(
-        `${IPFS_API}/api/v0/block/put?cid-codec=raw&mhtype=keccak-256&mhlen=-1&pin=true`,
-        { method: 'POST', body: form },
-    );
-    expect(res.ok, `Kubo block/put accepted the witness bytes (${res.status})`).toBe(true);
-};
 const fetchWitnessBytes = async (contentRef: string): Promise<Hex | null> => {
     try {
         const res = await fetch(`${GATEWAY}/ipfs/${witnessCid(contentRef)}`);

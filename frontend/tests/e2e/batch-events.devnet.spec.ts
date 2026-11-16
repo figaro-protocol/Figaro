@@ -25,6 +25,8 @@
  *              /orders/view lists the batched attestation, tagged batch, and
  *              the sealed handoff key the buyer's tab held for the order is
  *              purged when the batched resolution lands (useHandoffCleanup);
+ *              once the resolution lands, /orders/view reads the order as
+ *              completed, with the payment sent and the bond returned;
  *              /audit/view renders the order, its signatures "Proved in a
  *              batch", bound to the batch the chain names, and the clause
  *              evidence lists the batched attestation, tagged batch;
@@ -291,6 +293,24 @@ test.describe('BATCH EVENTS — a batch-resolved order renders from chain events
             await expect.poll(ecdhHeld, {
                 timeout: 60000, message: 'the batched OrderResolved purges the sealed-handoff key the tab held',
             }).toBe(false);
+
+            // ── The order page, after the batch that resolves the order has landed: what it shows
+            //    for a resolved order, as on the direct path (OrderTimelineView, ResolutionProceedsPanel;
+            //    the unit-level twin is tests/components/OrderTimelineResolvedBothPaths.test.tsx). ──
+            await gotoAsWallet(page, BUYER.address, `/orders/view?process=${processId}&e2e=devnet`);
+            await page.getByTestId('order-timeline-view').waitFor({ timeout: 60000 });
+            await expect(page.getByTestId('order-status-pill'), 'the batched resolution reads as completed')
+                .toHaveText('Completed', { timeout: 60000 });
+            await expect(page.getByRole('heading', { level: 1 })).toHaveText('Order completed');
+            // The buyer sent the payment, 1 token; its bond, twice the payment, came back less the payment.
+            await expect(page.getByTestId('resolution-proceeds'), 'the resolution panel shows what the batch moved')
+                .toContainText('Payment sent', { timeout: 30000 });
+            await expect(page.getByTestId('resolution-payment')).toHaveText(/^1( \S+)?$/);
+            await expect(page.getByTestId('resolution-bond-returned')).toHaveText(/^1( \S+)?$/);
+            await expect(page.getByTestId('order-timeline'), 'the timeline ends with the resolution').toContainText('order completed');
+            await expect(page.getByTestId('timeline-event-prep-started').getByTestId('timeline-event-path'), 'the batched attestation stays tagged batch')
+                .toHaveAttribute('data-universe', 'batch');
+            await expect(page.getByTestId('link-your-data')).toBeVisible();
 
             // ── The audit page, with no relay endpoint anywhere. ──
             await gotoAsWallet(page, BUYER.address, `/audit/view?process=${processId}&e2e=devnet`);
