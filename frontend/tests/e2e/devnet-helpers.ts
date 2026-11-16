@@ -6,6 +6,7 @@ import {
     createPublicClient,
     createWalletClient,
     defineChain,
+    hexToBytes,
     http,
     parseAbi,
     parseEther,
@@ -389,6 +390,24 @@ export async function seedRegisteredMember(opts: {
  */
 export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: string }> {
     return pinTextToIPFS(JSON.stringify(data));
+}
+
+/**
+ * Pin witness bytes at the content address an `Attestation` event's
+ * `contentRef` names: a raw block under its keccak-256 multihash (CIDv1, raw
+ * codec), so any reader derives the address from the event alone (the
+ * frontend's `fetchWitnessContent` seam, mirrored out of band). The caller
+ * attests `keccak256(content)`.
+ */
+export async function pinWitnessBytes(content: Hex): Promise<void> {
+    const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+    const form = new FormData();
+    form.append('file', new Blob([hexToBytes(content) as unknown as BlobPart]));
+    const res = await fetch(
+        `${ipfsApi}/api/v0/block/put?cid-codec=raw&mhtype=keccak-256&mhlen=-1&pin=true`,
+        { method: 'POST', body: form },
+    );
+    expect(res.ok, `Kubo block/put accepted the witness bytes (${res.status})`).toBe(true);
 }
 
 /** Pin a clause spec the way a designer does: its CANONICAL JSON bytes
