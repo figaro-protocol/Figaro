@@ -40,6 +40,9 @@
  * spec's own terms — `optional` only ever appears on a field the spec marks
  * optional.
  *
+ * A blinding field (`blinding: true`, a private set's random value) renders
+ * nothing: tooling draws its value, so it is no one's input.
+ *
  * Enum OPTIONS display through the spec's own `valueLabels` (`labelEnumValue`,
  * the same humanizer `describeClause` uses on the read side) — the raw token
  * remains the committed value, the testid, and the option's tooltip. A clause
@@ -167,6 +170,9 @@ export function FieldControl({
      *  fills — see `FieldFormatInputProps.presets`. Ignored by the plain input. */
     presets?: ReadonlyArray<FormatPreset>;
 }) {
+    // A blinding field (`blinding: true`) is drawn by tooling when the data is
+    // collected, never typed: no form, in any phase, offers an input for it.
+    if (field.blinding === true) return null;
     // The spec's own display label (the same `label ?? name` fallback
     // `describeClause` uses on the read side), so a field reads identically
     // where it is FILLED and where it is later REPORTED.

@@ -106,7 +106,8 @@ function comparable(field: FieldSpec, value: unknown): string {
 
 /** Compare every filing of one stage over its declared fields. Fewer than two
  *  distinct parties is "one party only"; with any unreadable content nothing
- *  is compared. */
+ *  is compared. A blinding field (`blinding: true`) is read past: each party
+ *  draws its own random value, so two filings of one reading carry two. */
 export function compareStageContent(
     fields: readonly FieldSpec[],
     filings: readonly StageFilingContent[],
@@ -115,6 +116,7 @@ export function compareStageContent(
     if (filings.some((f) => f.content === null)) return { kind: "unavailable" };
     const read = filings.map((f) => f.content as Record<string, unknown>);
     const differing = fields
+        .filter((field) => field.blinding !== true)
         .filter((field) => new Set(read.map((c) => comparable(field, c[field.name]))).size > 1)
         .map((field) => field.name);
     return differing.length === 0 ? { kind: "agree" } : { kind: "differ", fields: differing };

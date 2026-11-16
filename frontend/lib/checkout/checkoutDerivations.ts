@@ -317,7 +317,9 @@ export function buyerAuthoredFields(clauseKey: string, mechanicalFields: Readonl
         ...clauseProfileFills(clauseKey),
         ...mechanicalFields,
     ]);
-    return (getClauseSpec(clauseKey)?.fields ?? []).filter((f) => !sourced.has(f.name));
+    // A blinding field falls to no one's form: tooling draws its value
+    // (`withCheckoutBlinding`), so it is never a buyer's term to fill.
+    return (getClauseSpec(clauseKey)?.fields ?? []).filter((f) => !sourced.has(f.name) && f.blinding !== true);
 }
 
 const NO_FIELDS: ReadonlySet<string> = new Set();

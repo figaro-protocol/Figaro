@@ -137,8 +137,10 @@ function roleCapabilities(
                 // ride the same generic form the witness stages use: the spec
                 // declares, the rail renders, the fill lands in the encoded
                 // content beside the event code. No field is named here.
+                // A blinding field is drawn by the content's preparation
+                // (`prepareAttestationContent`), never offered as an input.
                 const companions = getClauseSpec(clauseKey)
-                    ?.fields.filter((f) => f.name !== ladder.name) ?? [];
+                    ?.fields.filter((f) => f.name !== ladder.name && f.blinding !== true) ?? [];
                 out.push({
                     id: capId,
                     label: labelEnumValue(ladder, eventCode),
@@ -204,7 +206,7 @@ function roleCapabilities(
                             stage: witness.stage,
                             party,
                         },
-                        inputFields: witness.fields,
+                        inputFields: witness.fields.filter((f) => f.blinding !== true),
                         mechanismId: "attestation-coordinator",
                         scopeType: "order",
                         scopeId: orderIdStr,

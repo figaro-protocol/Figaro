@@ -472,3 +472,17 @@ describe("FieldControl requirement legibility", () => {
         expect(screen.getByTestId("f-std3-deferred")).toBeTruthy();
     });
 });
+
+// A blinding field (`blinding: true`) is drawn by tooling, never typed: the
+// control renders nothing for it, in every mode, so no designer, catalog,
+// profile, checkout or rail form offers it.
+describe("FieldControl renders no input for a blinding field", () => {
+    const seal: FieldSpec = { name: "seal", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true };
+    for (const mode of ["design", "runtime"] as const) {
+        it(`${mode} mode: nothing is rendered`, () => {
+            const { container } = render(<FieldControl field={seal} value={undefined} onChange={() => {}} testId="f-seal" mode={mode} />);
+            expect(container.innerHTML).toBe("");
+            expect(screen.queryByTestId("f-seal")).toBeNull();
+        });
+    }
+});

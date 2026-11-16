@@ -359,3 +359,61 @@ describe("process-log ladders — every party advances its own log", () => {
         expect(ladderCards("0x9999999999999999999999999999999999999999")).toHaveLength(0);
     });
 });
+
+// A private set's blinding field (`blinding: true`) is drawn by tooling when
+// the content is prepared, so no card offers it as an input: neither a
+// private witness stage's form nor a private ladder's companion fields.
+describe("cards offer no input for a blinding field", () => {
+    const SEAL = { name: "seal", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true };
+    const PRIVATE_SPEC = {
+        clauseId: "test-private-witness-log",
+        version: 1,
+        title: "Private witness log",
+        description: "A private ladder with a companion field, and a private witness stage.",
+        fields: [
+            { name: "event", type: "enum", values: ["started", "done"], required: true, disposition: "private" },
+            { name: "memo", type: "string", required: false, disposition: "private" },
+            SEAL,
+        ],
+        stages: {},
+        block: {
+            design: { article: "attestations", scope: "agreement", nestsUnder: null, fills: [], composes: null },
+            checkout: { catalogueFills: [], profileFills: [] },
+            runtime: { interaction: null, fields: [] },
+        },
+    };
+    const WITNESS_SPEC = {
+        clauseId: "test-private-witness",
+        version: 1,
+        title: "Private witness",
+        description: "A private committed note and a private witness stage.",
+        fields: [{ name: "note", type: "string", required: true, disposition: "private" }, SEAL],
+        stages: { "1": [{ name: "reading", type: "string", required: true, disposition: "private" }, SEAL] },
+    };
+    const ladderPin = pinSpec(PRIVATE_SPEC);
+    const witnessPin = pinSpec(WITNESS_SPEC);
+    const agreements = new Map<string, Agreement>([
+        [CHECKOUT_HASH, { ...agreement, clauses: [{ clause: ladderPin.clauseKey, data: {} }, { clause: witnessPin.clauseKey, data: {} }] }],
+    ]);
+
+    beforeAll(async () => {
+        setClauseSpecFetcher(async (uri) => (uri === "mem://ladder" ? ladderPin.bytes : witnessPin.bytes));
+        await loadClauseSpec(ladderPin.clauseKey, "mem://ladder");
+        await loadClauseSpec(witnessPin.clauseKey, "mem://witness");
+    });
+
+    const cards = (clauseKey: string) => deriveProcessModelFromRuntime(summary, [order], agreements, BUYER, undefined, [])
+        .orders.flatMap((o) => o.capabilities)
+        .filter((c) => c.action.executionType === "transaction" && c.action.kind === "submit-clause-attestation"
+            && c.action.clauseKey === clauseKey);
+
+    it("the witness card's inputs are the stage's fields without the blinding field", () => {
+        const witness = cards(witnessPin.clauseKey).find((c) => c.action.executionType === "transaction" && c.action.kind === "submit-clause-attestation" && c.action.stage === 1);
+        expect(witness?.inputFields?.map((f) => f.name)).toEqual(["reading"]);
+    });
+
+    it("the ladder card's companion inputs leave out the blinding field", () => {
+        const ladder = cards(ladderPin.clauseKey).find((c) => c.eventCode === "started");
+        expect(ladder?.inputFields?.map((f) => f.name)).toEqual(["memo"]);
+    });
+});
