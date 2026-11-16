@@ -109,7 +109,9 @@ export default defineConfig({
     forbidOnly: !!process.env.CI,
     retries: 1,
     workers: process.env.CI ? 1 : undefined,
-    reporter: [['html', { open: 'never' }]],
+    // On CI the list reporter prints one line per test, so a run's log names each
+    // test that passed; the html report is kept for a failed run's trace.
+    reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['html', { open: 'never' }]],
 
     use: {
         baseURL: PLAYWRIGHT_BASE_URL,

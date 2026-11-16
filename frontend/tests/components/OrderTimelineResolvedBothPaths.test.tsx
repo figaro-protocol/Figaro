@@ -20,16 +20,24 @@
  * ends the timeline with "order completed", and offers the "Your data"
  * link; with `OrderCommitted` alone it shows none of these.
  *
- * Does not prove: the seller's view, the payout routing panel, or that a
- * relay lands the batch (the devnet spec `batch-events.devnet.spec.ts` does).
+ * Proves, for the seller, on each path: once the order is resolved, the page
+ * offers the payout split, and a split typed there is handed to the payout
+ * hook in the order's token; while the order is only committed, no split is
+ * offered. The hook's own writes, one approve and one `disperseToken` to the
+ * payout contract, are held by `contractWriteSites.test.tsx`.
+ *
+ * Does not prove: that a relay lands the batch (the devnet spec
+ * `batch-events.devnet.spec.ts` does), or a split's transfers on a chain.
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { orderCommittedLog, orderResolvedLog, processResolvedLog, word, type FixtureLog } from "../lib/__fixtures__/coreLogs";
 
-const { cachedGetLogsMock, CORE, VERIFIER, CLIENT, BUYER } = vi.hoisted(() => ({
+const { cachedGetLogsMock, routeTokenPayoutMock, account, CORE, VERIFIER, CLIENT, BUYER } = vi.hoisted(() => ({
     cachedGetLogsMock: vi.fn(),
+    routeTokenPayoutMock: vi.fn(async () => `0x${"ab".repeat(32)}` as `0x${string}`),
+    account: { address: "0x00000000000000000000000000000000000000b1" as `0x${string}` },
     CORE: "0x1111111111111111111111111111111111111111",
     VERIFIER: "0x2222222222222222222222222222222222222222",
     CLIENT: { chain: { id: 31337 } },
@@ -37,7 +45,7 @@ const { cachedGetLogsMock, CORE, VERIFIER, CLIENT, BUYER } = vi.hoisted(() => ({
 }));
 
 vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: BUYER, isConnected: true }),
+    useAccount: () => ({ address: account.address, isConnected: true }),
     usePublicClient: () => CLIENT,
     useChainId: () => 31337,
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
@@ -79,6 +87,10 @@ vi.mock("@/lib/member/useMembersRegistry", () => ({
     useWithdrawDeposit: () => ({ withdraw: vi.fn(), isPending: false, isConfirming: false, isSuccess: false }),
     useWithdrawalCooldown: () => ({ data: 60n }),
 }));
+// The payout contract is configured; the hook's writes are held elsewhere.
+vi.mock("@/lib/composition/usePayoutRoutingActions", () => ({
+    usePayoutRoutingActions: () => ({ routeTokenPayout: routeTokenPayoutMock, isRouting: false, isAvailable: true }),
+}));
 vi.mock("@/lib/semantic/createCapabilityExecutors", () => ({ createCapabilityExecutors: () => ({ executorCallbacks: {} }) }));
 
 import { OrderTimelineView } from "@/app/(app)/orders/_components/OrderTimelineView";
@@ -87,6 +99,9 @@ const PROCESS = word(0xba7c);
 const ORDER = word(0x0bd1);
 const SELLER = "0x00000000000000000000000000000000000000a1" as const;
 const PAYMENT = 7n * 10n ** 18n;
+/** The token `orderCommittedLog` names in every commitment. */
+const CURRENCY = "0x00000000000000000000000000000000000000c1";
+const RECIPIENT = "0x0000000000000000000000000000000000005e11";
 
 /** `emitter` emits `logs`, each under its own event name; the other order emitter emits nothing. */
 function emits(emitter: string, logs: Record<string, FixtureLog[]>) {
@@ -109,6 +124,8 @@ describe.each([
 ])("/orders/view over %s", (_path, emitter) => {
     beforeEach(() => {
         cachedGetLogsMock.mockReset();
+        routeTokenPayoutMock.mockClear();
+        account.address = BUYER;
     });
 
     it("an order resolved there reads as completed, with what the resolution moved for the buyer", async () => {
@@ -140,5 +157,34 @@ describe.each([
         expect(screen.queryByTestId("resolution-proceeds")).toBeNull();
         expect(screen.getByTestId("order-timeline").textContent).not.toMatch(/order completed/);
         expect(screen.queryByTestId("link-your-data")).toBeNull();
+    });
+
+    it("the seller of an order resolved there is offered the payout split, in the order's token", async () => {
+        account.address = SELLER;
+        const { committed, resolved, closed } = logsAt(emitter);
+        emits(emitter, { OrderCommitted: [committed], OrderResolved: [resolved], ProcessResolved: [closed] });
+        render(<OrderTimelineView processId={PROCESS} />);
+
+        const pill = await screen.findByTestId("order-status-pill", {}, { timeout: 5000 });
+        await waitFor(() => expect(pill.textContent).toBe("Completed"));
+        await screen.findByTestId("payout-routing");
+        fireEvent.change(screen.getByTestId("payout-routing-recipient-0"), { target: { value: RECIPIENT } });
+        fireEvent.change(screen.getByTestId("payout-routing-amount-0"), { target: { value: "1.5" } });
+        fireEvent.click(screen.getByTestId("payout-routing-execute"));
+        await waitFor(() => expect(routeTokenPayoutMock).toHaveBeenCalledTimes(1));
+        const [token, legs] = routeTokenPayoutMock.mock.calls[0] as unknown as [string, unknown];
+        expect(token.toLowerCase()).toBe(CURRENCY);
+        expect(legs).toEqual([{ recipient: RECIPIENT, amount: 15n * 10n ** 17n }]);
+    });
+
+    it("the seller of an order only committed there is offered no split", async () => {
+        account.address = SELLER;
+        const { committed } = logsAt(emitter);
+        emits(emitter, { OrderCommitted: [committed] });
+        render(<OrderTimelineView processId={PROCESS} />);
+
+        const pill = await screen.findByTestId("order-status-pill", {}, { timeout: 5000 });
+        expect(pill.textContent).toBe("Active");
+        expect(screen.queryByTestId("payout-routing")).toBeNull();
     });
 });

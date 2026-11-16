@@ -11,7 +11,7 @@
  */
 import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { GraphCorpus } from "@/lib/data/graphCorpus";
 
 let searchParams = "view=market";
@@ -72,6 +72,37 @@ describe("DataExplorer — layers name their truth boundary", () => {
         searchParams = "view=value-flow";
         render(<DataExplorer />);
         expect(screen.getAllByTestId("layer-boundary").at(-1)!.textContent).toContain("composition-derived");
+    });
+
+    it("on the value-flow layer each row names what backs it: a denomination's figures are the Core's, a corridor is the venue's", () => {
+        const OTHER = "0x2222222222222222222222222222222222222222";
+        const VENUE = "0x3333333333333333333333333333333333333333";
+        searchParams = "view=value-flow";
+        corpusMock.mockReturnValue({
+            status: "present",
+            value: corpus({
+                venue: VENUE,
+                valueFlow: {
+                    boundary: "composition-derived",
+                    nodes: [
+                        { token: TOKEN, processCount: 1, settledOrderCount: 1, settledVolume: 5n, pinned: false },
+                        { token: OTHER, processCount: 0, settledOrderCount: 0, settledVolume: 0n, pinned: false },
+                    ],
+                    edges: [
+                        { basis: "protocol-enforced", token: TOKEN, settledOrderCount: 1, settledVolume: 5n },
+                        { basis: "composition-derived", venue: VENUE, tokenIn: OTHER, tokenOut: TOKEN, legCount: 1, volumeIn: 7n, volumeOut: 10n },
+                    ],
+                } as GraphCorpus["valueFlow"],
+            }),
+        });
+        render(<DataExplorer />);
+        for (const token of [TOKEN, OTHER]) {
+            const row = screen.getByTestId(`denomination-${token}`);
+            expect(within(row).getByTestId("row-boundary").textContent).toBe("protocol-enforced");
+        }
+        const leg = screen.getByTestId(`value-flow-leg-${OTHER}-${TOKEN}`);
+        expect(within(leg).getByTestId("row-boundary").textContent).toBe("composition-derived");
+        expect(leg.textContent).not.toContain("protocol-enforced");
     });
 
     it("a failed read renders nothing — no failure text, never an empty record", () => {
