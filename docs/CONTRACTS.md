@@ -411,9 +411,8 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   the guest refuses a batch claim keyed on either (`apply_usage_claims`), and
   `applyBatchAccrual` skips both before the registration gate. Every
   registered clause earns under the uniform
-  rule, the mandatory-article clause (`figaro-commerce`) among them, for its
-  designer of record — the DAO treasury, which registers exactly the
-  mandatory clauses at genesis. The agreement format's topology leaf is no
+  rule, `figaro-commerce` among them, for its designer of record (the DAO
+  treasury registers it at genesis) wherever a designer composed it. The agreement format's topology leaf is no
   clause and no reserved key: its 96-byte inner preimage opens under no
   clause key, so it is never counted (`docs/CLAUSES.md` § "Every clause is a
   merkle leaf").

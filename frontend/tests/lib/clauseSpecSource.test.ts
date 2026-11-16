@@ -15,7 +15,6 @@ import {
     labelEnumValue,
     specSource,
     isLiveRegistration,
-    clauseIsMandatory,
     describeAttestation,
     groupClausesByArticle,
     _resetClauseSpecCache_TESTING_ONLY,
@@ -201,7 +200,7 @@ describe("clauseIsProcessLog — classified by the attestations article, never b
     });
 
     it("a committed-choice enum clause (coordination article) is NOT a lifecycle", async () => {
-        // Regression: "non-mandatory + has enum" misread modalities as a
+        // Regression: "has an enum" misread modalities as a
         // process-log — fabricated seller capabilities and skipped off-chain
         // validation at both sign points.
         await primeClauseSpecs(["figaro-modalities"]);
@@ -209,7 +208,7 @@ describe("clauseIsProcessLog — classified by the attestations article, never b
         expect(clauseIsProcessLog(keyOf("figaro-modalities"))).toBe(false);   // …but declares coordination
     });
 
-    it("a mandatory clause with an enum is NOT a lifecycle (the earlier collision)", async () => {
+    it("the commerce clause is NOT a lifecycle (the earlier collision)", async () => {
         await primeClauseSpecs(["figaro-commerce"]);
         expect(clauseIsProcessLog(keyOf("figaro-commerce"))).toBe(false);
     });
@@ -285,20 +284,6 @@ describe("the live stake — the drawer's offer", () => {
     it("isLiveRegistration is the stake not withdrawn", () => {
         expect(isLiveRegistration({ stakeWithdrawn: false })).toBe(true);
         expect(isLiveRegistration({ stakeWithdrawn: true })).toBe(false);
-    });
-});
-
-describe("clauseIsMandatory — the SDK predicate on the clause the key names", () => {
-    it("reads the spec at the key, never another spec of the name", async () => {
-        const v1 = { clauseId: "mand-v", version: 1, title: "v1", description: "d", fields: [{ name: "x", type: "string", required: true }] };
-        const v2 = { ...v1, version: 2, title: "v2", block: { design: { article: "mandatory", nestsUnder: null, fills: [], composes: null }, checkout: { catalogueFills: [], profileFills: [] }, runtime: { interaction: null, fields: [] } } };
-        const a = pinSpec(v1);
-        const b = pinSpec(v2);
-        setClauseSpecFetcher(async (uri) => (uri.includes("v2") ? b.bytes : a.bytes));
-        await loadClauseSpec(a.clauseKey, "ipfs://fake-v1");
-        await loadClauseSpec(b.clauseKey, "ipfs://fake-v2");
-        expect(clauseIsMandatory(a.clauseKey)).toBe(false);
-        expect(clauseIsMandatory(b.clauseKey)).toBe(true);
     });
 });
 

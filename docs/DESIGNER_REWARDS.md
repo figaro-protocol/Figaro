@@ -31,15 +31,13 @@ and one who registered fifty.
 
 Two things follow that people expect to be otherwise.
 
-**The mandatory clauses earn.** `figaro-commerce` rides on
-every order whose designer picked an agreement carrying it in the mandatory
-article, the DAO's registration among them, and the mandatory clauses are scored for their
-designer of record like any other clause. "Mandatory" is a registration-layer
-convention about what a designer picks; nothing on chain privileges them, and nothing on chain exempts them.
-They are the DAO's because the DAO develops them: a clause every agreement
-carries is substrate the commons itself must build, and assigning it to the
-treasury aligns the treasury's interest with every trade (`docs/DAO.md`
-§ "Its income").
+**The DAO's clauses earn where designers compose them.** `figaro-commerce`
+is the DAO's registration, and it rides on the orders whose agreements a
+designer composed with it, scored for its designer of record like any other
+clause. No clause rides on every order: nothing on chain or in the tooling
+writes a clause into an agreement, and nothing on chain exempts the DAO's
+clauses from the meter. The DAO earns as any designer earns, by developing
+clauses designers choose to compose (`docs/DAO.md` § "Its income").
 
 **Registering is the whole of the claim.** First-write-wins: whoever
 registers a clause key under their wallet holds that registration for good, and
@@ -195,13 +193,9 @@ constants whatever a registry holds at them: the direct path reverts
 registration. No other key is refused by list. The line they draw is **terms
 versus meter**.
 
-Commerce is a contract *term* the parties agree to. A runtime
-that writes them into every agreement is making an offer, and a runtime whose
-terms designers do not want loses its designers to another: the mandatory set
-is this frontend's reading of the registry (the DAO wallet's live
-mandatory-article registrations), not a rule of the chain. That also answers
-how many such clauses the commons may hold — as many as the DAO develops and
-designers keep using.
+Commerce is a contract *term* the parties agree to, and a designer
+composes it or leaves it out. That also answers how many clauses the commons
+may hold — as many as the DAO develops and designers keep using.
 
 The provenance leaf is not a term anyone agreed to. It is the reward system's
 own attribution plumbing, structurally singular, with no competing runtime to
@@ -213,9 +207,9 @@ agreement's membership under the assembly's root; and every registered clause
 the orders an order follows, is the agreement format's own and no clause: no
 key opens it, so it never earns (`docs/CLAUSES.md` § "Every clause is a merkle
 leaf"). Nothing is
-excluded: a registered agreement that carries the mandatory clauses earns for
-its own designer of record on the same meter, and the mandatory clauses inside
-it earn for theirs.
+excluded: a registered agreement that carries the DAO's clauses earns for its
+own designer of record on the same meter, and the clauses inside it earn for
+theirs.
 
 ---
 

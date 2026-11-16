@@ -166,7 +166,6 @@ type DeploymentConfig = {
     usageCounter?: `0x${string}`;
     rpgfMinter?: `0x${string}`;
     batchVerifier?: `0x${string}`;
-    daoTreasury?: `0x${string}`;
 };
 
 export function readLocalDeploymentConfig(): DeploymentConfig {
@@ -212,7 +211,6 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_USAGE_COUNTER') config.usageCounter = value;
             if (key === 'NEXT_PUBLIC_RPGF_MINTER') config.rpgfMinter = value;
             if (key === 'NEXT_PUBLIC_BATCH_VERIFIER') config.batchVerifier = value;
-            if (key === 'NEXT_PUBLIC_DAO_TREASURY') config.daoTreasury = value;
         }
     }
 
@@ -732,8 +730,7 @@ function authoredSpecSource(): SpecSource {
 }
 
 /** The authored agreements (`agreements/*.json`) composed by name over the
- *  authored specs, each pick in the mandatory article resolved within the
- *  set — what the seeding registers. */
+ *  authored specs — what the seeding registers. */
 function authoredAgreementsBuilt(): Record<string, RegisteredAgreement> {
     const dir = path.resolve(__dirname, '../../../agreements');
     const authored: Record<string, object> = {};
@@ -1049,6 +1046,21 @@ export async function fillDeliveryCheckout(page: Page): Promise<void> {
     await checkoutField(page, DELIVERY_CLAUSES.geo, 'destination').fill(DELIVERY_DEVICE.destination);
 }
 
+/** The designer composes the commerce clause on each canvas order named, as
+ *  it composes any clause: nothing writes it in. The order drawer must be
+ *  open; with one order on the canvas the drawer is already on it and no id
+ *  is passed (the per-order tab row renders only with two or more). Leaves
+ *  the drawer on the registry tab of the last order named. */
+export async function composeCommerceOn(page: Page, orderIds: readonly string[] = []): Promise<void> {
+    await primeRegisteredClauseSpecs();
+    for (const id of orderIds.length > 0 ? orderIds : [undefined]) {
+        if (id !== undefined) await page.getByTestId(`drawer-node-tab-${id}`).click();
+        await page.getByTestId('drawer-tab-registry').click();
+        await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+        await page.getByTestId(`drawer-registry-clause-${keyOf('figaro-commerce')}`).check();
+    }
+}
+
 /** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */
 export async function waitForConnected(page: Page): Promise<void> {
     await page.waitForFunction(
@@ -1212,6 +1224,7 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
         const nodeIds = await orderNodes.evaluateAll((els) =>
             els.map((el) => el.getAttribute('data-testid')!.replace('order-node-', '')));
         const subId = nodeIds.find((id) => id !== rootId)!;
+        await composeCommerceOn(page, [rootId, subId]);
 
         // Compose the courier's process ladder + the hand-off point + the
         // single-band proximity witness + geolocation on the drawn order.

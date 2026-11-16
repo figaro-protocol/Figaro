@@ -161,15 +161,15 @@ The clause is one of the network's: any designer composes it, and once a resolve
 
 ## 5. Compose the agreements and anchor the assembly
 
-`buildAssembly` is the composition the frontend's designer canvas runs. It takes the orders with their topology, the clauses selected for each order with the designer's fills, the assembly terms, and the mandatory clauses: the live commerce clause the DAO's wallet registered, read from the `ClauseRegistered` events by `mandatoryClauses`. It writes the mandatory clauses into every agreement, keeps only design fills (the value-free rule), and returns the assembly beside each new agreement, keyed by its `agreementHash`. The script registers each agreement on `AgreementRegistry` that is not yet bound, then the assembly on `AssemblyRegistry` under its `assemblyHash` (`serializeAssembly`), each under its registry's stake, and reads the result back the way any seller or buyer will. The design names no register: a credentialed provider declares, on its profile, the register of the institution that issued its own credential, so one agreement accommodates every issuer. The register URIs in **sellers.mjs** below are placeholders on `example.org`.
+`buildAssembly` is the composition the frontend's designer canvas runs. It takes the orders with their topology, the clauses selected for each order with the designer's fills, and the assembly terms. Each agreement carries exactly the clauses selected for its order: nothing is written in, so an order whose parties commit a list of line items composes `figaro-commerce` like any other clause, and this journey composes none. It keeps only design fills (the value-free rule), and returns the assembly beside each new agreement, keyed by its `agreementHash`. The script registers each agreement on `AgreementRegistry` that is not yet bound, then the assembly on `AssemblyRegistry` under its `assemblyHash` (`serializeAssembly`), each under its registry's stake, and reads the result back the way any seller or buyer will. The design names no register: a credentialed provider declares, on its profile, the register of the institution that issued its own credential, so one agreement accommodates every issuer. The register URIs in **sellers.mjs** below are placeholders on `example.org`.
 
 ```js title="compose.mjs"
 // compose.mjs — ten agreements, one assembly, registered and read back.
 import {
-    buildAssembly, mandatoryClauses, serializeAssembly, canonicalize,
-    CLAUSE_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
+    buildAssembly, serializeAssembly, canonicalize,
+    AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
 } from "@figaro-protocol/sdk";
-import { addresses, deployment, ctx, pub, walletOf, specs, pin, account, hydrate } from "./figaro.mjs";
+import { addresses, ctx, pub, walletOf, specs, pin, account, hydrate } from "./figaro.mjs";
 
 const DESIGNER = account(37);
 
@@ -180,14 +180,6 @@ const keyOf = (clauseId) => {
     if (hits.length !== 1) throw new Error(`${clauseId}: ${hits.length} registered specs carry this id`);
     return hits[0].clauseKey;
 };
-
-// The mandatory clauses (commerce) are the live ones the DAO's
-// wallet registered, read from the ClauseRegistered events.
-const logs = await pub.getContractEvents({ address: addresses.clauseRegistry, abi: CLAUSE_REGISTRY_ABI, eventName: "ClauseRegistered", fromBlock: 0n });
-const withdrawn = new Set(ctx.getClauses().filter((c) => c.stakeWithdrawn).map((c) => c.clauseKey.toLowerCase()));
-const rows = logs.map((l) => ({ clauseKey: l.args.clauseKey, registeredBy: l.args.registeredBy, blockNumber: l.blockNumber,
-    logIndex: l.logIndex, stakeWithdrawn: withdrawn.has(l.args.clauseKey.toLowerCase()) }));
-const mandatory = mandatoryClauses(rows, specs, deployment.daoTreasury);
 
 // One order per resource market, in commit order. A value is written only for
 // a field the spec lists in block.design.fills; every other field is the
@@ -216,7 +208,7 @@ const { assembly, agreements } = buildAssembly({
     name: "Domestic short-haul journey",
     summary: "Ten resource markets, each provider bonded directly to the passenger in one process.",
     description: "Aircraft-time, fuel, crew-hours, maintenance, catering, ground handling, two airport authorities, security screening and air navigation: each an order whose buyer is the passenger, who alone resolves the journey.",
-    orders, clausesByOrderId: Object.fromEntries(ORDERS), mandatory, specs,
+    orders, clausesByOrderId: Object.fromEntries(ORDERS), specs,
     assemblyClauses: { [keyOf("figaro-applicable-law")]: {}, [keyOf("figaro-arbitration-kleros")]: {} },
 });
 

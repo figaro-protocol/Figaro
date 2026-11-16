@@ -34,6 +34,7 @@ import {
     anchoredAssemblyHash,
     isBindingOf,
     expectRelayedOrder,
+    composeCommerceOn,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { geohashCentroidDistanceKm } from '@figaro-protocol/sdk/derive';
@@ -87,7 +88,7 @@ async function findRateAssembly(): Promise<string | undefined> {
     // construction — the geohashes are the buyer's checkout fills, so no
     // anchored value can identify the assembly). The rate shape: a two-node
     // chain whose hauled leg composes process + geo and NOTHING else beyond
-    // the mandatory clause of its pick (the delivery assembly's courier leg also
+    // the commerce clause its agreement names (the delivery assembly's courier leg also
     // carries handoff + proximity → 5 keys, and its root carries merchant +
     // modalities → 3 keys; this shape is 3 and 1).
     return assemblies.find((t) => {
@@ -194,6 +195,8 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
             const nodeIds = await orderNodes.evaluateAll((els) =>
                 els.map((el) => el.getAttribute('data-testid')!.replace('order-node-', '')));
             const subId = nodeIds.find((id) => id !== rootId)!;
+            // Each order composes the commerce clause, as any clause.
+            await composeCommerceOn(page, [rootId, subId]);
 
             await page.getByTestId(`drawer-node-tab-${subId}`).click();
             await page.getByTestId('drawer-tab-registry').click();

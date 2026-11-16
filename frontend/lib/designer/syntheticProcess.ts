@@ -53,8 +53,7 @@ export interface CreatedOrder {
 
 /**
  * Clause-field defaults applied to every freshly-spawned synthetic order.
- * No clause is pre-composed by default: the mandatory clauses (commerce, as
- * the reference specs declare it) are composed by the build itself, and every other clause is an explicit
+ * No clause is pre-composed: every clause, commerce included, is an explicit
  * designer choice in the drawer.
  */
 function defaultNodeClauseFields(): ClauseFields {

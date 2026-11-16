@@ -28,7 +28,6 @@ if (E2E_CHAIN === 'sepolia') {
         NEXT_PUBLIC_USAGE_COUNTER: String(record.usageCounter),
         NEXT_PUBLIC_RPGF_MINTER: String(record.rpgfMinter),
         NEXT_PUBLIC_BATCH_VERIFIER: String(record.batchVerifier),
-        NEXT_PUBLIC_DAO_TREASURY: String(record.daoTreasury),
         NEXT_PUBLIC_DEPLOYMENT_BLOCK: String(record.deploymentBlock ?? ''),
         // The PUBLIC, keyless read endpoint — never SEPOLIA_RPC_URL (the deploy
         // key's Infura endpoint: keyed, and rate-limited under a long run).

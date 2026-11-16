@@ -275,9 +275,9 @@ never count once the last period closes (`src/rewards/UsageCounter.sol`). A buye
 agent that resolves without this credits no clause, agreement or assembly designer, and
 the 600M reward's uniformity across actors is exactly this call. Only the clause FINGERPRINT
 reaches calldata, so a private clause's plaintext never becomes public. Read the report,
-not the absence of an exception. **Every clause EARNS**, the mandatory ones included:
-commerce rides on every agreement the reference canvas composes and is scored for its designer of record like
-any other (the topology leaf is no clause and earns nothing), and `recordProcessUsage` sends one clause leg per distinct clause key the
+not the absence of an exception. **Every clause EARNS**: commerce rides on the agreements
+a designer composed with it and is scored for its designer of record like any other (the
+topology leaf is no clause and earns nothing), and `recordProcessUsage` sends one clause leg per distinct clause key the
 process carries (`attempted` / `recorded`). The once-per-process agreement and assembly credits are
 INDEPENDENT legs (`agreementRecorded`, `assemblyRecorded`): `recordAgreementUsage` is called
 with the agreement's `provenance` (both keys) and the provenance leaf's inclusion proof — the

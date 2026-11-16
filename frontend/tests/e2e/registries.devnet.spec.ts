@@ -167,11 +167,11 @@ test.describe('Registry explorer (devnet) — the disclosures and facets over th
     });
 
     test('a deep link with a facet renders the trail and narrows the rows', async ({ page }) => {
-        await page.goto('/registries?family=clauses&article=mandatory');
+        await page.goto('/registries?family=clauses&article=logistics');
         const rows = page.locator('li[id^="clause-"]');
         await rows.first().waitFor({ state: 'visible', timeout: 30_000 });
         // Only one article heading remains under a single-article facet.
         await expect(page.locator('h3')).toHaveCount(1);
-        await expect(page.getByRole('navigation', { name: /breadcrumb/i })).toContainText('mandatory');
+        await expect(page.getByRole('navigation', { name: /breadcrumb/i })).toContainText('logistics');
     });
 });

@@ -225,24 +225,17 @@ every kind and skips both on the batch path, `recordAssemblyUsage` refuses an
 `agreementHash` equal to either, and the guest and the relay refuse both the
 same way.
 
-**The mandatory clauses — written in at composition, never picked.** The
-designer's canvas writes the mandatory clauses into every agreement it
-registers before the designer composes anything, and the designer composes
-the rest. Which clauses they are is read from `ClauseRegistry`: the DAO
-wallet's live registrations whose spec declares the mandatory article at
-agreement scope, one per shape, the later registration winning where the DAO
-holds two of one shape (`mandatoryClauses` in the SDK; the frontend's
-`mandatoryClausesForCanvas` reads the DAO's wallet from the chain's
-deployment file). The reference specs give that article to
-`figaro-commerce`. No mandatory clause is required: the topology is the
-agreement format's own leaf, and `composeOrderAgreement` refuses only an
-agreement composing no clause. No clause of commerce is required, because the commitment
-carries the payment and the token: an agreement that composes no clause
-declaring `lineItems` still carries its payment, and what it does not commit
-is the list of what the payment buys. The designer's review screen names each
-such order before publishing. A mandatory-article
-registration by any other wallet is an ordinary clause. A reference agreement file
-(`agreements/*.json`) names the mandatory clause like any other. Checkout fills
+**An agreement carries the clauses its designer composed, and no other.**
+No clause is written into an agreement by the tooling: `composeOrderAgreement`
+(`sdk/src/projection.ts`) keeps exactly the designer's selection and refuses
+only an agreement composing no clause. `figaro-commerce` is a clause like any
+other, composed where the parties commit the list of line items, or left out.
+No clause is required: the topology is the agreement format's own leaf, and
+the commitment carries the payment and the token, so an agreement that
+composes no clause declaring `lineItems` still carries its payment; what it
+does not commit is the list of what the payment buys. The designer's review
+screen names each such order before publishing. A reference agreement file
+(`agreements/*.json`) names its clauses by name. Checkout fills
 values and writes the topology; it never adds or drops a clause. Each order's agreement is the agreement's hydrated
 registered agreement with the agreement's own fills merged over it (the agreement's fill
 wins for the keys it names) and the assembly-scoped clauses beside it; the
@@ -455,20 +448,15 @@ value, so a sparser third-party spec surfaces fine.
 section a clause reads under. Classification reads the article, never the
 field shape:
 
-- **`mandatory`** — never selected one by one; the designer's canvas writes the
-  DAO's live ones into every agreement (§ "The registered agreement and the
-  assembly"). The reference specs give it to `figaro-commerce`, at
-  agreement scope; the build requires none, so an agreement composed by
-  another tool may leave commerce out. No mandatory clause is at assembly scope, and one registered
-  there joins no composition.
 - **`attestations`** — runtime transfer ladders the responsible party advances
   (`figaro-merchant-process`, `figaro-courier-process`; a supply chain runs the
   same structure at length). These are coordination attestations between
   sellers — the same runtime-evidence category as witness stages, differing in
   shape.
-- **`coordination`** — committed statements of which scenario everyone runs.
-  Committed content, not a runtime lifecycle; a coordination clause never
-  surfaces an attestation capability.
+- **`coordination`** — committed statements of which scenario everyone runs
+  and what an order covers: the modality, the time window, the localities, the
+  line items (`figaro-commerce`). Committed content, not a runtime lifecycle;
+  a coordination clause never surfaces an attestation capability.
 - **`denomination`** — an assembly-scoped clause of this article has each
   unfilled designer-filled `address-hex` field set to the deployment's token
   at seeding (`fillDeployTimeCurrency`, `sdk/src/projection.ts`).
@@ -476,8 +464,12 @@ field shape:
   recourse reader keeps the clauses of this article
   (`frontend/lib/semantic/processRecourse.ts`).
 
-Code routes on four of these: `mandatory`, `attestations`, `denomination` and
-`dispute-resolution`.
+Code routes on three of these: `attestations`, `denomination` and
+`dispute-resolution`. Any other word, a stranger's included, is a grouping
+word only: the drawer and the inventory group the clause under it
+(`groupClausesByArticle`, `frontend/lib/shared/clauseSpecSource.ts`), and the
+composition, the checkout and the sign gate treat the clause as they treat
+any clause.
 
 Other articles are whatever the registered clauses declare; they group the
 drawer and the inventory.

@@ -59,7 +59,7 @@ cd sdk && npm run lint                   # tsc --noEmit
 ./scripts/devup.sh                       # ⭐ one-shot, idempotent: clean-rebuilds sdk/dist, ensures Anvil + IPFS, deploys the protocol; on an already-deployed chain it re-runs the deploy's genesis population (clauses, agreements, reference assemblies — a key already bound is skipped). "Already deployed" is the devnet preflight passing (frontend/scripts/verify-devnet-deployment.mjs), which also requires an OPEN accrual: the devnet runs the nine annual reward periods of every public network, and each run of the rewards spec advances the chain's clock past one of them, so after nine runs every usage recording reverts AccrualClosed and the usage specs fail — the preflight refuses that chain and devup redeploys it
 ./scripts/devdown.sh                     # the inverse: stops Anvil + Kubo (and ONLY those). KEEP_IPFS=1 leaves Kubo pinning
 # …or the individual steps it wraps:
-./scripts/deploy-local.sh                # deploys the stack AND pins+anchors clauses (incl. mandatory commerce/topology), then each reference assembly's distinct agreements (one stake each; a key already registered is skipped), then the assemblies, the MockERC20 standing for their ZERO_ADDRESS currency — the Sepolia genesis on a devnet, registered by anvil[0]; no member. Self-sufficient
+./scripts/deploy-local.sh                # deploys the stack AND pins+anchors clauses (commerce under the DAO's treasury), then each reference assembly's distinct agreements (one stake each; a key already registered is skipped), then the assemblies, the MockERC20 standing for their ZERO_ADDRESS currency — the Sepolia genesis on a devnet, registered by anvil[0]; no member. Self-sufficient
 ./scripts/deploy-mainnet.sh              # MAINNET wrapper for script/DeployMainnet.s.sol — refuses without MAINNET_DEPLOY_CONFIRM=yes + all env vars + chain-id 1 read-back; never run casually
 ./scripts/deploy-sepolia.sh              # SEPOLIA wrapper for script/DeploySepolia.s.sol — same guard structure (SEPOLIA_DEPLOY_CONFIRM=yes + chain-id 11155111 read-back); SKIP_VERIFY=1 for the Anvil-fork rehearsal only; FORGE_GAS_MULTIPLIER=<percent> widens forge's gas limits when the live chain's fork charges more for a creation than forge's own simulation (Glamsterdam on Sepolia: 200 lands what 130 ran out of gas on); the same knob on deploy-mainnet.sh and deploy-swap-coordinator.sh
 ./scripts/deploy-swap-coordinator.sh     # deploy WitnessSwapAndCommitCoordinator ALONE onto a LIVE public stack (script/DeploySwapCoordinator.s.sol): FIGARO_CORE from the chain's record, PERMIT2 canonical, SWAP_ROUTER = Uniswap SwapRouter02 probed by BEHAVIOR (factory()/WETH9() must be contracts); merges the three addresses into deployments/<chainId>.json; SKIP_VERIFY=1 = fork rehearsal (record diverted).
@@ -182,7 +182,6 @@ NEXT_PUBLIC_MULTISENDER=0x...
 NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=0x...
 NEXT_PUBLIC_USAGE_COUNTER=0x...
 NEXT_PUBLIC_RPGF_MINTER=0x...
-NEXT_PUBLIC_DAO_TREASURY=0x...
 
 # The 300M DAO funds public goods by discretionary decision. The 600M RPGF pays
 # uniform pro rata on real usage.

@@ -39,7 +39,7 @@ import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { AGREEMENT_REGISTRY_ABI, canonicalize, composeOrderAgreement, serializeAssembly, type RegisteredAgreement } from "@figaro-protocol/sdk";
 import { snapshotToAssembly } from "@/lib/designer/draftToAssembly";
-import { specSource, mandatoryClausesForCanvas } from "@/lib/shared/clauseSpecSource";
+import { specSource } from "@/lib/shared/clauseSpecSource";
 import { deriveAssemblySlug } from "@/lib/shared/assembly";
 import { hexEqual } from "@/lib/shared/evm";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
@@ -122,8 +122,7 @@ export async function registerAgreement(args: {
 /**
  * Register ONE order's agreement on its own, from the drawer: the
  * clauses the designer selected for the order compose through the SDK's one
- * composition rule (`composeOrderAgreement` — the DAO's mandatory clauses
- * written in first (`mandatoryClausesForCanvas`), value-free but for design
+ * composition rule (`composeOrderAgreement` — value-free but for design
  * fills, the scope check, at least one clause), then
  * `registerAgreement`.
  * The registered key is what the agreement then binds, and what any other
@@ -143,7 +142,7 @@ export function usePublishAgreement() {
         if (Object.keys(args.clauses).length === 0) {
             throw new Error("Compose at least one clause on this order before registering its agreement.");
         }
-        const { composed, agreementHash } = composeOrderAgreement({ clauses: args.clauses, mandatory: mandatoryClausesForCanvas(), specs: specSource() });
+        const { composed, agreementHash } = composeOrderAgreement({ clauses: args.clauses, specs: specSource() });
         const doc: RegisteredAgreement = { ...(args.name ? { name: args.name } : {}), ...composed };
         return registerAgreement({ client: client as never, writeContractAsync, address, doc, agreementHash });
     }

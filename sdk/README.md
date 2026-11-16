@@ -336,9 +336,8 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildDomain` | root | The EIP-712 domain for a chain id + `FigaroCore` address. |
 | `buildOrderAgreement` | root | Build one order's agreement document and its merkle tree from its clause map. |
 | `buildQuoteRequest` | `/agent` | Build an UNSIGNED RFQ draft, priced at the buyer's ceiling. |
-| `buildAssembly` | root | Design time: the assembly of agreements plus the new agreements to register; the mandatory clauses (`mandatory`, from `mandatoryClauses`) are written into every new agreement first; binds a registered agreement as is or composes a new one; each entry carries its own `follows`. |
-| `composeOrderAgreement` | root | ONE agreement's registered agreement from the mandatory clauses written in and the clauses a designer selected — the scope check, the value-free rule, at least one clause — and its `agreementHash`; `buildAssembly` composes every new agreement through it, and a designer registers one on its own through it. |
-| `mandatoryClauses` | root | The mandatory clauses a canvas writes into every agreement, read from the DAO wallet's live `ClauseRegistry` registrations (docs/CLAUSES.md § "The mandatory clauses"); `clauseKey → {}`. |
+| `buildAssembly` | root | Design time: the assembly of agreements plus the new agreements to register; each new agreement carries exactly the clauses composed for its order; binds a registered agreement as is or composes a new one; each entry carries its own `follows`. |
+| `composeOrderAgreement` | root | ONE agreement's registered agreement from the clauses a designer selected — the scope check, the value-free rule, at least one clause — and its `agreementHash`; `buildAssembly` composes every new agreement through it, and a designer registers one on its own through it. |
 | `buildProvenanceInclusionProof` | root | Merkle proof that the agreement's provenance leaf sits under a signed `checkoutHash`. |
 | `buildAgreementInclusionProof` | root | An agreement's membership proof under `assemblyHash`, with its `slotContentHash` — what the assembly reward claim carries. |
 | `buildSignedClauseInclusionProof` | root | Merkle proof that one clause sits under a signed `checkoutHash`. |
@@ -1929,11 +1928,8 @@ import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 // the assembly keeps those values and strips every other clause's to `{}`.
 //
 // `block.design.article` is normally your clause's own group name (free text:
-// "coordination", "logistics", …). FOUR values are routed on by code. Two
-// change agreement semantics:
-//   "mandatory"          — never selected on its own: the DAO's live ones are
-//                          written into every agreement (specIsMandatory,
-//                          mandatoryClauses)
+// "coordination", "logistics", …). THREE values are routed on by code. One
+// changes agreement semantics:
 //   "attestations"       — an empty anchor at commit, content attested later
 //                          (specIsProcessLog)
 // and two are read by name:
@@ -1944,7 +1940,7 @@ import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 //   "dispute-resolution" — the frontend's audit view reads the clause as the
 //                          process's named forum (frontend/lib/semantic/
 //                          processRecourse.ts)
-// Pick the first two by accident — say you group an attestation clause under
+// Pick the first by accident — say you group an attestation clause under
 // "attestations" — and your clause behaves differently with no error raised.
 // Registration is permanent and first-write-wins, so choose before you register.
 //
@@ -1979,13 +1975,10 @@ function makeSpecSource(rawSpecsByKey: Map<Hex, unknown>): SpecSource {
 `get` takes the clause KEY — the hash of the canonical spec without `block`, the key every
 agreement leaf carries — and nothing reads a clause by name; a spec's
 `clauseId` and `version` are labels. `list` returns every spec the source
-surfaces, each with its `clauseKey`. Nothing folds from it: the mandatory
-clauses enter a NEW agreement as the set the caller passes (`mandatory`, read
-from the registry with `mandatoryClauses` — the DAO wallet's live
-`article: "mandatory"` registrations at agreement scope, one per shape), written
-in before the selection (`composeOrderAgreement`); `buildAssembly` refuses an agreement
-without both shapes and checkout adds no clause (the rule: docs/CLAUSES.md § "The
-mandatory clauses").
+surfaces, each with its `clauseKey`. Nothing folds from it: a NEW agreement
+carries exactly the clauses the caller composed (`composeOrderAgreement`);
+`buildAssembly` refuses an agreement composing no clause, and checkout adds no
+clause.
 
 A spec that is not (yet) loaded returns `undefined` from `get`, and the
 projection degrades exactly as the registry-reading frontend does (no defaults
@@ -2077,14 +2070,11 @@ import {
   AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
 } from "@figaro-protocol/sdk";
 
-// DESIGN: the mandatory clauses come from the registry (`mandatoryClauses`
-// over the ClauseRegistered rows, the specs and the DAO wallet's address);
-// then per canvas order either bind a registered agreement as is
+// DESIGN: per canvas order either bind a registered agreement as is
 // (`registeredByOrderId`, the hydrated document) or compose clauses (`clausesByOrderId`),
-// which become a NEW agreement with the mandatory clauses written in first.
-const mandatory = mandatoryClauses(rows, specs, daoTreasury);
+// which become a NEW agreement carrying exactly those clauses.
 const { assembly, agreements } = buildAssembly({
-  name, orders, clausesByOrderId, registeredByOrderId, mandatory, assemblyClauses, specs,
+  name, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, specs,
 });
 // `agreements` holds only the newly composed ones: pin each as canonical JSON
 // and register it (one stake each; a key already registered is skipped).
@@ -2128,7 +2118,7 @@ const { leaf, proof, slotContentHash } = buildAgreementInclusionProof(assembly.a
 
 `composeAuthoredAgreement(doc, specs)`, `composeAuthoredAgreements(docsByName, specs)` and `assembleAuthored(doc, agreementsByName, specs)`
 are the SEED-TIME derivation for the reference set written by hand: an agreement file (`agreements/*.json`, clause names with the
-designer's fills, the mandatory clauses named like any other) resolves its names (`resolveAuthoredClauseKeys`) and composes
+designer's fills) resolves its names (`resolveAuthoredClauseKeys`) and composes
 through the one composition rule (`composeOrderAgreement`: the scope check, the
 value-free rule, at least one clause) into the document the seeding pins and its
 key (`composeAuthoredAgreements` composes a whole set by name); an assembly file (agreements naming the written agreements they bind

@@ -52,7 +52,7 @@ async function load(...pins: { clauseKey: `0x${string}`; bytes: string }[]): Pro
 
 const groupsFor = (authored: Record<string, unknown>) =>
     deriveAgreementGroups({
-        pickedAssembly: { hydratedAssembly: hydrateAuthored(authored, { pick: false }), coSellerBindings: [] },
+        pickedAssembly: { hydratedAssembly: hydrateAuthored(authored, { compose: false }), coSellerBindings: [] },
         leadAddress: LEAD,
         sellerCatalogs: [] as never,
     });

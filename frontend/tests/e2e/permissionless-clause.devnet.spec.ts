@@ -144,6 +144,9 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+        // The designer composes the commerce clause beside the never-seen
+        // clauses, as any clause: nothing is written in.
+        await page.getByTestId(`drawer-registry-clause-${keyOf('figaro-commerce')}`).check();
         const novel = page.getByTestId(`drawer-registry-clause-${NOVEL_KEY}`);
         await expect(
             novel,
@@ -429,8 +432,8 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await waitForConnected(page);
 
         // VALUES — the clause-evidence view surfaces EVERY committed leaf's value,
-        // each rendered from its registered spec title: the mandatory leaf
-        // (commerce) AND the never-seen clause.
+        // each rendered from its registered spec title: the commerce leaf
+        // AND the never-seen clause.
         const evidence = page.getByTestId('audit-clause-evidence');
         await evidence.waitFor({ state: 'visible', timeout: 30000 });
         await expect(evidence.getByText('Commerce terms'), 'the commerce leaf value surfaces').toBeVisible({ timeout: 30000 });

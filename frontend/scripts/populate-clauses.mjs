@@ -17,8 +17,7 @@
  * to the key of the loaded spec it names (`resolveAuthoredClauseKeys`) here,
  * at seed time, before anything is pinned — everything pinned carries keys.
  * Each authored agreement (`agreements/*.json`) is composed over the specs
- * (`composeAuthoredAgreements`, keyed; it names the mandatory clause like
- * any other); each
+ * (`composeAuthoredAgreements`, keyed); each
  * reference assembly is built over the agreements its agreements name
  * (`assembleAuthored`: the entry binds the named agreement's hash and carries
  * its own topology parents); every DISTINCT agreement is pinned and
@@ -42,8 +41,9 @@
  *                                  every registration is signed ON THE DEVICE via
  *                                  Foundry's `cast send --ledger`, its stake paid
  *                                  from that account (the founder's own artifacts:
- *                                  the reference clauses + assemblies that are not
- *                                  the mandatory clauses — RELEASE_READINESS Task 13)
+ *                                  the reference clauses + assemblies the chain's
+ *                                  registration plan gives no other wallet —
+ *                                  RELEASE_READINESS Task 13)
  *
  * VAULT-REGISTRAR MODE (docs/RELEASE_READINESS.md Task 13). This script always
  * acts FOR exactly one registrar per invocation, and registrar is a PER-WALLET
@@ -89,7 +89,8 @@
  *                           loaded specs): register ONLY these
  *                           (unioned with the SEED_ASSEMBLIES-derived set when
  *                           both are given). The vault-registrar genesis run
- *                           names exactly the mandatory clauses here.
+ *                           names exactly the clauses the registration plan
+ *                           gives the DAO's vault here.
  *   SEED_LIMIT            — cap NEW registrations this run (one shared budget:
  *                           clauses first, assemblies get the remainder; an
  *                           assembly's own agreements register with it and
@@ -762,25 +763,28 @@ async function main() {
     }
 
     // A Ledger-driven founder run registers the founder's own artifacts and
-    // never a mandatory clause: those are the DAO vault's (RELEASE_READINESS
-    // Task 13), and first write wins forever. An assembly's prerequisite set
-    // carries the mandatory clauses its agreements name, so they are
-    // taken back out here unless
-    // SEED_CLAUSES names one by hand (a deliberate act, logged as such). The
-    // devnet's one-key seeding (no Ledger, no vault) is untouched.
+    // never a clause the chain's registration plan gives another wallet
+    // (`deployments/<chainId>.expected.json` § registrations.byClause, the
+    // plan `scripts/check-deployment.mjs` holds the chain to; RELEASE_READINESS
+    // Task 13): first write wins forever. An assembly's prerequisite set
+    // carries every clause its agreements name, so such a clause is taken back
+    // out here unless SEED_CLAUSES names it by hand (a deliberate act, logged
+    // as such). The devnet's one-key seeding (no Ledger, no vault) is untouched.
     if (process.env.REGISTRAR_LEDGER_HD_PATH && !vault) {
         const authored = loadAuthoredSpecs();
         const named = process.env.SEED_CLAUSES
             ? new Set(resolveAuthoredClauseNames(process.env.SEED_CLAUSES.split(',').map((s) => s.trim()).filter(Boolean)).map((k) => k.toLowerCase()))
             : new Set();
-        const mandatory = authored.list().filter((s) => s.spec?.block?.design?.article === 'mandatory');
+        const planFile = path.resolve(__dirname, `../../deployments/${chain.id}.expected.json`);
+        const plan = fs.existsSync(planFile) ? JSON.parse(fs.readFileSync(planFile, 'utf8')).registrations : undefined;
+        const others = authored.list().filter((s) => plan?.byClause?.[s.clauseId] !== undefined && plan.byClause[s.clauseId] !== plan.default);
         const skipped = [];
         onlyClauses ??= new Set(authored.list().map((s) => s.clauseKey));
-        for (const m of mandatory) {
-            if (named.has(m.clauseKey.toLowerCase())) { console.log(`  SEED_CLAUSES names the mandatory ${m.clauseId}@${m.version} by hand — the founder registers it`); continue; }
+        for (const m of others) {
+            if (named.has(m.clauseKey.toLowerCase())) { console.log(`  SEED_CLAUSES names ${m.clauseId}@${m.version} by hand — the founder registers it`); continue; }
             for (const key of [...onlyClauses]) if (key.toLowerCase() === m.clauseKey.toLowerCase()) { onlyClauses.delete(key); skipped.push(`${m.clauseId}@${m.version}`); }
         }
-        if (skipped.length) console.log(`  mandatory clauses are the DAO vault's, not the founder's — skipped: ${skipped.join(', ')}`);
+        if (skipped.length) console.log(`  the registration plan gives these clauses another wallet, not the founder — skipped: ${skipped.join(', ')}`);
     }
 
     // SEED_LIMIT: one shared budget per run — clauses consume first (they must

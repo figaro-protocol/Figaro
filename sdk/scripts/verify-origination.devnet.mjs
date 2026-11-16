@@ -92,7 +92,7 @@ const hydrate = async (a) => {
 };
 
 // Pick the single-order assembly with the fewest clauses by hydrating assemblies — the
-// mandatory-only blank the harness seeds, whatever else the genesis holds; no hardcoded
+// commerce-only blank the harness seeds, whatever else the genesis holds; no hardcoded
 // id, no order of anchoring; skip un-hydratable ones.
 let chosen = null, assembly = null, fewest = Infinity;
 for (const a of ctx.getAssemblies()) {

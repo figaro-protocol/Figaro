@@ -722,29 +722,6 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                             party can later prove which items the payment covered.
                         </p>
                     )}
-                    {review?.ok && review.mandatory.length > 0 && (
-                        <div className="mt-2 max-w-3xl space-y-1" data-testid="review-mandatory-clauses">
-                            <p className="text-xs text-warning-fg leading-relaxed">
-                                Mandatory clauses: the DAO&rsquo;s live mandatory registrations, written
-                                into every agreement before anything is composed, read from the
-                                registry by registrant and stake. Check that each name, version and
-                                key below is the one you mean to publish; confirming publishes them
-                                with this assembly.
-                            </p>
-                            <ul className="text-xs text-warning-fg font-mono space-y-0.5">
-                                {review.mandatory.map((clause) => (
-                                    <li key={clause.clauseKey} data-testid={`review-mandatory-${clause.clauseKey}`}>
-                                        {composedClauseLabel(clause)}
-                                        <span className="font-sans"> — {clause.title} (
-                                            {clause.carriedBy[0] === "assembly"
-                                                ? "assembly terms"
-                                                : `${clause.carriedBy.length} of ${review.assembly.agreements.length} agreements`}
-                                        )</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
                     {review?.ok && Object.values(review.composedClausesByOrderId).some((picks) => picks.length > 0) && (
                         <div className="mt-2 max-w-3xl space-y-1" data-testid="review-composed-clauses">
                             <p className="text-xs text-warning-fg leading-relaxed">

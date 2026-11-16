@@ -24,7 +24,6 @@ const optionalContracts = [
     { key: 'NEXT_PUBLIC_MEMBERS_REGISTRY', label: 'MembersRegistry' },
     { key: 'NEXT_PUBLIC_ASSEMBLY_REGISTRY', label: 'AssemblyRegistry' },
     { key: 'NEXT_PUBLIC_AGREEMENT_REGISTRY', label: 'AgreementRegistry' },
-    { key: 'NEXT_PUBLIC_DAO_TREASURY', label: 'MockTreasuryMultisig' },
 ];
 
 function fail(message) {

@@ -59,14 +59,20 @@ test.describe('COMPOSITION-ASSIST — export the draft, import a assembly, compo
             els.map((el) => el.getAttribute('data-testid')!.replace('order-node-', '')));
         const subId = nodeIds.find((id) => id !== rootId)!;
 
+        // The root order composes the commerce clause, as any clause: an
+        // order composing no clause does not build.
+        await page.getByTestId(`drawer-node-tab-${rootId}`).click();
+        await page.getByTestId('drawer-tab-registry').click();
+        await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+        await page.getByTestId(`drawer-registry-clause-${keyOf('figaro-commerce')}`).check();
+
         await page.getByTestId(`drawer-node-tab-${subId}`).click();
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
         await page.getByTestId(`drawer-registry-clause-${PROCESS_CLAUSE}`).check();
 
         await page.getByTestId('designer-name-input').fill('Assist round trip');
-        // The export is the assembly publish would anchor: every order picks
-        // a registered agreement in the mandatory article first.
+        // The export is the assembly publish would anchor.
 
         // ── EXPORT: the assist panel serializes the live draft. ──
         await page.getByTestId('designer-assist-open').click();

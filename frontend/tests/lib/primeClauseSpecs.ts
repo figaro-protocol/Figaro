@@ -27,7 +27,7 @@ import {
     type HydratedAssembly,
     type AssemblyAgreement,
 } from "@figaro-protocol/sdk";
-import { listKnownClauses, loadClauseSpec, mandatoryClausesForCanvas, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
+import { listKnownClauses, loadClauseSpec, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
 
 // Vitest runs with cwd = frontend/ (the vitest config root).
 const EXAMPLES_DIR = path.resolve(process.cwd(), "../clauses");
@@ -48,23 +48,15 @@ export async function canonicalFileBytes(uri: string): Promise<string> {
  *  called with no argument — as `useClauseSpecs` loads them from the registry.
  *  Idempotent (loadClauseSpec caches). Names here are FILE names in
  *  `clauses/`, the maintainer's authored source. */
-/** The DAO's wallet in these tests: the registrant of every primed spec, so
- *  the canvas finds its mandatory clauses (`mandatoryClausesForCanvas`). The
- *  deploy writes the real one to `NEXT_PUBLIC_DAO_TREASURY`. */
-export const TEST_DAO_TREASURY = "0xFa648187d49B04fb093266DB0d49e57B3B2403A3" as const;
 export async function primeClauseSpecs(clauseFiles?: readonly string[]): Promise<void> {
     const files = clauseFiles
         ?? readdirSync(EXAMPLES_DIR)
             .filter((f) => f.endsWith(".json"))
             .map((f) => f.replace(/\.json$/u, ""));
     setClauseSpecFetcher(canonicalFileBytes);
-    process.env.NEXT_PUBLIC_DAO_TREASURY ??= TEST_DAO_TREASURY;
-    let block = 1n;
     for (const name of files) {
         const file = path.join(EXAMPLES_DIR, `${name}.json`);
-        await loadClauseSpec(computeClauseKey(JSON.parse(readFileSync(file, "utf8"))), file, {
-            registeredBy: process.env.NEXT_PUBLIC_DAO_TREASURY as Hex, blockNumber: block++, stakeWithdrawn: false,
-        });
+        await loadClauseSpec(computeClauseKey(JSON.parse(readFileSync(file, "utf8"))), file);
     }
 }
 
@@ -111,13 +103,6 @@ export function authoredAgreements(): Record<string, RegisteredAgreement> {
     return Object.fromEntries(Object.entries(composeAuthoredAgreements(authored, specSource())).map(([name, { document }]) => [name, document]));
 }
 
-/** The mandatory clauses the canvas writes into every agreement, over the
- *  primed specs: the DAO's live mandatory clauses (`mandatoryClausesForCanvas`).
- *  Prime the specs first. */
-export function mandatoryDefaults(): Record<Hex, Record<string, unknown>> {
-    return mandatoryClausesForCanvas();
-}
-
 /** A reference assembly (`assemblies/<name>`) built exactly as the seeding
  *  builds it: over the authored agreements its agreements name
  *  (`assembleAuthored`), every registered agreement beside the assembly,
@@ -137,22 +122,20 @@ export function referenceAssembly(name: string): HydratedAssembly {
  *  registered agreement beside the assembly, keyed by lowercased key, as a
  *  registry read hands them to checkout. By default each inline agreement
  *  composes as the seeding composes an authored one
- *  (`composeAuthoredAgreement` over the primed specs, the DAO's mandatory
- *  clauses written in first — `mandatoryDefaults`; prime the specs first)
- *  and the assembly builds over them (`assembleAuthored`); `{ pick: false }`
- *  keys each inline clause set as written, for a test whose spec set carries
- *  no mandatory clause. */
-export function hydrateAuthored(authored: object, opts: { pick?: boolean } = {}): HydratedAssembly {
+ *  (`composeAuthoredAgreement` over the primed specs, value-free but for
+ *  design fills; prime the specs first) and the assembly builds over them
+ *  (`assembleAuthored`); `{ compose: false }` keys each inline clause set as
+ *  written, values included. */
+export function hydrateAuthored(authored: object, opts: { compose?: boolean } = {}): HydratedAssembly {
     const byKey: Record<Hex, RegisteredAgreement> = {};
-    if (opts.pick !== false) {
-        const mandatory = mandatoryDefaults();
+    if (opts.compose !== false) {
         const { agreements: written, ...rest } = authored as {
             agreements: { id?: string; clauses: Record<string, Record<string, unknown>>; follows?: string[] }[];
         } & Record<string, unknown>;
         const byName: Record<string, RegisteredAgreement> = {};
         const entries = written.map((entry, i) => {
             const id = entry.id ?? `agreement-${i}`;
-            byName[id] = composeAuthoredAgreement({ clauses: { ...mandatory, ...entry.clauses } }, specSource()).document;
+            byName[id] = composeAuthoredAgreement({ clauses: entry.clauses }, specSource()).document;
             return { id, agreement: id, ...(entry.follows ? { follows: [...entry.follows] } : {}) };
         });
         const { assembly, agreements } = assembleAuthored({ ...rest, agreements: entries }, byName, specSource());

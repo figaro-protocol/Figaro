@@ -53,7 +53,6 @@ export function buildRecord(chainId: number): DeploymentRecord {
         swapQuoter: address(process.env.NEXT_PUBLIC_SWAP_QUOTER),
         permit2: address(process.env.NEXT_PUBLIC_PERMIT2),
         multisender: address(process.env.NEXT_PUBLIC_MULTISENDER),
-        daoTreasury: address(process.env.NEXT_PUBLIC_DAO_TREASURY),
         deploymentBlock: block ? Number(block) : undefined,
         rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || undefined,
     };

@@ -91,7 +91,6 @@ nothing else:
 
 | Hint | Writes into | Effect |
 |---|---|---|
-| `block.design.article: "mandatory"` | `agreementHash` + `checkoutHash` | the clause is never selected on its own: a registered agreement whose clauses are all mandatory-article is what a designer picks for each agreement of an assembly (any wallet's registration), and its clauses merge into that agreement; a registered agreement bound as is must already carry its pick's clauses |
 | `block.design.article: "attestations"` | `checkoutHash` | the clause is committed as an EMPTY anchor, filled by attestation later; field `default`s are NOT applied |
 | `block.design.scope: "assembly"` | `assemblyHash` + `checkoutHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
 | `block.design.fills` | `agreementHash` | names the fields whose DESIGN-TIME values survive into an agreement; name nothing and the agreement carries `{}` |
@@ -99,10 +98,10 @@ nothing else:
 | `block.checkout.catalogueMeasures` | `checkoutHash` | maps a field to the catalog-item field it is read from and how the order's lines combine it (`"sum"`, or `"single-unit"` for a one-unit order); a measure the items do not supply stays missing, so give such a field no `default` |
 
 **The reserved-article trap — picking one by accident is silent.** The group name is free
-text, but `"mandatory"` and `"attestations"` mean the two things above to the SDK. Both are
-read straight off the spec: nothing warns, nothing throws, and the clause simply behaves
-differently than the user meant. The trap is that the reserved words are the *natural*
-ones — an attestation clause grouped, reasonably, under `"attestations"` silently commits
+text, but `"attestations"` means the thing above to the SDK. It is read straight off the
+spec: nothing warns, nothing throws, and the clause simply behaves
+differently than the user meant. The trap is that the reserved word is the *natural*
+one — an attestation clause grouped, reasonably, under `"attestations"` silently commits
 empty. **Registration is permanent and first-write-wins**, so if that is not what the user
 wants, group it under any other word BEFORE registering. There is no fix afterwards, only
 a new spec, which is a new key and a new registration.

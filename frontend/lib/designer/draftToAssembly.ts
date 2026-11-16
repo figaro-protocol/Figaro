@@ -15,9 +15,7 @@
  * the draft that can silently fall out of step with them.
  *
  * The walk itself is `buildAssembly` (`@figaro-protocol/sdk`), fed by the
- * live-cache `specSource()` adapter, by the DAO's mandatory clauses the
- * registry states (`mandatoryClausesForCanvas`) and by the registered
- * agreements the designer bound to agreements, read from `AgreementRegistry`
+ * live-cache `specSource()` adapter and by the registered agreements the designer bound to agreements, read from `AgreementRegistry`
  * and verified against their keys (`getRegisteredAgreement`). It VERIFIES
  * scope placement, refuses an agreement that both binds and composes,
  * refuses an agreement composing no clause, writes each entry's `follows`
@@ -36,7 +34,7 @@ import {
     type HydratedAssembly,
 } from "@figaro-protocol/sdk";
 import { getRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
-import { clauseDeclaresField, clauseDesignFills, clauseIsMandatory, getClauseSpec, mandatoryClausesForCanvas, specSource } from "@/lib/shared/clauseSpecSource";
+import { clauseDeclaresField, clauseDesignFills, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
 import { deriveAssemblySlug, type Assembly } from "@/lib/shared/assembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -60,9 +58,8 @@ function readAgreements(byOrderId: Record<string, `0x${string}`> | undefined, us
 
 /** Project a design snapshot onto the canonical assembly and the
  *  agreements newly composed for it (the ones publish registers before the
- *  assembly). The mandatory clauses are the DAO's live mandatory clauses
- *  (`mandatoryClausesForCanvas`), written into every agreement it composes
- *  before the designer's selection. Throws when a clause's spec is not loaded
+ *  assembly). Each new agreement carries exactly the clauses the designer
+ *  selected on its order. Throws when a clause's spec is not loaded
  *  or is composed at the wrong scope, an agreement both binds and composes, a
  *  bound agreement is unread, or an agreement composes no clause — the
  *  SDK's own refusals, and this file's one. */
@@ -75,7 +72,6 @@ export function snapshotToAssembly(snapshot: DesignSnapshot): BuiltAssembly {
         clausesByOrderId: snapshot.clausesByOrderId ?? {},
         registeredByOrderId: readAgreements(snapshot.registeredByOrderId, "bound to an agreement"),
         assemblyClauses: snapshot.assemblyClauses,
-        mandatory: mandatoryClausesForCanvas(),
         specs: specSource(),
     });
 }
@@ -99,10 +95,7 @@ function builtToHydrated(built: BuiltAssembly): HydratedAssembly {
  *  publish (review) or has already published (`/view`): each agreement's
  *  registered agreement with the agreement's own fills merged over it.
  *
- *  Keyed by the assembly's own agreement ids (`agreement-<i>`). The
- *  mandatory-article clauses are left out here: the canvas writes the DAO's
- *  into every agreement and a bound registered agreement carries its own, and
- *  `assemblyMandatoryClauses` lists them on their own, by key.
+ *  Keyed by the assembly's own agreement ids (`agreement-<i>`).
  *  Everything shown here comes from the pinned bytes, never from a second walk
  *  over the draft — that divergence is the defect this exists to make
  *  impossible. */
@@ -110,12 +103,7 @@ export function assemblyComposedByAgreement(
     hydrated: HydratedAssembly,
 ): Record<string, Record<string, Record<string, unknown>>> {
     return Object.fromEntries(
-        hydrated.assembly.agreements.map((entry) => [
-            entry.id,
-            Object.fromEntries(
-                Object.entries(agreementClauses(hydrated, entry)).filter(([clauseKey]) => !clauseIsMandatory(clauseKey)),
-            ),
-        ]),
+        hydrated.assembly.agreements.map((entry) => [entry.id, agreementClauses(hydrated, entry)]),
     );
 }
 
@@ -159,42 +147,6 @@ export function assemblyComposedClauses(hydrated: HydratedAssembly): Record<stri
     );
 }
 
-/** A clause the assembly carries whose spec marks it mandatory — the DAO's,
- *  written in by the canvas, or carried by a bound agreement. */
-export interface MandatoryClause {
-    clauseKey: Hex;
-    /** The spec's own `clauseId` and `version` — presentation. */
-    clauseId?: string;
-    version?: number;
-    /** The spec's title, or the key when the spec is not loaded. */
-    title: string;
-    /** The agreement ids carrying it, or `["assembly"]` for an
-     *  assembly-scoped term. */
-    carriedBy: string[];
-}
-
-/** Every clause the assembly carries as MANDATORY, by key — the
- *  complement of `assemblyComposedByAgreement`. "Mandatory" is the spec's
- *  `block.design.article`, written by whoever registered the clause and open
- *  to anyone's registration, so it confers no standing: a review lists every
- *  one of these for the designer to confirm before anchoring, never hides
- *  them. Read from the pinned bytes. */
-export function assemblyMandatoryClauses(hydrated: HydratedAssembly): MandatoryClause[] {
-    const { assembly } = hydrated;
-    const mandatory = new Map<string, MandatoryClause>();
-    const note = (clauseKey: Hex, carrier: string) => {
-        if (!clauseIsMandatory(clauseKey)) return;
-        const entry = mandatory.get(clauseKey.toLowerCase()) ?? { clauseKey, ...clauseLabel(clauseKey), carriedBy: [] };
-        entry.carriedBy.push(carrier);
-        mandatory.set(clauseKey.toLowerCase(), entry);
-    };
-    for (const clauseKey of Object.keys(assembly.assemblyClauses ?? {}) as Hex[]) note(clauseKey, "assembly");
-    for (const entry of assembly.agreements) {
-        for (const clauseKey of Object.keys(agreementClauses(hydrated, entry)) as Hex[]) note(clauseKey, entry.id);
-    }
-    return Array.from(mandatory.values());
-}
-
 /** A draft projected onto the bytes that publish anchors, plus the readout
  *  those bytes produce — the ONE object a review screen renders and the
  *  publish call sends. `composedByOrderId` is re-keyed from the assembly's
@@ -218,16 +170,13 @@ export type SnapshotReview =
         entries: { orderId: string; agreementHash: Hex; bound: boolean }[];
         assemblyHash: `0x${string}`;
         slug: string;
-        /** canvas order id → clause key → composed values (the mandatory clauses listed apart). */
+        /** canvas order id → clause key → composed values. */
         composedByOrderId: Record<string, Record<string, Record<string, unknown>>>;
         /** canvas order id → the same picks with their labels, for the
          *  review's listing. */
         composedClausesByOrderId: Record<string, ComposedClause[]>;
         /** The assembly-scoped composition exactly as the assembly carries it. */
         assemblyClauses: Record<string, Record<string, unknown>>;
-        /** The mandatory clauses the assembly carries, by key — what
-         *  the designer confirms before publish. */
-        mandatory: MandatoryClause[];
         /** The canvas order ids whose agreement composes no clause declaring
          *  `lineItems`: each such order commits its payment in the
          *  commitment and no list of what the payment buys. */
@@ -277,7 +226,6 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
             composedByOrderId,
             composedClausesByOrderId,
             assemblyClauses: assembly.assemblyClauses ?? {},
-            mandatory: assemblyMandatoryClauses(hydrated),
             withoutLineItems,
         };
     } catch (cause) {

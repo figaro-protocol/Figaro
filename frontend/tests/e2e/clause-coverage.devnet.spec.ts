@@ -525,6 +525,15 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
             await rootNode.waitFor({ state: 'visible', timeout: 10000 });
 
+            // The designer composes the commerce clause on the root order, as
+            // any clause: nothing is written in, and an order composing no
+            // clause does not publish.
+            await rootNode.click();
+            await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+            await page.getByTestId('drawer-tab-registry').click();
+            await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+            await page.getByTestId(`drawer-registry-clause-${keyOf('figaro-commerce')}`).check();
+
             // ASSEMBLY-SCOPED clauses (design.scope: "assembly") compose ONCE on the AssemblyTermsPanel, never per
             // order — AgreementDrawer's registry list excludes them by design
             // (AgreementDrawer.tsx / AssemblyTermsPanel.tsx partition the live
@@ -908,7 +917,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             };
             expect(Array.isArray(agreement.follows), 'the committed agreement carries its topology leaf (`follows`)').toBe(true);
             const leafClauses = agreement.clauses.map((s) => s.clause.toLowerCase());
-            expect(leafClauses, 'the committed merkle tree carries the mandatory and target leaves')
+            expect(leafClauses, 'the committed merkle tree carries the commerce leaf the designer composed and the target leaves')
                 .toEqual(expect.arrayContaining([
                     keyOf('figaro-commerce'),
                     ...(rung.composeFirst ?? []).map((name) => keyOf(name)), rungKey,

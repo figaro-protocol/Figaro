@@ -37,14 +37,14 @@ change it, and register the fork under your own key; the fork is yours (RPGF rew
 - **You do not depend on any UI.** A UI surfaces assemblies *from the registry events*, so
   registering makes it discoverable everywhere that reads the registry — no frontend to
   satisfy. A clause's `block` is presentation, outside its clause key — but **six hints in
-  it are the reference tooling's rules for collecting the data, and three of them decide
-  what the reference tooling writes into YOUR assembly**: `design.article: "mandatory"` (never selected on its own:
-  the DAO wallet's live registrations carrying it are written into every agreement —
-  `mandatoryClauses` — before anything you compose), `design.scope: "assembly"` (composed once for the whole
+  it are the reference tooling's rules for collecting the data, and two of them decide
+  what the reference tooling writes into YOUR assembly**: `design.scope: "assembly"` (composed once for the whole
   design, carried by every agreement — composing it on an agreement is a build error, not a
   no-op), and `design.fills` (the only fields whose design-time values survive into a
   agreement; every other clause's entry is `{}`). Read a composed clause's hints with
-  `parseProjectionHints(spec)` before composing it. Core invariant; many UIs compete.
+  `parseProjectionHints(spec)` before composing it. Nothing writes a clause into an
+  agreement you did not compose: `figaro-commerce` is a clause like any other, composed where
+  the parties commit their line items. Core invariant; many UIs compete.
 - **You do not write clauses or Solidity or UI.** New clause needed → defer to
   `figaro-clause-author`. A well-formed assembly needs no UI authoring: conforming UIs
   render it from its `block` attributes automatically.
@@ -119,22 +119,19 @@ computes a hash that matches nothing and cannot be registered. The assembly is
 KEY — `keccak256` of the canonical clause spec without its `block`, the `clauseKey` each registry row carries
 — never by the name a spec displays.
 
-**Build it with `buildAssembly` (root `@figaro-protocol/sdk`), not by hand.** It takes the
-mandatory clauses (`mandatory`, from `mandatoryClauses` over the registry's rows, the specs and
-the DAO wallet's address from the chain's deployment record), and per order EITHER the
+**Build it with `buildAssembly` (root `@figaro-protocol/sdk`), not by hand.** It takes, per
+order, EITHER the
 registered agreement it binds (`registeredByOrderId`, hydrated) OR the clauses composed for a
 new one (`clausesByOrderId`), plus the assembly-scoped selection and a `SpecSource`, and returns `{ assembly, agreements }` — `agreements` being every NEW composed
 agreement keyed by its `agreementHash`, to register before the assembly. It enforces the rules
-below BY CONSTRUCTION rather than by your care: it REFUSES an order with no pick, merges each
-pick's clauses into the new agreement composed for that order, REFUSES a bound registered
-agreement that lacks a clause of its order's pick (compose a new agreement for that order
-instead), strips every
+below BY CONSTRUCTION rather than by your care: it REFUSES an agreement composing no clause,
+REFUSES an order that both binds a registered agreement and composes clauses, keeps exactly
+the clauses composed for each new agreement, strips every
 value that is not a declared designer fill — **field-granular**, so one stray transaction particular sitting
 beside a legitimate fill on the same clause strips too, instead of riding its neighbor's
 declaration — and REFUSES a scope error outright (an assembly-scoped clause composed on an
 agreement, or an agreement-scoped clause composed at assembly level, throws; neither is a
-silent no-op). It also throws when the spec cache is cold, rather than emitting a assembly
-missing its mandatory clauses. Then `serializeAssembly(assembly)` returns the JSON
+silent no-op). It also throws when a composed clause's spec is not loaded. Then `serializeAssembly(assembly)` returns the JSON
 to pin and the `assemblyHash` to register. Checkout later fills values and writes the
 topology into each order; it never adds or drops a clause, so what you compose here is what
 every order signs.
@@ -184,10 +181,7 @@ derive identity.
   own `follows` — `composeAuthoredAgreement(doc, specs)` from `@figaro-protocol/sdk`
   resolves the names (`resolveAuthoredClauseKeys`: the keys of the specs in `specs.list()` whose
   `clauseId` matches; write `name@version` to match the `version` too), composes them through
-  the one composition rule (a written agreement names each mandatory clause like any other
-  clause; the canvas writes in whatever mandatory clauses the DAO wallet has live on the
-  network, read at runtime by `mandatoryClauses`, which on the reference seeding is
-  `figaro-commerce`; or compose
+  the one composition rule (a written agreement names every clause it carries; or compose
   the whole set by name with `composeAuthoredAgreements(docsByName, specs)`) and keys the agreement, and `assembleAuthored(doc, agreementsByName, specs)`
   binds each one to the named agreement's hash and returns `{ assembly, agreements }` with each
   DISTINCT agreement once. They refuse a name two loaded specs share unless the file
@@ -228,10 +222,9 @@ catalog values, not assembly fields.
 Each `agreementHash` names an agreement registered on `AgreementRegistry`, pinned as
 `{ "name": "<optional>", "clauses": { "0x<commerce clause key>": {}, "0x<handoff clause key>": {} } }`.
 
-`assemblyClauses` is omitted entirely when nothing assembly-scoped is composed. The
-mandatory clauses in a new agreement are exactly the clauses of the registered agreement you
-picked for its order; anyone can register one, so read each pick's clauses by key, and review
-every mandatory key in each agreement before you register it.
+`assemblyClauses` is omitted entirely when nothing assembly-scoped is composed. A registered
+agreement you bind carries exactly its own clauses; anyone can register one, so read its
+clauses by key, and review every key in each agreement before you register it.
 
 No clause is composed for the link back to your design. Every agreement instantiated from
 the assembly carries, as `agreement.provenance`, the `agreementHash` of the agreement it

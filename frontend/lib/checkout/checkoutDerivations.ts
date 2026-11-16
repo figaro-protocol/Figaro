@@ -21,7 +21,6 @@ import { assemblyFollows } from "@/lib/shared/assembly";
 import {
     clauseCatalogFills,
     clauseDesignFills,
-    clauseIsMandatory,
     clauseIsProcessLog,
     clauseProfileFills,
     getClauseSpec,
@@ -180,25 +179,20 @@ export interface AgreementGroup {
     key: string;
     label: string;
     /** `clauseKey` is the key the assembly composed for the clause — every
-     *  spec read the row makes is keyed on it. `mandatory` marks a clause whose spec's
-     *  article is "mandatory" (commerce, or anyone's
-     *  registration so marked): it is listed like every other clause, since
-     *  the buyer signs it, and is never fillable — the checkout walk fills it.
+     *  spec read the row makes is keyed on it.
      *  `fields` is the buyer's field complement for THIS row — the spec's
      *  content fields named in no fills list (`buyerAuthoredFields`, with the
      *  walk's mechanical fills for a per-order row) — the ONE list the form
      *  renders and the place-order gate checks; `fillable` is that list being
-     *  non-empty on a clause that is neither mandatory nor a process log. */
-    clauses: Array<{ clauseKey: string; values: string; data: Record<string, unknown>; fields: readonly FieldSpec[]; fillable: boolean; mandatory: boolean }>;
+     *  non-empty on a clause that is not a process log. */
+    clauses: Array<{ clauseKey: string; values: string; data: Record<string, unknown>; fields: readonly FieldSpec[]; fillable: boolean }>;
 }
 
 /**
  * The per-order agreement review rows: every order in the assembly — root +
  * sub-orders — surfaced for review, each clause rendering its COMPOSED
- * values, spec-driven. Every clause the agreement carries is listed, the
- * mandatory ones (merged from the designer's pick, filled by the checkout walk) marked
- * `mandatory` and never fillable: the spec's article is anyone's to write, so
- * a clause the buyer signs is never left off the list. The profile fold and
+ * values, spec-driven. Every clause the agreement carries is listed, since
+ * the buyer signs each one. The profile fold and
  * the mechanical-fill subtraction are the SAME ones the order build applies,
  * so the buyer reviews what will actually commit. Every spec read is EXACT —
  * the spec the clause's key names, never another spec of the same name: a
@@ -231,7 +225,6 @@ export function deriveAgreementGroups(args: {
         label: "Assembly terms (every agreement)",
         clauses: Object.entries(assemblyClauseFills)
             .map(([clauseKey, fields]) => {
-            const mandatory = clauseIsMandatory(clauseKey);
             // Every fills list is FIELD-level, not clause-level: a clause the
             // designer tailored (a pinned geocoder, a consent document) can
             // still carry transaction particulars the buyer fills here — it
@@ -242,8 +235,7 @@ export function deriveAgreementGroups(args: {
                 values: clauseValueSummary(fields),
                 data: fields as Record<string, unknown>,
                 fields: buyerFields,
-                mandatory,
-                fillable: !mandatory && !clauseIsProcessLog(clauseKey) && buyerFields.length > 0,
+                fillable: !clauseIsProcessLog(clauseKey) && buyerFields.length > 0,
             };
         }),
     }];
@@ -259,8 +251,7 @@ export function deriveAgreementGroups(args: {
         // what will actually commit (and can Verify a declared
         // credential before placing the order).
         const previewClauses = fillProfileClauses(
-            Object.fromEntries(Object.entries(order.clauses).filter(
-                ([clauseKey]) => !clauseIsMandatory(clauseKey))),
+            order.clauses,
             assigned ? profileValuesFor(assigned, sellerCatalogs) : undefined,
             specSource(),
         );
@@ -273,21 +264,9 @@ export function deriveAgreementGroups(args: {
         return {
             key: String(order.id ?? i),
             label: assigned ? nameOf(assigned) : "(to be assigned)",
-            // The assembly's own clause order; a mandatory clause is listed
-            // with the values the assembly composed for it, never fillable.
+            // The assembly's own clause order.
             clauses: (Object.keys(order.clauses) as `0x${string}`[])
                 .map((clauseKey) => {
-                    if (!(clauseKey in previewClauses)) {
-                        const fields = order.clauses[clauseKey] ?? {};
-                        return {
-                            clauseKey,
-                            values: clauseValueSummary(fields),
-                            data: fields as Record<string, unknown>,
-                            fields: [],
-                            mandatory: true,
-                            fillable: false,
-                        };
-                    }
                     const fields = previewClauses[clauseKey];
                     // A GENERAL clause's fields are transaction particulars
                     // the buyer fills here — every content field named in no
@@ -308,7 +287,6 @@ export function deriveAgreementGroups(args: {
                         values: clauseValueSummary(fields),
                         data: fields as Record<string, unknown>,
                         fields: buyerFields,
-                        mandatory: false,
                         fillable: !clauseIsProcessLog(clauseKey) && buyerFields.length > 0,
                     };
                 }),

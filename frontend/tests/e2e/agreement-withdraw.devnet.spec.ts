@@ -39,8 +39,7 @@
  *   reclaim  — registry ETH ↓ exactly deposit;
  *              designer ETH ↑ exactly (deposit − gasUsed×effectiveGasPrice)
  *
- * Requires Anvil + ./scripts/devup.sh (deploy + populate: the DAO's mandatory
- * clauses the drawer composes in) + Kubo + :3100.
+ * Requires Anvil + ./scripts/devup.sh (deploy + populate) + Kubo + :3100.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, type Hex } from 'viem';
@@ -110,11 +109,6 @@ test.describe('AgreementRegistry withdraw — the designer reclaims an agreement
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-        // The DAO's mandatory commerce is written into every
-        // agreement the canvas registers (`composeOrderAgreement` with
-        // `mandatoryClausesForCanvas()`); wait until the drawer has read them,
-        // or the composition has no commerce to write in.
-        await page.getByTestId('drawer-mandatory-list').waitFor({ state: 'visible', timeout: 30000 });
         const probe = page.getByTestId(`drawer-registry-clause-${clauseKey}`);
         await expect(probe, 'the drawer surfaces the just-registered probe clause').toHaveCount(1, { timeout: 20000 });
         await probe.check();

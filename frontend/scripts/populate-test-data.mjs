@@ -3,7 +3,7 @@
  * populate-test-data.mjs — the ONE pre-population path FOR TESTING. Populates the
  * registries the e2e suite consumes from: clauses (ClauseRegistry + IPFS, reusing
  * populate-clauses), the seed assemblies (AssemblyRegistry + IPFS — the blank
- * mandatory-only composition sellers bind, plus the multi-order delivery chain
+ * commerce-only composition sellers bind, plus the multi-order delivery chain
  * the multi-order e2e runs), AND members (MembersRegistry + IPFS).
  * Run after deploy, before the test suite. The runtime specs then discover everything from chain → IPFS.
  *
@@ -86,8 +86,8 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // so an empty AssemblyRegistry means zero surfaced members). Seeding is
 // PRE-POPULATION, exactly like clauses and sellers above — never a test
 // (the scenario-era build-order coupling is the cautionary tale). Each seed is
-// authored like a reference: its agreements composed by clause name, the
-// mandatory clause named like any other (`composeAuthoredAgreements`),
+// authored like a reference: its agreements composed by clause name
+// (`composeAuthoredAgreements`),
 // then the assembly built over them by name
 // (`assembleAuthored`): its agreements register on AgreementRegistry, then
 // its assembly anchors — identity (agreement hashes, assemblyHash + slug)
@@ -95,18 +95,19 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 
 /** The seeds' authored agreements, composed once, by name. Design time is
  *  STRUCTURAL: a clause is SELECTED; its values are the buyer's at checkout.
- *  Each names the mandatory clause as the canvas would write it in. */
-const MANDATORY = { 'figaro-commerce': {} };
+ *  Each composes the commerce clause, so every seed order commits its line
+ *  items. */
+const COMMERCE = { 'figaro-commerce': {} };
 const SEED_AGREEMENTS = Object.fromEntries(Object.entries(composeAuthoredAgreements({
-    // The blank agreement: the mandatory clauses alone.
-    blank: { clauses: { ...MANDATORY } },
+    // The blank agreement: the commerce clause alone.
+    blank: { clauses: { ...COMMERCE } },
     // A root merchant agreement: the merchant process and the modality the
     // buyer picks at checkout.
-    merchant: { clauses: { ...MANDATORY, 'figaro-merchant-process': {}, 'figaro-modalities': {} } },
+    merchant: { clauses: { ...COMMERCE, 'figaro-merchant-process': {}, 'figaro-modalities': {} } },
     // A courier sub-agreement.
-    courier: { clauses: { ...MANDATORY, 'figaro-courier-process': {} } },
+    courier: { clauses: { ...COMMERCE, 'figaro-courier-process': {} } },
     // A supplier sub-agreement: the merchant process alone.
-    supplier: { clauses: { ...MANDATORY, 'figaro-merchant-process': {} } },
+    supplier: { clauses: { ...COMMERCE, 'figaro-merchant-process': {} } },
 }, AUTHORED)).map(([name, { document }]) => [name, document]));
 
 // The anchoring lives in populate-clauses.mjs — the ONE reference-assembly
@@ -115,13 +116,13 @@ const SEED_AGREEMENTS = Object.fromEntries(Object.entries(composeAuthoredAgreeme
 // the denomination pin through the SDK's `fillDeployTimeCurrency`. This file
 // keeps only the devnet TEST SCAFFOLDING.
 
-/** The blank single-agreement composition: mandatory clauses only — the
+/** The blank single-agreement composition: the commerce clause only — the
  *  minimal bindable assembly the single-order specs run against. */
 function seedBlank() {
     return assembleAuthored({
         name: 'Devnet seed',
         summary: 'Pre-populated bindable assembly for the e2e suite.',
-        description: 'A blank single-agreement composition (mandatory clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
+        description: 'A blank single-agreement composition (the commerce clause only), anchored by populate-test-data so sellers can bind before any spec runs.',
         agreements: [{ id: 'agreement-0', agreement: 'blank' }],
     }, SEED_AGREEMENTS, AUTHORED);
 }

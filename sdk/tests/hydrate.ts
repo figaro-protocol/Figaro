@@ -4,8 +4,8 @@
  * `agreement-<j>` labels of the entries it follows). Each authored agreement
  * becomes a registered agreement over its clauses, and its entry carries the
  * `follows` labels, as the seeding derives a reference assembly
- * (`composeAuthoredAgreement`, `assembleAuthored`) — with no mandatory pick,
- * so a test's clause set is the one it wrote.
+ * (`composeAuthoredAgreement`, `assembleAuthored`), so a test's clause set
+ * is the one it wrote.
  */
 import type { Hex } from "viem";
 import { agreementHashOf, assemblyHashOf, type RegisteredAgreement, type HydratedAssembly, type AssemblyAgreement } from "../src/assembly.js";
