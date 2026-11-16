@@ -356,6 +356,26 @@ function fieldSetRulesHold(fields: readonly FieldSpec[], path: string, errors: S
     }
 }
 
+/**
+ * The private set's rules over one field set (the top-level `fields`, or one
+ * `stages[N]`), as `parseClauseSpec` applies them: the set does not mix
+ * public and private fields; a set that declares a private field declares
+ * exactly one blinding field, a set with no other private field declares
+ * none; and each blinding field has its one shape at the set's top level.
+ * Returns one error per broken rule, an empty list when all hold. A reader
+ * handed a spec view that may not have come through the parser (a sign gate,
+ * an attestation's preflight) re-checks the view with it: one implementation
+ * of the rules, here.
+ */
+export function fieldSetRuleErrors(fields: readonly FieldSpec[], path: string): SpecParseError[] {
+    const errors: SpecParseError[] = [];
+    fields.forEach((field, i) => {
+        if (field.blinding === true) blindingShapeHolds(field, `${path}[${i}]`, errors, 0);
+    });
+    fieldSetRulesHold(fields, path, errors);
+    return errors;
+}
+
 function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[], depth: number): FieldSpec | null {
     if (!isObject(raw)) {
         errors.push({ path, message: "field spec must be an object" });

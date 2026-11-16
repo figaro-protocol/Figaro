@@ -54,7 +54,7 @@ import {
     type AssemblyAgreement,
     type HydratedAssembly,
 } from "./assembly.js";
-import { validateContent, type ClauseSpec, type FieldSpec } from "./clauses/index.js";
+import { fieldSetRuleErrors, validateContent, type ClauseSpec, type FieldSpec } from "./clauses/index.js";
 import { generateSalt } from "./commitments.js";
 import { isAddressHex, isBytes32Hex, type Address, type Commitment, type Hex } from "./types.js";
 
@@ -387,37 +387,53 @@ export function freshBlindingHex(): Hex {
 }
 
 /** Fill the blinding field of one set of fields (a clause's top-level
- *  `fields`, or one `stages[N]`) where its value is absent, with a fresh
- *  value (`freshBlindingHex`). A value already present is never overwritten,
- *  and a set that declares no blinding field gains nothing. The code that
+ *  `fields`, or one `stages[N]`) with a fresh value (`freshBlindingHex`),
+ *  kept apart by where a value came from, never by the value itself.
+ *
+ *  Without `own`, every value of `values` is the filling party's own (a
+ *  witness it collects, a set it builds from nothing): a value present is
+ *  kept, and an absent one is drawn.
+ *
+ *  With `own`, `values` was folded from other sources too (a design's clause
+ *  data, a catalog, a profile), and `own` is the filling party's own data for
+ *  this set: the value `own` carries is kept, and any other is replaced by a
+ *  fresh draw, so a value a design, a catalog or a profile published never
+ *  stands in for the party's draw.
+ *
+ *  A set that declares no blinding field gains nothing. The code that
  *  collects a party's data calls it once, before the data is hashed; a
  *  builder and a hash function never do, so every rebuild of the same data
  *  reproduces the same fingerprint. */
 export function withFreshBlinding(
     fields: readonly FieldSpec[],
     values: Record<string, unknown>,
+    own?: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
     let out = values;
     for (const field of fields) {
-        if (field.blinding !== true || out[field.name] !== undefined) continue;
+        if (field.blinding !== true) continue;
+        const kept = own === undefined ? out[field.name] : own[field.name];
+        if (kept !== undefined && out[field.name] === kept) continue;
         if (out === values) out = { ...values };
-        out[field.name] = freshBlindingHex();
+        out[field.name] = kept ?? freshBlindingHex();
     }
     return out;
 }
 
 /** `withFreshBlinding` over one clause's committed set, read from the
- *  clause's spec by its key, as `withSpecDefaults` reads it. A clause whose
- *  spec is not loaded is left as it is (the sign gate refuses it), and a
- *  process-log clause stays an empty anchor at commit. */
+ *  clause's spec by its key, as `withSpecDefaults` reads it. `own` is the
+ *  filling party's own data for the clause, as `withFreshBlinding` reads it.
+ *  A clause whose spec is not loaded is left as it is (the sign gate refuses
+ *  it), and a process-log clause stays an empty anchor at commit. */
 export function withClauseBlinding(
     specs: SpecSource,
     clauseKey: Hex,
     data: Record<string, unknown>,
+    own?: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
     const spec = specs.get(clauseKey);
     if (!spec || specIsProcessLog(spec)) return data;
-    return withFreshBlinding(spec.fields, data);
+    return withFreshBlinding(spec.fields, data, own);
 }
 
 /**
@@ -641,6 +657,61 @@ function designIssues(
     return first ?? [];
 }
 
+/** Every blinding value a design's clause data carries, by clause key
+ *  (lowercased) and field: the assembly's own clause data, each entry's
+ *  fills and each registered agreement's clauses. A design is public and the
+ *  same in every order, so any such value blinds nothing. A clause whose spec
+ *  is not loaded is passed over (the agreement's own check refuses it). */
+function designBlindingValues(design: HydratedAssembly, specs: SpecSource): Map<string, Map<string, unknown>> {
+    const found = new Map<string, Map<string, unknown>>();
+    const scan = (bag: Readonly<Record<string, Record<string, unknown>>> | undefined) => {
+        for (const [clauseKey, data] of Object.entries(bag ?? {})) {
+            const spec = specs.get(clauseKey as Hex);
+            if (!spec || data === null || typeof data !== "object") continue;
+            for (const field of spec.fields) {
+                if (field.blinding !== true || data[field.name] === undefined) continue;
+                const key = clauseKey.toLowerCase();
+                if (!found.has(key)) found.set(key, new Map());
+                found.get(key)!.set(field.name, data[field.name]);
+            }
+        }
+    };
+    scan(design.assembly.assemblyClauses);
+    for (const entry of design.assembly.agreements) scan(entry.clauses);
+    for (const registered of Object.values(design.agreements ?? {})) scan(registered?.clauses);
+    return found;
+}
+
+/** The design's blinding values, refused: one issue per value the design's
+ *  clause data carries for a blinding field, and one more where the
+ *  agreement carries that very value. A design published by anyone could
+ *  carry one, and the party's own draw must stand there instead. */
+function designBlindingIssues(
+    agreement: Agreement,
+    specs: SpecSource,
+    design: HydratedAssembly,
+): CommitmentAgreementIssue[] {
+    const issues: CommitmentAgreementIssue[] = [];
+    const designed = designBlindingValues(design, specs);
+    for (const [clause, fields] of designed) {
+        for (const [field, value] of fields) {
+            issues.push({
+                clause,
+                path: field,
+                message: `the design's clause data carries a value for the blinding field (${canonicalize(value ?? null)}); a design is public and the same in every order, so the value blinds nothing — do not sign under a design that carries one`,
+            });
+            const entry = agreement.clauses.find((c) => c.clause.toLowerCase() === clause);
+            if (entry?.data === undefined || canonicalize(entry.data[field] ?? null) !== canonicalize(value ?? null)) continue;
+            issues.push({
+                clause,
+                path: field,
+                message: "the agreement's blinding value equals the value the design carries, which is public; the party that fills the private set draws its own (withFreshBlinding)",
+            });
+        }
+    }
+    return issues;
+}
+
 /** The topology check: an agreement built from a design (it names one in its
  *  provenance leaf) carries its topology leaf, an empty list for a root, and
  *  any topology an agreement carries is well formed — a list of 32-byte
@@ -660,6 +731,22 @@ function topologyIssues(agreement: Agreement): CommitmentAgreementIssue[] {
     } catch (cause) {
         return [{ clause: "(topology)", path: "follows", message: cause instanceof Error ? cause.message : String(cause) }];
     }
+}
+
+/** The private set's rules (`fieldSetRuleErrors`, the parser's own),
+ *  re-checked over the spec view in hand, its committed set and each stage:
+ *  a view built without `parseClauseSpec` may hold a private set with no
+ *  blinding field, which nothing would then draw. One issue per broken rule. */
+function setRuleIssues(clause: string, spec: ProjectionSpecView): CommitmentAgreementIssue[] {
+    const errors = [
+        ...fieldSetRuleErrors(spec.fields, "$.fields"),
+        ...Object.entries(spec.stages ?? {}).flatMap(([stage, fields]) => fieldSetRuleErrors(fields, `$.stages.${stage}`)),
+    ];
+    return errors.map((e) => ({
+        clause,
+        path: e.path,
+        message: `the clause's spec breaks the private set's rules: ${e.message}; do not sign this clause — use a spec that parses (parseClauseSpec)`,
+    }));
 }
 
 /** The blinding fields of a clause's committed set that its `block` names in a
@@ -742,7 +829,9 @@ function blindingValueIssues(
  * clause or changes a designer's value); and the `checkoutHash` about to be
  * signed equals the merkle root recomputed from the clauses. The agreement's
  * topology leaf is well formed, and present wherever a design is named
- * (`topologyIssues`). A private clause's blinding value blinds: its spec
+ * (`topologyIssues`). Each clause's spec keeps the private set's rules
+ * (`fieldSetRuleErrors`, re-checked on the view in hand). A private clause's
+ * blinding value blinds: no design the agreement names carries one, its spec
  * names the blinding field in no list another actor fills
  * (`block.design.fills`, `block.checkout.catalogueFills`, `profileFills`,
  * `catalogueMeasures`), the value is not zero, and no two clauses of the
@@ -802,6 +891,7 @@ export function validateCommitmentAgreement(
             });
             continue;
         }
+        issues.push(...setRuleIssues(clauseEntry.clause, spec));
         issues.push(...namedBlindingIssues(clauseEntry.clause, spec));
         // A runtime-lifecycle clause is an empty anchor at commit — its content
         // is attested later, so there is nothing to validate here.
@@ -829,6 +919,7 @@ export function validateCommitmentAgreement(
     }
 
     issues.push(...designIssues(agreement, specs, design));
+    if (design != null) issues.push(...designBlindingIssues(agreement, specs, design));
     issues.push(...topologyIssues(agreement));
 
     if (issues.length === 0) {
@@ -932,7 +1023,8 @@ function assertComposesAClause(clauses: Readonly<Record<Hex, Record<string, unkn
     }
 }
 
-/** Only the values a clause's `design.fills` declares survive into a assembly
+/** Only the values a clause's `design.fills` declares survive into a assembly,
+ *  and never a blinding value
  *  — FIELD-granular, so a stray non-fill value on a fills-declaring clause
  *  strips like any other transaction particular instead of riding its
  *  neighbor's declaration (the pasted-assembly corner: the UI editors gate
@@ -943,7 +1035,10 @@ function designFillValues(
 ): Record<string, unknown> {
     const fills = spec ? specDesignFills(spec) : [];
     if (fills.length === 0) return {};
-    return Object.fromEntries(Object.entries(values).filter(([field]) => fills.includes(field)));
+    // A blinding value is never a design's: it is public there and the same
+    // in every order, so it is dropped even where a spec names it a fill.
+    const blinding = new Set(spec!.fields.filter((f) => f.blinding === true).map((f) => f.name));
+    return Object.fromEntries(Object.entries(values).filter(([field]) => fills.includes(field) && !blinding.has(field)));
 }
 
 /** A clause's label for a build error: the spec's own `clauseId` beside its

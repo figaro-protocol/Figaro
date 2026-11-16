@@ -247,7 +247,7 @@ export interface BuildQuoteRequestParams {
 export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPayload {
     const instantiated = withAgreementBlinding(instantiateRootAgreement(params.assembly, {
         buyer: params.buyer, seller: params.seller, overrides: params.overrides,
-    }), requireSpecs(params.specs, "buildQuoteRequest"));
+    }), requireSpecs(params.specs, "buildQuoteRequest"), params.overrides);
     const agreement = substitutePricedValue(instantiated, params.pricedFields, params.ceiling);
     const domain = buildDomain(params.chainId, params.core);
     const { commitment } = buildCommitment({

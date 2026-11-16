@@ -10,20 +10,26 @@ import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
     anchorAgreement,
+    buildAssembly,
+    buildCommitment,
+    buildDomain,
     buildOrderAgreement,
+    composeOrderAgreement,
+    computeCheckoutHash,
     freshBlindingHex,
     hashClauseData,
     withClauseBlinding,
     withFreshBlinding,
+    validateCommitmentAgreement,
     type Agreement,
 } from "../src/index.js";
 import { prepareAttestationContent } from "../src/agent/autonomous.js";
-import { buildBuyerOffer, buildChainOffers } from "../src/agent/originate.js";
-import { buildCounterDraft, buildQuoteRequest } from "../src/agent/dispatchRace.js";
-import { decodeContentFromSpec } from "../src/clauses/index.js";
+import { buildBuyerOffer, buildChainOffers, instantiateRootAgreement, withAgreementBlinding } from "../src/agent/originate.js";
+import { buildCounterDraft, buildQuoteRequest, validateDraft } from "../src/agent/dispatchRace.js";
+import { decodeContentFromSpec, fieldSetRuleErrors } from "../src/clauses/index.js";
 import type { Address, Hex } from "../src/types.js";
 import { keyOf, specSourceFromFixtures, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
-import { hydrateAuthored } from "./hydrate.js";
+import { hydrateAuthored, profileBinding } from "./hydrate.js";
 
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]
 const SELLER = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"); // anvil[1]
@@ -210,5 +216,166 @@ describe("prepareAttestationContent draws the blinding value of a private stage"
         const two = prepareAttestationContent(PRIVATE, { note: "x" }, { stage: 2 });
         expect(one.contentRef).toBe(two.contentRef);
         expect(one.values).toEqual({ note: "x" });
+    });
+});
+
+describe("a blinding value that comes from the design is never kept and never signed", () => {
+    const DESIGNED = `0x${"5d".repeat(32)}` as Hex;
+    /** A design published by anyone whose registered agreement carries a
+     *  fixed blinding value for the private clause: public, and the same in
+     *  every order. */
+    const design = hydrateAuthored({
+        agreements: [{ id: "agreement-0", clauses: { [COMMERCE]: {}, [PRIVATE_KEY]: { blinding: DESIGNED } }, follows: [] }],
+    });
+    /** The same, with the value in the assembly's own clause data. */
+    const assemblyDesign = hydrateAuthored({
+        assemblyClauses: { [PRIVATE_KEY]: { blinding: DESIGNED } },
+        agreements: [{ id: "agreement-0", clauses: { [COMMERCE]: {} }, follows: [] }],
+    });
+    const overrides = { [COMMERCE]: LINE, [PRIVATE_KEY]: { grade: "c" } };
+    const clauseOf = (agreement: Agreement, key: Hex) =>
+        agreement.clauses.find((c) => c.clause.toLowerCase() === key.toLowerCase())!;
+    const signedWith = (hydrated: typeof design, blinding: Hex) => {
+        const built = instantiateRootAgreement(hydrated, { buyer: BUYER.address, seller: SELLER.address, overrides });
+        const agreement: Agreement = {
+            ...built,
+            clauses: built.clauses.map((c) => c.clause.toLowerCase() === PRIVATE_KEY.toLowerCase() ? { ...c, data: { ...c.data, blinding } } : c),
+        };
+        const checkoutHash = computeCheckoutHash(agreement);
+        const { commitment } = buildCommitment({
+            buyer: BUYER.address, seller: SELLER.address, currency: CURRENCY, payment: 1000n, expectedCumulativeValue: 1000n,
+            checkoutHash, deadline: 1_900_000_000n,
+        }, buildDomain(CHAIN, CORE));
+        return { agreement, checkoutHash, commitment };
+    };
+
+    it.each([["registered agreement", design], ["assembly clause data", assemblyDesign]])(
+        "the buyer's fill draws its own value over the one the %s carries",
+        (_where, hydrated) => {
+            const instantiated = instantiateRootAgreement(hydrated, { buyer: BUYER.address, seller: SELLER.address, overrides });
+            expect(clauseOf(instantiated, PRIVATE_KEY).data?.blinding).toBe(DESIGNED);
+            const filled = withAgreementBlinding(instantiated, SPECS, overrides);
+            const drawn = clauseOf(filled, PRIVATE_KEY).data?.blinding;
+            expect(isBlindingValue(drawn)).toBe(true);
+            expect(drawn).not.toBe(DESIGNED);
+        },
+    );
+
+    it("the buyer's fill keeps a value the buyer's own data carries (a counter-draft, the checkout's store)", () => {
+        const held = `0x${"34".repeat(32)}`;
+        const own = { ...overrides, [PRIVATE_KEY]: { grade: "c", blinding: held } };
+        const instantiated = instantiateRootAgreement(design, { buyer: BUYER.address, seller: SELLER.address, overrides: own });
+        expect(clauseOf(withAgreementBlinding(instantiated, SPECS, own), PRIVATE_KEY).data?.blinding).toBe(held);
+    });
+
+    it("buildQuoteRequest's draft carries a value of its own, never the design's", () => {
+        const request = buildQuoteRequest({
+            assembly: design, buyer: BUYER.address, seller: SELLER.address, currency: CURRENCY, ceiling: 1000n,
+            chainId: CHAIN, core: CORE, pricedFields: [], deadline: 1_900_000_000n, overrides, specs: SPECS,
+        });
+        const drawn = clauseOf(request.agreement, PRIVATE_KEY).data?.blinding;
+        expect(isBlindingValue(drawn)).toBe(true);
+        expect(drawn).not.toBe(DESIGNED);
+    });
+
+    it("the sign gate refuses a design whose clause data carries a blinding value, and buildBuyerOffer signs nothing", async () => {
+        const { agreement, checkoutHash, commitment } = signedWith(design, `0x${"77".repeat(32)}`);
+        const check = validateCommitmentAgreement(agreement, checkoutHash, SPECS, commitment, design);
+        expect(check.ok).toBe(false);
+        expect(check.issues).toContainEqual(expect.objectContaining({
+            clause: PRIVATE_KEY.toLowerCase(), path: "blinding", message: expect.stringMatching(/design.*carries a value for the blinding field/),
+        }));
+        await expect(buildBuyerOffer(buyerW, {
+            assembly: design, seller: SELLER.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE,
+            deadline: 1_900_000_000n, overrides, specs: SPECS,
+        })).rejects.toThrow(/blinding field/);
+    });
+
+    it.each([["registered agreement", design], ["assembly clause data", assemblyDesign]])(
+        "the sign gate refuses an agreement hand-built with the value the %s carries, and says why",
+        (_where, hydrated) => {
+            const { agreement, checkoutHash, commitment } = signedWith(hydrated, DESIGNED);
+            const check = validateCommitmentAgreement(agreement, checkoutHash, SPECS, commitment, hydrated);
+            expect(check.ok).toBe(false);
+            expect(check.issues).toContainEqual(expect.objectContaining({
+                path: "blinding", message: expect.stringMatching(/equals the value the design carries.*public/),
+            }));
+        },
+    );
+
+    it("the counter-signer's gate refuses the same draft", async () => {
+        const { agreement, commitment } = signedWith(design, DESIGNED);
+        const check = await validateDraft({ commitment, agreement }, SELLER.address, undefined, SPECS, design, profileBinding(design));
+        expect(check.ok).toBe(false);
+        expect(check.ok === false && check.reason).toMatch(/equals the value the design carries/);
+    });
+});
+
+describe("the reference designer's build never writes a blinding value", () => {
+    /** A private clause whose spec names its blinding field among the design
+     *  fills (which the sign gate refuses on its own). */
+    const NAMED = viewOf({
+        ...PRIVATE_RAW,
+        clauseId: "test-private-design-named",
+        block: { design: { article: "terms", fills: ["grade", "blinding"] } },
+    });
+    const SCOPED = viewOf({
+        ...PRIVATE_RAW,
+        clauseId: "test-private-design-scoped",
+        block: { design: { article: "terms", scope: "assembly", fills: ["grade", "blinding"] } },
+    });
+    const specs = specSourceWithRegistrations(SPECS, [NAMED, SCOPED]);
+    const composedValues = { grade: "a", blinding: `0x${"6e".repeat(32)}` };
+
+    it("composeOrderAgreement keeps the design fills and drops the blinding value", () => {
+        const { composed } = composeOrderAgreement({ clauses: { [NAMED.clauseKey]: composedValues }, specs });
+        expect(composed.clauses[NAMED.clauseKey]).toEqual({ grade: "a" });
+    });
+
+    it("buildAssembly drops it from the assembly's own clause data", () => {
+        const { assembly } = buildAssembly({
+            orders: [{ orderHash: "o-0" }],
+            clausesByOrderId: { "o-0": { [COMMERCE]: {} } },
+            assemblyClauses: { [SCOPED.clauseKey]: composedValues },
+            specs,
+        });
+        expect(assembly.assemblyClauses?.[SCOPED.clauseKey]).toEqual({ grade: "a" });
+    });
+});
+
+describe("the sign gate and prepareAttestationContent re-check the set rules on the spec view they are handed", () => {
+    /** A spec view built by hand, never through `parseClauseSpec`: a private
+     *  committed set and a private stage, neither with a blinding field. */
+    const HAND_BUILT = {
+        ...PRIVATE,
+        clauseKey: `0x${"ab".repeat(32)}`,
+        clauseId: "test-hand-built",
+        fields: [{ name: "grade", type: "enum", values: ["a", "b", "c"], required: true, disposition: "private" }],
+        stages: { 1: [{ name: "reading", type: "integer", required: true, disposition: "private" }] },
+    } as unknown as typeof PRIVATE;
+
+    it("fieldSetRuleErrors is the parser's own rule: it names a private set with no blinding field", () => {
+        expect(fieldSetRuleErrors(HAND_BUILT.fields, "$.fields")).toEqual([
+            expect.objectContaining({ path: "$.fields", message: expect.stringMatching(/exactly one blinding field/) }),
+        ]);
+        expect(fieldSetRuleErrors(PRIVATE.fields, "$.fields")).toEqual([]);
+    });
+
+    it("the sign gate refuses a clause whose hand-built spec breaks the set rules", () => {
+        const specs = specSourceWithRegistrations(SPECS, [HAND_BUILT]);
+        const { agreement, checkoutHash } = buildOrderAgreement(BUYER.address, SELLER.address, { [HAND_BUILT.clauseKey]: { grade: "b" } }, specs);
+        const { commitment } = buildCommitment({
+            buyer: BUYER.address, seller: SELLER.address, currency: CURRENCY, payment: 1000n, expectedCumulativeValue: 1000n,
+            checkoutHash, deadline: 1_900_000_000n,
+        }, buildDomain(CHAIN, CORE));
+        const check = validateCommitmentAgreement(agreement, checkoutHash, specs, commitment, null);
+        expect(check.ok).toBe(false);
+        expect(check.issues).toContainEqual(expect.objectContaining({
+            clause: HAND_BUILT.clauseKey, message: expect.stringMatching(/the clause's spec breaks the private set's rules.*exactly one blinding field/),
+        }));
+    });
+
+    it("prepareAttestationContent refuses a private stage of a hand-built spec with no blinding field", () => {
+        expect(() => prepareAttestationContent(HAND_BUILT, { reading: 7 }, { stage: 1 })).toThrow(/exactly one blinding field/);
     });
 });
