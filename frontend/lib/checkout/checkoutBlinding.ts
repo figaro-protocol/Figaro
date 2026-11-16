@@ -18,25 +18,51 @@ import { agreementClauses, withClauseBlinding, type Hex, type HydratedAssembly, 
 /** A checkout's fills: assembly node id → clause key → field values. */
 export type CheckoutFills = Record<string, Record<string, Record<string, unknown>>>;
 
+/** The page's sentence where a private clause's value cannot be drawn. */
+const BLINDING_UNAVAILABLE =
+    "This order cannot be placed in this browser: a private term needs a random value drawn by the browser's Web Crypto, and this browser does not offer it.";
+
+/**
+ * The draft's own store for a new checkout attempt after one failed. Every
+ * order draws its values anew: an order the failed attempt signed and relayed
+ * may already be in a seller's hands, so a retried order must share no
+ * private leaf with it. The one exception is the order a dispatch race formed
+ * (`race`): the winner countersigned that struct, values included, and the
+ * race fixed every salt and the deadline, so a retry rebuilds that same
+ * order rather than a second one, and its values stay the winner's.
+ */
+export function freshBlindingStore(
+    race: { nodeId: string; blinding: Record<string, Record<string, unknown>> } | null,
+): CheckoutFills {
+    return race ? { [race.nodeId]: { ...race.blinding } } : {};
+}
+
 /**
  * `fills` with each private clause's blinding value of each order of
- * `hydrated` filled where the fills leave it absent. A value is drawn the
- * first time this draft meets the clause and is written into `kept`, the
- * draft's own store, so a later call with the same store returns the same
- * value; a value the fills already carry is never overwritten. A clause whose
+ * `hydrated` set from the draft's own store. A value is drawn the first time
+ * this draft meets the clause and is written into `kept`, the draft's own
+ * store, so a later call with the same store returns the same value. A value
+ * the fills carry is drawn over: the fills fold in the design's values, and
+ * a design is public and the same in every order, so only the draft's own
+ * draw is kept (told apart by where it came from, never by the value). A clause whose
  * spec is not loaded is skipped and drawn once it loads. Entries of `fills`
  * that name no order of the assembly pass through unchanged. It runs while a
  * page renders, so it never throws: an order whose registered agreement the
  * hydrated assembly does not carry contributes the clauses its fills name
- * (the checkout walk refuses that order on its own).
+ * (the checkout walk refuses that order on its own), and where this browser
+ * has no Web Crypto to draw from, the clause is left with no value (the sign
+ * gate then refuses the order, so nothing is signed without one) and
+ * `onRefusal`, when given, receives the sentence the page shows.
  */
 export function withCheckoutBlinding(
     hydrated: HydratedAssembly,
     fills: CheckoutFills,
     specs: SpecSource,
     kept: CheckoutFills,
+    onRefusal?: (sentence: string) => void,
 ): CheckoutFills {
     const out: CheckoutFills = { ...fills };
+    let refused = false;
     const assemblyClauses = hydrated.assembly.assemblyClauses ?? {};
     hydrated.assembly.agreements.forEach((entry, i) => {
         const nodeId = String(entry.id ?? i);
@@ -46,14 +72,50 @@ export function withCheckoutBlinding(
         for (const clauseKey of keys) {
             if (!specs.get(clauseKey as Hex)) continue;
             const store = (kept[nodeId] ??= {});
-            const drawn = (store[clauseKey] ??= withClauseBlinding(specs, clauseKey as Hex, {}));
+            let drawn = store[clauseKey];
+            if (drawn === undefined) {
+                try {
+                    drawn = store[clauseKey] = withClauseBlinding(specs, clauseKey as Hex, {});
+                } catch {
+                    if (!refused) onRefusal?.(BLINDING_UNAVAILABLE);
+                    refused = true;
+                    continue;
+                }
+            }
             if (Object.keys(drawn).length === 0) continue;
             if (nodeOut === nodeFills) nodeOut = { ...nodeFills };
-            nodeOut[clauseKey] = { ...drawn, ...nodeFills[clauseKey] };
+            // The draft's own draw stands over whatever the fills carry: the
+            // fills fold in values from the design (`mergeAssemblyTermFills`)
+            // and the form offers no input for the field, so a value there
+            // is never the buyer's own.
+            nodeOut[clauseKey] = { ...nodeFills[clauseKey], ...drawn };
         }
         if (nodeOut !== nodeFills || nodeId in fills) out[nodeId] = nodeOut;
     });
     return out;
+}
+
+/**
+ * `fills` with the blinding values of one order (`nodeId`) drawn anew, for a
+ * draft that leaves this checkout: each candidate of a dispatch race gets a
+ * draft of its own, so no two drafts share a value. Every other order keeps
+ * the values `fills` carries. `drawn` is the new values of that order, in
+ * the shape of the draft's own store (clause key → field → value): the
+ * checkout keeps the winner's under its order, so the commit walk rebuilds
+ * the struct the winner countersigned.
+ */
+export function redrawNodeBlinding(
+    hydrated: HydratedAssembly,
+    fills: CheckoutFills,
+    nodeId: string,
+    specs: SpecSource,
+): { fills: CheckoutFills; drawn: Record<string, Record<string, unknown>> } {
+    const kept: CheckoutFills = {};
+    const redrawn = withCheckoutBlinding(hydrated, fills, specs, kept);
+    return {
+        fills: nodeId in redrawn ? { ...fills, [nodeId]: redrawn[nodeId] } : fills,
+        drawn: kept[nodeId] ?? {},
+    };
 }
 
 /** The clause keys of the registered agreement an assembly entry binds, or

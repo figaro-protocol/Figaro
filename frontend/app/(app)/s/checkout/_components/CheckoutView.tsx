@@ -67,7 +67,7 @@ import { useMemberBoundAssemblies, withBoundCoSellers } from "@/lib/member/useMe
 import { displayNameForAddress } from "@/lib/member/memberListing";
 import { formatMass, formatVolume } from "@/lib/member/unitConversion";
 import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
-import { withCheckoutBlinding, type CheckoutFills } from "@/lib/checkout/checkoutBlinding";
+import { freshBlindingStore, withCheckoutBlinding, type CheckoutFills } from "@/lib/checkout/checkoutBlinding";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import { resolveInputFormat, type FieldSpec } from "@figaro-protocol/sdk/clauses";
@@ -262,8 +262,10 @@ export function CheckoutView({ sellerAddress }: Props) {
     // here, at checkout. Spec-routed — the checkout names no clause.
     const [clauseFills, setClauseFills] = useState<Record<string, Record<string, Record<string, unknown>>>>({});
     // The blinding value of each private clause of each order, drawn once
-    // for this draft and kept with it (`withCheckoutBlinding`), so the race's
-    // dry walk and the commit walk build the same checkoutHash.
+    // for this draft and kept with it (`withCheckoutBlinding`), so every
+    // rebuild before signing builds the same checkoutHash. A race draws
+    // anew for each candidate's draft and the winner's values replace the
+    // raced order's here; a failed attempt starts a new store.
     const blindingKept = useRef<CheckoutFills>({});
     const setClauseFill = (nodeId: string, clauseKey: string, field: string, value: unknown) =>
         setClauseFills((prev) => ({
@@ -342,8 +344,14 @@ export function CheckoutView({ sellerAddress }: Props) {
             return [nodeId, { ...mergedAssemblyEntries, ...(clauseFills[nodeId] ?? {}) }];
         }),
     );
+    // A race winner's order keeps the values its draft was built with, so the
+    // commit walk rebuilds the struct the winner countersigned.
+    if (raceOutcome) Object.assign((blindingKept.current[raceOutcome.nodeId] ??= {}), raceOutcome.blinding);
+    // Where a value cannot be drawn (no Web Crypto), the page says so among
+    // the refusals below and nothing is signed.
+    const blindingRefusals: string[] = [];
     const expandedClauseFills: typeof clauseFills = pickedAssembly
-        ? withCheckoutBlinding(pickedAssembly.hydratedAssembly, mergedClauseFills, specSource(), blindingKept.current)
+        ? withCheckoutBlinding(pickedAssembly.hydratedAssembly, mergedClauseFills, specSource(), blindingKept.current, (r) => blindingRefusals.push(r))
         : mergedClauseFills;
     const subOrderPlan = (() => {
         if (!pickedAssembly || pickedAssembly.hydratedAssembly.assembly.agreements.length <= 1) return [];
@@ -706,6 +714,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // from the walk's own resolution). Any one holds the place-order button.
     const walkInputsNow = walkInputs();
     const checkoutRefusals = [
+        ...blindingRefusals,
         ...(kitBreakdown?.refusals ?? []),
         ...(walkInputsNow ? checkoutMeasureRefusals(walkInputsNow) : []),
     ];
@@ -802,6 +811,10 @@ export function CheckoutView({ sellerAddress }: Props) {
                 },
             );
         } catch (cause: unknown) {
+            // A retry is a new attempt: its orders draw new blinding values,
+            // since an order this attempt signed and relayed may be in a
+            // seller's hands (`freshBlindingStore`).
+            blindingKept.current = freshBlindingStore(raceOutcome);
             const msg = extractErrorMessage(cause, "Signing failed");
             setCheckoutError(msg);
         }
