@@ -44,26 +44,26 @@ export default function Clauses() {
 
             <MarketingSection title="Writing a clause.">
                 <ul className="space-y-3 text-sm text-ink-body leading-relaxed list-disc pl-5">
-                    <li>One canonical JSON document: <code>clauseId</code>, <code>version</code>, <code>title</code>, <code>description</code>, and the <code>fields</code> the clause carries.</li>
+                    <li>One JSON document: <code>clauseId</code>, <code>version</code>, <code>title</code>, <code>description</code>, and the <code>fields</code> the clause carries.</li>
                     <li>It passes the public well-formedness check &mdash; <code>parseClauseSpec</code> from <code>@figaro-protocol/sdk/clauses</code>, the same validator the registration form runs.</li>
-                    <li>It registers on <code>ClauseRegistry</code> &mdash; permissionless and first-write-wins &mdash; on the stake terms every registry here shares (<Link href="/terms/faq#builders-registries" className="underline">what the stake does, and what withdrawing it leaves behind</Link>). What is specific to a clause binding: it is permanent per clause key, the hash of the spec&apos;s pinned bytes, so withdrawing moves the stake and the listing but never the clause &mdash; orders already committed against it still resolve.</li>
+                    <li>It registers on <code>ClauseRegistry</code> &mdash; permissionless and first-write-wins &mdash; on the stake terms every registry here shares (<Link href="/terms/faq#builders-registries" className="underline">what the stake does, and what withdrawing it leaves behind</Link>). What is specific to a clause binding: it is permanent per clause key, the hash of the spec without its <code>block</code>, so withdrawing moves the stake and the listing but never the clause &mdash; orders already committed against it still resolve.</li>
                     <li>Nothing else, ever: a registered clause is immediately usable in agreements and resolvable.</li>
                 </ul>
             </MarketingSection>
 
             <MarketingSection title="Registered clauses.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    Every clause declares the article it belongs to, and the registry explorer sorts and facets whatever is registered by that declaration rather than by any list kept here. Today the reference set runs from the mandatory terms every agreement carries, through logistics, coordination and attestations, consent and credentials, data and emissions, to dispute resolution and the denomination. One &mdash; <code>figaro-topology</code> &mdash; carries the process&apos;s shape, which seller follows which, and is <em>agreement-only</em>: committed at signing like every other clause, as a merkle leaf under the <code>checkoutHash</code> that anyone can prove inclusion of on chain, but never re-asserted as a runtime attestation in the assemblies published so far. A long chain can attest topology as evidence that one seller performed after another; today&apos;s published assemblies simply have not.
+                    Every clause declares the article it belongs to, and the registry explorer sorts and facets whatever is registered by that declaration rather than by any list kept here. Today the reference set runs through logistics, coordination and attestations, consent and credentials, data and emissions, to dispute resolution and the denomination. No single clause is mandatory: a designer composes each one or leaves it out, and an agreement composes at least one. The process&apos;s shape, which seller follows which, is no clause: in an agreement built from a design it is the agreement&apos;s own topology leaf, committed at signing under the <code>checkoutHash</code> that anyone can prove inclusion of on chain, and no attestation can name it.
                  Every registered clause has its own URL: <code>/registries#clause-&lt;clauseKey&gt;</code> lands on its row and opens the document as stored, with the anchored hash beside it.</p>
                 <RegistryCountLink family="clauses" />
             </MarketingSection>
 
             <MarketingSection title="What the hash covers." sectionId="what-the-hash-covers">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    <strong>The shape has a name: a clause spec is a <a href="https://iang.org/papers/ricardian_contract.html" target="_blank" rel="noopener noreferrer" className="underline">Ricardian contract</a></strong> &mdash; Grigg&apos;s single document that people read, programs parse, and a hash over its own content identifies: <code>block</code> is the half people read, <code>fields</code> the half programs parse, and the clause key, the hash of the pinned document that <code>ClauseRegistry</code> registers, is both its identity and its integrity anchor. De Filippi and Wright&apos;s chapter on smart contracts as legal contracts reaches the same hybrid from the law&apos;s side: a document people read, bound to code, with the code construed by contract law&apos;s own principles when the two are read together. What Figaro does not take from that lineage is the issuer and the legal backstop &mdash; a clause&apos;s designer is not a party to the trades that use it, and what makes those trades hold is the bonding equilibrium rather than anything the document says; clause design as a discipline is treated on <Link href="/composition" className="underline">Composition</Link>.
+                    <strong>The shape has a name: a clause spec is a <a href="https://iang.org/papers/ricardian_contract.html" target="_blank" rel="noopener noreferrer" className="underline">Ricardian contract</a></strong> &mdash; Grigg&apos;s single document that people read, programs parse, and a hash over its own content identifies: the <code>title</code> and the <code>description</code> are the part people read, <code>fields</code> and <code>stages</code> the part programs parse, and the clause key that <code>ClauseRegistry</code> registers, the hash of the spec without its <code>block</code>, is the identity and the integrity anchor of both. The <code>block</code> is presentation, outside that hash. De Filippi and Wright&apos;s chapter on smart contracts as legal contracts reaches the same hybrid from the law&apos;s side: a document people read, bound to code, with the code construed by contract law&apos;s own principles when the two are read together. What Figaro does not take from that lineage is the issuer and the legal backstop &mdash; a clause&apos;s designer is not a party to the trades that use it, and what makes those trades hold is the bonding equilibrium rather than anything the document says; clause design as a discipline is treated on <Link href="/composition" className="underline">Composition</Link>.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    Four different hashes are computed over what you write, and mixing them up is the single most expensive authoring mistake &mdash; registration is permanent and first-write-wins. The <strong>clause key</strong> is the hash of the whole pinned document, and it is the registry key. The <strong><code>agreementHash</code></strong> is what a registered agreement is &mdash; clauses composed once for one order, with the designer&apos;s fills, for any assembly to reuse. The <strong><code>checkoutHash</code></strong> is what a buyer and a seller actually sign, and the <strong><code>assemblyHash</code></strong> is what a designer&apos;s assembly is: a merkle root over the registered agreements it holds. Here is exactly which part of your spec reaches which:
+                    Four different hashes are computed over what you write, and mixing them up is the single most expensive authoring mistake &mdash; registration is permanent and first-write-wins. The <strong>clause key</strong> is the hash of the spec without its <code>block</code>, and it is the registry key. The <strong><code>agreementHash</code></strong> is what a registered agreement is &mdash; clauses composed once for one order, with the designer&apos;s fills, for any assembly to reuse. The <strong><code>checkoutHash</code></strong> is what a buyer and a seller actually sign, and the <strong><code>assemblyHash</code></strong> is what a designer&apos;s assembly is: a merkle root over the registered agreements it holds. Here is exactly which part of your spec reaches which. The <code>block</code> itself is never hashed. Its rows are true of the reference tooling only: they say which values that tooling puts into each hash, and another frontend may collect them differently:
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
@@ -76,19 +76,14 @@ export default function Clauses() {
                         </thead>
                         <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
                             <tr>
-                                <td className="py-2 pr-4">the <strong>whole document</strong> &mdash; <code>clauseId</code>, <code>version</code>, <code>title</code>, <code>description</code>, <code>fields</code>, and <em>all</em> of <code>block</code></td>
+                                <td className="py-2 pr-4">the <strong>spec without its <code>block</code></strong> &mdash; <code>clauseId</code>, <code>version</code>, <code>title</code>, <code>description</code>, <code>fields</code>, <code>stages</code></td>
                                 <td className="py-2 pr-4">the <strong>clause key</strong></td>
-                                <td className="py-2">The on-chain key, <code>computeClauseKey(spec)</code>: <code>keccak256</code> over the spec&apos;s canonical bytes. <code>ClauseRegistry</code> registers it first-write-wins and permanently, and the batch verifier binds witness specs to it. <code>clauseId</code> and <code>version</code> are words a reader sees inside the document; they reach the key only as bytes, like every other field, so two specs with one name are two clauses. Editorial text inside <code>block</code> is covered: change a label, get a different clause. Pin those exact bytes.</td>
-                            </tr>
-                            <tr>
-                                <td className="py-2 pr-4"><code>block.design.article: &quot;mandatory&quot;</code></td>
-                                <td className="py-2 pr-4"><strong><code>agreementHash</code></strong> + <strong><code>checkoutHash</code></strong></td>
-                                <td className="py-2">Makes your clause one a designer never selects on its own. A registered agreement whose clauses are all mandatory is what the designer&apos;s mandatory article lists, whoever registered it; the designer picks one for every agreement of an assembly, and its clauses merge into that agreement. This is how the two mandatory clauses &mdash; <code>figaro-commerce</code> and <code>figaro-topology</code> &mdash; reach every order. Which registered agreement and which assembly an order instantiates is carried by the agreement itself, as one reserved leaf of its merkle tree, and by no clause.</td>
+                                <td className="py-2">The on-chain key, <code>computeClauseKey(spec)</code>: <code>keccak256</code> over the canonical bytes of the spec without its top-level <code>block</code>. <code>ClauseRegistry</code> registers it first-write-wins and permanently, and the batch verifier binds witness specs to it. <code>clauseId</code> and <code>version</code> are words a reader sees inside the document; they reach the key only as bytes, like every other field, so two specs with one name are two clauses. The <code>block</code> is outside the key: change a label and the clause keeps its key. Whoever registers a key first chooses the <code>block</code> readers load from its one <code>contentURI</code>: it can mislabel the clause, for example with the article <code>attestations</code>, and it cannot change the key.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.design.article: &quot;attestations&quot;</code></td>
                                 <td className="py-2 pr-4"><strong><code>checkoutHash</code></strong></td>
-                                <td className="py-2">Makes the clause a process log: its clause data is committed as an <em>empty anchor</em> &mdash; a convention the SDK warns on rather than enforces &mdash; and filled by attestation afterwards. Field <code>default</code>s are <strong>not</strong> applied to it.</td>
+                                <td className="py-2">Makes the clause a process log: its clause data is committed as an <em>empty anchor</em> &mdash; a convention of the SDK, which enforces nothing here &mdash; and filled by attestation afterwards. Field <code>default</code>s are <strong>not</strong> applied to it.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.design.scope: &quot;assembly&quot;</code></td>
@@ -112,18 +107,17 @@ export default function Clauses() {
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4">everything else in <code>block</code> &mdash; <code>label</code>, <code>nestsUnder</code>, the <code>runtime</code> section</td>
-                                <td className="py-2 pr-4">the <strong>clause key</strong> only</td>
-                                <td className="py-2">Genuine presentation. It changes the clause key (every byte does) but never changes what a assembly or an agreement contains.</td>
+                                <td className="py-2 pr-4"><strong>no hash</strong></td>
+                                <td className="py-2">Genuine presentation. It reaches no key and no hash, and never changes what an assembly or an agreement contains.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
                 <p className="text-sm text-ink-body leading-relaxed mt-5">
-                    You do not have to take this on trust &mdash; every row is a pure function you can call. <code>parseProjectionHints(spec)</code> returns exactly the six hash-load-bearing hints it found in your <code>block</code>; <code>buildOrderAgreement</code> shows you the clause a party would sign; <code>computeClauseKey</code> is the registry key. All from <code>@figaro-protocol/sdk</code>, no chain needed:
+                    You do not have to take this on trust &mdash; every row is a pure function you can call. <code>parseProjectionHints(spec)</code> returns exactly the six hints in your <code>block</code> that the reference tooling collects the data by; <code>buildOrderAgreement</code> shows you the clause a party would sign; <code>computeClauseKey</code> is the registry key. All from <code>@figaro-protocol/sdk</code>, no chain needed:
                 </p>
                 <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mt-3"><code>{`import { parseProjectionHints, buildOrderAgreement,
-         computeClauseKey } from "@figaro-protocol/sdk";
-import { keccak256 } from "viem";
+         computeClauseKey, anchorClauseSpec } from "@figaro-protocol/sdk";
 
 parseProjectionHints(spec);
 // → { article, scope, designFills, catalogueFills, profileFills,
@@ -132,11 +126,11 @@ parseProjectionHints(spec);
 
 const clauseKey = computeClauseKey(spec);
 // → the key ClauseRegistry registers: keccak256 over the canonical JSON
-//   (sorted keys, no whitespace) of the spec — the bytes you pin.
+//   (sorted keys, no whitespace) of the spec without its \`block\`.
 
-const verified = keccak256(fetchedBytes) === clauseKey;
-// → a reader checks a fetched spec by hashing the bytes it fetched;
-//   true means those bytes are the clause the key names.
+const verified = anchorClauseSpec(fetchedBytes, clauseKey) !== null;
+// → a reader checks a fetched spec by parsing it, dropping \`block\`
+//   and hashing the rest; true means it is the clause the key names.
 
 const view = { ...spec, clauseKey };
 const specs = { get: () => view, list: () => [view] };
@@ -144,7 +138,7 @@ buildOrderAgreement(buyer, seller, { [clauseKey]: {} }, specs);
 // → { agreement, checkoutHash } — inspect agreement.clauses[0].data
 //   to see which \`default\`s got filled in before signing.`}</code></pre>
                 <p className="text-sm text-ink-body leading-relaxed mt-5">
-                    <strong>Two <code>article</code> values are reserved &mdash; and picking one by accident is silent.</strong> The group a clause files under, <code>block.design.article</code>, is free text, but <code>&quot;mandatory&quot;</code> and <code>&quot;attestations&quot;</code> mean something to the SDK &mdash; the two rows above say exactly what. Both are read straight off your spec &mdash; nothing warns you, nothing throws, and the clause simply behaves differently than you meant. The trap is that the reserved words are the natural ones: an attestation clause grouped, reasonably, under &ldquo;attestations&rdquo; silently commits empty. Registration is <strong>permanent and first-write-wins</strong>, so if that is not what you want, group it under any other word before you register. This is the first entry on <Link href="/pitfalls" className="underline">Sharp edges</Link>, which indexes the rest of the silent ones &mdash; the traps that bite at commit, at resolve, and when you read resolved state back.
+                    <strong>One <code>article</code> value changes what a party commits &mdash; and picking it by accident is silent.</strong> The group a clause files under, <code>block.design.article</code>, is free text, but <code>&quot;attestations&quot;</code> means something to the SDK &mdash; the row above says exactly what. It is read straight off your spec &mdash; nothing throws, the SDK exports one check, <code>warnProcessLogFillsTrap</code>, that flags such a clause when it also declares fills, and the clause simply behaves differently than you meant. The trap is that the reserved word is the natural one: an attestation clause grouped, reasonably, under &ldquo;attestations&rdquo; silently commits empty. Registration is <strong>permanent and first-write-wins</strong>, so if that is not what you want, group it under any other word before you register. This is the first entry on <Link href="/pitfalls" className="underline">Sharp edges</Link>, which indexes the rest of the silent ones &mdash; the traps that bite at commit, at resolve, and when you read resolved state back.
                 </p>
                 <h3 className="text-heading-h3 text-ink-heading mt-10 mb-4">
                     One spec. Two enforcement layers. In lockstep.

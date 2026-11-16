@@ -175,7 +175,7 @@ export default function AfterTradeLensPaper() {
 
             <PaperSection title="4. The Assembly">
                 <p>
-                    The composition has two layers, and the argument depends on keeping them apart. The <em>organizational handoff chain</em> is how the container physically moves through the sellers, documented by attestations. The <em>commit sequence</em> is what the Core sees: a linear series of dual-signed commits, every one to the same root buyer, extending one monotonic accumulator. The resolution state holds no parent and no child. How the orders relate is the parties&rsquo; own account, committed in each agreement&rsquo;s topology clause and reconstructed off-chain by whoever reads the data.
+                    The composition has two layers, and the argument depends on keeping them apart. The <em>organizational handoff chain</em> is how the container physically moves through the sellers, documented by attestations. The <em>commit sequence</em> is what the Core sees: a linear series of dual-signed commits, every one to the same root buyer, extending one monotonic accumulator. The resolution state holds no parent and no child. Which agreement follows which is named in the assembly&rsquo;s design. Each agreement built from it commits at signing the orders its own order follows, a leaf of the agreement&rsquo;s own form that checkout writes from the design, not a composed clause; whoever reads the data reconstructs the graph off-chain.
                 </p>
                 <PaperRun title="The composition is published.">
                     Clauses are composed into six registered agreements, one per seller, and the six agreements into one published assembly. The agreements, each signed at checkout as one order, are the shipper&rsquo;s, the pre-shipment inspection service&rsquo;s, the freight forwarder&rsquo;s, the reefer ocean carrier&rsquo;s, the customs agent&rsquo;s, and the destination drayage&rsquo;s (the short road haul from the port), all sellers to one root buyer, the importer. The published assembly runs end to end on the bond schedule of Section 3, and the importer&rsquo;s one resolution closes every order together. A run demonstrates the mechanics; it is not evidence of independent carriers, ports, or agents operating the assembly.
@@ -230,8 +230,8 @@ export default function AfterTradeLensPaper() {
                     ]}
                     rootBuyerLabel="Importer"
                     topologyNote={[
-                        "The topology clause does: the parties' own account of how the orders",
-                        "relate, committed in each agreement and reconstructed off-chain.",
+                        "The edges each agreement commits at signing, written from the design",
+                        "as a leaf of its own form, not a clause; reconstructed off-chain.",
                     ]}
                     figureTitle="The handoff graph at the design layer, and the commit sequence the Core sees"
                     figureDesc={
@@ -253,7 +253,7 @@ export default function AfterTradeLensPaper() {
                     The same shipment can be composed coarsely, with the forwarder absorbing inland, port, and ocean legs into one agreement, or finely, with each seller an agreement of its own. The Core sees only commits and reifies no tier or aggregation. The equilibrium is invariant to the choice in its form, since every order is bonded on the same schedule. It is not invariant in magnitude, because a seller&rsquo;s bond is the accumulator at its own order and so depends on what was committed ahead of it. The bonded interest each seller holds in a peer&rsquo;s performance (the payment it waits on plus its locked bond, Section 5), <Math>{"P_i + 2G_i"}</Math>, varies with the number of sellers and the places of their orders in the process. The six-agreement published assembly and the thirteen-order enumeration are two points on that axis; we develop the fine-grained one because its many sellers are the substance of the TradeLens perimeter.
                 </PaperRun>
                 <PaperRun title="Per-agreement clauses.">
-                    Every agreement composes the commerce clause, which carries the payment, and the topology clause. Beside them, each agreement carries the clauses its role needs; Section 6 states what each clause commits.
+                    Every agreement composes the commerce clause, which lists what the order&rsquo;s payment buys. The payment itself is the commitment&rsquo;s own, and no particular clause is required. Beside it, each agreement carries the clauses its role needs; Section 6 states what each clause commits.
                 </PaperRun>
                 <ul className="space-y-2 list-disc pl-6 text-sm">
                     <li><em>Shipper</em>: the cargo clause with the shipment&rsquo;s measures; the Incoterms 2020 clause for the rule and named place; the chain of custody clause, which opens the seal regime; the acceptance-criteria clause fixing the basis on which the importer receives; the geolocation clause; optionally an emissions clause for manufacturing emissions.</li>
@@ -357,8 +357,7 @@ export default function AfterTradeLensPaper() {
                     The composition needs no new clause: every clause it composes is published, including a canonical account of the seal. Each clause states what it commits at signing and, where it has one, its witness stage: the shape of the evidence a party attests under the clause while the process is open.
                 </p>
                 <ul className="space-y-2 list-disc pl-6 text-sm">
-                    <li><em>Commerce</em>: the payment, on every agreement.</li>
-                    <li><em>Topology</em>: the parties&rsquo; own account of which orders each order follows, on every agreement. The Core stores no such structure.</li>
+                    <li><em>Commerce</em>: the line items the order&rsquo;s payment buys, on every agreement. The payment and the token are the commitment&rsquo;s own, and the clause restates neither.</li>
                     <li><em>Cargo</em>: the shipment&rsquo;s measures, namely gross and net mass, volume, packaged dimensions, packaging type and count, and the marks.</li>
                     <li><em>Geolocation</em>: the order&rsquo;s origin and destination under a declared geocode standard, committed at signing. It has no witness stage and reports no positions.</li>
                     <li><em>Handoff</em>: the kinds of physical exchange the agreement admits, one or more of four: face to face, an agreed drop point, a parking area, or a locker. It names no place and has no witness stage. An agreement carries at most one handoff. A seller that touches the cargo more than once either names the handoff that matters to the parties, with its other movements as process events, or the leg is composed as several agreements, each with its own handoff. The published composition takes the first course: one handoff on the carrier&rsquo;s agreement, one on the drayage agreement, none on the other four, the shipper&rsquo;s included.</li>

@@ -311,7 +311,7 @@ describe("RegistryLifecycleFigure", () => {
     it("names each hash-keyed registry's key on its own line — the hashes cover different things", () => {
         const { container } = render(<RegistryLifecycleFigure />);
         const text = container.textContent ?? "";
-        expect(text).toContain("ClauseRegistry — hash of the pinned spec");
+        expect(text).toContain("ClauseRegistry — hash of the spec without block");
         expect(text).toContain("AgreementRegistry — root of its composed clauses");
         expect(text).toContain("AssemblyRegistry — hash of the pinned composition");
         // Collapsing both into one "by hash" line loses the distinction.
