@@ -369,11 +369,13 @@ Y", not as an open-ended build.)
   stays; richer ranging arrives via the wallet-operator agent seam, never the page).
   The format key may be VALUE-DRIVEN: a field declaring `formatFromField`
   resolves its input from the committed VALUE of a named sibling
-  (`resolveInputFormat`) — `figaro-geolocation`'s origin/destination follow
+  (`resolveInputFormat`, `@figaro-protocol/sdk/clauses`) — `figaro-geolocation`'s origin/destination follow
   `geocodeStandard`, so the geohash picker renders only when the committed
   standard is geohash. The picker applies the `cap(disposition, geocodeStandard)`
   grain cap — a `public` geohash is coarsened to neighborhood grain, a `private`
-  one keeps fine grain (`lib/shared/geohash.ts`)) and
+  one keeps fine grain. The cap is the SDK's (`@figaro-protocol/sdk/clauses`,
+  `sdk/src/clauses/grain.ts`): the picker truncates to it, and the SDK's
+  `validateContent` refuses a value past it) and
   `components/runtime/interactionSurfaces.tsx`
   (`block.runtime.interaction.interface` — the party↔party runtime interaction
   standard, the sibling of `block.design.composes` — → order-page surfaces via

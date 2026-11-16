@@ -463,6 +463,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td><code>keccak256</code> over the canonical serialization — a clause's key when pinned in that form, and the assembly registry's digest.</td>
 </tr>
 <tr>
+<td><code>capGeohashGrain</code></td>
+<td><code>/clauses</code></td>
+<td>Truncate a geohash to its disposition's grain cap: 6 characters when public, 12 when private.</td>
+</tr>
+<tr>
 <td><code>canonicalize</code></td>
 <td>root</td>
 <td>THE canonical-JSON convention: sorted keys at every depth, array order kept, no whitespace.</td>
@@ -928,6 +933,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td>Resolve a <code>did:web</code> identifier — https-only, no redirects, size-capped (SSRF-hardened).</td>
 </tr>
 <tr>
+<td><code>resolveInputFormat</code></td>
+<td><code>/clauses</code></td>
+<td>A string field's format: the sibling value <code>formatFromField</code> names, then that sibling's default, then <code>format</code>.</td>
+</tr>
+<tr>
 <td><code>resolveProcess</code></td>
 <td><code>/agent</code></td>
 <td>The low-level buyer-only resolve. Does NOT restore signed root ids — prefer <code>executeAction</code>.</td>
@@ -1075,7 +1085,7 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <tr>
 <td><code>validateContent</code></td>
 <td><code>/clauses</code></td>
-<td>Validate clause content against its spec; on a closed clause, unknown fields are rejected.</td>
+<td>Validate clause content against its spec; on a closed clause, unknown fields are rejected; a geohash under <code>formatFromField</code> is refused past its disposition's grain cap.</td>
 </tr>
 <tr>
 <td><code>validateDraft</code></td>

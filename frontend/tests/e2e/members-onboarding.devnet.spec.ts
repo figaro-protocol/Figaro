@@ -36,7 +36,7 @@
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
-import { clampPublicGeohash } from "../../lib/shared/geohash";
+import { clampPublicGeohash } from "@figaro-protocol/sdk/clauses";
 import { expect, type Page } from "@playwright/test";
 import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, type Hex } from "viem";
@@ -131,7 +131,7 @@ async function onboardViaWizard(
     await expect(page.locator("#profile-name")).toHaveValue(SELLER.name, { timeout: 30_000 });
     await expect(page.locator("#profile-specialty")).toHaveValue(SELLER.specialty);
     // The profile geohash is PUBLIC: the form clamps it to the neighborhood
-    // grain on persist (lib/shared/geohash), so the restored value is the
+    // grain on persist (the SDK's `clampPublicGeohash`), so the restored value is the
     // clamped one, never the door-grade string that was typed.
     await expect(page.locator("#profile-geohash")).toHaveValue(clampPublicGeohash(SELLER.geohash));
     await page.getByRole("button", { name: /^Next/ }).click();

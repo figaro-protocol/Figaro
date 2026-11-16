@@ -263,7 +263,8 @@ describe("the sign gate refuses what it cannot read — and reads a registered s
     const raw = readFileSync(path.resolve(process.cwd(), "../clauses/figaro-geolocation.json"), "utf8");
     const geoBytes = canonicalize(JSON.parse(raw));
     const geoKey = computeClauseKey(JSON.parse(raw));
-    const geoData = { geocodeStandard: "geohash", origin: "u4pruydqqvj", destination: "u4pruydqqvm" };
+    // Public geohashes at the neighborhood grain the SDK's validation caps them to.
+    const geoData = { geocodeStandard: "geohash", origin: "u4pruy", destination: "u4pruz" };
     beforeAll(async () => {
         await primeClauseSpecs(["figaro-commerce", "figaro-consent"]);
         // From here the spec bytes come from the pinned map, as the assemblies do.

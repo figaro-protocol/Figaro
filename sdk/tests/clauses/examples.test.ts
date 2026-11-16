@@ -137,6 +137,69 @@ describe("example clause specs — parse + validate sample content", () => {
         }, parsed.spec).ok).toBe(false);
     });
 
+    // The grain cap, cap(disposition, geocodeStandard): the spec carries the
+    // structural ceiling (maxLength 32) and the attributes (disposition,
+    // formatFromField); validation applies the geohash cap the attributes name.
+    it("figaro-geolocation refuses a public geohash finer than six characters and accepts six", () => {
+        const parsed = parseClauseSpec(geolocationSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        const door = validateContent({
+            geocodeStandard: "geohash",
+            origin: "u4pruydqq",
+            destination: "9q8yyk",
+        }, parsed.spec);
+        expect(door.ok).toBe(false);
+        if (!door.ok) {
+            expect(door.errors).toHaveLength(1);
+            expect(door.errors[0].path).toBe("$.origin");
+            expect(door.errors[0].message).toMatch(/public geohash carries at most 6 characters/);
+        }
+        expect(validateContent({
+            geocodeStandard: "geohash",
+            origin: "u4pruy",
+            destination: "9q8yyk",
+        }, parsed.spec).ok).toBe(true);
+    });
+
+    it("figaro-geolocation with a private disposition accepts twelve geohash characters and refuses thirteen", () => {
+        const privateRaw = {
+            ...geolocationSpecRaw,
+            // A clause is withheld as a whole, so every field turns private.
+            fields: geolocationSpecRaw.fields.map((f) => ({ ...f, disposition: "private" })),
+        };
+        const parsed = parseClauseSpec(privateRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse: " + JSON.stringify(parsed.errors));
+        expect(validateContent({
+            geocodeStandard: "geohash",
+            origin: "u4pruydqqvj8",
+            destination: "9q8yyk8yuv2z",
+        }, parsed.spec).ok).toBe(true);
+        const finer = validateContent({
+            geocodeStandard: "geohash",
+            origin: "u4pruydqqvj8p",
+            destination: "9q8yyk8yuv2z",
+        }, parsed.spec);
+        expect(finer.ok).toBe(false);
+        if (!finer.ok) expect(finer.errors.map((e) => e.path)).toEqual(["$.origin"]);
+    });
+
+    it("figaro-geolocation under a standard other than geohash is bounded by maxLength only", () => {
+        const parsed = parseClauseSpec(geolocationSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        // An Open Location Code of eleven characters, and a 32-character code
+        // under a standard this reader carries no grain knowledge of.
+        expect(validateContent({
+            geocodeStandard: "olc",
+            origin: "8FVC9G8F+6X",
+            destination: "x".repeat(32),
+        }, parsed.spec).ok).toBe(true);
+        expect(validateContent({
+            geocodeStandard: "olc",
+            origin: "x".repeat(33),
+            destination: "8FVC9G8F+6X",
+        }, parsed.spec).ok).toBe(false);
+    });
+
     it("figaro-geolocation rejects missing required fields", () => {
         const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");

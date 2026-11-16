@@ -99,20 +99,9 @@ export function getFieldFormatInput(
 }
 
 /**
- * Resolve a string field's INPUT format — the static `format`, unless the field
- * declares `formatFromField`, in which case its input follows the committed
- * VALUE of the named sibling (falling back to that sibling's spec `default`,
- * then to `format`). This is the frontend half of the value-driven format axis:
- * figaro-geolocation's origin/destination resolve to `geohash` when the
- * committed `geocodeStandard` is geohash (→ the geohash picker + grain cap), and
- * degrade to plain text for standards no input was registered for. Clause-
- * agnostic: it reads only spec-declared field names and sibling values, never a
- * clause id.
- */
-/**
  * Whether some SIBLING's input format follows this field's value — i.e. a
  * sibling declares `formatFromField: <this field's name>`. The mirror of
- * `resolveInputFormat`: the field a sibling reads its format from must be
+ * `resolveInputFormat` (`@figaro-protocol/sdk/clauses`): the field a sibling reads its format from must be
  * editable by whoever fills that sibling, so a form renders it even when it
  * carries a spec `default` (figaro-geolocation's `geocodeStandard` defaults to
  * `geohash`; a party with no device location states an origin by switching the
@@ -124,18 +113,4 @@ export function isSiblingFormatSource(
     siblings: readonly FieldSpec[],
 ): boolean {
     return siblings.some((s) => s.type === "string" && s.formatFromField === field.name);
-}
-
-export function resolveInputFormat(
-    field: FieldSpec,
-    siblings: readonly FieldSpec[],
-    values: Record<string, unknown> | undefined,
-): string | undefined {
-    if (field.type !== "string") return undefined;
-    if (!field.formatFromField) return field.format;
-    const live = values?.[field.formatFromField];
-    if (typeof live === "string" && live.length > 0) return live;
-    const source = siblings.find((s) => s.name === field.formatFromField);
-    if (source && typeof source.default === "string" && source.default.length > 0) return source.default;
-    return field.format;
 }

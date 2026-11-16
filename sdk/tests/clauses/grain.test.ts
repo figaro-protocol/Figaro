@@ -1,14 +1,12 @@
 /**
- * Public-disposition geohash precision cap — the geohash arm of the data
- * seam's grain cap. Locks the load-bearing property the clause spec states
- * ("the reader caps a public geohash to neighborhood (geohash ≤6 chars)"):
- * a PUBLIC geohash never lands door-grade on a plaintext/pinned artifact,
- * while a PRIVATE one (encrypted / content-withheld) keeps fine grain up to
- * the useful geohash ceiling. The cap is a pure prefix truncation — a
- * geohash prefix IS the containing cell — never a round-trip through
- * coordinates, and never a format gate: callers (OnboardingProfileForm on
- * every keystroke, GeohashFieldInput on raw typed input) rely on
- * truncate-don't-reject, with shape validation living elsewhere.
+ * The geohash grain cap's truncation functions (`sdk/src/clauses/grain.ts`).
+ * A PUBLIC geohash never lands door-grade on a plaintext or pinned artifact,
+ * while a PRIVATE one keeps fine grain up to the useful geohash ceiling. The
+ * truncation is a pure prefix cut, since a geohash prefix is its containing
+ * cell, never a round-trip through coordinates. The frontend's form inputs
+ * (OnboardingProfileForm on every keystroke, GeohashFieldInput on raw typed
+ * input) truncate with these; `validateContent` refuses a value past the same
+ * cap (`validate.test.ts`, `examples.test.ts`).
  */
 import { describe, expect, it } from "vitest";
 
@@ -18,7 +16,7 @@ import {
     geohashCapturePrecision,
     PRIVATE_GEOHASH_MAX_PRECISION,
     PUBLIC_GEOHASH_MAX_PRECISION,
-} from "@/lib/shared/geohash";
+} from "../../src/clauses/index.js";
 
 describe("the precision constants (the clause spec's own numbers)", () => {
     it("public cap is 6 — the neighborhood cell the spec's '≤6 chars' names", () => {

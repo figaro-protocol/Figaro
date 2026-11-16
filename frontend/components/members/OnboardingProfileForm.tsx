@@ -23,7 +23,7 @@ import type {
 } from "@/lib/member/onboardingState";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 import { encodeGeohash } from "@figaro-protocol/sdk/derive";
-import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
+import { clampPublicGeohash, PUBLIC_GEOHASH_MAX_PRECISION } from "@figaro-protocol/sdk/clauses";
 import { geocodeAddress, type GeocodeFailureReason } from "@/lib/member/geocode";
 import { getDeviceLocation } from "@/lib/shared/deviceLocation";
 import { getCommonTokens, type CommonToken } from "@/lib/member/commonTokens";
@@ -70,7 +70,7 @@ const EMPTY_FORM: FormState = {
     profileClauseValues: {},
 };
 
-// Public-surface cap (lib/shared/geohash.ts): the profile is pinned to IPFS,
+// Public-surface cap (the SDK's geohash grain cap, `@figaro-protocol/sdk/clauses`): the profile is pinned to IPFS,
 // so its geohash is neighborhood-grade, never door-grade — door-level detail
 // travels per-order inside the ECDH addressee envelope.
 const PRECISION_LABELS: Record<FormState["geohashPrecision"], string> = {

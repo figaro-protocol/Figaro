@@ -257,7 +257,14 @@ its manual.
   a richer input.
 - `validateContent(content, spec, { stage? })` — validates a value against a
   parsed spec; rejects unknown fields; applies `spec.stages[stage]` when a
-  stage is named. An `integer` value is a JSON number inside the safe range
+  stage is named. It applies the geohash grain cap, cap(disposition,
+  geocodeStandard) (`sdk/src/clauses/grain.ts`): for a string field that
+  declares `formatFromField`, the format is the named sibling's committed
+  value (`resolveInputFormat`), and when that is `geohash` a `public` value
+  carries at most 6 characters and a `private` one at most 12. A standard it
+  carries no grain knowledge of, and a field with a static `format` and no
+  `formatFromField`, are bounded by `maxLength` only. The guest's engine
+  (`prover/clause`) does not apply this cap. An `integer` value is a JSON number inside the safe range
   (±(2^53 − 1)), however the text writes it (`5`, `5.0` and `5e0` are one
   integer, read exactly by both engines); a `bigint` value is an unsigned decimal string inside the
   uint256 word. Content that validates encodes, in both engines. Every

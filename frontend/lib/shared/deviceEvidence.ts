@@ -35,7 +35,7 @@
 import { keccak256, toHex } from "viem";
 import { getDeviceLocation } from "@/lib/shared/deviceLocation";
 import { encodeGeohash } from "@figaro-protocol/sdk/derive";
-import { PUBLIC_GEOHASH_MAX_PRECISION } from "@/lib/shared/geohash";
+import { PUBLIC_GEOHASH_MAX_PRECISION } from "@figaro-protocol/sdk/clauses";
 import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 export type DeviceEvidenceKind = "geolocation-cross-check" | "nfc-tap" | "ble-sighting";
