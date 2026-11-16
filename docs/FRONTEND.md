@@ -186,7 +186,13 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     legs. An unbound sub-order is filled by racing every priceable discovered
     catalog instead of a manual pick: unsigned drafts out, counter-signatures
     back — or QUOTES back under the buyer's ceiling — cheapest valid reply wins,
-    with buyer override. Transport is per candidate: one whose profile declares
+    with buyer override. Each candidate's draft draws its own blinding value for
+    each private clause of the raced order (`draftRaceCandidates`,
+    `redrawNodeBlinding`), so no losing candidate holds the value the order is
+    signed with; the winner's values are kept for that order, so the commit
+    walk rebuilds the struct the winner countersigned. After a failed checkout
+    attempt every order draws its values anew (`freshBlindingStore`), the
+    race-formed order excepted. Transport is per candidate: one whose profile declares
     `services.rest` is an AGENT candidate and exchanges the same artifacts over
     HTTP (`postToAgentEndpoint`, the HttpChannel wire — mixed human×agent races are
     this branch); wallet candidates ride the coordination channel. Rendered by

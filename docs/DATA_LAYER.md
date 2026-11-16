@@ -143,12 +143,25 @@ fields, and the blinding field").
   tooling draws it once, fresh for each commitment or attestation, through the
   SDK's one entropy source (`withFreshBlinding`, `withClauseBlinding`,
   `prepareAttestationContent`, on `generateSalt`, which refuses to run without
-  Web Crypto). No designer, catalog or profile value can stand in for it: the
-  sign gate refuses a spec that names it in a fills list.
+  Web Crypto). In the SDK and the reference frontend no designer, catalog or
+  profile value stands in for it. The fill keeps only a value the party's own
+  data carries and draws over one a design's clause data carried
+  (`withAgreementBlinding`, `withCheckoutBlinding`). The SDK's sign gate
+  refuses a spec that names the field in a fills list, a design whose clause
+  data carries a value for it, and an agreement that carries the design's
+  value. A stranger's tools sign what they choose, and the contracts read no
+  content: these hold where the SDK's fill and gate run.
+- **Each draft draws its own.** The reference checkout draws once per draft
+  and keeps the value while the draft is rebuilt. Each candidate of a
+  dispatch race receives a draft with values of its own, and the winner's are
+  the ones signed. A new attempt after a failed one draws again, since an
+  order the failed attempt signed may already be in a seller's hands.
 - **It travels with the content.** It is a field of the set, so it is inside
   the committed `data` the counterparty receives in the commitment payload,
   inside the encoded bytes of a witness, and inside whatever a party discloses
-  to a forum or sells to a buyer. Whoever holds the content reproduces the
+  to a forum or sells to a buyer. The evidence file a party builds lists each
+  private clause's blinding value and the private witness content it kept,
+  and names as missing each piece it does not hold. Whoever holds the content reproduces the
   fingerprint from the content alone; a data buyer checks a disclosed leaf
   against the source process's `checkoutHash` as before, and before the sale
   cannot confirm a guess.
@@ -161,12 +174,22 @@ Two limits, stated plainly:
 1. The party that fills the set draws the value, and both parties sign the
    clause. A careless or hostile filler weakens the other party's privacy in
    that clause: a predictable value lets anyone who can predict it confirm
-   guesses again. The sign gate catches only a zero value and a value repeated
-   inside one agreement; a counterparty that distrusts the value refuses to
-   sign.
+   guesses again. The SDK's sign gate catches only a zero value, a value
+   repeated inside one agreement and a value a design carries; a counterparty
+   that distrusts the value refuses to sign.
 2. The value proves nothing alone. A party that loses its own private content,
    blinding value included, cannot show what it signed or attested from the
    fingerprint, and cannot recover the value from it.
+3. A private witness's content is never published, and no channel message
+   delivers it to the counterparty yet: its attester holds the only copy. The
+   reference frontend keeps it in the attester's browser storage
+   (`localStorage`, `keepPrivateWitnessContent` in
+   `frontend/lib/composition/witnessContent.ts`), written before the
+   attestation is sent, and refuses to send where the browser will not keep
+   it. A party that clears its browser's storage loses it: the content is its
+   own to keep, and the evidence file is how it carries it out. A software
+   agent keeps the `values` and `content` that `prepareAttestationContent`
+   returns.
 
 What the blinding value does not hide: that a clause, a private stage and a
 field set were used; the spec's structure, since the spec is public; who
