@@ -191,8 +191,11 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     `redrawNodeBlinding`), so no losing candidate holds the value the order is
     signed with; the winner's values are kept for that order, so the commit
     walk rebuilds the struct the winner countersigned. After a failed checkout
-    attempt every order draws its values anew (`freshBlindingStore`), the
-    race-formed order excepted. Transport is per candidate: one whose profile declares
+    attempt with no race outcome, every order draws its values anew
+    (`freshBlindingStore`). After a race, the retry keeps every order's
+    values: the race fixed every salt and the deadline, and the raced struct
+    names the root's hash and its parents' order hashes, so any new value
+    would break the winner's countersignature. Transport is per candidate: one whose profile declares
     `services.rest` is an AGENT candidate and exchanges the same artifacts over
     HTTP (`postToAgentEndpoint`, the HttpChannel wire — mixed human×agent races are
     this branch); wallet candidates ride the coordination channel. Rendered by

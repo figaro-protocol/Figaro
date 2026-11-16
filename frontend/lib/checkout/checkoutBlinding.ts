@@ -23,18 +23,28 @@ const BLINDING_UNAVAILABLE =
     "This order cannot be placed in this browser: a private term needs a random value drawn by the browser's Web Crypto, and this browser does not offer it.";
 
 /**
- * The draft's own store for a new checkout attempt after one failed. Every
- * order draws its values anew: an order the failed attempt signed and relayed
- * may already be in a seller's hands, so a retried order must share no
- * private leaf with it. The one exception is the order a dispatch race formed
- * (`race`): the winner countersigned that struct, values included, and the
- * race fixed every salt and the deadline, so a retry rebuilds that same
- * order rather than a second one, and its values stay the winner's.
+ * The draft's own store for a new checkout attempt after one failed.
+ *
+ * With no race outcome, every order draws its values anew: an order the
+ * failed attempt signed and relayed may already be in a seller's hands, so a
+ * retried order, built with fresh salts, must share no private leaf with it.
+ *
+ * With a race outcome (`race`), the retry keeps the whole store. The race
+ * fixed every order's salt and the deadline, and the winner countersigned the
+ * raced order's struct, which names the process id (the root's
+ * `checkoutHash`) and its parents' order hashes. A value drawn anew for any
+ * order would change that order's `checkoutHash`, and so the raced struct,
+ * and the walk would refuse to relay. Keeping every value rebuilds every
+ * order's struct exactly as the failed attempt built it, so the retry signs
+ * the same orders again and no second commitment exists. The raced order
+ * keeps the winner's values (`race.blinding`).
  */
 export function freshBlindingStore(
+    kept: CheckoutFills,
     race: { nodeId: string; blinding: Record<string, Record<string, unknown>> } | null,
 ): CheckoutFills {
-    return race ? { [race.nodeId]: { ...race.blinding } } : {};
+    if (!race) return {};
+    return { ...kept, [race.nodeId]: { ...kept[race.nodeId], ...race.blinding } };
 }
 
 /**
