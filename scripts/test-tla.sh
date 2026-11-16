@@ -14,11 +14,12 @@
 #                                   SettledNetPositions
 #
 #   2. FlorinToken — via formal/FlorinToken.tla + formal/FlorinToken.cfg
-#      (MAX_SUPPLY=5, 3 minters, 6 recipients). Verifies 8 safety invariants:
+#      (MAX_SUPPLY=5, 3 minters, 6 recipients). Verifies 9 safety invariants:
 #        Inv_MaxSupply                    Inv_NonNegative
 #        Inv_DeployerCannotMintAfterRenounce  Inv_NoMintToZero
 #        Inv_MinterCap                    Inv_BalancesSumToSupply
 #        Inv_CapBelowMaxSupply            Inv_SupplyEqualsSumMinted
+#        Inv_RegisteredCapsWithinMaxSupply
 #
 #   3. WitnessSwapAndCommitCoordinator — via
 #      formal/WitnessSwapAndCommitCoordinator.tla + .cfg
@@ -114,7 +115,7 @@
 #   TLA2TOOLS=/path/to/tla2tools.jar ./scripts/test-tla.sh
 #
 # Exit codes:
-#   0  — all 74 invariants, each configuration's type invariant counted (and
+#   0  — all 75 invariants, each configuration's type invariant counted (and
 #        RelayState's two action properties), hold across the
 #        explored state space (five models, nine configurations)
 #   >0 — an invariant violation was found OR the environment is misconfigured
@@ -159,7 +160,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 2/9 — FlorinToken (8 invariants)"
+echo "▶ Pass 2/9 — FlorinToken (9 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config FlorinToken.cfg \

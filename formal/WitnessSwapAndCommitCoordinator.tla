@@ -16,21 +16,23 @@
  * checkable:
  *
  *   StartTx           →  swapAndCommit() entry + the `NothingToFund` guard
- *                        (WitnessSwapAndCommitCoordinator.sol:185); snapshots the
+ *                        (the first check of `swapAndCommit`); snapshots the
  *                        pre-call state so `Revert` can restore it.
  *   BuyerPull         →  _fund step 1: permit2.permitWitnessTransferFrom pulls
  *   SellerPull           `maxInput` of the input token to the coordinator, then
- *                        forceApprove(router, maxInput)              (:205-220)
+ *                        forceApprove(router, maxInput)  (`_fund`, steps 1-2)
  *   BuyerSwapSettle   →  _fund steps 2-4 fused: router.call(swapData) consumes
  *   SellerSwapSettle     `consumed` input and returns `received` bond currency;
- *                        forceApprove(router, 0)                     (:222-224)
- *                        the OutputBelowBond floor                   (:229-230)
- *                        the FULL output forwarded to the party      (:231)
- *                        the unconsumed input refunded to the party  (:234-235)
+ *                        forceApprove(router, 0)         (`_fund`, step 2)
+ *                        the OutputBelowBond floor       (`_fund`, step 3)
+ *                        the FULL output forwarded to the party  (`_fund`, step 3)
+ *                        the unconsumed input refunded to the party  (`_fund`, step 4)
  *   Commit            →  figaroCore.commit(): FigaroCore pulls 2*payment from the
  *                        buyer and 2*expectedCumulativeValue from the seller
- *                        (FigaroCore.sol:206-207), after the root-order guard
- *                        `expectedCumulativeValue == payment`        (:178-180)
+ *                        (the two `_pullExact` calls of `FigaroCore.commit`),
+ *                        after its root-order guard
+ *                        `expectedCumulativeValue == payment`
+ *                        (`InvalidRootCumulativeValue`)
  *   Revert            →  EVM revert from ANY mid-call step: the whole call frame
  *                        rolls back to the snapshot. Enabled everywhere in-flight,
  *                        which subsumes every named revert (SwapCallFailed,
@@ -41,7 +43,8 @@
  *       either verifies or it does not. Signature VALIDITY is assumed; what is NOT
  *       assumed is that the submitted route matches the SIGNED route — that is
  *       modeled as data equality via the `substituted` flag, because it is the
- *       exact bug the witness variant was written to close (:62-82).
+ *       exact bug the witness variant was written to close (the contract's
+ *       `@dev` paragraphs WHY THE WITNESS and THE FIX).
  *   Permit2 nonce / deadline replay    — Permit2's own concern, not the funds machine.
  *   ERC-20 mechanics                   — integer balances, exact transfers.
  *   Fee-on-transfer tokens             — FigaroCore's `_pullExact` guard is its own
@@ -49,6 +52,11 @@
  *   Reentrancy                         — `nonReentrant` on both the coordinator and
  *                                        FigaroCore; the model has one call in flight.
  *   Multi-currency processes           — forbidden by doctrine; one bond currency.
+ *   Input token equal to the bond currency — the contract does not refuse
+ *                                        an `inputToken` equal to
+ *                                        `c.currency`; the model's two tokens
+ *                                        are distinct, so that case is outside
+ *                                        the model.
  *   Sub-orders / process chains        — root orders only (`expectedCumulativeValue`
  *                                        is a free parameter and FigaroCore's root
  *                                        guard rejects the mismatch, which is what
@@ -160,7 +168,7 @@ Init ==
 
 \* ── Action: StartTx ──────────────────────────────────────────
 \* swapAndCommit() entry. `if (!buyerFunding.enabled && !sellerFunding.enabled)
-\* revert NothingToFund();`  (WitnessSwapAndCommitCoordinator.sol:185)
+\* revert NothingToFund();`  (the first check of `swapAndCommit`)
 \*
 \* `substituted` models a relayer submitting a `swapData` / `inputToken` /
 \* `maxInput` tuple OTHER than the one the party's witness signature covers.
@@ -182,7 +190,8 @@ StartTx(p, cv, be, se, bmi, smi, sub) ==
 \* ── Action: LegPull ──────────────────────────────────────────
 \* _fund step 1 + the head of step 2: Permit2 pulls `maxIn` of the input token
 \* from the party to the coordinator, then forceApprove(router, maxIn).
-\* (WitnessSwapAndCommitCoordinator.sol:205-220)
+\* (`_fund`: `permit2.permitWitnessTransferFrom`, then the `forceApprove` of the
+\* router for `maxInput`)
 \*
 \* WITNESS BINDING (the reason this contract exists): the digest Permit2 verifies
 \* covers {router, inputToken, maxInput, keccak256(swapData)}. A submitted route
@@ -200,7 +209,7 @@ LegPull(party, maxIn, nxt) ==
 
 
 \* ── Action: LegSwapSettle ────────────────────────────────────
-\* _fund steps 2-4 (WitnessSwapAndCommitCoordinator.sol:222-235):
+\* _fund steps 2-4 (`_fund`, from `router.call(f.swapData)` to the input refund):
 \*   router.call(swapData)  — consumes `consumed` of the input, returns `received`
 \*                            of the bond currency (rate is the venue's business)
 \*   forceApprove(router, 0)
@@ -230,10 +239,10 @@ LegSwapSettle(party, maxIn, bondAmount, nxt, consumed, received) ==
 \* figaroCore.commit(c, buyerSig, sellerSig). FigaroCore pulls the bonds from the
 \* NAMED parties, not from msg.sender — which is why the coordinator funds the
 \* party in place and never becomes a counterparty.
-\*   _pullExact(currency, c.buyer,  c.payment * 2)                 FigaroCore.sol:206
-\*   _pullExact(currency, c.seller, c.expectedCumulativeValue * 2) FigaroCore.sol:207
+\*   _pullExact(currency, c.buyer,  c.payment * 2)                 FigaroCore.commit
+\*   _pullExact(currency, c.seller, c.expectedCumulativeValue * 2) FigaroCore.commit
 \* Root-order guard: expectedCumulativeValue must equal payment, else
-\* InvalidRootCumulativeValue reverts the whole call            FigaroCore.sol:176-178
+\* InvalidRootCumulativeValue reverts the whole call            FigaroCore.commit
 Commit ==
   /\ pc = "commit"
   /\ tx.cumVal = tx.payment
@@ -331,8 +340,9 @@ Inv_NonNegative ==
 \* ── Zero retention ───────────────────────────────────────────
 \* THE coordinator property. Between calls — after one that completed AND after
 \* one that reverted — the coordinator's balance in EVERY token is zero. It is a
-\* pure executor: the full swap output goes to the party (:231) and every
-\* unconsumed input is refunded (:234-235). Checked at `pc = "idle"` because
+\* pure executor: the full swap output goes to the party (`_fund`,
+\* `safeTransfer(party, received)`) and every unconsumed input is refunded
+\* (`_fund`, the `inputResidual` transfer). Checked at `pc = "idle"` because
 \* mid-call the coordinator legitimately holds the pulled input.
 Inv_ZeroRetention ==
   pc = "idle" => \A t \in Tokens : bal[t]["coord"] = 0
@@ -340,7 +350,7 @@ Inv_ZeroRetention ==
 
 \* ── Allowance hygiene ────────────────────────────────────────
 \* forceApprove(router, maxInput) before the call, forceApprove(router, 0) after
-\* (:220, :224). No standing allowance survives the call, so a later router
+\* (both in `_fund`). No standing allowance survives the call, so a later router
 \* compromise cannot drain a coordinator that is holding nothing anyway.
 Inv_AllowanceHygiene ==
   pc = "idle" => \A t \in Tokens : allow[t] = 0
@@ -358,8 +368,9 @@ Inv_Atomicity ==
 
 \* ── Bonding arithmetic ───────────────────────────────────────
 \* Each landed order carries exactly FigaroCore's pulls: 2x payment from the
-\* buyer, 2x expectedCumulativeValue from the seller (FigaroCore.sol:206-207),
-\* which is what the coordinator funds each leg to (:190, :193). The swap is the
+\* buyer, 2x expectedCumulativeValue from the seller (the two `_pullExact` calls
+\* of `FigaroCore.commit`), which is what the coordinator funds each leg to (the
+\* two `_fund` calls of `swapAndCommit`). The swap is the
 \* on-ramp; the bond ratio is untouched by it.
 Inv_BondFormula ==
   \A i \in 1 .. Len(orders) :
@@ -370,7 +381,8 @@ Inv_BondFormula ==
 \* ── FigaroCore escrow is exact ───────────────────────────────────
 \* FigaroCore holds precisely the doubled bonds of the orders that landed —
 \* no more (the coordinator never over-pushes) and no less (it never under-funds:
-\* the bond is derived from `c`, never supplied by the caller, :137).
+\* the bond is derived from `c`, never supplied by the caller: the NatSpec of
+\* `SwapFunding`).
 Inv_CoreEscrowExact ==
   bal["bond"]["core"] =
     SumSeq([i \in 1 .. Len(orders) |->
@@ -380,14 +392,15 @@ Inv_CoreEscrowExact ==
 \* ── Witness route binding ────────────────────────────────────
 \* No route ever executes that the paying party did not sign. Data equality on
 \* {router, inputToken, maxInput, keccak256(swapData)} — the witness tuple
-\* (:112-121, :168-170). This is the property the predecessor coordinator lacked
-\* and a relayer could exploit (:62-73).
+\* (the `SwapWitness` struct and `swapWitness()`). This is the property the
+\* predecessor coordinator lacked and a relayer could exploit (the contract's
+\* `@dev` paragraph WHY THE WITNESS).
 Inv_WitnessRouteBinding == ~routeMismatch
 
 
 \* ── Coordinator is never a counterparty ──────────────────────
 \* The commitment is passed through unchanged: FigaroCore's buyer and seller stay
-\* the EIP-712 signers. The coordinator funds them in place (:57-61).
+\* the EIP-712 signers. The coordinator funds them in place (the contract's `@notice`).
 Inv_CoordinatorNotCounterparty ==
   \A i \in 1 .. Len(orders) :
     orders[i].buyer # "coord" /\ orders[i].seller # "coord"
