@@ -21,8 +21,8 @@ const attestation = (attester: string) => ({
     blockNumber: 2n,
 });
 
-vi.mock("@/lib/kernel/indexer", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/indexer")>();
+vi.mock("@/lib/core/indexer", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/indexer")>();
     return {
         ...actual,
         getOrderCommittedBySeller: async () => [sold],
@@ -35,7 +35,7 @@ vi.mock("@/lib/kernel/indexer", async (importOriginal) => {
         ],
     };
 });
-vi.mock("@/lib/kernel/eventCache", () => ({ cachedGetLogs: async () => [] }));
+vi.mock("@/lib/core/eventCache", () => ({ cachedGetLogs: async () => [] }));
 vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({ getAllMemberRegistered: async () => [] }));
 vi.mock("@/lib/composition/contracts", () => ({
     getAttestationCoordinator: () => "0x00000000000000000000000000000000000000f1",

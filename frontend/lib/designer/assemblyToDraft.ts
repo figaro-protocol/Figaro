@@ -33,7 +33,7 @@ import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { DesignSnapshot } from "./syntheticDesignStore";
-import { Order } from "@/lib/kernel/store";
+import { Order } from "@/lib/core/store";
 import { buildSyntheticOrder, syntheticAddress } from "./syntheticProcess";
 
 /** 1.0 — display-only payment; the assembly itself carries none. */

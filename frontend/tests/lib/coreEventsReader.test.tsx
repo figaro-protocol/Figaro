@@ -26,14 +26,14 @@ vi.mock("wagmi", () => ({
     usePublicClient: () => CLIENT,
     useWatchContractEvent: () => undefined,
 }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/contracts")>()),
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: "0x1111111111111111111111111111111111111111", batchVerifier: "0x2222222222222222222222222222222222222222" },
 }));
 // The one reader answers; the low-level per-event readers refuse, so a
 // consumer that bypasses the one reader reads nothing.
-vi.mock("@/lib/kernel/indexer", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/indexer")>();
+vi.mock("@/lib/core/indexer", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/indexer")>();
     const refuse = async () => {
         throw new Error("read outside getCoreEvents");
     };
@@ -55,7 +55,7 @@ vi.mock("@/lib/composition/contracts", () => ({
 
 import { useProcessOrders } from "@/hooks/useProcessOrders";
 import { useWalletProcessIds } from "@/hooks/useWalletProcessIds";
-import { useWalletProcessRows } from "@/lib/kernel/walletProcessQueries";
+import { useWalletProcessRows } from "@/lib/core/walletProcessQueries";
 import { useGraphCorpus } from "@/lib/data/graphCorpus";
 import { mapRead, present } from "@/lib/shared/networkRead";
 

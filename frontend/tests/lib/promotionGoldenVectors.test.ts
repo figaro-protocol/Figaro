@@ -7,7 +7,7 @@
  *   1. ECDH shared secrets + AES-GCM wrap (lib/handoff/ecdh.ts — direction-
  *      sensitive; the wrap blob is frozen once and proven through unwrap,
  *      since encryption draws a random IV),
- *   2. CommitmentPayload serialization (lib/kernel/signedCommitment.ts —
+ *   2. CommitmentPayload serialization (lib/core/signedCommitment.ts —
  *      bigint→hex replacer + prototype-pollution stripping on deserialize),
  *   3. agreement projection → checkoutHash (since Phase 3: @figaro-protocol/sdk
  *      projection — spec-default injection, process-log skip, clause sort),

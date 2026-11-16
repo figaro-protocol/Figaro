@@ -47,12 +47,12 @@ vi.mock("next/link", async () => {
 });
 vi.mock("wagmi", () => ({ useAccount: () => ({ address: DESIGNER, isConnected: true }) }));
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
-vi.mock("@/lib/kernel/eventCache", () => ({
+vi.mock("@/lib/core/eventCache", () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),
     cachedGetReceiptLogs: vi.fn(),
 }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/contracts")>()),
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
 }));
 vi.mock("@/lib/shared/wagmi", () => ({ publicClient: CLIENT, activeChain: { id: 31337 } }));
@@ -63,7 +63,7 @@ vi.mock("@/lib/protocol/useAgreementRegistry", () => ({
     getRegisteredAgreement: () => undefined,
     useRegisteredAgreementsVersion: () => 0,
 }));
-vi.mock("@/lib/kernel/agreementFetch", () => ({
+vi.mock("@/lib/core/agreementFetch", () => ({
     witnessedAgreementUri: (checkoutHash: string) => (bodies.has(checkoutHash.toLowerCase()) ? `ipfs://witnessed-${checkoutHash.slice(2, 10)}` : null),
     fetchAgreement: async (checkoutHash: string) => {
         const body = bodies.get(checkoutHash.toLowerCase());

@@ -24,7 +24,7 @@ import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { calculateBonds } from '@figaro-protocol/sdk';
 import { readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({

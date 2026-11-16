@@ -8,7 +8,7 @@
  */
 import { useReadContract } from "wagmi";
 import { isValidAddress } from "@/lib/shared/evm";
-import { ERC20_ABI } from "@/lib/kernel/contracts";
+import { ERC20_ABI } from "@/lib/core/contracts";
 
 export function useTokenSymbol(address: string) {
     const addr = isValidAddress(address) ? (address as `0x${string}`) : undefined;

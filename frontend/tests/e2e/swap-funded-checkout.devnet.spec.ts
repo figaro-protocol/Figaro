@@ -57,7 +57,7 @@ import {
 } from './devnet-helpers';
 import { formatToken } from '@/lib/shared/utils';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import type { Page } from '@playwright/test';
 
 async function waitForConnected(page: Page) {

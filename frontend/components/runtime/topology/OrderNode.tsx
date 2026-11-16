@@ -1,7 +1,7 @@
 "use client";
 
 import { Handle, Position } from "@xyflow/react";
-import { Order, OrderState } from "@/lib/kernel/store";
+import { Order, OrderState } from "@/lib/core/store";
 import { tokenFigure } from "@/lib/shared/utils";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { describeClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";

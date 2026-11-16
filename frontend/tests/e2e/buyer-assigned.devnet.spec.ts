@@ -60,7 +60,7 @@ import {
     isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/core/contracts';
 import { calculateBonds } from '@figaro-protocol/sdk';
 
 const RPC_URL = 'http://127.0.0.1:8545';

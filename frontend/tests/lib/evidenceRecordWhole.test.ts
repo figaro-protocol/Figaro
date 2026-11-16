@@ -18,7 +18,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { attestationLog, orderCommittedLog, orderResolvedLog, word, type FixtureLog } from "./__fixtures__/coreLogs";
 import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 import { activeChain } from "@/lib/shared/chains";
-import { OrderState, type Order } from "@/lib/kernel/store";
+import { OrderState, type Order } from "@/lib/core/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 
 const { logsMock, CORE, VERIFIER, COORD } = vi.hoisted(() => ({
@@ -28,14 +28,14 @@ const { logsMock, CORE, VERIFIER, COORD } = vi.hoisted(() => ({
     COORD: "0x1111111111111111111111111111111111111111",
 }));
 
-vi.mock("@/lib/kernel/eventCache", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/eventCache")>()),
+vi.mock("@/lib/core/eventCache", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/eventCache")>()),
     cachedGetContractEvents: (...a: unknown[]) => logsMock("timeline", ...a),
     cachedGetLogs: (...a: unknown[]) => logsMock("indexer", ...a),
     deploymentBlock: () => 0n,
 }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/contracts")>()),
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
 }));
 vi.mock("@/lib/composition/contracts", () => ({

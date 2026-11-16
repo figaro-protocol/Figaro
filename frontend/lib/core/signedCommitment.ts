@@ -16,7 +16,7 @@ import {
     restoreSignedProcessId as sdkRestoreSignedProcessId,
     type Commitment,
 } from "@figaro-protocol/sdk";
-import { CONTRACTS, getBatchVerifier } from "@/lib/kernel/contracts";
+import { CONTRACTS, getBatchVerifier } from "@/lib/core/contracts";
 
 function configuredCore(): `0x${string}` {
     if (!CONTRACTS.core) {

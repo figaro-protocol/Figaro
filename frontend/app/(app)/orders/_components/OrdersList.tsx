@@ -36,7 +36,7 @@ import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
-import { useWalletProcessRows, type ProcessRow } from "@/lib/kernel/walletProcessQueries";
+import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
 import { forgetSignedUnsent, useSignedUnsentOrders, type SignedUnsentOrder } from "@/lib/checkout/signedUnsentOrders";
@@ -44,7 +44,7 @@ import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { type CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { computeOrderHash } from "@figaro-protocol/sdk";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import {
     usePendingSellerSignature,
     useIsUncommitted,

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { projectDocuments, type DocumentLayout } from "@/lib/audit/documentProjection";
 import { DOCUMENT_LAYOUTS } from "@/lib/audit/documentLayouts";
-import { OrderState, type Order } from "@/lib/kernel/store";
+import { OrderState, type Order } from "@/lib/core/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 import { _resetClauseSpecCache_TESTING_ONLY } from "@/lib/shared/clauseSpecSource";
 import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";

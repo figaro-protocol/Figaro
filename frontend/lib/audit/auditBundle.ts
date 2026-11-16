@@ -24,7 +24,7 @@
  */
 
 import type { Agreement } from "@figaro-protocol/sdk";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import { extractContract, type ContractDocument } from "./contractExtract";
 import { extractProcessLogs, type ProcessLogsDocument } from "./processLogsExtract";

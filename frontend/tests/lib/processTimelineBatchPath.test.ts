@@ -20,13 +20,13 @@ const { cachedMock, CORE, VERIFIER, COORD } = vi.hoisted(() => ({
     COORD: "0x1111111111111111111111111111111111111111",
 }));
 
-vi.mock("@/lib/kernel/eventCache", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/eventCache")>()),
+vi.mock("@/lib/core/eventCache", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/eventCache")>()),
     cachedGetContractEvents: (...a: unknown[]) => cachedMock(...a),
     deploymentBlock: () => 0n,
 }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/contracts")>()),
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
 }));
 vi.mock("@/lib/composition/contracts", () => ({

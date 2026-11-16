@@ -25,7 +25,7 @@ import {
 import { getActiveMembers } from "@/lib/protocol/membersRegistryIndexer";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import type { PublicClient } from "viem";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
 import { ABSENT, PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 

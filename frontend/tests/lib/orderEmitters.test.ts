@@ -11,13 +11,13 @@ const { cachedGetLogsMock, CORE, VERIFIER } = vi.hoisted(() => ({
     VERIFIER: '0x2222222222222222222222222222222222222222',
 }));
 
-vi.mock('@/lib/kernel/eventCache', () => ({
+vi.mock('@/lib/core/eventCache', () => ({
     cachedGetLogs: (...args: unknown[]) => cachedGetLogsMock(...args),
     cachedGetReceiptLogs: vi.fn(),
 }));
 
-vi.mock('@/lib/kernel/contracts', async (importOriginal) => ({
-    ...(await importOriginal<typeof import('@/lib/kernel/contracts')>()),
+vi.mock('@/lib/core/contracts', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/lib/core/contracts')>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
 }));
 
@@ -25,7 +25,7 @@ import {
     getAllOrderCommitted,
     getAllOrderResolved,
     getCoreEvents,
-} from '@/lib/kernel/indexer';
+} from '@/lib/core/indexer';
 
 const CLIENT = {} as never;
 
@@ -66,11 +66,11 @@ describe('the order readers fold both emitters', () => {
 
     it('a network with no verifier configured reads the Core alone', async () => {
         vi.resetModules();
-        vi.doMock('@/lib/kernel/contracts', async (importOriginal) => ({
-            ...(await importOriginal<typeof import('@/lib/kernel/contracts')>()),
+        vi.doMock('@/lib/core/contracts', async (importOriginal) => ({
+            ...(await importOriginal<typeof import('@/lib/core/contracts')>()),
             CONTRACTS: { core: CORE, batchVerifier: '' },
         }));
-        const { getAllOrderCommitted: read } = await import('@/lib/kernel/indexer');
+        const { getAllOrderCommitted: read } = await import('@/lib/core/indexer');
         await read(CLIENT, 31337);
         expect(cachedGetLogsMock.mock.calls.map((c) => c[2].address)).toEqual([CORE]);
     });

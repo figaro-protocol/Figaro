@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { activeChain } from "@/lib/shared/chains";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 
 /** A line in the buyer's cart — items selected from a seller's catalog.
  *  Internal to the store; consumers receive it structurally via `useCartStore`

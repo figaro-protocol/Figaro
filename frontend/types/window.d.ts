@@ -3,7 +3,7 @@
  *
  * Every property here is optional — these globals are only set by:
  *   - `lib/shared/devShims.ts`        (NEXT_PUBLIC_DEV_ADDRESS / TEST_SIGNER)
- *   - `lib/kernel/testHelpers.ts`       (TEST_HELPERS_ENABLED)
+ *   - `lib/core/testHelpers.ts`       (TEST_HELPERS_ENABLED)
  *   - `app/(app)/terminal/page.tsx`   (E2E mock harness)
  *   - `components/runtime/ClientInit.tsx` (E2E mock-API setup)
  *
@@ -44,7 +44,7 @@ declare global {
         __figaro_fetch_wrapped?: boolean;
         __viem_wallet_client?: unknown;
 
-        // E2E mock harness (lib/kernel/testHelpers.ts, components/runtime/ClientInit.tsx,
+        // E2E mock harness (lib/core/testHelpers.ts, components/runtime/ClientInit.tsx,
         // app/(app)/terminal/page.tsx)
         __FIGARO_MOCK__?: unknown;
         __FIGARO_MOCK_API__?: unknown;

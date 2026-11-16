@@ -16,7 +16,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { Hex } from "@figaro-protocol/sdk";
 import type { Agreement } from "@figaro-protocol/sdk";
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 import { _resetClauseSpecCache_TESTING_ONLY, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
 import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";

@@ -25,8 +25,8 @@ vi.mock("wagmi", () => ({
     useAccount: () => ({ address: WALLET }),
 }));
 vi.mock("@/lib/shared/e2e", () => ({ isE2EMockSession: () => false }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/kernel/contracts")>()),
+vi.mock("@/lib/core/contracts", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
     getBatchVerifier: () => VERIFIER,
 }));

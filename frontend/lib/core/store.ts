@@ -86,7 +86,7 @@ interface ProcessInfo {
 // Zustand store — UI-only ephemeral state.
 // On-chain order state lives in useProcessOrders (event-based).
 // Contract and token addresses come from build-time env vars (CONTRACTS in
-// lib/kernel/contracts.ts) — there is no factory; the singleton addresses are
+// lib/core/contracts.ts) — there is no factory; the singleton addresses are
 // baked in at build time and must not be stored here.
 // ---------------------------------------------------------------------------
 

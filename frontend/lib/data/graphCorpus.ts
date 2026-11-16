@@ -8,7 +8,7 @@
  * the same SDK: FETCH the events, RECOVER what substance is publicly
  * recoverable, PROJECT the graphs, and let the caller ANSWER. Nothing is
  * re-derived here — the projections are `@figaro-protocol/sdk/derive`'s and
- * the events come from the frontend's EXISTING caches (`lib/kernel/indexer.ts`
+ * the events come from the frontend's EXISTING caches (`lib/core/indexer.ts`
  * `getCoreEvents` for the order events, `lib/composition/indexer.ts` for
  * attestations, each across both resolution paths), so this module adds a
  * fold, never a second indexer.
@@ -65,11 +65,11 @@ import {
     getCoreEvents,
     getReceiptLogsOf,
     type IndexedLog,
-} from "@/lib/kernel/indexer";
+} from "@/lib/core/indexer";
 import { getAllAttestationRecords } from "@/lib/composition/indexer";
 import { fetchWitnessContent } from "@/lib/composition/witnessContent";
 import { getSwapRouter, getWitnessSwapAndCommitCoordinator } from "@/lib/composition/contracts";
-import { ERC20_ABI } from "@/lib/kernel/contracts";
+import { ERC20_ABI } from "@/lib/core/contracts";
 import { isBytes32Hex } from "@/lib/shared/evm";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";

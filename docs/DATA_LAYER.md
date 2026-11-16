@@ -132,7 +132,7 @@ itself: each order's buyer, seller, token, payment and running total, in the
 sequence the orders were committed (`OrderCommitted`), and each order's payouts
 at resolution (`OrderResolved`). The other part, the edges of who comes before
 whom, is read from the design: the edges sit in the agreement body, whose
-address no event carries (`frontend/lib/kernel/agreementFetch.ts`, header), so a
+address no event carries (`frontend/lib/core/agreementFetch.ts`, header), so a
 reader takes them from the registered assembly or from an agreement body it
 holds. Together the two give who paid whom, in what denomination, for how much,
 who the parties in the value-added process are, and how value accumulates. That

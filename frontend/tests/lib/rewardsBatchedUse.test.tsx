@@ -51,8 +51,8 @@ vi.mock("wagmi", () => ({
     useWriteContract: () => ({ writeContractAsync: vi.fn() }),
     useChainId: () => 31337,
 }));
-vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
+vi.mock("@/lib/core/contracts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return {
         ...actual,
         CONTRACTS: {

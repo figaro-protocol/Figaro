@@ -46,7 +46,7 @@ import {
     MEMBERS_REGISTRY_ABI,
     provenanceLeafBytes,
 } from '@figaro-protocol/sdk';
-import { CORE_ABI, ERC20_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI, ERC20_ABI } from '@/lib/core/contracts';
 import {
     E2E_CHAIN, LOCAL_ANVIL, RPC_URL, assertPinnedInIpfs, readAgreementBinding, readLocalDeploymentConfig, referenceAssemblySlug, referenceAssemblyHash, isBindingOf, resolveIpfsURI, scanContractEvents, waitForConnected,
     keyOf,

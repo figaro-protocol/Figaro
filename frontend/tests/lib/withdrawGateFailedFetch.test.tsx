@@ -16,14 +16,14 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/shared/wagmi", () => ({ publicClient: { getLogs: async () => [] }, activeChain: { id: 31337 } }));
-vi.mock("@/lib/kernel/contracts", () => ({
+vi.mock("@/lib/core/contracts", () => ({
     CONTRACTS: { core: "0x2222222222222222222222222222222222222222", batchVerifier: "" },
 }));
 // The order scan answers; `deriveInFlightOrders` below names the one order.
-vi.mock("@/lib/kernel/indexer", () => ({
+vi.mock("@/lib/core/indexer", () => ({
     getCoreEvents: async () => ({ events: { orderCommitted: [], orderResolved: [], processResolved: [] }, committedLogs: [] }),
 }));
-vi.mock("@/lib/kernel/agreementFetch", () => ({
+vi.mock("@/lib/core/agreementFetch", () => ({
     witnessedAgreementUri: (h: string) => mocks.witnessed(h),
     fetchAgreement: (...a: unknown[]) => mocks.fetchAgreement(...a),
 }));

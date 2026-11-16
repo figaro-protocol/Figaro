@@ -10,7 +10,7 @@
  *      an index lives at figaro:designer:drafts.
  */
 
-import type { Order } from "@/lib/kernel/store";
+import type { Order } from "@/lib/core/store";
 import { readJsonStorage, removeStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 const CURRENT_KEY = "figaro:designer:current";

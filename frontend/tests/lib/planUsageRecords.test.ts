@@ -24,12 +24,12 @@ import {
 import type { UsageWrite } from "@/lib/protocol/useUsageRecorder";
 import { planUsageRecords, type UsagePlanEntry } from "@/lib/semantic/planUsageRecords";
 import { createCapabilityExecutors, type CapabilityExecutorDeps } from "@/lib/semantic/createCapabilityExecutors";
-import { OrderState, type Order } from "@/lib/kernel/store";
+import { OrderState, type Order } from "@/lib/core/store";
 import { ZERO_BYTES32 } from "@/lib/shared/evm";
 
 // The signed-processId restoration needs a configured Core; the planner and
 // the executor are what is under test, so the restoration is the identity.
-vi.mock("@/lib/kernel/signedCommitment", () => ({ restoreSignedProcessId: (c: Commitment) => c }));
+vi.mock("@/lib/core/signedCommitment", () => ({ restoreSignedProcessId: (c: Commitment) => c }));
 
 // Clause keys are opaque 32-byte hashes here: the planner reads none of the
 // specs behind them.

@@ -42,16 +42,16 @@ import {
     type Hex,
     type SwapFundingLeg,
 } from "@figaro-protocol/sdk";
-import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
-import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
+import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
+import { cachedGetContractEvents } from "@/lib/core/eventCache";
 import { assertAgreementSignable, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { specSource, getClauseSpec, loadClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { fetchHydratedAssemblyByHash } from "@/lib/protocol/useAssemblyRegistry";
-import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
+import { useFigaroActions } from "@/lib/core/useFigaroActions";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { hexEqual, isValidAddress, ZERO_ADDRESS } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
+import type { PartyRole } from "@/lib/core/walletProcessQueries";
 import {
     requestSignConfirmation,
     requestCommitConfirmation,
@@ -61,8 +61,8 @@ import {
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
 import { relayCommitmentPayload } from "@/lib/handoff/relayChannel";
 import { buildCounterDraft, validateDraft, type CommitmentPayload } from "@figaro-protocol/sdk/agent";
-import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
-import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
+import { commitSignedOrder } from "@/lib/core/orderCommitted";
+import { commitmentOrderHash } from "@/lib/core/signedCommitment";
 import { quoteFundingLeg, signFundingLeg, type FundingQuote, type QuoteFundingLegArgs } from "@/lib/composition/swapFunding";
 import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActions";
 import { profileReaderForChain } from "@/lib/member/profileFetcher";

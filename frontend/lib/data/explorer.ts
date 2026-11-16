@@ -26,7 +26,7 @@
 import type { TruthBoundary, MarketShape, ChainShape, OverlayGraph, ProcessGraph, ValueFlowGraph, ValueFlowEdge, WalletRecord } from "@figaro-protocol/sdk/derive";
 import { TRUTH_BOUNDARY_GLOSS } from "@figaro-protocol/sdk/derive";
 import { OrderState, type Process, type ResolutionUniverse } from "@figaro-protocol/sdk";
-import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
+import type { PartyRole } from "@/lib/core/walletProcessQueries";
 import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
 import { filterRows, pick, queryParam } from "@/lib/shared/urlQuery";
 import { truncateHex } from "@/lib/shared/formatHex";

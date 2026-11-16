@@ -15,7 +15,7 @@
 
 import { ZERO_ADDRESS, isValidAddress } from "@/lib/shared/evm";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
-import { CONTRACTS } from "@/lib/kernel/contracts";
+import { CONTRACTS } from "@/lib/core/contracts";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 
 /** A quick-add token suggestion — the identity subset of the member's

@@ -20,7 +20,7 @@ import { isValidAddress } from "@/lib/shared/evm";
 
 /** The verified Disperse interface (0xD152f5…2150, same address across 16
  *  chains; MockDisperse mirrors it on devnet). A composed third-party ABI —
- *  not a FigaroCore ABI, so it lives with the composition, not `lib/kernel`. */
+ *  not a FigaroCore ABI, so it lives with the composition, not `lib/core`. */
 export const DISPERSE_ABI = [
     {
         type: "function",
