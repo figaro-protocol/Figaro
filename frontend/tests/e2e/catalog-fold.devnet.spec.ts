@@ -108,7 +108,7 @@ test.describe('CATALOG→LEAF fold — physical catalog data derives onto the ca
         //    registry → IPFS (event-driven), exactly like any other clause. ──
         await page.addInitScript(() => {
             try {
-                window.localStorage.removeItem('figaro:designer:current');
+                window.localStorage.removeItem('figaro:designer:autosave:new');
                 window.localStorage.removeItem('figaro:designer:drafts');
             } catch { /* noop */ }
         });

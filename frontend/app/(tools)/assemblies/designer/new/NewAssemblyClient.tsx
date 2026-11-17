@@ -6,10 +6,11 @@
  * drawer, and prose-sheet logic lives in DesignerCanvas.
  *
  * Query params:
- *   - ?draft=<slug>  — open a named draft (transitional; the canonical
- *                      entry is /assemblies/designer/edit?slug=<slug>).
- *   - ?fresh=1       — clear the autosaved current-session and start blank.
- *   - (none)         — resume the autosaved current-session if present.
+ *   - ?draft=<slug>  — open a named draft; the URL becomes
+ *                      /assemblies/designer/edit?slug=<slug>, the route
+ *                      whose reload resumes that draft's autosave.
+ *   - ?fresh=1       — clear the new design's autosave and start blank.
+ *   - (none)         — resume the new design's autosave if present.
  */
 
 import { useEffect, useState } from "react";
@@ -33,7 +34,9 @@ export function NewAssemblyClient() {
     // Strip the query params after consuming them so a page refresh
     // doesn't re-trigger the seed and clobber in-progress work.
     useEffect(() => {
-        if (draftParam || freshParam) {
+        if (draftParam) {
+            router.replace(`/assemblies/designer/edit?slug=${encodeURIComponent(draftParam)}`, { scroll: false });
+        } else if (freshParam) {
             router.replace("/assemblies/designer/new", { scroll: false });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

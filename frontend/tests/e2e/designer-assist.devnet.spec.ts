@@ -36,7 +36,7 @@ test.describe('COMPOSITION-ASSIST — export the draft, import a assembly, compo
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
         await page.addInitScript(() => {
             try {
-                window.localStorage.removeItem('figaro:designer:current');
+                window.localStorage.removeItem('figaro:designer:autosave:new');
                 window.localStorage.removeItem('figaro:designer:drafts');
             } catch { /* noop */ }
         });

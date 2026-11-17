@@ -18,7 +18,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { agreementHashOf, buildOrderAgreement, serializeAssembly } from "@figaro-protocol/sdk";
 import {
+    discardPublishedDraft,
+    loadAutosave,
     loadNamedDraft,
+    saveAutosave,
     saveNamedDraft,
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
@@ -265,5 +268,57 @@ describe("buildSyntheticOrder — the agreement carries the clause by its key", 
         const clauseEntry = projected.agreement.clauses.find((s: { clause: string }) => s.clause.toLowerCase() === geo.toLowerCase());
         expect(clauseEntry).toBeTruthy();
         expect(clauseEntry).not.toHaveProperty("version");
+    });
+});
+
+describe("syntheticDesignStore — publishing a draft removes its autosaves", () => {
+    beforeEach(() => window.localStorage.clear());
+
+    /** A draft as the canvas writes it, from the canvas's own builders. */
+    function design(slug: string, name: string, updatedAt: number): DesignSnapshot {
+        const session = startSyntheticSession();
+        const root = createSyntheticRootOrder(session);
+        return {
+            slug,
+            name,
+            processId: session.processId,
+            nextOrderIndex: session.nextOrderIndex,
+            nextSellerIndex: session.nextSellerIndex,
+            orders: [root.order],
+            clausesByOrderId: {},
+            createdAt: updatedAt,
+            updatedAt,
+        };
+    }
+
+    function designerKeys(): string[] {
+        const out: string[] = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+            const key = window.localStorage.key(i)!;
+            if (key.startsWith("figaro:designer:")) out.push(key);
+        }
+        return out.sort();
+    }
+
+    it("the published draft, its own autosave, and the new design's autosave of the same composition go", () => {
+        const published = design("asm-draft-0000beef", "Published", 2);
+        saveNamedDraft(published);
+        saveAutosave(published.slug, { ...published, updatedAt: 3 });
+        // The new design's autosave of the same composition: it carries no slug.
+        saveAutosave(null, { ...published, slug: "", updatedAt: 4 });
+
+        discardPublishedDraft(published);
+        expect(designerKeys()).toEqual(["figaro:designer:drafts"]);
+    });
+
+    it("the new design's autosave of another composition stays", () => {
+        const published = design("asm-draft-0000beef", "Published", 2);
+        const other = design("", "Other work", 5);
+        saveNamedDraft(published);
+        saveAutosave(null, other);
+
+        discardPublishedDraft(published);
+        expect(designerKeys()).toEqual(["figaro:designer:autosave:new", "figaro:designer:drafts"]);
+        expect(loadAutosave(null)!.name).toBe("Other work");
     });
 });

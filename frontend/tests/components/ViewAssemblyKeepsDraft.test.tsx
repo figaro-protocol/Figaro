@@ -3,7 +3,7 @@
  * designer's drafts. A published assembly opened at
  * /assemblies/designer/view?slug=<slug> renders from the chain, and a local
  * draft opened there for review renders from its named draft; neither writes
- * the canvas's autosaved current session or any named draft, byte for byte.
+ * any autosave of the canvas or any named draft, byte for byte.
  *
  * The harness is the one `ViewAssemblyClientFailedRead.test.tsx` uses.
  */
@@ -58,7 +58,7 @@ PUBLISHED.value = {
 
 import { ViewAssemblyClient } from "@/app/(tools)/assemblies/designer/view/ViewAssemblyClient";
 import {
-    saveCurrentSession,
+    saveAutosave,
     saveNamedDraft,
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
@@ -99,8 +99,9 @@ function designerStorage(): Record<string, string | null> {
 
 beforeEach(() => {
     window.localStorage.clear();
-    // Unsaved work on the canvas, and one saved draft.
-    saveCurrentSession(draft("", "Unsaved work"));
+    // Unsaved work on the new design and on a saved draft, and the saved draft.
+    saveAutosave(null, draft("", "Unsaved work"));
+    saveAutosave("asm-draft-0000beef", draft("asm-draft-0000beef", "Unsaved edit"));
     saveNamedDraft(draft("asm-draft-0000beef", "Saved draft"));
 });
 
@@ -109,7 +110,8 @@ describe("ViewAssemblyClient — reading an assembly leaves the drafts as they w
         mocks.readContract.mockResolvedValue([DESIGNER, 1n, false, "ipfs://a"]);
         const before = designerStorage();
         expect(Object.keys(before).sort()).toEqual([
-            "figaro:designer:current",
+            "figaro:designer:autosave:drafts:asm-draft-0000beef",
+            "figaro:designer:autosave:new",
             "figaro:designer:drafts",
             "figaro:designer:drafts:asm-draft-0000beef",
         ]);

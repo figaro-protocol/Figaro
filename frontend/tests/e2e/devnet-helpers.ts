@@ -1211,7 +1211,7 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
     if (!deliverySlug) {
         await page.addInitScript(() => {
             try {
-                window.localStorage.removeItem('figaro:designer:current');
+                window.localStorage.removeItem('figaro:designer:autosave:new');
                 window.localStorage.removeItem('figaro:designer:drafts');
             } catch { /* noop */ }
         });

@@ -192,7 +192,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         //    canvas (the drawer surfaces it from the live registry), publish. ──
         await page.addInitScript(() => {
             try {
-                window.localStorage.removeItem('figaro:designer:current');
+                window.localStorage.removeItem('figaro:designer:autosave:new');
                 window.localStorage.removeItem('figaro:designer:drafts');
             } catch { /* noop */ }
         });
