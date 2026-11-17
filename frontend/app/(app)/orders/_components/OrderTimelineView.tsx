@@ -12,6 +12,9 @@
  *     clauseId taken from the event DATA.
  *   - the ATTESTATIONS COMPARED reader — for any assembly-scoped clause's
  *     declared stage, whether the parties' filings agree (derived, never stored).
+ *   - the PRIVATE FILINGS panel — per order this wallet is a party to, the
+ *     request for the counterparty's private filings and the sealed send of
+ *     its own (`PrivateFilingsPanel`).
  *   - the CAPABILITY rail — every action the buyer/seller can take, DERIVED by
  *     the builder (`deriveProcessModelFromRuntime`) from the clauses the
  *     agreement carries + the attestation state, executed through one path
@@ -24,12 +27,14 @@
 
 import Link from "@/components/shared/Link";
 import { buttonVariants } from "@/components/ui/Button";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { ResolutionProceedsPanel } from "@/components/runtime/ResolutionProceedsPanel";
 import { PayoutRoutingPanel } from "@/components/runtime/PayoutRoutingPanel";
 import { CapabilityRail } from "@/components/runtime/CapabilityRail";
 import { OrderInteractionSurfaces } from "@/components/runtime/OrderInteractionSurfaces";
+import { PrivateFilingsPanel } from "@/components/runtime/PrivateFilingsPanel";
+import { privateFilingsInPlay } from "@/lib/handoff/privateFilings";
 import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import { StageAttestationComparison } from "@/components/runtime/StageAttestationComparison";
 import { useSemanticProcessWorkspace } from "@/hooks/useSemanticProcessWorkspace";
@@ -62,6 +67,8 @@ export function OrderTimelineView({ processId }: Props) {
     // names no one (the address itself is shown).
     const listings = listingsRead.status === "present" ? listingsRead.value : [];
     const resolveCapacity = useProcessResolveCapacity(processId as `0x${string}`);
+    const [filingsKeptRound, setFilingsKeptRound] = useState(0);
+    const onFilingsKept = useCallback(() => setFilingsKeptRound((n) => n + 1), []);
 
     const processModel = workspace.processModel;
 
@@ -198,14 +205,31 @@ export function OrderTimelineView({ processId }: Props) {
             {role !== "spectator" && processModel.orders
                 .filter((order) => hexEqual(address, order.buyer) || hexEqual(address, order.seller))
                 .map((order) => (
-                    <OrderInteractionSurfaces
-                        key={order.orderId}
-                        processId={processId}
-                        orderHash={order.orderId}
-                        checkoutHash={order.checkoutHash}
-                        buyer={order.buyer}
-                        seller={order.seller}
-                    />
+                    <div key={order.orderId} className="space-y-3">
+                        <OrderInteractionSurfaces
+                            processId={processId}
+                            orderHash={order.orderId}
+                            checkoutHash={order.checkoutHash}
+                            buyer={order.buyer}
+                            seller={order.seller}
+                        />
+                        {/* The private filings of this order, where any
+                            concern this wallet: the party that does not hold
+                            the content asks, its attester sends on that
+                            request alone. Names no clause. */}
+                        {address && workspace.processAttestations && privateFilingsInPlay(
+                            order.orderId, workspace.processAttestations, address,
+                            hexEqual(address, order.seller) ? order.buyer : order.seller,
+                        ) && (
+                            <PrivateFilingsPanel
+                                orderHash={order.orderId}
+                                buyer={order.buyer}
+                                seller={order.seller}
+                                attestations={workspace.processAttestations}
+                                onKept={onFilingsKept}
+                            />
+                        )}
+                    </div>
                 ))}
 
             {/* What you can do — every action the builder derived from the
@@ -277,7 +301,10 @@ export function OrderTimelineView({ processId }: Props) {
                 declared stage more than one party attested, whether their
                 filings agree, field by field. Derived from the same log and
                 the content its fingerprints resolve to; read-only, ungated. */}
-            {workspace.processAttestations && <StageAttestationComparison attestations={workspace.processAttestations} />}
+            {workspace.processAttestations && (
+                // Read again each time this browser keeps the counterparty's filings.
+                <StageAttestationComparison key={filingsKeptRound} attestations={workspace.processAttestations} />
+            )}
 
             {/* Secondary affordances */}
             <section className="flex flex-wrap gap-3 text-sm">

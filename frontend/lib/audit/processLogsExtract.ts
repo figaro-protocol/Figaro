@@ -47,6 +47,11 @@ interface ProcessLogEntry {
      *  builder holds them. */
     heldContent?: `0x${string}`;
     heldValues?: Record<string, unknown>;
+    /** How the held copy came to the browser profile the file is built in:
+     *  false where it was kept there when the attestation was filed from it,
+     *  true where it was received from the attester, the counterparty of the
+     *  party that asked. */
+    heldReceived?: boolean;
 }
 
 /** The content a party holds for one attestation, checked against its
@@ -56,7 +61,7 @@ export type HeldWitnessReader = (place: {
     clauseId: string;
     stage: number;
     contentRef: string;
-}) => { content: `0x${string}`; values: Record<string, unknown> | null } | null;
+}) => { content: `0x${string}`; values: Record<string, unknown> | null; received?: boolean } | null;
 
 /** One process clause's event timeline — the per-clause group the PDF
  *  renders as its own section. One group per clause key: two specs that
@@ -135,7 +140,7 @@ export function extractProcessLogs(
             blockNumber: att.blockNumber,
             transactionHash: att.transactionHash ?? undefined,
             universe: att.universe,
-            ...(held ? { heldContent: held.content, ...(held.values ? { heldValues: held.values } : {}) } : {}),
+            ...(held ? { heldContent: held.content, ...(held.values ? { heldValues: held.values } : {}), heldReceived: held.received === true } : {}),
         });
     }
 

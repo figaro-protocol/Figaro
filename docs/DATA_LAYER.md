@@ -169,8 +169,9 @@ fields, and the blinding field").
   the committed `data` the counterparty receives in the commitment payload,
   inside the encoded bytes of a witness, and inside whatever a party discloses
   to a forum or sells to a buyer. The evidence file a party builds lists each
-  private clause's blinding value and the private witness content it kept,
-  and names as missing each piece it does not hold. Whoever holds the content reproduces the
+  private clause's blinding value and the private witness content it holds,
+  its own or received from the counterparty, says which, and names as missing
+  each piece it does not hold. Whoever holds the content reproduces the
   fingerprint from the content alone; a data buyer checks a disclosed leaf
   against the source process's `checkoutHash` as before, and before the sale
   cannot confirm a guess.
@@ -189,8 +190,9 @@ Four limits, stated plainly:
 2. The value proves nothing alone. A party that loses its own private content,
    blinding value included, cannot show what it signed or attested from the
    fingerprint, and cannot recover the value from it.
-3. A private witness's content is never published, and no channel message
-   delivers it to the counterparty yet: its attester holds the only copy. The
+3. A private witness's content is never published. Its attester holds it,
+   and the counterparty holds a copy only once its page has offered a key on
+   the order, by asking for one or by sending its own filings. The
    reference frontend keeps it in the attester's browser storage
    (`localStorage`, `keepPrivateWitnessContent` in
    `frontend/lib/composition/witnessContent.ts`). The one submitter every
@@ -216,6 +218,30 @@ Four limits, stated plainly:
    so the receiver rebuilds the content, recomputes the anchor and shows its
    verdict (`completionEvidenceAnchor`); a public stage-1 set's delivery
    carries no blinding value.
+
+   The counterparty receives the private filings of an order by its own
+   request, with both parties' order pages open
+   (`frontend/lib/handoff/privateFilings.ts`, `PrivateFilingsPanel` on
+   `/orders/view`). Its page counts a counterparty's filing as private once
+   the clause's spec is read and declares the set private, never while the
+   spec is unread. Its page offers its temporary public key, wallet-signed,
+   and that key lives only in the requesting tab's session storage. The
+   attester's page, with a key the counterparty offered present (by its
+   request, or with its own send), seals every copy it kept for
+   that order to that key and sends it on one click; nothing is sent
+   unprompted. The receiver keeps an entry only when the entry names this
+   order, its bytes hash to its content reference, and an `Attestation` by
+   the sender holds that order, clause, stage and reference on either path;
+   it reads again until the event appears. A kept copy is one entry of the
+   same store as the attester's own copies, marked `received`; it never
+   overwrites a copy the browser kept when filing, and it is never sent on.
+   The order page, the comparison of filings, the audit page and the
+   evidence file read it, and the evidence file says that the copy was
+   received from the attester. One delivery carries at most 64 filings and
+   128 KiB of content. What remains: a counterparty that never asks holds
+   nothing, and a copy reaches only a tab that still holds the key it
+   offered; the attester's evidence file is then the one route of that
+   content to a forum.
 4. The kept copy belongs to the browser profile, not to a wallet. Anyone who
    opens that browser profile reads the decoded private content on the order
    page and the audit page, with any wallet connected or none. A party on a

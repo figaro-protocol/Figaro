@@ -36,7 +36,7 @@ import {
     type AddresseeBlock,
 } from "@/lib/handoff/addressDetail";
 import { useCeremonyPanel } from "@/lib/handoff/useCeremonyChannel";
-import { CeremonyPanelFrame } from "@/components/runtime/CeremonyPanelFrame";
+import { CeremonyPanelFrame, CeremonyRequestButton } from "@/components/runtime/CeremonyPanelFrame";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 
 export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: InteractionSurfaceProps) {
@@ -55,10 +55,12 @@ export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: Inte
 
     // Both parties send ECDH pubkeys on the order id itself.
     const {
-        role, channel, peerPubKey, requested, received: detail, anchored, busy, error, handleRequest, deliver, waitingLabel,
+        role, channel, peerPubKey, requested, received: detail, anchored, busy, error, handleRequest, deliver, waitingLabel, requestLabel,
     } = useCeremonyPanel<AddresseeBlock>({
-        ceremonyId: orderHash, orderHash, clauseKey, buyer, seller, decryptBlob: decryptAddressDetail, expectedAnchor,
+        ceremonyId: orderHash, orderHash, buyer, seller, decryptBlob: decryptAddressDetail, expectedAnchor,
         request: requestAddressDetail,
+        // What I ask for differs by seat, the ceremony does not.
+        requestLabels: { seller: "Request delivery address", buyer: "Request pickup address" },
     });
 
     const handleSend = useCallback(async () => {
@@ -81,19 +83,19 @@ export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: Inte
             // deletable on the channel; the coordinator merkle-binds the
             // clause and hash-binds the content.
             return {
-                stage: 0,
-                content: addressDetailBlobHash(blobB64),
-                anchorFailureMessage: "Anchoring the address detail failed",
+                attestation: {
+                    clauseId: clauseKey,
+                    stage: 0,
+                    content: addressDetailBlobHash(blobB64),
+                    anchorFailureMessage: "Anchoring the address detail failed",
+                },
                 result: true,
             };
         });
         if (done) setSent(true);
-    }, [deliver, form, orderHash]);
+    }, [deliver, form, orderHash, clauseKey]);
 
     if (!role) return null;
-    // Role-flavored copy over ONE symmetric body: what I ask for and what I
-    // might share differ by seat, the ceremony does not.
-    const requestLabel = role === "seller" ? "Request delivery address" : "Request pickup address";
 
     return (
         <CeremonyPanelFrame testId="interaction-address-panel" title="Address detail (private)" clauseKey={clauseKey}>
@@ -105,17 +107,10 @@ export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: Inte
 
             {/* Ask for the counterparty's detail. */}
             {!detail && (
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="compact"
-                    onClick={() => void handleRequest()}
-                    disabled={busy || !channel || requested}
-                    data-testid="interaction-address-request"
-                    className="py-1.5 rounded border-default text-ink-body hover:bg-paper hover:border-default-strong"
-                >
-                    {requested ? waitingLabel : busy ? "Requesting…" : requestLabel}
-                </Button>
+                <CeremonyRequestButton
+                    label={requestLabel} waitingLabel={waitingLabel} requested={requested} busy={busy}
+                    ready={!!channel} onRequest={handleRequest} testId="interaction-address-request"
+                />
             )}
 
             {/* The counterparty's decrypted detail + the anchor verdict. */}

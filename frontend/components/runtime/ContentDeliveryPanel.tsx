@@ -40,7 +40,7 @@ import {
 import { useCeremonyPanel } from "@/lib/handoff/useCeremonyChannel";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { Button } from "@/components/ui/Button";
-import { CeremonyPanelFrame } from "@/components/runtime/CeremonyPanelFrame";
+import { CeremonyPanelFrame, CeremonyRequestButton } from "@/components/runtime/CeremonyPanelFrame";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 
 export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: InteractionSurfaceProps) {
@@ -62,10 +62,13 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
 
     // Both parties send ECDH pubkeys on the derived content-ceremony id.
     const {
-        role, channel, peerPubKey, requested, received, anchored, busy, error, handleRequest, deliver, waitingLabel,
+        role, channel, peerPubKey, requested, received, anchored, busy, error, handleRequest, deliver, waitingLabel, requestLabel,
     } = useCeremonyPanel<DeliveredContent>({
-        ceremonyId, orderHash, clauseKey, buyer, seller, decryptBlob: decryptContentDelivery, expectedAnchor,
+        ceremonyId, orderHash, buyer, seller, decryptBlob: decryptContentDelivery, expectedAnchor,
         request: requestContentDelivery,
+        // The buyer asks for the deliverable, a seller may ask for source
+        // materials the same way.
+        requestLabels: { buyer: "Request the deliverable", seller: "Request counterparty content" },
     });
 
     const handleSend = useCallback(async (file: File) => {
@@ -87,9 +90,12 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
                 blinding: evidence.blinding,
             });
             return {
-                stage: COMPLETION_STAGE,
-                content: evidence.content,
-                anchorFailureMessage: "Anchoring the completion evidence failed",
+                attestation: {
+                    clauseId: clauseKey,
+                    stage: COMPLETION_STAGE,
+                    content: evidence.content,
+                    anchorFailureMessage: "Anchoring the completion evidence failed",
+                },
                 result: contentHash as `0x${string}`,
             };
         });
@@ -107,9 +113,6 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
     }, [received]);
 
     if (!role) return null;
-    // Role-flavored copy over ONE symmetric body: the buyer asks for the
-    // deliverable, a seller may ask for source materials the same way.
-    const requestLabel = role === "buyer" ? "Request the deliverable" : "Request counterparty content";
 
     return (
         <CeremonyPanelFrame testId="interaction-content-panel" title="Content delivery (private)" clauseKey={clauseKey}>
@@ -121,17 +124,10 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
 
             {/* Ask for the counterparty's content. */}
             {!received && (
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="compact"
-                    onClick={() => void handleRequest()}
-                    disabled={busy || !channel || requested}
-                    data-testid="interaction-content-request"
-                    className="py-1.5 rounded border-default text-ink-body hover:bg-paper hover:border-default-strong"
-                >
-                    {requested ? waitingLabel : busy ? "Requesting…" : requestLabel}
-                </Button>
+                <CeremonyRequestButton
+                    label={requestLabel} waitingLabel={waitingLabel} requested={requested} busy={busy}
+                    ready={!!channel} onRequest={handleRequest} testId="interaction-content-request"
+                />
             )}
 
             {/* The decrypted deliverable + the anchor verdict. */}
