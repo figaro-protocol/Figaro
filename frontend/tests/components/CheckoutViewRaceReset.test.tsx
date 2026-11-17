@@ -6,7 +6,8 @@
  * race's candidates hold, so the reset empties the store: the root's
  * blinding value is drawn anew. A failed checkout attempt after a race keeps
  * the whole store instead, since the winner countersigned those structs: the
- * retry carries the same root value.
+ * retry carries the same root value. A reset made while an attempt is still
+ * signing wins over that attempt's failure: the store stays empty.
  */
 import React from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -22,6 +23,8 @@ const RACE = vi.hoisted(() => ({
     result: null as Record<string, unknown> | null,
     starts: [] as Array<{ clauseFills?: Record<string, Record<string, Record<string, unknown>>> }>,
     walks: [] as Array<{ clauseFills?: Record<string, Record<string, Record<string, unknown>>> }>,
+    /** When set, an attempt waits on it before it fails. */
+    hold: null as Promise<void> | null,
 }));
 
 vi.mock("wagmi", () => ({ useChainId: () => 31337, usePublicClient: () => ({ chain: { id: 31337 } }) }));
@@ -71,6 +74,7 @@ vi.mock("@/lib/checkout/assemblyCheckout", async (importOriginal) => ({
     // Every attempt fails after reading its inputs.
     executeAssemblyCheckout: async (params: { clauseFills?: Record<string, Record<string, Record<string, unknown>>> }) => {
         RACE.walks.push(params);
+        if (RACE.hold) await RACE.hold;
         throw new Error("the relay refused");
     },
 }));
@@ -173,6 +177,36 @@ describe("CheckoutView — the blinding store across a race reset", () => {
         await waitFor(() => expect(RACE.walks).toHaveLength(2));
         expect(rootBlinding(RACE.walks[0])).toMatch(/^0x[0-9a-f]{64}$/);
         expect(rootBlinding(RACE.walks[1])).toBe(rootBlinding(RACE.walks[0]));
+        view.unmount();
+    });
+
+    it("a reset during an attempt leaves the store empty when the attempt then fails", async () => {
+        const WINNER = `0x${"77".repeat(32)}`;
+        RACE.result = { ...OUTCOME, blinding: { [PRIVATE.clauseKey]: { blinding: WINNER } } };
+        RACE.walks = [];
+        RACE.starts = [];
+        let fail!: () => void;
+        RACE.hold = new Promise<void>((r) => { fail = r; });
+        const view = render(<CheckoutView sellerAddress={SELLER} />);
+        const place = await screen.findByTestId("btn-place-order");
+        for (const node of ["agreement-0", "agreement-1"]) fireEvent.click(screen.getByTestId(`checkout-field-${node}-${PRIVATE.clauseKey}-grade-a`));
+        fireEvent.click(place);
+        await waitFor(() => expect(RACE.walks).toHaveLength(1));
+        expect(RACE.walks[0].clauseFills?.["agreement-1"]?.[PRIVATE.clauseKey]?.blinding).toBe(WINNER);
+        // The buyer races again while the attempt is still signing.
+        fireEvent.click(screen.getByTestId("race-reset"));
+        view.rerender(<CheckoutView sellerAddress={SELLER} />);
+        // Then the attempt fails.
+        fail();
+        await waitFor(() => expect(screen.getByText(/the relay refused/)).toBeTruthy());
+        RACE.hold = null;
+        view.rerender(<CheckoutView sellerAddress={SELLER} />);
+        fireEvent.click(screen.getByTestId("race-start"));
+        await waitFor(() => expect(RACE.starts).toHaveLength(1));
+        const raced = RACE.starts[0].clauseFills?.["agreement-1"]?.[PRIVATE.clauseKey]?.blinding;
+        expect(raced).toMatch(/^0x[0-9a-f]{64}$/);
+        expect(raced).not.toBe(WINNER);
+        expect(rootBlinding(RACE.starts[0])).not.toBe(rootBlinding(RACE.walks[0]));
         view.unmount();
     });
 });

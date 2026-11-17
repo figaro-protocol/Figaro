@@ -1031,9 +1031,10 @@ const contentRef = keccak256(content);
 // `stage` vocabulary: 0 = the clause's COMMITTED content (encode with no
 // stage option); N ≥ 1 = a runtime witness whose field shape is the spec's
 // own `stages[N]` declaration (encode with `{ stage: N }`); a process-log
-// ladder attests its enum's index as the stage and declares no stage sets, so
-// its events encode with `{ stage }` to the same bytes as with none (content at
-// stage N is encoded over `stages[N]` where declared, else over `fields`). The vocabulary is the
+// ladder attests its enum's index as the stage. A ladder that declares no
+// stage sets encodes with `{ stage }` to the same bytes as with none; one that
+// declares `stages[k]` encodes ordinal k over that set (content at stage N is
+// encoded over `stages[N]` where declared, else over `fields`). The vocabulary is the
 // clause spec's data — the SDK and the chain assign it no meaning.
 const clauseId = signedClause.clause;
 // `targetCommitment` is the SIGNED commitment struct of the seller's own order

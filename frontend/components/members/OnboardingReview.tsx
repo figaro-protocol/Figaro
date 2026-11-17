@@ -419,7 +419,7 @@ export function OnboardingReview() {
                 <p className="text-sm text-ink-body">
                     Stake:{" "}
                     <span className="font-semibold text-ink-heading">
-                        {formatToken(deposit, activeChain.nativeCurrency.decimals)} tokens
+                        {formatToken(deposit, activeChain.nativeCurrency.decimals)} tokens of the chain&rsquo;s native token
                     </span>
                     {" "}— a first registration places it on the MembersRegistry, and the
                     member gets it back on leaving the registry, {cooldown}. An update of a
@@ -445,7 +445,7 @@ export function OnboardingReview() {
                             Publishing pins your catalog to IPFS, then pins your
                             profile (with the catalog URI embedded), then calls{" "}
                             <code>register(profileURI)</code> on the MembersRegistry,
-                            placing the reclaimable ETH stake. One user action; three
+                            placing the reclaimable stake. One user action; three
                             serial operations.
                         </>
                     )}
@@ -454,7 +454,7 @@ export function OnboardingReview() {
                     <p className="text-sm text-ink-body">
                         Stake:{" "}
                         <span className="font-semibold text-ink-heading">
-                            {formatToken(deposit, activeChain.nativeCurrency.decimals)} tokens
+                            {formatToken(deposit, activeChain.nativeCurrency.decimals)} tokens of the chain&rsquo;s native token
                         </span>
                         {" "}— you get it back when you leave the registry, {cooldown}.
                         Withdrawing de-lists you from discovery; the stake is what

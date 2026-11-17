@@ -20,7 +20,7 @@ import {
     hashClauseData,
     type Commitment,
 } from "@figaro-protocol/sdk";
-import { keepPrivateWitnessContent, publishWitnessContent } from "@/lib/composition/witnessContent";
+import { forgetKeptWitnessContent, keepPrivateWitnessContent, publishWitnessContent, readKeptWitnessContent } from "@/lib/composition/witnessContent";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
 
@@ -157,6 +157,12 @@ export function useAttestationCoordinatorActions() {
     }: AttestationInput) => {
         const { account, coordinator: attestationCoordinator } = ensureCoordinatorAccess();
         setError("");
+        // The place of a copy this filing kept, until a transaction hash
+        // exists. A failure while it is set means the content was never
+        // referenced on the chain, so the copy is removed; once the wallet
+        // returns a hash the copy stays, whether the transaction lands,
+        // reverts or its outcome is unknown.
+        let keptUnsent: { orderHash: Hex; clauseId: Hex; stage: number; contentRef: Hex } | null = null;
         try {
             const target = await loadCommitment(orderHash);
             const { clauseDataHash, proof } = await buildReceipt(target.checkoutHash as Hex, clauseId);
@@ -173,10 +179,16 @@ export function useAttestationCoordinatorActions() {
             // ceremony panels), so this is the one keep. A browser that
             // refuses the write sends nothing. A re-assert's content is the
             // committed clause, already held with the agreement.
-            if (content && keepPrivateWitnessContent({ orderHash, clauseId, stage, content }) === "refused") {
+            // A copy this browser held before the filing began is never
+            // removed by it.
+            const place = { orderHash, clauseId, stage, contentRef };
+            const heldBefore = content !== undefined && readKeptWitnessContent(place) !== null;
+            const kept = content ? keepPrivateWitnessContent({ orderHash, clauseId, stage, content }) : "public";
+            if (kept === "refused") {
                 const title = getClauseSpec(clauseId)?.title ?? "clause";
                 throw new Error(`This browser could not keep the private content of this ${title} attestation, so it was not sent: without that copy no one could open the attestation later.`);
             }
+            if (kept === "kept" && !heldBefore) keptUnsent = place;
 
             // Public-disposition content publishes at its fingerprint-derived
             // keccak-CID so any audit reader can resolve the values; private or
@@ -193,7 +205,11 @@ export function useAttestationCoordinatorActions() {
             // `loadCommitment` resolved, so the public client is present.
             return await simulateWriteVerify({
                 client: publicClient!,
-                writeContractAsync,
+                writeContractAsync: async (config) => {
+                    const txHash = await writeContractAsync(config);
+                    keptUnsent = null;
+                    return txHash;
+                },
                 address: attestationCoordinator,
                 abi: ATTESTATION_COORDINATOR_ABI as Abi,
                 functionName: role === "seller" ? "attestAsSeller" : "attestAsBuyer",
@@ -202,6 +218,7 @@ export function useAttestationCoordinatorActions() {
                 failureMessage,
             });
         } catch (cause: unknown) {
+            if (keptUnsent) forgetKeptWitnessContent(keptUnsent);
             const message = extractErrorMessage(cause, failureMessage);
             setError(message);
             throw new Error(message);

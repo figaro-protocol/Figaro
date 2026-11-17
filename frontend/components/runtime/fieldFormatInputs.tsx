@@ -59,6 +59,8 @@ export interface FormatPreset {
     value: string;
 }
 
+// The tenants. A format gains a richer input in this frontend by an entry
+// here; another frontend keeps a registry of its own.
 const REGISTRY = new Map<string, ComponentType<FieldFormatInputProps>>([
     ["geohash", GeohashFieldInput],
     // bytes32-hex = a CONTENT ANCHOR (keccak256 of a canonical artifact). The
@@ -77,17 +79,6 @@ const REGISTRY = new Map<string, ComponentType<FieldFormatInputProps>>([
     // raw text box for every iso-datetime content field on any clause.
     ["iso-datetime", DatetimeFieldInput],
 ]);
-
-/** Register an input component for a declared format. Last write wins —
- *  callers may override a built-in mapping. The registry's extension point:
- *  new tenants register here as new formats gain richer inputs.
- *  @public */
-export function registerFieldFormatInput(
-    format: string,
-    component: ComponentType<FieldFormatInputProps>,
-): void {
-    REGISTRY.set(format, component);
-}
 
 /** The input component this frontend maps to a declared format, or null —
  *  the caller falls back to the plain text input. */

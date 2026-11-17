@@ -308,20 +308,6 @@ export function composesForumUrl(clauseKey: string): string | undefined {
     return getClauseSpec(clauseKey)?.block?.design.composes?.forumUrl;
 }
 
-/** The STANDARD composition interface a clause binds to, from its
- *  `block.design.composes.interface` — the open-world discriminator for WHICH on-network
- *  contract an order composes with (e.g. an auction standard, an NFT credential
- *  check — never a dispute forum, which is `forumUrl`, a link and not a tenant).
- *  Generic surfaces derive composition behavior from this string, never a
- *  bundled clause-id. Undefined when the clause composes with nothing, or its
- *  spec isn't loaded.
- *  @public pending consumer: the composes-seam reader; its next consumer is
- *  the first on-chain-invoke tenant to land a handler in
- *  `useCompositionActions`. No such tenant is live today. */
-export function composesInterface(clauseKey: string): string | undefined {
-    return getClauseSpec(clauseKey)?.block?.design.composes?.interface;
-}
-
 /** A PROCESS-LOG clause — a runtime TRANSFER ladder the responsible party
  *  advances (merchant/courier today; a supply chain runs the same structure at
  *  length — factory→truck→port→customs→…, every transfer attested onto the
@@ -444,8 +430,11 @@ export function describeAttestation(
     // labeling it through the committed enum would misread (e.g. a cold-chain
     // reading at stage 1 is not "refrigerated"). The witness's display name is
     // the clause's own title; its stable code is the stage number. A
-    // process-log clause's stage is a ladder ordinal at every stage, so it
-    // is named by its event code even where its content is a stage set's.
+    // process-log clause's stage within its ladder is an ordinal, so it is
+    // named by its event code even where its content is a stage set's. A
+    // declared stage past its last ordinal is a witness of its own
+    // (`ladderLength` in `deriveProcessModelFromRuntime`), and the ladder
+    // below has no value there: it is named `stage-<n>`, the same code.
     if (!clauseIsProcessLog(clauseKey) && attestationIsWitness(clauseKey, stage)) {
         return { clauseTitle: spec.title, eventLabel: spec.title, eventCode: `stage-${stage}` };
     }
@@ -577,33 +566,6 @@ export function describeWitness(
         };
     }
     return { clauseKey, title: spec.title, ...describeFields(stageFields, d) };
-}
-
-/** Module-internal: `clauseEnumValues` below needs it. */
-function clauseFieldSpec(clauseKey: string, fieldPath: string): FieldSpec | undefined {
-    let fields: readonly FieldSpec[] | undefined = getClauseSpec(clauseKey)?.fields;
-    const segments = fieldPath.split(".");
-    for (let i = 0; i < segments.length; i++) {
-        const field = fields?.find((f) => f.name === segments[i]);
-        if (!field) return undefined;
-        if (i === segments.length - 1) return field;
-        if (field.type !== "object") return undefined;
-        fields = field.fields;
-    }
-    return undefined;
-}
-
-/** The enum values a clause field admits, read STRAIGHT from the spec — the SSoT
- *  for which strings are valid. `fieldPath` is dot-delimited for nested object
- *  fields; the leaf may be an enum or an array-of-enum. Empty when absent.
- *  @public pending consumer: the Layer-6 spec-driven drawer controls (its
- *  prior consumers, the ALLOWED_* filters, were absorbed by the generic build
- *  walk); remove the tag when that lands. */
-export function clauseEnumValues(clauseKey: string, fieldPath: string): readonly string[] {
-    const field = clauseFieldSpec(clauseKey, fieldPath);
-    if (field?.type === "enum") return field.values;
-    if (field?.type === "array" && field.items.type === "enum") return field.items.values;
-    return [];
 }
 
 interface ClauseArticleEntry {

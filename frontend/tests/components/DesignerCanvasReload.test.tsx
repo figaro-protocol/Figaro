@@ -37,6 +37,9 @@ type Handlers = {
         onSetClauseField: (key: string, field: string, value: unknown) => void;
         onBindAgreement: (hash: `0x${string}` | null) => void;
     } | null;
+    assist: {
+        onImportAssembly: (hydrated: unknown, composeKeys: ReadonlySet<string>) => boolean;
+    } | null;
     terms: {
         values: Record<string, Record<string, unknown>>;
         onToggleClause: (key: string, next: boolean) => void;
@@ -45,7 +48,7 @@ type Handlers = {
 };
 
 const h = vi.hoisted(() => ({
-    handlers: { canvas: null, drawer: null, terms: null } as unknown as Handlers,
+    handlers: { canvas: null, drawer: null, terms: null, assist: null } as unknown as Handlers,
     search: new URLSearchParams(),
     push: [] as string[],
     wallet: { address: undefined as string | undefined, isConnected: false },
@@ -87,7 +90,17 @@ vi.mock("@/app/(tools)/assemblies/designer/_components/AssemblyTermsPanel", () =
         return null;
     },
 }));
-vi.mock("@/app/(tools)/assemblies/designer/_components/CompositionAssist", () => ({ CompositionAssist: () => null }));
+vi.mock("@/app/(tools)/assemblies/designer/_components/CompositionAssist", () => ({
+    CompositionAssist: (props: NonNullable<Handlers["assist"]>) => {
+        h.handlers.assist = props;
+        return null;
+    },
+}));
+// An imported assembly's hydration: the test hands the draft it would yield.
+vi.mock("@/lib/designer/assemblyToDraft", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/designer/assemblyToDraft")>()),
+    assemblyToDraft: (hydrated: { draft: unknown }) => hydrated.draft,
+}));
 vi.mock("@/app/(tools)/assemblies/designer/_components/AssemblyIdentity", () => ({ AssemblyIdentity: () => null }));
 vi.mock("@/lib/designer/publishAssembly", () => ({ usePublishAgreement: () => ({ publishAgreement: vi.fn(), isPending: false }) }));
 
@@ -523,3 +536,42 @@ describe("DesignerCanvas — each design keeps its own autosave", () => {
     });
 });
 
+describe("DesignerCanvas — on a named draft, the autosave follows what the canvas holds", () => {
+    it("an imported assembly replaces the design: it autosaves as the new design, and the draft is untouched", async () => {
+        const slug = await saveNamed("Open draft");
+        const imported = { ...loadNamedDraft(slug)!, slug: "", name: "Imported" };
+        const edit = await mount(<EditAssemblyClient slug={slug} />);
+        let replaced = false;
+        await act(async () => {
+            replaced = h.handlers.assist!.onImportAssembly({ draft: imported, assembly: { name: "Imported" } }, new Set());
+        });
+        expect(replaced).toBe(true);
+        expect(nameValue()).toBe("Imported");
+        expect(Object.keys(designerStorage()), "the open draft keeps no autosave of the imported design").not.toContain(draftAutosave(slug));
+        expect(JSON.parse(designerStorage()[NEW_DESIGN_AUTOSAVE] ?? "null")?.name, "the imported design is the new design's work").toBe("Imported");
+        edit.unmount();
+
+        // A reload of the draft shows the draft.
+        const reloaded = await mount(<EditAssemblyClient slug={slug} />);
+        expect(nameValue()).toBe("Open draft");
+        reloaded.unmount();
+        // The new design's route shows the imported work.
+        h.search = new URLSearchParams();
+        await mount(<NewAssemblyClient />);
+        expect(nameValue()).toBe("Imported");
+    });
+
+    it("Reset clears the canvas to a new blank design: the draft's saved state is what a reload shows", async () => {
+        const slug = await saveNamed("Kept draft");
+        const edit = await mount(<EditAssemblyClient slug={slug} />);
+        fireEvent.click(screen.getByTestId("designer-reset"));
+        await act(async () => {});
+        expect(nameValue()).toBe("");
+        expect(Object.keys(designerStorage()), "no blank autosave is written over the draft").not.toContain(draftAutosave(slug));
+        edit.unmount();
+
+        await mount(<EditAssemblyClient slug={slug} />);
+        expect(nameValue()).toBe("Kept draft");
+        expect(loadNamedDraft(slug)!.name).toBe("Kept draft");
+    });
+});

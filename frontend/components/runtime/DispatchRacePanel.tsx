@@ -39,9 +39,12 @@ interface Props {
     onStart: (policy: RaceStartPolicy) => void;
     tokenSymbol: string;
     decimals: number | undefined;
+    /** A checkout attempt is signing or sending: the race's outcome feeds
+     *  it, so the reset controls wait until it ends. */
+    attemptInFlight?: boolean;
 }
 
-export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Props) {
+export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals, attemptInFlight = false }: Props) {
     const { step, error, candidates, repliedCount, result, quoting } = race;
     const [windowSeconds, setWindowSeconds] = useState("120");
     const [maxCandidates, setMaxCandidates] = useState("");
@@ -193,6 +196,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                     variant="link"
                     size="sm"
                     onClick={race.reset}
+                    disabled={attemptInFlight}
                     className="px-0 self-start text-xs text-ink-muted hover:text-ink-body underline"
                     data-testid="race-reset"
                 >
@@ -210,6 +214,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
                 variant="link"
                 size="sm"
                 onClick={race.reset}
+                disabled={attemptInFlight}
                 className="px-0 self-start text-xs text-ink-muted hover:text-ink-body underline"
                 data-testid="race-reset"
             >

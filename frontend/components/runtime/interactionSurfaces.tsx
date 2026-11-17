@@ -34,22 +34,13 @@ export interface InteractionSurfaceProps {
     seller: `0x${string}`;
 }
 
+// The tenants. An interaction standard gains a surface in this frontend by
+// an entry here; another frontend keeps a registry of its own.
 const REGISTRY = new Map<string, ComponentType<InteractionSurfaceProps>>([
     ["qr-challenge", QrChallengePanel],
     ["ecdh-address", AddressDetailPanel],
     ["ecdh-content", ContentDeliveryPanel],
 ]);
-
-/** Register a surface for a declared interaction interface. Last write wins —
- *  callers may override a built-in mapping. The registry's extension point:
- *  new tenants register here as new interaction standards gain surfaces.
- *  @public */
-export function registerInteractionSurface(
-    interfaceId: string,
-    component: ComponentType<InteractionSurfaceProps>,
-): void {
-    REGISTRY.set(interfaceId, component);
-}
 
 /** The surface this frontend maps to a declared interaction interface, or
  *  null — the caller renders nothing extra. */

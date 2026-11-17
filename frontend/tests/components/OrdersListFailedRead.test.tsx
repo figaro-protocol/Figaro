@@ -27,7 +27,9 @@ vi.mock("wagmi", () => ({
     // The token's decimals, which a row reads: unanswered here.
     useReadContract: () => ({ data: undefined, isLoading: false }),
     useWatchContractEvent: () => undefined,
+    useDisconnect: () => ({ disconnect: () => undefined }),
 }));
+vi.mock("@/hooks/useConnectInjected", () => ({ useConnectInjected: () => () => undefined }));
 vi.mock("@/lib/core/indexer", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/core/indexer")>()),
     getCoreEvents: (...a: unknown[]) => mocks.coreEvents(...a),
@@ -112,6 +114,27 @@ describe("/orders?wallet= — no wallet, read present", () => {
         } finally {
             mocks.connected = true;
             mocks.walletParam = undefined;
+        }
+    });
+});
+
+describe("/orders — no wallet and no ?wallet=", () => {
+    it("one line says the list is one address's orders and none is named, with the connect control beside it; no gate, no read", async () => {
+        mocks.connected = false;
+        mocks.walletParam = undefined;
+        mocks.coreEvents.mockClear();
+        try {
+            const { container } = render(<OrdersList />);
+            const line = screen.getByTestId("orders-no-address");
+            expect(line.textContent).toMatch(/These are the orders of one address, and this page names none: connect a wallet, or add \?wallet=0x… to the address\./);
+            expect(line.querySelector('[data-testid="connect-wallet"]')).not.toBeNull();
+            expect(screen.queryByTestId("wallet-gate")).toBeNull();
+            expect(container.textContent).not.toMatch(/There is no account to create/);
+            await new Promise((r) => setTimeout(r, 30));
+            expect(mocks.coreEvents).not.toHaveBeenCalled();
+            expect(screen.queryByTestId("orders-empty")).toBeNull();
+        } finally {
+            mocks.connected = true;
         }
     });
 });

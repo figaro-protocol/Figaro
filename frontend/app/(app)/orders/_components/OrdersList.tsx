@@ -35,7 +35,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
+import { WalletGate } from "@/components/runtime/WalletGate";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/core/walletProcessQueries";
 import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import { shareSignedOrder } from "@/lib/checkout/orderSignedAndShared";
@@ -450,15 +450,20 @@ export function OrdersList() {
                 </p>
             </header>
 
-            {/* Gate on mounted: the server renders the disconnected branch, so the
-                first client render must too (wagmi restores the connection
-                synchronously from storage — branching on it during hydration is
-                React #418/#423/#425). Real state takes over post-mount. */}
+            {/* The list is one address's orders. With neither a wallet nor
+                `?wallet=`, its place says so in one line, with the connect
+                control beside it, since connecting is one way to name an
+                address; no read starts. Branch on mounted: the server renders
+                this line, so the first client render must too (wagmi restores
+                the connection synchronously from storage — branching on it
+                during hydration is React #418/#423/#425). */}
             {!mounted || (!isConnected && !viewed) ? (
-                <WalletGate explainer={STRANGER_EXPLAINER} hint="Connect a wallet to see your orders, or name any address with ?wallet=0x… to read its orders.">
-                    <div className="rounded-lg border border-default bg-paper p-5 text-sm text-ink-muted">
-                        Connect a wallet to see your orders, or add <code>?wallet=0x…</code> to this address to read any wallet&apos;s. Every order is public.
-                    </div>
+                <WalletGate
+                    data-testid="orders-no-address"
+                    className="flex flex-wrap items-center gap-3 text-sm text-ink-muted"
+                    hint="These are the orders of one address, and this page names none: connect a wallet, or add ?wallet=0x… to the address. Every order is public."
+                >
+                    {null}
                 </WalletGate>
             ) : (
                 <>

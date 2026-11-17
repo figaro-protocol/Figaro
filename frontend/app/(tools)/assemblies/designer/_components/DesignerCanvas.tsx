@@ -240,11 +240,19 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     // with a blank seed before restore completes.
     const [hydrated, setHydrated] = useState(false);
     // Whose autosave this canvas writes: the new design (null) or the named
-    // draft it opened. Save moves it to the draft it wrote.
+    // draft it opened. Save moves it to the draft it wrote; Reset and an
+    // import move it to the new design (`holdNewDesign`).
     const autosaveOwnerRef = useRef<AutosaveOwner>(null);
     // The named draft as last saved; a canvas state equal to it is not
     // unsaved work.
     const savedDraftRef = useRef<DesignSnapshot | null>(null);
+    // From here the canvas holds an unnamed design, not the draft it opened: its
+    // work autosaves as the new design's, and the draft, with its own
+    // autosave, stays as it was.
+    const holdNewDesign = useCallback(() => {
+        autosaveOwnerRef.current = null;
+        savedDraftRef.current = null;
+    }, []);
     useEffect(() => {
         if (seed.kind === "blank") {
             clearAutosave(null);
@@ -467,10 +475,13 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     }, []);
 
     const handleReset = useCallback(() => {
-        // Reset clears to a fresh blank: the orders, every composed clause,
-        // every bound agreement, the assembly's terms and the editorial
-        // identity. The autosave effect then writes the blank canvas under
-        // this canvas's own autosave key.
+        // Reset clears the canvas and starts over: the orders, every composed
+        // clause, every bound agreement, the assembly's terms and the
+        // editorial identity. The blank canvas is an unnamed design, as on
+        // `/assemblies/designer/new?fresh=1`, so the autosave effect writes
+        // it under the new design's key; a named draft the canvas had open
+        // keeps its saved state and its own autosave.
+        holdNewDesign();
         const fresh = startSyntheticSession();
         const root = createSyntheticRootOrder(fresh);
         Object.assign(session, fresh);
@@ -484,7 +495,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         setRegisteredByOrderId({});
         setAssemblyClauses({});
         setSelectedOrderId(null);
-    }, [session]);
+    }, [session, holdNewDesign]);
 
     /** Apply a assembly imported through composition-assist to the live
      *  canvas — the same hydration the draft seed and the fork bridge use.
@@ -506,6 +517,10 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 : window.confirm("Replace the current canvas with the imported assembly? The current state stays autosaved until then.");
             if (!ok) return false;
         }
+        // The imported assembly is an unnamed design: its work autosaves as
+        // the new design's, and a named draft the canvas had open is left as
+        // it was.
+        holdNewDesign();
         const restored = snapshotToInitial(draft);
         Object.assign(session, restored.session);
         setOrders(restored.orders);
@@ -520,7 +535,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         setAssemblyClauses(restored.assemblyClauses);
         setSelectedOrderId(null);
         return true;
-    }, [session, orders, clausesByOrderId]);
+    }, [session, orders, clausesByOrderId, holdNewDesign]);
 
     /** Validation result for `buildSnapshot`. Distinguishes the failure
      *  modes so the caller can surface a specific error before opening

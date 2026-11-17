@@ -264,7 +264,8 @@ describe("wallet-provider scope per route", () => {
         expect(reached.some((f) => f.startsWith("lib/")), "the walk reaches lib/").toBe(true);
         expect(reached, "the walk reaches the standalone publicClient's module").toContain("lib/shared/wagmi.ts");
         expect(findings.map(describeFinding)).toEqual([]);
-    });
+        // The walk parses every file the marketing tree reaches; under coverage it runs past the default limit.
+    }, 60_000);
 
     it.each(["app/(app)/layout.tsx", "app/(tools)/layout.tsx"])("the code %s uses reaches the Providers stack and WagmiProvider", (layout) => {
         const { findings } = walletReach([path.join(ROOT, layout)]);

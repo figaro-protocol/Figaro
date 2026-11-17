@@ -109,7 +109,12 @@ vi.mock("@/lib/core/signedCommitment", () => ({ restoreSignedProcessId: (c: unkn
 vi.mock("@/lib/core/agreementFetch", () => ({
     fetchAgreement: async () => ({ status: "present", value: { clauses: [], provenance: { agreementHash: w.key, assemblyHash: w.key } } }),
 }));
-vi.mock("@/lib/composition/witnessContent", () => ({ publishWitnessContent: async () => undefined, keepPrivateWitnessContent: () => "public" }));
+vi.mock("@/lib/composition/witnessContent", () => ({
+    publishWitnessContent: async () => undefined,
+    keepPrivateWitnessContent: () => "public",
+    readKeptWitnessContent: () => null,
+    forgetKeptWitnessContent: () => undefined,
+}));
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/shared/ipfsService")>()),
     DEFAULT_IPFS_SERVICE: {

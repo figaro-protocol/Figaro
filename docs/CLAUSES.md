@@ -345,10 +345,10 @@ The SDK (`contentFieldsFor` in `sdk/src/clauses/encode.ts`) and the proof
 program (`encode_content_from_spec` in `prover/clause/src/encode.rs`) apply it
 alike, and the reference frontend reads the same rule
 (`attestationContentFields` in `frontend/lib/shared/clauseSpecSource.ts`). A
-ladder clause declares no stage sets, so each of its events is encoded over its
-top-level fields; where a process-log clause does declare `stages[k]`, its
-event at ordinal k is encoded over that set, and the reference frontend's card
-at that ordinal collects that set's fields. A ladder event is one party's own log; evidence of a transfer between
+ladder that declares no stage sets encodes each of its events, with the stage,
+to the same bytes as with none: over its top-level fields. A ladder that
+declares `stages[k]` encodes its event at ordinal k over that set, and the
+reference frontend's card at that ordinal collects that set's fields. A ladder event is one party's own log; evidence of a transfer between
 parties is filed by a party through the relevant clause's own capability.
 Whose hands the goods are in is derived by readers from the composed clauses'
 events, never stored.

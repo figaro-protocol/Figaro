@@ -310,6 +310,11 @@ export function CheckoutView({ sellerAddress }: Props) {
     // the winner + the reproduction inputs (salts, deadline).
     const race = useDispatchRace();
     const raceOutcome = race.result;
+    // The race outcome as the page holds it, read by an attempt's failure when
+    // it lands: a reset made while the attempt signed has cleared it, and the
+    // outcome the attempt's render captured is then stale.
+    const raceOutcomeNow = useRef(raceOutcome);
+    raceOutcomeNow.current = raceOutcome;
     // Buyer-entered units per assembly node id — the "checkout-quantity" rate
     // source's input (hours, seats, …). Read by the SAME pricing call the
     // commit walk makes, so the shown figure equals what commits.
@@ -829,8 +834,10 @@ export function CheckoutView({ sellerAddress }: Props) {
             // order, since an order this attempt signed and relayed may be in
             // a seller's hands. After a race, the salts and the deadline are
             // fixed, so the retry keeps every value and rebuilds the same
-            // orders (`freshBlindingStore`).
-            blindingKept.current = freshBlindingStore(blindingKept.current, raceOutcome);
+            // orders (`freshBlindingStore`). The outcome is read as it stands
+            // when the attempt fails, so a reset made meanwhile keeps the
+            // store empty.
+            blindingKept.current = freshBlindingStore(blindingKept.current, raceOutcomeNow.current);
             const msg = extractErrorMessage(cause, "Signing failed");
             setCheckoutError(msg);
         }
@@ -1275,6 +1282,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 <DispatchRacePanel
                                     race={raceWithFreshDraws}
                                     onStart={handleRaceStart}
+                                    attemptInFlight={placingOrder}
                                     tokenSymbol={tokenSymbol}
                                     decimals={tokenDecimals}
                                 />
