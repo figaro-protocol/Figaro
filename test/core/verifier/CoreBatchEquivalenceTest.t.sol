@@ -113,6 +113,11 @@ contract CoreBatchEquivalenceTest is Test {
     mapping(bytes32 => uint256) internal pidOf; // either path's processId → model process index
     uint256 internal nextOid;
     uint256 internal resolveCount;
+    /// @dev The two bonds of every order committed and not yet resolved,
+    ///      summed from the signed commitments alone: each pool, FigaroCore
+    ///      after every step and the verifier after every batch, holds
+    ///      exactly this, whatever the model says.
+    uint256 internal openBonds;
 
     // The batch being built: what the guest would output for it.
     bytes internal opsStream;
@@ -354,6 +359,7 @@ contract CoreBatchEquivalenceTest is Test {
         o.b = c;
         _commitBatch(oid, pid, row);
         processOrders[pid].push(oid);
+        openBonds += 2 * c.payment + 2 * c.expectedCumulativeValue;
     }
 
     function _commitDirect(uint256 oid, uint256 pid, uint256[] memory row) internal {
@@ -419,6 +425,7 @@ contract CoreBatchEquivalenceTest is Test {
         CommitmentTypes.Commitment[] memory listD = new CommitmentTypes.Commitment[](oids.length);
         for (uint256 i = 0; i < oids.length; i++) {
             listD[i] = orders[oids[i]].d;
+            openBonds -= 2 * listD[i].payment + 2 * listD[i].expectedCumulativeValue;
         }
         // The Core's one form: a call from the buyer's address, by its key or
         // by code its wallet installed (DESIGN_DECISIONS § 4); either is this.
@@ -578,6 +585,9 @@ contract CoreBatchEquivalenceTest is Test {
                 revert ObservableDiverges("tokens: direct wallet", t, step);
             }
         }
+        if (tokenD.balanceOf(address(core)) != openBonds) {
+            revert ObservableDiverges("tokens: FigaroCore against its open bonds", t, step);
+        }
         if (tokenD.balanceOf(address(core)) != row[C_CONTRACT]) {
             revert ObservableDiverges("tokens: FigaroCore", t, step);
         }
@@ -592,6 +602,13 @@ contract CoreBatchEquivalenceTest is Test {
     /// @dev The batch path after every batch: every wallet and the verifier's
     ///      holding, against the model and so against the Core.
     function _checkBatch(uint256 t, uint256 step, uint256[] memory row) internal view {
+        // The verifier pools every open batched bond across batches: after
+        // each batch it holds exactly the bonds of the orders committed and
+        // not yet resolved on the batch path, two processes open at once in
+        // most traces.
+        if (tokenB.balanceOf(address(verifier)) != openBonds) {
+            revert ObservableDiverges("tokens: FigaroBatchVerifier against its open bonds", t, step);
+        }
         for (uint256 i = 0; i < PARTIES; i++) {
             if (tokenB.balanceOf(party[i]) != row[C_WALLETS + i]) {
                 revert ObservableDiverges("tokens: batch wallet", t, step);
