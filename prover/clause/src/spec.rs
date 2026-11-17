@@ -210,8 +210,8 @@ pub struct ClauseSpec {
     pub description: String,
     /// Default field shape; applies to all stages unless a stage override is set.
     pub fields: Vec<FieldSpec>,
-    /// Optional per-stage overrides. Keyed by stage number (matches
-    /// AttestationCoordinator stage uint8).
+    /// Optional per-stage overrides, keyed by the on-chain `uint8 stage`
+    /// a stage key names (`parse_stage_key`).
     pub stages: Option<std::collections::BTreeMap<u8, Vec<FieldSpec>>>,
     // The `block` slice of the spec JSON (designer/runtime composition
     // metadata) is NOT parsed here — pure presentation, matching Layer A.
@@ -826,6 +826,21 @@ fn parse_field_spec_core(
     }
 }
 
+/// The stage a `stages` key names, or `None` when the key is not a stage
+/// key. A stage key has one spelling: the decimal of the on-chain
+/// `uint8 stage`, digits only, with no sign, no leading zero and no
+/// whitespace ("0" to "255"). A spec with any other key does not parse.
+/// The SDK reads a key by the same rule (`stageOfKey` in
+/// `sdk/src/clauses/spec.ts`).
+pub fn parse_stage_key(key: &str) -> Option<u8> {
+    let bytes = key.as_bytes();
+    let digits_only = !bytes.is_empty() && bytes.len() <= 3 && bytes.iter().all(u8::is_ascii_digit);
+    if !digits_only || (bytes.len() > 1 && bytes[0] == b'0') {
+        return None;
+    }
+    key.parse::<u8>().ok()
+}
+
 /// Parse and validate an unknown JSON value as a `ClauseSpec`. Validates
 /// the meta-clause (the structure of the spec itself, not any content).
 pub fn parse_clause_spec(raw: &Value) -> ParseClauseSpecResult {
@@ -902,16 +917,13 @@ pub fn parse_clause_spec(raw: &Value) -> ParseClauseSpecResult {
                 Some(stage_map) => {
                     let mut out = std::collections::BTreeMap::new();
                     for (key, value) in stage_map {
-                        let stage_num: u32 = match key.parse() {
-                            Ok(n) if n <= 255 => n,
-                            _ => {
-                                err(
-                                    &mut errors,
-                                    &format!("$.stages.{key}"),
-                                    "stage key must be an integer 0..255",
-                                );
-                                continue;
-                            }
+                        let Some(stage_num) = parse_stage_key(key) else {
+                            err(
+                                &mut errors,
+                                &format!("$.stages.{key}"),
+                                "stage key must be the decimal of an integer 0..255: digits only, no sign, no leading zero",
+                            );
+                            continue;
                         };
                         let arr = match value.as_array() {
                             Some(a) => a,
@@ -933,7 +945,7 @@ pub fn parse_clause_spec(raw: &Value) -> ParseClauseSpecResult {
                             }
                         }
                         field_set_rules_hold(&sf, &format!("$.stages.{key}"), &mut errors);
-                        out.insert(stage_num as u8, sf);
+                        out.insert(stage_num, sf);
                     }
                     Some(out)
                 }

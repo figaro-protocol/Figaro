@@ -39,7 +39,7 @@ pub mod validate;
 
 pub use encode::{encode_content_from_spec, EncodeError, EncodeOptions};
 pub use spec::{
-    parse_clause_spec, parse_field_spec, ArrayFieldSpec, BaseFieldSpec, BigintFieldSpec,
+    parse_clause_spec, parse_field_spec, parse_stage_key, ArrayFieldSpec, BaseFieldSpec, BigintFieldSpec,
     BooleanFieldSpec, DefaultValue, Disposition, EnumFieldSpec, FieldSpec, IntegerFieldSpec, ObjectFieldSpec,
     ParseClauseSpecResult, ClauseSpec, SpecParseError, StringFieldSpec, StringFormat,
     MAX_FIELD_DEPTH,

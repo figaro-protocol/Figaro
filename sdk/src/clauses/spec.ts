@@ -214,8 +214,10 @@ export interface ClauseSpec {
     description: string;
     /** Default field shape; applies to all stages unless a stage override is set. */
     fields: readonly FieldSpec[];
-    /** Optional per-stage overrides. Keyed by stage number (matches AttestationCoordinator stage uint8). */
-    stages?: Readonly<Record<number, readonly FieldSpec[]>>;
+    /** Optional per-stage overrides, keyed by the stage key of the on-chain
+     *  `uint8 stage` (`stageKey`, `stageOfKey`); read one through
+     *  `declaredStageFields`. */
+    stages?: Readonly<Record<string, readonly FieldSpec[]>>;
     // The `block` slice of the spec JSON (designer/runtime composition metadata)
     // is NOT parsed here — it's pure presentation the SDK never reads. The
     // frontend parses it off the same JSON (`lib/shared/clauseBlockBinding`).
@@ -613,6 +615,35 @@ function parseFieldSpecCore(raw: unknown, path: string, errors: SpecParseError[]
     return null;
 }
 
+const STAGE_KEY_MESSAGE = "stage key must be the decimal of an integer 0..255: digits only, no sign, no leading zero";
+
+/**
+ * The stage a `stages` key names, or `undefined` when the key is not a stage
+ * key. A stage key has one spelling: the decimal of the on-chain
+ * `uint8 stage`, digits only, with no sign, no leading zero and no
+ * whitespace ("0" to "255"). A spec with any other key does not parse. The
+ * guest's engine reads a key by the same rule (`parse_stage_key` in
+ * `prover/clause/src/spec.rs`).
+ */
+export function stageOfKey(key: string): number | undefined {
+    if (!/^(?:0|[1-9][0-9]{0,2})$/.test(key)) return undefined;
+    const stage = Number(key);
+    return stage <= 255 ? stage : undefined;
+}
+
+/** The `stages` key of a stage, the inverse of `stageOfKey`; `undefined`
+ *  when the number is not a `uint8`. */
+export function stageKey(stage: number): string | undefined {
+    return Number.isInteger(stage) && stage >= 0 && stage <= 255 ? String(stage) : undefined;
+}
+
+/** The field set a spec declares for `stage` in `stages`, or `undefined`
+ *  when it declares none. `contentFieldsFor` falls back to `fields`. */
+export function declaredStageFields(spec: ClauseSpec, stage: number): readonly FieldSpec[] | undefined {
+    const key = stageKey(stage);
+    return key === undefined ? undefined : spec.stages?.[key];
+}
+
 /**
  * Parse and validate an unknown value as a ClauseSpec. Validates the
  * meta-clause (the structure of the spec itself, not any content).
@@ -654,16 +685,15 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
     // A private set carries its one blinding field. Each stage's set is held
     // to the same rules below.
     fieldSetRulesHold(parsedFields, "$.fields", errors);
-    let parsedStages: Record<number, readonly FieldSpec[]> | undefined;
+    let parsedStages: Record<string, readonly FieldSpec[]> | undefined;
     if (stages !== undefined) {
         if (!isObject(stages)) {
             errors.push({ path: "$.stages", message: "stages must be an object keyed by stage number" });
         } else {
             parsedStages = {};
             for (const [key, value] of Object.entries(stages)) {
-                const stageNum = Number(key);
-                if (!Number.isSafeInteger(stageNum) || stageNum < 0 || stageNum > 255) {
-                    errors.push({ path: `$.stages.${key}`, message: "stage key must be an integer 0..255" });
+                if (stageOfKey(key) === undefined) {
+                    errors.push({ path: `$.stages.${key}`, message: STAGE_KEY_MESSAGE });
                     continue;
                 }
                 if (!Array.isArray(value)) {
@@ -676,7 +706,7 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
                     if (child !== null) stageFields.push(child);
                 }
                 fieldSetRulesHold(stageFields, `$.stages.${key}`, errors);
-                parsedStages[stageNum] = stageFields;
+                parsedStages[key] = stageFields;
             }
         }
     }

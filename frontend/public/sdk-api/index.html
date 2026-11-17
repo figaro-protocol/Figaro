@@ -1574,7 +1574,11 @@ at <code>/spec</code>; the clause-authoring path is at <code>/clauses</code>.</p
 <p>Format is a closed subset of JSON Schema. Field types: <code>string</code> (with
 format <code>bytes32-hex</code> / <code>address-hex</code> / <code>bytes-hex</code> / <code>iso-datetime</code>),
 <code>integer</code>, <code>bigint</code> (decimal-string for JSON safety), <code>boolean</code>, <code>enum</code>,
-<code>array</code>, <code>object</code>. Per-stage overrides via <code>spec.stages[stage]</code>.</p>
+<code>array</code>, <code>object</code>. Per-stage overrides via <code>spec.stages[stage]</code>: each key is
+the decimal of the stage, from <code>&quot;0&quot;</code> to <code>&quot;255&quot;</code>, with no sign, no leading zero
+and no whitespace, and a spec with any other key does not parse.
+<code>stageOfKey(key)</code> reads a key, <code>stageKey(stage)</code> writes one, and
+<code>declaredStageFields(spec, stage)</code> returns the set a spec declares for a stage.</p>
 <p><strong>A clause IS its spec: the key is the hash of the spec without its <code>block</code>.</strong> A
 spec keeps <code>clauseId</code> and <code>version</code> as its own presentation fields (a title and
 a lineage counter a reader shows); nothing on chain or in a leaf reads them.

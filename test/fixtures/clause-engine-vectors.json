@@ -51483,6 +51483,455 @@
    "ok": false
   },
   {
+   "label": "stage key \"0\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "0": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": true
+  },
+  {
+   "label": "stage key \"1\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "1": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": true
+  },
+  {
+   "label": "stage key \"255\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "255": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": true
+  },
+  {
+   "label": "stage key \"01\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "01": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage key \"00\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "00": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage key \"+1\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "+1": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage key \" 1\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     " 1": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage key \"1 \"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "1 ": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage key \"1.0\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "1.0": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage key \"0x1\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "0x1": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage key \"-0\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "-0": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage key \"\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage key \"256\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "256": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage key \"1e1\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "1e1": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage key \"١\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "١": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage key \"a\"",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "a": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "stage keys \"1\" and \"01\" in one spec",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "1": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "integer"
+      }
+     ],
+     "01": [
+      {
+       "name": "v",
+       "required": true,
+       "type": "boolean"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
    "label": "fields not an array",
    "spec": {
     "clauseId": "t",
@@ -53131,6 +53580,30 @@
     "b": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
    },
    "encoded": "0x000000000000000000000000000000000000000000000000000000000000002acdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+  },
+  {
+   "label": "a stage-0 set",
+   "fields": [
+    {
+     "name": "note",
+     "type": "string",
+     "required": true
+    }
+   ],
+   "stages": {
+    "0": [
+     {
+      "name": "reading",
+      "type": "integer",
+      "required": true
+     }
+    ]
+   },
+   "stage": 0,
+   "content": {
+    "reading": 7
+   },
+   "encoded": "0x0000000000000000000000000000000000000000000000000000000000000007"
   },
   {
    "label": "a public geohash at the cap",

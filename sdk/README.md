@@ -1624,7 +1624,11 @@ const bytes = encodeContentFromSpec(parsed.spec, { handoff: ["face-to-face"] });
 Format is a closed subset of JSON Schema. Field types: `string` (with
 format `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
 `integer`, `bigint` (decimal-string for JSON safety), `boolean`, `enum`,
-`array`, `object`. Per-stage overrides via `spec.stages[stage]`.
+`array`, `object`. Per-stage overrides via `spec.stages[stage]`: each key is
+the decimal of the stage, from `"0"` to `"255"`, with no sign, no leading zero
+and no whitespace, and a spec with any other key does not parse.
+`stageOfKey(key)` reads a key, `stageKey(stage)` writes one, and
+`declaredStageFields(spec, stage)` returns the set a spec declares for a stage.
 
 **A clause IS its spec: the key is the hash of the spec without its `block`.** A
 spec keeps `clauseId` and `version` as its own presentation fields (a title and

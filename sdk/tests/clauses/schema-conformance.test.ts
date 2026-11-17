@@ -78,6 +78,19 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         expect(parseClauseSpec(JSON.parse(JSON.stringify(spec))).ok).toBe(false);
     });
 
+    // A stage key has one spelling, the decimal of an integer 0..255; the
+    // schema and the parser accept the same keys.
+    const stageKeys: ReadonlyArray<readonly [string, boolean]> = [
+        ...Array.from({ length: 256 }, (_, n) => [String(n), true] as const),
+        ...["01", "00", "000", "+1", " 1", "1 ", "1\n", "1.0", "0x1", "-0", "-1", "", "256", "260", "999", "1000", "1e1", "١", "a"]
+            .map((key) => [key, false] as const),
+    ];
+    it.each(stageKeys)("stage key %j: accepted %s in BOTH schema and parser", (key, accepted) => {
+        const spec = withFields([open], { [key]: [open] });
+        expect(validateAgainstSchema(spec), JSON.stringify(validateAgainstSchema.errors)).toBe(accepted);
+        expect(parseClauseSpec(spec).ok).toBe(accepted);
+    });
+
     // `block` is presentation metadata the SDK parser does NOT own (see spec.ts) —
     // it is validated by this schema and the frontend's clauseBlockBinding, never by
     // parseClauseSpec. So a malformed block (e.g. missing the required design

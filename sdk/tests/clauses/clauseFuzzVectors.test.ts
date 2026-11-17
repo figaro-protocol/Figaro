@@ -31,11 +31,13 @@ import path from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+    contentFieldsFor,
     encodeContentFromSpec,
     GEOHASH_FORMAT,
     geohashCapturePrecision,
     PRIVATE_GEOHASH_MAX_PRECISION,
     parseClauseSpec,
+    stageOfKey,
     validateContent,
     type ClauseSpec,
     type FieldDisposition,
@@ -392,6 +394,13 @@ const fieldSetArb: fc.Arbitrary<Record<string, unknown>[]> = fc
         }
     });
 
+/** A stage key: most draws in the one spelling a stage key has, the decimal
+ *  of an integer 0..255; the rest in spellings both engines refuse. */
+const stageKeyArb: fc.Arbitrary<string> = fc.oneof(
+    { weight: 3, arbitrary: fc.constantFrom("0", "1", "2", "3", "255") },
+    { weight: 2, arbitrary: fc.constantFrom("01", "00", "+1", " 1", "1 ", "1.0", "0x1", "-0", "", "256", "1e1", "\u0661", "a") },
+);
+
 const generatedSpecArb: fc.Arbitrary<Record<string, unknown>> = fc
     .record(
         {
@@ -400,19 +409,24 @@ const generatedSpecArb: fc.Arbitrary<Record<string, unknown>> = fc
             title: fc.string({ maxLength: 12 }),
             description: fc.string({ maxLength: 24 }),
             fields: fieldSetArb,
-            stages: fc.dictionary(fc.constantFrom("1", "2", "3"), fieldSetArb, { maxKeys: 2 }),
+            stages: fc.dictionary(stageKeyArb, fieldSetArb, { maxKeys: 2 }),
         },
         { requiredKeys: ["clauseId", "version", "title", "description", "fields"] },
     )
     // Sometimes malformed: the parse verdict is one of the three answers.
     .chain((spec) =>
-        fc.integer({ min: 0, max: 19 }).map((roll) => {
+        fc.tuple(fc.integer({ min: 0, max: 19 }), stageKeyArb).map(([roll, key]) => {
             const damaged: Record<string, unknown> = { ...spec };
             if (roll === 0) delete damaged.clauseId;
             if (roll === 1) damaged.version = "1";
             if (roll === 2) damaged.fields = {};
             if (roll === 3) damaged.fields = [...(spec.fields as unknown[]), { name: "x", required: true, type: "decimal" }];
             if (roll === 4) damaged.fields = [...(spec.fields as unknown[]), { name: "e", required: true, type: "enum", values: Array.from({ length: 257 }, (_, i) => `v${i}`) }];
+            if (roll >= 5 && roll <= 10) {
+                // Sets that parse, so the stage key alone decides the verdict.
+                damaged.fields = [{ name: "note", type: "string", required: true }];
+                damaged.stages = { [key]: [{ name: "reading", type: "integer", required: true }] };
+            }
             return damaged;
         }),
     );
@@ -452,13 +466,13 @@ function fieldsOf(rawSpec: unknown, stage: number | null): readonly FieldSpec[] 
     const parsed = parseClauseSpec(rawSpec);
     if (!parsed.ok) return [];
     const spec: ClauseSpec = parsed.spec;
-    return stage !== null && spec.stages?.[stage] !== undefined ? spec.stages[stage] : spec.fields;
+    return stage === null ? spec.fields : contentFieldsFor(spec, { stage });
 }
 
 function stagesOf(rawSpec: unknown): (number | null)[] {
     const parsed = parseClauseSpec(rawSpec);
     if (!parsed.ok) return [null];
-    return [null, ...Object.keys(parsed.spec.stages ?? {}).map(Number), 9];
+    return [null, ...Object.keys(parsed.spec.stages ?? {}).map((key) => stageOfKey(key) as number), 9];
 }
 
 function build(seed: number, perSpec: number, generatedSpecs: number): Vector[] {

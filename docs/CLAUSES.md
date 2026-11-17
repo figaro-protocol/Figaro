@@ -312,6 +312,18 @@ terms — a temperature reading, measured grams, a detected proximity band —
 declares that content as `spec.stages[N]`, a per-stage field set keyed by the
 on-chain `uint8 stage`. Stage 0 is the committed content, declared by `fields`;
 `stages[N≥1]` are the shapes of evidence attested while the process is open.
+A stage key has one spelling: the decimal of an integer from 0 to 255, digits
+only, with no sign, no leading zero and no whitespace (`"0"`, `"1"`, `"255"`).
+A spec with any other key does not parse in either engine, and the issue names
+the key (`stageOfKey` and `stageKey` in `sdk/src/clauses/spec.ts`,
+`parse_stage_key` in `prover/clause/src/spec.rs`). `ClauseRegistry` reads no
+spec and registers such a clause anyway; the reference tooling never loads it.
+A `"0"` key is a stage key like any other. Both engines encode and validate
+content at stage 0 over `stages["0"]` where the spec declares it, else over
+`fields`. The content the parties sign is validated over `fields` alone, at
+the sign gate (`validateCommitmentAgreement` in `sdk/src/projection.ts`) and
+in the guest's gate for a re-asserted clause (`validate_attestation_content`
+in `prover/lib/src/kernel.rs`).
 The spec's stage list is the whole signal: an interface derives a witness capability
 for any composed clause that declares stages, renders the form from the
 declared fields, validates and encodes at the stage, and files through
@@ -427,7 +439,8 @@ registry's seed data; the published definition of the format is
   `version`, `title`, `description`) a human reads, and the content
   `fields`/`stages`. Stage 0 is the committed
   content (declared by `fields`); `stages[N≥1]` are the evidence shapes attested
-  while the process is open. Every clause is a merkle leaf under the signed
+  while the process is open. Each `stages` key is the decimal of the stage, from
+  `"0"` to `"255"`, in one spelling (§ "Witness stages"). Every clause is a merkle leaf under the signed
   `checkoutHash`; the SDK validates the content against the spec off-chain, and
   the bonds secure what was signed. The chain registers clauses and binds
   attestations to the signed agreement; it reads no content shape.

@@ -615,6 +615,13 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
     ...[6, 7, 8, 9, 10, 11, 12, 16, 17, 32, 33].map((depth) => ({ label: `array nesting depth ${depth}`, spec: specOf([nestArrays(depth)]) })),
     { label: "stages", spec: specOf(f({ type: "boolean" }), { 1: f({ type: "integer" }) }) },
     { label: "stages not an object", spec: specOf(f({ type: "boolean" }), []) },
+    // A stage key has one spelling: the decimal of an integer 0..255, digits
+    // only, no sign, no leading zero, no whitespace.
+    ...["0", "1", "255", "01", "00", "+1", " 1", "1 ", "1.0", "0x1", "-0", "", "256", "1e1", "١", "a"].map((key) => ({
+        label: `stage key ${JSON.stringify(key)}`,
+        spec: specOf(f({ type: "boolean" }), { [key]: f({ type: "integer" }) }),
+    })),
+    { label: "stage keys \"1\" and \"01\" in one spec", spec: specOf(f({ type: "boolean" }), { "1": f({ type: "integer" }), "01": f({ type: "boolean" }) }) },
     { label: "fields not an array", spec: specOf({}) },
     { label: "empty fields", spec: specOf([]) },
     { label: "spec is an array", spec: [] },
@@ -704,6 +711,14 @@ const ENCODE_CASES: { label: string; fields: Field[]; stages?: Record<number, Fi
         stage: 1,
         content: { reading: 42, b: `0x${"cd".repeat(32)}` },
     },
+    // A spec that declares `stages["0"]` encodes stage-0 content over that set.
+    {
+        label: "a stage-0 set",
+        fields: [{ name: "note", type: "string", required: true }],
+        stages: { 0: [{ name: "reading", type: "integer", required: true }] },
+        stage: 0,
+        content: { reading: 7 },
+    },
     { label: "a public geohash at the cap", fields: [str({ format: "geohash" })], content: { v: "dr5reg" } },
     { label: "bytes-hex empty", fields: [str({ format: "bytes-hex" })], content: { v: "0x" } },
     { label: "bytes-hex one byte", fields: [str({ format: "bytes-hex" })], content: { v: "0x00" } },
@@ -768,6 +783,15 @@ describe("Clause-engine vectors — the hand-written leg of the clause-engine lo
         ).toBe(true);
         expect(built.specs.some((c) => c.ok)).toBe(true);
         expect(built.specs.some((c) => !c.ok)).toBe(true);
+    });
+
+    it("a stage key parses only as the decimal of an integer 0..255, and a refusal names the key", () => {
+        const accepted = new Set(["0", "1", "255"]);
+        for (const key of ["0", "1", "255", "01", "00", "+1", " 1", "1 ", "1.0", "0x1", "-0", "", "256", "1e1", "١", "a"]) {
+            const parsed = parseClauseSpec(specOf(f({ type: "boolean" }), { [key]: f({ type: "integer" }) }));
+            expect(parsed.ok, `stage key ${JSON.stringify(key)}`).toBe(accepted.has(key));
+            if (!parsed.ok) expect(parsed.errors.map((e) => e.path)).toContain(`$.stages.${key}`);
+        }
     });
 });
 
