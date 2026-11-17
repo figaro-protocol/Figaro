@@ -222,44 +222,70 @@ describe("projectSnapshotForReview — malformed and empty compositions", () => 
     });
 });
 
-// An agreement that composes no clause declaring `lineItems` still carries its
-// payment in the commitment; what it does not commit is the list of what the
-// payment buys. The review names each such order before publish.
-describe("projectSnapshotForReview — an agreement with no line items", () => {
+// No clause is required, and the list of what a payment buys may sit in any
+// clause under any field name: a stranger's itemized clause is composed as any
+// clause is. The review classifies no clause by a field's name or shape
+// (docs/CLAUSES.md, "block.design.article is the one grouping word"), so it
+// names no order as lacking line items.
+describe("projectSnapshotForReview — an order's line items are any clause's", () => {
     let drawn: ReturnType<typeof drawCanvas>;
+    let itemized: `0x${string}`;
 
     beforeAll(async () => {
         await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...COMMERCE]);
         drawn = drawCanvas();
+        const stranger = {
+            clauseId: "a-strangers-itemized-bill",
+            version: 1,
+            title: "An itemized bill",
+            description: "The articles an order covers, each with its count and its price.",
+            fields: [{
+                name: "articles",
+                type: "array",
+                required: true,
+                minItems: 0,
+                items: {
+                    name: "article",
+                    type: "object",
+                    required: true,
+                    fields: [
+                        { name: "label", type: "string", required: true, minLength: 1 },
+                        { name: "count", type: "integer", required: true, min: 1 },
+                        { name: "price", type: "bigint", required: true, min: "0" },
+                    ],
+                },
+            }],
+            stages: {},
+            block: {
+                design: { article: "billing", scope: "agreement", nestsUnder: null, fills: [], composes: null },
+                checkout: { catalogueFills: [], profileFills: [], catalogueMeasures: {} },
+                runtime: { interaction: null, fields: [] },
+            },
+        };
+        const { clauseKey, bytes } = pinSpec(stranger);
+        const uri = "mem://a-strangers-itemized-bill";
+        setClauseSpecFetcher(async (u) => (u === uri ? bytes : canonicalFileBytes(u)));
+        await loadClauseSpec(clauseKey, uri);
+        itemized = clauseKey;
     });
 
-    it("names the order whose agreement composes no line items, and no other", () => {
-        const bare = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [keyOf("figaro-schedule")]: {} } });
+    it("names no order of a draft whose orders compose a stranger's itemized clause under another field name", () => {
         const review = projectSnapshotForReview(snapshotOf(drawn, {
-            registeredByOrderId: { [drawn.orders[0].orderHash]: bare },
-            clausesByOrderId: { [drawn.orders[1].orderHash]: { [keyOf("figaro-commerce")]: {} } },
+            clausesByOrderId: Object.fromEntries(drawn.orders.map((o) => [o.orderHash, { [itemized]: {} }])),
         }));
         if (!review.ok) throw new Error(review.error);
-        expect(review.withoutLineItems).toEqual([drawn.orders[0].orderHash]);
+        expect(review).not.toHaveProperty("withoutLineItems");
     });
 
-    it("does not name an order while one of its clauses' specs is unread", () => {
-        const unread = `0x${"ab".repeat(32)}`;
-        const bound = _primeRegisteredAgreement_TESTING_ONLY({ clauses: { [unread]: {} } });
+    it("names no order of a draft whose orders compose figaro-commerce, or no itemized clause at all", () => {
         const review = projectSnapshotForReview(snapshotOf(drawn, {
-            registeredByOrderId: { [drawn.orders[0].orderHash]: bound },
-            clausesByOrderId: { [drawn.orders[1].orderHash]: { [keyOf("figaro-commerce")]: {} } },
+            clausesByOrderId: {
+                [drawn.orders[0].orderHash]: { [keyOf("figaro-commerce")]: {} },
+                [drawn.orders[1].orderHash]: { [keyOf("figaro-schedule")]: {} },
+            },
         }));
         if (!review.ok) throw new Error(review.error);
-        expect(review.withoutLineItems).toEqual([]);
-    });
-
-    it("names none when every agreement composes line items", () => {
-        const review = projectSnapshotForReview(snapshotOf(drawn, {
-            clausesByOrderId: Object.fromEntries(drawn.orders.map((o) => [o.orderHash, { [keyOf("figaro-commerce")]: {} }])),
-        }));
-        if (!review.ok) throw new Error(review.error);
-        expect(review.withoutLineItems).toEqual([]);
+        expect(review).not.toHaveProperty("withoutLineItems");
     });
 });
 
