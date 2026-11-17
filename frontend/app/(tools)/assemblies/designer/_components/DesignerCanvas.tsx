@@ -16,9 +16,15 @@
  *   - Reset:    subtle/text-link  — destructive but recoverable (autosave caught it)
  *
  * Seed kinds:
- *   - 'fresh'  — SSR-safe blank; on mount, try to restore current-session.
- *   - 'blank'  — explicit blank; clear current-session, do not restore.
- *   - 'draft'  — load a named draft from localStorage by slug.
+ *   - 'fresh'  — the new design; on mount, resume its autosave.
+ *   - 'blank'  — the new design, blank; clear its autosave, do not restore.
+ *   - 'draft'  — a named draft by slug; on mount, open its autosave when that
+ *                is newer than the saved draft, else the saved draft.
+ *
+ * Autosave: every change is written under the key of the design the canvas
+ * holds (`syntheticDesignStore`), so the new design and each named draft keep
+ * their unsaved work apart. A state equal to the saved draft writes no
+ * autosave and removes a stale one.
  *
  * SSR contract: every kind renders a blank canvas on first pass and
  * applies the seed in a mount effect — localStorage is client-only.
@@ -44,12 +50,14 @@ import {
     type SyntheticProcessSession,
 } from "@/lib/designer/syntheticProcess";
 import {
-    clearCurrentSession,
+    clearAutosave,
     deleteNamedDraft,
-    loadCurrentSession,
-    loadNamedDraft,
-    saveCurrentSession,
+    loadAutosave,
+    matchesSaved,
+    resumeNamedDraft,
+    saveAutosave,
     saveNamedDraft,
+    type AutosaveOwner,
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
@@ -231,20 +239,28 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     // during render. `hydrated` gates autosave to avoid clobbering stored state
     // with a blank seed before restore completes.
     const [hydrated, setHydrated] = useState(false);
+    // Whose autosave this canvas writes: the new design (null) or the named
+    // draft it opened. Save moves it to the draft it wrote.
+    const autosaveOwnerRef = useRef<AutosaveOwner>(null);
+    // The named draft as last saved; a canvas state equal to it is not
+    // unsaved work.
+    const savedDraftRef = useRef<DesignSnapshot | null>(null);
     useEffect(() => {
         if (seed.kind === "blank") {
-            clearCurrentSession();
+            clearAutosave(null);
             setHydrated(true);
             return;
         }
         if (seed.kind === "draft") {
-            const draft = loadNamedDraft(seed.slug);
-            if (!draft) {
+            const resumed = resumeNamedDraft(seed.slug);
+            if (!resumed) {
                 setSeedError(`Draft "${seed.slug}" not found in this browser's local storage.`);
                 setHydrated(true);
                 return;
             }
-            const restored = snapshotToInitial(draft);
+            autosaveOwnerRef.current = seed.slug;
+            savedDraftRef.current = resumed.saved;
+            const restored = snapshotToInitial(resumed.open);
             Object.assign(session, restored.session);
             setOrders(restored.orders);
             setName(restored.name);
@@ -257,8 +273,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setHydrated(true);
             return;
         }
-        // 'fresh': try to resume the autosaved current session.
-        const restored = loadCurrentSession();
+        // 'fresh': resume the new design's autosave.
+        const restored = loadAutosave(null);
         if (restored && restored.orders.length > 0) {
             const init = snapshotToInitial(restored);
             Object.assign(session, init.session);
@@ -295,7 +311,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             createdAt: Date.now(),
             updatedAt: Date.now(),
         };
-        saveCurrentSession(snap);
+        if (matchesSaved(snap, savedDraftRef.current)) clearAutosave(autosaveOwnerRef.current);
+        else saveAutosave(autosaveOwnerRef.current, snap);
         setSavedAt(Date.now());
     }, [hydrated, seedError, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, name, summary, description, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
@@ -450,7 +467,10 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     }, []);
 
     const handleReset = useCallback(() => {
-        // Reset clears to a fresh blank.
+        // Reset clears to a fresh blank: the orders, every composed clause,
+        // every bound agreement, the assembly's terms and the editorial
+        // identity. The autosave effect then writes the blank canvas under
+        // this canvas's own autosave key.
         const fresh = startSyntheticSession();
         const root = createSyntheticRootOrder(fresh);
         Object.assign(session, fresh);
@@ -460,8 +480,10 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         setSummary("");
         setDescription("");
         setSlug(null);
+        setClausesByOrderId({});
         setRegisteredByOrderId({});
-        clearCurrentSession();
+        setAssemblyClauses({});
+        setSelectedOrderId(null);
     }, [session]);
 
     /** Apply a assembly imported through composition-assist to the live
@@ -551,6 +573,13 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             deleteNamedDraft(slug);
         }
         saveNamedDraft(result.snapshot);
+        // After a save, the saved draft is the newest copy of this work: neither the
+        // autosave the canvas wrote nor the draft's own autosave stays, and
+        // the canvas autosaves under the draft from here on.
+        clearAutosave(autosaveOwnerRef.current);
+        clearAutosave(result.snapshot.slug);
+        autosaveOwnerRef.current = result.snapshot.slug;
+        savedDraftRef.current = result.snapshot;
         setName(result.snapshot.name);
         setSlug(result.snapshot.slug);
         // Same post-action navigation as Review — land on the assemblies
@@ -581,6 +610,10 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         // exact bytes that will be published. The wallet does NOT open here
         // — the review page's "Confirm publish" is the only place it opens.
         saveNamedDraft(result.snapshot);
+        // After the review's save, the draft's own autosave is older than what was saved. The new
+        // design's autosave stays, so the back button returns to the canvas.
+        clearAutosave(result.snapshot.slug);
+        if (autosaveOwnerRef.current === result.snapshot.slug) savedDraftRef.current = result.snapshot;
         // Preserve a ?e2e= mode flag — the review page must stay in
         // devnet/mock mode across this canvas redirect.
         const e2e = searchParams.get("e2e");

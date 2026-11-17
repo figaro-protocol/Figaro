@@ -49,9 +49,8 @@ import { AgreementDrawer } from "../_components/AgreementDrawer";
 import { AssemblyTermsPanel } from "../_components/AssemblyTermsPanel";
 import { AssemblyIdentity } from "../_components/AssemblyIdentity";
 import {
-    deleteNamedDraft,
+    discardPublishedDraft,
     loadNamedDraft,
-    clearCurrentSession,
 } from "@/lib/designer/syntheticDesignStore";
 import { ASSEMBLY_REGISTRY_ABI } from "@/lib/core/contracts";
 import {
@@ -360,9 +359,8 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         try {
             const outcome = await publish(resolved.snapshot, review.assemblyHash);
             // publish() waits for receipt-confirmed status:success, so
-            // it's safe to delete the named draft + clear the session here.
-            clearCurrentSession();
-            deleteNamedDraft(resolved.snapshot.slug);
+            // it's safe to remove the named draft and its autosaves here.
+            discardPublishedDraft(resolved.snapshot);
             // Hold the receipt; the seller clicks Continue to leave.
             setReceipt({
                 hash: outcome.hash,

@@ -157,7 +157,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
         if (!slug) {
             await page.addInitScript(() => {
                 try {
-                    window.localStorage.removeItem('figaro:designer:current');
+                    window.localStorage.removeItem('figaro:designer:autosave:new');
                     window.localStorage.removeItem('figaro:designer:drafts');
                 } catch { /* noop */ }
             });

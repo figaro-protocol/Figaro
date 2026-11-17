@@ -35,7 +35,9 @@
  * drawer, an assembly term and the editorial identity (the description half
  * typed), with no Save. A reload brings every piece back, and so does leaving
  * for the designer hub and returning with the browser's back button: the
- * canvas resumes the autosaved current session on /assemblies/designer/new.
+ * canvas resumes the new design's autosave on /assemblies/designer/new.
+ * The same holds for a saved draft edited on /assemblies/designer/edit?slug=:
+ * its unsaved edits come back from that draft's own autosave.
  *
  * A second test covers what a design fill's VALUE does to the composition:
  * the enum options render through the spec's own valueLabels (a labeled
@@ -219,7 +221,7 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
             expect((await idsOf()).sort(), `${when}: the same orders`).toEqual([rootId, bId, cId].sort());
             // The edges, read out of the autosave the canvas wrote.
             const follows = await page.evaluate(() => {
-                const raw = window.localStorage.getItem('figaro:designer:current');
+                const raw = window.localStorage.getItem('figaro:designer:autosave:new');
                 const snap = raw ? JSON.parse(raw) as { orders: Array<{ orderHash: string; follows?: string[] }> } : null;
                 return Object.fromEntries((snap?.orders ?? []).map((o) => [o.orderHash, o.follows ?? []]));
             });
@@ -246,6 +248,72 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await page.goBack({ waitUntil: 'domcontentloaded' });
         await expect(page).toHaveURL(/\/assemblies\/designer\/new/);
         await expectWorkBack('after the back button');
+    });
+
+    test('unsaved edits to a saved draft survive a reload, and leaving the page and coming back with the back button', async ({ page }) => {
+        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+
+        // ── A saved draft: one root order and a name ─────────────────────────
+        const savedName = `Edit route keeps work ${Date.now()}`;
+        await page.getByTestId('designer-name-input').fill(savedName);
+        const slug = await saveDraft(page);
+        await reopenDraft(page, slug);
+        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+        await expect(page.getByTestId('designer-name-input'), 'the draft opens as saved').toHaveValue(savedName);
+
+        // ── Unsaved edits: a second order, a clause composed on the root, a
+        //    new name and a half-typed description, no blur and no Save ──────
+        const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
+        await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
+        const idsOf = () => orderNodes.evaluateAll((els) =>
+            els.map((el) => el.getAttribute('data-testid')!.replace('order-node-', '')));
+        const [rootId] = await idsOf();
+        await page.getByTestId(`btn-add-suborder-${rootId}`).click();
+        await expect(orderNodes).toHaveCount(2, { timeout: 10000 });
+        const childId = (await idsOf()).find((id) => id !== rootId)!;
+        const geoToggle = await openGeoToggle(page);
+        await geoToggle.check();
+        const editedName = `${savedName}, edited`;
+        await page.getByTestId('designer-name-input').fill(editedName);
+        await page.getByTestId('designer-description-input').pressSequentially('The buyer rec');
+
+        const identity = page.getByTestId('designer-composition-identity');
+        await expect(identity).toBeVisible({ timeout: 30000 });
+        // textContent, as toHaveText reads it: innerText adds line breaks between blocks.
+        const identityBefore = ((await identity.textContent()) ?? '').trim();
+        expect(identityBefore.length, 'the canvas states the composition identity').toBeGreaterThan(0);
+
+        // The saved draft still holds what was saved: the edits are unsaved.
+        const storedName = await page.evaluate((s) => {
+            const raw = window.localStorage.getItem(`figaro:designer:drafts:${s}`);
+            return raw ? (JSON.parse(raw) as { name: string }).name : null;
+        }, slug);
+        expect(storedName, 'no Save was pressed after the edits').toBe(savedName);
+
+        const expectEditsBack = async (when: string) => {
+            await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+            await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+            await expect(orderNodes, `${when}: both orders are back`).toHaveCount(2, { timeout: 10000 });
+            expect((await idsOf()).sort(), `${when}: the same orders`).toEqual([rootId, childId].sort());
+            await expect(page.getByTestId('designer-name-input'), `${when}: the edited name`).toHaveValue(editedName);
+            await expect(page.getByTestId('designer-description-input'), `${when}: the half-typed description`).toHaveValue('The buyer rec');
+            await expect(identity, `${when}: the same composition identity`).toHaveText(identityBefore, { timeout: 30000 });
+            await expect(await openGeoToggle(page), `${when}: the clause composed on the root`).toBeChecked();
+        };
+
+        // ── Reload ───────────────────────────────────────────────────────────
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await expect(page).toHaveURL(new RegExp(`/assemblies/designer/edit\\?slug=${slug}`));
+        await expectEditsBack('after a reload');
+
+        // ── Away to another route, then back with the browser's back button ──
+        await page.goto('/assemblies/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await expect(page.getByTestId('designer-canvas-toolbar')).toHaveCount(0);
+        await page.goBack({ waitUntil: 'domcontentloaded' });
+        await expect(page).toHaveURL(new RegExp(`/assemblies/designer/edit\\?slug=${slug}`));
+        await expectEditsBack('after the back button');
     });
 
     test('an enum design fill renders its spec labels, and changing its value moves the composition identity', async ({ page }) => {

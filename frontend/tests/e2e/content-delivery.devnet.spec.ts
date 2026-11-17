@@ -119,7 +119,7 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         //    anchored slug the Review screen names. ──
         await page.addInitScript(() => {
             try {
-                window.localStorage.removeItem('figaro:designer:current');
+                window.localStorage.removeItem('figaro:designer:autosave:new');
                 window.localStorage.removeItem('figaro:designer:drafts');
             } catch { /* noop */ }
         });

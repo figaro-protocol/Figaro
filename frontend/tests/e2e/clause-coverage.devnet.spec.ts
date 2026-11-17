@@ -514,7 +514,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             const assemblyName = `Coverage: ${rung.clauseId}`;
             await page.addInitScript(() => {
                 try {
-                    window.localStorage.removeItem('figaro:designer:current');
+                    window.localStorage.removeItem('figaro:designer:autosave:new');
                     window.localStorage.removeItem('figaro:designer:drafts');
                 } catch { /* noop */ }
             });

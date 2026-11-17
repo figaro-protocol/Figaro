@@ -97,7 +97,7 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
         if (!slug) {
             await page.addInitScript(() => {
                 try {
-                    window.localStorage.removeItem('figaro:designer:current');
+                    window.localStorage.removeItem('figaro:designer:autosave:new');
                     window.localStorage.removeItem('figaro:designer:drafts');
                 } catch { /* noop */ }
             });

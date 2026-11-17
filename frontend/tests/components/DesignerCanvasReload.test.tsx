@@ -1,9 +1,11 @@
 /**
  * DesignerCanvas — a reload and a back navigation keep the designer's work.
  *
- * The canvas autosaves its whole state into the current-session key on every
- * change (`syntheticDesignStore.saveCurrentSession`), and the /new route with
- * no seed resumes it on mount. A reload and a return by the browser's back
+ * The canvas autosaves its whole state on every change, under the key of the
+ * design it holds: the new design on /assemblies/designer/new, or the named
+ * draft it opened on /assemblies/designer/edit?slug= (`syntheticDesignStore`).
+ * A route resumes its own autosave on mount when that autosave is newer than
+ * what it would otherwise open. A reload and a return by the browser's back
  * button both mount the route again from nothing, so each is an unmount and a
  * fresh mount here, through the real store and the real localStorage.
  *
@@ -91,7 +93,8 @@ vi.mock("@/lib/designer/publishAssembly", () => ({ usePublishAgreement: () => ({
 
 import { NewAssemblyClient } from "@/app/(tools)/assemblies/designer/new/NewAssemblyClient";
 import { EditAssemblyClient } from "@/app/(tools)/assemblies/designer/edit/EditAssemblyClient";
-import { listNamedDrafts } from "@/lib/designer/syntheticDesignStore";
+import { DraftsList } from "@/app/(tools)/assemblies/designer/_components/DraftsList";
+import { listNamedDrafts, loadNamedDraft, saveAutosave } from "@/lib/designer/syntheticDesignStore";
 
 const CLAUSE_A = `0x${"a1".repeat(32)}`;
 const CLAUSE_B = `0x${"b2".repeat(32)}`;
@@ -300,3 +303,223 @@ describe("DesignerCanvas — two saved drafts do not leak into each other", () =
         expect(readTwo.name).toBe("Second");
     });
 });
+
+describe("DesignerCanvas — unsaved work on a named draft at /assemblies/designer/edit?slug=", () => {
+    /** Save the built work as a named draft, and open it in the editor. */
+    async function openSavedDraft() {
+        h.search = new URLSearchParams("fresh=1");
+        const first = await mount(<NewAssemblyClient />);
+        await buildWork();
+        fireEvent.click(screen.getByTestId("designer-save"));
+        const [slug] = listNamedDrafts().map((d) => d.slug);
+        first.unmount();
+        const view = await mount(<EditAssemblyClient slug={slug} />);
+        return { slug, view };
+    }
+
+    /** Unsaved work on the opened draft: one more order and a new name. */
+    async function editUnsaved() {
+        await act(async () => { canvas().onAddSubOrder(canvas().orders[0].orderHash); });
+        fireEvent.change(screen.getByTestId("designer-name-input"), { target: { value: "Port run, edited" } });
+        await act(async () => {});
+        expect(canvas().orders).toHaveLength(4);
+    }
+
+    it("a reload keeps the unsaved edits", async () => {
+        const { slug, view } = await openSavedDraft();
+        await editUnsaved();
+        view.unmount();
+        await mount(<EditAssemblyClient slug={slug} />);
+        expect(canvas().orders).toHaveLength(4);
+        expect((screen.getByTestId("designer-name-input") as HTMLInputElement).value).toBe("Port run, edited");
+    });
+
+    it("leaving and coming back with the back button keeps the unsaved edits", async () => {
+        const { slug, view } = await openSavedDraft();
+        await editUnsaved();
+        view.unmount();
+        render(<p>Orders</p>).unmount();
+        await mount(<EditAssemblyClient slug={slug} />);
+        expect(canvas().orders).toHaveLength(4);
+        expect((screen.getByTestId("designer-name-input") as HTMLInputElement).value).toBe("Port run, edited");
+    });
+});
+
+describe("DesignerCanvas — opening a saved draft does not overwrite unsaved work on /assemblies/designer/new", () => {
+    it("unsaved work on /new is still there after another draft is opened and the person goes back", async () => {
+        // A saved draft, blank but for its name.
+        h.search = new URLSearchParams("fresh=1");
+        const saved = await mount(<NewAssemblyClient />);
+        typeInto("designer-name-input", "Other draft");
+        await act(async () => {});
+        fireEvent.click(screen.getByTestId("designer-save"));
+        const [otherSlug] = listNamedDrafts().map((d) => d.slug);
+        saved.unmount();
+
+        // Unsaved work on a fresh canvas.
+        h.search = new URLSearchParams("fresh=1");
+        const fresh = await mount(<NewAssemblyClient />);
+        const ids = await buildWork();
+        const before = await readWork();
+        fresh.unmount();
+
+        // The person opens the other draft from the drafts list, then goes back.
+        const other = await mount(<EditAssemblyClient slug={otherSlug} />);
+        other.unmount();
+        h.search = new URLSearchParams();
+        await mount(<NewAssemblyClient />);
+        const after = await readWork();
+        expect(after).toEqual(before);
+        expectBuiltWork(after, ids);
+    });
+});
+
+/** Every designer key in localStorage, with its bytes. */
+function designerStorage(): Record<string, string | null> {
+    const out: Record<string, string | null> = {};
+    for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i)!;
+        if (key.startsWith("figaro:designer:")) out[key] = window.localStorage.getItem(key);
+    }
+    return out;
+}
+
+const NEW_DESIGN_AUTOSAVE = "figaro:designer:autosave:new";
+const draftAutosave = (slug: string) => `figaro:designer:autosave:drafts:${slug}`;
+const nameValue = () => (screen.getByTestId("designer-name-input") as HTMLInputElement).value;
+
+/** Save a canvas holding only a name as a named draft; returns its slug. */
+async function saveNamed(name: string): Promise<string> {
+    const before = new Set(listNamedDrafts().map((d) => d.slug));
+    h.search = new URLSearchParams("fresh=1");
+    const view = await mount(<NewAssemblyClient />);
+    typeInto("designer-name-input", name);
+    await act(async () => {});
+    fireEvent.click(screen.getByTestId("designer-save"));
+    view.unmount();
+    return listNamedDrafts().map((d) => d.slug).find((s) => !before.has(s))!;
+}
+
+describe("DesignerCanvas — each design keeps its own autosave", () => {
+    it("two named drafts edited in turn each keep their own unsaved work", async () => {
+        const one = await saveNamed("One");
+        const two = await saveNamed("Two");
+
+        const editOne = await mount(<EditAssemblyClient slug={one} />);
+        await act(async () => { canvas().onAddSubOrder(canvas().orders[0].orderHash); });
+        fireEvent.change(screen.getByTestId("designer-name-input"), { target: { value: "One, edited" } });
+        await act(async () => {});
+        editOne.unmount();
+
+        const editTwo = await mount(<EditAssemblyClient slug={two} />);
+        expect(nameValue(), "the second draft opens with its own name").toBe("Two");
+        fireEvent.change(screen.getByTestId("designer-name-input"), { target: { value: "Two, edited" } });
+        await act(async () => {});
+        editTwo.unmount();
+
+        const backOne = await mount(<EditAssemblyClient slug={one} />);
+        expect(nameValue()).toBe("One, edited");
+        expect(canvas().orders).toHaveLength(2);
+        backOne.unmount();
+
+        await mount(<EditAssemblyClient slug={two} />);
+        expect(nameValue()).toBe("Two, edited");
+        expect(canvas().orders).toHaveLength(1);
+    });
+
+    it("a draft opens its autosave when that is newer than the saved draft, and the saved draft otherwise", async () => {
+        const slug = await saveNamed("Saved");
+        const saved = loadNamedDraft(slug)!;
+
+        saveAutosave(slug, { ...saved, name: "Newer", updatedAt: saved.updatedAt + 1 });
+        const newer = await mount(<EditAssemblyClient slug={slug} />);
+        expect(nameValue(), "a newer autosave opens").toBe("Newer");
+        newer.unmount();
+
+        saveAutosave(slug, { ...saved, name: "Older", updatedAt: saved.updatedAt - 1 });
+        await mount(<EditAssemblyClient slug={slug} />);
+        expect(nameValue(), "an autosave older than the saved draft does not override it").toBe("Saved");
+    });
+
+    it("an autosave under figaro:designer:current opens once on /new and moves to the new design's key", async () => {
+        h.search = new URLSearchParams("fresh=1");
+        const first = await mount(<NewAssemblyClient />);
+        const ids = await buildWork();
+        const before = await readWork();
+        first.unmount();
+
+        // A browser that holds the work under figaro:designer:current only.
+        const stored = designerStorage();
+        const bytes = stored[NEW_DESIGN_AUTOSAVE] ?? stored["figaro:designer:current"];
+        expect(bytes, "the canvas autosaved the work").toBeTruthy();
+        window.localStorage.clear();
+        window.localStorage.setItem("figaro:designer:current", bytes!);
+
+        h.search = new URLSearchParams();
+        const migrated = await mount(<NewAssemblyClient />);
+        expectBuiltWork(await readWork(), ids);
+        expect(
+            Object.keys(designerStorage()),
+            "figaro:designer:current is gone; the new design's key holds the work",
+        ).toEqual([NEW_DESIGN_AUTOSAVE]);
+        migrated.unmount();
+
+        await mount(<NewAssemblyClient />);
+        expect(await readWork()).toEqual(before);
+    });
+
+    it("Save writes the named draft and clears that draft's autosave", async () => {
+        const slug = await saveNamed("Port run");
+        await mount(<EditAssemblyClient slug={slug} />);
+        fireEvent.change(screen.getByTestId("designer-name-input"), { target: { value: "Port run, edited" } });
+        await act(async () => {});
+        expect(Object.keys(designerStorage()), "the unsaved edit is autosaved under the draft's key").toContain(draftAutosave(slug));
+
+        fireEvent.click(screen.getByTestId("designer-save"));
+        await act(async () => {});
+        expect(Object.keys(designerStorage()).sort(), "only the saved draft and the index remain").toEqual([
+            "figaro:designer:drafts",
+            `figaro:designer:drafts:${slug}`,
+        ]);
+        expect(loadNamedDraft(slug)!.name).toBe("Port run, edited");
+    });
+
+    it("a draft deleted from the drafts list leaves nothing behind, its unsaved work included", async () => {
+        const slug = await saveNamed("Doomed");
+        const edit = await mount(<EditAssemblyClient slug={slug} />);
+        fireEvent.change(screen.getByTestId("designer-name-input"), { target: { value: "Doomed, edited" } });
+        await act(async () => {});
+        edit.unmount();
+
+        const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+        render(<DraftsList />);
+        fireEvent.click(await screen.findByTestId(`draft-delete-${slug}`));
+        confirm.mockRestore();
+        expect(designerStorage()).toEqual({ "figaro:designer:drafts": "[]" });
+    });
+
+    it("Reset clears every kind of work, and a reload brings none of it back", async () => {
+        h.search = new URLSearchParams("fresh=1");
+        const first = await mount(<NewAssemblyClient />);
+        await buildWork();
+        fireEvent.click(screen.getByTestId("designer-reset"));
+        await act(async () => {});
+
+        const expectBlank = (work: Work) => {
+            expect(work.orders).toHaveLength(1);
+            expect(work.clauses).toEqual({});
+            expect(work.bound).toEqual([undefined]);
+            expect(work.terms).toEqual({});
+            expect(work.name).toBe("");
+            expect(work.summary).toBe("");
+            expect(work.description).toBe("");
+        };
+        expectBlank(await readWork());
+        first.unmount();
+
+        h.search = new URLSearchParams();
+        await mount(<NewAssemblyClient />);
+        expectBlank(await readWork());
+    });
+});
+

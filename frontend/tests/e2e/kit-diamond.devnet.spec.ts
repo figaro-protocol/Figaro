@@ -148,7 +148,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         if (!kitSlug) {
             await page.addInitScript(() => {
                 try {
-                    window.localStorage.removeItem('figaro:designer:current');
+                    window.localStorage.removeItem('figaro:designer:autosave:new');
                     window.localStorage.removeItem('figaro:designer:drafts');
                 } catch { /* noop */ }
             });
