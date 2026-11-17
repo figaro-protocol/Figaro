@@ -580,11 +580,23 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
     { label: "enum no values", spec: specOf(f({ type: "enum" })) },
     { label: "enum one value", spec: specOf(f({ type: "enum", values: ["a"] })) },
     { label: "enum sentinel", spec: specOf(f({ type: "enum", values: ["none", "a"], sentinel: "none" })) },
+    { label: "enum sentinel not a value", spec: specOf(f({ type: "enum", values: ["a"], sentinel: "none" })) },
+    { label: "enum valueLabels", spec: specOf(f({ type: "enum", values: ["a", "b"], valueLabels: { a: "A" } })) },
+    { label: "enum valueLabels key not a value", spec: specOf(f({ type: "enum", values: ["a"], valueLabels: { z: "Z" } })) },
+    { label: "enum valueLabels entry a number", spec: specOf(f({ type: "enum", values: ["a"], valueLabels: { a: 1 } })) },
+    { label: "enum valueLabels an array", spec: specOf(f({ type: "enum", values: ["a"], valueLabels: ["A"] })) },
+    { label: "field label", spec: specOf(f({ type: "boolean", label: "V" })) },
+    { label: "field label a number", spec: specOf(f({ type: "boolean", label: 1 })) },
+    { label: "field description a number", spec: specOf(f({ type: "boolean", description: 1 })) },
+    { label: "clauseId empty", spec: { ...specOf(f({ type: "boolean" })), clauseId: "" } },
+    { label: "title empty", spec: { ...specOf(f({ type: "boolean" })), title: "" } },
+    { label: "description a number", spec: { ...specOf(f({ type: "boolean" })), description: 1 } },
     { label: "array without items", spec: specOf(f({ type: "array" })) },
     { label: "array items a string", spec: specOf(f({ type: "array", items: "integer" })) },
     { label: "array items an array", spec: specOf(f({ type: "array", items: [] })) },
     { label: "array items ok", spec: specOf(f({ type: "array", items: { type: "integer" } })) },
     { label: "array minItems -1", spec: specOf(f({ type: "array", items: { type: "integer" }, minItems: -1 })) },
+    { label: "array maxItems -1", spec: specOf(f({ type: "array", items: { type: "integer" }, maxItems: -1 })) },
     { label: "object without fields", spec: specOf(f({ type: "object" })) },
     { label: "object empty fields", spec: specOf(f({ type: "object", fields: [] })) },
     { label: "default string", spec: specOf(f({ type: "string", default: "x" })) },
@@ -796,16 +808,112 @@ describe("Clause-engine vectors — the hand-written leg of the clause-engine lo
 });
 
 /**
- * The rules the SDK applies that the guest's engine does not. The list is
- * empty: the guest's engine applies every rule of the spec format and of
- * content validation, the grain cap and the private set's rules among them,
- * and the frozen vectors hold cases of each, both verdicts.
+ * Every attribute the SDK's parser reads has vectors. The attribute set is
+ * derived from the published schema (`sdk/src/clauses/clause-spec.schema.json`),
+ * walked from its root through every reference, `block` left out because the
+ * parser reads none of it. Each attribute appears in a spec of the shared
+ * vectors that parses, and in one the parser refuses for that attribute (an
+ * error path that ends in its name). An attribute the parser never refuses
+ * on its own stands in the table below with the reason. So an attribute added
+ * to the schema and the parser fails here until the vectors hold it, and the
+ * guest's engine then replays those vectors (`prover/clause/tests/engine_vectors.rs`).
  */
-const SDK_ONLY_RULES: readonly string[] = [];
+const NO_REFUSING_CASE: Readonly<Record<string, string>> = {};
+
+/** The attribute names the schema declares on a spec or a field, `block` left out. */
+function schemaAttributes(): Set<string> {
+    const schema = JSON.parse(readFileSync(path.resolve(__dirname, "../../src/clauses/clause-spec.schema.json"), "utf8"));
+    const names = new Set<string>();
+    const seen = new Set<unknown>();
+    const walk = (node: unknown): void => {
+        if (node === null || typeof node !== "object" || seen.has(node)) return;
+        seen.add(node);
+        if (Array.isArray(node)) { node.forEach(walk); return; }
+        const obj = node as Record<string, unknown>;
+        if (typeof obj.$ref === "string") {
+            const target = obj.$ref.replace(/^#\//, "").split("/").reduce<unknown>((at, key) => (at as Record<string, unknown>)[key], schema);
+            walk(target);
+        }
+        for (const [key, value] of Object.entries(obj)) {
+            if (key === "$defs") continue;
+            if (key === "properties" && value !== null && typeof value === "object") {
+                for (const [name, sub] of Object.entries(value as Record<string, unknown>)) {
+                    if (name === "block") continue;
+                    names.add(name);
+                    walk(sub);
+                }
+                continue;
+            }
+            walk(value);
+        }
+    };
+    walk(schema);
+    return names;
+}
+
+/** The attribute names a raw spec carries, on the spec and on each field, at every depth. */
+function attributesOf(spec: unknown): Set<string> {
+    const names = new Set<string>();
+    const field = (raw: unknown): void => {
+        if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return;
+        const obj = raw as Record<string, unknown>;
+        for (const key of Object.keys(obj)) names.add(key);
+        field(obj.items);
+        if (Array.isArray(obj.fields)) obj.fields.forEach(field);
+    };
+    if (spec === null || typeof spec !== "object" || Array.isArray(spec)) return names;
+    const top = spec as Record<string, unknown>;
+    for (const key of Object.keys(top)) names.add(key);
+    if (Array.isArray(top.fields)) top.fields.forEach(field);
+    if (top.stages !== null && typeof top.stages === "object") {
+        for (const set of Object.values(top.stages as Record<string, unknown>)) if (Array.isArray(set)) set.forEach(field);
+    }
+    return names;
+}
+
+/** The attribute an error path ends in: its last named segment, a valueLabels key or an index read past. */
+function attributeOfPath(errorPath: string): string | undefined {
+    const segments = errorPath.split(".").map((segment) => segment.replace(/\[\d+\]$/, ""));
+    const labels = segments.indexOf("valueLabels");
+    const kept = labels === -1 ? segments : segments.slice(0, labels + 1);
+    for (let i = kept.length - 1; i >= 0; i--) {
+        if (kept[i] !== "$" && !/^\d+$/.test(kept[i])) return kept[i];
+    }
+    return undefined;
+}
 
 describe("The rules both engines apply", () => {
-    it("lists no rule that is the SDK's alone", () => {
-        expect(SDK_ONLY_RULES).toHaveLength(0);
+    it("every attribute the schema declares has a parsing spec and a refusing one in the shared vectors, or a reason in the table", () => {
+        const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as ReturnType<typeof build>;
+        const specs: unknown[] = [
+            ...fixture.values.map((c) => specOf([c.field])),
+            ...fixture.contents.map((c) => specOf(c.fields)),
+            ...fixture.specs.map((c) => c.spec),
+            ...fixture.encodings.map((c) => specOf(c.fields, c.stages)),
+        ];
+        const parsing = new Set<string>();
+        const refused = new Set<string>();
+        for (const spec of specs) {
+            const parsed = parseClauseSpec(spec);
+            if (parsed.ok) {
+                for (const name of attributesOf(spec)) parsing.add(name);
+            } else {
+                for (const error of parsed.errors) {
+                    const name = attributeOfPath(error.path);
+                    if (name !== undefined) refused.add(name);
+                }
+            }
+        }
+        const attributes = schemaAttributes();
+        expect(attributes.size).toBeGreaterThan(20);
+        for (const name of Object.keys(NO_REFUSING_CASE)) {
+            expect(attributes.has(name), `${name} is in the table and not in the schema`).toBe(true);
+            expect(refused.has(name), `${name} is in the table and has a refusing case`).toBe(false);
+        }
+        const unparsed = [...attributes].filter((name) => !parsing.has(name));
+        const unrefused = [...attributes].filter((name) => !refused.has(name) && !(name in NO_REFUSING_CASE));
+        expect(unparsed, "attributes no parsing spec of the vectors carries").toEqual([]);
+        expect(unrefused, "attributes no refused spec of the vectors is refused for, and the table does not name").toEqual([]);
     });
 
     it("the frozen vectors hold the grain cap, the disposition, formatFromField and the blinding field, each with both verdicts", () => {

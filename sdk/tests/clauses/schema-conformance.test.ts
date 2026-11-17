@@ -78,6 +78,20 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
         expect(parseClauseSpec(JSON.parse(JSON.stringify(spec))).ok).toBe(false);
     });
 
+    // An enum encodes as uint8, so it names at most 256 values; the schema
+    // and the parser hold the same bound.
+    const enumOf = (count: number) => withFields([
+        { name: "e", type: "enum", required: true, values: Array.from({ length: count }, (_, i) => `v${i}`) },
+    ]);
+    it("accepts an enum of 256 values in BOTH schema and parser", () => {
+        expect(validateAgainstSchema(enumOf(256)), JSON.stringify(validateAgainstSchema.errors)).toBe(true);
+        expect(parseClauseSpec(enumOf(256)).ok).toBe(true);
+    });
+    it("rejects an enum of 257 values in BOTH schema and parser", () => {
+        expect(validateAgainstSchema(enumOf(257))).toBe(false);
+        expect(parseClauseSpec(enumOf(257)).ok).toBe(false);
+    });
+
     // A stage key has one spelling, the decimal of an integer 0..255; the
     // schema and the parser accept the same keys.
     const stageKeys: ReadonlyArray<readonly [string, boolean]> = [

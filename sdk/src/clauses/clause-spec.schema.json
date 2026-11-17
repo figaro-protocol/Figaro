@@ -50,7 +50,7 @@
                 "pattern": { "type": "string", "maxLength": 256, "description": "string only. A regex written in the portable core: printable ASCII; literals, '.', classes, groups '(...)' and '(?:...)', \\d \\D \\w \\W \\s \\S, escaped punctuation, ^ $ \\b \\B, alternation, and the quantifiers * + ? {n} {n,} {n,m} with counts up to 64, each optionally lazy. No lookaround, backreference, named group, inline flag, possessive quantifier, Unicode class, nested class or letter escape. A patterned field's value is printable ASCII." },
                 "min": { "type": ["number", "string"], "description": "integer (number) or bigint (decimal string)." },
                 "max": { "type": ["number", "string"], "description": "integer (number) or bigint (decimal string)." },
-                "values": { "type": "array", "items": { "type": "string" }, "description": "enum only — the ordered value codes." },
+                "values": { "type": "array", "items": { "type": "string" }, "maxItems": 256, "description": "enum only — the ordered value codes, at most 256 (a value encodes as its uint8 position)." },
                 "sentinel": { "type": "string", "description": "enum only — an ABI position-as-index placeholder, never a valid input." },
                 "valueLabels": { "type": "object", "additionalProperties": { "type": "string" }, "description": "enum only — cosmetic per-value labels." },
                 "items": { "allOf": [{ "$ref": "#/$defs/itemField" }, { "not": { "required": ["blinding"] } }], "description": "array only — the element field spec (its name/required are injected, so omit them). A blinding field is never an array element." },

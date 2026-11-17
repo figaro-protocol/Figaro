@@ -189,7 +189,7 @@ function jsonValueOf(field: FieldSpec, decoded: unknown): unknown {
             // array — map back to an object by declaration order.
             const tuple = decoded as readonly unknown[];
             const out: Record<string, unknown> = {};
-            field.fields.forEach((sub, i) => { out[sub.name] = jsonValueOf(sub, tuple[i]); });
+            field.fields.forEach((sub, i) => { setOwnField(out, sub.name, jsonValueOf(sub, tuple[i])); });
             return out;
         }
     }
@@ -211,6 +211,16 @@ export function decodeContentFromSpec(
     const params = fields.map((field) => ({ ...abiParamOf(field), name: field.name }));
     const values = decodeAbiParameters(params, content);
     const out: Record<string, unknown> = {};
-    fields.forEach((field, i) => { out[field.name] = jsonValueOf(field, values[i]); });
+    fields.forEach((field, i) => { setOwnField(out, field.name, jsonValueOf(field, values[i])); });
     return out;
+}
+
+/**
+ * Write a decoded field as an own, enumerable, writable property, whatever
+ * its name. An assignment to `__proto__` on a plain object sets its
+ * prototype instead, and the field is lost; the object keeps the ordinary
+ * prototype, so a caller reads it as it reads any parsed JSON.
+ */
+function setOwnField(out: Record<string, unknown>, name: string, value: unknown): void {
+    Object.defineProperty(out, name, { value, enumerable: true, writable: true, configurable: true });
 }

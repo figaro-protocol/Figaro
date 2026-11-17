@@ -66,6 +66,27 @@ describe("encodeContentFromSpec — stage selection", () => {
         expect(decodeContentFromSpec(spec, defaultBytes)).toEqual({ x: "ok" });
     });
 
+    it("decodeContentFromSpec returns a field named __proto__, constructor or toString as an own property", () => {
+        const names = ["__proto__", "constructor", "toString"];
+        const spec = specOf([
+            ...names.map((name) => ({ name, type: "string", required: true })),
+            { name: "o", type: "object", required: true, fields: names.map((name) => ({ name, type: "integer", required: true })) },
+        ]);
+        // JSON.parse makes each name an own property, as content read off the wire is.
+        const content = JSON.parse('{"__proto__":"p","constructor":"c","toString":"t","o":{"__proto__":1,"constructor":2,"toString":3}}');
+        const decoded = decodeContentFromSpec(spec, encodeContentFromSpec(spec, content));
+        const nested = decoded.o as Record<string, unknown>;
+        for (const [at, expected] of [[decoded, ["p", "c", "t"]], [nested, [1, 2, 3]]] as const) {
+            expect(Object.keys(at)).toEqual(expect.arrayContaining(names));
+            names.forEach((name, i) => {
+                expect(Object.prototype.hasOwnProperty.call(at, name), name).toBe(true);
+                expect(Object.getOwnPropertyDescriptor(at, name)?.value, name).toBe(expected[i]);
+            });
+            expect(Object.getPrototypeOf(at)).toBe(Object.prototype);
+        }
+        expect(JSON.stringify(decoded)).toBe(JSON.stringify(content));
+    });
+
     it("integers are SIGNED — a negative witness value round-trips (int256, not uint256)", () => {
         const cold = specOf([], { 1: [
             { name: "observedMinC", type: "integer", required: true, min: -273, max: 100 },
