@@ -57,9 +57,13 @@ import { RewardsView } from "@/app/(app)/rewards/_components/RewardsView";
 /** A closed period as the hook returns it with no address: the public reads, and the defaults. */
 const CLOSED_NO_ADDRESS: RpgfPeriodState = {
     periodId: 0, amount: 10n ** 21n, minted: 3n * 10n ** 18n, periodClosed: true, totalScore: 42n,
+    periodEnd: { status: "present", value: 1_900_000_000n },
     claimable: 0n, claimed: false, myScore: 0n, accruals: [],
 };
-const ACCRUING: RpgfPeriodState = { ...CLOSED_NO_ADDRESS, periodId: 1, periodClosed: false, minted: 0n, totalScore: 7n };
+const ACCRUING: RpgfPeriodState = {
+    ...CLOSED_NO_ADDRESS, periodId: 1, periodClosed: false, minted: 0n, totalScore: 7n,
+    periodEnd: { status: "present", value: 1_931_536_000n },
+};
 /** The same closed period read for an address that accrued in it. */
 const CLOSED_FOR_ADDRESS: RpgfPeriodState = {
     ...CLOSED_NO_ADDRESS,
@@ -86,6 +90,13 @@ describe("/rewards — no wallet and no address named, the periods read present"
         expect(screen.getByTestId("period-total-score-0").textContent).toMatch(/minted so far 3 FLORIN/);
         expect(screen.getByTestId("period-status-0").textContent).toBe("closed");
         expect(screen.getByTestId("period-status-1").textContent).toBe("accruing");
+    });
+
+    it("no wallet: the period accruing shows when it ends, by the chain's clock", () => {
+        render(<RewardsView />);
+        const end = screen.getByTestId("period-end-1").textContent ?? "";
+        expect(end).toMatch(/^Ends .*2031.* UTC, by the chain's clock$/);
+        expect(screen.getByTestId("period-end-0").textContent).toMatch(/^Ended .*2030/);
     });
 
     it("shows nothing that is one address's: no claimable or claimed status, no balance, no score, no claim", () => {

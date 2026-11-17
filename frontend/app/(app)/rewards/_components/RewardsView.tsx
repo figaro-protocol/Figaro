@@ -25,6 +25,7 @@ import { useAccount } from "wagmi";
 import { useViewedWallet } from "@/lib/shared/viewedWallet";
 import { hexEqual } from "@/lib/shared/evm";
 import { tokenFigure } from "@/lib/shared/utils";
+import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useTokenBalance from "@/hooks/useTokenBalance";
 import { Button } from "@/components/ui/Button";
@@ -183,6 +184,16 @@ export function RewardsView() {
                                     {status}
                                 </span>
                             </div>
+                            {/* The end as the chain holds it (`UsageCounter.periodEnd`), in UTC;
+                                whether it has passed is the chain's `periodClosed`, never the
+                                device's clock. A failed read leaves this place empty. */}
+                            {t.periodEnd.status === "present" && (
+                                <p className="text-sm text-ink-muted mb-1" data-testid={`period-end-${t.periodId}`}>
+                                    {t.periodClosed ? "Ended" : "Ends"}{" "}
+                                    {formatBlockTimestamp(t.periodEnd.value, { dateStyle: "long", timeStyle: "short", timeZone: "UTC" })}{" "}
+                                    UTC, by the chain&apos;s clock
+                                </p>
+                            )}
                             <p className="text-sm text-ink-muted mb-1" data-testid={`period-total-score-${t.periodId}`}>
                                 period score across all clauses, agreements and assemblies:{" "}
                                 <span className="font-mono">{t.totalScore.toString()}</span> · minted so far{" "}

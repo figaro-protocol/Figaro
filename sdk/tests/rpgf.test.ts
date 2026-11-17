@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { encodePacked, keccak256, type Address, type Hex, type Log, type PublicClient } from "viem";
+import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, encodePacked, getAddress, keccak256, type Address, type Hex, type Log, type PublicClient } from "viem";
 import {
     computeRpgfAllocations,
     computeUsageAccruals,
@@ -18,7 +18,9 @@ import {
     usageClaimKindCode,
     buildUsageClaims,
     fetchUsageRecords,
+    fetchSkippedBatchUses,
 } from "../src/rpgf/index.js";
+import { BATCH_VERIFIER_ABI } from "../src/abis.js";
 import {
     PROVENANCE_LEAF_KEY,
     computeCheckoutHash,
@@ -656,4 +658,85 @@ describe("fetchUsageRecords — chunked getLogs", () => {
         expect(client.getLogs).toHaveBeenCalledWith({ address: USAGE_COUNTER, fromBlock: 0n, toBlock: 100n });
     });
 
+});
+
+describe("fetchSkippedBatchUses — the uses a batch carried and the counter counted none of", () => {
+    const VERIFIER = "0x000000000000000000000000000000000000b47c" as Address;
+    const OTHER = "0x00000000000000000000000000000000000ca11e" as Address;
+    const SKIP_TX = `0x${"11".repeat(32)}` as Hex;
+    const ROUTED_TX = `0x${"22".repeat(32)}` as Hex;
+    const LANDED_TX = `0x${"33".repeat(32)}` as Hex;
+    /** Revert data as the verifier catches it; the reader passes it through unread. */
+    const REASON = `0x5f5b1b0c${"00".repeat(31)}01${"00".repeat(32)}` as Hex;
+    const USES = [
+        { clauseOrAssembly: `0x${"ab".repeat(32)}` as Hex, kind: USAGE_KIND_CLAUSE, processId: `0x${"01".repeat(32)}` as Hex, seller: getAddress("0x00000000000000000000000000000000000000a1") },
+        { clauseOrAssembly: `0x${"cd".repeat(32)}` as Hex, kind: USAGE_KIND_ASSEMBLY, processId: `0x${"01".repeat(32)}` as Hex, seller: getAddress("0x00000000000000000000000000000000000000a1") },
+    ];
+    const BATCH_INPUT = encodeFunctionData({
+        abi: BATCH_VERIFIER_ABI,
+        functionName: "settleBatch",
+        args: ["0x", "0x", [], { attestations: [], specBindings: [] }, { period: 0, provenanceLeaf: PROVENANCE_LEAF_KEY, uses: USES }, "0x"],
+    });
+
+    function skippedLog(batchId: bigint, tx: Hex, block: bigint): Log {
+        return {
+            address: VERIFIER,
+            topics: encodeEventTopics({ abi: BATCH_VERIFIER_ABI, eventName: "BatchAccrualSkipped", args: { batchId } }),
+            data: encodeAbiParameters([{ type: "bytes" }], [REASON]),
+            blockNumber: block,
+            transactionHash: tx,
+            logIndex: 0,
+        } as unknown as Log;
+    }
+    function landedLog(batchId: bigint, tx: Hex, block: bigint): Log {
+        return {
+            address: VERIFIER,
+            topics: encodeEventTopics({
+                abi: BATCH_VERIFIER_ABI,
+                eventName: "BatchSettled",
+                args: { batchId, prevStateRoot: `0x${"00".repeat(32)}`, newStateRoot: `0x${"01".repeat(32)}` },
+            }),
+            data: encodeAbiParameters([{ type: "uint256" }], [0n]),
+            blockNumber: block,
+            transactionHash: tx,
+            logIndex: 1,
+        } as unknown as Log;
+    }
+    function stubClient(logs: Log[], txs: Record<string, { to: Address; input: Hex }>): PublicClient {
+        return {
+            getLogs: vi.fn(async () => logs),
+            getTransaction: vi.fn(async ({ hash }: { hash: Hex }) => txs[hash]),
+        } as unknown as PublicClient;
+    }
+
+    it("reads each skipped batch's period and uses from its settleBatch calldata, and only the skipped batches", async () => {
+        const client = stubClient(
+            [landedLog(1n, LANDED_TX, 5n), skippedLog(2n, SKIP_TX, 7n), landedLog(2n, SKIP_TX, 7n)],
+            { [SKIP_TX]: { to: VERIFIER, input: BATCH_INPUT }, [LANDED_TX]: { to: VERIFIER, input: BATCH_INPUT } },
+        );
+        const skipped = await fetchSkippedBatchUses(client, VERIFIER, { toBlock: 10n });
+        expect(skipped).toHaveLength(1);
+        expect(skipped[0].batchId).toBe(2n);
+        expect(skipped[0].transactionHash).toBe(SKIP_TX);
+        expect(skipped[0].blockNumber).toBe(7n);
+        expect(skipped[0].reason).toBe(REASON);
+        expect(skipped[0].carried).toEqual({ period: 0, uses: USES });
+        // The one transaction read is the skipped batch's.
+        expect(client.getTransaction).toHaveBeenCalledTimes(1);
+        expect(client.getTransaction).toHaveBeenCalledWith({ hash: SKIP_TX });
+    });
+
+    it("a settleBatch call made through another contract names the batch and leaves its uses unread", async () => {
+        const client = stubClient([skippedLog(3n, ROUTED_TX, 9n)], { [ROUTED_TX]: { to: OTHER, input: BATCH_INPUT } });
+        const [skip] = await fetchSkippedBatchUses(client, VERIFIER, { toBlock: 10n });
+        expect(skip.batchId).toBe(3n);
+        expect(skip.carried).toBeNull();
+    });
+
+    it("reads the verifier's logs from the block it is given, in chunks", async () => {
+        const client = stubClient([], {});
+        await fetchSkippedBatchUses(client, VERIFIER, { fromBlock: 100n, toBlock: 125n, chunkSize: 10n });
+        expect(client.getLogs).toHaveBeenCalledTimes(3);
+        expect(client.getLogs).toHaveBeenNthCalledWith(1, { address: VERIFIER, fromBlock: 100n, toBlock: 109n });
+    });
 });

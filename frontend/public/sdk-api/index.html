@@ -663,6 +663,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td>For each process id, whether it has resolved and the block of its <code>ProcessResolved</code>: the Core's <code>processes(id)</code> getter decides the direct path, the verifier's <code>ProcessResolved</code> the batch path.</td>
 </tr>
 <tr>
+<td><code>fetchSkippedBatchUses</code></td>
+<td>root</td>
+<td>Each batch whose call to the counter reverted whole (<code>BatchAccrualSkipped</code>), with the period and the uses its <code>settleBatch</code> calldata carried: uses a later batch may prove again, rebuilt with <code>buildUsageClaims</code> and sent with <code>SequencerClient.submitUsageClaim</code>.</td>
+</tr>
+<tr>
 <td><code>fetchUsageRecords</code></td>
 <td>root</td>
 <td><code>UsageRecorded</code> events — the direct-path half of the rewards mirror.</td>

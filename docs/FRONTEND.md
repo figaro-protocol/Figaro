@@ -44,7 +44,7 @@ writes via `WalletGate`.**
 | `/data/explore` | The graph-query surface `DATA_LAYER.md` describes; in `(app)/` but spectator-capable like `/audit`. One layer at a time, each carrying its own truth boundary. Views and the wallet subject ride query params (`lib/data/explorer.ts`); graphs are projected in the browser (`lib/data/graphCorpus.ts`) over the existing event caches; the prompt box renders ONLY when an analyst endpoint resolves. |
 | `/evidence-display` | See "Deliberate orphan" below. |
 | `/s/view?seller=` | Seller detail + cart; its review link leads to `/s/checkout`, whose place-order asks for a wallet. |
-| `/rewards` | A designer's reward-tranche claim, read from `UsageCounter` + `RpgfMinter`. Every period's budget, minted figure, phase and total score show with no wallet; one address's accrual shows for the connected wallet or the address `?wallet=0x…` names; the claim is offered only to the connected wallet, for its own accrual. |
+| `/rewards` | A designer's reward-tranche claim, read from `UsageCounter` + `RpgfMinter`. Every period's budget, minted figure, phase, total score and end show with no wallet, the end in UTC as `UsageCounter.periodEnd` holds it; one address's accrual shows for the connected wallet or the address `?wallet=0x…` names; the claim is offered only to the connected wallet, for its own accrual. The page sends no usage claim to a relay: a use a batch left uncounted (`BatchAccrualSkipped`) is found with the SDK's `fetchSkippedBatchUses` and sent again with `SequencerClient.submitUsageClaim`. |
 
 **Transactional — `(app)/`, requires a connected wallet.**
 

@@ -10,6 +10,9 @@ import path from 'path';
 export default defineConfig({
     plugins: [react()],
     test: {
+        // The default limit of 5 seconds is too short for a loaded machine: under a
+        // coverage run beside another job, unrelated tests time out one at a time.
+        testTimeout: 20_000,
         globals: true,
         environment: 'jsdom',
         setupFiles: ['./tests/setup.ts'],

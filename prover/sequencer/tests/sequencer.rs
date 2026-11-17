@@ -1005,6 +1005,80 @@ async fn a_claims_only_batch_is_a_valid_state_transition() {
     );
 }
 
+/// A batch whose call to the counter reverted whole (`BatchAccrualSkipped`:
+/// a period boundary crossed in flight) resolved its trade and counted none of
+/// its uses. The relay keeps no claim once its batch lands, so the same claim
+/// is sent again (`SequencerClient.submitUsageClaim`, the uses found with the
+/// SDK's `fetchSkippedBatchUses`): the relay admits it, its pre-check keeps it
+/// against the state the first batch left, and a later batch carries the same
+/// use under the period then open (`docs/DESIGN_DECISIONS.md` § 19).
+#[tokio::test]
+async fn a_use_its_batch_left_uncounted_rides_a_later_batch() {
+    let input = build_canonical_batch_input();
+    let claim = input.usage_claims[0].clone();
+    let mp = mempool();
+
+    // Batch 1: the trade and its claim, under the period the relay read.
+    mp.submit_usage_claim(claim.clone()).await.expect("the claim is admitted");
+    let claims = mp.drain_usage().await;
+    let (kept, dropped) = assembler::filter_applicable_claims(
+        CHAIN_ID,
+        CORE,
+        1000,
+        &empty_snapshot(),
+        &input.operations,
+        claims,
+    );
+    assert!(dropped.is_empty(), "{dropped:?}");
+    let first = assembler::assemble_batch(
+        CHAIN_ID,
+        CORE,
+        1000,
+        input.operations.clone(),
+        empty_snapshot(),
+        UsageContext { claims: kept, period: input.usage_period },
+    );
+    let (_, _, events1, post1) = apply_batch_with_state(&first).expect("batch 1 applies");
+    assert_eq!(events1.uses.len(), 1, "batch 1 hands the use to the counter");
+
+    // The counter refused batch 1's call whole; nothing of it was counted.
+    // The claim is sent again, and the relay holds nothing that refuses it.
+    assert_eq!(
+        mp.submit_usage_claim(claim).await.expect("the claim is admitted again"),
+        1,
+        "one claim waits"
+    );
+    let claims = mp.drain_usage().await;
+    let (kept, dropped) = assembler::filter_applicable_claims(
+        CHAIN_ID,
+        CORE,
+        1001,
+        &post1.to_snapshot(),
+        &[],
+        claims,
+    );
+    assert!(dropped.is_empty(), "a use carried by an earlier batch is still provable: {dropped:?}");
+
+    // Batch 2: no operation, the claim alone, under the next period.
+    let next_period = input.usage_period + 1;
+    let second = assembler::assemble_batch(
+        CHAIN_ID,
+        CORE,
+        1001,
+        vec![],
+        post1.to_snapshot(),
+        UsageContext { claims: kept, period: next_period },
+    );
+    let (_, _, events2, _) = apply_batch_with_state(&second).expect("batch 2 applies");
+    assert_eq!(events2.uses.len(), 1, "batch 2 hands the same use to the counter");
+    assert_eq!(events2.usage_period, next_period);
+    let (u1, u2) = (&events1.uses[0], &events2.uses[0]);
+    assert_eq!(u2.clause_or_assembly, u1.clause_or_assembly);
+    assert_eq!(u2.kind, u1.kind);
+    assert_eq!(u2.process_id, u1.process_id);
+    assert_eq!(u2.seller, u1.seller);
+}
+
 // ── Public-endpoint bounds: idempotency, caps, body limit ─────────
 
 #[tokio::test]

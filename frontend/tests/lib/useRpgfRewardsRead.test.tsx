@@ -23,6 +23,11 @@ const w = vi.hoisted(() => {
         claimedKeys: new Set<string>(),
         /** A per-key `claimed` read throws. */
         failClaimed: false,
+        /** The `periodEnd` read throws, or never answers. */
+        failPeriodEnd: false,
+        holdPeriodEnd: false,
+        /** The counter holds no period. */
+        noPeriods: false,
         client: {} as Record<string, unknown>,
     };
 });
@@ -62,15 +67,25 @@ const READS: Record<string, unknown> = {
     scoreOf: 10n,
     registered: true,
     balanceOf: 0n,
+    // 2030-03-17T17:46:40Z, the chain's own seconds.
+    periodEnd: 1_900_000_000n,
 };
 
 beforeEach(() => {
     w.twoKeys = false;
     w.claimedKeys = new Set();
     w.failClaimed = false;
+    w.failPeriodEnd = false;
+    w.holdPeriodEnd = false;
+    w.noPeriods = false;
     w.client = {
         readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: readonly unknown[] }) => {
             if (w.fail && functionName === "totalScoreIn") throw new Error("HTTP request failed");
+            if (functionName === "periodCount" && w.noPeriods) return 0n;
+            if (functionName === "periodEnd") {
+                if (w.failPeriodEnd) throw new Error("HTTP request failed");
+                if (w.holdPeriodEnd) return new Promise(() => undefined);
+            }
             if (functionName === "claimed") {
                 if (w.failClaimed) throw new Error("HTTP request failed");
                 return w.claimedKeys.has(String(args?.[2]));
@@ -164,5 +179,53 @@ describe("RewardsView — renders on the read's state", () => {
         await waitFor(() => expect(screen.queryByTestId("rewards-loading")).toBeNull());
         expect(screen.queryByTestId("period-card-0")).toBeNull();
         expect(screen.queryByTestId("period-claimed-0")).toBeNull();
+    });
+});
+
+describe("the period's end, as the chain holds it", () => {
+    it("present: the hook carries UsageCounter.periodEnd and the card shows it in UTC", async () => {
+        const { result } = renderHook(() => useRpgfRewards());
+        await waitFor(() => expect(result.current.read.status).toBe("present"));
+        const read = result.current.read;
+        if (read.status !== "present") throw new Error("unreachable");
+        expect(read.value.periods[0].periodEnd).toEqual({ status: "present", value: 1_900_000_000n });
+        expect(w.client.readContract as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
+            expect.objectContaining({ functionName: "periodEnd", args: [0n] }),
+        );
+        render(<RewardsView />);
+        const end = await screen.findByTestId("period-end-0");
+        expect(end.textContent).toContain("2030");
+        expect(end.textContent).toContain("UTC");
+        // The period is closed on the chain's word (`periodClosed`), so the card says it ended.
+        expect(end.textContent).toMatch(/^Ended/);
+    });
+
+    it("in flight: the loading line, and no end", async () => {
+        w.holdPeriodEnd = true;
+        render(<RewardsView />);
+        expect(await screen.findByTestId("rewards-loading")).toBeInTheDocument();
+        expect(screen.queryByTestId("period-end-0")).toBeNull();
+    });
+
+    it("failed: the card shows, and the end's place is empty", async () => {
+        w.failPeriodEnd = true;
+        const { result } = renderHook(() => useRpgfRewards());
+        await waitFor(() => expect(result.current.read.status).toBe("present"));
+        const read = result.current.read;
+        if (read.status !== "present") throw new Error("unreachable");
+        expect(read.value.periods[0].periodEnd).toEqual({ status: "absent" });
+        render(<RewardsView />);
+        expect(await screen.findByTestId("period-card-0")).toBeInTheDocument();
+        expect(screen.queryByTestId("period-end-0")).toBeNull();
+    });
+
+    it("resolved empty: no period, so no end is read or shown", async () => {
+        w.noPeriods = true;
+        render(<RewardsView />);
+        expect(await screen.findByTestId("rewards-no-periods")).toBeInTheDocument();
+        expect(screen.queryByTestId("period-end-0")).toBeNull();
+        expect(w.client.readContract as ReturnType<typeof vi.fn>).not.toHaveBeenCalledWith(
+            expect.objectContaining({ functionName: "periodEnd" }),
+        );
     });
 });
