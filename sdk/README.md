@@ -2304,9 +2304,16 @@ import {
 - **Open rate-quantity registry**: `registerRateQuantitySource(source, resolver)`
   / `getRateQuantityResolver(source)` — a `pricingPolicy: "rate"` item resolves
   its billed quantity through this last-write-wins registry (shipped tenants:
-  `checkout-quantity` = the buyer enters units; `order-geodistance` = derived from
-  the order's committed geolocation endpoints). A booking-window or routed-distance
+  `checkout-quantity` = the buyer enters units; `order-geodistance` = the
+  great-circle distance in km between the centroids of the order's two committed
+  geohash endpoints). A booking-window or routed-distance
   composition registers a new tenant without touching checkout code.
+  `order-geodistance` finds its endpoints from the spec, never from a field name
+  or a clause id. An endpoint is a string field whose spec names a declared
+  sibling in `formatFromField`, where that sibling's committed value is
+  `geohash`. The distance is read only when exactly one composed clause holds
+  exactly two such fields. In every other case the quantity is unresolvable and
+  the item is not priced.
 
 Signatures and the exact fold rules live in the `dist/checkoutPlan.d.ts`
 docblocks — treat them as the contract; this list is the map, not the territory.
