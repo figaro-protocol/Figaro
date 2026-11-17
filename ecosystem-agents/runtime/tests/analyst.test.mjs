@@ -363,7 +363,7 @@ test("market-shape: a sub-order whose leaf is [] follows nothing — depth 0, tw
     assert.deepEqual(twoOrderShape(corpus, holdings(corpus, { held: true, follows: [] })), { shapes: [[0, 2]], unshaped: 0 });
 });
 
-test("market-shape: the batched path's events read the same — an absent sub-order agreement leaves the process unshaped", async () => {
+test("market-shape: the batched path's events read the same — an absent sub-order agreement leaves the process unshaped, and a held leaf gives its edges", async () => {
     // The two commits come from the verifier's address only, as
     // FigaroBatchVerifier emits them (the Core's own OrderCommitted, same
     // fields), folded by the SDK's fetchCoreEvents.
@@ -391,6 +391,9 @@ test("market-shape: the batched path's events read the same — an absent sub-or
     const resolution = projectResolutionGraph(core);
     const corpus = { ...fixture, core, graphs: { ...fixture.graphs, process: projectProcessGraph(core), resolution } };
     assert.deepEqual(twoOrderShape(corpus, holdings(corpus, { held: false })), { shapes: [], unshaped: 1 });
+    // The sub-order's agreement held, its leaf naming the opening order: the
+    // batched process reads as a chain of depth 1, from the leaf alone.
+    assert.deepEqual(twoOrderShape(corpus, holdings(corpus, { held: true, follows: [ORDER_A] })), { shapes: [[1, 1]], unshaped: 0 });
 });
 
 test("the buyer's attestation of the provenance leaf is named as the agreement's provenance leaf, decoded to both keys", () => {

@@ -600,3 +600,84 @@ describe("order-geodistance — endpoints derived from the spec", () => {
         )).toBeNull();
     });
 });
+
+// ── booking-window: the window is derived from the spec ─────────────────────
+//
+// A clause no repository file carries, written here: its field names share
+// nothing with the reference schedule clause. The resolver finds the window
+// by the declared format `iso-datetime`, never by a field name or a clause id;
+// the field declared first is the start.
+
+const instantField = (name: string): FieldDoc =>
+    ({ name, type: "string", required: true, format: "iso-datetime" });
+const RENTAL = strangerView("acme-rental", [instantField("pickUpAt"), instantField("returnBy")]);
+const bookingHours = (clauses: Record<string, Record<string, unknown>>, specs: ReturnType<typeof specSourceOf>) =>
+    getRateQuantityResolver("booking-window")!({ clauses, specs });
+const NINE = "2026-07-22T09:00:00Z";
+const HALF_PAST_TWELVE = "2026-07-22T12:30:00Z";
+
+describe("booking-window — the window derived from the spec", () => {
+    it("prices hours on a schedule clause whose fields carry other names", () => {
+        const specs = specSourceOf([RENTAL]);
+        expect(bookingHours({ [RENTAL.clauseKey]: { pickUpAt: NINE, returnBy: HALF_PAST_TWELVE } }, specs)).toBe(3.5);
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({ [RENTAL.clauseKey]: { pickUpAt: NINE, returnBy: HALF_PAST_TWELVE } }),
+            seller: SWIFT,
+            sellerCatalogs: rateCatalog({
+                id: "rental", name: "Rental", price: "0.5", available: true,
+                pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "booking-window",
+            }),
+            tokenDecimals: 18,
+            specs,
+        });
+        expect(p.issue).toBeUndefined();
+        expect(p.billedQuantity).toBe(4);
+    });
+
+    it("gives the reference schedule clause from clauses/ the hours between its two instants", () => {
+        expect(bookingHours({ [SCHEDULE]: { windowStart: NINE, windowEnd: HALF_PAST_TWELVE } }, SCHEDULE_SPECS)).toBe(3.5);
+    });
+
+    it("reads the field declared first as the start: a window whose second instant is not after the first prices nothing", () => {
+        const specs = specSourceOf([RENTAL]);
+        expect(bookingHours({ [RENTAL.clauseKey]: { pickUpAt: HALF_PAST_TWELVE, returnBy: NINE } }, specs)).toBeNull();
+        expect(bookingHours({ [RENTAL.clauseKey]: { pickUpAt: NINE, returnBy: NINE } }, specs)).toBeNull();
+    });
+
+    it("reads no window from a clause with one date-time field", () => {
+        const one = strangerView("acme-deadline", [instantField("dueAt")]);
+        expect(bookingHours({ [one.clauseKey]: { dueAt: NINE } }, specSourceOf([one]))).toBeNull();
+    });
+
+    it("reads no window from a clause with three date-time fields: its spec names no pair", () => {
+        const three = strangerView("acme-legs", [instantField("aAt"), instantField("bAt"), instantField("cAt")]);
+        expect(bookingHours(
+            { [three.clauseKey]: { aAt: NINE, bAt: HALF_PAST_TWELVE, cAt: HALF_PAST_TWELVE } },
+            specSourceOf([three]),
+        )).toBeNull();
+    });
+
+    it("reads no window when two clauses of the order each carry a pair, in either order", () => {
+        const specs = specSourceOf([RENTAL, viewOf(rawSpecOf("figaro-schedule"))]);
+        const rental = { pickUpAt: NINE, returnBy: HALF_PAST_TWELVE };
+        const schedule = { windowStart: NINE, windowEnd: HALF_PAST_TWELVE };
+        expect(bookingHours({ [RENTAL.clauseKey]: rental, [SCHEDULE]: schedule }, specs)).toBeNull();
+        expect(bookingHours({ [SCHEDULE]: schedule, [RENTAL.clauseKey]: rental }, specs)).toBeNull();
+    });
+
+    it("prices from the one clause with a pair when another clause carries a single date-time field", () => {
+        const one = strangerView("acme-deadline", [instantField("dueAt")]);
+        expect(bookingHours({
+            [one.clauseKey]: { dueAt: NINE },
+            [RENTAL.clauseKey]: { pickUpAt: NINE, returnBy: HALF_PAST_TWELVE },
+        }, specSourceOf([RENTAL, one]))).toBe(3.5);
+    });
+
+    it("reads no window from two string fields that declare another format or none", () => {
+        const plain = strangerView("acme-plain", [
+            { name: "fromText", type: "string", required: true },
+            { name: "toText", type: "string", required: true, format: "date" },
+        ]);
+        expect(bookingHours({ [plain.clauseKey]: { fromText: NINE, toText: HALF_PAST_TWELVE } }, specSourceOf([plain]))).toBeNull();
+    });
+});

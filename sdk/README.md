@@ -2306,14 +2306,20 @@ import {
   its billed quantity through this last-write-wins registry (shipped tenants:
   `checkout-quantity` = the buyer enters units; `order-geodistance` = the
   great-circle distance in km between the centroids of the order's two committed
-  geohash endpoints). A booking-window or routed-distance
+  geohash endpoints; `booking-window` = the hours between the two instants of
+  the order's committed window). A routed-distance
   composition registers a new tenant without touching checkout code.
   `order-geodistance` finds its endpoints from the spec, never from a field name
   or a clause id. An endpoint is a string field whose spec names a declared
   sibling in `formatFromField`, where that sibling's committed value is
   `geohash`. The distance is read only when exactly one composed clause holds
   exactly two such fields. In every other case the quantity is unresolvable and
-  the item is not priced.
+  the item is not priced. `booking-window` finds its window from the spec the
+  same way. A window is a pair of string fields that declare
+  `format: "iso-datetime"`, and the field the spec declares first is the start.
+  The hours are read only when exactly one composed clause holds exactly two
+  such fields and the second instant is after the first. In every other case
+  the quantity is unresolvable and the item is not priced.
 
 Signatures and the exact fold rules live in the `dist/checkoutPlan.d.ts`
 docblocks — treat them as the contract; this list is the map, not the territory.

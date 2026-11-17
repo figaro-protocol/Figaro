@@ -338,7 +338,10 @@ at resolution (`OrderResolved`). The other part, the edges of who comes before
 whom, is read from the design: the edges sit in the agreement body, whose
 address no event carries (`frontend/lib/core/agreementFetch.ts`, header), so a
 reader takes them from the registered assembly or from an agreement body it
-holds. Together the two give who paid whom, in what denomination, for how much,
+holds. The sign gate (`designIssues`, `sdk/src/projection.ts`) holds one thing
+about them at each party's signature: an order names as many orders as its
+design entry follows. Which orders they are is the reader's to check, since no
+design carries an order hash. Together the two give who paid whom, in what denomination, for how much,
 who the parties in the value-added process are, and how value accumulates. That
 skeleton is complete on its own.
 
