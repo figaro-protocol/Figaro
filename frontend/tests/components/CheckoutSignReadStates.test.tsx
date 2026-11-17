@@ -34,6 +34,8 @@ const OTHER_TOKEN = `0x${"1a".repeat(20)}` as Hex;
 
 const m = vi.hoisted(() => ({
     address: undefined as string | undefined,
+    buyer: undefined as string | undefined,
+    capacity: null as unknown,
     search: "",
     catalogs: undefined as unknown,
     bound: undefined as unknown,
@@ -76,7 +78,7 @@ vi.mock("@/lib/composition/useFundingMargin", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/composition/useFundingMargin")>()),
     useFundingMargin: () => ({ marginFor: () => ({ bps: null, maxInput: null }) }),
 }));
-vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => null }));
+vi.mock("@/hooks/useProcessResolveCapacity", () => ({ default: () => m.capacity }));
 
 // /s/checkout
 vi.mock("@/lib/member/useMemberBoundAssemblies", () => ({
@@ -84,7 +86,7 @@ vi.mock("@/lib/member/useMemberBoundAssemblies", () => ({
     withBoundCoSellers: (a: unknown) => a,
 }));
 vi.mock("@/lib/checkout", () => ({
-    useCommerce: () => ({ address: undefined }),
+    useCommerce: () => ({ address: m.buyer }),
     useCheckout: () => ({
         decimals: m.decimals, balance: undefined, needsAuthorization: () => false, authorize: vi.fn(),
         authorization: { isPending: false, isConfirming: false, isSuccess: false, isError: false },
@@ -171,6 +173,19 @@ describe("/s/checkout — each network read resolved empty", () => {
         expect(container.textContent ?? "").not.toMatch(ERROR_TEXT);
     });
 
+    it("the seller's bound assemblies resolve empty, a wallet connected: no option, so no order button and no instruction to select one", async () => {
+        m.buyer = BUYER;
+        try {
+            const { container } = render(<CheckoutView sellerAddress={SELLER} />);
+            await flush();
+            expect(screen.getByTestId("checkout-view")).toBeTruthy();
+            expect(screen.queryByTestId("btn-place-order")).toBeNull();
+            expect(container.textContent ?? "").not.toMatch(/Select an option/);
+        } finally {
+            m.buyer = undefined;
+        }
+    });
+
     it("the denomination answers no decimals: no figure, no error text", async () => {
         m.decimals = undefined;
         const { container } = render(<CheckoutView sellerAddress={SELLER} />);
@@ -229,14 +244,14 @@ describe("/s/checkout — a failed or in-flight read", () => {
 // ── /sign ───────────────────────────────────────────────────────────────────
 
 /** A buyer-signed order awaiting the seller, linked into the page. */
-function linkedPayload(): string {
+function linkedPayload(processId: Hex = `0x${"00".repeat(32)}` as Hex): string {
     const { agreement } = buildOrderAgreement(BUYER, SELLER, {
         [keyOf("figaro-commerce")]: {
             lineItems: [{ itemId: "item-1", name: "Item", quantity: 1, unitPrice: "1000" }],
         },
     }, specSource());
     const commitment: Commitment = {
-        processId: `0x${"00".repeat(32)}` as Hex, buyer: BUYER, seller: SELLER, currency: CURRENCY,
+        processId, buyer: BUYER, seller: SELLER, currency: CURRENCY,
         payment: 1000n, expectedCumulativeValue: 1000n,
         checkoutHash: computeCheckoutHash(agreement),
         salt: 1n, deadline: 9_999_999_999n,
@@ -297,6 +312,54 @@ describe("/sign — the seller's profile read and the catalog read", () => {
         const text = await renderSign();
         expect(screen.queryByTestId("sign-listed-prices")).toBeNull();
         expect(text).not.toMatch(/listed/);
+        expect(text).not.toMatch(ERROR_TEXT);
+    });
+});
+
+/** A sub-order's process: the page reads its capacity against the resolve ceiling. */
+const SUB_PROCESS = `0x${"5b".repeat(32)}` as Hex;
+
+describe("/sign — the denomination's decimals and symbol, and the process's capacity", () => {
+    beforeAll(async () => { await primeClauseSpecs(["figaro-commerce"]); });
+    beforeEach(() => {
+        m.address = SELLER;
+        m.search = linkedPayload();
+        m.decimals = 6;
+        m.symbol = "TKN";
+        m.registration = REGISTERED;
+        m.profile = async () => PROFILE;
+        m.catalogs = present([]);
+        m.capacity = null;
+    });
+
+    it("all three present: the figure, its symbol and the capacity row show (the reads reach the page)", async () => {
+        m.search = linkedPayload(SUB_PROCESS);
+        m.capacity = { activeOrderCount: 3, cap: 100, remaining: 97 };
+        await renderSign();
+        expect(screen.getByTestId("sign-payment").textContent?.trim()).toBe("0.001 TKN");
+        expect(screen.getByTestId("sign-process-capacity").textContent).toMatch(/3 \/ 100 resolvable/);
+    });
+
+    it("the decimals read resolves empty: no figure, only the symbol, and no error text", async () => {
+        m.decimals = undefined;
+        const text = await renderSign();
+        expect(screen.getByTestId("sign-payment").textContent?.trim()).toBe("TKN");
+        expect(screen.getByTestId("sign-my-bond").textContent?.trim()).toBe("TKN");
+        expect(text).not.toMatch(ERROR_TEXT);
+    });
+
+    it("the symbol read resolves empty: the figure stands with no symbol beside it, and no error text", async () => {
+        m.symbol = undefined;
+        const text = await renderSign();
+        expect(screen.getByTestId("sign-payment").textContent?.trim()).toBe("0.001");
+        expect(text).not.toMatch(ERROR_TEXT);
+    });
+
+    it("the capacity read of a sub-order's process resolves empty: no capacity row, and no error text", async () => {
+        m.search = linkedPayload(SUB_PROCESS);
+        const text = await renderSign();
+        expect(screen.queryByTestId("sign-process-capacity")).toBeNull();
+        expect(text).not.toMatch(/resolvable/);
         expect(text).not.toMatch(ERROR_TEXT);
     });
 });

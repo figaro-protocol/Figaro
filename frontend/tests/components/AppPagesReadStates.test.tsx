@@ -91,7 +91,7 @@ vi.mock("@/hooks/useProcessOrders", () => ({
     useProcessOrders: () => m.ordersRead,
     useWalletOrders: () => m.ordersRead,
 }));
-vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => m.agreements }));
+vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => m.agreements, useProcessAgreementReads: () => new Map() }));
 
 // /evidence-display
 vi.mock("@/lib/audit/processTimeline", () => ({ buildProcessTimeline: () => m.timeline() }));

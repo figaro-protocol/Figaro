@@ -144,7 +144,8 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
         // all zero, enabled = false
     }
 
-    /// @dev Give a party `amountIn` of `input` + the one-time Permit2 approval.
+    /// @dev Give a party `amountIn` of `input` + a Permit2 approval of the
+    ///      maximum, which covers each swap's signed maximum input.
     function _fundInput(address party, MockERC20 input, uint256 amountIn) internal {
         input.mint(party, amountIn);
         vm.prank(party);

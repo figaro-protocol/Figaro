@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { useProcessOrders } from "@/hooks/useProcessOrders";
-import { useProcessAgreements } from "@/hooks/useProcessAgreements";
+import { useProcessAgreementReads } from "@/hooks/useProcessAgreements";
+import type { Agreement } from "@figaro-protocol/sdk";
 import { getAttestationsByOrder, type AttestationRecord } from "@/lib/composition/indexer";
 import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import { extractClauseData } from "@/lib/audit/clauseDataExtract";
@@ -56,10 +57,14 @@ function OrderSignatureRows({
     verdicts: OrderSignatureVerdicts | undefined;
 }) {
     if (!verdicts) return null;
-    const rows = [
+    // An "unavailable" verdict is the chain's answer that nothing carries the
+    // order's signatures: its row's place stays empty, and the list of what
+    // the evidence file lacks names it once.
+    const rows = ([
         { label: "Buyer signature", party: "buyer", verdict: verdicts.buyer },
         { label: "Seller signature", party: "seller", verdict: verdicts.seller },
-    ] as const;
+    ] as const).filter((row) => row.verdict !== "unavailable");
+    if (rows.length === 0 && !verdicts.batch) return null;
     return (
         <dl
             className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-0.5 text-xs"
@@ -87,11 +92,6 @@ function OrderSignatureRows({
                         {verdict === "indirect" && (
                             <span className="text-ink-muted">
                                 Not a direct call &mdash; the commit went through another contract, so this transaction&rsquo;s calldata is not what FigaroCore verified
-                            </span>
-                        )}
-                        {verdict === "unavailable" && (
-                            <span className="text-ink-muted">
-                                Unavailable &mdash; no readable commit calldata for this order
                             </span>
                         )}
                     </dd>
@@ -140,7 +140,15 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
         () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
         [orders],
     );
-    const agreements = useProcessAgreements(checkoutHashes);
+    // Each agreement as a network read: one in flight shows the loading line in
+    // its order's block, one that failed to load is named in the list of what
+    // the evidence lacks.
+    const agreementReads = useProcessAgreementReads(checkoutHashes);
+    const agreements = useMemo(() => {
+        const loaded = new Map<string, Agreement>();
+        for (const [hash, read] of agreementReads) if (read.status === "present") loaded.set(hash, read.value);
+        return loaded;
+    }, [agreementReads]);
 
     // The process's attestation log, fetched per order and read clause-agnostically
     // (the same indexer read the PDF builder uses). Keyed by order id.
@@ -171,8 +179,10 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
 
     // Per-order signature verdicts: the commit transaction's calldata is the
     // only on-chain home of the signature bytes, so the reader re-verifies them
-    // there (same per-order fetch shape as the attestations above).
-    const [signaturesByOrder, setSignaturesByOrder] = useState<Map<string, OrderSignatureVerdicts>>(new Map());
+    // there (same per-order fetch shape as the attestations above). A read that
+    // failed is absent: the order shows no rows, and the list of what the
+    // evidence lacks names it.
+    const [signaturesByOrder, setSignaturesByOrder] = useState<Map<string, NetworkRead<OrderSignatureVerdicts>>>(new Map());
     useEffect(() => {
         if (!publicClient || !chainId || orders.length === 0) {
             setSignaturesByOrder(new Map());
@@ -180,13 +190,12 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
         }
         let canceled = false;
         (async () => {
-            const next = new Map<string, OrderSignatureVerdicts>();
+            const next = new Map<string, NetworkRead<OrderSignatureVerdicts>>();
             await Promise.all(orders.map(async (order) => {
-                try {
-                    next.set(order.orderHash, await verifyOrderCommitSignatures(publicClient, chainId, order.orderHash));
-                } catch {
-                    // Leave the order without a verdict — rows simply don't render.
-                }
+                next.set(order.orderHash, await readNetwork(
+                    "ProcessClauseEvidence.signatures",
+                    () => verifyOrderCommitSignatures(publicClient, chainId, order.orderHash),
+                ));
             }));
             if (!canceled) setSignaturesByOrder(next);
         })();
@@ -266,15 +275,17 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
             const agreement = order.checkoutHash ? agreements.get(order.checkoutHash) : undefined;
             const clauseData = agreement ? extractClauseData(order, agreement) : null;
             const processLogs = extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? [], readHeldWitness);
-            return { order, clauseData, processLogs };
-        }).filter(({ clauseData, processLogs }) =>
-            (clauseData && clauseData.clauses.length > 0) || processLogs.logs.length > 0,
+            // An agreement still in flight holds its order's block open, with
+            // the loading line in the clauses' place.
+            const agreementPending = !!order.checkoutHash && agreementReads.get(order.checkoutHash)?.status === "pending";
+            return { order, clauseData, processLogs, agreementPending };
+        }).filter(({ clauseData, processLogs, agreementPending }) =>
+            agreementPending || (clauseData && clauseData.clauses.length > 0) || processLogs.logs.length > 0,
         );
-    }, [orders, agreements, attestationsByOrder, clauseSpecsVersion]);
+    }, [orders, agreements, agreementReads, attestationsByOrder, clauseSpecsVersion]);
 
-    // What this evidence lacks, stated beside it. An agreement still in flight
-    // is not listed: the page cannot tell it from one that failed to load, and
-    // the PDF's evidence file names it.
+    // What this evidence lacks, stated beside it, each part once. An agreement
+    // still in flight is not listed: its order's loading line stands for it.
     const missing = useMemo(() => {
         const parts: MissingPart[] = [];
         if (attestationsRead.status === "absent") {
@@ -288,15 +299,35 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                     orderHash: order.orderHash,
                     reason: "the order carries no checkoutHash, so no agreement was looked up",
                 });
+            } else if (agreementReads.get(order.checkoutHash)?.status === "absent") {
+                parts.push({
+                    part: `Agreement and clauses of order ${order.orderHash}`,
+                    orderHash: order.orderHash,
+                    reason: `the agreement under checkoutHash ${order.checkoutHash} was not loaded`,
+                });
             }
             if (agreement) parts.push(...extractClauseData(order, agreement).missing);
+            const signatures = signaturesByOrder.get(order.orderHash);
+            if (signatures?.status === "absent") {
+                parts.push({
+                    part: `Signatures of order ${order.orderHash}`,
+                    orderHash: order.orderHash,
+                    reason: "the read of its commit transaction failed, so neither signature was checked here",
+                });
+            } else if (signatures?.status === "present" && signatures.value.buyer === "unavailable" && signatures.value.seller === "unavailable") {
+                parts.push({
+                    part: `Signatures of order ${order.orderHash}`,
+                    orderHash: order.orderHash,
+                    reason: "no commit calldata readable for this order and no batch that carries it, so neither party's signature was checked here",
+                });
+            }
             // The same held-content reader the evidence file passes: what
             // this browser holds is shown as held, and only what it does not
             // hold is named missing.
             parts.push(...extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? [], readHeldWitness).missing);
         }
         return parts;
-    }, [orders, agreements, attestationsRead.status, attestationsByOrder, clauseSpecsVersion]);
+    }, [orders, agreements, agreementReads, signaturesByOrder, attestationsRead.status, attestationsByOrder, clauseSpecsVersion]);
 
     return (
         <section data-testid="audit-clause-evidence" className="space-y-6">
@@ -324,13 +355,19 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                 <p className="text-sm text-ink-muted">No clause evidence recorded for this process yet.</p>
             ) : (
                 <div className="space-y-8">
-                    {perOrder.map(({ order, clauseData, processLogs }) => (
-                        <div key={order.orderHash} className="space-y-5 border border-default rounded-section p-5">
+                    {perOrder.map(({ order, clauseData, processLogs, agreementPending }) => {
+                        const signatures = signaturesByOrder.get(order.orderHash);
+                        return (
+                        <div key={order.orderHash} className="space-y-5 border border-default rounded-section p-5" data-testid={`audit-order-${order.orderHash}`}>
                             <p className="text-xs font-mono text-ink-muted break-all">order {order.orderHash}</p>
                             <OrderSignatureRows
                                 orderHash={order.orderHash}
-                                verdicts={signaturesByOrder.get(order.orderHash)}
+                                verdicts={signatures?.status === "present" ? signatures.value : undefined}
                             />
+
+                            {agreementPending && (
+                                <p className="text-sm text-ink-muted" data-testid={`audit-order-loading-${order.orderHash}`}>Loading…</p>
+                            )}
 
                             {clauseData && clauseData.clauses.length > 0 && (
                                 <div className="space-y-4">
@@ -422,7 +459,8 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                                 </div>
                             ))}
                         </div>
-                    ))}
+                        );
+                    })}
                     {/* Controller-erasure for witness pins this node published —
                         sits with the data it erases (the attestation contentRefs
                         fetched above), mirroring the committed-agreement pin's

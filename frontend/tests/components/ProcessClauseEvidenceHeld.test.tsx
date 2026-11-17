@@ -16,7 +16,7 @@ const { rows } = vi.hoisted(() => ({ rows: [] as unknown[] }));
 
 vi.mock("wagmi", () => ({ usePublicClient: () => ({ chain: { id: 31337 } }) }));
 vi.mock("@/hooks/useProcessOrders", () => ({ useProcessOrders: () => ORDERS }));
-vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreements: () => new Map() }));
+vi.mock("@/hooks/useProcessAgreements", () => ({ useProcessAgreementReads: () => new Map() }));
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => ({ version: 0, loaded: true, errors: [] }) }));
 vi.mock("@/lib/composition/indexer", () => ({ getAttestationsByOrder: async () => rows }));
 vi.mock("@/lib/audit/signatureVerdicts", () => ({ verifyOrderCommitSignatures: async () => { throw new Error("no verdict"); } }));

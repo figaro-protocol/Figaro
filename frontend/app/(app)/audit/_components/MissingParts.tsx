@@ -1,9 +1,11 @@
 import type { MissingPart } from "@/lib/audit/types";
 
 /**
- * The parts the evidence file does not contain, each with the reason the
- * reader gave: the page's counterpart of the PDF's "What this evidence file does not
- * contain" page. States what is missing and draws no conclusion about why.
+ * The parts the evidence on the audit page does not contain, each with the
+ * reason the reader gave. It carries the entries of the PDF's "What this
+ * evidence file does not contain" page that the page reads too, and the
+ * page's own: an order's signatures, which the page checks and the PDF does
+ * not carry. States what is missing and draws no conclusion about why.
  * Renders nothing when no part is missing.
  */
 export function MissingParts({ missing }: { missing: readonly MissingPart[] }) {

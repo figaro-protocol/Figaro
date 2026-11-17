@@ -8,7 +8,8 @@
  * accepted set). The coordinator swaps the chosen token at commit time and
  * the Core pulls the bond as always — the order stays denominated in the
  * one process token; only the funding source changes. Selection + the
- * one-time Permit2 authorization are held by `useSwapFunding`; the slippage
+ * Permit2 authorization, which covers each swap's signed maximum input, are
+ * held by `useSwapFunding`; the slippage
  * margin, set here before the quote the signature binds, by
  * `useFundingMargin`; the witness signing itself rides the sign/accept step.
  */
