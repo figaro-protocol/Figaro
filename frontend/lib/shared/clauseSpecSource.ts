@@ -19,11 +19,9 @@
  * nesting) live here so there is one source and no parallel taxonomy module.
  */
 
-import { contentFieldsFor, parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
-import { declaredStageFields, stageOfKey } from "@figaro-protocol/sdk/clauses";
-import type { Hex, ProjectionHints, ProjectionSpecView, SpecSource } from "@figaro-protocol/sdk";
+import { contentFieldsFor, declaredStageFields, parseClauseSpec, stageOfKey, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
-import { PROVENANCE_LEAF_KEY, anchorClauseSpec, deriveAnchored, type Anchored } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, anchorClauseSpec, deriveAnchored, type Anchored, type Hex, type ProjectionHints, type ProjectionSpecView, type SpecSource } from "@figaro-protocol/sdk";
 import { DEFAULT_IPFS_SERVICE, fetchCappedBinary } from "@/lib/shared/ipfsService";
 import { truncateHex } from "@/lib/shared/formatHex";
 

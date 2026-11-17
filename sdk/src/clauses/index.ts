@@ -27,9 +27,16 @@ export type {
     ParseClauseSpecResult,
 } from "./spec.js";
 
-export { fieldSetRuleErrors, parseClauseSpec, parseFieldSpec, resolveInputFormat } from "./spec.js";
-// A stage key: the one spelling of a stage in `stages`, read and written.
-export { declaredStageFields, stageKey, stageOfKey } from "./spec.js";
+// A stage key (`stageKey`, `stageOfKey`): the one spelling of a stage in `stages`, read and written.
+export {
+    declaredStageFields,
+    fieldSetRuleErrors,
+    parseClauseSpec,
+    parseFieldSpec,
+    resolveInputFormat,
+    stageKey,
+    stageOfKey,
+} from "./spec.js";
 
 // The geohash grain cap, cap(disposition, geocodeStandard): the one home of the
 // rule `validateContent` applies and a form input truncates to.

@@ -196,7 +196,7 @@ async function getAllOrderSeller(client: PublicClient, chainId: number) {
 
 /**
  * OrderCommitted logs where the seller matches.
- * Uses the OrderSeller companion event (indexed seller) to find orderHashes,
+ * Uses the OrderSeller companion event, its seller matched on the client, to find orderHashes,
  * then pulls the full OrderCommitted log for each matching order.
  */
 export async function getOrderCommittedBySeller(client: PublicClient, chainId: number, seller: string) {
