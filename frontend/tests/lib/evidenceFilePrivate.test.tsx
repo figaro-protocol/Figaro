@@ -124,4 +124,23 @@ describe("the evidence file's pages show what its builder holds", () => {
         expect(text).toContain(witnessValues.blinding as string);
         expect(text).toContain(witness);
     });
+
+    it("says of each private filing it holds whether its builder kept it when filing or received it from the counterparty", () => {
+        const pdfText = (received: boolean) => {
+            const bundle = buildAuditBundle(order, agreement, attestations, { heldWitness: () => ({ content: witness, values: witnessValues, received }) });
+            expect(bundle.processLogs.logs[0].events[0].heldReceived).toBe(received);
+            const { container } = render(
+                <AuditBundlePdf data={{
+                    processId: order.processId, buyer: BUYER, missing: [], generatedAt: new Date(0),
+                    perOrderBundles: [bundle], documents: [],
+                } as unknown as Parameters<typeof AuditBundlePdf>[0]["data"]} />,
+            );
+            const text = container.textContent ?? "";
+            container.remove();
+            return text;
+        };
+        // The seller attested; the buyer received a copy sealed to it.
+        expect(pdfText(true)).toContain(`Copy received from the attester ${SELLER}, its counterparty on this order, and kept in the browser profile this file was built in.`);
+        expect(pdfText(false)).toContain(`Copy kept in the browser profile this file was built in, when the attester ${SELLER} filed the attestation from it.`);
+    });
 });

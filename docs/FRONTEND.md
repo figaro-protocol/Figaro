@@ -244,7 +244,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     `components/runtime/PayoutRoutingPanel.tsx` beside what resolution paid out.
 - **`designer/`** — assembly authoring: synthetic DAG session + autosave + fork + publish (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyToDraft.ts`, `draftToAssembly.ts` — the authoring mirror of `assemblyToDraft.ts` and the ONE draft→assembly walk that publish, the hand-off panel, the canvas identity readout, and the review screen share (`projectSnapshotForReview` is that walk's review face: the composition a review renders comes out of the assembly publish anchors, never a second reading of the draft) — `publishAssembly.ts`; the assembly build itself — `buildAssembly`/`serializeAssembly` — is `@figaro-protocol/sdk`)
   - *The designer's picks, by key:* `assemblyComposedClauses` lists each agreement's composed clauses by clause key, each labeled with the spec's own `clauseId`, `version` and title read from the spec the key names (`composedClauseLabel` shows the name and version beside a short form of the key — two specs may share a name, never a key); the review face re-keys it onto the canvas's order ids as `composedClausesByOrderId`, which the review listing, the canvas chips and the drawer read.
-- **`handoff/`** — handoff-clause runtime TRANSPORTS + persistence: the channel factory (`channel.ts` — mock/null/XMTP chosen by DERIVED facts, never a setting: XMTP iff the wallet already has an inbox, `walletHasXmtpInbox` probe — one seam, one choreography, and no per-wallet transport setting), the transport implementations (`xmtpChannel.ts`, `mockChannel.ts`, `nullChannel.ts`), the relay adapter (`relayChannel.ts` — the handoff relay's PRE-COMMIT cell speaking the SDK's `CoordinationChannel`, so the dispatch race runs ONE choreography over every transport; also home of `relayCommitmentPayload`), per-order ECDH keypair sessionStorage (`ecdh.ts`), handoff-messaging + handoff-persistence services (`handoffMessagingService.ts`, `handoffPersistenceService.ts`). The anchor check (`handoffAnchorState.ts`) matches an attestation from either path, and `useHandoffCleanup.ts` watches `OrderResolved` at `FigaroCore` and at `FigaroBatchVerifier`. The wire protocol itself (message shapes, ECDH derivation, AES-GCM wrapping) is `@figaro-protocol/sdk/handoff`.
+- **`handoff/`** — handoff-clause runtime TRANSPORTS + persistence: the channel factory (`channel.ts` — mock/null/XMTP chosen by DERIVED facts, never a setting: XMTP iff the wallet already has an inbox, `walletHasXmtpInbox` probe — one seam, one choreography, and no per-wallet transport setting), the transport implementations (`xmtpChannel.ts`, `mockChannel.ts`, `nullChannel.ts`), the relay adapter (`relayChannel.ts` — the handoff relay's PRE-COMMIT cell speaking the SDK's `CoordinationChannel`, so the dispatch race runs ONE choreography over every transport; also home of `relayCommitmentPayload`), per-order ECDH keypair sessionStorage (`ecdh.ts`), the three ceremonies over one core (`ceremony.ts`, `useCeremonyChannel.ts`): the address detail (`addressDetail.ts`), the content delivery (`contentDelivery.ts`) and the private filings of one order (`privateFilings.ts`), handoff-messaging + handoff-persistence services (`handoffMessagingService.ts`, `handoffPersistenceService.ts`). The anchor check (`handoffAnchorState.ts`) matches an attestation from either path, and `useHandoffCleanup.ts` watches `OrderResolved` at `FigaroCore` and at `FigaroBatchVerifier`. The wire protocol itself (message shapes, ECDH derivation, AES-GCM wrapping) is `@figaro-protocol/sdk/handoff`.
 - **`member/`** — the participant's own data: member-profile document family (`memberProfileMetadata.ts`), branding (`memberBranding*.ts`, `useMemberBranding.ts`), the MembersRegistry write/read hooks (`useMembersRegistry.ts`, `usePublishMemberProfile.ts`, `useUpdateMemberProfile.ts`), profile geocoding (`geocode.ts`), the cached URI-fetch pipeline (`uriFetcher.ts` — a single-layer reader, so it lives here), the cached profile read path (`profileFetcher.ts`) and its erasure half (`profileErasure.ts`); the catalog family — authoring/publication/reads (`catalog*.ts`, `memberCatalogMetadata*.ts`, on the same `uriFetcher.ts` pipeline), listings + discovery (`useMemberListings.ts`, `discoveryService.ts`), the enrollment-wizard state (`onboardingState.ts` — the wizard spans profile, catalog, seller and buyer steps), and the ONE counterparty-name resolver (`memberListing.ts` `displayNameForAddress`, over any `{address, name}` collection). Both sides live here: member = what a wallet IS, seller = which side of a trade it stands on.
 - **`semantic/`** — runtime derivation from committed state: `deriveProcessModelFromRuntime.ts`, `processTopology.ts`, `processRecourse.ts`, `models.ts`, capability execution
 
@@ -414,7 +414,23 @@ Y", not as an open-ended build.)
   the clause's stage-1 completion evidence, a private stage-1 set's
   blinding value sealed beside the artifact so the receiver recomputes
   the anchor; both ceremonies share the
-  two-message core in `lib/handoff/ceremony.ts`)).
+  two-message core in `lib/handoff/ceremony.ts`)). A third use of the same
+  ceremony is mounted by no clause: `PrivateFilingsPanel`
+  (`components/runtime/PrivateFilingsPanel.tsx`, on `/orders/view` beside
+  each order's interaction surfaces) delivers the private filings of one
+  order. The party whose page shows a counterparty's private filing it does
+  not hold asks ("Request the private filings", wallet-signed, under
+  `<orderHash>#filings`); the attester's page, with a key the counterparty offered present (by that
+  request, or with its own send),
+  seals every copy it kept for the order on one click ("Send the private
+  filings (N)"); the receiver checks each entry against its content
+  reference and the `Attestation` the chain holds, and keeps it in the
+  kept-witness store marked received (`lib/handoff/privateFilings.ts`). The
+  three panels share `useCeremonyPanel` and `useCeremonyChannel`
+  (`lib/handoff/useCeremonyChannel.ts`), whose `expectedAnchor` returns one
+  expectation or one per part of the payload, each a content reference or a
+  whole attestation place, and `CeremonyPanelFrame` with
+  `CeremonyRequestButton`.
 - **Clause-composition UI** — `app/(tools)/assemblies/designer/_components/AgreementDrawer.tsx`
   (reads ClauseRegistry live; grouping word is `block.design.article`).
 - **On-chain write flow** — `lib/member/usePublishMemberProfile.ts`

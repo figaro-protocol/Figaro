@@ -30,6 +30,9 @@
  * names its order, clause, stage and content reference. It is read back
  * only when the bytes hash to the reference (`readKeptWitnessContent`), and
  * its values are decoded from those checked bytes (`readKeptWitnessValues`).
+ * The counterparty receives a copy only by asking for it, sealed to a key
+ * that lives in its own tab (`lib/handoff/privateFilings.ts`); that copy is
+ * kept in the same entry, marked `received` (`keepReceivedWitnessContent`).
  * The pages of this browser and the evidence file read it
  * (`resolveHeldWitnessContent`, `readHeldWitness`); no public reader does.
  * The copy belongs to the browser profile, not to a wallet: whoever opens
@@ -192,13 +195,21 @@ function keptKey(place: WitnessPlace): string {
 }
 
 /** Whether the set a witness's content is encoded from holds a private
- *  field (`attestationContentFields`). An unknown spec counts as private:
- *  its content is never published (`publishWitnessContent`), so it is kept.
- *  The provenance leaf's bytes are the format's own and public. */
-function encodedSetIsPrivate(clauseId: Hex | string, stage: number): boolean {
+ *  field (`attestationContentFields`): true or false once the clause's spec
+ *  is read, null while it is unread (not loaded, or its read failed). The
+ *  provenance leaf's bytes are the format's own and public. A reader counts
+ *  only true. */
+export function encodedSetPrivacy(clauseId: Hex | string, stage: number): boolean | null {
     if (hexEqual(clauseId, PROVENANCE_LEAF_KEY)) return false;
     const fields = attestationContentFields(String(clauseId), stage);
-    return fields === null || fields.some((f) => f.disposition === "private");
+    return fields === null ? null : fields.some((f) => f.disposition === "private");
+}
+
+/** The keeper's reading of `encodedSetPrivacy`: an unread spec counts as
+ *  private, since its content is never published (`publishWitnessContent`),
+ *  so it is kept. */
+function encodedSetIsPrivate(clauseId: Hex | string, stage: number): boolean {
+    return encodedSetPrivacy(clauseId, stage) ?? true;
 }
 
 /**
@@ -229,16 +240,45 @@ export function forgetKeptWitnessContent(place: WitnessPlace): void {
     removeStorage(keptKey(place));
 }
 
+/**
+ * Keep a copy of the counterparty's private witness content, received sealed
+ * over the private-filings ceremony (`lib/handoff/privateFilings.ts`), in
+ * the same per-witness entry its own filings use, so every reader of this
+ * browser's copies reads it. The entry carries one more field,
+ * `received: true`: a forum reading the evidence file is told that this
+ * copy came from the attester and was not filed from this browser. The
+ * caller has checked that an Attestation event by the counterparty names
+ * this place. Returns `"kept"` once stored, or when this browser already
+ * holds a copy (which is never overwritten), and `"refused"` when the bytes
+ * do not hash to the reference or the browser refuses the write.
+ */
+export function keepReceivedWitnessContent(place: WitnessPlace & { content: Hex }): "kept" | "refused" {
+    if (!isBytes32Hex(place.contentRef) || !anchorAttestationContent(place.content, place.contentRef)) return "refused";
+    if (readKeptEntry(place)) return "kept";
+    return writeJsonStorage(keptKey(place), { content: place.content, received: true }) ? "kept" : "refused";
+}
+
+/** One kept entry, its bytes checked against the reference; null where this
+ *  browser keeps none, or where the entry does not parse or its bytes do not
+ *  hash to the reference. `received` is true only for a copy received from
+ *  the counterparty (`keepReceivedWitnessContent`). */
+function readKeptEntry(place: WitnessPlace): { content: Anchored<Hex>; received: boolean } | null {
+    if (!isBytes32Hex(place.contentRef)) return null;
+    const entry = readJsonStorage<unknown>(keptKey(place), null);
+    if (!entry || typeof entry !== "object") return null;
+    const { content, received } = entry as { content?: unknown; received?: unknown };
+    if (typeof content !== "string" || !/^0x([0-9a-fA-F]{2})*$/.test(content)) return null;
+    const anchored = anchorAttestationContent(content as Hex, place.contentRef);
+    return anchored ? { content: anchored, received: received === true } : null;
+}
+
 /** The kept bytes of a witness, checked against its content reference
  *  (`anchorAttestationContent`); null where this browser keeps none, or
  *  where the entry does not parse or its bytes do not hash to the
- *  reference. Any other field an entry carries is never read. */
+ *  reference. Only the bytes and the `received` mark are read; any other
+ *  field an entry carries is never read. */
 export function readKeptWitnessContent(place: WitnessPlace): Anchored<Hex> | null {
-    if (!isBytes32Hex(place.contentRef)) return null;
-    const entry = readJsonStorage<unknown>(keptKey(place), null);
-    const content = entry && typeof entry === "object" ? (entry as { content?: unknown }).content : undefined;
-    if (typeof content !== "string" || !/^0x([0-9a-fA-F]{2})*$/.test(content)) return null;
-    return anchorAttestationContent(content as Hex, place.contentRef);
+    return readKeptEntry(place)?.content ?? null;
 }
 
 /** The values of a kept witness, the blinding value included, decoded from
@@ -257,12 +297,13 @@ export function readKeptWitnessValues(place: WitnessPlace): Record<string, unkno
 }
 
 /** The content this browser holds for one attestation, checked against its
- *  reference, with its decoded values: the reader the evidence file and the
- *  audit page share (`HeldWitnessReader`), so the two name the same pieces
- *  missing. Null where this browser keeps none. */
-export function readHeldWitness(place: WitnessPlace): { content: Anchored<Hex>; values: Record<string, unknown> | null } | null {
-    const content = readKeptWitnessContent(place);
-    return content ? { content, values: readKeptWitnessValues(place) } : null;
+ *  reference, with its decoded values and whether the copy was received from
+ *  the counterparty (`received`) or kept by its attester: the reader the
+ *  evidence file and the audit page share (`HeldWitnessReader`), so the two
+ *  name the same pieces missing. Null where this browser keeps none. */
+export function readHeldWitness(place: WitnessPlace): { content: Anchored<Hex>; values: Record<string, unknown> | null; received: boolean } | null {
+    const entry = readKeptEntry(place);
+    return entry ? { content: entry.content, values: readKeptWitnessValues(place), received: entry.received } : null;
 }
 
 /**

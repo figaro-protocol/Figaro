@@ -32,7 +32,7 @@ import { contentFieldsFor, encodeContentFromSpec, type ClauseSpec } from "@figar
 import { prepareAttestationContent } from "@figaro-protocol/sdk/agent";
 import { isBytes32Hex } from "@/lib/shared/evm";
 import {
-    decryptCeremonyBlob,
+    openCeremonyBlob,
     requestCeremonyKey,
     sendCeremonyBlob,
     type SignChannelAuth,
@@ -196,14 +196,7 @@ export async function decryptContentDelivery(params: {
     senderPubKeyHex: string;
     blobB64: string;
 }): Promise<DeliveredContent | null> {
-    const plain = await decryptCeremonyBlob({
-        myAddress: params.myAddress,
-        ceremonyId: contentCeremonyId(params.orderId),
-        senderPubKeyHex: params.senderPubKeyHex,
-        blobB64: params.blobB64,
-    });
-    if (plain === null) return null;
-    const envelope = tryDecodeContentEnvelope(plain);
+    const envelope = await openCeremonyBlob(params, contentCeremonyId(params.orderId), tryDecodeContentEnvelope);
     if (envelope === null) return null;
     const bytes = fromHex(envelope.bytesHex, "bytes");
     return {

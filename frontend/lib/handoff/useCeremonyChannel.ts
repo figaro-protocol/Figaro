@@ -4,7 +4,7 @@
  * lib/handoff/useCeremonyChannel.ts
  *
  * The shared half of an ECDH handoff-ceremony panel (AddressDetailPanel,
- * ContentDeliveryPanel): the coordination-channel subscription with the
+ * ContentDeliveryPanel, PrivateFilingsPanel): the coordination-channel subscription with the
  * verify-and-skip authentication contract, the requested-this-session
  * bookkeeping, and the decrypt-then-verify-anchor pipeline. The panels
  * keep their codec — what a ceremony payload IS, and how its on-chain
@@ -19,11 +19,12 @@
  * counterparty nor end the ceremony. (The counterparty check also drops
  * our own messages.)
  *
- * Anchor verification: once both halves arrived, decrypt, then poll the
- * decrypted payload's expected fingerprint against the order's on-chain
- * attestations — the anchor tx can confirm AFTER the channel messages
- * arrive, so the check re-runs until it lands (the event cache makes
- * re-reads cheap). Symmetric: either side receives this way.
+ * Anchor verification: once both halves arrived, decrypt, then poll each
+ * of the decrypted payload's expectations (a fingerprint, or a whole
+ * attestation place) against the order's on-chain attestations — the
+ * anchor tx can confirm AFTER the channel messages arrive, so the check
+ * re-runs until every expectation lands (the event cache makes re-reads
+ * cheap). Symmetric: either side receives this way.
  *
  * `decrypt` and `expectedAnchor` are effect dependencies — callers MUST
  * memoize them (useCallback) or the ceremony re-decrypts every render.
@@ -40,6 +41,7 @@ import {
 import { getOrderEcdhKeypair } from "@/lib/handoff/ecdh";
 import {
     attestationAnchorMatches,
+    type AnchorExpectation,
     type AnchorVerificationState,
 } from "@/lib/handoff/handoffAnchorState";
 import { hexEqual } from "@/lib/shared/evm";
@@ -68,11 +70,13 @@ export interface UseCeremonyChannelOptions<T> {
         blobB64: string;
     }) => Promise<T | null>;
     /**
-     * The on-chain fingerprint expected for a decrypted payload; null
-     * skips anchor verification (e.g. the declaring clause's spec isn't
-     * loaded). Memoize.
+     * What the chain must hold for a decrypted payload: one expectation (a
+     * content reference, or a whole attestation place), or one per part of
+     * the payload; `sender` is the counterparty whose signed messages
+     * carried it. Null or an empty list skips anchor verification (e.g. the
+     * declaring clause's spec isn't loaded). Memoize.
      */
-    expectedAnchor: (decrypted: T, blobB64: string) => `0x${string}` | null;
+    expectedAnchor: (decrypted: T, blobB64: string, sender: string) => AnchorExpectation | readonly AnchorExpectation[] | null;
 }
 
 export interface UseCeremonyChannelResult<T> {
@@ -85,8 +89,12 @@ export interface UseCeremonyChannelResult<T> {
     setRequested: (requested: boolean) => void;
     /** The counterparty's decrypted payload, once both halves arrived. */
     received: T | null;
-    /** The on-chain anchor verdict for `received`. */
+    /** The on-chain anchor verdict for `received`: verified once every
+     *  expectation holds. */
     anchored: AnchorVerificationState;
+    /** One verdict per expectation, in the order `expectedAnchor` returned
+     *  them; empty until the first check. */
+    anchoredEach: readonly boolean[];
 }
 
 export function useCeremonyChannel<T>(
@@ -110,12 +118,14 @@ export function useCeremonyChannel<T>(
     const [blobTagged, setBlob] = useState<Tagged<string>>(null);
     const [requested, setRequested] = useState(false);
     const [receivedTagged, setReceived] = useState<Tagged<T | null>>(null);
-    const [anchoredTagged, setAnchored] = useState<Tagged<AnchorVerificationState>>(null);
+    const [anchoredTagged, setAnchored] = useState<Tagged<readonly boolean[]>>(null);
     const channel = current(channelTagged, null);
     const peerPubKey = current(peerTagged, null);
     const blob = current(blobTagged, null);
     const received = current(receivedTagged, null);
-    const anchored = current<AnchorVerificationState>(anchoredTagged, "unknown");
+    const anchoredEach = current<readonly boolean[]>(anchoredTagged, NO_VERDICTS);
+    const anchored: AnchorVerificationState =
+        anchoredEach.length === 0 ? "unknown" : anchoredEach.every(Boolean) ? "verified" : "missing";
 
     // The channel + subscriptions, under the verify-and-skip contract
     // documented above.
@@ -164,14 +174,18 @@ export function useCeremonyChannel<T>(
             if (canceled) return;
             setReceived({ key, value: decrypted });
             if (!decrypted) return;
-            const expected = expectedAnchor(decrypted, blob);
-            if (!expected) return;
+            const expected = expectedAnchor(decrypted, blob, counterparty);
+            const expectations: readonly AnchorExpectation[] =
+                expected === null ? [] : Array.isArray(expected) ? expected : [expected as AnchorExpectation];
+            if (expectations.length === 0) return;
             const checkAnchor = async () => {
                 if (!publicClient || canceled) return;
-                const verified = await attestationAnchorMatches(publicClient, chainId, orderHash, expected);
+                const each = await Promise.all(
+                    expectations.map((e) => attestationAnchorMatches(publicClient, chainId, orderHash, e)),
+                );
                 if (canceled) return;
-                setAnchored({ key, value: verified ? "verified" : "missing" });
-                if (!verified) timer = setTimeout(() => void checkAnchor(), 3000);
+                setAnchored({ key, value: each });
+                if (!each.every(Boolean)) timer = setTimeout(() => void checkAnchor(), ANCHOR_RECHECK_MS);
             };
             await checkAnchor();
         })();
@@ -179,16 +193,22 @@ export function useCeremonyChannel<T>(
             canceled = true;
             if (timer) clearTimeout(timer);
         };
-    }, [enabled, address, peerPubKey, blob, orderHash, publicClient, chainId, decrypt, expectedAnchor, ceremonyKey]);
+    }, [enabled, address, peerPubKey, blob, orderHash, counterparty, publicClient, chainId, decrypt, expectedAnchor, ceremonyKey]);
 
-    return { channel, peerPubKey, requested, setRequested, received, anchored };
+    return { channel, peerPubKey, requested, setRequested, received, anchored, anchoredEach };
 }
+
+/** How long a receiver waits before it reads the order's attestations again. */
+const ANCHOR_RECHECK_MS = 3000;
+
+const NO_VERDICTS: readonly boolean[] = [];
 
 type SignAuth = (message: string) => Promise<`0x${string}`>;
 
 export interface UseCeremonyPanelOptions<T>
     extends Pick<UseCeremonyChannelOptions<T>, "ceremonyId" | "expectedAnchor"> {
-    /** The codec's decrypt (decryptAddressDetail, decryptContentDelivery) — a stable module-level function. */
+    /** The codec's decrypt (decryptAddressDetail, decryptContentDelivery,
+     *  decryptPrivateFilings) — a stable module-level function. */
     decryptBlob: (args: {
         myAddress: `0x${string}`;
         orderId: string;
@@ -196,34 +216,42 @@ export interface UseCeremonyPanelOptions<T>
         blobB64: string;
     }) => Promise<T | null>;
     orderHash: string;
-    /** The declaring clause's key — the attestation anchors under it. */
-    clauseKey: string;
     buyer: string;
     seller: string;
-    /** The codec's request call (requestAddressDetail, requestContentDelivery). */
+    /** The request control's words for each seat: what one seat asks for
+     *  may differ from what the other asks for, the ceremony does not. */
+    requestLabels: Record<PartyRole, string>;
+    /** The codec's request call (requestAddressDetail, requestContentDelivery,
+     *  requestPrivateFilings). */
     request: (
         channel: HandoffChannel,
         params: { myAddress: string; recipientAddress: string; orderId: string; signAuth: SignAuth },
     ) => Promise<unknown>;
 }
 
-/** What a panel's send step hands back: the attestation to file, and its result. */
+/** What a panel's send step hands back: its result, and the attestation that
+ *  anchors what it sent, where the send files one (the private filings
+ *  deliver content already attested, and file none). */
 export interface CeremonyDelivery<R> {
-    stage: number;
-    content: `0x${string}`;
-    anchorFailureMessage: string;
     result: R;
+    attestation?: {
+        /** The declaring clause's key — the attestation anchors under it. */
+        clauseId: string;
+        stage: number;
+        content: `0x${string}`;
+        anchorFailureMessage: string;
+    };
 }
 
 /**
  * The whole symmetric body of a ceremony panel: the connected wallet's seat on
  * the order, the channel, the request action, and `deliver` — send over the
- * channel, then file the attestation that anchors it. A panel supplies its
- * codec (`decrypt`, `expectedAnchor`, `request`, and the `build` it passes to
- * `deliver`) and its JSX.
+ * channel, then file the attestation that anchors it, where there is one. A
+ * panel supplies its codec (`decrypt`, `expectedAnchor`, `request`, and the
+ * `build` it passes to `deliver`) and its JSX.
  */
 export function useCeremonyPanel<T>(options: UseCeremonyPanelOptions<T>) {
-    const { orderHash, clauseKey, buyer, seller, request, ceremonyId, decryptBlob, expectedAnchor } = options;
+    const { orderHash, buyer, seller, request, ceremonyId, decryptBlob, expectedAnchor, requestLabels } = options;
     const { address } = useAccount();
     const { data: walletClient } = useWalletClient();
     const attestationActions = useAttestationCoordinatorActions();
@@ -279,17 +307,19 @@ export function useCeremonyPanel<T>(options: UseCeremonyPanelOptions<T>) {
         setBusy(true);
         setError(null);
         try {
-            const { stage, content, anchorFailureMessage, result } = await build({
+            const { attestation, result } = await build({
                 channel, address, peerPubKey, counterparty,
                 signAuth: (message) => walletClient.signMessage({ message }),
             });
-            await attestationActions.submitAttestation(role, {
-                orderHash: orderHash as `0x${string}`,
-                clauseId: clauseKey as `0x${string}`,
-                stage,
-                content,
-                failureMessage: anchorFailureMessage,
-            });
+            if (attestation) {
+                await attestationActions.submitAttestation(role, {
+                    orderHash: orderHash as `0x${string}`,
+                    clauseId: attestation.clauseId as `0x${string}`,
+                    stage: attestation.stage,
+                    content: attestation.content,
+                    failureMessage: attestation.anchorFailureMessage,
+                });
+            }
             return result;
         } catch (e) {
             setError(extractErrorMessage(e, failureMessage));
@@ -297,9 +327,10 @@ export function useCeremonyPanel<T>(options: UseCeremonyPanelOptions<T>) {
         } finally {
             setBusy(false);
         }
-    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseKey, attestationActions, role]);
+    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, attestationActions, role]);
 
     // The waiting line names the seat the request is waiting on.
     const waitingLabel = `Requested — waiting for the ${role === "seller" ? "buyer" : "seller"}`;
-    return { ...ceremony, role, counterparty, busy, error, handleRequest, deliver, waitingLabel };
+    const requestLabel = role ? requestLabels[role] : "";
+    return { ...ceremony, role, counterparty, busy, error, handleRequest, deliver, waitingLabel, requestLabel };
 }

@@ -1,6 +1,7 @@
 /**
  * ceremony — the ECDH two-message ceremony core the per-order confidential
- * channels share (the address detail, the content delivery):
+ * channels share (the address detail, the content delivery, the private
+ * filings of one order):
  *
  *   1. The REQUESTING party generates a per-ceremony ephemeral keypair and
  *      sends its public key across the order edge (wallet-signed).
@@ -13,7 +14,8 @@
  *
  * Each ceremony scopes its own CORRELATION ID (the channel's `orderId`
  * field): the address ceremony correlates on the bare order hash, the
- * content ceremony on `<orderHash>#content` — so two ceremonies on one
+ * content ceremony on `<orderHash>#content`, the private filings on
+ * `<orderHash>#filings` — so two ceremonies on one
  * order never cross keys or blobs, and the wallet signature binds the
  * scoped id (no cross-ceremony replay). What the blob MEANS — the codec —
  * belongs to each ceremony module, never here.
@@ -116,4 +118,21 @@ export async function decryptCeremonyBlob(params: {
     } catch {
         return null;
     }
+}
+
+/** Step 3 with the ceremony's codec: decrypt under `ceremonyId`, then read
+ *  the plain text with `decode`. Null where the blob does not decrypt or
+ *  `decode` refuses it. */
+export async function openCeremonyBlob<T>(
+    params: { myAddress: string; senderPubKeyHex: string; blobB64: string },
+    ceremonyId: string,
+    decode: (plain: string) => T | null,
+): Promise<T | null> {
+    const plain = await decryptCeremonyBlob({
+        myAddress: params.myAddress,
+        ceremonyId,
+        senderPubKeyHex: params.senderPubKeyHex,
+        blobB64: params.blobB64,
+    });
+    return plain === null ? null : decode(plain);
 }

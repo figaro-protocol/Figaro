@@ -539,6 +539,11 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                                 Private content of the stage {e.stage} attestation, held by the
                                 builder of this file. keccak256(content bytes) = contentRef {e.contentRef}.
                             </Text>
+                            <Text style={styles.note}>
+                                {e.heldReceived
+                                    ? `Copy received from the attester ${e.attester}, its counterparty on this order, and kept in the browser profile this file was built in.`
+                                    : `Copy kept in the browser profile this file was built in, when the attester ${e.attester} filed the attestation from it.`}
+                            </Text>
                             {Object.entries(e.heldValues ?? {}).map(([name, value]) => (
                                 <MetaRow key={name} k={name} v={typeof value === "string" ? value : JSON.stringify(value, (_k, x) => (typeof x === "bigint" ? x.toString() : x))} mono />
                             ))}
