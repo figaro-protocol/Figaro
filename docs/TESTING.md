@@ -705,10 +705,19 @@ exactly one, of one shape, at its top level, and never mixes public and private
 fields), of the enum's 256 values and of the geohash grain cap by disposition,
 with both verdicts, and the encode cases hold a private set and a private stage
 with their blinding values. A proof of a plaintext attestation therefore
-attests the grain and the presence of a blinding value. The test "The rules
-both engines apply", in the same file, holds the list of rules the SDK alone
-applies empty, and fails if the vectors lose an accepted or a refused case of
-the cap, the private disposition, `formatFromField` or the blinding field.
+attests the grain and the presence of a blinding value, for the party that
+submitted that form; a reader of the chain cannot tell which form an
+attestation took (`docs/DESIGN_DECISIONS.md` § 26). The test "The rules
+both engines apply", in the same file, derives every attribute a spec or a
+field may carry from the published clause-spec definition
+(`sdk/src/clauses/clause-spec.schema.json`), and fails unless the vectors hold
+a spec that parses with it and a spec the parser refuses for it, or a table in
+the test names why the parser never refuses it; so an attribute added to the
+definition and the parser forces a vector, which the guest then replays. It fails
+too if the vectors lose an accepted or a refused case of the cap, the private
+disposition, `formatFromField` or the blinding field. The lock cannot see a
+rule added to one engine alone on an input no vector and no fuzz draw
+exercises: such a rule passes unseen.
 `prover/lib/tests/parity.rs` reads two of the encode cases: a blinded private
 clause passes the plaintext form's gates, and a private stage's content
 reference is the SDK's. The EIP-712 fixture carries the batch

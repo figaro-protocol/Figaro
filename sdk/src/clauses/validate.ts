@@ -13,7 +13,9 @@
  * (`tests/clauses/clauseFuzzVectors.test.ts`). A proof of a plaintext
  * attestation therefore attests that its spec keeps the private set's rules,
  * that a private set's content carries its blinding value, and that each
- * geohash keeps its disposition's grain. The DIRECT path validates no content
+ * geohash keeps its disposition's grain. That check binds for the party that
+ * submitted the plaintext form; a reader of the chain cannot tell which form
+ * an attestation took (`docs/DESIGN_DECISIONS.md` § 26). The DIRECT path validates no content
  * shape on-chain — the coordinator merkle-binds an attestation to its signed
  * agreement and content-hash-binds the evidence; well-formedness there is this
  * layer's job + a read-time concern. There are no per-clause validator

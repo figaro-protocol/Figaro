@@ -46,8 +46,10 @@ chain holds a fingerprint, so two parties whose tools skip this validation can
 commit a finer value, and every reader of the SDK then shows it as it is,
 because no read path of committed content validates it. The batch path's
 engine (`prover/clause`) applies the same cap to the content of an attestation
-sent in the plaintext form, so a proof of one attests its grain; a commit and a
-hash-only attestation carry a fingerprint, which no engine reads.
+sent in the plaintext form, so a proof of one attests its grain to the party
+that submitted that form; a reader of the chain cannot tell which form an
+attestation took (`docs/DESIGN_DECISIONS.md` § 26). A commit and a hash-only attestation carry a
+fingerprint, which no engine reads.
 
 ## The fields the chain's events carry, and who reads them
 

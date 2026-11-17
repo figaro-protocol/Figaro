@@ -147,7 +147,9 @@ field, of one shape, at its top level, and never mixes public and private
 fields), and give the same verdict on every case of the shared vectors and of
 the generated stream. A proof of a plaintext attestation therefore binds the
 spec and the content's shape, and attests the grain and the presence of a
-blinding value. No per-clause code, by design ("Prover Clause
+blinding value. That check binds for the party that submitted the plaintext
+form; a reader of the chain cannot tell which form an attestation took
+(`docs/DESIGN_DECISIONS.md` § 26). No per-clause code, by design ("Prover Clause
 Architecture" below).
 
 **SP1 guest program** (`prover/program/`): reads the batch with the witness of

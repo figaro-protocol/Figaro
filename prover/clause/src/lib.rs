@@ -22,7 +22,9 @@
 //! vectors (`tests/engine_vectors.rs`) and its generated stream
 //! (`tests/fuzz_vectors.rs`) hold this engine to the SDK's verdict on every
 //! case, so a proof of a plaintext attestation attests the private set's
-//! rules and the grain as the SDK applies them.
+//! rules and the grain as the SDK applies them. That check binds for the
+//! party that submitted the plaintext form; a reader of the chain cannot
+//! tell which form an attestation took (`docs/DESIGN_DECISIONS.md` § 26).
 //!
 //! This crate embeds NOTHING. A clause spec reaches the engine as a
 //! witness input whose bytes the caller binds to the clause's on-chain

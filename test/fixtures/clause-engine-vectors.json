@@ -48520,6 +48520,225 @@
    "ok": true
   },
   {
+   "label": "enum sentinel not a value",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "a"
+      ],
+      "sentinel": "none"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "enum valueLabels",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "a",
+       "b"
+      ],
+      "valueLabels": {
+       "a": "A"
+      }
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "enum valueLabels key not a value",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "a"
+      ],
+      "valueLabels": {
+       "z": "Z"
+      }
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "enum valueLabels entry a number",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "a"
+      ],
+      "valueLabels": {
+       "a": 1
+      }
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "enum valueLabels an array",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "a"
+      ],
+      "valueLabels": [
+       "A"
+      ]
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "field label",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean",
+      "label": "V"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "field label a number",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean",
+      "label": 1
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "field description a number",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean",
+      "description": 1
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "clauseId empty",
+   "spec": {
+    "clauseId": "",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "title empty",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "description a number",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": 1,
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
    "label": "array without items",
    "spec": {
     "clauseId": "t",
@@ -48608,6 +48827,27 @@
        "type": "integer"
       },
       "minItems": -1
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "array maxItems -1",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "array",
+      "items": {
+       "type": "integer"
+      },
+      "maxItems": -1
      }
     ]
    },

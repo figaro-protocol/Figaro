@@ -251,7 +251,9 @@ its manual.
 - `parseClauseSpec(json)` — validates a spec against the published clause-spec definition
   (`sdk/src/clauses/clause-spec.schema.json`): a closed subset of JSON Schema
   (`string`, `integer`, `bigint` as a decimal string, `boolean`, `enum`,
-  `array`, `object`). A string field's `format` is an open axis: any non-empty
+  `array`, `object`). An `enum` field names at most 256 values, since a
+  value encodes as its `uint8` position; a spec with more does not parse in
+  either engine. A string field's `format` is an open axis: any non-empty
   string is a valid value; the validator enforces the formats it knows
   and treats the rest as plain strings; an interface may map a known format to
   a richer input. It applies the private set's rules (§ "Clause-spec format",
@@ -265,6 +267,9 @@ its manual.
   them fails gate S of a plaintext attestation, and a proof of a private
   set's content attests that its blinding value is present
   (`sdk/tests/clauses/engineVectors.test.ts`, `prover/clause/tests/engine_vectors.rs`).
+  That check binds for the party that submitted the plaintext form; a
+  reader of the chain cannot tell which form an attestation took
+  (`docs/DESIGN_DECISIONS.md` § 26).
 - `validateContent(content, spec, { stage? })` — validates a value against a
   parsed spec; rejects unknown fields; applies `spec.stages[stage]` when a
   stage is named. It applies the geohash grain cap, cap(disposition,
@@ -281,7 +286,9 @@ its manual.
   knowledge of is bounded by `maxLength` only. The guest's engine
   (`prover/clause/src/grain.rs`, `validate.rs`) applies the same cap through
   the same resolution, so a proof of a plaintext attestation attests the
-  grain. An `integer` value is a JSON number inside the safe range
+  grain, for the party that submitted that form; a reader of the chain cannot
+  tell which form an attestation took (`docs/DESIGN_DECISIONS.md` § 26). An
+  `integer` value is a JSON number inside the safe range
   (±(2^53 − 1)), however the text writes it (`5`, `5.0` and `5e0` are one
   integer, read exactly by both engines); a `bigint` value is an unsigned decimal string inside the
   uint256 word. Content that validates encodes, in both engines. Every
@@ -310,20 +317,18 @@ bundles a copy.
 A clause whose runtime evidence carries different content from its committed
 terms — a temperature reading, measured grams, a detected proximity band —
 declares that content as `spec.stages[N]`, a per-stage field set keyed by the
-on-chain `uint8 stage`. Stage 0 is the committed content, declared by `fields`;
-`stages[N≥1]` are the shapes of evidence attested while the process is open.
+on-chain `uint8 stage`. The content the parties sign is validated over
+`fields` alone, at the sign gate (`validateCommitmentAgreement` in
+`sdk/src/projection.ts`) and in the guest's gate for a re-asserted clause
+(`validate_attestation_content` in `prover/lib/src/kernel.rs`). Content
+attested at stage N, stage 0 included, is encoded and validated over
+`stages[N]` where the spec declares it, else over `fields`, in both engines.
 A stage key has one spelling: the decimal of an integer from 0 to 255, digits
 only, with no sign, no leading zero and no whitespace (`"0"`, `"1"`, `"255"`).
 A spec with any other key does not parse in either engine, and the issue names
 the key (`stageOfKey` and `stageKey` in `sdk/src/clauses/spec.ts`,
 `parse_stage_key` in `prover/clause/src/spec.rs`). `ClauseRegistry` reads no
 spec and registers such a clause anyway; the reference tooling never loads it.
-A `"0"` key is a stage key like any other. Both engines encode and validate
-content at stage 0 over `stages["0"]` where the spec declares it, else over
-`fields`. The content the parties sign is validated over `fields` alone, at
-the sign gate (`validateCommitmentAgreement` in `sdk/src/projection.ts`) and
-in the guest's gate for a re-asserted clause (`validate_attestation_content`
-in `prover/lib/src/kernel.rs`).
 The spec's stage list is the whole signal: an interface derives a witness capability
 for any composed clause that declares stages, renders the form from the
 declared fields, validates and encodes at the stage, and files through

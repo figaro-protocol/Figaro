@@ -866,7 +866,10 @@ fn a_re_assert_of_a_blinded_private_clause_passes_its_gates() {
     assert_eq!(events.spec_bindings.len(), 1);
     assert_eq!(events.spec_bindings[0].clause_id, f.clause_key);
 
-    // The same clause data without its blinding value is refused at gate C.
+    // The same clause data without its blinding value is refused at gate C,
+    // by the generic rule: the blinding field is required, and a required
+    // field that is missing is refused. No rule of the blinding field's own
+    // is what refuses it.
     let mut bare = vector["content"].clone();
     bare.as_object_mut().expect("content object").remove("b");
     let bare_data = serde_json::to_string(&bare).expect("serialize");
@@ -880,7 +883,9 @@ fn a_re_assert_of_a_blinded_private_clause_passes_its_gates() {
     };
     let op = seller_attest_op(&f, proof, keccak256(bare_data.as_bytes()), &make_signing_key(SELLER1_KEY));
     match run_attest_batch(&f, op) {
-        Err(KernelError::ClauseContentInvalid(_)) => {}
+        Err(KernelError::ClauseContentInvalid(reason)) => {
+            assert_eq!(reason, "$.b: required field \"b\" is missing", "{reason}")
+        }
         other => panic!("expected ClauseContentInvalid, got {other:?}"),
     }
 }
