@@ -32,6 +32,7 @@ import type {
     FieldDisposition,
 } from "./spec.js";
 import { ownValue, resolveInputFormat } from "./spec.js";
+import { contentFieldsFor } from "./encode.js";
 import { safeRegexTest } from "./safeRegex.js";
 import { GEOHASH_FORMAT, geohashCapturePrecision } from "./grain.js";
 import { isBytes32Hex, isAddressHex } from "../types.js";
@@ -263,10 +264,7 @@ export function validateContent(
     spec: ClauseSpec,
     options: ValidateOptions = {},
 ): ValidationResult {
-    const fields: readonly FieldSpec[] =
-        options.stage !== undefined && spec.stages?.[options.stage] !== undefined
-            ? spec.stages[options.stage]
-            : spec.fields;
+    const fields: readonly FieldSpec[] = contentFieldsFor(spec, options);
     const errors: ValidationError[] = [];
     // Treat the root content as a pseudo-object with the spec's top-level fields.
     const rootSpec: ObjectFieldSpec = { name: "$", required: true, type: "object", fields };

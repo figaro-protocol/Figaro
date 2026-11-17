@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { decodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
+import { decodeContentFromSpec, declaredStageFields } from "@figaro-protocol/sdk/clauses";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { attestationPathLabel } from "@/lib/composition/attestationPath";
 import { resolveHeldWitnessContent } from "@/lib/composition/witnessContent";
@@ -110,7 +110,7 @@ export function StageAttestationComparison({ attestations }: Props) {
             </p>
             {groups.map((group) => {
                 const spec = getClauseSpec(group.clauseKey);
-                const fields = spec?.stages?.[group.stage] ?? [];
+                const fields = (spec && declaredStageFields(spec, group.stage)) ?? [];
                 const labelOf = (name: string) => fields.find((f) => f.name === name)?.label ?? name;
                 const loaded = group.filings.every((att) => contents.has(contentKey(att)));
                 const comparison = loaded

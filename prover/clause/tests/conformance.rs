@@ -10,8 +10,8 @@
 //!      engine must agree with Layer A on accept/reject for every case.
 
 use figaro_clause::{
-    parse_clause_spec, validate_content, ParseClauseSpecResult, ClauseSpec, ValidateOptions,
-    MAX_FIELD_DEPTH,
+    parse_clause_spec, parse_stage_key, validate_content, ParseClauseSpecResult, ClauseSpec,
+    ValidateOptions, MAX_FIELD_DEPTH,
 };
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -590,4 +590,15 @@ fn rejects_bad_stage_keys() {
         2,
         "{errors:?}"
     );
+}
+
+#[test]
+fn a_stage_key_has_one_spelling() {
+    // Every uint8 reads back from its decimal, and from no other spelling.
+    for stage in 0..=255u8 {
+        assert_eq!(parse_stage_key(&stage.to_string()), Some(stage));
+    }
+    for key in ["01", "00", "+1", " 1", "1 ", "1.0", "0x1", "-0", "", "256", "1e1", "\u{0661}", "a"] {
+        assert_eq!(parse_stage_key(key), None, "{key:?}");
+    }
 }

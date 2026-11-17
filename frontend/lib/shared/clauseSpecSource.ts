@@ -20,6 +20,7 @@
  */
 
 import { contentFieldsFor, parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
+import { declaredStageFields, stageOfKey } from "@figaro-protocol/sdk/clauses";
 import type { Hex, ProjectionHints, ProjectionSpecView, SpecSource } from "@figaro-protocol/sdk";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
 import { PROVENANCE_LEAF_KEY, anchorClauseSpec, deriveAnchored, type Anchored } from "@figaro-protocol/sdk";
@@ -388,7 +389,9 @@ export function clauseWitnessStages(
 ): Array<{ stage: number; fields: readonly FieldSpec[] }> {
     const stages = getClauseSpec(clauseKey)?.stages;
     if (!stages) return [];
-    return Object.entries(stages).map(([key, fields]) => ({ stage: Number(key), fields }));
+    // A parsed spec's keys are stage keys (`parseClauseSpec` refuses any
+    // other), so each names a stage.
+    return Object.entries(stages).map(([key, fields]) => ({ stage: stageOfKey(key) as number, fields }));
 }
 
 // ── Spec-derived reads ───────────────────────────────────────────────────────
@@ -563,7 +566,7 @@ export function describeWitness(
     data: Record<string, unknown> | undefined,
 ): ClauseDescription {
     const spec = getClauseSpec(clauseKey);
-    const stageFields = spec?.stages?.[stage];
+    const stageFields = spec && declaredStageFields(spec, stage);
     const d = data ?? {};
     if (!spec || !stageFields) {
         return {

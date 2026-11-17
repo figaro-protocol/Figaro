@@ -24,7 +24,7 @@
  */
 
 import { decodeAbiParameters, encodeAbiParameters, type AbiParameter, type Hex } from "viem";
-import { ownValue, type FieldSpec, type ClauseSpec } from "./spec.js";
+import { declaredStageFields, ownValue, type FieldSpec, type ClauseSpec } from "./spec.js";
 
 // ── Empty content (some clauses accept empty bytes) ─────────────────────────
 
@@ -138,9 +138,7 @@ export function contentFieldsFor(
     spec: ClauseSpec,
     options: EncodeOptions = {},
 ): readonly FieldSpec[] {
-    return options.stage !== undefined && spec.stages?.[options.stage] !== undefined
-        ? spec.stages[options.stage]
-        : spec.fields;
+    return (options.stage === undefined ? undefined : declaredStageFields(spec, options.stage)) ?? spec.fields;
 }
 
 /**
