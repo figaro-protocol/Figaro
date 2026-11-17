@@ -243,10 +243,10 @@ fn enforces_canonical_formats() {
 #[test]
 fn unknown_format_validates_as_plain_string() {
     // The format axis is OPEN — a permissionlessly-declared format the
-    // engine does not know validates as a plain string (and the spec
-    // parses; a closed set here once hard-failed the first novel format).
+    // engine does not know validates as a plain string, and the spec parses.
+    // (Geohash is the one format whose grain the engine caps.)
     let spec = spec_of(json!([
-        { "name": "g", "type": "string", "required": true, "format": "geohash", "minLength": 5 },
+        { "name": "g", "type": "string", "required": true, "format": "plus-code", "minLength": 5 },
     ]));
     assert!(ok(&json!({ "g": "u4pruyd" }), &spec));
     assert!(!ok(&json!({ "g": "u4" }), &spec)); // length still enforced

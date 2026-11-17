@@ -24,13 +24,21 @@ fn fixture() -> Value {
 }
 
 fn spec_of(fields: &Value) -> Result<ClauseSpec, String> {
-    let raw = json!({
+    spec_with_stages(fields, &Value::Null)
+}
+
+/// The fixture's spec: `stages` joins it when a case carries them.
+fn spec_with_stages(fields: &Value, stages: &Value) -> Result<ClauseSpec, String> {
+    let mut raw = json!({
         "clauseId": "t",
         "version": 1,
         "title": "T",
         "description": "D",
         "fields": fields,
     });
+    if !stages.is_null() {
+        raw["stages"] = stages.clone();
+    }
     match parse_clause_spec(&raw) {
         ParseClauseSpecResult::Ok(spec) => Ok(spec),
         ParseClauseSpecResult::Err(errors) => Err(format!("{errors:?}")),
@@ -113,8 +121,14 @@ fn the_engine_encodes_layer_a_bytes() {
     let fx = fixture();
     for case in fx["encodings"].as_array().expect("encodings") {
         let label = &case["label"];
-        let spec = spec_of(&case["fields"]).unwrap_or_else(|e| panic!("{label}: {e}"));
-        let bytes = encode_content_from_spec(&spec, &case["content"], EncodeOptions::default())
+        let spec = spec_with_stages(&case["fields"], &case["stages"])
+            .unwrap_or_else(|e| panic!("{label}: {e}"));
+        let stage = case["stage"].as_u64().map(|s| s as u8);
+        assert!(
+            validate_content(&case["content"], &spec, ValidateOptions { stage }).is_ok(),
+            "{label}: the content validates"
+        );
+        let bytes = encode_content_from_spec(&spec, &case["content"], EncodeOptions { stage })
             .unwrap_or_else(|e| panic!("{label}: {e:?}"));
         // viem echoes the case of a `bytes` value's hex digits; bytes have none.
         assert_eq!(

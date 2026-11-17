@@ -44,8 +44,10 @@ The sign gate (`assertAgreementSignable`) runs that validation, so a party whose
 tool uses the SDK refuses to sign a finer value. The limit of the rule: the
 chain holds a fingerprint, so two parties whose tools skip this validation can
 commit a finer value, and every reader of the SDK then shows it as it is,
-because no read path of committed content validates it; the batch path's
-engine (`prover/clause`) does not apply the cap either.
+because no read path of committed content validates it. The batch path's
+engine (`prover/clause`) applies the same cap to the content of an attestation
+sent in the plaintext form, so a proof of one attests its grain; a commit and a
+hash-only attestation carry a fingerprint, which no engine reads.
 
 ## The fields the chain's events carry, and who reads them
 

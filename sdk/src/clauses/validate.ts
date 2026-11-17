@@ -4,18 +4,16 @@
  * Call sites: frontend form gates, SDK agent-action preflight. This is the
  * off-chain reference implementation. The Rust prover mirror (`prover/clause`)
  * re-runs the validation inside the SP1 proof on the batched resolution path,
- * and the two engines give the same verdict on every rule of the shared
- * vectors (`test/fixtures/clause-engine-vectors.json`). Three rules are the
- * SDK's alone, and the guest's engine applies none of them: the geohash grain
- * cap by disposition (`validateGrain`, here); the private set's rules
- * (`parseClauseSpec`: a set that declares a private field declares exactly one
- * blinding field, of one shape, at its top level, and never mixes public and
- * private fields); and the blinding attribute's one value (`parseClauseSpec`
- * refuses a field carrying `"blinding": false`, which the guest reads past).
- * A proof of a plaintext attestation therefore binds the spec
- * and the content's shape, and attests neither the grain nor the presence of
- * a blinding value (`tests/clauses/engineVectors.test.ts`, the rules beyond
- * the shared vectors). The DIRECT path validates no content
+ * and the two engines apply the same rules: the spec format's (the
+ * disposition, `formatFromField`, the private set's blinding field and its
+ * one shape, the enum's 256 values) and content validation's (the geohash
+ * grain cap by disposition, `validateGrain`, here, among them). They give the
+ * same verdict on every case of the shared vectors
+ * (`test/fixtures/clause-engine-vectors.json`) and of the generated stream
+ * (`tests/clauses/clauseFuzzVectors.test.ts`). A proof of a plaintext
+ * attestation therefore attests that its spec keeps the private set's rules,
+ * that a private set's content carries its blinding value, and that each
+ * geohash keeps its disposition's grain. The DIRECT path validates no content
  * shape on-chain — the coordinator merkle-binds an attestation to its signed
  * agreement and content-hash-binds the evidence; well-formedness there is this
  * layer's job + a read-time concern. There are no per-clause validator
@@ -33,7 +31,7 @@ import type {
     ObjectFieldSpec,
     FieldDisposition,
 } from "./spec.js";
-import { resolveInputFormat } from "./spec.js";
+import { ownValue, resolveInputFormat } from "./spec.js";
 import { safeRegexTest } from "./safeRegex.js";
 import { GEOHASH_FORMAT, geohashCapturePrecision } from "./grain.js";
 import { isBytes32Hex, isAddressHex } from "../types.js";
@@ -193,7 +191,7 @@ function validateObject(value: unknown, spec: ObjectFieldSpec, path: string, err
     for (const field of spec.fields) {
         known.add(field.name);
         const childPath = path === "$" ? `$.${field.name}` : `${path}.${field.name}`;
-        const childValue = value[field.name];
+        const childValue = ownValue(value, field.name);
         if (childValue === undefined) {
             if (field.required) {
                 errors.push({ path: childPath, message: `required field "${field.name}" is missing` });

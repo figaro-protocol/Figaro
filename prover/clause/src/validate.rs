@@ -7,9 +7,11 @@
 
 use serde_json::Value;
 
+use crate::grain::{geohash_capture_precision, GEOHASH_FORMAT};
 use crate::spec::{
-    looks_like_decimal_integer, ArrayFieldSpec, BigintFieldSpec, EnumFieldSpec, FieldSpec,
-    IntegerFieldSpec, ObjectFieldSpec, ClauseSpec, StringFieldSpec, StringFormat,
+    looks_like_decimal_integer, ArrayFieldSpec, BigintFieldSpec, ClauseSpec, DefaultValue,
+    Disposition, EnumFieldSpec, FieldSpec, IntegerFieldSpec, ObjectFieldSpec, StringFieldSpec,
+    StringFormat,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -690,8 +692,13 @@ fn validate_array(
             });
         }
     }
+    // An item has no siblings: its format resolves to its static `format`,
+    // and the array field's own disposition governs the whole list.
+    let item_format = resolve_input_format(&spec.items, &[], None);
     for (i, item) in arr.iter().enumerate() {
-        validate_field(item, &spec.items, &format!("{path}[{i}]"), errors);
+        let item_path = format!("{path}[{i}]");
+        validate_field(item, &spec.items, &item_path, errors);
+        validate_grain(item, item_format, spec.base.disposition, &item_path, errors);
     }
 }
 
@@ -731,6 +738,8 @@ fn validate_object(
             }
             Some(child_value) => {
                 validate_field(child_value, field, &child_path, errors);
+                let resolved = resolve_input_format(field, &spec.fields, Some(obj));
+                validate_grain(child_value, resolved, base.disposition, &child_path, errors);
             }
         }
     }
@@ -747,6 +756,69 @@ fn validate_object(
                 message: format!("unknown field \"{key}\" not declared in clause"),
             });
         }
+    }
+}
+
+/// Resolve a string field's format — the SDK's `resolveInputFormat`: the
+/// static `format`, unless the field declares `formatFromField`, in which case
+/// the committed value of the named sibling when it is a non-empty string,
+/// then that sibling's string default when non-empty, then `format`. It reads
+/// only spec-declared names and sibling values, never a clause id.
+pub fn resolve_input_format<'a>(
+    field: &'a FieldSpec,
+    siblings: &'a [FieldSpec],
+    values: Option<&'a serde_json::Map<String, Value>>,
+) -> Option<&'a str> {
+    let FieldSpec::String(s) = field else {
+        return None;
+    };
+    let static_format = s.format.as_ref().map(format_name);
+    let Some(source) = &s.format_from_field else {
+        return static_format;
+    };
+    if let Some(Value::String(live)) = values.and_then(|v| v.get(source)) {
+        if !live.is_empty() {
+            return Some(live.as_str());
+        }
+    }
+    let sibling_default = siblings
+        .iter()
+        .find(|f| f.base().name == *source)
+        .and_then(|f| match &f.base().default {
+            Some(DefaultValue::String(d)) if !d.is_empty() => Some(d.as_str()),
+            _ => None,
+        });
+    sibling_default.or(static_format)
+}
+
+/// The geohash grain cap — the SDK's `validateGrain`. The caller passes the
+/// field's resolved format and the disposition that governs the value. When
+/// the resolved format is geohash, a string longer than that disposition's
+/// cap (in UTF-16 units) is refused; `maxLength` stays the structural
+/// ceiling. It keys on the spec's own attributes, never on a clause id or a
+/// field name.
+fn validate_grain(
+    value: &Value,
+    resolved_format: Option<&str>,
+    disposition: Option<Disposition>,
+    path: &str,
+    errors: &mut Vec<ValidationError>,
+) {
+    let (Some(GEOHASH_FORMAT), Some(s)) = (resolved_format, value.as_str()) else {
+        return;
+    };
+    let cap = geohash_capture_precision(disposition);
+    if utf16_len(s) > cap {
+        let named = match disposition {
+            Some(Disposition::Private) => "private",
+            _ => "public",
+        };
+        errors.push(ValidationError {
+            path: path.to_string(),
+            message: format!(
+                "a {named} geohash carries at most {cap} characters; give the cell's first {cap} characters"
+            ),
+        });
     }
 }
 
@@ -820,6 +892,8 @@ pub fn validate_content(
             description: None,
             label: None,
             default: None,
+            disposition: None,
+            blinding: false,
         },
         fields: fields.to_vec(),
     };

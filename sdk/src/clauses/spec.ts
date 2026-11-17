@@ -168,6 +168,16 @@ export type FieldSpec =
     | ObjectFieldSpec;
 
 /**
+ * The value a content object holds under `key` as its own property, or
+ * `undefined` when it holds none. A property the object inherits (`toString`,
+ * `constructor`) is no value of the content: a field of that name that the
+ * content leaves out is absent, as the guest's engine reads it.
+ */
+export function ownValue(values: Record<string, unknown> | undefined, key: string): unknown {
+    return values !== undefined && Object.prototype.hasOwnProperty.call(values, key) ? values[key] : undefined;
+}
+
+/**
  * Resolve a string field's format: the static `format`, unless the field
  * declares `formatFromField`, in which case the format is the committed VALUE
  * of the named sibling, then that sibling's spec `default`, then `format`.
@@ -182,7 +192,7 @@ export function resolveInputFormat(
 ): string | undefined {
     if (field.type !== "string") return undefined;
     if (!field.formatFromField) return field.format;
-    const live = values?.[field.formatFromField];
+    const live = ownValue(values, field.formatFromField);
     if (typeof live === "string" && live.length > 0) return live;
     const source = siblings.find((s) => s.name === field.formatFromField);
     if (source && typeof source.default === "string" && source.default.length > 0) return source.default;

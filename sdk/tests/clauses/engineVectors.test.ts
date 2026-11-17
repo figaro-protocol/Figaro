@@ -37,6 +37,13 @@ const specOf = (fields: unknown, stages?: unknown) => ({
 const str = (extra: Field = {}): Field => ({ name: "v", type: "string", required: true, ...extra });
 const H = (n: number, c = "a") => `0x${c.repeat(n * 2)}`;
 
+/** Geohash values across the public cap, in UTF-16 units. */
+const GEOHASHES: unknown[] = ["", "d", "dr5re", "dr5reg", "dr5regw", "dr5regw3pg6s", "dr5regw3pg6st", "dr5reé", "dr5regé", "🚚🚚🚚", "🚚🚚🚚a", 7];
+
+/** A set's blinding field, in its one shape. */
+const BLINDING: Field = { name: "b", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true };
+const B32 = `0x${"ab".repeat(32)}`;
+
 const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
     {
         group: "iso-datetime",
@@ -402,6 +409,55 @@ const VALUE_CASES: { group: string; field: Field; values: unknown[] }[] = [
         field: { name: "v", type: "integer", required: false },
         values: [1, null, "x"],
     },
+    // The geohash grain cap: a public (or absent) disposition carries at most
+    // 6 characters, in UTF-16 units; `maxLength` stays the structural ceiling.
+    {
+        group: "geohash, no disposition",
+        field: str({ format: "geohash", maxLength: 12 }),
+        values: GEOHASHES,
+    },
+    {
+        group: "geohash, public",
+        field: str({ format: "geohash", disposition: "public" }),
+        values: GEOHASHES,
+    },
+    {
+        group: "a format the cap does not read",
+        field: str({ format: "plus-code", maxLength: 12 }),
+        values: ["dr5regw", "dr5regw3pg6s"],
+    },
+    {
+        group: "geohash items of a public array",
+        field: { name: "v", type: "array", required: true, items: { type: "string", format: "geohash" } },
+        values: [[], ["dr5reg"], ["dr5regw"], ["dr5reg", "dr5regw3"], [7]],
+    },
+    {
+        // The array field's disposition governs its items, never the item's own.
+        group: "geohash items marked private in a public array",
+        field: { name: "v", type: "array", required: true, items: { type: "string", format: "geohash", disposition: "private" } },
+        values: [["dr5reg"], ["dr5regw"]],
+    },
+    {
+        group: "geohash in a nested object, public",
+        field: { name: "v", type: "object", required: true, fields: [{ name: "g", type: "string", required: true, format: "geohash" }] },
+        values: [{ g: "dr5reg" }, { g: "dr5regw" }],
+    },
+    {
+        // The set rules bind a top-level set; a nested field keeps its own disposition.
+        group: "geohash in a nested object, private",
+        field: { name: "v", type: "object", required: true, fields: [{ name: "g", type: "string", required: true, format: "geohash", disposition: "private" }] },
+        values: [{ g: "dr5regw" }, { g: "dr5regw3pg6s" }, { g: "dr5regw3pg6st" }],
+    },
+    {
+        group: "formatFromField with no sibling, a static geohash format",
+        field: str({ format: "geohash", formatFromField: "standard" }),
+        values: ["dr5reg", "dr5regw"],
+    },
+    {
+        group: "formatFromField with no sibling, no static format",
+        field: str({ formatFromField: "standard" }),
+        values: ["dr5regw3pg6st"],
+    },
 ];
 
 /** Whole-content cases: the root object's own rules. */
@@ -413,6 +469,72 @@ const CONTENT_CASES: { label: string; fields: Field[]; content: unknown }[] = [
     { label: "content is an array", fields: [{ name: "v", type: "integer", required: false }], content: [] },
     { label: "content is null", fields: [{ name: "v", type: "integer", required: false }], content: null },
     { label: "content is a string", fields: [{ name: "v", type: "integer", required: false }], content: "x" },
+    // A private set: its geohash carries 12 characters, and its blinding value is a bytes32-hex string.
+    ...[
+        { g: "dr5regw3pg6s", b: B32 },
+        { g: "dr5regw3pg6st", b: B32 },
+        { g: "dr5reg" },
+        { g: "dr5reg", b: "0xab" },
+    ].map((content) => ({
+        label: `private geohash ${JSON.stringify(content)}`,
+        fields: [{ name: "g", type: "string", required: true, format: "geohash", disposition: "private" }, BLINDING],
+        content,
+    })),
+    ...[{ a: ["dr5regw3pg6s"], b: B32 }, { a: ["dr5regw3pg6st"], b: B32 }].map((content) => ({
+        label: `private array of geohashes ${JSON.stringify(content)}`,
+        fields: [{ name: "a", type: "array", required: true, disposition: "private", items: { type: "string", format: "geohash" } }, BLINDING],
+        content,
+    })),
+    // The format a sibling's committed value names, then the sibling's default, then the static format.
+    ...[
+        { std: "geohash", loc: "dr5regw" },
+        { std: "geohash", loc: "dr5reg" },
+        { std: "plus-code", loc: "dr5regw3pg6st" },
+        { std: "", loc: "dr5regw" },
+        { loc: "dr5regw" },
+    ].map((content) => ({
+        label: `formatFromField, a sibling with no default ${JSON.stringify(content)}`,
+        fields: [{ name: "std", type: "string", required: false }, { name: "loc", type: "string", required: true, formatFromField: "std" }],
+        content,
+    })),
+    ...[{ loc: "dr5regw" }, { std: "", loc: "dr5regw" }, { std: "plus-code", loc: "dr5regw" }, { std: "geohash", loc: "dr5reg" }].map((content) => ({
+        label: `formatFromField, a sibling whose default is geohash ${JSON.stringify(content)}`,
+        fields: [{ name: "std", type: "string", required: false, default: "geohash" }, { name: "loc", type: "string", required: true, formatFromField: "std" }],
+        content,
+    })),
+    ...[{ loc: "dr5regw" }, { std: "geohash", loc: "dr5regw" }].map((content) => ({
+        label: `formatFromField, an enum sibling whose default is geohash ${JSON.stringify(content)}`,
+        fields: [
+            { name: "std", type: "enum", values: ["geohash", "plus-code"], required: false, default: "geohash" },
+            { name: "loc", type: "string", required: true, formatFromField: "std" },
+        ],
+        content,
+    })),
+    ...[{ loc: "dr5regw" }, { std: "plus-code", loc: "dr5regw" }].map((content) => ({
+        label: `formatFromField over a static geohash format ${JSON.stringify(content)}`,
+        fields: [{ name: "std", type: "string", required: false }, { name: "loc", type: "string", required: true, format: "geohash", formatFromField: "std" }],
+        content,
+    })),
+    {
+        label: "formatFromField, a sibling whose value is no string",
+        fields: [{ name: "std", type: "integer", required: false }, { name: "loc", type: "string", required: true, format: "geohash", formatFromField: "std" }],
+        content: { std: 5, loc: "dr5regw" },
+    },
+    ...[{ loc: "geohash" }, { loc: "dr5regw" }].map((content) => ({
+        label: `formatFromField naming the field itself ${JSON.stringify(content)}`,
+        fields: [{ name: "loc", type: "string", required: true, formatFromField: "loc" }],
+        content,
+    })),
+    // A field named as a property every object inherits is absent when the content leaves it out.
+    ...["toString", "constructor", "valueOf", "hasOwnProperty", "__proto__"].map((name) => ({
+        label: `an absent optional field named ${name}`,
+        fields: [{ name, type: "string", required: false }],
+        content: {},
+    })),
+    { label: "an absent optional object field named constructor", fields: [{ name: "constructor", type: "object", required: false, fields: [] }], content: {} },
+    { label: "an absent required field named toString", fields: [{ name: "toString", type: "string", required: true }], content: {} },
+    { label: "a present field named __proto__", fields: [{ name: "__proto__", type: "string", required: true }], content: JSON.parse('{"__proto__":"x"}') as unknown },
+    { label: "an undeclared key named toString", fields: [{ name: "v", type: "string", required: false }], content: { toString: "x" } },
 ];
 
 // ── Specs ───────────────────────────────────────────────────────────────────
@@ -497,10 +619,92 @@ const SPEC_CASES: { label: string; spec: unknown }[] = [
     { label: "empty fields", spec: specOf([]) },
     { label: "spec is an array", spec: [] },
     { label: "spec is null", spec: null },
+    // An enum encodes as uint8.
+    { label: "enum of 256 values", spec: specOf(f({ type: "enum", values: Array.from({ length: 256 }, (_, i) => `v${i}`) })) },
+    { label: "enum of 257 values", spec: specOf(f({ type: "enum", values: Array.from({ length: 257 }, (_, i) => `v${i}`) })) },
+    // The disposition: "public" or "private", absent meaning public.
+    { label: "disposition public", spec: specOf(f({ type: "boolean", disposition: "public" })) },
+    { label: "disposition secret", spec: specOf(f({ type: "boolean", disposition: "secret" })) },
+    { label: "disposition null", spec: specOf(f({ type: "boolean", disposition: null })) },
+    { label: "disposition true", spec: specOf(f({ type: "boolean", disposition: true })) },
+    { label: "disposition PRIVATE", spec: specOf([{ name: "v", type: "boolean", required: true, disposition: "PRIVATE" }, BLINDING]) },
+    // formatFromField: a non-empty string, read on a string field.
+    { label: "formatFromField", spec: specOf(f({ type: "string", formatFromField: "std" })) },
+    { label: "formatFromField naming no sibling", spec: specOf(f({ type: "string", formatFromField: "nowhere" })) },
+    { label: "formatFromField empty", spec: specOf(f({ type: "string", formatFromField: "" })) },
+    { label: "formatFromField a number", spec: specOf(f({ type: "string", formatFromField: 5 })) },
+    { label: "formatFromField null", spec: specOf(f({ type: "string", formatFromField: null })) },
+    { label: "formatFromField on an integer field", spec: specOf(f({ type: "integer", formatFromField: 5 })) },
+    // The private set: never mixed, exactly one blinding field of one shape.
+    { label: "private set with its blinding field", spec: specOf([{ name: "v", type: "boolean", required: true, disposition: "private" }, BLINDING]) },
+    { label: "private set, the blinding field first", spec: specOf([BLINDING, { name: "v", type: "boolean", required: true, disposition: "private" }]) },
+    { label: "private set without a blinding field", spec: specOf(f({ type: "boolean", disposition: "private" })) },
+    { label: "private set with two blinding fields", spec: specOf([{ name: "v", type: "boolean", required: true, disposition: "private" }, BLINDING, { ...BLINDING, name: "b2" }]) },
+    { label: "a blinding field alone", spec: specOf([BLINDING]) },
+    { label: "a blinding field beside a public field", spec: specOf([{ name: "v", type: "boolean", required: true }, BLINDING]) },
+    { label: "a mixed set", spec: specOf([{ name: "v", type: "boolean", required: true }, { name: "w", type: "boolean", required: true, disposition: "private" }, BLINDING]) },
+    { label: "a mixed set, public written out", spec: specOf([{ name: "v", type: "boolean", required: true, disposition: "public" }, { name: "w", type: "boolean", required: true, disposition: "private" }, BLINDING]) },
+    { label: "a public field beside a private object", spec: specOf([{ name: "v", type: "boolean", required: true }, { name: "o", type: "object", required: true, disposition: "private", fields: [] }, BLINDING]) },
+    { label: "blinding false", spec: specOf(f({ type: "string", blinding: false })) },
+    { label: "blinding as a string", spec: specOf([{ name: "v", type: "boolean", required: true, disposition: "private" }, { ...BLINDING, blinding: "true" }]) },
+    { label: "blinding null", spec: specOf(f({ type: "string", blinding: null })) },
+    ...[
+        ["of type integer", { type: "integer", format: undefined }],
+        ["of type enum", { type: "enum", values: ["a"], format: undefined }],
+        ["with no format", { format: undefined }],
+        ["of format bytes-hex", { format: "bytes-hex" }],
+        ["not required", { required: false }],
+        ["public", { disposition: "public" }],
+        ["with no disposition", { disposition: undefined }],
+        ["with a default", { default: B32 }],
+        ["with a default of the wrong type", { default: 5 }],
+    ].map(([label, change]) => ({
+        label: `a blinding field ${label as string}`,
+        spec: specOf([
+            { name: "v", type: "boolean", required: true, disposition: "private" },
+            JSON.parse(JSON.stringify({ ...BLINDING, ...(change as Field) })) as Field,
+        ]),
+    })),
+    {
+        label: "a blinding field nested in an object",
+        spec: specOf([
+            { name: "o", type: "object", required: true, disposition: "private", fields: [{ name: "v", type: "boolean", required: true, disposition: "private" }, BLINDING] },
+            BLINDING,
+        ]),
+    },
+    {
+        label: "a blinding field as an array item",
+        spec: specOf([
+            { name: "a", type: "array", required: true, disposition: "private", items: { type: "string", format: "bytes32-hex", disposition: "private", blinding: true } },
+            BLINDING,
+        ]),
+    },
+    { label: "a private field nested in a public object", spec: specOf(f({ type: "object", fields: [{ name: "w", type: "boolean", required: true, disposition: "private" }] })) },
+    // Each stage's set keeps the same rules.
+    { label: "a private stage with its blinding field", spec: specOf(f({ type: "boolean" }), { 1: [{ name: "r", type: "integer", required: true, disposition: "private" }, BLINDING] }) },
+    { label: "a private stage without a blinding field", spec: specOf(f({ type: "boolean" }), { 1: [{ name: "r", type: "integer", required: true, disposition: "private" }] }) },
+    { label: "a mixed stage", spec: specOf(f({ type: "boolean" }), { 1: [{ name: "r", type: "integer", required: true, disposition: "private" }, { name: "n", type: "string", required: true }, BLINDING] }) },
+    { label: "a public stage with a blinding field", spec: specOf(f({ type: "boolean" }), { 2: [{ name: "n", type: "string", required: true }, BLINDING] }) },
+    { label: "an empty stage", spec: specOf(f({ type: "boolean" }), { 1: [] }) },
 ];
 
 /** Encoded bytes for the values whose bytes a verdict alone does not show. */
-const ENCODE_CASES: { label: string; fields: Field[]; content: Record<string, unknown> }[] = [
+const ENCODE_CASES: { label: string; fields: Field[]; stages?: Record<number, Field[]>; stage?: number; content: Record<string, unknown> }[] = [
+    // A blinding value encodes as bytes32 in a private set; `prover/lib`'s
+    // tests read these two cases' bytes as a TypeScript content reference.
+    {
+        label: "a private set with its blinding value",
+        fields: [{ name: "grade", type: "enum", values: ["a", "b", "c"], required: true, disposition: "private" }, BLINDING],
+        content: { grade: "b", b: B32 },
+    },
+    {
+        label: "a private stage with its blinding value",
+        fields: [{ name: "note", type: "string", required: true }],
+        stages: { 1: [{ name: "reading", type: "integer", required: true, disposition: "private" }, BLINDING] },
+        stage: 1,
+        content: { reading: 42, b: `0x${"cd".repeat(32)}` },
+    },
+    { label: "a public geohash at the cap", fields: [str({ format: "geohash" })], content: { v: "dr5reg" } },
     { label: "bytes-hex empty", fields: [str({ format: "bytes-hex" })], content: { v: "0x" } },
     { label: "bytes-hex one byte", fields: [str({ format: "bytes-hex" })], content: { v: "0x00" } },
     { label: "bytes-hex 01", fields: [str({ format: "bytes-hex" })], content: { v: "0x01" } },
@@ -527,11 +731,12 @@ function build() {
         ),
         contents: CONTENT_CASES.map(({ label, fields, content }) => ({ label, fields, content, ok: verdict(fields, content) })),
         specs: SPEC_CASES.map(({ label, spec }) => ({ label, spec, ok: parseClauseSpec(spec).ok })),
-        encodings: ENCODE_CASES.map(({ label, fields, content }) => {
-            const parsed = parseClauseSpec(specOf(fields));
+        encodings: ENCODE_CASES.map(({ label, fields, stages, stage, content }) => {
+            const parsed = parseClauseSpec(specOf(fields, stages));
             if (!parsed.ok) throw new Error(`encode case ${label}: the spec does not parse`);
-            if (!validateContent(content, parsed.spec).ok) throw new Error(`encode case ${label}: the content does not validate`);
-            return { label, fields, content, encoded: encodeContentFromSpec(parsed.spec, content) };
+            const options = stage === undefined ? {} : { stage };
+            if (!validateContent(content, parsed.spec, options).ok) throw new Error(`encode case ${label}: the content does not validate`);
+            return { label, fields, stages, stage, content, encoded: encodeContentFromSpec(parsed.spec, content, options) };
         }),
     };
 }
@@ -567,87 +772,28 @@ describe("Clause-engine vectors — the hand-written leg of the clause-engine lo
 });
 
 /**
- * The rules Layer A applies beyond the shared vectors. Each one is the SDK's
- * alone: the guest's engine does not apply it, and the frozen vectors hold no
- * case of it. A proof of a plaintext attestation therefore binds the spec and
- * the content's shape, and does not attest these rules. A new rule of this
- * kind enters this list, or the tests below fail.
+ * The rules the SDK applies that the guest's engine does not. The list is
+ * empty: the guest's engine applies every rule of the spec format and of
+ * content validation, the grain cap and the private set's rules among them,
+ * and the frozen vectors hold cases of each, both verdicts.
  */
-const SDK_ONLY_RULES = [
-    "the geohash grain cap by disposition",
-    "a field set that declares a private field declares exactly one blinding field, of one shape, at its top level, and does not mix public and private fields",
-    "the blinding attribute is present only as true: a field carrying \"blinding\": false is refused",
-] as const;
+const SDK_ONLY_RULES: readonly string[] = [];
 
-/** The message `validateContent` gives when the grain cap refuses a value. */
-const GRAIN_REFUSAL = /geohash carries at most \d+ characters/;
-
-describe("Rules the SDK applies beyond the shared vectors", () => {
-    const frozen = existsSync(FIXTURE_PATH)
-        ? (JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as ReturnType<typeof build>)
-        : null;
-
-    it("lists exactly three rules: the geohash grain cap, the private set's blinding field, and the blinding attribute's one value", () => {
-        expect(SDK_ONLY_RULES).toHaveLength(3);
-        expect(SDK_ONLY_RULES[0]).toBe("the geohash grain cap by disposition");
-        expect(SDK_ONLY_RULES[1]).toMatch(/blinding field/);
-        expect(SDK_ONLY_RULES[2]).toMatch(/"blinding": false/);
+describe("The rules both engines apply", () => {
+    it("lists no rule that is the SDK's alone", () => {
+        expect(SDK_ONLY_RULES).toHaveLength(0);
     });
 
-    it("\"blinding\": false is refused at parse, where the guest's parser reads past the attribute", () => {
-        // The guest reads no blinding attribute, so without it the same field parses.
-        expect(parseClauseSpec(specOf([str({ name: "s", blinding: false })])).ok).toBe(false);
-        expect(parseClauseSpec(specOf([str({ name: "s" })])).ok).toBe(true);
-    });
-
-    it("the frozen vectors hold no blinding attribute and no private disposition, so the private set's rules never reach them", () => {
-        const text = readFileSync(FIXTURE_PATH, "utf8");
-        expect(text).not.toMatch(/"blinding"|"private"/);
-    });
-
-    it("the private set's rules are the exception at parse: a spec the guest's parser accepts is refused by them alone", () => {
-        // The guest's parser reads no disposition and no blinding attribute,
-        // so each of these specs parses there; the SDK refuses each.
-        const secret = str({ name: "s", disposition: "private" });
-        const blinding = str({ name: "b", format: "bytes32-hex", disposition: "private", blinding: true });
-        for (const fields of [[secret], [secret, blinding, { ...blinding, name: "b2" }], [blinding], [str(), secret, blinding]]) {
-            expect(parseClauseSpec(specOf(fields)).ok, JSON.stringify(fields)).toBe(false);
-            // Without the two attributes the guest reads past, the same fields parse.
-            const bare = fields.map(({ disposition: _d, blinding: _b, ...rest }) => rest);
-            const names = new Set(bare.map((f) => f.name));
-            if (names.size === bare.length) expect(parseClauseSpec(specOf(bare)).ok, JSON.stringify(bare)).toBe(true);
+    it("the frozen vectors hold the grain cap, the disposition, formatFromField and the blinding field, each with both verdicts", () => {
+        const built = build();
+        const holds = (needle: RegExp, ok: boolean) =>
+            [...built.values.map((c) => ({ text: JSON.stringify(c.field), ok: c.ok })),
+             ...built.contents.map((c) => ({ text: JSON.stringify(c.fields), ok: c.ok })),
+             ...built.specs.map((c) => ({ text: JSON.stringify(c.spec), ok: c.ok }))]
+                .some((c) => needle.test(c.text) && c.ok === ok);
+        for (const needle of [/"geohash"/, /"disposition":"private"/, /"formatFromField"/, /"blinding":true/]) {
+            expect(holds(needle, true), `${needle} accepted`).toBe(true);
+            expect(holds(needle, false), `${needle} refused`).toBe(true);
         }
-        // A private set that keeps every rule parses in both, and its blinding
-        // value validates as a bytes32-hex string, a rule both engines share.
-        const parsed = parseClauseSpec(specOf([secret, blinding]));
-        if (!parsed.ok) throw new Error("the spec does not parse");
-        expect(validateContent({ s: "x", b: `0x${"ab".repeat(32)}` }, parsed.spec).ok).toBe(true);
-        expect(validateContent({ s: "x", b: "0xab" }, parsed.spec).ok).toBe(false);
-    });
-
-    it("validateContent accepts every value and content the frozen vectors mark valid", () => {
-        expect(frozen, "fixture missing").not.toBeNull();
-        for (const c of frozen!.values.filter((v) => v.ok === true)) {
-            expect(verdict([c.field], { v: c.value }), `${c.group}: ${JSON.stringify(c.value)}`).toBe(true);
-        }
-        for (const c of frozen!.contents.filter((v) => v.ok === true)) {
-            expect(verdict(c.fields, c.content), c.label).toBe(true);
-        }
-    });
-
-    it("the frozen vectors hold no geohash format, no disposition and no formatFromField, so the cap never reaches them", () => {
-        const text = readFileSync(FIXTURE_PATH, "utf8");
-        expect(text).not.toMatch(/"geohash"|"disposition"|"formatFromField"/);
-    });
-
-    it("the grain cap is the single exception: a value every shared rule accepts is refused by the cap alone", () => {
-        const geohash = str({ format: "geohash", maxLength: 12 });
-        const parsed = parseClauseSpec(specOf([geohash]));
-        if (!parsed.ok) throw new Error("the spec does not parse");
-        const refused = validateContent({ v: "dr5regw" }, parsed.spec);
-        expect(refused.ok).toBe(false);
-        if (!refused.ok) expect(refused.errors.every((e) => GRAIN_REFUSAL.test(e.message))).toBe(true);
-        // The same value under a format the cap does not read: every shared rule accepts it.
-        expect(verdict([str({ format: "evidence-capture", maxLength: 12 })], { v: "dr5regw" })).toBe(true);
     });
 });
