@@ -149,7 +149,8 @@ describe("wallet-provider scope per route", () => {
             }
         }
         expect(offenders).toEqual([]);
-    });
+        // The walk parses every file the marketing tree reaches; under coverage it runs past the default limit.
+    }, 60_000);
 
     it.each(["app/(app)/layout.tsx", "app/(tools)/layout.tsx"])("%s reaches the Providers stack, which mounts WagmiProvider", (layout) => {
         const chains = reachable([path.join(ROOT, layout)]);
