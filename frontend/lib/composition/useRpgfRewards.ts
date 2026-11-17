@@ -84,6 +84,10 @@ export interface RpgfPeriodState {
     /** True once the matching accrual period has ended: counts are final and
      *  the period is claimable. */
     periodClosed: boolean;
+    /** `UsageCounter.periodEnd(period)`: the chain time, in unix seconds, at
+     *  which the period ends. Its own read, so a failed one leaves only this
+     *  place empty. */
+    periodEnd: NetworkRead<bigint>;
     /** Every clause's, agreement's and assembly's score in this period — the payout denominator. */
     totalScore: bigint;
     /** The connected wallet's clauses, agreements and assemblies and their accrual in this period. */
@@ -241,7 +245,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             const rows = await Promise.all(
                 ids.map(async (periodId) => {
                     const period = periodId;
-                    const [amount, minted, periodClosed, totalScore, claimable, accrualRows] =
+                    const [amount, minted, periodClosed, periodEnd, totalScore, claimable, accrualRows] =
                         await Promise.all([
                             publicClient.readContract({
                                 ...minterBase,
@@ -258,6 +262,13 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                                 functionName: "periodClosed",
                                 args: [period],
                             }),
+                            readNetwork("useRpgfRewards.periodEnd", () =>
+                                publicClient.readContract({
+                                    ...counterBase,
+                                    functionName: "periodEnd",
+                                    args: [BigInt(period)],
+                                }),
+                            ),
                             publicClient.readContract({
                                 ...counterBase,
                                 functionName: "totalScoreIn",
@@ -302,6 +313,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                         amount,
                         minted,
                         periodClosed,
+                        periodEnd,
                         totalScore,
                         accruals,
                         myScore: accruals.reduce((sum, a) => sum + a.score, 0n),

@@ -389,6 +389,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `fetchDiscoveryEvents` | root | Registry events (clauses, assemblies, members); an unconfigured registry contributes nothing. |
 | `fetchEndpointLogAgreement` | root | The same agreement report, fetched from caller-supplied clients over one pinned `[fromBlock, toBlock]`. |
 | `fetchProcessesResolved` | root | For each process id, whether it has resolved and the block of its `ProcessResolved`: the Core's `processes(id)` getter decides the direct path, the verifier's `ProcessResolved` the batch path. |
+| `fetchSkippedBatchUses` | root | Each batch whose call to the counter reverted whole (`BatchAccrualSkipped`), with the period and the uses its `settleBatch` calldata carried: uses a later batch may prove again, rebuilt with `buildUsageClaims` and sent with `SequencerClient.submitUsageClaim`. |
 | `fetchUsageRecords` | root | `UsageRecorded` events — the direct-path half of the rewards mirror. |
 | `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalog and process set. |
 | `fillCatalogueMeasures` | root | Fold the measures each composed spec declares in `block.checkout.catalogueMeasures` from the lines' catalog items; a missing measure stays missing. |

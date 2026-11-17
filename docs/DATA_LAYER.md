@@ -104,8 +104,8 @@ loses, moves or retypes a field and this table does not move with it.
 | `FigaroBatchVerifier` | `BatchSettled` | 1 | `prevStateRoot` | `bytes32 indexed` | A rebuilding relay checks the chain of roots (`prover/sequencer/src/rebuild.rs:94`) | A fingerprint: a state root |
 | `FigaroBatchVerifier` | `BatchSettled` | 2 | `newStateRoot` | `bytes32 indexed` | The same relay (`prover/sequencer/src/rebuild.rs:110`) | A fingerprint: a state root |
 | `FigaroBatchVerifier` | `BatchSettled` | 3 | `positionCount` | `uint256` | no reader found | A count |
-| `FigaroBatchVerifier` | `BatchAccrualSkipped` | 0 | `batchId` | `uint64 indexed` | no reader found | A counter |
-| `FigaroBatchVerifier` | `BatchAccrualSkipped` | 1 | `reason` | `bytes` | no reader found | The counter's revert data |
+| `FigaroBatchVerifier` | `BatchAccrualSkipped` | 0 | `batchId` | `uint64 indexed` | A party finding the uses a batch left uncounted, to send them again, reports it beside the uses it reads from the `settleBatch` calldata of the log's transaction (`fetchSkippedBatchUses`, `sdk/src/rpgf/index.ts:392`); the Sepolia monitor (`scripts/monitor-sepolia.mjs:145`) | A counter |
+| `FigaroBatchVerifier` | `BatchAccrualSkipped` | 1 | `reason` | `bytes` | The same reader passes it on unread (`sdk/src/rpgf/index.ts:398`); the Sepolia monitor reports it (`scripts/monitor-sepolia.mjs:149`) | The counter's revert data |
 | `UsageCounter` | `UsageRecorded` | 0 | `kind` | `uint8` | A designer's reward accrual keys each use by kind and key (`sdk/src/rpgf/index.ts:207`) | A small number |
 | `UsageCounter` | `UsageRecorded` | 1 | `clauseOrAssembly` | `bytes32 indexed` | The same accrual (`sdk/src/rpgf/index.ts:206`) | A fingerprint: a clause key, an `agreementHash` or an `assemblyHash` |
 | `UsageCounter` | `UsageRecorded` | 2 | `period` | `uint8 indexed` | The same accrual (`sdk/src/rpgf/index.ts:208`) | A period number |

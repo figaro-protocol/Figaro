@@ -413,6 +413,7 @@ export {
     computeRpgfAllocations,
     computeUsageAccruals,
     fetchUsageRecords,
+    fetchSkippedBatchUses,
     buildUsageClaims,
     fetchUsageClaimContext,
     usageScore,
@@ -430,6 +431,8 @@ export {
 export type {
     RpgfAllocation,
     UsageRecord,
+    BatchUse,
+    SkippedBatch,
     UsageAccrual,
     UsagePeriodAccrual,
     ClauseOrAssemblyAccrual,
