@@ -8,10 +8,11 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { hexToBytes, keccak256, type Hex } from "viem";
 import { type Commitment } from "@figaro-protocol/sdk";
 import { decodeContentFromSpec, encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
-import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
-import { pinSpec } from "./primeClauseSpecs";
+import { extractOverlays, type RecoveredAttestation } from "@figaro-protocol/sdk/derive";
+import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
+import { keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 import { createCapabilityExecutors, type CapabilityExecutorDeps } from "@/lib/semantic/createCapabilityExecutors";
-import { KEPT_WITNESS_STORAGE_KEY, publishWitnessContent, readKeptWitnessContent, readKeptWitnessValues } from "@/lib/composition/witnessContent";
+import { publishWitnessContent } from "@/lib/composition/witnessContent";
 
 vi.mock("@/lib/core/signedCommitment", () => ({ restoreSignedProcessId: (c: Commitment) => c }));
 
@@ -164,81 +165,77 @@ describe("attestation under the committed clause key, beside another spec of the
     });
 });
 
-describe("the attester keeps its private witness content before the attestation is sent", () => {
-    const ORDER = `0x${"aa".repeat(32)}` as Hex;
-    /** A process-log clause whose top-level set is private: a ladder event
-     *  of it is private content too. */
-    const PRIVATE_LADDER = pinSpec({
-        clauseId: "test-private-ladder",
+/**
+ * The content of an attestation at stage N is encoded over `stages[N]` where
+ * the spec declares it, else over the top-level fields: the SDK's
+ * `contentFieldsFor` and the proof program apply this one rule, and so does
+ * the frontend, a process-log clause's ladder events included.
+ */
+describe("a ladder event is encoded over the set its stage selects", () => {
+    const ORDER = `0x${"ac".repeat(32)}` as Hex;
+    /** A process-log clause that also declares a stage set at ordinal 1. */
+    const HYBRID = pinSpec({
+        clauseId: "test-hybrid-ladder",
         version: 1,
-        title: "Private ladder",
-        description: "A process-log clause whose events are private.",
+        title: "Hybrid ladder",
+        description: "A process log whose ordinal 1 declares its own stage set.",
         fields: [
-            { name: "eventType", type: "enum", values: ["packed", "shipped"], required: true, disposition: "private" },
-            { name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true },
+            { name: "eventType", type: "enum", values: ["placed", "weighed", "delivered"], required: true },
+            { name: "evidenceUri", type: "string", required: false },
         ],
+        stages: { "1": [{ name: "grams", type: "integer", required: true }] },
         block: { design: { article: "attestations" } },
     });
 
     beforeAll(async () => {
-        setClauseSpecFetcher(async (uri) => (uri === "mem://v1" ? SPEC_V1.bytes : uri === "mem://ladder" ? PRIVATE_LADDER.bytes : SPEC_V2.bytes));
-        await loadClauseSpec(PRIVATE_LADDER.clauseKey, "mem://ladder");
+        await primeClauseSpecs(["figaro-courier-process", "figaro-merchant-process"]);
+        setClauseSpecFetcher(async () => HYBRID.bytes);
+        await loadClauseSpec(HYBRID.clauseKey, "mem://hybrid");
     });
 
-    it("a private witness: the content is kept, values and blinding value included, when the attestation is sent", async () => {
-        window.localStorage.clear();
-        let keptAtSend: Hex | null = null;
-        const submitAttestation = vi.fn(async (_role: "buyer" | "seller", args: { content?: Hex; stage: number; clauseId: Hex }) => {
-            keptAtSend = readKeptWitnessContent({ orderHash: ORDER, clauseId: args.clauseId, stage: args.stage, contentRef: keccak256(args.content!) });
-            return undefined;
-        });
-        const { executorCallbacks } = executors(submitAttestation as CapabilityExecutorDeps["submitAttestation"]);
-        await executorCallbacks.submitClauseAttestation({
-            executionType: "transaction", kind: "submit-clause-attestation",
-            orderHash: ORDER, clauseKey: SPEC_V2.clauseKey, stage: 1, party: "buyer",
-        }, { reading: "4C" });
-        const sent = (submitAttestation.mock.calls[0][1] as { content: Hex }).content;
-        expect(keptAtSend).toBe(sent);
-        const values = readKeptWitnessValues({ orderHash: ORDER, clauseId: SPEC_V2.clauseKey, stage: 1, contentRef: keccak256(sent) });
-        expect(values?.reading).toBe("4C");
-        expect(values?.blinding).toMatch(/^0x[0-9a-f]{64}$/);
+    const ladderAction = (clauseKey: Hex, stage: number, eventCode: string) => ({
+        executionType: "transaction" as const,
+        kind: "submit-clause-attestation" as const,
+        orderHash: ORDER,
+        clauseKey,
+        stage,
+        eventCode,
+        ladderField: "eventType",
+        party: "seller" as const,
     });
 
-    it("a ladder event of a clause whose top-level set is private is kept the same way", async () => {
-        window.localStorage.clear();
+    const sentContent = async (action: ReturnType<typeof ladderAction>, values?: Record<string, unknown>): Promise<Hex> => {
         const submitAttestation = vi.fn(async () => undefined);
-        const { executorCallbacks } = executors(submitAttestation);
-        await executorCallbacks.submitClauseAttestation({
-            executionType: "transaction", kind: "submit-clause-attestation",
-            orderHash: ORDER, clauseKey: PRIVATE_LADDER.clauseKey, stage: 0, eventCode: "packed", ladderField: "eventType", party: "seller",
+        await executors(submitAttestation).executorCallbacks.submitClauseAttestation(action, values);
+        return (submitAttestation.mock.calls[0] as unknown as [string, { content: Hex }])[1].content;
+    };
+
+    const overlayDecode = (clauseKey: Hex, stage: number, content: Hex) =>
+        extractOverlays([{ event: { clauseId: clauseKey, stage, orderHash: ORDER, contentRef: keccak256(content) } as unknown as RecoveredAttestation["event"], content }], specSource())[0].entries[0].decoded;
+
+    it("at an ordinal whose stage set is declared, the bytes are the SDK's encoding at that stage and the data page's reader decodes them", async () => {
+        const spec = getClauseSpec(HYBRID.clauseKey)!;
+        const content = await sentContent(ladderAction(HYBRID.clauseKey, 1, "weighed"), { grams: 410 });
+        expect(content).toBe(encodeContentFromSpec(spec, { grams: 410 }, { stage: 1 }));
+        expect(overlayDecode(HYBRID.clauseKey, 1, content)).toEqual({ grams: 410 });
+    });
+
+    it("at an ordinal with no stage set, the bytes are the top-level encoding with the event code", async () => {
+        const spec = getClauseSpec(HYBRID.clauseKey)!;
+        const content = await sentContent(ladderAction(HYBRID.clauseKey, 2, "delivered"));
+        expect(content).toBe(encodeContentFromSpec(spec, { eventType: "delivered" }, { stage: 2 }));
+        expect(overlayDecode(HYBRID.clauseKey, 2, content)).toMatchObject({ eventType: "delivered" });
+    });
+
+    for (const name of ["figaro-courier-process", "figaro-merchant-process"]) {
+        it(`${name}: every ladder event's bytes are the bytes encoded with no stage, as before`, async () => {
+            const spec = getClauseSpec(keyOf(name))!;
+            const ladder = spec.fields.find((f) => f.name === "eventType");
+            if (ladder?.type !== "enum") throw new Error("no ladder");
+            for (const [stage, eventCode] of ladder.values.entries()) {
+                const content = await sentContent(ladderAction(keyOf(name), stage, eventCode), { evidenceUri: "ipfs://QmEvidence" });
+                expect(content).toBe(encodeContentFromSpec(spec, { eventType: eventCode, evidenceUri: "ipfs://QmEvidence" }));
+            }
         });
-        const sent = (submitAttestation.mock.calls[0] as unknown as [string, { content: Hex }])[1].content;
-        expect(readKeptWitnessContent({ orderHash: ORDER, clauseId: PRIVATE_LADDER.clauseKey, stage: 0, contentRef: keccak256(sent) })).toBe(sent);
-    });
-
-    it("a public witness keeps nothing", async () => {
-        window.localStorage.clear();
-        const { executorCallbacks } = executors(vi.fn(async () => undefined));
-        await executorCallbacks.submitClauseAttestation({
-            executionType: "transaction", kind: "submit-clause-attestation",
-            orderHash: ORDER, clauseKey: SPEC_V1.clauseKey, stage: 1, party: "buyer",
-        }, { reading: "4C" });
-        expect(Object.keys(window.localStorage).filter((k) => k.startsWith(KEPT_WITNESS_STORAGE_KEY))).toEqual([]);
-    });
-
-    it("where the browser refuses to keep a private witness, nothing is sent", async () => {
-        window.localStorage.clear();
-        const submitAttestation = vi.fn(async () => undefined);
-        const { executorCallbacks } = executors(submitAttestation);
-        const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota"); });
-        try {
-            await expect(executorCallbacks.submitClauseAttestation({
-                executionType: "transaction", kind: "submit-clause-attestation",
-                orderHash: ORDER, clauseKey: SPEC_V2.clauseKey, stage: 1, party: "buyer",
-            }, { reading: "4C" })).rejects.toThrow(/could not keep the private content/);
-        } finally {
-            setItem.mockRestore();
-        }
-        expect(submitAttestation).not.toHaveBeenCalled();
-    });
+    }
 });

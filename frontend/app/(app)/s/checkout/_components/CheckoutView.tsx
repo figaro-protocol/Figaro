@@ -266,7 +266,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     // rebuild before signing builds the same checkoutHash. A race draws
     // anew for each candidate's draft and the winner's values replace the
     // raced order's here. A failed attempt starts a new store, unless a race
-    // fixed the orders: then it keeps this one (`freshBlindingStore`).
+    // fixed the orders: then it keeps this one (`freshBlindingStore`). A
+    // race reset empties it (`raceWithFreshDraws`).
     const blindingKept = useRef<CheckoutFills>({});
     const setClauseFill = (nodeId: string, clauseKey: string, field: string, value: unknown) =>
         setClauseFills((prev) => ({
@@ -725,6 +726,18 @@ export function CheckoutView({ sellerAddress }: Props) {
     // selections before the next race starts. Window, candidate count, and
     // the quotes-leg ceiling all arrive from the panel — checkout-time buyer
     // policy, never stored; the buyer can always close early.
+    // "Race again" and "Try again" clear the race, and a new race sends new
+    // drafts with new salts. Those drafts must share no private leaf with
+    // the structs the last race's candidates hold, so the reset empties the
+    // store and every order draws anew. A failed checkout attempt after a
+    // race keeps the store instead (`freshBlindingStore`).
+    const raceWithFreshDraws: typeof race = {
+        ...race,
+        reset: () => {
+            blindingKept.current = {};
+            race.reset();
+        },
+    };
     const handleRaceStart = (policy: RaceStartPolicy) => {
         const checkout = buildWalkParams();
         const racedNode = buyerPickSubOrders[0]?.node;
@@ -1260,7 +1273,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     />
                                 )}
                                 <DispatchRacePanel
-                                    race={race}
+                                    race={raceWithFreshDraws}
                                     onStart={handleRaceStart}
                                     tokenSymbol={tokenSymbol}
                                     decimals={tokenDecimals}

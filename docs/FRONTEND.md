@@ -195,7 +195,9 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     (`freshBlindingStore`). After a race, the retry keeps every order's
     values: the race fixed every salt and the deadline, and the raced struct
     names the root's hash and its parents' order hashes, so any new value
-    would break the winner's countersignature. Transport is per candidate: one whose profile declares
+    would break the winner's countersignature. A race reset ("Race again",
+    "Try again") empties the store (`raceWithFreshDraws` in `CheckoutView`),
+    so the next race's drafts share no private leaf with the last race's. Transport is per candidate: one whose profile declares
     `services.rest` is an AGENT candidate and exchanges the same artifacts over
     HTTP (`postToAgentEndpoint`, the HttpChannel wire — mixed human×agent races are
     this branch); wallet candidates ride the coordination channel. Rendered by
@@ -357,7 +359,8 @@ Y", not as an open-ended build.)
   one's input: `FieldControl` renders nothing for it, `buyerAuthoredFields`
   and the rail's `inputFields` leave it out, and its value is drawn where the
   data is collected (`lib/checkout/checkoutBlinding.ts`, once per checkout
-  draft; `prepareAttestationContent` for the rail's attestations).
+  draft; `prepareAttestationContent` for the rail's attestations and the
+  content delivery's stage-1 evidence).
   `compareStageContent` reads past it, and `describeClause` /
   `describeWitness` list no blinding field and mark the description `blinded`,
   which `AgreementReview` states in words (`docs/CLAUSES.md` § "Clause-spec

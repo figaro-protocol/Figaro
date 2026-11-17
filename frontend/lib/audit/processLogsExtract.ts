@@ -116,8 +116,8 @@ export function extractProcessLogs(
         }
         // A private set's content is never published: the file holds it
         // where its builder kept it, and names it missing otherwise. The set
-        // is the one the content was encoded from: a ladder event's is the
-        // clause's top-level set, whatever its stage index.
+        // is the one the content was encoded from: `stages[stage]` where the
+        // spec declares it, else the top-level set, a ladder event's alike.
         const isPrivate = (attestationContentFields(clauseKey, att.stage) ?? []).some((f) => f.disposition === "private");
         const held = isPrivate ? heldWitness?.(att) ?? null : null;
         if (isPrivate && !held) {

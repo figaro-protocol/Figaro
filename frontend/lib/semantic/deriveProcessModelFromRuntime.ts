@@ -4,7 +4,7 @@ import { clauseByField, isProcessRoot } from "@figaro-protocol/sdk";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { ProcessSummary } from "@/lib/core/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
-import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue, specSource } from "@/lib/shared/clauseSpecSource";
+import { attestationContentFields, clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue, specSource } from "@/lib/shared/clauseSpecSource";
 import { PROVENANCE_LEAF_KEY } from "@figaro-protocol/sdk";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -132,15 +132,16 @@ function roleCapabilities(
                 if (stage < 0) continue;                               // ladder fully attested
                 const eventCode = ladder.values[stage];
                 const capId = `${order.processId}:${orderIdStr}:${clauseKey}-${party}-${eventCode}`;
-                // The ladder's COMPANION fields (every declared field that
-                // isn't the ladder enum itself — an evidence pointer, a note)
-                // ride the same generic form the witness stages use: the spec
-                // declares, the rail renders, the fill lands in the encoded
-                // content beside the event code. No field is named here.
+                // The card's inputs are the set the content at this ordinal
+                // is encoded over (`attestationContentFields`: `stages[k]`
+                // where the spec declares it, else the top-level fields),
+                // less the ladder enum itself, whose value is the event code
+                // — an evidence pointer, a note, a reading. The spec
+                // declares, the rail renders; no field is named here.
                 // A blinding field is drawn by the content's preparation
                 // (`prepareAttestationContent`), never offered as an input.
-                const companions = getClauseSpec(clauseKey)
-                    ?.fields.filter((f) => f.name !== ladder.name && f.blinding !== true) ?? [];
+                const inputs = (attestationContentFields(clauseKey, stage) ?? [])
+                    .filter((f) => f.name !== ladder.name && f.blinding !== true);
                 out.push({
                     id: capId,
                     label: labelEnumValue(ladder, eventCode),
@@ -156,7 +157,7 @@ function roleCapabilities(
                         ladderField: ladder.name,
                         party,
                     },
-                    ...(companions.length > 0 ? { inputFields: companions } : {}),
+                    ...(inputs.length > 0 ? { inputFields: inputs } : {}),
                     mechanismId: "attestation-coordinator",
                     scopeType: "order",
                     scopeId: orderIdStr,
@@ -186,11 +187,13 @@ function roleCapabilities(
         const orderLabel = `Order ${indexes.positionByOrder.get(orderIdStr)} of ${indexes.positionByOrder.size} · seller ${truncateHex(order.seller)}`;
         for (const clauseEntry of agreement.clauses) {
             const clauseKey = clauseEntry.clause;
-            // A process-log clause's attestations are its ladder events,
-            // encoded over its top-level fields (`attestationEncodeOptions`):
-            // a stage it declares offers no witness.
-            if (clauseIsProcessLog(clauseKey)) continue;
+            // A process-log clause's ladder card owns each ordinal of its
+            // ladder, a declared stage set's included (the card above
+            // collects that set): only a stage past the last ordinal is a
+            // witness of its own here.
+            const ladderLength = clauseIsProcessLog(clauseKey) ? (clauseLadderField(clauseKey)?.values.length ?? 0) : 0;
             for (const witness of clauseWitnessStages(clauseKey)) {
+                if (witness.stage < ladderLength) continue;
                 const title = getClauseSpec(clauseKey)?.title ?? clauseKey;
                 for (const party of ["seller", "buyer"] as const) {
                     if (party === "seller" ? !isSeller : !isBuyer) continue;
