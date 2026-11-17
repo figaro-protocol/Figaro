@@ -23,12 +23,17 @@
  *     § "Wallet-provider scope per route").
  *     A page that names its subject in the address (`QueryParamPage`: a
  *     process id, a seller's wallet, a design's slug) renders nothing for a
- *     missing or malformed subject, by the open-world rule. The crawl reads
- *     which pages these are, and their parameter, from the app's source; it
- *     keeps the query of every link to one, visits each bare and with a
- *     well-formed subject taken from the unit tests' fixtures, and judges
- *     neither by its content: a subject the network does not hold is
- *     absence, never a blank page. `/evidence-display` reads its subject
+ *     missing or malformed subject, by the open-world rule, and a visitor
+ *     reaches it only by a link that names its subject. The crawl reads
+ *     which pages these are, their `param` and their `validate`, from each
+ *     page's own source (its `page.tsx` and the modules beside it that it
+ *     imports); it keeps the query of every link to one, and never visits
+ *     one bare. A process id is the newest one the chain's `OrderCommitted`
+ *     logs name, and that visit must show the subject's heading and content;
+ *     with no process on the chain the page is visited not at all and
+ *     reported as skipped. A wallet or a slug is a fixture the network need
+ *     not hold, and that visit is not judged by its content: a subject the
+ *     network does not hold is absence, never a blank page. `/evidence-display` reads its subject
  *     from a link a forum composes (docs/FRONTEND.md, "Deliberate orphan");
  *     it is visited with that link's two required parameters.
  *  0. THE PRECONDITION — on the devnet, the chain the build reads answers
@@ -82,8 +87,9 @@ import {
 } from '../../components/shared/navLinks';
 import { waitForReactHydration } from './test-helpers';
 import { exportDistDir, exportedRoutes } from './exportCensus';
-import { E2E_CHAIN, RPC_URL } from './devnet-helpers';
+import { E2E_CHAIN, RPC_URL, localPublicClient, readLocalDeploymentConfig, scanContractEvents } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
+import { CORE_ABI } from '@/lib/core/contracts';
 
 /** One defect the blind visitor hit, attributed to the page that produced it. */
 interface Finding {
@@ -93,22 +99,41 @@ interface Finding {
 }
 
 /**
- * A well-formed subject for each of `QueryParamPage`'s validators, taken from
- * the unit tests' fixtures: the process id the read-state tests use
- * (`tests/components/AppPagesReadStates.test.tsx`), an Anvil account
- * (`tests/anvilAccounts.ts`), and a slug. Each names nothing the network has
- * to hold: the page reads it and renders what the network answers.
+ * Where the subject of a `QueryParamPage` comes from, by the validator the
+ * page names. A process id is read from the chain (`newestCommittedProcess`),
+ * so the page has a subject the network holds and is judged by its heading.
+ * A wallet is an Anvil account (`tests/anvilAccounts.ts`) and a slug a
+ * well-formed name: the network need not hold either, so the page renders
+ * what the network answers and is not judged by its content.
  */
-const SUBJECT_FIXTURES: Record<string, string> = {
-    processIdParam: `0x${'5e'.repeat(32)}`,
-    walletParam: ANVIL_ACCOUNTS[1],
-    slugParam: 'devnet-seed',
+type SubjectSource = { kind: 'chain-process' } | { kind: 'fixture'; value: string };
+const SUBJECT_SOURCES: Record<string, SubjectSource> = {
+    processIdParam: { kind: 'chain-process' },
+    walletParam: { kind: 'fixture', value: ANVIL_ACCOUNTS[1] },
+    slugParam: { kind: 'fixture', value: 'devnet-seed' },
 };
+
+/** A well-formed process id the network need not hold, for the forum's link below. */
+const FIXTURE_PROCESS_ID = `0x${'5e'.repeat(32)}`;
 
 /** The pages that read their subject from the address themselves, and the query a forum's link carries. */
 const SELF_READ_SUBJECTS: Record<string, string> = {
-    '/evidence-display': `processId=${SUBJECT_FIXTURES.processIdParam}&arbitrableJsonRpcUrl=${encodeURIComponent(RPC_URL)}`,
+    '/evidence-display': `processId=${FIXTURE_PROCESS_ID}&arbitrableJsonRpcUrl=${encodeURIComponent(RPC_URL)}`,
 };
+
+/**
+ * The newest process the chain holds: the `processId` of the last
+ * `OrderCommitted` the Core emitted, read out of band through the helpers'
+ * chunked scan. A chain with no committed order yields the reason instead.
+ */
+async function newestCommittedProcess(): Promise<{ processId: string } | { reason: string }> {
+    const core = readLocalDeploymentConfig().figaroCore;
+    if (!core) return { reason: 'the deployment config names no FigaroCore to read processes from' };
+    const committed = await scanContractEvents(localPublicClient(), { address: core, abi: CORE_ABI, eventName: 'OrderCommitted' });
+    const newest = committed[committed.length - 1];
+    if (!newest?.args.processId) return { reason: `the chain holds no OrderCommitted on FigaroCore ${core}` };
+    return { processId: newest.args.processId };
+}
 
 const NAV_TIMEOUT = 20_000;
 /** Parallel tabs in the one shared context — the crawl's only batching knob. */
@@ -192,7 +217,7 @@ function normalizeRoute(pathname: string): string {
  * to one keeps its query, so the page is visited with the subject the link
  * names. Every other link is visited by its path alone.
  */
-function classify(href: string, origin: string, subjects: ReadonlyMap<string, string> = new Map()): Classified {
+function classify(href: string, origin: string, subjects: ReadonlySet<string> = new Set()): Classified {
     if (!href || href.startsWith('#')) return { kind: 'skip' };
     let url: URL;
     try {
@@ -221,32 +246,83 @@ function classify(href: string, origin: string, subjects: ReadonlyMap<string, st
 }
 
 /**
- * The pages of `app/(app)` and `app/(tools)` that name their subject in the
- * address through `QueryParamPage`, read from each page's source: route →
- * the query that names a well-formed subject (`SUBJECT_FIXTURES`), and the
- * pages that read their subject themselves (`SELF_READ_SUBJECTS`).
+ * A page's own source: its `page.tsx` and every module it imports, by a
+ * relative path, from its own route directory (a page may mount its
+ * `QueryParamPage` in a client module beside it, as `/audit/view` does).
  */
-function subjectRoutes(appDir: string): Map<string, string> {
-    const out = new Map<string, string>();
+function pageOwnSources(pageFile: string): string[] {
+    const routeDir = path.dirname(path.resolve(pageFile));
+    const seen = new Set<string>();
+    const sources: string[] = [];
+    const read = (file: string) => {
+        if (seen.has(file)) return;
+        seen.add(file);
+        const source = fs.readFileSync(file, 'utf8');
+        sources.push(source);
+        for (const m of source.matchAll(/from\s+["'](\.\/[^"']+)["']/g)) {
+            const base = path.resolve(path.dirname(file), m[1]);
+            const resolved = [`${base}.tsx`, `${base}.ts`].find((f) => fs.existsSync(f));
+            if (resolved && path.dirname(resolved) === routeDir) read(resolved);
+        }
+    };
+    read(pageFile);
+    return sources;
+}
+
+/** The parameter pages of the app and the subject each is visited with. */
+interface SubjectPages {
+    /** Every page whose subject rides in its query: `QueryParamPage`'s and `SELF_READ_SUBJECTS`. */
+    routes: Set<string>;
+    /** route → the query that names its subject, for each page that has one. */
+    queries: Map<string, string>;
+    /** The visit keys whose subject the crawl read from the chain: judged by their heading. */
+    chainRead: Set<string>;
+    /** route → why the page has no subject to be visited with. */
+    skipped: Map<string, string>;
+}
+
+/**
+ * The pages of `app/(app)` and `app/(tools)` that name their subject in the
+ * address through `QueryParamPage`, read from each page's own source (its
+ * `param` and its `validate`), each given a subject by `SUBJECT_SOURCES`; and
+ * the pages that read their subject themselves (`SELF_READ_SUBJECTS`).
+ */
+function subjectPages(appDir: string, newest: { processId: string } | { reason: string }): SubjectPages {
+    const out: SubjectPages = { routes: new Set(), queries: new Map(), chainRead: new Set(), skipped: new Map() };
     const walk = (dir: string, rel: string) => {
         for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
             if (entry.isDirectory()) {
                 const isGroup = entry.name.startsWith('(') && entry.name.endsWith(')');
                 walk(path.join(dir, entry.name), isGroup ? rel : `${rel}/${entry.name}`);
             } else if (entry.name === 'page.tsx') {
-                const source = fs.readFileSync(path.join(dir, entry.name), 'utf8');
-                const m = source.match(/<QueryParamPage\s+param="(\w+)"\s+validate=\{(\w+)\}/);
-                if (!m) continue;
-                const fixture = SUBJECT_FIXTURES[m[2]];
-                if (fixture === undefined) throw new Error(`${rel}: QueryParamPage validates with ${m[2]}, which has no fixture in SUBJECT_FIXTURES`);
-                out.set(rel, `${m[1]}=${encodeURIComponent(fixture)}`);
+                const sources = pageOwnSources(path.join(dir, entry.name));
+                const uses = sources.flatMap((s) => s.match(/<QueryParamPage\b[^>]*>/g) ?? []);
+                if (uses.length === 0) continue;
+                const parsed = uses.map((u) => u.match(/\bparam="(\w+)"\s+validate=\{(\w+)\}/));
+                if (parsed.some((m) => !m) || new Set(uses).size > 1) {
+                    throw new Error(`${rel}: the crawl reads one QueryParamPage with a literal param and validate, and found ${uses.join(' | ')}`);
+                }
+                const [, param, validate] = parsed[0]!;
+                const source = SUBJECT_SOURCES[validate];
+                if (source === undefined) throw new Error(`${rel}: QueryParamPage validates with ${validate}, which has no entry in SUBJECT_SOURCES`);
+                out.routes.add(rel);
+                if (source.kind === 'fixture') {
+                    out.queries.set(rel, `${param}=${encodeURIComponent(source.value)}`);
+                } else if ('processId' in newest) {
+                    const query = `${param}=${newest.processId}`;
+                    out.queries.set(rel, query);
+                    out.chainRead.add(`${rel}?${query}`);
+                } else {
+                    out.skipped.set(rel, `its ${param} is a process id, and ${newest.reason}`);
+                }
             }
         }
     };
     for (const group of ['(app)', '(tools)']) walk(path.join(appDir, group), '');
     for (const [route, query] of Object.entries(SELF_READ_SUBJECTS)) {
         if (!routesOfGroups(appDir, ['(app)', '(tools)']).has(route)) throw new Error(`${route} is no longer a page of the app`);
-        out.set(route, query);
+        out.routes.add(route);
+        out.queries.set(route, query);
     }
     return out;
 }
@@ -299,6 +375,8 @@ function canonicalPathOf(distDir: string, route: string): string | null {
 interface VisitRules {
     /** The page must show content: a non-empty <main> or <h1>. */
     content: boolean;
+    /** The page names a subject the chain holds: its <main> must show an <h1> past the loading line, and more text than the <h1>. */
+    subjectHeading: boolean;
     /** The page is the wallet's (`app/(app)`, `app/(tools)`): its <main> must hold more than the wallet gate. */
     walletTier: boolean;
 }
@@ -356,6 +434,19 @@ async function makeWorker(context: BrowserContext, findings: Finding[]): Promise
                 findings.push({ route, kind: 'empty-page', detail: `no non-empty <main> and no <h1> within ${NAV_TIMEOUT}ms` });
             }
         }
+        if (rules.subjectHeading) {
+            const hasSubject = await page
+                .waitForFunction(() => {
+                    const main = document.querySelector('main');
+                    const heading = main?.querySelector('h1')?.textContent?.trim() ?? '';
+                    const body = main?.textContent?.trim() ?? '';
+                    return heading !== '' && heading !== 'Loading…' && body.length > heading.length;
+                }, undefined, { timeout: NAV_TIMEOUT })
+                .then(() => true, () => false);
+            if (!hasSubject) {
+                findings.push({ route, kind: 'empty-page', detail: `a subject the chain holds, and no <h1> past the loading line with content beside it in <main> within ${NAV_TIMEOUT}ms` });
+            }
+        }
         // Late console errors land on their own page before the next navigation.
         await page.waitForTimeout(SETTLE_MS);
 
@@ -406,24 +497,36 @@ test.describe('The stranger: the blind visitor', () => {
         expect(fs.existsSync(distDir), `the static export is missing at ${distDir}: the webServer builds it`).toBe(true);
         const appDir = path.resolve(__dirname, '../../app');
         const runtimeTiers = routesOfGroups(appDir, ['(app)', '(tools)']);
-        const subjects = subjectRoutes(appDir);
+        const subjects = subjectPages(appDir, await newestCommittedProcess());
         const rulesFor = (key: string): VisitRules => ({
-            content: !subjects.has(pathOfVisit(key)),
+            content: !subjects.routes.has(pathOfVisit(key)),
+            subjectHeading: subjects.chainRead.has(key),
             walletTier: runtimeTiers.has(pathOfVisit(key)),
         });
 
         const findings: Finding[] = [];
         const visited = new Set<string>();
         const queue: string[] = [];
+        /**
+         * The visit a key stands for. A parameter page (its subject rides in
+         * its query, read from its source by `subjectPages`) is never visited
+         * bare, since a visitor reaches it only by a link that names its
+         * subject: it is visited with the subject its validator's source gives
+         * (a process id from the chain, a fixture wallet or slug), and a page
+         * with no subject is visited not at all and reported as skipped.
+         */
+        const visitKeyOf = (key: string): string | null => {
+            const route = pathOfVisit(key);
+            if (key !== route || !subjects.routes.has(route)) return key;
+            const query = subjects.queries.get(route);
+            return query === undefined ? null : `${route}?${query}`;
+        };
         const enqueue = (key: string) => {
-            if (!visited.has(key)) {
-                visited.add(key);
-                queue.push(key);
+            const visit = visitKeyOf(key);
+            if (visit !== null && !visited.has(visit)) {
+                visited.add(visit);
+                queue.push(visit);
             }
-            // A page that names its subject in the address is visited with a
-            // well-formed one as well as bare.
-            const subject = subjects.get(key);
-            if (subject !== undefined) enqueue(`${key}?${subject}`);
         };
         const assets = new Set<string>();
         /** external href → the pages carrying it + the worst attributes seen */
@@ -435,7 +538,7 @@ test.describe('The stranger: the blind visitor', () => {
 
         const ingest = (fromRoute: string, links: RawLink[]) => {
             for (const link of links) {
-                const c = classify(link.href, origin, subjects);
+                const c = classify(link.href, origin, subjects.routes);
                 if (c.kind === 'route') enqueue(c.route);
                 else if (c.kind === 'asset') assets.add(c.path);
                 else if (c.kind === 'external') {
@@ -463,7 +566,7 @@ test.describe('The stranger: the blind visitor', () => {
             ...NAV_LINKS_MARKETING_DRAWER,
             ...MARKETING_MAP.flatMap((clauseEntry) => clauseEntry.links),
         ]) {
-            const c = classify(link.href, origin, subjects);
+            const c = classify(link.href, origin, subjects.routes);
             if (c.kind === 'route') enqueue(c.route);
         }
         while (queue.length > 0) {
@@ -479,22 +582,26 @@ test.describe('The stranger: the blind visitor', () => {
         // ── Completeness: the export's own census vs. what crawling reached ──
         const unreachable: string[] = [];
         {
-            const unreached = exportedRoutes(distDir).filter((r) => !visited.has(r));
+            const reached = new Set([...visited].map(pathOfVisit));
+            const unreached = exportedRoutes(distDir).filter((r) => !reached.has(r));
             // Still gate every unreached route — a stranger can land on any of
-            // them from a shared URL, so status/console/content run either way.
-            for (let i = 0; i < unreached.length; i += workers.length) {
-                const batch = unreached.slice(i, i + workers.length);
-                const results = await Promise.all(batch.map((route, j) => workers[j].visit(route, rulesFor(route))));
-                batch.forEach((route, j) => ingest(route, results[j]));
-            }
-            // A page that names its subject in the address, reached only by the
-            // census, is visited with a well-formed subject too.
-            const withSubject = unreached.filter((r) => subjects.has(r)).map((r) => `${r}?${subjects.get(r)}`).filter((k) => !visited.has(k));
-            for (let i = 0; i < withSubject.length; i += workers.length) {
-                const batch = withSubject.slice(i, i + workers.length);
+            // them from a shared URL, so status/console/content run either way;
+            // a parameter page is visited with its subject (`visitKeyOf`), and
+            // so is one the links reached only with another subject.
+            const censusVisits = [...new Set([...unreached, ...subjects.routes].map(visitKeyOf))]
+                .filter((k): k is string => k !== null && !visited.has(k));
+            for (let i = 0; i < censusVisits.length; i += workers.length) {
+                const batch = censusVisits.slice(i, i + workers.length);
                 batch.forEach((key) => visited.add(key));
                 const results = await Promise.all(batch.map((key, j) => workers[j].visit(key, rulesFor(key))));
                 batch.forEach((key, j) => ingest(key, results[j]));
+            }
+            // A parameter page with no subject was visited by no key: it is
+            // reported as skipped, with its reason, and never counted a pass.
+            if (subjects.skipped.size > 0) {
+                const skipped = [...subjects.skipped].map(([route, reason]) => `${route}: ${reason}`);
+                for (const line of skipped) console.log(`[skipped] ${line}`);
+                test.info().annotations.push({ type: 'parameter pages skipped: no subject to visit them with', description: skipped.join('; ') });
             }
             // The reachability bar, by the repo's own seams (spec header §2):
             // aliases and wallet-scope runtime surfaces are reported, never

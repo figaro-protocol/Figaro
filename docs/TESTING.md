@@ -862,7 +862,12 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   page declaring a canonical elsewhere is an unlinked inbound-compat alias,
   an unreached `(app)`/`(tools)` route is annotated (wallet-scope — connected
   chrome and runtime state own those links), and an unreached marketing-tier
-  route fails. External hrefs are never visited — asserted https and
+  route fails. A page whose subject rides in its query (`QueryParamPage`, its
+  `param` and `validate` read from the page's own source) is never visited
+  bare: a process id is the newest the chain's `OrderCommitted` logs name, and
+  that visit must show the subject's heading and content; a wallet or a slug
+  is a fixture whose visit is not judged by content; with no process on the
+  chain the page is reported as skipped, never as a pass. External hrefs are never visited — asserted https and
   `rel="noopener noreferrer"` where `target="_blank"`; the `/sdk-api` typedoc
   bundle and linked files are status-checked, not crawled into. Plus one
   connect-after-first-paint case: the connect affordance renders and clicks
