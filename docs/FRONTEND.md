@@ -411,7 +411,9 @@ Y", not as an open-ended build.)
   learns the plaintext), and `ecdh-content` → `ContentDeliveryPanel` (the
   digital-hand-off twin: the artifact itself travels the same encrypted
   channel — `lib/handoff/contentDelivery.ts` — and its keccak256 files as
-  the clause's stage-1 completion evidence; both ceremonies share the
+  the clause's stage-1 completion evidence, a private stage-1 set's
+  blinding value sealed beside the artifact so the receiver recomputes
+  the anchor; both ceremonies share the
   two-message core in `lib/handoff/ceremony.ts`)).
 - **Clause-composition UI** — `app/(tools)/assemblies/designer/_components/AgreementDrawer.tsx`
   (reads ClauseRegistry live; grouping word is `block.design.article`).

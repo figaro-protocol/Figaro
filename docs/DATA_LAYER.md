@@ -203,9 +203,12 @@ Four limits, stated plainly:
    loses it: the content is its own to keep, and the evidence file is how it
    carries it out. A software agent keeps the `values` and `content` that
    `prepareAttestationContent` returns. Where a content delivery's stage-1
-   set is private, its evidence holds a blinding value the sender drew and
-   the encrypted delivery does not send, so the receiver cannot rehash the
-   anchor, and its page shows no verdict for it.
+   set is private, the sender draws its blinding value before the send and
+   seals it in the encrypted delivery beside the artifact
+   (`prepareCompletionEvidence` in `frontend/lib/handoff/contentDelivery.ts`),
+   so the receiver rebuilds the content, recomputes the anchor and shows its
+   verdict (`completionEvidenceAnchor`); a public stage-1 set's delivery
+   carries no blinding value.
 4. The kept copy belongs to the browser profile, not to a wallet. Anyone who
    opens that browser profile reads the decoded private content on the order
    page and the audit page, with any wallet connected or none. A party on a
