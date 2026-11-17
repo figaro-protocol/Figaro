@@ -9,6 +9,7 @@ vi.mock("@/app/(app)/discover/_components/useDeviceLocation", () => ({
 }));
 
 import { MemberDiscovery } from "@/app/(app)/discover/_components/MemberDiscovery";
+import { CONNECT_PROMPT } from "../lib/__fixtures__/noWallet";
 
 describe("MemberDiscovery — a failed read renders nothing, never that nothing is registered", () => {
     it("failed: no failure text, no count, no empty-registry CTA", () => {
@@ -26,5 +27,22 @@ describe("MemberDiscovery — a failed read renders nothing, never that nothing 
         render(<MemberDiscovery />);
         expect(screen.getByText("0 members shown of 0 total.")).toBeInTheDocument();
         expect(screen.getByTestId("discover-empty-cta")).toBeInTheDocument();
+    });
+
+    // The page calls no wallet hook: the module mocks none, and wagmi throws outside its provider.
+    it("no wallet, read present: the registry's members show, and no prompt to connect stands in for them", () => {
+        listingsMock.mockReturnValue({
+            read: {
+                status: "present",
+                value: [{
+                    address: "0x00000000000000000000000000000000000000aa", name: "Kitchen", description: "Warm meals",
+                    acceptedTokens: [], bindings: [],
+                }],
+            },
+        });
+        const { container } = render(<MemberDiscovery />);
+        expect(screen.getByText("Kitchen")).toBeInTheDocument();
+        expect(screen.getByText("1 member shown of 1 total.")).toBeInTheDocument();
+        expect(container.textContent).not.toMatch(CONNECT_PROMPT);
     });
 });

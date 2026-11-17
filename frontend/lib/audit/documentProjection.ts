@@ -280,7 +280,8 @@ export function projectFinancialStatements(
         if (active) {
             a.buyerBonds += o.buyerBond;           // 2P
             a.sellerBonds += o.sellerBond;         // 2G
-            a.refundOwedToBuyer += o.payment;      // P
+            // P: the bond (2P) less the payment it carries, the SDK's buyerPayout.
+            a.refundOwedToBuyer += calculateResolution(o.payment, o.sellerBond, o.buyerBond).buyerPayout;
             a.refundOwedToSeller += o.sellerBond;  // 2G
             a.retainedEarnings += o.payment;       // P
         }

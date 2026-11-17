@@ -19,8 +19,9 @@ export const metadata: Metadata = withOg({
  *     validation surface (`@figaro-protocol/sdk/clauses`, the same gate that runs at sign-time),
  *     pin to IPFS, and anchor on `ClauseRegistry.registerClause`.
  *  2. Your registered clauses — derived from `ClauseRegistered` events filtered
- *     to the connected wallet, each with a stake-reclaim affordance gated by the
- *     advisory commits==resolves gate.
+ *     to the connected wallet or the address `?wallet=0x…` names, each with a
+ *     stake-reclaim affordance, offered to the registrant only and gated by
+ *     the advisory commits==resolves gate.
  *
  * What lives here is the authoring PROCEDURE — how to write a spec, and the
  * four steps that take it from an editor to an anchored clause. The reference
@@ -110,8 +111,9 @@ export default function ClauseAuthoring() {
                     Your registered clauses
                 </h2>
                 <p className="text-sm text-ink-muted mb-6 max-w-2xl">
-                    Clauses this wallet registered, reconstructed from{" "}
-                    <code>ClauseRegistered</code> events. Reclaiming a stake returns it and de-surfaces the clause for new compositions — the binding stays anchored and committed trades keep resolving it.
+                    Clauses registered by the connected wallet, or by the address a link names with{" "}
+                    <code>?wallet=0x…</code>, reconstructed from{" "}
+                    <code>ClauseRegistered</code> events. Only the wallet that registered a clause reclaims its stake. Reclaiming a stake returns it and de-surfaces the clause for new compositions — the binding stays anchored and committed trades keep resolving it.
                 </p>
                 <RegisteredClausesReclaim />
             </section>

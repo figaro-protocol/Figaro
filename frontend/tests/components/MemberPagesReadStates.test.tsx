@@ -20,6 +20,8 @@ import { ABSENT, PENDING, present } from "@/lib/shared/networkRead";
 const WALLET = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as const;
 
 const m = vi.hoisted(() => ({
+    /** Whether a wallet is connected; the read-state cases run connected. */
+    connected: true,
     registration: undefined as unknown,
     profile: (async () => null) as () => Promise<unknown>,
     choices: undefined as unknown,
@@ -34,7 +36,7 @@ const m = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => undefined, replace: () => undefined }) }));
 vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: WALLET, isConnected: true }),
+    useAccount: () => (m.connected ? { address: WALLET, isConnected: true } : { address: undefined, isConnected: false }),
     useChainId: () => 31337,
     usePublicClient: () => undefined,
     useReadContract: () => ({ data: undefined, isLoading: false }),
@@ -62,6 +64,7 @@ import { MemberEditCatalog } from "@/components/members/MemberEditCatalog";
 import { OnboardingBuyerForm } from "@/components/members/OnboardingBuyerForm";
 import { OnboardingCatalogForm } from "@/components/members/OnboardingCatalogForm";
 import { OnboardingAssembliesForm } from "@/components/members/OnboardingAssembliesForm";
+import { CONNECT_PROMPT } from "../lib/__fixtures__/noWallet";
 
 /** Words a page may not show in a read's place when the read failed or came back empty. */
 const ERROR_TEXT = /\bfail(s|ed|ure)?\b|\berror\b|could ?n[o']t|unavailable|unable|unreachable/i;
@@ -184,5 +187,31 @@ describe("member wizard steps: a failed or empty assembly-registry read shows no
         await flush();
         expect(container.textContent ?? "").not.toMatch(ERROR_TEXT);
         expect(container.querySelector(fromRead)).toBeNull();
+    });
+});
+
+/** One published assembly, as the registry read answers before its document loads. */
+const CHOICE = {
+    slug: "asm-point-of-sale", registeredBy: WALLET, assemblyHash: `0x${"ab".repeat(32)}`, contentURI: "ipfs://a",
+    blockNumber: 1n, networkTargets: [], state: "loading", name: "Point of sale", summary: null,
+    agreementCount: null, clauses: null, hydratedAssembly: null, stakeWithdrawn: false,
+};
+
+/** The wizard is filled with no wallet, under an anonymous draft the first wallet to connect adopts. */
+describe("member wizard steps: no wallet, the assembly-registry read present", () => {
+    it.each([
+        ["/members/assemblies", OnboardingAssembliesForm, "seller-assembly"],
+        ["/members/buyer", OnboardingBuyerForm, "buyer-assembly"],
+    ] as const)("no wallet, read present: %s lists the registry's assemblies, and no prompt to connect stands in for them", async (_route, Step, prefix) => {
+        m.connected = false;
+        m.choices = present([CHOICE]);
+        try {
+            const { container, getByTestId } = render(<Step />);
+            await flush();
+            expect(getByTestId(`${prefix}-row-${CHOICE.slug}`).textContent).toMatch(/Point of sale/);
+            expect(container.textContent ?? "").not.toMatch(CONNECT_PROMPT);
+        } finally {
+            m.connected = true;
+        }
     });
 });

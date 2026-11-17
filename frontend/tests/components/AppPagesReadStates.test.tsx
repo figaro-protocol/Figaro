@@ -10,6 +10,11 @@
  * - resolved empty: the page may say that the chain answered with nothing;
  *   it shows no loading line and no error text.
  * - in flight: the loading line, and nothing else for the read's place.
+ *
+ * A fourth state, for the rows that carry a `present` fixture: no wallet is
+ * connected and the read answers with content. The content shows, and no
+ * prompt to connect stands in for it (docs/FRONTEND.md § "Wallet-provider
+ * scope per route": the wallet signs, it is never a login).
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,6 +28,8 @@ const PROCESS = `0x${"5e".repeat(32)}` as const;
 type ReadCase = "failed" | "empty" | "pending";
 
 const m = vi.hoisted(() => ({
+    /** Whether a wallet is connected; the three read states run connected. */
+    connected: true,
     params: new URLSearchParams(),
     client: { chain: { id: 31337 } },
     agreements: new Map(),
@@ -38,7 +45,9 @@ const m = vi.hoisted(() => ({
 }));
 
 vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: WALLET, isConnected: true }),
+    useAccount: () => (m.connected
+        ? { address: WALLET, isConnected: true, status: "connected" }
+        : { address: undefined, isConnected: false, status: "disconnected" as const }),
     useChainId: () => 31337,
     usePublicClient: () => m.client,
     useReadContract: () => ({ data: undefined, isLoading: false }),
@@ -100,6 +109,9 @@ import EvidenceDisplayPage from "@/app/(app)/evidence-display/page";
 import { DataExplorer } from "@/components/data/DataExplorer";
 import type { GraphCorpus } from "@/lib/data/graphCorpus";
 import { projectProcessGraph, projectResolutionGraph } from "@figaro-protocol/sdk/derive";
+import { OrderState, type Order as SdkOrder } from "@figaro-protocol/sdk";
+import { orderFromSdk } from "@/lib/core/store";
+import { CONNECT_PROMPT } from "../lib/__fixtures__/noWallet";
 
 /** Words a page may not show in a read's place when the read failed or came back empty. */
 const ERROR_TEXT = /\bfail(s|ed|ure)?\b|\berror\b|could ?n[o']t|unavailable|unable|unreachable/i;
@@ -172,7 +184,28 @@ interface PageRow {
     frame?: string;
     /** Elements that carry a figure, a name or a badge from the read. */
     readTestIds: string[];
+    /** The read answering with content, and what of it the page shows with no wallet connected. */
+    present?: { set: () => void; shows: RegExp[] };
 }
+
+/** One committed order of PROCESS, as the event fold builds it: payment 7, running total 7. */
+const ORDER = orderFromSdk({
+    orderHash: `0x${"0d".repeat(32)}`, processId: PROCESS, buyer: "0x00000000000000000000000000000000000000b1",
+    seller: "0x00000000000000000000000000000000000000a1", currency: "0x00000000000000000000000000000000000000c1",
+    payment: 7n, cumulativeValue: 7n, checkoutHash: `0x${"cd".repeat(32)}`, salt: 1n, deadline: 2_000_000_000n,
+    state: OrderState.Active, blockNumber: 4,
+} as unknown as SdkOrder);
+
+/** The timeline of PROCESS with that order's commit on it. */
+const ONE_EVENT_TIMELINE = {
+    ...EMPTY_TIMELINE,
+    events: [{
+        label: "Order Committed", blockNumber: 4n, timestamp: 946_684_800, iso: "2000-01-01T00:00:00.000Z",
+        txHash: `0x${"7a".repeat(32)}`, orderHash: ORDER.orderHash, eventName: "OrderCommitted", universe: "direct",
+        details: { payment: "7" },
+    }],
+    summary: { ...EMPTY_TIMELINE.summary, orderCount: 1, totalPayment: "7" },
+} as unknown as ProcessTimeline;
 
 const PAGES: PageRow[] = [
     {
@@ -201,6 +234,11 @@ const PAGES: PageRow[] = [
         viewIsThePlace: false,
         frame: "audit-page",
         readTestIds: ["financials-view", "audit-clause-evidence", "audit-dispute-section"],
+        present: {
+            set: () => { m.ordersRead = present([ORDER]); },
+            // The process's statements: the seller's bond, twice the running total, held for the open order.
+            shows: [/Financial statements/, /Seller bonds \(Σ2G\)14/, new RegExp(ORDER.seller)],
+        },
     },
     {
         route: "/audit (hash search)",
@@ -224,6 +262,10 @@ const PAGES: PageRow[] = [
         loading: /Loading process timeline/,
         viewIsThePlace: true,
         readTestIds: [],
+        present: {
+            set: () => { m.timeline = async () => ONE_EVENT_TIMELINE; },
+            shows: [/Order Committed/, /Block 4/, /payment7/],
+        },
     },
     // /data/explore, one row per layer: each layer is the corpus read's place.
     ...([
@@ -285,5 +327,21 @@ describe("app pages: a failed or empty read leaves its place empty", () => {
         expect(text).not.toMatch(row.emptyState);
         expect(text).not.toMatch(ERROR_TEXT);
         for (const id of row.readTestIds.filter((id) => !/loading/.test(id))) expect(screen.queryByTestId(id)).toBeNull();
+    });
+
+    const PRESENT = PAGES.filter((p) => p.present).map((p) => [p.route, p] as const);
+    it.each(PRESENT)("%s — no wallet, the read present: its content shows, and no prompt to connect stands in for it", async (_route, row) => {
+        setReads("empty");
+        row.present!.set();
+        m.connected = false;
+        try {
+            const { container } = await renderPage(row);
+            const text = container.textContent ?? "";
+            for (const shown of row.present!.shows) expect(text).toMatch(shown);
+            expect(text).not.toMatch(CONNECT_PROMPT);
+            expect(text).not.toMatch(row.emptyState);
+        } finally {
+            m.connected = true;
+        }
     });
 });

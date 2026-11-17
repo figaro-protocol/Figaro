@@ -1,6 +1,7 @@
 /**
- * RegistryListState — the one ladder every wallet-scoped registration list
- * renders through: mounted, wallet, loading, failed, empty, rows. A failed
+ * RegistryListState — the one ladder every registration list of one address
+ * renders through: mounted, the address (`OneAddressList`), loading, failed,
+ * empty, rows. A failed
  * registry read surfaces nothing for the list (docs/OPEN_WORLD.md § 1 "No
  * fallbacks"): never the empty-state sentence, never error text. Only a read
  * in flight shows a loading line; a resolved-empty read its empty state.
@@ -84,9 +85,11 @@ describe("registration lists through RegistryListState", () => {
         expect(container.textContent ?? "").toMatch(/Loading/);
     });
 
-    it.each(LISTS)("%s asks for a wallet before reading", (_name, List) => {
+    it.each(LISTS)("%s, with no address named, says the list is one address's and points to /registries", (_name, List) => {
         mocks.address = undefined;
-        render(<List />);
-        expect(screen.getByText(/Connect a wallet/)).toBeTruthy();
+        const { container } = render(<List />);
+        expect(container.textContent ?? "").toMatch(/of one address, and this page names none/);
+        expect(container.querySelector('a[href^="/registries"]')).toBeTruthy();
+        expect(container.querySelector("button")).toBeNull();
     });
 });

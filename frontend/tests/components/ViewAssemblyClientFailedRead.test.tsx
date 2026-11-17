@@ -13,7 +13,7 @@ const AUTHOR = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as const;
 const HASH = `0x${"ab".repeat(32)}` as const;
 const SLUG = deriveAssemblySlug(HASH);
 
-const mocks = vi.hoisted(() => ({ readContract: vi.fn() }));
+const mocks = vi.hoisted(() => ({ readContract: vi.fn(), connected: true }));
 const CLIENT = { chain: { id: 31337 }, readContract: (...a: unknown[]) => mocks.readContract(...a) };
 
 vi.mock("next/navigation", () => ({
@@ -21,7 +21,7 @@ vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: AUTHOR }),
+    useAccount: () => ({ address: mocks.connected ? AUTHOR : undefined }),
     useChainId: () => 31337,
     usePublicClient: () => CLIENT,
 }));
@@ -53,6 +53,7 @@ PUBLISHED.value = {
 };
 
 import { ViewAssemblyClient } from "@/app/(tools)/assemblies/designer/view/ViewAssemblyClient";
+import { CONNECT_PROMPT } from "../lib/__fixtures__/noWallet";
 
 describe("ViewAssemblyClient — a failed binding read surfaces nothing", () => {
     it("bindings read fails: nothing renders, so no 'Reclaim stake' for the event's registeredBy", async () => {
@@ -70,4 +71,18 @@ describe("ViewAssemblyClient — a failed binding read surfaces nothing", () => 
         render(<ViewAssemblyClient slug={SLUG} />);
         await screen.findByTestId("view-withdraw-button");
     });
+
+    it("no wallet, read present: the published assembly's name shows, and no prompt to connect stands in for it", async () => {
+        mocks.connected = false;
+        try {
+            mocks.readContract.mockResolvedValue([AUTHOR, 1n, false, "ipfs://a"]);
+            const { container } = render(<ViewAssemblyClient slug={SLUG} />);
+            await screen.findByText("Point of sale", undefined, { timeout: 15_000 });
+            // The reclaim is the designer's write: offered to no one without a wallet.
+            expect(screen.queryByTestId("view-withdraw-button")).toBeNull();
+            expect(container.textContent).not.toMatch(CONNECT_PROMPT);
+        } finally {
+            mocks.connected = true;
+        }
+    }, 30_000);
 });

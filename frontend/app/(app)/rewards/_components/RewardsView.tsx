@@ -9,12 +9,21 @@
  * agreements' and assemblies' UNIFORM pro-rata share of that period's budget —
  * no cap. There is nothing to post, bond, challenge or adjudicate. The
  * marketing telling lives at /rpgf; this page is the doing surface.
+ *
+ * What it reads, and for whom. The periods are public and read with no
+ * address: each one's budget (`periodAmount`), what was minted from it, whether
+ * it closed, and its total score. One address's part (its accrual, `claimable`,
+ * `claimed`, its live member stake) is read for the connected wallet or for the
+ * address `?wallet=0x…` names; with neither, the hook reads none of it and the
+ * page shows none of it. The claim is the one act, signed by the connected
+ * wallet, so it is offered only when the connected wallet is the address shown.
  */
 
 import Link from "@/components/shared/Link";
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { useViewedWallet } from "@/lib/shared/viewedWallet";
+import { hexEqual } from "@/lib/shared/evm";
 import { tokenFigure } from "@/lib/shared/utils";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useTokenBalance from "@/hooks/useTokenBalance";
@@ -36,17 +45,25 @@ function accrualLabel(a: RpgfPeriodState["accruals"][number]): string {
 
 /** The period's phase, DERIVED from chain state — never stored. Periods are
  *  consecutive windows: exactly ONE accrues at a time (the first unclosed
- *  one); later windows have not opened yet. */
-function periodStatus(t: RpgfPeriodState, currentId: number): string {
-    if (t.claimed) return "claimed";
-    if (t.periodClosed) return "claimable";
+ *  one); later windows have not opened yet. "claimed" and "claimable" are
+ *  one address's reads (`claimed`, `claimable`): with no address named the
+ *  hook reads neither, and a closed period is only "closed". */
+function periodStatus(t: RpgfPeriodState, currentId: number, addressNamed: boolean): string {
+    if (t.periodClosed) {
+        if (!addressNamed) return "closed";
+        return t.claimed ? "claimed" : "claimable";
+    }
     return t.periodId === currentId ? "accruing" : "upcoming";
 }
 
 export function RewardsView() {
     const { address: connected } = useAccount();
-    // Reading accrual is walletless (?wallet=0x… names any address); claiming needs the wallet.
+    // The address whose accrual is shown: the connected wallet, or the one
+    // ?wallet=0x… names. Undefined when neither: the periods still show.
     const account = useViewedWallet(connected);
+    // The claim is signed by the connected wallet, for the address shown.
+    const canClaim = !!connected && hexEqual(connected, account);
+    const whose = connected ? "Your" : "This address's";
     const rewards = useRpgfRewards(account);
     // The periods and the member gate once the chain has answered; a failed
     // read renders nothing below, a read in flight the loading line.
@@ -112,130 +129,139 @@ export function RewardsView() {
                 </p>
             )}
 
-            {!account ? (
-                <WalletGate explainer={STRANGER_EXPLAINER} hint="Connect a wallet to read your accrual and claim a closed period, or name any address with ?wallet=0x… to read its accrual.">
-                    <p className="text-sm text-ink-muted">Accrual is public: add <code>?wallet=0x…</code> to read any address&apos;s.</p>
+            {/* The claim's prerequisite, never a wall: the periods show below it. */}
+            {!connected && (
+                <WalletGate
+                    explainer={STRANGER_EXPLAINER}
+                    hint={account
+                        ? "This is the named address's accrual. A claim is signed by that wallet: connect it to claim a closed period."
+                        : "The periods below are public. Connect a wallet to read your accrual and claim a closed period, or name any address with ?wallet=0x… to read its accrual."}
+                >
+                    {null}
                 </WalletGate>
-            ) : (
-                <>
-                {account && florinBalance !== null && (
-                    <p className="text-sm text-ink-muted mb-6" data-testid="florin-balance">
-                        Your florin balance: <span className="font-mono">{tokenFigure(florinBalance, florinDecimals)}</span>
-                    </p>
-                )}
+            )}
 
-                {rewards.available && rewards.read.status === "pending" && (
-                    <p className="text-base text-ink-muted" data-testid="rewards-loading">
-                        Reading periods and your accrual from the chain&hellip;
-                    </p>
-                )}
-                {/* A failed read renders nothing (the read is absent). */}
-                {rewards.available && rewards.read.status === "present" && periods.length === 0 && (
-                    <p className="text-base text-ink-muted" data-testid="rewards-no-periods">
-                        No reward periods exist on this network yet. Usage starts counting the
-                        moment a period opens; design a clause, an agreement or an assembly and the trades that
-                        carry it accrue to this wallet here.
-                    </p>
-                )}
-                <div className="space-y-6">
-                    {periods.map((t) => {
-                        const currentId = periods.find((p) => !p.periodClosed)?.periodId ?? -1;
-                        const status = periodStatus(t, currentId);
-                        return (
-                            <div
-                                key={t.periodId}
-                                className="border border-edge-muted rounded-lg p-5"
-                                data-testid={`period-card-${t.periodId}`}
-                            >
-                                <div className="flex items-baseline justify-between mb-2">
-                                    <h2 className="text-base font-semibold text-ink-heading">
-                                        Period {t.periodId + 1} — {tokenFigure(t.amount, florinDecimals)} FLORIN
-                                    </h2>
-                                    <span className="text-sm text-ink-muted" data-testid={`period-status-${t.periodId}`}>
-                                        {status}
-                                    </span>
-                                </div>
-                                <p className="text-sm text-ink-muted mb-1" data-testid={`period-total-score-${t.periodId}`}>
-                                    period score across all clauses, agreements and assemblies:{" "}
-                                    <span className="font-mono">{t.totalScore.toString()}</span> · minted so far{" "}
-                                    {tokenFigure(t.minted, florinDecimals)} FLORIN
-                                </p>
-                                {t.accruals.length > 0 && (
-                                    <div className="mt-3 mb-3" data-testid={`period-accruals-${t.periodId}`}>
-                                        <p className="text-sm text-ink-body mb-1">
-                                            Your clauses, agreements and assemblies in this period (score{" "}
-                                            <span className="font-mono">{t.myScore.toString()}</span>):
-                                        </p>
-                                        <ul className="text-sm text-ink-muted space-y-1">
-                                            {t.accruals.map((a) => (
-                                                <li
-                                                    key={`${a.kind}:${a.clauseOrAssembly}`}
-                                                    className="font-mono break-all"
-                                                    data-testid={`period-accrual-${t.periodId}-${a.family}-${a.clauseOrAssembly.toLowerCase()}`}
-                                                >
-                                                    <span className="font-sans">{a.family} </span>{accrualLabel(a)} — {a.c.toString()} resolved process
-                                                    {a.c === 1n ? "" : "es"},{" "}
-                                                    {a.d.toString()} distinct staked seller
-                                                    {a.d === 1n ? "" : "s"}, score{" "}
-                                                    {a.score.toString()}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                                {account && t.accruals.length === 0 && status !== "upcoming" && (
-                                    <p className="text-sm text-ink-muted mb-3" data-testid={`period-no-accrual-${t.periodId}`}>
-                                        Nothing you designed has carried trade in this period yet.
-                                    </p>
-                                )}
-                                {t.periodClosed && !t.claimed && t.claimable > 0n && (
-                                    <p className="text-sm text-ink-body mb-3" data-testid={`period-claimable-${t.periodId}`}>
-                                        Claimable: <span className="font-mono">{tokenFigure(t.claimable, florinDecimals)}</span> FLORIN
-                                    </p>
-                                )}
-                                <div className="flex flex-wrap gap-3">
-                                    {status === "accruing" && (
-                                        <p className="text-sm text-ink-muted" data-testid={`period-accruing-${t.periodId}`}>
-                                            Still accruing — this period opens for claims when it ends.
-                                        </p>
-                                    )}
-                                    {status === "upcoming" && (
-                                        <p className="text-sm text-ink-muted" data-testid={`period-upcoming-${t.periodId}`}>
-                                            Not open yet — accrual starts here when the period before it ends.
-                                        </p>
-                                    )}
-                                    {t.periodClosed && !t.claimed && (
-                                        <Button
-                                            data-testid={`claim-${t.periodId}`}
-                                            disabled={busy !== null || t.claimable === 0n || memberLive === false}
-                                            onClick={() => act("claim", () => rewards.claim(t.periodId))}
-                                        >
-                                            {busy === "claim" ? "Claiming…" : "Claim my share"}
-                                        </Button>
-                                    )}
-                                    {account && memberLive === false && !t.claimed && status !== "upcoming" && (
-                                        <p className="text-sm text-ink-muted" data-testid={`member-stake-note-${t.periodId}`}>
-                                            A claim needs a live member stake: the minter rewards a designer only while it is a member.{" "}
-                                            <Link href="/members" className="underline">Register as a member</Link>, then claim.
-                                        </p>
-                                    )}
-                                    {t.claimed && (
-                                        <p className="text-sm text-ink-muted" data-testid={`period-claimed-${t.periodId}`}>
-                                            Claimed — each key is rewarded once per period.
-                                        </p>
-                                    )}
-                                </div>
+            {account && florinBalance !== null && (
+                <p className="text-sm text-ink-muted mt-6 mb-6" data-testid="florin-balance">
+                    {whose} florin balance: <span className="font-mono">{tokenFigure(florinBalance, florinDecimals)}</span>
+                </p>
+            )}
+
+            {rewards.available && rewards.read.status === "pending" && (
+                <p className="text-base text-ink-muted mt-6" data-testid="rewards-loading">
+                    {account
+                        ? <>Reading periods and {connected ? "your" : "this address's"} accrual from the chain&hellip;</>
+                        : <>Reading the reward periods from the chain&hellip;</>}
+                </p>
+            )}
+            {/* A failed read renders nothing (the read is absent). */}
+            {rewards.available && rewards.read.status === "present" && periods.length === 0 && (
+                <p className="text-base text-ink-muted mt-6" data-testid="rewards-no-periods">
+                    No reward periods exist on this network yet. Usage starts counting the
+                    moment a period opens.
+                    {connected && (
+                        <> Design a clause, an agreement or an assembly and the trades that
+                        carry it accrue to this wallet here.</>
+                    )}
+                </p>
+            )}
+            <div className="space-y-6 mt-6">
+                {periods.map((t) => {
+                    const currentId = periods.find((p) => !p.periodClosed)?.periodId ?? -1;
+                    const status = periodStatus(t, currentId, !!account);
+                    return (
+                        <div
+                            key={t.periodId}
+                            className="border border-edge-muted rounded-lg p-5"
+                            data-testid={`period-card-${t.periodId}`}
+                        >
+                            <div className="flex items-baseline justify-between mb-2">
+                                <h2 className="text-base font-semibold text-ink-heading">
+                                    Period {t.periodId + 1} — {tokenFigure(t.amount, florinDecimals)} FLORIN
+                                </h2>
+                                <span className="text-sm text-ink-muted" data-testid={`period-status-${t.periodId}`}>
+                                    {status}
+                                </span>
                             </div>
-                        );
-                    })}
-                </div>
+                            <p className="text-sm text-ink-muted mb-1" data-testid={`period-total-score-${t.periodId}`}>
+                                period score across all clauses, agreements and assemblies:{" "}
+                                <span className="font-mono">{t.totalScore.toString()}</span> · minted so far{" "}
+                                {tokenFigure(t.minted, florinDecimals)} FLORIN
+                            </p>
+                            {t.accruals.length > 0 && (
+                                <div className="mt-3 mb-3" data-testid={`period-accruals-${t.periodId}`}>
+                                    <p className="text-sm text-ink-body mb-1">
+                                        {whose} clauses, agreements and assemblies in this period (score{" "}
+                                        <span className="font-mono">{t.myScore.toString()}</span>):
+                                    </p>
+                                    <ul className="text-sm text-ink-muted space-y-1">
+                                        {t.accruals.map((a) => (
+                                            <li
+                                                key={`${a.kind}:${a.clauseOrAssembly}`}
+                                                className="font-mono break-all"
+                                                data-testid={`period-accrual-${t.periodId}-${a.family}-${a.clauseOrAssembly.toLowerCase()}`}
+                                            >
+                                                <span className="font-sans">{a.family} </span>{accrualLabel(a)} — {a.c.toString()} resolved process
+                                                {a.c === 1n ? "" : "es"},{" "}
+                                                {a.d.toString()} distinct staked seller
+                                                {a.d === 1n ? "" : "s"}, score{" "}
+                                                {a.score.toString()}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            {account && t.accruals.length === 0 && status !== "upcoming" && (
+                                <p className="text-sm text-ink-muted mb-3" data-testid={`period-no-accrual-${t.periodId}`}>
+                                    Nothing {connected ? "you" : "this address"} designed has carried trade in this period yet.
+                                </p>
+                            )}
+                            {account && t.periodClosed && !t.claimed && t.claimable > 0n && (
+                                <p className="text-sm text-ink-body mb-3" data-testid={`period-claimable-${t.periodId}`}>
+                                    Claimable: <span className="font-mono">{tokenFigure(t.claimable, florinDecimals)}</span> FLORIN
+                                </p>
+                            )}
+                            <div className="flex flex-wrap gap-3">
+                                {status === "accruing" && (
+                                    <p className="text-sm text-ink-muted" data-testid={`period-accruing-${t.periodId}`}>
+                                        Still accruing — this period opens for claims when it ends.
+                                    </p>
+                                )}
+                                {status === "upcoming" && (
+                                    <p className="text-sm text-ink-muted" data-testid={`period-upcoming-${t.periodId}`}>
+                                        Not open yet — accrual starts here when the period before it ends.
+                                    </p>
+                                )}
+                                {canClaim && t.periodClosed && !t.claimed && (
+                                    <Button
+                                        data-testid={`claim-${t.periodId}`}
+                                        disabled={busy !== null || t.claimable === 0n || memberLive === false}
+                                        onClick={() => act("claim", () => rewards.claim(t.periodId))}
+                                    >
+                                        {busy === "claim" ? "Claiming…" : "Claim my share"}
+                                    </Button>
+                                )}
+                                {canClaim && memberLive === false && !t.claimed && status !== "upcoming" && (
+                                    <p className="text-sm text-ink-muted" data-testid={`member-stake-note-${t.periodId}`}>
+                                        A claim needs a live member stake: the minter rewards a designer only while it is a member.{" "}
+                                        <Link href="/members" className="underline">Register as a member</Link>, then claim.
+                                    </p>
+                                )}
+                                {account && t.claimed && (
+                                    <p className="text-sm text-ink-muted" data-testid={`period-claimed-${t.periodId}`}>
+                                        Claimed — each key is rewarded once per period.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
 
-                {error && (
-                    <p className="text-sm text-error-fg mt-6 break-all" data-testid="rewards-error">
-                        {error}
-                    </p>
-                )}
-                </>
+            {error && (
+                <p className="text-sm text-error-fg mt-6 break-all" data-testid="rewards-error">
+                    {error}
+                </p>
             )}
         </section>
     );

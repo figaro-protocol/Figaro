@@ -23,9 +23,10 @@ name: Devnet E2E CI
 #     touches the rest of the stack the push trigger watches (the deploy, the
 #     clauses, the rest of the frontend or the SDK) but no flow path.
 #   - none: a pull request that touches neither; the e2e job is skipped.
-# Either scope then runs the four origination proofs (in-process / HTTP
-# socket / A2A / multi-order chain) and the watcher's test against the same
-# live stack.
+# Either scope then runs the stranger crawl (the Playwright `stranger`
+# project's `crawl.stranger.spec.ts`), the four origination proofs
+# (in-process / HTTP socket / A2A / multi-order chain) and the watcher's test
+# against the same live stack.
 #
 # The pull request trigger carries no `paths` filter on purpose: a required
 # check that a filter skips never reports, and GitHub then blocks the merge.
@@ -136,8 +137,10 @@ jobs:
         # The spine: 30 minutes. The full suite: 38 spec files (37 in `devnet`
         # plus the `devnet-authoring` wizard), one worker, one retry per test,
         # about 40 minutes on a laptop; the runner has two cores and builds the
-        # export inside the run, so the budget is three times that.
-        timeout-minutes: ${{ needs.scope.outputs.scope == 'full' && 120 || 30 }}
+        # export inside the run, so the budget is three times that. Either
+        # scope then runs the stranger crawl, which builds the export once more
+        # and visits every route under a 20-minute test budget: 20 minutes more.
+        timeout-minutes: ${{ needs.scope.outputs.scope == 'full' && 140 || 50 }}
         env:
             FULL_SUITE: ${{ needs.scope.outputs.scope == 'full' }}
 
@@ -254,6 +257,20 @@ jobs:
               run: |
                   cd frontend
                   npm run test:e2e:devnet
+              env:
+                  CI: true
+
+            # ── The blind visitor's crawl, either scope ──────────────────
+            # The `stranger` project's crawl: no wallet, no test signer, every
+            # exported route from `/` and the nav, against the same static
+            # export (its webServer builds it again: CI reuses no server) and
+            # the seeded chain it reads. Fails on a 404, a console or page
+            # error, an empty page, or a wallet-tier page that is only the
+            # wallet gate.
+            - name: Run the stranger crawl
+              run: |
+                  cd frontend
+                  npx playwright test --project=stranger crawl.stranger --workers=1
               env:
                   CI: true
 

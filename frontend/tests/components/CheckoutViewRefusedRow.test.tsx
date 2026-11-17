@@ -91,6 +91,9 @@ vi.mock("@/components/runtime/CommitmentSharePanel", () => ({ CommitmentSharePan
 vi.mock("@/app/(app)/s/checkout/_components/SwapFundingPanel", () => ({ SwapFundingPanel: () => null }));
 
 import { CheckoutView } from "@/app/(app)/s/checkout/_components/CheckoutView";
+import { calculateBonds } from "@figaro-protocol/sdk";
+import { tokenFigure } from "@/lib/shared/utils";
+import { CONNECT_PROMPT } from "../lib/__fixtures__/noWallet";
 
 beforeEach(() => {
     STATE.courierItems = [];
@@ -160,5 +163,32 @@ describe("CheckoutView — a refused breakdown row refuses the order before the 
         expect(screen.getByTestId("checkout-locked-total")).toBeInTheDocument();
         expect(screen.queryByTestId("checkout-refusals")).toBeNull();
         expect(screen.getByTestId("btn-place-order")).not.toBeDisabled();
+    });
+
+    // No wallet: `useCommerce` answers no address, and the page calls no wagmi
+    // account hook (the module's wagmi mock has none, and would throw).
+    it("no wallet, read present: the cart, each order's seller and payment and the totals show, and a wallet gate holds none of them", async () => {
+        STATE.courierItems = [{ id: "ride-short", name: "Short ride", price: "2", available: true }];
+        const { container } = render(<CheckoutView sellerAddress={SELLER} />);
+        await screen.findByTestId("cart-kit-total");
+        expect(container.textContent).toMatch(/Meal/);
+        expect(screen.getByTestId("kit-row-payment-agreement-1").textContent).toMatch(/^2(\.0*)?$/);
+        expect(screen.getByTestId("checkout-locked-total")).toBeInTheDocument();
+        for (const gate of screen.queryAllByTestId("wallet-gate")) {
+            expect(gate.textContent).not.toMatch(/Meal|Courier|Locked at commit/);
+        }
+        expect(container.textContent).not.toMatch(CONNECT_PROMPT);
+    });
+
+    it("every row priced: the locked figure is the buyer's bonds by the SDK's calculateBonds, order by order", async () => {
+        STATE.courierItems = [{ id: "ride-short", name: "Short ride", price: "2", available: true }];
+        render(<CheckoutView sellerAddress={SELLER} />);
+        await screen.findByTestId("cart-kit-total");
+        // The root order pays 5 (running total 5); the sub-order pays 2 (running total 7).
+        const unit = 10n ** 18n;
+        const root = calculateBonds(5n * unit, 5n * unit);
+        const sub = calculateBonds(7n * unit, 2n * unit);
+        expect(sub.sellerBond).not.toBe(sub.buyerBond);
+        expect(screen.getByTestId("checkout-locked-total").textContent).toBe(tokenFigure(root.buyerBond + sub.buyerBond, 18));
     });
 });

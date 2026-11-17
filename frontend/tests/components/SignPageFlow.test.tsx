@@ -17,7 +17,8 @@
 import React from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { buildOrderAgreement, computeCheckoutHash, type Commitment, type Hex } from "@figaro-protocol/sdk";
+import { buildOrderAgreement, calculateBonds, computeCheckoutHash, type Commitment, type Hex } from "@figaro-protocol/sdk";
+import { tokenFigure } from "@/lib/shared/utils";
 import { serializeCommitmentPayload, type CommitmentPayload } from "@figaro-protocol/sdk/agent";
 import { keyOf, primeClauseSpecs } from "../lib/primeClauseSpecs";
 import { specSource } from "@/lib/shared/clauseSpecSource";
@@ -85,15 +86,15 @@ import SignPage from "@/app/(app)/sign/page";
 
 /** A buyer-signed order awaiting the seller, its agreement merkling to its
  *  checkoutHash unless `tamper` changes the signed hash. */
-function payload(opts: { tamper?: boolean; salt?: bigint } = {}): CommitmentPayload {
+function payload(opts: { tamper?: boolean; salt?: bigint; processId?: Hex; expectedCumulativeValue?: bigint } = {}): CommitmentPayload {
     const { agreement } = buildOrderAgreement(BUYER, SELLER, {
         [keyOf("figaro-commerce")]: {
             lineItems: [{ itemId: "item-1", name: "Item", quantity: 1, unitPrice: "1000" }],
         },
     }, specSource());
     const commitment: Commitment = {
-        processId: `0x${"00".repeat(32)}` as Hex, buyer: BUYER, seller: SELLER, currency: CURRENCY,
-        payment: 1000n, expectedCumulativeValue: 1000n,
+        processId: opts.processId ?? (`0x${"00".repeat(32)}` as Hex), buyer: BUYER, seller: SELLER, currency: CURRENCY,
+        payment: 1000n, expectedCumulativeValue: opts.expectedCumulativeValue ?? 1000n,
         checkoutHash: opts.tamper ? (`0x${"ee".repeat(32)}` as Hex) : computeCheckoutHash(agreement),
         salt: opts.salt ?? 1n, deadline: 9_999_999_999n,
     };
@@ -202,6 +203,34 @@ describe("/sign — the seller's counter-signature and the flow's step", () => {
         await flush();
         expect(screen.getByTestId("sign-my-bond").textContent).toBe("0.002 TKN");
         expect(screen.getByTestId("sign-payment").textContent).toBe("0.001 TKN");
+    });
+
+    it("no wallet, read present: the linked order's token, payment and terms check show; only the counter-signature asks for a wallet", async () => {
+        m.address = undefined;
+        m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(payload()))}`;
+        render(<SignPage />);
+        await flush();
+        expect(screen.getByTestId("sign-token").textContent).toBe(CURRENCY);
+        expect(screen.getByTestId("sign-payment").textContent).toBe("0.001 TKN");
+        expect(screen.getByTestId("sign-agreement-verified")).toBeTruthy();
+        // The one line that names the wallet is the signature's: the terms above it stand without one.
+        expect(screen.getByText("Connect your wallet to counter-sign a commitment.")).toBeTruthy();
+    });
+
+    it.each([
+        ["the seller", SELLER, "sellerBond"],
+        ["the buyer", BUYER, "buyerBond"],
+    ] as const)("a sub-order: %s is shown the SDK's calculateBonds over the running total and the payment", async (_who, wallet, bond) => {
+        m.address = wallet;
+        // Earlier orders of the process committed 2000; this one pays 1000, so its running total is 3000.
+        const p = payload({ processId: `0x${"5b".repeat(32)}` as Hex, expectedCumulativeValue: 3000n });
+        const awaiting: CommitmentPayload = wallet === BUYER ? { ...p, buyerSig: undefined, sellerSig: `0x${"33".repeat(65)}` as Hex } : p;
+        m.search = `payload=${encodeURIComponent(serializeCommitmentPayload(awaiting))}`;
+        render(<SignPage />);
+        await flush();
+        const bonds = calculateBonds(3000n, 1000n);
+        expect(bonds.sellerBond).not.toBe(bonds.buyerBond);
+        expect(screen.getByTestId("sign-my-bond").textContent).toBe(`${tokenFigure(bonds[bond], 6)} TKN`);
     });
 
     it("counter-signs the parsed order with no funding leg", async () => {

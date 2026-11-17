@@ -37,7 +37,7 @@ import { orderCommittedLog, orderResolvedLog, processResolvedLog, word, type Fix
 const { cachedGetLogsMock, routeTokenPayoutMock, account, CORE, VERIFIER, CLIENT, BUYER } = vi.hoisted(() => ({
     cachedGetLogsMock: vi.fn(),
     routeTokenPayoutMock: vi.fn(async () => `0x${"ab".repeat(32)}` as `0x${string}`),
-    account: { address: "0x00000000000000000000000000000000000000b1" as `0x${string}` },
+    account: { address: "0x00000000000000000000000000000000000000b1" as `0x${string}` | undefined },
     CORE: "0x1111111111111111111111111111111111111111",
     VERIFIER: "0x2222222222222222222222222222222222222222",
     CLIENT: { chain: { id: 31337 } },
@@ -45,7 +45,7 @@ const { cachedGetLogsMock, routeTokenPayoutMock, account, CORE, VERIFIER, CLIENT
 }));
 
 vi.mock("wagmi", () => ({
-    useAccount: () => ({ address: account.address, isConnected: true }),
+    useAccount: () => ({ address: account.address, isConnected: account.address !== undefined }),
     usePublicClient: () => CLIENT,
     useChainId: () => 31337,
     useWaitForTransactionReceipt: () => ({ isLoading: false, isSuccess: false }),
@@ -94,6 +94,9 @@ vi.mock("@/lib/composition/usePayoutRoutingActions", () => ({
 vi.mock("@/lib/semantic/createCapabilityExecutors", () => ({ createCapabilityExecutors: () => ({ executorCallbacks: {} }) }));
 
 import { OrderTimelineView } from "@/app/(app)/orders/_components/OrderTimelineView";
+import { calculateBonds } from "@figaro-protocol/sdk";
+import { tokenFigure } from "@/lib/shared/utils";
+import { CONNECT_PROMPT } from "../lib/__fixtures__/noWallet";
 
 const PROCESS = word(0xba7c);
 const ORDER = word(0x0bd1);
@@ -147,6 +150,20 @@ describe.each([
         expect(read).toEqual(new Set([CORE, VERIFIER]));
     });
 
+    it("no wallet, read present: a visitor with no wallet reads the order, its status and its timeline, and no prompt to connect stands in for them", async () => {
+        account.address = undefined;
+        const { committed, resolved, closed } = logsAt(emitter);
+        emits(emitter, { OrderCommitted: [committed], OrderResolved: [resolved], ProcessResolved: [closed] });
+        const { container } = render(<OrderTimelineView processId={PROCESS} />);
+
+        const pill = await screen.findByTestId("order-status-pill", {}, { timeout: 5000 });
+        await waitFor(() => expect(pill.textContent).toBe("Completed"));
+        expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Order completed");
+        expect(screen.getByTestId("order-timeline").textContent).toMatch(/order completed/);
+        expect(container.textContent).toMatch(/Read-only — your wallet is neither buyer nor seller on this order/);
+        expect(container.textContent).not.toMatch(CONNECT_PROMPT);
+    });
+
     it("an order only committed there reads as active, with no resolution shown", async () => {
         const { committed } = logsAt(emitter);
         emits(emitter, { OrderCommitted: [committed] });
@@ -186,5 +203,32 @@ describe.each([
         const pill = await screen.findByTestId("order-status-pill", {}, { timeout: 5000 });
         expect(pill.textContent).toBe("Active");
         expect(screen.queryByTestId("payout-routing")).toBeNull();
+    });
+
+    it("the seller of a resolved sub-order is shown the SDK's bond, twice the running total, returned", async () => {
+        account.address = SELLER;
+        // A root order of 3 tokens to another seller, then this seller's sub-order of 7: its running total is 10.
+        const rootPayment = 3n * 10n ** 18n;
+        const running = rootPayment + PAYMENT;
+        const ROOT_ORDER = word(0x0bd0);
+        emits(emitter, {
+            OrderCommitted: [
+                orderCommittedLog({ address: emitter, blockNumber: 3n, orderHash: ROOT_ORDER, processId: PROCESS, buyer: BUYER, seller: "0x00000000000000000000000000000000000000a0", payment: rootPayment }),
+                orderCommittedLog({ address: emitter, blockNumber: 4n, orderHash: ORDER, processId: PROCESS, buyer: BUYER, seller: SELLER, payment: PAYMENT, cumulativeValue: running }),
+            ],
+            OrderResolved: [
+                orderResolvedLog({ address: emitter, blockNumber: 9n, orderHash: ROOT_ORDER, processId: PROCESS, sellerPayout: 3n * rootPayment, buyerPayout: rootPayment }),
+                orderResolvedLog({ address: emitter, blockNumber: 9n, orderHash: ORDER, processId: PROCESS, sellerPayout: PAYMENT + 2n * running, buyerPayout: PAYMENT }),
+            ],
+            ProcessResolved: [processResolvedLog({ address: emitter, blockNumber: 9n, processId: PROCESS, buyer: BUYER, orderCount: 2n })],
+        });
+        render(<OrderTimelineView processId={PROCESS} />);
+
+        const pill = await screen.findByTestId("order-status-pill", {}, { timeout: 5000 });
+        await waitFor(() => expect(pill.textContent).toBe("Completed"));
+        const bonds = calculateBonds(running, PAYMENT);
+        expect(bonds.sellerBond).not.toBe(bonds.buyerBond);
+        expect(screen.getByTestId("resolution-payment").textContent).toBe(`${tokenFigure(PAYMENT, 18)} TKN`);
+        expect(screen.getByTestId("resolution-bond-returned").textContent).toBe(`${tokenFigure(bonds.sellerBond, 18)} TKN`);
     });
 });

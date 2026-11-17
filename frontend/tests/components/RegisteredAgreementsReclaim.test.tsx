@@ -89,11 +89,12 @@ describe("RegisteredAgreementsReclaim", () => {
         mocks.scopedTo = [];
     });
 
-    it("asks for a wallet before showing any reclaim, and reads no foreign scope", () => {
+    it("with no address named, shows no reclaim and starts no read: an unscoped read would list every registrant's", () => {
         mocks.address = undefined;
         render(<RegisteredAgreementsReclaim />);
-        expect(screen.getByTestId("agreements-reclaim-no-wallet")).toBeTruthy();
+        expect(screen.getByTestId("agreements-reclaim-no-address")).toBeTruthy();
         expect(screen.queryByTestId("agreement-withdraw-button")).toBeNull();
+        expect(mocks.scopedTo).toEqual([]);
     });
 
     it("reads the registry scoped to the connected wallet", () => {

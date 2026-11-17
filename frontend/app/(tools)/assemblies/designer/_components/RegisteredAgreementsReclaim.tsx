@@ -1,26 +1,26 @@
 "use client";
 
 /**
- * RegisteredAgreementsReclaim — the connected wallet's registered agreements,
- * each with a stake-reclaim affordance (`AgreementRegistry.withdrawDeposit`
- * through `useWithdrawAgreement`).
+ * RegisteredAgreementsReclaim — one address's registered agreements, each
+ * with a stake-reclaim affordance (`AgreementRegistry.withdrawDeposit`
+ * through `useWithdrawAgreement`) when the connected wallet registered it.
  *
- * Derived from chain events only: `usePublishedAgreements(address)` filters
- * `AgreementRegistered` to `registeredBy == connected wallet` and folds
+ * The address is the connected wallet's or the one `?wallet=0x…` names
+ * (`OneAddressList`); with neither, the list's place says so and reads
+ * nothing. Derived from chain events only: `usePublishedAgreements(subject)`
+ * filters `AgreementRegistered` to `registeredBy == subject` and folds
  * `DepositWithdrawn` in as `stakeWithdrawn` (the wallet-scoped read KEEPS
- * withdrawn rows, flagged). The rows are narrowed again to the connected
- * wallet, so the reclaim renders only for the designer of record. Each row is
- * labeled by its pinned document's name, read and verified against its key
- * (`fetchRegisteredAgreement`), and is the shared `ReclaimStakeRow` — the same
- * row `/clauses/register` lists clauses with, owning its own
+ * withdrawn rows, flagged). The rows are narrowed again to the address. Each
+ * row is labeled by its pinned document's name, read and verified against its
+ * key (`fetchRegisteredAgreement`), and is the shared `ReclaimStakeRow` — the
+ * same row `/clauses/register` lists clauses with, owning its own
  * `useWithdrawGate({ kind: "agreement", agreementHash })`.
  *
- * States are `RegistryListState`'s: wallet, loading, failed (nothing), empty, list.
+ * States are `RegistryListState`'s: loading, failed (nothing), empty, list.
  */
 
 import { useEffect } from "react";
-import { useAccount } from "wagmi";
-import { RegistryListState } from "@/components/shared/RegistryListState";
+import { OneAddressList, RegistryListState, type ListedAddress } from "@/components/shared/RegistryListState";
 import {
     fetchRegisteredAgreement,
     getRegisteredAgreement,
@@ -33,14 +33,21 @@ import { ReclaimStakeRow } from "@/components/registries/ReclaimStakeRow";
 import { hexEqual } from "@/lib/shared/evm";
 
 export function RegisteredAgreementsReclaim() {
-    const { address } = useAccount();
-    const { read, refetch } = usePublishedAgreements(address);
+    return (
+        <OneAddressList testId="agreements-reclaim" what="registered agreements" publicHref="/registries?family=agreements">
+            {(listed) => <AgreementRows {...listed} />}
+        </OneAddressList>
+    );
+}
+
+function AgreementRows({ subject, signer }: ListedAddress) {
+    const { read, refetch } = usePublishedAgreements(subject);
     const data = read.status === "present" ? read.value : null;
     const { withdraw } = useWithdrawAgreement();
     // Re-renders as each document is read and verified (the labels read the
     // session cache).
     useRegisteredAgreementsVersion();
-    const own = data?.filter((row) => hexEqual(row.registeredBy, address));
+    const own = data?.filter((row) => hexEqual(row.registeredBy, subject));
     useEffect(() => {
         for (const row of data ?? []) void fetchRegisteredAgreement(row.agreementHash, row.contentURI);
     }, [data]);
@@ -50,9 +57,10 @@ export function RegisteredAgreementsReclaim() {
             read={read}
             rows={own}
             testId="agreements-reclaim"
-            walletHint="Connect a wallet to see the agreements you registered."
-            loading="Loading your registered agreements…"
-            empty="You haven't registered any agreements yet. Register one from an order's drawer on the composition canvas, or publish an assembly, which registers each of its agreements first."
+            loading="Loading the registered agreements…"
+            empty={signer
+                ? "You haven't registered any agreements yet. Register one from an order's drawer on the composition canvas, or publish an assembly, which registers each of its agreements first."
+                : "This address has registered no agreements."}
         >
             {(rows) => (
                 <ul className="space-y-3" data-testid="agreements-reclaim-list">
@@ -62,6 +70,7 @@ export function RegisteredAgreementsReclaim() {
                             row={row}
                             withdraw={withdraw}
                             onReclaimed={refetch}
+                            signerIsRegistrant={hexEqual(row.registeredBy, signer)}
                         />
                     ))}
                 </ul>
@@ -74,10 +83,12 @@ function ReclaimAgreementRow({
     row,
     withdraw,
     onReclaimed,
+    signerIsRegistrant,
 }: {
     row: PublishedAgreement;
     withdraw: (key: `0x${string}`) => Promise<unknown>;
     onReclaimed: () => void;
+    signerIsRegistrant: boolean;
 }) {
     const doc = getRegisteredAgreement(row.agreementHash);
     const clauseCount = doc ? Object.keys(doc.clauses).length : 0;
@@ -97,6 +108,7 @@ function ReclaimAgreementRow({
             stakeWithdrawn={row.stakeWithdrawn}
             withdraw={withdraw}
             onReclaimed={onReclaimed}
+            signerIsRegistrant={signerIsRegistrant}
         />
     );
 }

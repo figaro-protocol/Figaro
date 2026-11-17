@@ -38,13 +38,13 @@ writes via `WalletGate`.**
 | Route | Notes |
 |---|---|
 | `/assemblies/designer` + `/new`, `/edit?slug=`, `/view?slug=` | In `(tools)/`; drafts in localStorage. |
-| `/clauses/register` | In `(tools)/`; paste a spec, validate it off-chain, register on `ClauseRegistry`, reclaim a registered clause's stake. Reads walletlessly; register and reclaim are `WalletGate`-gated. |
+| `/clauses/register` | In `(tools)/`; paste a spec, validate it off-chain, register on `ClauseRegistry`, reclaim a registered clause's stake. Reads walletlessly: the list of registered clauses is the connected wallet's or the address `?wallet=0x…` names, and with neither its place says so and links `/registries`. Register is `WalletGate`-gated; the reclaim is offered only to the connected wallet that registered the clause. |
 | `/discover` | Member directory. |
 | `/audit`, `/audit/view?process=` | Forensics, and a SPECTATOR surface: no account hook anywhere in the tree, so a walletless visitor reads all of it. |
 | `/data/explore` | The graph-query surface `DATA_LAYER.md` describes; in `(app)/` but spectator-capable like `/audit`. One layer at a time, each carrying its own truth boundary. Views and the wallet subject ride query params (`lib/data/explorer.ts`); graphs are projected in the browser (`lib/data/graphCorpus.ts`) over the existing event caches; the prompt box renders ONLY when an analyst endpoint resolves. |
 | `/evidence-display` | See "Deliberate orphan" below. |
 | `/s/view?seller=` | Seller detail + cart; place-order CTA is `WalletGate`-protected. |
-| `/rewards` | A designer's reward-tranche claim, read from `UsageCounter` + `RpgfMinter`; the claim writes are `WalletGate`-protected. |
+| `/rewards` | A designer's reward-tranche claim, read from `UsageCounter` + `RpgfMinter`. Every period's budget, minted figure, phase and total score show with no wallet; one address's accrual shows for the connected wallet or the address `?wallet=0x…` names; the claim is offered only to the connected wallet, for its own accrual. |
 
 **Transactional — `(app)/`, requires a connected wallet.**
 
@@ -253,7 +253,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
 The Designer is a DAG editor — assembly designers start blank or fork an existing published assembly, modify the bonded-process DAG on the canvas, edit per-node clauses in a side drawer, save drafts to local storage, and publish to the on-chain `AssemblyRegistry` when ready. The canvas DAG is an assembly-tier composition; `FigaroCore` itself only ever sees the linear `commit` chains that result at runtime. It is not a three-column palette/canvas/inspector tool, and is not to be rebuilt as one.
 
 **Routes:**
-- `/assemblies/designer` — landing. Four sections: drafts (`<DraftsList>`, localStorage), the wallet's published assemblies (`<PublishedList>`, reconstructed from `AssemblyRegistered` events), the wallet's registered agreements with their stake reclaim (`<RegisteredAgreementsReclaim>`, reconstructed from `AgreementRegistered` and `DepositWithdrawn` events, filtered to the connected wallet as designer of record), and the clauses catalog (`<ClausesList>`, read from `ClauseRegistry`).
+- `/assemblies/designer` — landing. Four sections: drafts (`<DraftsList>`, localStorage, shown with no wallet), one address's published assemblies (`<PublishedList>`, reconstructed from `AssemblyRegistered` events), its registered agreements with their stake reclaim (`<RegisteredAgreementsReclaim>`, reconstructed from `AgreementRegistered` and `DepositWithdrawn` events), and its registered clauses (`<ClausesList>`, read from `ClauseRegistry`). The address is the connected wallet's or the one `?wallet=0x…` names (`OneAddressList` in `frontend/components/shared/RegistryListState.tsx`); with neither, each list's place says so in one line and links `/registries`, and no per-address read starts. A reclaim is offered only to the connected wallet that registered the row.
 - `/assemblies/designer/new` — the new design. Three init paths: `?fresh=1` starts blank and clears the new design's autosave; no query resumes that autosave; `?draft=<slug>` hands over to `/assemblies/designer/edit?slug=<slug>`.
 - `/assemblies/designer/edit?slug=<slug>` — a named draft in the editor (a saved draft, or a fork of a published assembly, which is saved as a draft first). It opens the draft's own autosave when that is newer than the saved draft, else the saved draft.
 - `/assemblies/designer/view?slug=<slug>` — read-only view of a published assembly, and (with `&intent=publish`, where the Review button lands) the review-before-publish surface for a local draft. Everything it shows — node clauses, drawer ticks, assembly-scoped terms, composition identity — is read out of the assembly; publish is reachable only while that assembly builds and the stored draft still hashes to the composition on screen.
@@ -300,7 +300,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
     layer, never as a drawer clause group. A genuinely process-scoped declaration
     anchors on the ROOT order's agreement, edited from process-level controls.
 - `DraftsList.tsx` — saved-drafts list on the landing.
-- `PublishedList.tsx` — published-assemblies list for the connected wallet.
+- `PublishedList.tsx` — published-assemblies list of one address: the connected wallet's or the one `?wallet=0x…` names.
 - `ClausesList.tsx` — clauses catalog on the landing.
 - Shared DAG canvas: `components/runtime/TopologyCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in).
 
@@ -457,7 +457,7 @@ Y", not as an open-ended build.)
 
 ## Wallet-provider scope per route
 
-**The wallet is a signer, never a login.** Reading needs no wallet: every page renders what it can from the chain and the registries before any connection, a per-wallet view (`/orders`, `/rewards`) takes the address to show from the connected wallet or from `?wallet=0x…` (`lib/shared/viewedWallet.ts` — the data is public), and the membership wizard is filled without a wallet under an anonymous draft that the first wallet to connect adopts (`lib/member/onboardingState.ts`). A connection is asked for only where a signature or a transaction is: the review step that registers, checkout's place-order, counter-signing, claiming, registering a clause, publishing an assembly. A form hidden behind "connect first" is the login pattern and is wrong here.
+**The wallet is a signer, never a login.** Reading needs no wallet: every page renders what it can from the chain and the registries before any connection, a per-wallet view (`/orders`, `/rewards`, and the registration lists of `/assemblies/designer` and `/clauses/register`) takes the address to show from the connected wallet or from `?wallet=0x…` (`lib/shared/viewedWallet.ts` — the data is public), and the membership wizard is filled without a wallet under an anonymous draft that the first wallet to connect adopts (`lib/member/onboardingState.ts`); its review step shows that draft and the registration stake with no wallet, and only its publish asks for one. A connection is asked for only where a signature or a transaction is: the review step that registers, checkout's place-order, counter-signing, claiming, registering a clause, publishing an assembly. A form hidden behind "connect first" is the login pattern and is wrong here.
 
 Every route in `frontend/app/` is classified into one of three tiers
 governing wallet-provider load. **The per-tier route lists live in the ONE
