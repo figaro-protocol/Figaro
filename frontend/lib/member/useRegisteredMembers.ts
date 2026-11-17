@@ -19,7 +19,8 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { activeChain, publicClient } from "@/lib/shared/wagmi";
+import { activeChain } from "@/lib/shared/chains";
+import { publicClient } from "@/lib/shared/publicClient";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { getActiveMembers, getAllMemberRegistered } from "@/lib/protocol/membersRegistryIndexer";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";

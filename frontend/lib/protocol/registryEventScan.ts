@@ -22,7 +22,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Abi, Log } from "viem";
 import { cachedGetContractEvents } from "@/lib/core/eventCache";
-import { activeChain, publicClient } from "@/lib/shared/wagmi";
+import { activeChain } from "@/lib/shared/chains";
+import { publicClient } from "@/lib/shared/publicClient";
 import { ABSENT, PENDING, mapRead, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
 import { useRefetchGeneration } from "@/hooks/useRefetchGeneration";
 import { hexEqual } from "@/lib/shared/evm";

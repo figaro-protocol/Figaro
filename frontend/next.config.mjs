@@ -93,7 +93,7 @@ function assertPinServiceOnTestnetOnly() {
 //     "Static export".
 //   - `redirects()` / `rewrites()` → the hosting layer. The RPC transport
 //     points straight at the chain endpoint in every environment (see
-//     `lib/shared/wagmi.ts`).
+//     `lib/shared/publicClient.ts`).
 //   - Dynamic route segments over open-world ids → query params. An id (any
 //     processId / seller address / assembly slug) is unknowable at build time,
 //     so `generateStaticParams` cannot enumerate it. The id-bearing routes read

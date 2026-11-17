@@ -10,7 +10,7 @@
 
 import type { Abi } from "viem";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
-import { publicClient } from "@/lib/shared/wagmi";
+import { publicClient } from "@/lib/shared/publicClient";
 
 /** A registry's `bindings(key)` row: who registered it, when, whether the stake is
  *  withdrawn, and where the document is pinned. */

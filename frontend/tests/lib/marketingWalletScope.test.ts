@@ -15,8 +15,9 @@
  *   mounts `WagmiProvider`), or
  * - refers to `WagmiProvider` or a hook (`use…`) imported from `wagmi`.
  *
- * Allowed on a marketing path: `lib/shared/wagmi.ts`'s standalone
- * `publicClient` (it builds on `createConfig`, neither a provider nor a hook).
+ * A marketing page reads the chain through the standalone `publicClient` of
+ * `lib/shared/publicClient.ts`, which imports no wallet code; the walk reaching
+ * that module is the witness that it is not empty.
  *
  * The walk follows names, not whole files: it holds what a marketing page
  * calls. The stricter reading, by whole file, is
@@ -262,7 +263,7 @@ describe("wallet-provider scope per route", () => {
         const reached = [...files].map(rel);
         expect(reached.some((f) => f.startsWith("components/")), "the walk reaches components/").toBe(true);
         expect(reached.some((f) => f.startsWith("lib/")), "the walk reaches lib/").toBe(true);
-        expect(reached, "the walk reaches the standalone publicClient's module").toContain("lib/shared/wagmi.ts");
+        expect(reached, "the walk reaches the standalone publicClient's module").toContain("lib/shared/publicClient.ts");
         expect(findings.map(describeFinding)).toEqual([]);
         // The walk parses every file the marketing tree reaches; under coverage it runs past the default limit.
     }, 60_000);

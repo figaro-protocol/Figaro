@@ -11,7 +11,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Transport } from "viem";
-import { connectorFirstTransport } from "@/lib/shared/mockTransport";
+import { connectorFirstTransport } from "@/lib/shared/connectors";
 
 const RPC_URL = "http://127.0.0.1:8545";
 

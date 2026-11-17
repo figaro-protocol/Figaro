@@ -41,7 +41,8 @@ import {
     type InFlightAgreement,
     type WithdrawGate,
 } from "@figaro-protocol/sdk/derive";
-import { activeChain, publicClient } from "@/lib/shared/wagmi";
+import { activeChain } from "@/lib/shared/chains";
+import { publicClient } from "@/lib/shared/publicClient";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { getCoreEvents } from "@/lib/core/indexer";
 import { fetchAgreement, witnessedAgreementUri } from "@/lib/core/agreementFetch";

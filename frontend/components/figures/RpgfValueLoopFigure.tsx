@@ -8,8 +8,9 @@ export type RpgfValueLoopFigureProps = BaseFigureProps;
 
 // The deposit rationale, drawn. Source of truth for the mechanic:
 // docs/DATA_LAYER.md § "Neutrality comes from the stake, not from the
-// weight" — the ETH stake is a value loop, not a cost: more trade means more
-// base-currency demand for gas, aligned upside for every registry staker. The
+// weight" — the stake, in tokens of the chain's native token, is a value
+// loop, not a cost: more trade means more base-currency demand for gas,
+// aligned upside for every registry staker. The
 // neighboring § "What the stake does and does not do" BOUNDS the wording here:
 // appreciation aligns, it is never promised — keep step/caption text at or
 // below that strength. Public derivation: /papers/substrate-broadening-rpgf.

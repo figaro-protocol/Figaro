@@ -52,7 +52,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
         CONTRACTS: { ...actual.CONTRACTS, assemblyRegistry: "0x00000000000000000000000000000000000a5501", agreementRegistry: "0x00000000000000000000000000000000000a9e01" },
     };
 });
-vi.mock("@/lib/shared/wagmi", async () => ({ publicClient: {}, activeChain: (await import("@/lib/shared/chains")).activeChain }));
+vi.mock("@/lib/shared/publicClient", () => ({ publicClient: {} }));
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/shared/ipfsService")>();
     return {

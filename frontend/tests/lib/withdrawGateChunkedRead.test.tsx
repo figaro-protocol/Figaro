@@ -36,9 +36,8 @@ const { CORE, VERIFIER, LATEST, provider } = vi.hoisted(() => {
     };
 });
 
-vi.mock("@/lib/shared/wagmi", () => ({
+vi.mock("@/lib/shared/publicClient", () => ({
     publicClient: provider,
-    activeChain: { id: 11155111 },
 }));
 vi.mock("@/lib/core/contracts", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/core/contracts")>()),

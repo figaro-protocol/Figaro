@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
     fetchAgreement: vi.fn(),
 }));
 
-vi.mock("@/lib/shared/wagmi", () => ({ publicClient: { getLogs: async () => [] }, activeChain: { id: 31337 } }));
+vi.mock("@/lib/shared/publicClient", () => ({ publicClient: { getLogs: async () => [] } }));
 vi.mock("@/lib/core/contracts", () => ({
     CONTRACTS: { core: "0x2222222222222222222222222222222222222222", batchVerifier: "" },
 }));

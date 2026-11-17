@@ -2,6 +2,7 @@
  * Global Window augmentations for browser-only dev / test / mock globals.
  *
  * Every property here is optional — these globals are only set by:
+ *   - `lib/shared/debugClient.ts`     (development builds: the debug client)
  *   - `lib/shared/devShims.ts`        (NEXT_PUBLIC_DEV_ADDRESS / TEST_SIGNER)
  *   - `lib/core/testHelpers.ts`       (TEST_HELPERS_ENABLED)
  *   - `app/(app)/terminal/page.tsx`   (E2E mock harness)
@@ -16,7 +17,7 @@
 import type { Abi } from "viem";
 
 interface FigaroDebugClient {
-    // Method-form (bivariant) so devShims.ts can assign a more-specific
+    // Method-form (bivariant) so debugClient.ts can assign a more-specific
     // (opts: ReadContractParameters) => Promise<unknown> implementation
     // without forcing a viem import into this .d.ts.
     readContract(opts: unknown): Promise<unknown>;
@@ -35,13 +36,14 @@ declare global {
         // EIP-1193 provider surface (browser extension or dev shim)
         ethereum?: FigaroEthereumProvider;
 
-        // dev / debug shims (lib/shared/devShims.ts)
+        // debug client (lib/shared/debugClient.ts)
         figaroPublicClient?: FigaroDebugClient;
         figaroReadFee?: (
             addr: `0x${string}`,
             abi: Abi | readonly unknown[],
         ) => Promise<unknown>;
         __figaro_fetch_wrapped?: boolean;
+        // test signer (lib/shared/devShims.ts)
         __viem_wallet_client?: unknown;
 
         // E2E mock harness (lib/core/testHelpers.ts, components/runtime/ClientInit.tsx,

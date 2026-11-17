@@ -33,7 +33,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { CONTRACTS } from "@/lib/core/contracts";
 import { activeChain } from "@/lib/shared/chains";
-import { siteRpcUrl } from "@/lib/shared/wagmi";
+import { siteRpcUrl } from "@/lib/shared/publicClient";
 import { hexEqual } from "@/lib/shared/evm";
 
 // ---------------------------------------------------------------------------

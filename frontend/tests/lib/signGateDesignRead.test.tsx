@@ -88,8 +88,8 @@ const chainClient = {
         return uri ? [BUYER, 1n, false, uri] : [`0x${"00".repeat(20)}`, 0n, false, ""];
     },
 };
-vi.mock("@/lib/shared/wagmi", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/shared/wagmi")>();
+vi.mock("@/lib/shared/publicClient", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/shared/publicClient")>();
     return { ...actual, publicClient: chainClient };
 });
 

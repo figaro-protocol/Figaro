@@ -66,8 +66,8 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
 // The chain: each registry's `bindings(key)` → the contentURI the key is
 // pinned at.
 const bindings = new Map<string, string>();
-vi.mock("@/lib/shared/wagmi", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@/lib/shared/wagmi")>();
+vi.mock("@/lib/shared/publicClient", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/shared/publicClient")>();
     return {
         ...actual,
         publicClient: {

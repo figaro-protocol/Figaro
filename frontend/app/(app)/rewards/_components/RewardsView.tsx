@@ -113,7 +113,7 @@ export function RewardsView() {
                 buckets into fixed periods. Once a period ends its counts are final, and each
                 designer of record claims their clauses&apos;, agreements&apos; and assemblies&apos; share of that
                 period&apos;s budget: their score over the period&apos;s total, uniform pro rata with no
-                cap. Eligibility is a live ETH stake — you earn only while your clause&apos;s,
+                cap. Eligibility is a live stake, in tokens of the chain&apos;s native token — you earn only while your clause&apos;s,
                 agreement&apos;s or assembly&apos;s stake stays live. Nothing is
                 posted, bonded, or disputed; there is no committee and no application.
             </p>

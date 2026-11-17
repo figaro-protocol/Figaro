@@ -12,7 +12,7 @@ import { type Abi } from "viem";
 import { canonicalize, computeClauseKey } from "@figaro-protocol/sdk";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
-import type { publicClient } from "@/lib/shared/wagmi";
+import type { publicClient } from "@/lib/shared/publicClient";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { simulateWriteVerify } from "@/lib/shared/contractWrite";
 import {
