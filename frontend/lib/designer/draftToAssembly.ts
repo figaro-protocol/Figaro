@@ -34,7 +34,7 @@ import {
     type HydratedAssembly,
 } from "@figaro-protocol/sdk";
 import { getRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
-import { clauseDeclaresField, clauseDesignFills, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
+import { clauseDesignFills, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
 import { deriveAssemblySlug, type Assembly } from "@/lib/shared/assembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -177,10 +177,6 @@ export type SnapshotReview =
         composedClausesByOrderId: Record<string, ComposedClause[]>;
         /** The assembly-scoped composition exactly as the assembly carries it. */
         assemblyClauses: Record<string, Record<string, unknown>>;
-        /** The canvas order ids whose agreement composes no clause declaring
-         *  `lineItems`: each such order commits its payment in the
-         *  commitment and no list of what the payment buys. */
-        withoutLineItems: string[];
     }
     | { ok: false; error: string };
 
@@ -199,17 +195,11 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
         const boundIds = new Set(Object.keys(snapshot.registeredByOrderId ?? {}));
         const composedByOrderId: Record<string, Record<string, Record<string, unknown>>> = {};
         const composedClausesByOrderId: Record<string, ComposedClause[]> = {};
-        const withoutLineItems: string[] = [];
         snapshot.orders.forEach((order, index) => {
             const entry = assembly.agreements[index];
             if (entry === undefined) return;
             composedByOrderId[order.orderHash] = byAgreement[entry.id] ?? {};
             composedClausesByOrderId[order.orderHash] = clausesByAgreement[entry.id] ?? [];
-            const carried = Object.keys(agreementClauses(hydrated, entry));
-            // An unread spec says nothing either way: the order is named only
-            // when every carried clause's spec is read and none declares the list.
-            const everySpecRead = carried.every((clauseKey) => getClauseSpec(clauseKey) !== undefined);
-            if (everySpecRead && !carried.some((clauseKey) => clauseDeclaresField(clauseKey, "lineItems"))) withoutLineItems.push(order.orderHash);
         });
         return {
             ok: true,
@@ -226,7 +216,6 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
             composedByOrderId,
             composedClausesByOrderId,
             assemblyClauses: assembly.assemblyClauses ?? {},
-            withoutLineItems,
         };
     } catch (cause) {
         return {

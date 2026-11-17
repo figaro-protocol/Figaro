@@ -14,21 +14,28 @@
  * clause families"), and the overlay layer's count and its row ("N
  * attestations · … · direct + batch resolutions").
  *
+ * Then a batched process's attribution to its market: the verifier emits the
+ * process's `OrderCommitted` and its buyer's attestation of the provenance
+ * leaf, and the corpus and the page's market layer both put the process under
+ * the assembly that attestation's fingerprint names.
+ *
  * Follows `graphCorpusBatchPath.test.tsx`, which holds the order events.
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
-import { attestationLog, word, type FixtureLog } from "./__fixtures__/coreLogs";
+import { PROVENANCE_LEAF_KEY, provenanceContentRef } from "@figaro-protocol/sdk";
+import { attestationLog, orderCommittedLog, word, type FixtureLog } from "./__fixtures__/coreLogs";
 import { CONNECT_PROMPT } from "./__fixtures__/noWallet";
 
-const { cachedGetLogsMock, CORE, COORDINATOR, VERIFIER, CLIENT, NO_ASSEMBLIES, SPECS, params } = vi.hoisted(() => ({
+const { cachedGetLogsMock, CORE, COORDINATOR, VERIFIER, CLIENT, NO_ASSEMBLIES, ASSEMBLIES, SPECS, params } = vi.hoisted(() => ({
     cachedGetLogsMock: vi.fn(),
     CORE: "0x1111111111111111111111111111111111111111",
     COORDINATOR: "0x3333333333333333333333333333333333333333",
     VERIFIER: "0x2222222222222222222222222222222222222222",
     CLIENT: { chain: { id: 31337 }, readContract: async () => { throw new Error("no token"); } },
-    NO_ASSEMBLIES: { read: { status: "present" as const, value: [] }, refetch: () => undefined },
+    NO_ASSEMBLIES: { read: { status: "present" as const, value: [] as unknown[] }, refetch: () => undefined },
+    ASSEMBLIES: { current: null as unknown },
     SPECS: { version: 0, loaded: true },
     params: { current: new URLSearchParams("view=overlays") },
 }));
@@ -52,7 +59,7 @@ vi.mock("@/lib/composition/contracts", () => ({
 vi.mock("@/lib/composition/witnessContent", () => ({ fetchWitnessContent: async () => null }));
 vi.mock("@/lib/shared/publicClient", () => ({ publicClient: CLIENT }));
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => SPECS }));
-vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => NO_ASSEMBLIES }));
+vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => ASSEMBLIES.current ?? NO_ASSEMBLIES }));
 vi.mock("@/lib/data/analystEndpoint", () => ({ getAnalystUrl: () => null, readAnalystStatus: async () => null, askAnalyst: async () => null }));
 vi.mock("next/navigation", () => ({
     useSearchParams: () => params.current,
@@ -66,7 +73,7 @@ vi.mock("wagmi", () => ({
 }));
 
 import { useGraphCorpus, type GraphCorpus } from "@/lib/data/graphCorpus";
-import { overlayRows } from "@/lib/data/explorer";
+import { overlayRows, processRowsForMarket } from "@/lib/data/explorer";
 import { DataExplorer } from "@/components/data/DataExplorer";
 
 const PROCESS = word(0xa7);
@@ -133,6 +140,7 @@ const CASES = [
 describe("/data/explore counts attestations from FigaroBatchVerifier and AttestationCoordinator", () => {
     beforeEach(() => {
         cachedGetLogsMock.mockReset();
+        ASSEMBLIES.current = null;
     });
 
     it.each(CASES)("$name — the corpus counts each event once, tagged with its path", async ({ logs, count, universes }) => {
@@ -152,5 +160,78 @@ describe("/data/explore counts attestations from FigaroBatchVerifier and Attesta
         expect(shown.row).toMatch(rowText);
         // No wallet is connected here: the counts are read and shown without one.
         expect(document.body.textContent ?? "").not.toMatch(CONNECT_PROMPT);
+    });
+});
+
+/* A batched process attributed to its market. The buyer's attestation of the
+ * agreement format's provenance leaf is emitted by FigaroBatchVerifier, beside
+ * the batched `OrderCommitted`; its fingerprint is the provenance content
+ * reference of an agreement of the one assembly the registry read loaded. The
+ * gateway serves no content, so the attribution is by that fingerprint alone. */
+const MARKET = word(0x3a3);
+const AGREEMENT = word(0x3b3);
+const BATCHED_PROCESS = word(0xb7c);
+const BUYER = "0x00000000000000000000000000000000000000b1" as const;
+const SELLER = "0x00000000000000000000000000000000000000a1" as const;
+const MARKET_NAME = "A stranger's batched market";
+
+const batchedCommit = orderCommittedLog({ address: VERIFIER, blockNumber: 4n, orderHash: word(0x0b7), processId: BATCHED_PROCESS, buyer: BUYER, seller: SELLER });
+const batchedProvenance = attestationLog({
+    address: VERIFIER, blockNumber: 4n, orderHash: word(0x0b7), processId: BATCHED_PROCESS, attester: BUYER,
+    clauseId: PROVENANCE_LEAF_KEY, contentRef: provenanceContentRef(AGREEMENT, MARKET),
+});
+
+/** The registry read answers one loaded assembly whose one agreement is AGREEMENT. */
+function oneLoadedAssembly() {
+    ASSEMBLIES.current = {
+        read: {
+            status: "present" as const,
+            value: [{
+                assemblyHash: MARKET, name: MARKET_NAME, state: "loaded",
+                hydratedAssembly: {
+                    assembly: { agreements: [{ id: "agreement-0", agreementHash: AGREEMENT }] },
+                    agreements: { [AGREEMENT]: { clauses: {} } },
+                },
+            }],
+        },
+        refetch: () => undefined,
+    };
+}
+
+/** The verifier answers the batched commit and the batched provenance attestation; nothing else answers. */
+function verifierEmitsTheBatchedTrade() {
+    cachedGetLogsMock.mockImplementation(async (_c: unknown, _id: number, opts: { address: string; eventName: string }) => {
+        if (opts.address.toLowerCase() !== VERIFIER) return [];
+        if (opts.eventName === "OrderCommitted") return [batchedCommit];
+        if (opts.eventName === "Attestation") return [batchedProvenance];
+        return [];
+    });
+}
+
+describe("/data/explore attributes a batched process to its market through the verifier's provenance attestation", () => {
+    beforeEach(() => {
+        cachedGetLogsMock.mockReset();
+        oneLoadedAssembly();
+        verifierEmitsTheBatchedTrade();
+    });
+
+    it("the corpus attributes the batched process to the assembly its provenance fingerprint names", async () => {
+        const corpus = await readCorpus();
+        expect(corpus.attributionByProcess.get(BATCHED_PROCESS.toLowerCase())).toBe(MARKET.toLowerCase());
+        expect(corpus.market.unattributedProcessCount).toBe(0);
+        expect(processRowsForMarket(corpus.process, corpus.attributionByProcess, MARKET).map((r) => r.processId)).toEqual([BATCHED_PROCESS]);
+        expect(processRowsForMarket(corpus.process, corpus.attributionByProcess, null)).toEqual([]);
+    });
+
+    it("the market layer renders the batched trade under its market's name", async () => {
+        params.current = new URLSearchParams("view=market");
+        render(<DataExplorer />);
+        await waitFor(() => expect(screen.getByTestId("market-count").textContent).toMatch(/^1 market attributed\.$/));
+        const page = document.body.textContent ?? "";
+        expect(page).toContain(MARKET_NAME);
+        expect(page).toMatch(/1 process · 1 order · 1 distinct buyer→seller pair/);
+        expect(screen.queryByTestId("market-unattributed")).toBeNull();
+        expect(screen.getByTestId(`process-row-${BATCHED_PROCESS.toLowerCase()}`)).toBeTruthy();
+        expect(page).not.toMatch(CONNECT_PROMPT);
     });
 });

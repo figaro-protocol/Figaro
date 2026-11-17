@@ -67,7 +67,6 @@ describe("an agreement carries exactly the clauses its designer composed", () =>
         if (!review.ok) throw new Error(review.error);
         const order = snapshot.orders[0].orderHash;
         expect(Object.keys(review.composedByOrderId[order]).sort()).toEqual([keyOf("figaro-commerce"), keyOf("figaro-schedule")].sort());
-        expect(review.withoutLineItems).toEqual([]);
     });
 
     it("builds the same assembly whatever DAO wallet the build names", () => {

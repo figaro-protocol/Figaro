@@ -424,3 +424,65 @@ describe("data: every field an event carries has a row in docs/DATA_LAYER.md, wi
         ]);
     });
 });
+
+/** A line pointer written with its symbol, `` `name` `File:line` ``, in the
+ *  documents and comments that cite the Core's code. The test opens the file at
+ *  that line and requires the symbol there, so a pointer that drifts with an
+ *  edit above it is caught. A pointer written without its symbol is not held. */
+const SYMBOL_POINTER = /`([A-Za-z_][A-Za-z0-9_]*)` `([A-Za-z0-9_./-]+\.(?:sol|rs|ts|tsx)):(\d+)`/g;
+
+/** The files a pointer names by its last segment, each with its path from the root. */
+const POINTED_FILES: Record<string, string> = {
+    "FigaroBatchVerifier.sol": "src/core/verifier/FigaroBatchVerifier.sol",
+    "FigaroCore.sol": "src/core/kernel/FigaroCore.sol",
+    "UsageCounter.sol": "src/rewards/UsageCounter.sol",
+    "kernel.rs": "prover/lib/src/kernel.rs",
+};
+
+/** The documents and comments whose symbol pointers are held. */
+const POINTING_FILES = ["docs/VERIFICATION_MAP.md", "frontend/components/figures/LockedFundsStateFigure.tsx"];
+
+interface SymbolPointer { from: string; symbol: string; file: string; line: number }
+
+function symbolPointers(from: string, text: string): SymbolPointer[] {
+    return [...text.matchAll(SYMBOL_POINTER)].map((m) => ({ from, symbol: m[1], file: m[2], line: Number(m[3]) }));
+}
+
+/** The pointers whose cited line does not hold the symbol, each as `from: symbol file:line`. */
+function strayPointers(pointers: SymbolPointer[], read: (file: string) => string): string[] {
+    return pointers
+        .filter((p) => {
+            const file = p.file.includes("/") ? p.file : POINTED_FILES[p.file];
+            if (!file) return true;
+            const cited = read(file).split("\n")[p.line - 1] ?? "";
+            return !new RegExp(`\\b${p.symbol}\\b`).test(cited);
+        })
+        .map((p) => `${p.from}: ${p.symbol} ${p.file}:${p.line}`);
+}
+
+describe("docs: a line pointer written with its symbol lands on a line that holds the symbol", () => {
+    const pointers = POINTING_FILES.flatMap((f) => symbolPointers(f, readFileSync(path.join(ROOT, f), "utf8")));
+    const read = (file: string) => readFileSync(path.join(ROOT, file), "utf8");
+
+    it("every such pointer in the batch path's rows and the bond figure lands on its symbol", () => {
+        expect(strayPointers(pointers, read)).toEqual([]);
+    });
+
+    it("both files carry such pointers, into the verifier, the Core, the counter, the guest and the relay's client", () => {
+        expect(new Set(pointers.map((p) => p.from))).toEqual(new Set(POINTING_FILES));
+        const named = new Set(pointers.map((p) => p.file));
+        for (const f of ["FigaroBatchVerifier.sol", "FigaroCore.sol", "UsageCounter.sol", "kernel.rs", "sdk/src/agent/sequencer.ts"]) {
+            expect(named.has(f), f).toBe(true);
+        }
+    });
+
+    it("the check reads what it claims to: a pointer one line off, or into a file it cannot resolve, is caught", () => {
+        const settle = pointers.find((p) => p.symbol === "settleBatch");
+        expect(settle, "the settleBatch pointer").toBeDefined();
+        const off = { ...settle!, line: settle!.line + 1 };
+        expect(strayPointers([off], read)).toEqual([`${off.from}: settleBatch ${off.file}:${off.line}`]);
+        expect(strayPointers([{ from: "x", symbol: "settleBatch", file: "Elsewhere.sol", line: 1 }], read)).toEqual([
+            "x: settleBatch Elsewhere.sol:1",
+        ]);
+    });
+});
