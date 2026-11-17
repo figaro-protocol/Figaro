@@ -741,4 +741,189 @@ contract FigaroCoreTest is Test {
         vm.expectRevert(FigaroCore.ProcessAlreadyResolved.selector);
         core.commit(subC, bSig, sSig);
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 23: A resolve list names every open order of its process once
+    //
+    // resolveProcess checks the list's length against activeOrderCount,
+    // then, per listed order, that its status is 1, pays it and sets it to
+    // 2 inside the loop: a second listing of one order reads status 2 and
+    // is refused (OrderNotCommitted). A list longer than the open orders is
+    // refused by the length check first (IncompleteOrderList). Every refusal
+    // moves no token and leaves every order committed.
+    // ═══════════════════════════════════════════════════════════════
+
+    /// A process of `n` orders (2 or 3): a root of 10 to seller1, then 20 to
+    /// seller2 (running total 30) and 30 to seller3 (running total 60).
+    function _openProcess(uint256 n, uint256 salt)
+        internal
+        returns (bytes32 processId, CommitmentTypes.Commitment[] memory orders, bytes32[] memory hashes)
+    {
+        orders = new CommitmentTypes.Commitment[](n);
+        hashes = new bytes32[](n);
+        (processId, hashes[0], orders[0]) = _commitRoot(10 ether, salt);
+        (hashes[1], orders[1]) = _commitSub(processId, seller2, 20 ether, 30 ether, SELLER2_KEY, salt * 100 + 1);
+        if (n == 3) {
+            (hashes[2], orders[2]) = _commitSub(processId, seller3, 30 ether, 60 ether, SELLER3_KEY, salt * 100 + 2);
+        }
+    }
+
+    function _pick(CommitmentTypes.Commitment[] memory orders, uint256[] memory at)
+        internal
+        pure
+        returns (CommitmentTypes.Commitment[] memory list)
+    {
+        list = new CommitmentTypes.Commitment[](at.length);
+        for (uint256 i = 0; i < at.length; i++) {
+            list[i] = orders[at[i]];
+        }
+    }
+
+    function _idx(uint256 a, uint256 b) internal pure returns (uint256[] memory at) {
+        at = new uint256[](2);
+        (at[0], at[1]) = (a, b);
+    }
+
+    function _idx(uint256 a, uint256 b, uint256 c) internal pure returns (uint256[] memory at) {
+        at = new uint256[](3);
+        (at[0], at[1], at[2]) = (a, b, c);
+    }
+
+    function _idx(uint256 a, uint256 b, uint256 c, uint256 d) internal pure returns (uint256[] memory at) {
+        at = new uint256[](4);
+        (at[0], at[1], at[2], at[3]) = (a, b, c, d);
+    }
+
+    /// The buyer's resolve over `list` reverts with `reason`; no wallet and
+    /// not FigaroCore changes balance, every order stays committed, and the
+    /// process keeps its open-order count.
+    function _expectRefused(
+        bytes32 processId,
+        bytes32[] memory hashes,
+        CommitmentTypes.Commitment[] memory list,
+        bytes memory reason
+    ) internal {
+        address[5] memory wallets = [buyer, seller1, seller2, seller3, address(core)];
+        uint256[5] memory before;
+        for (uint256 i = 0; i < wallets.length; i++) {
+            before[i] = token.balanceOf(wallets[i]);
+        }
+        (,,, uint256 openBefore) = core.processes(processId);
+
+        vm.prank(buyer);
+        vm.expectRevert(reason);
+        core.resolveProcess(processId, list);
+
+        for (uint256 i = 0; i < wallets.length; i++) {
+            assertEq(token.balanceOf(wallets[i]), before[i], "no token moved");
+        }
+        for (uint256 i = 0; i < hashes.length; i++) {
+            assertEq(core.orderStatus(hashes[i]), 1, "every order still committed");
+        }
+        (,,, uint256 openAfter) = core.processes(processId);
+        assertEq(openAfter, openBefore, "the open-order count is unchanged");
+    }
+
+    function _notCommitted(bytes32 orderHash) internal pure returns (bytes memory) {
+        return abi.encodeWithSelector(FigaroCore.OrderNotCommitted.selector, orderHash);
+    }
+
+    function _incomplete(uint256 required, uint256 provided) internal pure returns (bytes memory) {
+        return abi.encodeWithSelector(FigaroCore.IncompleteOrderList.selector, required, provided);
+    }
+
+    function _resolveAll(bytes32 processId, CommitmentTypes.Commitment[] memory list) internal {
+        vm.prank(buyer);
+        core.resolveProcess(processId, list);
+        (,,, uint256 open) = core.processes(processId);
+        assertEq(open, 0, "the true list resolves");
+        assertEq(token.balanceOf(address(core)), 0, "FigaroCore holds nothing after");
+    }
+
+    function test_resolve_listRepeatingAnOrder_twoOrders_reverts() public {
+        (bytes32 pid, CommitmentTypes.Commitment[] memory o, bytes32[] memory h) = _openProcess(2, 1);
+
+        // At the true length: the first listing is paid in the loop, the
+        // second reads status 2, and the whole call reverts.
+        _expectRefused(pid, h, _pick(o, _idx(0, 0)), _notCommitted(h[0]));
+        _expectRefused(pid, h, _pick(o, _idx(1, 1)), _notCommitted(h[1]));
+        // Longer than the open orders: the length check refuses it first.
+        _expectRefused(pid, h, _pick(o, _idx(0, 1, 0)), _incomplete(2, 3));
+        _expectRefused(pid, h, _pick(o, _idx(0, 1, 1)), _incomplete(2, 3));
+
+        _resolveAll(pid, o);
+    }
+
+    function test_resolve_listRepeatingAnOrder_threeOrders_reverts() public {
+        (bytes32 pid, CommitmentTypes.Commitment[] memory o, bytes32[] memory h) = _openProcess(3, 1);
+
+        _expectRefused(pid, h, _pick(o, _idx(0, 0, 2)), _notCommitted(h[0])); // the first, twice
+        _expectRefused(pid, h, _pick(o, _idx(0, 1, 1)), _notCommitted(h[1])); // a middle one, twice
+        _expectRefused(pid, h, _pick(o, _idx(2, 1, 2)), _notCommitted(h[2])); // the last, twice
+        _expectRefused(pid, h, _pick(o, _idx(0, 1, 2, 0)), _incomplete(3, 4));
+        _expectRefused(pid, h, _pick(o, _idx(0, 1, 2, 1)), _incomplete(3, 4));
+        _expectRefused(pid, h, _pick(o, _idx(0, 1, 2, 2)), _incomplete(3, 4));
+
+        _resolveAll(pid, o);
+    }
+
+    function test_resolve_listMissingAnOrderOrEmpty_reverts() public {
+        (bytes32 pid, CommitmentTypes.Commitment[] memory o, bytes32[] memory h) = _openProcess(3, 1);
+
+        _expectRefused(pid, h, _pick(o, _idx(1, 2)), _incomplete(3, 2)); // the first dropped
+        _expectRefused(pid, h, _pick(o, _idx(0, 2)), _incomplete(3, 2)); // a middle one dropped
+        _expectRefused(pid, h, _pick(o, _idx(0, 1)), _incomplete(3, 2)); // the last dropped
+        _expectRefused(pid, h, new CommitmentTypes.Commitment[](0), _incomplete(3, 0));
+
+        _resolveAll(pid, o);
+    }
+
+    /// An order of another process in the place of one of this process's own,
+    /// at the true length: hashed under this process it names no committed
+    /// order. The other process's orders stay committed.
+    function test_resolve_listWithAnotherProcesssOrderInPlaceOfItsOwn_reverts() public {
+        (bytes32 pid, CommitmentTypes.Commitment[] memory o, bytes32[] memory h) = _openProcess(3, 1);
+        (bytes32 otherPid, CommitmentTypes.Commitment[] memory other, bytes32[] memory otherHashes) = _openProcess(2, 2);
+        assertTrue(pid != otherPid, "two processes");
+
+        for (uint256 place = 0; place < 3; place++) {
+            CommitmentTypes.Commitment[] memory list = _pick(o, _idx(0, 1, 2));
+            CommitmentTypes.Commitment memory foreign = other[place % 2];
+            list[place] = foreign;
+            _expectRefused(pid, h, list, _notCommitted(keccak256(abi.encodePacked(pid, foreign.hashStruct()))));
+        }
+        assertEq(core.orderStatus(otherHashes[0]), 1, "the other root still committed");
+        assertEq(core.orderStatus(otherHashes[1]), 1, "the other sub-order still committed");
+
+        vm.prank(buyer);
+        core.resolveProcess(pid, o);
+        (,,, uint256 open) = core.processes(pid);
+        assertEq(open, 0, "the true list resolves");
+    }
+
+    /// The sequence of the list is free: the code checks and pays each listed
+    /// order on its own, and nothing compares a listed order to its place.
+    /// A correct set in another sequence resolves, pays each party what the
+    /// committed sequence pays, and emits OrderResolved in the list's sequence.
+    function test_resolve_correctSetInAnotherSequence_resolves() public {
+        (bytes32 pid, CommitmentTypes.Commitment[] memory o, bytes32[] memory h) = _openProcess(3, 1);
+        uint256[4] memory before =
+            [token.balanceOf(buyer), token.balanceOf(seller1), token.balanceOf(seller2), token.balanceOf(seller3)];
+
+        uint256[] memory at = _idx(2, 0, 1);
+        for (uint256 i = 0; i < at.length; i++) {
+            CommitmentTypes.Commitment memory c = o[at[i]];
+            vm.expectEmit(true, true, false, true, address(core));
+            emit FigaroCore.OrderResolved(h[at[i]], pid, 2 * c.expectedCumulativeValue + c.payment, c.payment);
+        }
+        vm.prank(buyer);
+        core.resolveProcess(pid, _pick(o, at));
+
+        // seller1: 2×10 + 10; seller2: 2×30 + 20; seller3: 2×60 + 30; buyer: 10 + 20 + 30.
+        assertEq(token.balanceOf(seller1) - before[1], 30 ether, "seller1 paid as in sequence");
+        assertEq(token.balanceOf(seller2) - before[2], 80 ether, "seller2 paid as in sequence");
+        assertEq(token.balanceOf(seller3) - before[3], 150 ether, "seller3 paid as in sequence");
+        assertEq(token.balanceOf(buyer) - before[0], 60 ether, "buyer paid as in sequence");
+        assertEq(token.balanceOf(address(core)), 0, "FigaroCore holds nothing after");
+    }
 }

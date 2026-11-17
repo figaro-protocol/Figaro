@@ -333,6 +333,19 @@ ceiling several-fold and negates the batch path's gas advantage entirely.
    emits `OrderSeller` before `OrderCommitted` (`_emitCommitted`), where
    `FigaroCore.commit` emits `OrderCommitted` first. A reader that depends on
    the order of logs within a transaction treats the two paths apart.
+6. **The deadline clock**: the proof program checks each commitment's
+   `deadline` against the clock the batch commits in its public values, never
+   against the landing block. Whoever builds and proves the batch chooses that
+   clock; `settleBatch` accepts it when it is no later than the landing
+   block's `block.timestamp` and at most `MAX_BATCH_STALENESS`, one hour,
+   behind it (`src/core/verifier/FigaroBatchVerifier.sol:154`,
+   `src/core/verifier/FigaroBatchVerifier.sol:440`). A commitment signed
+   under the verifier's domain can therefore be bonded on the batch path up to
+   one hour after its signed deadline; `FigaroCore.commit` refuses a
+   commitment once the block passes its deadline
+   (`src/core/kernel/FigaroCore.sol:147`). A party that signed a batch-path
+   commitment loses the last hour of the lapse it signed for: until then,
+   anyone who holds both signatures can prove a batch that bonds it.
 
 ### What is not `FigaroCore` scaling
 
