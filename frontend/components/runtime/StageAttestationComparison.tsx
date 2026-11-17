@@ -17,7 +17,7 @@
  * belongs to the browser profile, so it shows with any wallet connected or
  * none), else derives the keccak-CID from the event's `contentRef`; either way
  * it verifies the bytes hash back to it, and `decodeContentFromSpec` decodes
- * them through the stage's declared fields (`attestationEncodeOptions`). Content that does not resolve (another party's
+ * them through the stage's declared fields (`{ stage }`, the SDK's one rule). Content that does not resolve (another party's
  * private filing, withheld, erased) compares nothing. Nothing is stored.
  */
 
@@ -31,7 +31,7 @@ import {
     groupAttestationsByStage,
     type StageComparison,
 } from "@/lib/composition/stageAttestationComparison";
-import { attestationEncodeOptions, attestationIsWitness, clauseIsAssemblyScoped, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { attestationIsWitness, clauseIsAssemblyScoped, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { truncateHex } from "@/lib/shared/formatHex";
 
@@ -88,7 +88,7 @@ export function StageAttestationComparison({ attestations }: Props) {
                 const content = spec ? await resolveHeldWitnessContent(att) : null;
                 if (!spec || !content) return;
                 try {
-                    next.set(key, decodeContentFromSpec(spec, content, attestationEncodeOptions(att.clauseId, att.stage)));
+                    next.set(key, decodeContentFromSpec(spec, content, { stage: att.stage }));
                 } catch {
                     // Bytes that do not decode under the declared fields read as not available.
                 }

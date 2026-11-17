@@ -19,7 +19,7 @@
  * nesting) live here so there is one source and no parallel taxonomy module.
  */
 
-import { contentFieldsFor, parseClauseSpec, type ClauseSpec, type EncodeOptions, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
+import { contentFieldsFor, parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
 import type { Hex, ProjectionHints, ProjectionSpecView, SpecSource } from "@figaro-protocol/sdk";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
 import { PROVENANCE_LEAF_KEY, anchorClauseSpec, deriveAnchored, type Anchored } from "@figaro-protocol/sdk";
@@ -355,35 +355,25 @@ export function clauseLadderField(clauseKey: string): { name: string; values: re
 }
 
 /**
- * The encode options of an attestation's content at `stage`, as this
- * frontend encodes it: the one answer to "which field set was this content
- * encoded from". The encoder reads it (`createCapabilityExecutors`), and so
- * does every decision made after it: keep, publish, the evidence file's
- * list of what is missing, and every decode.
- *
- * A process-log clause's attestations are its ladder events and its
- * re-assertion: each is encoded over the clause's top-level fields, and its
- * stage is the index of its event code, never a field-set selector, even
- * where the spec declares `stages[stage]`. Any other attestation is encoded
- * over `stages[stage]` where the spec declares it, else over the top-level
- * fields (`contentFieldsFor`).
+ * The field set an attestation's content at `stage` is encoded from, read
+ * by the clause key it names: `stages[stage]` where the spec declares it,
+ * else the top-level fields. This is the SDK's `contentFieldsFor(spec, {
+ * stage })`, the rule the proof program applies too, and it holds for every
+ * attestation, a process-log clause's ladder events included. The encoder,
+ * keep, publish, the evidence file and every decode read this one rule.
+ * Null while the spec is not loaded.
  */
-export function attestationEncodeOptions(clauseKey: string, stage: number): EncodeOptions {
-    return clauseIsProcessLog(clauseKey) ? {} : { stage };
-}
-
-/** The field set an attestation's content at `stage` was encoded from
- *  (`attestationEncodeOptions`); null while the spec is not loaded. */
 export function attestationContentFields(clauseKey: string, stage: number): readonly FieldSpec[] | null {
     const spec = getClauseSpec(clauseKey);
-    return spec ? contentFieldsFor(spec, attestationEncodeOptions(clauseKey, stage)) : null;
+    return spec ? contentFieldsFor(spec, { stage }) : null;
 }
 
-/** Whether an attestation at `stage` is a witness: encoded over a declared
- *  `stages[stage]` (`attestationEncodeOptions`), so read through that stage's
- *  fields (`describeWitness`). A process-log clause's ladder event never is. */
+/** Whether an attestation at `stage` is encoded over a declared stage set
+ *  (`attestationContentFields` selects `stages[stage]`), so read through
+ *  that stage's fields (`describeWitness`). */
 export function attestationIsWitness(clauseKey: string, stage: number): boolean {
-    return !clauseIsProcessLog(clauseKey) && getClauseSpec(clauseKey)?.stages?.[stage] !== undefined;
+    const spec = getClauseSpec(clauseKey);
+    return spec !== undefined && contentFieldsFor(spec, { stage }) !== spec.fields;
 }
 
 /** The WITNESS stages a clause declares — its `spec.stages` entries, each a
@@ -451,9 +441,9 @@ export function describeAttestation(
     // labeling it through the committed enum would misread (e.g. a cold-chain
     // reading at stage 1 is not "refrigerated"). The witness's display name is
     // the clause's own title; its stable code is the stage number. A
-    // process-log clause's event is a ladder ordinal at every stage
-    // (`attestationIsWitness`).
-    if (attestationIsWitness(clauseKey, stage)) {
+    // process-log clause's stage is a ladder ordinal at every stage, so it
+    // is named by its event code even where its content is a stage set's.
+    if (!clauseIsProcessLog(clauseKey) && attestationIsWitness(clauseKey, stage)) {
         return { clauseTitle: spec.title, eventLabel: spec.title, eventCode: `stage-${stage}` };
     }
     const ladder = firstEnumField(spec);

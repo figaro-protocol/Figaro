@@ -417,3 +417,66 @@ describe("cards offer no input for a blinding field", () => {
         expect(ladder?.inputFields?.map((f) => f.name)).toEqual(["memo"]);
     });
 });
+
+// A process-log clause that also declares `stages[k]`: its attestation at
+// ordinal k is encoded over that stage set (the SDK's `contentFieldsFor`, the
+// proof program alike), so the card at k collects the stage set's fields. A
+// declared stage past the ladder's last ordinal is a witness like any other.
+describe("a process-log ladder at an ordinal that declares a stage set", () => {
+    const HYBRID_SPEC = {
+        clauseId: "test-hybrid-ladder-log",
+        version: 1,
+        title: "Hybrid ladder log",
+        description: "A ladder whose ordinal 1 and stage 5 declare their own sets.",
+        fields: [
+            { name: "event", type: "enum", values: ["started", "weighed", "done"], required: true },
+            { name: "memo", type: "string", required: false },
+        ],
+        stages: {
+            "1": [{ name: "grams", type: "integer", required: true }],
+            "5": [{ name: "reading", type: "string", required: true }],
+        },
+        block: {
+            design: { article: "attestations", scope: "agreement", nestsUnder: null, fills: [], composes: null },
+            checkout: { catalogueFills: [], profileFills: [] },
+            runtime: { interaction: null, fields: [] },
+        },
+    };
+    const pinned = pinSpec(HYBRID_SPEC);
+    const agreements = new Map<string, Agreement>([
+        [CHECKOUT_HASH, { ...agreement, clauses: [{ clause: pinned.clauseKey, data: {} }] }],
+    ]);
+
+    beforeAll(async () => {
+        setClauseSpecFetcher(async () => pinned.bytes);
+        await loadClauseSpec(pinned.clauseKey, "mem://test-hybrid-ladder-log");
+    });
+
+    const cards = (attestations: RuntimeAttestation[] = []) =>
+        deriveProcessModelFromRuntime(summary, [order], agreements, SELLER, undefined, attestations)
+            .orders.flatMap((o) => o.capabilities)
+            .filter((c) => c.action.executionType === "transaction" && c.action.kind === "submit-clause-attestation"
+                && c.action.clauseKey === pinned.clauseKey);
+    const stepBy = (stage: number): RuntimeAttestation => ({
+        clauseId: pinned.clauseKey, orderHash: ORDER_HASH, stage, attester: SELLER,
+        contentRef: `0x${"00".repeat(32)}`, blockNumber: 1, universe: "direct",
+    });
+
+    it("at an ordinal with no stage set, the card collects the top-level companions", () => {
+        const ladder = cards().find((c) => c.eventCode === "started");
+        expect(ladder?.inputFields?.map((f) => f.name)).toEqual(["memo"]);
+    });
+
+    it("at the ordinal whose stage set is declared, the card collects that set's fields", () => {
+        const ladder = cards([stepBy(0)]).find((c) => c.eventCode === "weighed");
+        expect(ladder?.action).toMatchObject({ stage: 1 });
+        expect(ladder?.inputFields?.map((f) => f.name)).toEqual(["grams"]);
+    });
+
+    it("a stage set past the ladder's last ordinal is offered as a witness, and no ladder ordinal is offered twice", () => {
+        const stages = cards().map((c) => (c.action.executionType === "transaction" && c.action.kind === "submit-clause-attestation" ? c.action.stage : -1));
+        expect(stages.sort()).toEqual([0, 5]);
+        const witness = cards().find((c) => c.eventCode === "stage-5");
+        expect(witness?.inputFields?.map((f) => f.name)).toEqual(["reading"]);
+    });
+});

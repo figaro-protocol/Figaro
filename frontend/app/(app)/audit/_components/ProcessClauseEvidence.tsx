@@ -16,7 +16,7 @@ import {
 } from "@/lib/audit/signatureVerdicts";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
-import { attestationEncodeOptions, attestationIsWitness, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { attestationIsWitness, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { MissingParts } from "./MissingParts";
 import type { MissingPart } from "@/lib/audit/types";
@@ -220,8 +220,9 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                 for (const att of records) {
                     if (!att.contentRef) continue;
                     // The event carries the clause KEY; spec reads key on it.
-                    // A witness only: a ladder event is not encoded over its
-                    // stage index's fields (`attestationIsWitness`).
+                    // Only content encoded over a declared stage set
+                    // (`attestationIsWitness`); a ladder event over the
+                    // top-level fields is read on the process-log timeline.
                     if (!attestationIsWitness(att.clauseId, att.stage)) continue;
                     const witnessSpec = getClauseSpec(att.clauseId);
                     if (!witnessSpec) continue;
@@ -242,7 +243,7 @@ function ClauseEvidence({ orders }: { orders: Order[] }) {
                             return;
                         }
                         try {
-                            next.set(key, decodeContentFromSpec(witnessSpec, content, attestationEncodeOptions(att.clauseId, att.stage)));
+                            next.set(key, decodeContentFromSpec(witnessSpec, content, { stage: att.stage }));
                         } catch {
                             // Garbage content — leave undecoded; the receipt row still renders.
                             next.delete(key);

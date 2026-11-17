@@ -295,11 +295,11 @@ describe("the attester keeps its own private witness content", () => {
 });
 
 /**
- * Which set a content was encoded from decides whether it is private. A
- * process-log clause's ladder event is encoded over the clause's top-level
- * fields, and its stage is the index of its event code; a witness is encoded
- * over `stages[N]`. So privacy is judged by the set the content was encoded
- * from, never by a stage index that may name another set.
+ * Which set a content was encoded from decides whether it is private. The
+ * content at stage N is encoded over `stages[N]` where the spec declares it,
+ * else over the top-level fields: the SDK's `contentFieldsFor` and the proof
+ * program apply this one rule, and a process-log clause's ladder event is no
+ * exception. So privacy is judged by the set that rule selects.
  */
 describe("privacy is judged by the set the content was encoded from", () => {
     const ORDER = `0x${"1d".repeat(32)}` as Hex;
@@ -355,29 +355,39 @@ describe("privacy is judged by the set the content was encoded from", () => {
         await loadClauseSpec(PUBLIC.clauseKey, "mem://public");
     });
 
-    const ladderEvent = () => encodeContentFromSpec(getClauseSpec(LADDER.clauseKey)!, { eventType: "picked", blinding: `0x${"5e".repeat(32)}` });
+    const ladderEvent = () => encodeContentFromSpec(getClauseSpec(LADDER.clauseKey)!, { eventType: "delivered", blinding: `0x${"5e".repeat(32)}` });
     const order = { orderHash: ORDER } as unknown as Order;
     const att = (clauseId: Hex, stage: number, content: Hex) => ({
         orderHash: ORDER, processId: `0x${"ab".repeat(32)}`, attester: "0x00000000000000000000000000000000000000a1",
         clauseId, stage, contentRef: keccak256(content), transactionHash: null, blockNumber: 3,
     });
 
-    it("a private ladder event at index 1 is kept, never published, and the evidence file lists it right", async () => {
+    it("a ladder with a private top-level set and a public stages[1]: index 1 is encoded over the public set, published and not kept; index 2 is private, kept and not published", async () => {
         window.localStorage.clear();
-        const content = ladderEvent();
-        expect(keepPrivateWitnessContent({ orderHash: ORDER, clauseId: LADDER.clauseKey, stage: 1, content })).toBe("kept");
-        const pinKeccakRawBlock = vi.fn();
-        await publishWitnessContent({ clauseId: LADDER.clauseKey, stage: 1, content, ipfs: { pinKeccakRawBlock } });
-        expect(pinKeccakRawBlock).not.toHaveBeenCalled();
-        const event = att(LADDER.clauseKey, 1, content);
-        // A builder that holds it puts it in, decoded through the ladder's set.
+        const spec = getClauseSpec(LADDER.clauseKey)!;
+        // Index 1: the stage set is declared, public, so the content is public.
+        const atOne = encodeContentFromSpec(spec, { note: "on the scale" }, { stage: 1 });
+        expect(keepPrivateWitnessContent({ orderHash: ORDER, clauseId: LADDER.clauseKey, stage: 1, content: atOne })).toBe("public");
+        expect(keptEntries()).toEqual([]);
+        const pinPublic = vi.fn().mockResolvedValue("f01551b20" + keccak256(atOne).slice(2));
+        await publishWitnessContent({ clauseId: LADDER.clauseKey, stage: 1, content: atOne, ipfs: { pinKeccakRawBlock: pinPublic } });
+        expect(pinPublic).toHaveBeenCalledExactlyOnceWith(hexToBytes(atOne));
+        expect(extractProcessLogs(order, [att(LADDER.clauseKey, 1, atOne)], () => null).missing).toEqual([]);
+        // Index 2: no stage set, so the private top-level set.
+        const atTwo = ladderEvent();
+        expect(keepPrivateWitnessContent({ orderHash: ORDER, clauseId: LADDER.clauseKey, stage: 2, content: atTwo })).toBe("kept");
+        const pinPrivate = vi.fn();
+        await publishWitnessContent({ clauseId: LADDER.clauseKey, stage: 2, content: atTwo, ipfs: { pinKeccakRawBlock: pinPrivate } });
+        expect(pinPrivate).not.toHaveBeenCalled();
+        const event = att(LADDER.clauseKey, 2, atTwo);
+        // A builder that holds it puts it in, decoded through the top-level set.
         const held = extractProcessLogs(order, [event], readHeldWitness);
         expect(held.missing).toEqual([]);
-        expect(held.logs[0].events[0].heldValues).toMatchObject({ eventType: "picked" });
+        expect(held.logs[0].events[0].heldValues).toMatchObject({ eventType: "delivered" });
         // A builder that does not hold it names it missing.
         const notHeld = extractProcessLogs(order, [event], () => null);
         expect(notHeld.missing).toContainEqual(expect.objectContaining({
-            part: expect.stringContaining(`Content of the private attestation of clause ${LADDER.clauseKey.toLowerCase()}, stage 1`),
+            part: expect.stringContaining(`Content of the private attestation of clause ${LADDER.clauseKey.toLowerCase()}, stage 2`),
         }));
     });
 

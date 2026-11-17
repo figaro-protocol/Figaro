@@ -321,7 +321,16 @@ evidence window closes at resolution (`DESIGN_DECISIONS.md` §6).
 
 Process-log ladders (clauses under the `attestations` article) are the other
 runtime-evidence shape: their stage is the enum ordinal, and no `stages` key is
-needed. A ladder event is one party's own log; evidence of a transfer between
+needed. One rule says which set an attestation's content is encoded over: at
+stage N, `stages[N]` where the spec declares it, else the top-level `fields`.
+The SDK (`contentFieldsFor` in `sdk/src/clauses/encode.ts`) and the proof
+program (`encode_content_from_spec` in `prover/clause/src/encode.rs`) apply it
+alike, and the reference frontend reads the same rule
+(`attestationContentFields` in `frontend/lib/shared/clauseSpecSource.ts`). A
+ladder clause declares no stage sets, so each of its events is encoded over its
+top-level fields; where a process-log clause does declare `stages[k]`, its
+event at ordinal k is encoded over that set, and the reference frontend's card
+at that ordinal collects that set's fields. A ladder event is one party's own log; evidence of a transfer between
 parties is filed by a party through the relevant clause's own capability.
 Whose hands the goods are in is derived by readers from the composed clauses'
 events, never stored.

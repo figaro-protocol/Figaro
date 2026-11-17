@@ -25,8 +25,7 @@ import {
 import { prepareAttestationContent } from "@figaro-protocol/sdk/agent";
 import { OrderState, type Order } from "@/lib/core/store";
 import { restoreSignedProcessId } from "@/lib/core/signedCommitment";
-import { keepPrivateWitnessContent } from "@/lib/composition/witnessContent";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { attestationContentFields, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { isBytes32Hex } from "@/lib/shared/evm";
 import type { UsageWrite } from "@/lib/protocol/useUsageRecorder";
 import { planUsageRecords, type PlannedUsageWrite, type UsagePlanEntry } from "@/lib/semantic/planUsageRecords";
@@ -197,37 +196,37 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         const spec = getClauseSpec(action.clauseKey);
         if (!spec) throw new Error(`Clause spec not loaded: ${action.clauseKey}`);
         const isLadder = action.ladderField !== undefined && action.eventCode !== undefined;
+        // Every attestation's content is encoded over the set its stage
+        // selects (`attestationContentFields`: `stages[stage]` where the spec
+        // declares it, else the top-level fields), the rule the SDK and the
+        // proof program apply; a ladder event is no exception.
+        const encodeAt = { stage: action.stage };
         let content: Hex | undefined;
-        let encodedValues: Record<string, unknown> | undefined;
         if (action.reasserts) {
             // RE-ASSERT: content stays OMITTED — the coordinator
             // defaults it to the committed clauseData, the exact
             // bytes under the checkoutHash merkle binding.
             content = undefined;
         } else if (isLadder) {
-            // LADDER: the event code plus any companion-field fills
-            // from the rail's generic form (e.g. an evidence
-            // pointer), gated by the same off-chain validator. The SDK's
-            // preflight draws the blinding value of a private set, so two
-            // events of one private value carry two content references.
-            const ladderValues = { ...(values ?? {}), [action.ladderField!]: action.eventCode };
-            ({ content, values: encodedValues } = prepareAttestationContent(spec, ladderValues));
+            // LADDER: the event code, where the encoded set declares the
+            // ladder field, plus the fills from the rail's generic form
+            // (an evidence pointer, a reading), gated by the same off-chain
+            // validator. The SDK's preflight draws the blinding value of a
+            // private set, so two events of one private value carry two
+            // content references.
+            const declaresLadder = attestationContentFields(action.clauseKey, action.stage)?.some((f) => f.name === action.ladderField) === true;
+            const ladderValues = declaresLadder ? { ...(values ?? {}), [action.ladderField!]: action.eventCode } : { ...(values ?? {}) };
+            ({ content } = prepareAttestationContent(spec, ladderValues, encodeAt));
         } else {
             // WITNESS: values from the rail's generic form, gated by the
             // same off-chain validator that gates every sign point, with a
             // private stage's blinding value drawn here.
-            ({ content, values: encodedValues } = prepareAttestationContent(spec, values ?? {}, { stage: action.stage }));
+            ({ content } = prepareAttestationContent(spec, values ?? {}, encodeAt));
         }
-        // The attester keeps its own private content, bytes and values with
-        // the blinding value, BEFORE anything is sent: a private set is never
-        // pinned, so this copy is the only one, and a crash between sending
-        // and keeping would lose it. A browser that refuses the write sends
-        // nothing. A re-assert's content is the committed clause, already
-        // held with the agreement.
-        if (content !== undefined
-            && keepPrivateWitnessContent({ orderHash: action.orderHash, clauseId: action.clauseKey, stage: action.stage, content, values: encodedValues }) === "refused") {
-            throw new Error(`This browser could not keep the private content of this ${spec.title} attestation, so it was not sent: without that copy no one could open the attestation later.`);
-        }
+        // A private set's content is kept by the attestation submitter
+        // before anything is sent (`useAttestationCoordinatorActions`), the
+        // one step every filing goes through. A re-assert's content is the
+        // committed clause, already held with the agreement.
         const args: AttestationSubmitArgs = {
             orderHash: action.orderHash as Hex,
             clauseId: action.clauseKey as Hex,

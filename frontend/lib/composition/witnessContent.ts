@@ -12,9 +12,9 @@
  * Disposition gate (FAIL-CLOSED, the committed-pin rule applied to runtime
  * content): a payload publishes only when the clause spec is loaded AND every
  * field in the set the content was encoded from (`attestationContentFields`,
- * the one selection the encoder and every reader use) is public-disposition.
- * A ladder event is encoded over the clause's top-level fields whatever its
- * stage index, so the index alone never decides. An unknown spec or any
+ * the one selection the encoder and every reader use: `stages[stage]` where
+ * the spec declares it, else the top-level fields) is public-disposition.
+ * An unknown spec or any
  * `private` field withholds — a private value's plaintext never lands on
  * public IPFS; its holder proves the fingerprint match off-chain instead.
  * The agreement format's provenance leaf (`PROVENANCE_LEAF_KEY`) has no spec:
@@ -22,7 +22,8 @@
  *
  * The private half: content whose encoded set is private is never pinned, so
  * its attester keeps the bytes (the blinding value is inside them) before
- * the attestation is sent (`keepPrivateWitnessContent`). It is kept where a
+ * the attestation is sent (`keepPrivateWitnessContent`, called by the one
+ * submitter every filing goes through, `useAttestationCoordinatorActions`). It is kept where a
  * party's device keeps its other raw evidence for a forum
  * (`deviceEvidence.ts`'s retained captures): localStorage through the one
  * storage seam, outliving the tab, one entry per witness under a key that
@@ -53,7 +54,7 @@ import {
     type CappedFetchOptions,
     type IpfsService,
 } from "@/lib/shared/ipfsService";
-import { attestationContentFields, attestationEncodeOptions, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { attestationContentFields, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { hexEqual, isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
 import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 
@@ -215,9 +216,6 @@ export function keepPrivateWitnessContent(params: {
     clauseId: Hex | string;
     stage: number;
     content: Hex;
-    /** The values the caller encoded. Never stored: every reader decodes
-     *  them from the checked bytes (`readKeptWitnessValues`). */
-    values?: Record<string, unknown>;
 }): "public" | "kept" | "refused" {
     if (!encodedSetIsPrivate(params.clauseId, params.stage)) return "public";
     const place = { ...params, contentRef: keccak256(params.content) };
@@ -237,15 +235,15 @@ export function readKeptWitnessContent(place: WitnessPlace): Anchored<Hex> | nul
 }
 
 /** The values of a kept witness, the blinding value included, decoded from
- *  its checked bytes through the set they were encoded from
- *  (`attestationEncodeOptions`); null unless the bytes check against the
+ *  its checked bytes through the set they were encoded from (`stages[stage]`
+ *  where declared, else the top-level fields: `attestationContentFields`); null unless the bytes check against the
  *  reference and decode under the clause's spec. */
 export function readKeptWitnessValues(place: WitnessPlace): Record<string, unknown> | null {
     const content = readKeptWitnessContent(place);
     const spec = content ? getClauseSpec(String(place.clauseId)) : undefined;
     if (!content || !spec) return null;
     try {
-        return decodeContentFromSpec(spec, content, attestationEncodeOptions(String(place.clauseId), place.stage));
+        return decodeContentFromSpec(spec, content, { stage: place.stage });
     } catch {
         return null;
     }

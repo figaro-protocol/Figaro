@@ -20,7 +20,8 @@ import {
     hashClauseData,
     type Commitment,
 } from "@figaro-protocol/sdk";
-import { publishWitnessContent } from "@/lib/composition/witnessContent";
+import { keepPrivateWitnessContent, publishWitnessContent } from "@/lib/composition/witnessContent";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { PartyRole } from "@/lib/core/walletProcessQueries";
 
 type AttestationInput = {
@@ -163,6 +164,19 @@ export function useAttestationCoordinatorActions() {
             // fingerprint; otherwise bind the runtime content by its hash. The
             // content preimage lives off-chain, never in calldata.
             const contentRef = content ? keccak256(content) : clauseDataHash;
+
+            // The attester keeps its own private content, the bytes with
+            // the blinding value inside them, BEFORE anything is sent: a
+            // private set is never pinned, so this copy is the only one, and
+            // a crash between sending and keeping would lose it. Every
+            // filing passes here (the capability executors and the
+            // ceremony panels), so this is the one keep. A browser that
+            // refuses the write sends nothing. A re-assert's content is the
+            // committed clause, already held with the agreement.
+            if (content && keepPrivateWitnessContent({ orderHash, clauseId, stage, content }) === "refused") {
+                const title = getClauseSpec(clauseId)?.title ?? "clause";
+                throw new Error(`This browser could not keep the private content of this ${title} attestation, so it was not sent: without that copy no one could open the attestation later.`);
+            }
 
             // Public-disposition content publishes at its fingerprint-derived
             // keccak-CID so any audit reader can resolve the values; private or

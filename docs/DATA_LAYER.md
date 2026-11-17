@@ -158,7 +158,9 @@ fields, and the blinding field").
   order the failed attempt signed may already be in a seller's hands. After
   a race, the new attempt keeps every value: the race fixed every salt and
   the deadline, so the attempt rebuilds the same orders, and the winner's
-  countersignature still matches the raced order.
+  countersignature still matches the raced order. A race reset ("Race
+  again", "Try again") empties the store, so the next race's drafts share no
+  private leaf with the structs the last race's candidates hold.
 - **It travels with the content.** It is a field of the set, so it is inside
   the committed `data` the counterparty receives in the commitment payload,
   inside the encoded bytes of a witness, and inside whatever a party discloses
@@ -187,14 +189,19 @@ Four limits, stated plainly:
    delivers it to the counterparty yet: its attester holds the only copy. The
    reference frontend keeps it in the attester's browser storage
    (`localStorage`, `keepPrivateWitnessContent` in
-   `frontend/lib/composition/witnessContent.ts`), written before the
-   attestation is sent, and refuses to send where the browser will not keep
-   it. It keeps the bytes only, one entry per attestation, and every reader
+   `frontend/lib/composition/witnessContent.ts`). The one submitter every
+   filing goes through, the rail's attestations and the ceremony panels'
+   evidence alike, writes it before the attestation is sent and refuses to
+   send where the browser will not keep it (`submitAttestation` in
+   `frontend/lib/composition/useAttestationCoordinatorActions.ts`). It keeps the bytes only, one entry per attestation, and every reader
    decodes the values, blinding value included, from the bytes it has checked
    against the content reference. A party that clears its browser's storage
    loses it: the content is its own to keep, and the evidence file is how it
    carries it out. A software agent keeps the `values` and `content` that
-   `prepareAttestationContent` returns.
+   `prepareAttestationContent` returns. Where a content delivery's stage-1
+   set is private, its evidence holds a blinding value the sender drew and
+   the encrypted delivery does not send, so the receiver cannot rehash the
+   anchor, and its page shows no verdict for it.
 4. The kept copy belongs to the browser profile, not to a wallet. Anyone who
    opens that browser profile reads the decoded private content on the order
    page and the audit page, with any wallet connected or none. A party on a
