@@ -14,9 +14,8 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/core/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, agreementRegistry: "0x00000000000000000000000000000000000a9e01" } };
 });
-vi.mock("@/lib/shared/wagmi", async () => ({
+vi.mock("@/lib/shared/publicClient", () => ({
     publicClient: {},
-    activeChain: (await import("@/lib/shared/chains")).activeChain,
 }));
 
 import { registerAgreement } from "@/lib/designer/publishAssembly";

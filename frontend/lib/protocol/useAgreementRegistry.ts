@@ -33,7 +33,7 @@ import {
 } from "@figaro-protocol/sdk";
 import { isValidAddress } from "@/lib/shared/evm";
 import { CONTRACTS } from "@/lib/core/contracts";
-import { publicClient } from "@/lib/shared/wagmi";
+import { publicClient } from "@/lib/shared/publicClient";
 import { sharedRegisterRevertMessage } from "@/lib/protocol/registryRevertMessages";
 import type { RevertMessage } from "@/lib/shared/errors";
 import { createRegistryEventScan, useDesurfaced } from "@/lib/protocol/registryEventScan";

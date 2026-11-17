@@ -25,7 +25,8 @@ import { DEFAULT_IPFS_SERVICE, extractIpfsCid, fetchCappedContent, type IpfsServ
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { getClauseSpec, loadClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/core/contracts";
-import { activeChain, publicClient } from "@/lib/shared/wagmi";
+import { activeChain } from "@/lib/shared/chains";
+import { publicClient } from "@/lib/shared/publicClient";
 import { cachedGetContractEvents } from "@/lib/core/eventCache";
 import { readStorage, removeStorage, writeStorage } from "@/lib/shared/storage";
 import { hexEqual } from "@/lib/shared/evm";

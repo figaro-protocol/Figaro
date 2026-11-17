@@ -7,7 +7,8 @@
  * wrong holder (wallet pins → wallet pays → wallet erases; readers read
  * through their own provider). These overrides are the user's, stored in
  * localStorage, consulted at call time by the IpfsService seam and at
- * config creation by wagmi (an RPC change applies on reload).
+ * module load by the public client (`publicClient.ts`), whose RPC wagmi's
+ * config also reads (an RPC change applies on reload).
  */
 import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
 import { activeChain } from "@/lib/shared/chains";

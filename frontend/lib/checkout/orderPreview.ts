@@ -19,7 +19,7 @@ import {
     type Commitment,
     type Hex,
 } from "@figaro-protocol/sdk";
-import { publicClient } from "@/lib/shared/wagmi";
+import { publicClient } from "@/lib/shared/publicClient";
 
 // ── The buyer's preview (what the confirm gate + sign flow consume) ─────────
 // Built by the checkout walk (`assemblyCheckout` drives the SDK's

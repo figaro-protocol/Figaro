@@ -50,7 +50,7 @@ vi.mock("@/lib/composition/contracts", () => ({
 // The gateway serves no content: every row stays a fingerprint, and the count
 // is the count of events.
 vi.mock("@/lib/composition/witnessContent", () => ({ fetchWitnessContent: async () => null }));
-vi.mock("@/lib/shared/wagmi", () => ({ publicClient: CLIENT, activeChain: { id: 31337 } }));
+vi.mock("@/lib/shared/publicClient", () => ({ publicClient: CLIENT }));
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => SPECS }));
 vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => NO_ASSEMBLIES }));
 vi.mock("@/lib/data/analystEndpoint", () => ({ getAnalystUrl: () => null, readAnalystStatus: async () => null, askAnalyst: async () => null }));

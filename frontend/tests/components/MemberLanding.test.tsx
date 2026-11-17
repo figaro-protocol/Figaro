@@ -151,7 +151,7 @@ describe("MemberLanding — a failed read renders nothing and takes no action", 
             refetch: () => {},
         };
         render(<MemberLanding />);
-        await screen.findByText(/ETH held for you/);
+        await screen.findByText(/0\.01 tokens held for you/);
         expect(document.body.textContent).not.toMatch(/Released/);
         expect(document.body.textContent).not.toMatch(/1970/);
     });

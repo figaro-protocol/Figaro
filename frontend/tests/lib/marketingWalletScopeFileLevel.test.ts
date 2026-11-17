@@ -10,17 +10,21 @@
  *
  * - imports `app/providers.tsx` (the `Providers` stack that mounts
  *   `WagmiProvider`), or
- * - takes `WagmiProvider` or a hook (`use…`) from `wagmi`.
+ * - takes anything from the wallet package: `wagmi`, a subpath of it
+ *   (`wagmi/connectors/injected`) or `@wagmi/…`.
  *
- * What stays allowed on a marketing path: `lib/shared/wagmi.ts`, whose
- * standalone `publicClient` the marketing pages read the chain with; it takes
- * `createConfig` from `wagmi`, which is neither a provider nor a hook.
+ * Nothing on a marketing path is allowed the wallet package: the marketing
+ * pages read the chain through the standalone `publicClient` of
+ * `lib/shared/publicClient.ts`, which imports no wallet code, and wagmi's
+ * config (`lib/shared/wagmi.ts`) and the connectors stay off the path. The
+ * walk reaching `lib/shared/publicClient.ts` is the witness that it is not
+ * empty.
  *
  * The other half: the `(app)` and `(tools)` layouts reach `Providers`, and
  * `Providers` takes `WagmiProvider` from `wagmi`.
  *
  * Proves: no static import chain from a marketing layout or page reaches the
- * wallet provider or a wagmi hook. Does not prove: anything about a dynamic
+ * wallet provider or any module of the wallet package. Does not prove: anything about a dynamic
  * `import()` (none is walked), or that a page renders without a console
  * error (the `stranger` Playwright project reads the pages in a browser).
  * Type-only imports load nothing at runtime and are not walked.
@@ -106,6 +110,10 @@ function walletEntryPoints(imp: StaticImport): string[] {
     return imp.names.filter((n) => n === "WagmiProvider" || /^use[A-Z]/.test(n));
 }
 
+/** Whether a specifier names the wallet package or one of its parts (`wagmi/connectors/injected`, `@wagmi/core`). */
+const isWalletPackage = (specifier: string) =>
+    specifier === WALLET_PACKAGE || specifier.startsWith(`${WALLET_PACKAGE}/`) || specifier.startsWith("@wagmi/");
+
 /** Every file reachable by static import from `entries`, with the chain that reached it. */
 function reachable(entries: string[]): Map<string, string[]> {
     const chains = new Map<string, string[]>();
@@ -131,21 +139,23 @@ const rel = (f: string) => path.relative(ROOT, f).split(path.sep).join("/");
 const isLayoutOrPage = (f: string) => /(^|[/\\])(layout|page)\.tsx?$/.test(f);
 
 describe("wallet-provider scope per route", () => {
-    it("no file reachable from a marketing layout or page imports the Providers stack, WagmiProvider or a wagmi hook", () => {
+    it("no file reachable from a marketing layout or page imports the Providers stack or anything from the wallet package", () => {
         const entries = sourceFiles("app/(marketing)").filter(isLayoutOrPage);
         expect(entries.length, "the marketing tree has layouts and pages").toBeGreaterThan(0);
         const chains = reachable(entries);
         // The walk reaches the shared library, so an empty result is not an empty walk.
         expect([...chains.keys()].some((f) => rel(f).startsWith("components/")), "the walk reaches components/").toBe(true);
         expect([...chains.keys()].some((f) => rel(f).startsWith("lib/")), "the walk reaches lib/").toBe(true);
+        expect([...chains.keys()].map(rel), "the walk reaches the standalone publicClient's module").toContain("lib/shared/publicClient.ts");
 
         const offenders: string[] = [];
         for (const [file, chain] of chains) {
             const route = chain.map(rel).join(" → ");
             if (file === PROVIDERS) offenders.push(`${route} (the Providers stack)`);
             for (const imp of staticImports(file)) {
-                const taken = walletEntryPoints(imp);
-                if (taken.length > 0) offenders.push(`${route} takes ${taken.join(", ")} from "${WALLET_PACKAGE}"`);
+                if (!isWalletPackage(imp.specifier)) continue;
+                const taken = imp.names === null ? "the whole module" : imp.names.join(", ");
+                offenders.push(`${route} takes ${taken} from "${imp.specifier}"`);
             }
         }
         expect(offenders).toEqual([]);

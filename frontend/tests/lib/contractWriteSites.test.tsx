@@ -70,10 +70,7 @@ vi.mock("wagmi", () => ({
     useChainId: () => 31337,
     useReadContract: () => ({ data: undefined, isLoading: false, refetch: () => {} }),
 }));
-vi.mock("@/lib/shared/wagmi", async () => {
-    const { activeChain } = await import("@/lib/shared/chains");
-    return { publicClient: {}, activeChain };
-});
+vi.mock("@/lib/shared/publicClient", () => ({ publicClient: {} }));
 vi.mock("@/lib/composition/contracts", () => ({
     getMultisender: () => "0x00000000000000000000000000000000000d1501",
     getWitnessSwapAndCommitCoordinator: () => "0x00000000000000000000000000000000000c0a01",

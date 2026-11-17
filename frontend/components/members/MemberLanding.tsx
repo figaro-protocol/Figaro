@@ -37,7 +37,11 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";
-import { formatEther } from "viem";
+import { formatToken } from "@/lib/shared/utils";
+import { activeChain } from "@/lib/shared/chains";
+
+/** A native-token amount (a stake) in the chain's own units. */
+const nativeAmount = (amount: bigint) => formatToken(amount, activeChain.nativeCurrency.decimals);
 
 
 export function MemberLanding() {
@@ -307,7 +311,7 @@ function PendingDepositNotice({ address }: { address: `0x${string}` | undefined 
                     testId="stake-reclaim-receipt"
                     prose={
                         <span className="font-semibold text-ink-heading">
-                            Your {formatEther(receipt.amount)} ETH stake is back in your wallet.
+                            Your stake is back in your wallet: {nativeAmount(receipt.amount)} tokens.
                         </span>
                     }
                     rows={[{ label: "Tx:", value: receipt.hash }]}
@@ -361,7 +365,7 @@ function PendingDepositNotice({ address }: { address: `0x${string}` | undefined 
         <Card className="p-4 mb-4 text-sm space-y-2">
             <p className="text-ink-body">
                 <span className="font-semibold text-ink-heading">
-                    {formatEther(owed)} ETH held for you.
+                    {nativeAmount(owed)} tokens held for you.
                 </span>{" "}
                 {canClaim
                     ? "The cooldown has passed — you can take it back now."
@@ -450,9 +454,9 @@ function WithdrawRow({
                 prose={
                     <>
                         <span className="font-semibold text-ink-heading">You have left the registry.</span>
-                        {" "}You are de-listed from discovery straight away. Your
-                        {" "}{deposit !== undefined ? formatEther(deposit) : "…"} ETH
-                        {" "}stake is reclaimable
+                        {" "}You are de-listed from discovery straight away. Your stake of
+                        {" "}{deposit !== undefined ? nativeAmount(deposit) : "…"} tokens
+                        {" "}is reclaimable
                         {cooldown !== undefined && cooldown > 0n
                             ? " once the cooldown has passed — come back to this page for it."
                             : " now — come back to this page for it."}
@@ -485,12 +489,13 @@ function WithdrawRow({
     }
 
     if (!confirming) {
-        const depositLabel = deposit !== undefined ? `${formatEther(deposit)} ETH` : "ETH";
+        const amount = deposit !== undefined ? nativeAmount(deposit) : undefined;
+        const depositLabel = amount !== undefined ? `stake of ${amount} tokens` : "stake";
         return (
             <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-muted">
                 <div>
                     <span className="text-ink-body">Leave the registry</span>
-                    <span className="ml-2 text-xs">De-lists you from discovery straight away; the {depositLabel} stake follows {cooldownPhrase(cooldown)}.</span>
+                    <span className="ml-2 text-xs">De-lists you from discovery straight away; the {depositLabel} follows {cooldownPhrase(cooldown)}.</span>
                 </div>
                 <Button
                     type="button"
@@ -508,7 +513,7 @@ function WithdrawRow({
     return (
         <li className="py-3 border-b border-default space-y-2 text-sm text-ink-body">
             <p className="text-xs">
-                Two steps, deliberately. This one clears your registration and de-lists you from discovery immediately — the stake is what keeps you surfaced — and you can register again at once. The {deposit !== undefined ? formatEther(deposit) : "…"} ETH stake is released separately{cooldown !== undefined && cooldown > 0n ? ", after a cooldown" : ""}; a stake that could be recycled the moment you left would not price anything. Your profile and catalog pins are unpinned as part of this step.
+                Two steps, deliberately. This one clears your registration and de-lists you from discovery immediately — the stake is what keeps you surfaced — and you can register again at once. The stake of {deposit !== undefined ? nativeAmount(deposit) : "…"} tokens is released separately{cooldown !== undefined && cooldown > 0n ? ", after a cooldown" : ""}; a stake that could be recycled the moment you left would not price anything. Your profile and catalog pins are unpinned as part of this step.
             </p>
             <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" onClick={handleWithdraw} disabled={isProcessing}>

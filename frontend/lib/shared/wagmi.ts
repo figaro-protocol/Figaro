@@ -1,51 +1,20 @@
 /**
- * wagmi.ts — wagmi config and viem public client.
+ * wagmi.ts — wagmi config, for the pages that mount the wallet stack.
  *
- * Chain definitions  → lib/shared/chains.ts
- * Wallet connectors  → lib/shared/connectors.ts
- * Dev/test shims     → lib/shared/devShims.ts
+ * Chain definitions       → lib/shared/chains.ts
+ * Standalone public client → lib/shared/publicClient.ts (imports no wallet code)
+ * Wallet connectors       → lib/shared/connectors.ts
+ * Wallet dev/test shims   → lib/shared/devShims.ts
+ *
+ * Only `app/providers.tsx` imports this module, so no marketing page loads it
+ * (docs/FRONTEND.md § "Wallet-provider scope per route").
  */
 import { createConfig } from "wagmi";
-import { createPublicClient } from "viem";
-import { activeChain, pageRecord } from "./chains";
-import { connectors } from "./connectors";
-import { mockAwareHttp, connectorFirstTransport } from "./mockTransport";
-import { readUserEndpoints } from "./userEndpoints";
-import {
-    attachDebugClient,
-    attachDevProvider,
-    attachTestSigner,
-} from "./devShims";
-
-// Re-export chain primitives so existing imports from this module keep working.
-export {   activeChain,  };
-
-// ---------------------------------------------------------------------------
-// Viem public client — used directly by hooks and window.figaroPublicClient
-// ---------------------------------------------------------------------------
-
-// The RPC transport points straight at the chain endpoint in every
-// environment — the static export has no server to proxy through, and the
-// browser reaches a CORS-permissive local Anvil / a public gateway directly.
-// The page's deployment record names the DEFAULT endpoint (`rpcUrl`: a
-// published deployment record's keyless public endpoint, or the build's own
-// NEXT_PUBLIC_RPC_URL) —
-// the user's runtime override for the page's chain (their own provider key)
-// wins, so a hosted deploy never bills every visitor's reads to the operator's
-// key. With neither, the chain's own default endpoint is read.
-// wagmi's config is created once at module load, so an override change
-// applies on the next reload.
-const userRpcOverride = readUserEndpoints().rpcUrl;
-/** The RPC this page reads: the viewer's own override for the page's chain, else its deployment's default. */
-export const siteRpcUrl =
-    userRpcOverride ??
-    pageRecord()?.rpcUrl ??
-    activeChain.rpcUrls.default.http[0];
-
-export const publicClient = createPublicClient({
-    chain: activeChain,
-    transport: mockAwareHttp(siteRpcUrl),
-});
+import { activeChain } from "./chains";
+import { connectors, connectorFirstTransport } from "./connectors";
+import { mockAwareHttp } from "./mockTransport";
+import { siteRpcUrl, userRpcOverride } from "./publicClient";
+import { attachDevProvider, attachTestSigner } from "./devShims";
 
 // ---------------------------------------------------------------------------
 // wagmi config
@@ -81,11 +50,10 @@ export const config = createConfig({
     // layer instead: connection-branching UI gates on useMounted().
 });
 
-
 // ---------------------------------------------------------------------------
-// Browser-only dev/test shims — call as side effects on module load.
-// These are no-ops outside the browser and when env vars are absent.
+// Browser-only dev/test wallet shims — call as side effects on module load.
+// These are no-ops outside the browser and when env vars are absent. The
+// debug client attaches with the public client (lib/shared/publicClient.ts).
 // ---------------------------------------------------------------------------
-attachDebugClient(siteRpcUrl);
 attachDevProvider();
 attachTestSigner();

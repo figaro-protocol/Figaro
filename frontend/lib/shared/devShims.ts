@@ -1,33 +1,29 @@
 /**
- * devShims.ts — browser-only development and test provider shims.
+ * devShims.ts — browser-only development and test wallet shims.
  *
- * This module is imported once as a side-effect by wagmi.ts.  It runs only in
- * the browser (guarded by `typeof window !== "undefined"`) and only when the
- * relevant env vars are set.  It has no effect in production builds where
- * neither NEXT_PUBLIC_DEV_ADDRESS nor NEXT_PUBLIC_USE_TEST_SIGNER is set.
+ * This module is imported once as a side-effect by wagmi.ts, so its shims
+ * attach on the pages that mount the wallet stack (the `(app)` and `(tools)`
+ * pages), never on a marketing page. It runs only in the browser (guarded by
+ * `typeof window !== "undefined"`), never in a production build, and only
+ * when the relevant env vars are set.
  *
  * Shims provided:
- *  1. Debug client  — attaches window.figaroPublicClient for browser console use.
- *  2. Dev provider  — minimal EIP-1193 provider for NEXT_PUBLIC_DEV_ADDRESS.
- *  3. Test signer   — viem WalletClient backed by NEXT_PUBLIC_TEST_PRIVATE_KEY.
+ *  1. Dev provider  — minimal EIP-1193 provider for NEXT_PUBLIC_DEV_ADDRESS.
+ *  2. Test signer   — viem WalletClient backed by NEXT_PUBLIC_TEST_PRIVATE_KEY.
+ *
+ * The debug public client, which serves reads only, is
+ * `lib/shared/debugClient.ts`, attached by `lib/shared/publicClient.ts`.
  */
 
-import { createPublicClient, createWalletClient, http, type Abi } from "viem";
+import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { localAnvil } from "./chains";
-import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 const log = (...args: unknown[]) =>
     console.log("[figaro][devShims]", ...args);
 
-type DebugClient = ReturnType<typeof createPublicClient>;
-type DebugReadContract = DebugClient["readContract"];
-type DebugReadContractArgs = Parameters<NonNullable<DebugReadContract>>[0];
 type DevSignerWallet = ReturnType<typeof createWalletClient>;
 type DevSendTransactionArgs = Parameters<DevSignerWallet["sendTransaction"]>[0];
-type DebugClientLike = Record<string, unknown> & {
-    readContract: (opts: DebugReadContractArgs) => Promise<unknown>;
-};
 function asTransactionRecord(value: unknown): Record<string, unknown> {
     return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
@@ -40,98 +36,8 @@ function toBigIntValue(value: unknown): bigint | null {
     return null;
 }
 
-function asDebugClientLike(client: DebugClient): DebugClientLike {
-    return client as unknown as DebugClientLike;
-}
-
 // ---------------------------------------------------------------------------
-// 1. Debug public client attached to window
-// ---------------------------------------------------------------------------
-/** The JSON-RPC method names a request body carries (one call or a batch), for the trace log. */
-function rpcMethodsOf(body: unknown): string[] {
-    if (typeof body !== "string") return [];
-    try {
-        const parsed = JSON.parse(body) as { method?: string } | Array<{ method?: string }>;
-        const calls = Array.isArray(parsed) ? parsed : [parsed];
-        return calls.map((c) => c?.method ?? "?");
-    } catch {
-        return [];
-    }
-}
-
-export function attachDebugClient(rpcUrl: string): void {
-    if (typeof window === "undefined") return;
-    // Parity with attachDevProvider / attachTestSigner: never ship the debug
-    // global + the global fetch monkey-patch to a production build
-    // (read-only, so not a theft risk, but it's overhead + a debug
-    // surface prod has no reason to carry).
-    if (process.env.NODE_ENV === "production") return;
-    try {
-        const client = createPublicClient({
-            chain: localAnvil,
-            transport: http(rpcUrl),
-        });
-
-        // Wrap readContract so Playwright traces capture call/response/error
-        const origRead = client.readContract;
-        if (origRead) {
-            const wrapped = async (opts: DebugReadContractArgs) => {
-                log("readContract →", opts?.address, opts?.functionName);
-                try {
-                    const res = await origRead.call(client, opts);
-                    log("readContract ←", res);
-                    return res;
-                } catch (err) {
-                    log("readContract ✗", err);
-                    throw err;
-                }
-            };
-            window.figaroPublicClient = {
-                ...(client as unknown as Record<string, unknown>),
-                readContract: wrapped,
-            };
-        } else {
-            window.figaroPublicClient = asDebugClientLike(client);
-        }
-
-        // Convenience helper: window.figaroReadFee(address, abi)
-        window.figaroReadFee = async (addr: `0x${string}`, abi: Abi | readonly unknown[]) => {
-            const c = window.figaroPublicClient ?? asDebugClientLike(client);
-            return c.readContract({ address: addr, abi, functionName: "feeRate" });
-        };
-
-        // Instrument window.fetch to surface RPC calls in Playwright traces
-        if (!window.__figaro_fetch_wrapped) {
-            const orig = window.fetch.bind(window);
-            window.fetch = async (...args: Parameters<typeof fetch>) => {
-                // The JSON-RPC method(s) in the body, so a trace reads what the page asked.
-                const methods = rpcMethodsOf(args[1]?.body);
-                if (methods.length === 0) log("fetch → (no json body)", typeof args[0], args[0] instanceof Request ? "Request" : String(args[0]).slice(0, 80), typeof args[1]?.body);
-                log("fetch →", args[0], methods);
-                const res = await orig(...args);
-                // A receipt poll's answer: null (not yet mined) or the receipt's status.
-                let note = "";
-                if (methods.includes("eth_getTransactionReceipt") || methods.includes("eth_getTransactionByHash")) {
-                    try {
-                        const body = (await safeJsonFromResponse(res.clone())) as { result?: { status?: string } | null } | Array<{ result?: { status?: string } | null }>;
-                        const first = Array.isArray(body) ? body[0] : body;
-                        note = first?.result ? `result.status=${first.result.status ?? "(tx)"}` : "result=null";
-                    } catch {
-                        note = "receipt=unreadable";
-                    }
-                }
-                log("fetch ←", String(args[0]), res.status, methods, note);
-                return res;
-            };
-            window.__figaro_fetch_wrapped = true;
-        }
-    } catch (e) {
-        log("attachDebugClient failed", e);
-    }
-}
-
-// ---------------------------------------------------------------------------
-// 2. Dev address provider (NEXT_PUBLIC_DEV_ADDRESS)
+// 1. Dev address provider (NEXT_PUBLIC_DEV_ADDRESS)
 // ---------------------------------------------------------------------------
 export function attachDevProvider(): void {
     if (typeof window === "undefined") return;
@@ -166,7 +72,7 @@ export function attachDevProvider(): void {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Test signer (NEXT_PUBLIC_USE_TEST_SIGNER + NEXT_PUBLIC_TEST_PRIVATE_KEY)
+// 2. Test signer (NEXT_PUBLIC_USE_TEST_SIGNER + NEXT_PUBLIC_TEST_PRIVATE_KEY)
 // ---------------------------------------------------------------------------
 export function attachTestSigner(): void {
     if (typeof window === "undefined") return;

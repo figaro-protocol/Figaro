@@ -72,7 +72,8 @@ import { getSwapRouter, getWitnessSwapAndCommitCoordinator } from "@/lib/composi
 import { ERC20_ABI } from "@/lib/core/contracts";
 import { isBytes32Hex } from "@/lib/shared/evm";
 import { specSource } from "@/lib/shared/clauseSpecSource";
-import { activeChain, publicClient } from "@/lib/shared/wagmi";
+import { activeChain } from "@/lib/shared/chains";
+import { publicClient } from "@/lib/shared/publicClient";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { ABSENT, PENDING, readNetwork, type NetworkRead } from "@/lib/shared/networkRead";

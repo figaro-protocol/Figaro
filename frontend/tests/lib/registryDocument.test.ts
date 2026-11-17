@@ -11,7 +11,7 @@ const io = vi.hoisted(() => ({
     bodies: new Map<string, { ok: boolean; text: string } | "throw">(),
 }));
 
-vi.mock("@/lib/shared/wagmi", () => ({ publicClient: { readContract: async () => { throw new Error("no default client in this test"); } }, activeChain: { id: 31337 } }));
+vi.mock("@/lib/shared/publicClient", () => ({ publicClient: { readContract: async () => { throw new Error("no default client in this test"); } } }));
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/shared/ipfsService")>();
     return {

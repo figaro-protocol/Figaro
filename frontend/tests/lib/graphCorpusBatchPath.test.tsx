@@ -47,7 +47,7 @@ vi.mock("@/lib/core/contracts", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/core/contracts")>()),
     CONTRACTS: { core: CORE, batchVerifier: VERIFIER },
 }));
-vi.mock("@/lib/shared/wagmi", () => ({ publicClient: CLIENT, activeChain: { id: 31337 } }));
+vi.mock("@/lib/shared/publicClient", () => ({ publicClient: CLIENT }));
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => SPECS }));
 vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => NO_ASSEMBLIES }));
 vi.mock("@/lib/composition/indexer", () => ({ getAllAttestationRecords: async () => [] }));

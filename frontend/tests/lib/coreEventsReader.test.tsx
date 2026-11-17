@@ -44,7 +44,7 @@ vi.mock("@/lib/core/indexer", async (importOriginal) => {
         getAllOrderResolved: refuse,
     };
 });
-vi.mock("@/lib/shared/wagmi", () => ({ publicClient: CLIENT, activeChain: { id: 31337 } }));
+vi.mock("@/lib/shared/publicClient", () => ({ publicClient: CLIENT }));
 vi.mock("@/lib/protocol/useClauseSpecs", () => ({ useClauseSpecs: () => SPECS }));
 vi.mock("@/lib/protocol/assemblyChoices", () => ({ useAssemblyChoices: () => NO_ASSEMBLIES }));
 vi.mock("@/lib/composition/indexer", () => ({ getAllAttestationRecords: async () => [] }));
