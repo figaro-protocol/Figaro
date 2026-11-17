@@ -15,8 +15,9 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 ///         `InvalidSigner` on mismatch. This is what makes a substituted
 ///         `swapData` provably impossible: change the route, the witness
 ///         changes, the recovered signer is not the owner. Token pull is
-///         gated on the owner having approved this contract (the standard
-///         one-time Permit2 approval). Digest parity with the canonical
+///         gated on the owner's approval of this contract for at least
+///         the requested amount (the Permit2 approval, which covers each
+///         swap's signed maximum input). Digest parity with the canonical
 ///         Permit2 deployment is proven by the mainnet-fork round-trip test,
 ///         not assumed from this mock.
 contract MockWitnessPermit2 {

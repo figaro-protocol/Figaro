@@ -113,6 +113,28 @@ pill/badge for an empty result. A resolved-empty read renders as absence; a
 is absence too: what it would have shown is not surfaced — no error text, no
 stand-in value, no assumed state.
 
+The evidence a party hands a forum is the stated exception: it is whole and says
+what it lacks. On `/audit/view` each of these is named once in the list "What
+this evidence file does not contain" (`MissingPart`,
+`frontend/lib/audit/types.ts`): the process's attestations whose read failed; an
+order's agreement whose read failed or found no agreement under its
+checkoutHash, or an order with no checkoutHash; an order's signatures whose read
+failed, or which no commit calldata and no batch carries; a clause or
+attestation whose spec was not loaded; a private clause's or private
+attestation's content this browser does not hold. For the attestations, the
+agreement and the signatures, the item's own place on the page stays empty. A
+clause whose spec was not loaded still shows, by its key and its raw field
+names. Once the process's attestations have been read, an agreement still in
+flight shows the loading line in its order's place and is not listed. A read
+that answered with nothing else (an order with no attestation) is not listed.
+The three kinds whose place stays empty are held by
+`frontend/tests/components/ReadStateFindings.test.tsx`.
+
+The sign gate refuses what it cannot read: an agreement naming a design the gate
+could not read is refused, and `/sign` shows that verdict before any signature
+(`designIssues` in `sdk/src/projection.ts`; `docs/FRONTEND.md`, the
+commitment choreography; `frontend/tests/components/SignPageFlow.test.tsx`).
+
 ---
 
 ## 2. Extending the ecosystem — bounded, versioned, spec-declared

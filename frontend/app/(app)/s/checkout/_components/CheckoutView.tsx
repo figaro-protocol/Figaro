@@ -448,6 +448,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                     listedToken: l.listedToken!,
                     listedPrice: l.listedPrice,
                 });
+                // A venue that quotes nothing for a price above zero has
+                // resolved empty: no price, the same as a failed quote.
+                if (result.amount === 0n && result.listedAmount > 0n) return [l.key, { result: null, failed: true }] as const;
                 return [l.key, { result, failed: false }] as const;
             } catch (e) {
                 // A failed quote shows nothing; the buyer may state the amount.
@@ -857,7 +860,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             return;
         }
         if (fundingBlocksTheAct(buyerFunding)) {
-            setCheckoutError("Authorize the funding token first — the one-time Permit2 approval below.");
+            setCheckoutError("Authorize the funding token first: at commit, Permit2 pulls the swap's maximum input of it, and what the swap does not use comes back to you, so the approval below must cover that maximum.");
             return;
         }
         if (marginHeld) return;
@@ -1352,6 +1355,10 @@ export function CheckoutView({ sellerAddress }: Props) {
                             </p>
                         )}
 
+                        {/* The order is placed against a bound assembly: with
+                            none bound there is nothing to order, so the
+                            button's place is empty. */}
+                        {assemblyOptions.length > 0 && (
                         <Button
                             onClick={handlePlaceOrder}
                             disabled={
@@ -1391,6 +1398,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                         ? "Fill the required terms above"
                                                         : "Place order"}
                         </Button>
+                        )}
 
                         {(checkoutError || commitError) && (
                             <p className="text-sm text-error-fg" data-testid="seller-checkout-error">
