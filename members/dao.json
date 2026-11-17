@@ -1,6 +1,6 @@
 {
   "name": "Figaro DAO",
-  "description": "The commons' treasury, met through its operator account — an EOA carrying an EIP-7702 delegation to governance-controlled code; the multisig vault authorises upstream and funds per procurement. Designer of record of figaro-commerce and of any clause donated to the commons. Identity now; the buyer side (procurement through bonded processes) and the seller side (merchandise, co-produced data) follow on this same profile.",
+  "description": "The commons' treasury, met through its operator account — an EOA carrying an EIP-7702 delegation to governance-controlled code. The multisig vault authorizes each procurement upstream and supplies its tokens. The vault, not this profile's wallet, registers figaro-commerce and the clauses the DAO develops, and claims their designer rewards. An identity today; the buyer side (procurement through bonded processes) and the seller side (merchandise, co-produced data) follow on this same profile.",
   "specialty": "commons treasury — retroactive public-goods funding",
   "acceptedTokens": [
     {

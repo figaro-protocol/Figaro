@@ -56,7 +56,7 @@ import {
 } from "@/lib/shared/ipfsService";
 import { attestationContentFields, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { hexEqual, isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
-import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
+import { readJsonStorage, removeStorage, writeJsonStorage } from "@/lib/shared/storage";
 
 export interface PublishWitnessContentParams {
     /** The clause attested — its clause key, the hash of the canonical spec
@@ -220,6 +220,13 @@ export function keepPrivateWitnessContent(params: {
     if (!encodedSetIsPrivate(params.clauseId, params.stage)) return "public";
     const place = { ...params, contentRef: keccak256(params.content) };
     return writeJsonStorage(keptKey(place), { content: params.content }) ? "kept" : "refused";
+}
+
+/** Remove the kept copy of one witness. The submitter calls it where the
+ *  attestation the copy was kept for never got a transaction hash, so no
+ *  event can ever name its place. */
+export function forgetKeptWitnessContent(place: WitnessPlace): void {
+    removeStorage(keptKey(place));
 }
 
 /** The kept bytes of a witness, checked against its content reference

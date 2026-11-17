@@ -201,7 +201,14 @@ Four limits, stated plainly:
    decodes the values, blinding value included, from the bytes it has checked
    against the content reference. A party that clears its browser's storage
    loses it: the content is its own to keep, and the evidence file is how it
-   carries it out. A software agent keeps the `values` and `content` that
+   carries it out. A filing that was kept and never landed stays on the
+   device until the site's storage is cleared, and the copy holds the content
+   and its blinding value; no page shows it, since no `Attestation` event
+   names its place. The submitter removes the copy only where no transaction
+   hash ever existed, when the simulation refuses the call or the wallet
+   rejects it, since then the content was never referenced on the chain; a
+   transaction that was sent and reverted, or whose outcome is unknown, keeps
+   it, since the party may need it. A software agent keeps the `values` and `content` that
    `prepareAttestationContent` returns. Where a content delivery's stage-1
    set is private, the sender draws its blinding value before the send and
    seals it in the encrypted delivery beside the artifact

@@ -691,9 +691,12 @@ test.describe('The stranger: the blind visitor', () => {
         await waitForReactHydration(page, '[data-testid="connect-wallet"]');
         // The two sanctioned placements (ConnectWallet's own doc comment) —
         // the header and the WalletGate body — BOTH render for the
-        // disconnected stranger; click the in-content one.
+        // disconnected stranger. On /orders the WalletGate body is the
+        // control beside the one line that says the list is one address's
+        // and none is named; click that in-content one.
         await expect(page.getByTestId('connect-wallet')).toHaveCount(2);
-        const connect = page.getByTestId('wallet-gate').getByTestId('connect-wallet');
+        await expect(page.getByTestId('orders-no-address')).toContainText('These are the orders of one address');
+        const connect = page.getByTestId('orders-no-address').getByTestId('connect-wallet');
         await expect(connect).toBeVisible();
         await expect(connect).toBeEnabled();
 
