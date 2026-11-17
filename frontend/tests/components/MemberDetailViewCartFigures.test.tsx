@@ -71,3 +71,17 @@ describe("MemberDetailView — the order summary's figures", () => {
         expect(screen.getByTestId("cart-subtotal").textContent).toBe("");
     });
 });
+
+// No wallet: `useCommerce` answers no address, and the page calls no wagmi hook
+// (the module mocks none, and wagmi throws outside its provider).
+describe("/s/view?seller= — no wallet, read present", () => {
+    it("no wallet, read present: the seller's name and catalog show, and a wallet gate holds none of them", () => {
+        m.decimals = 6;
+        render(<MemberDetailView sellerAddress={SELLER} />);
+        expect(screen.getAllByText("Test Seller").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Pizza").length).toBeGreaterThan(0);
+        for (const gate of screen.queryAllByTestId("wallet-gate")) {
+            expect(gate.textContent).not.toMatch(/Test Seller|Pizza/);
+        }
+    });
+});

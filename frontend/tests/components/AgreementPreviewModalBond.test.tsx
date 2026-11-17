@@ -7,7 +7,7 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { ZERO_BYTES32, type Commitment } from "@figaro-protocol/sdk";
+import { calculateBonds, ZERO_BYTES32, type Commitment } from "@figaro-protocol/sdk";
 
 vi.mock("wagmi", () => ({ useConnection: () => ({ chainId: 31337 }), useChainId: () => 31337 }));
 vi.mock("@/components/ui/ModalChrome", () => ({
@@ -39,5 +39,13 @@ describe("the signing modal shows the token, the payment and the bonds", () => {
         // buyer bond: twice the payment; seller bond: twice the running total
         expect(screen.getByTestId("preview-buyer-bond").textContent).toMatch(/^2 .*raw: 2000000/);
         expect(screen.getByTestId("preview-seller-bond").textContent).toMatch(/^8 .*raw: 8000000/);
+    });
+
+    it("each bond is the SDK's calculateBonds over the running total and the payment", () => {
+        const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
+        expect(bonds.sellerBond).not.toBe(commitment.payment * 2n);
+        render(<AgreementPreviewModal commitment={commitment} agreement={null} intent="sign" onConfirm={() => {}} onCancel={() => {}} />);
+        expect(screen.getByTestId("preview-seller-bond").textContent).toContain(`raw: ${bonds.sellerBond}`);
+        expect(screen.getByTestId("preview-buyer-bond").textContent).toContain(`raw: ${bonds.buyerBond}`);
     });
 });

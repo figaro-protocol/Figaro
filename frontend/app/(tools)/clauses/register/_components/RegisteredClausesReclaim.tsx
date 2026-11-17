@@ -1,11 +1,13 @@
 "use client";
 
 /**
- * RegisteredClausesReclaim — the connected wallet's registered clauses, each
- * with a stake-reclaim affordance.
+ * RegisteredClausesReclaim — one address's registered clauses, each with a
+ * stake-reclaim affordance when the connected wallet registered it.
  *
- * Derived from chain events only: `useRegisteredClausesByWallet` filters
- * `ClauseRegistered` to `registeredBy == connected wallet` and folds
+ * The address is the connected wallet's or the one `?wallet=0x…` names
+ * (`OneAddressList`); with neither, the list's place says so and reads
+ * nothing. Derived from chain events only: `useRegisteredClausesByWallet`
+ * filters `ClauseRegistered` to `registeredBy == subject` and folds
  * `DepositWithdrawn` in as `stakeWithdrawn` (the wallet-scoped read KEEPS
  * withdrawn rows, flagged). The article is read from the warm clause-spec cache
  * (`block.design.article`) — never a stored field. Each row is the shared
@@ -14,13 +16,12 @@
  * VERIFIED in-flight trades compose the clause and surfaces the party-private
  * caveat otherwise — the same pattern as ViewAssemblyClient's reclaim.
  *
- * States are `RegistryListState`'s: wallet, loading, failed (nothing), empty, list.
+ * States are `RegistryListState`'s: loading, failed (nothing), empty, list.
  */
 
 import { useEffect, useRef } from "react";
 import Link from "@/components/shared/Link";
-import { useAccount } from "wagmi";
-import { RegistryListState } from "@/components/shared/RegistryListState";
+import { OneAddressList, RegistryListState, type ListedAddress } from "@/components/shared/RegistryListState";
 import { useRegistryWriteVersion } from "@/lib/protocol/registryWrites";
 import type { RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useRegisteredClausesByWallet } from "@/lib/protocol/useRegisterClause";
@@ -29,10 +30,18 @@ import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { ReclaimStakeRow } from "@/components/registries/ReclaimStakeRow";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { hexEqual } from "@/lib/shared/evm";
 
 export function RegisteredClausesReclaim() {
-    const { address } = useAccount();
-    const { read, refetch } = useRegisteredClausesByWallet(address);
+    return (
+        <OneAddressList testId="clauses-reclaim" what="registered clauses" publicHref="/registries?family=clauses">
+            {(listed) => <ClauseReclaimRows {...listed} />}
+        </OneAddressList>
+    );
+}
+
+function ClauseReclaimRows({ subject, signer }: ListedAddress) {
+    const { read, refetch } = useRegisteredClausesByWallet(subject);
     const { withdraw } = useWithdrawClause();
     // A registration confirmed by the form above is a write this scan ran
     // before: read the events again when the write signal changes.
@@ -51,15 +60,14 @@ export function RegisteredClausesReclaim() {
         <RegistryListState
             read={read}
             testId="clauses-reclaim"
-            walletHint="Connect a wallet to see the clauses you registered."
-            loading="Loading your registered clauses…"
-            empty={
+            loading="Loading the registered clauses…"
+            empty={!signer ? "This address has registered no clauses." : (
                 <>
                     You haven&apos;t registered any clauses yet. Paste a spec above, or browse the{" "}
                     <Link href="/clauses" className="underline">protocol-tier clauses</Link>{" "}
                     to see what&apos;s in force.
                 </>
-            }
+            )}
         >
             {(data) => (
                 <ul className="space-y-3" data-testid="clauses-reclaim-list">
@@ -69,6 +77,7 @@ export function RegisteredClausesReclaim() {
                             clause={clause}
                             withdraw={withdraw}
                             onReclaimed={refetch}
+                            signerIsRegistrant={hexEqual(clause.registeredBy, signer)}
                         />
                     ))}
                 </ul>
@@ -81,10 +90,12 @@ function ReclaimClauseRow({
     clause,
     withdraw,
     onReclaimed,
+    signerIsRegistrant,
 }: {
     clause: RegisteredClauseEvent;
     withdraw: (key: `0x${string}`) => Promise<unknown>;
     onReclaimed: () => void;
+    signerIsRegistrant: boolean;
 }) {
     // The row's labels are the spec's own: a spec that declares no article
     // shows none, and a spec not resolved names nothing — never a placeholder.
@@ -100,6 +111,7 @@ function ReclaimClauseRow({
             stakeWithdrawn={clause.stakeWithdrawn}
             withdraw={withdraw}
             onReclaimed={onReclaimed}
+            signerIsRegistrant={signerIsRegistrant}
         />
     );
 }

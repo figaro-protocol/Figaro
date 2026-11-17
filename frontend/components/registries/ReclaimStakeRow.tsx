@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ReclaimStakeRow — one registration of the connected wallet, with its
+ * ReclaimStakeRow — one registration of the address a list shows, with its
  * stake-reclaim affordance (`withdrawDeposit` on the family's registry).
  *
  * The one row shape for every staked-intent family a designer of record lists
@@ -12,6 +12,10 @@
  * (loading / chain-read failure), and the party-private caveat is shown
  * otherwise. The caller supplies the family's withdraw hook's `withdraw`, so
  * each registry's own revert copy surfaces.
+ *
+ * A list may show another address's registrations (`?wallet=0x…`): the row
+ * then reads the same, and offers no reclaim and no caveat about one, since
+ * only the registrant signs `withdrawDeposit` (`signerIsRegistrant`).
  *
  * Test ids are `${family}-reclaim-row-${key}`, `${family}-reclaim-state-${key}`,
  * `${family}-withdraw-button`, `${family}-withdraw-caveat`,
@@ -39,6 +43,7 @@ export function ReclaimStakeRow({
     stakeWithdrawn,
     withdraw,
     onReclaimed,
+    signerIsRegistrant,
 }: {
     /** The registry family's noun, in the test ids and the copy. */
     family: "clause" | "agreement";
@@ -51,6 +56,8 @@ export function ReclaimStakeRow({
     stakeWithdrawn: boolean;
     withdraw: (key: `0x${string}`) => Promise<unknown>;
     onReclaimed: () => void;
+    /** Whether the connected wallet registered this row: the one that may reclaim. */
+    signerIsRegistrant: boolean;
 }) {
     const { gate } = useWithdrawGate(target);
     const [withdrawing, setWithdrawing] = useState(false);
@@ -60,7 +67,7 @@ export function ReclaimStakeRow({
     const withdrawn = stakeWithdrawn || locallyWithdrawn;
     // Unverifiable in-flight trades are informational only (party-private terms),
     // never disabling — shown while the reclaim is still available.
-    const caveat = !withdrawn ? withdrawUnverifiedCaveat(gate) : null;
+    const caveat = signerIsRegistrant && !withdrawn ? withdrawUnverifiedCaveat(gate) : null;
 
     async function handleWithdraw() {
         setWithdrawing(true);
@@ -96,7 +103,7 @@ export function ReclaimStakeRow({
                     </p>
                 </div>
                 {/* A gate that could not be read offers no reclaim at all. */}
-                {(withdrawn || gate.status !== "absent") && <Button
+                {signerIsRegistrant && (withdrawn || gate.status !== "absent") && <Button
                     type="button"
                     variant="outline"
                     size="compact"

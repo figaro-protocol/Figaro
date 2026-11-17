@@ -15,11 +15,30 @@
  *     page (nav and footer included) and visit each route exactly once. Per
  *     page: HTTP status < 400, ZERO console errors and page errors
  *     (listeners attached before navigation; hydration awaited the way
- *     `waitForReactHydration` does), and a non-empty <main> or <h1>. A
- *     client-rendered page showing a loading shell is fine — the assertion
- *     is no errors, not content.
+ *     `waitForReactHydration` does), and a non-empty <main> or <h1>, waited
+ *     for until the navigation budget runs out, never judged after a fixed
+ *     delay. A page of `app/(app)` or `app/(tools)` whose <main> holds
+ *     nothing outside the wallet gate (`WalletGate`'s disconnected branch) is
+ *     a finding: the wallet signs, it is never a login (docs/FRONTEND.md
+ *     § "Wallet-provider scope per route").
+ *     A page that names its subject in the address (`QueryParamPage`: a
+ *     process id, a seller's wallet, a design's slug) renders nothing for a
+ *     missing or malformed subject, by the open-world rule. The crawl reads
+ *     which pages these are, and their parameter, from the app's source; it
+ *     keeps the query of every link to one, visits each bare and with a
+ *     well-formed subject taken from the unit tests' fixtures, and judges
+ *     neither by its content: a subject the network does not hold is
+ *     absence, never a blank page. `/evidence-display` reads its subject
+ *     from a link a forum composes (docs/FRONTEND.md, "Deliberate orphan");
+ *     it is visited with that link's two required parameters.
+ *  0. THE PRECONDITION — on the devnet, the chain the build reads answers
+ *     before the crawl starts. A chain that is down makes every app page's
+ *     read fail, and the browser logs each refused request as a console
+ *     error: those are faults of the run, not of the site, so the run stops
+ *     with one line instead.
  *  2. COMPLETENESS — the static export's own route list (every `index.html`
- *     under the dist dir) is the census; EVERY route is visited, so the
+ *     under the dist dir) is the census, and the crawl fails when the export
+ *     is missing; EVERY route is visited, so the
  *     status/console gates run on all of them. The reachability bar follows
  *     the repo's own seams, each derived at test time, none stored here:
  *       - a route whose page declares `rel="canonical"` pointing at a
@@ -38,7 +57,12 @@
  *     rel="noopener noreferrer" wherever target="_blank".
  *  4. SAME-ORIGIN ASSETS (linked files, and the /sdk-api typedoc bundle —
  *     generated vendor HTML, not app routes) — status-checked once each,
- *     not crawled into.
+ *     not crawled into. A paper's PDF (`/papers/<slug>/<slug>.pdf`) is
+ *     written after the export by `scripts/build-paper-pdfs.mjs`, which
+ *     skips itself on the e2e harness build (`FIGARO_ALLOW_TEST_HELPERS=1`,
+ *     never a deploy). When the export holds no paper PDF at all, the build
+ *     skipped the step, and the PDF links are reported as an annotation,
+ *     not checked; `npm run check:paper-pdfs` is the check of a real build.
  *  5. THE DOCS-SITE (`/docs/…`) — a separate build served under `/docs` on
  *     the same host, absent from this export: skipped, neither crawled nor
  *     status-checked; the docs-site's own build owns its routes.
@@ -58,13 +82,33 @@ import {
 } from '../../components/shared/navLinks';
 import { waitForReactHydration } from './test-helpers';
 import { exportDistDir, exportedRoutes } from './exportCensus';
+import { E2E_CHAIN, RPC_URL } from './devnet-helpers';
+import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 
 /** One defect the blind visitor hit, attributed to the page that produced it. */
 interface Finding {
     route: string;
-    kind: 'http-status' | 'console-error' | 'page-error' | 'hydration' | 'empty-page' | 'external-href' | 'asset';
+    kind: 'http-status' | 'console-error' | 'page-error' | 'hydration' | 'empty-page' | 'wallet-as-login' | 'external-href' | 'asset';
     detail: string;
 }
+
+/**
+ * A well-formed subject for each of `QueryParamPage`'s validators, taken from
+ * the unit tests' fixtures: the process id the read-state tests use
+ * (`tests/components/AppPagesReadStates.test.tsx`), an Anvil account
+ * (`tests/anvilAccounts.ts`), and a slug. Each names nothing the network has
+ * to hold: the page reads it and renders what the network answers.
+ */
+const SUBJECT_FIXTURES: Record<string, string> = {
+    processIdParam: `0x${'5e'.repeat(32)}`,
+    walletParam: ANVIL_ACCOUNTS[1],
+    slugParam: 'devnet-seed',
+};
+
+/** The pages that read their subject from the address themselves, and the query a forum's link carries. */
+const SELF_READ_SUBJECTS: Record<string, string> = {
+    '/evidence-display': `processId=${SUBJECT_FIXTURES.processIdParam}&arbitrableJsonRpcUrl=${encodeURIComponent(RPC_URL)}`,
+};
 
 const NAV_TIMEOUT = 20_000;
 /** Parallel tabs in the one shared context — the crawl's only batching knob. */
@@ -143,7 +187,12 @@ function normalizeRoute(pathname: string): string {
     return p === '' ? '/' : p;
 }
 
-function classify(href: string, origin: string): Classified {
+/**
+ * `subjects` names the pages that read their subject from the query: a link
+ * to one keeps its query, so the page is visited with the subject the link
+ * names. Every other link is visited by its path alone.
+ */
+function classify(href: string, origin: string, subjects: ReadonlyMap<string, string> = new Map()): Classified {
     if (!href || href.startsWith('#')) return { kind: 'skip' };
     let url: URL;
     try {
@@ -167,8 +216,43 @@ function classify(href: string, origin: string): Classified {
     if (route.startsWith('/sdk-api') || route.startsWith('/_next') || /\.[a-z0-9]{2,5}$/i.test(route)) {
         return { kind: 'asset', path: route };
     }
+    if (subjects.has(route) && url.search) return { kind: 'route', route: route + url.search };
     return { kind: 'route', route };
 }
+
+/**
+ * The pages of `app/(app)` and `app/(tools)` that name their subject in the
+ * address through `QueryParamPage`, read from each page's source: route →
+ * the query that names a well-formed subject (`SUBJECT_FIXTURES`), and the
+ * pages that read their subject themselves (`SELF_READ_SUBJECTS`).
+ */
+function subjectRoutes(appDir: string): Map<string, string> {
+    const out = new Map<string, string>();
+    const walk = (dir: string, rel: string) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            if (entry.isDirectory()) {
+                const isGroup = entry.name.startsWith('(') && entry.name.endsWith(')');
+                walk(path.join(dir, entry.name), isGroup ? rel : `${rel}/${entry.name}`);
+            } else if (entry.name === 'page.tsx') {
+                const source = fs.readFileSync(path.join(dir, entry.name), 'utf8');
+                const m = source.match(/<QueryParamPage\s+param="(\w+)"\s+validate=\{(\w+)\}/);
+                if (!m) continue;
+                const fixture = SUBJECT_FIXTURES[m[2]];
+                if (fixture === undefined) throw new Error(`${rel}: QueryParamPage validates with ${m[2]}, which has no fixture in SUBJECT_FIXTURES`);
+                out.set(rel, `${m[1]}=${encodeURIComponent(fixture)}`);
+            }
+        }
+    };
+    for (const group of ['(app)', '(tools)']) walk(path.join(appDir, group), '');
+    for (const [route, query] of Object.entries(SELF_READ_SUBJECTS)) {
+        if (!routesOfGroups(appDir, ['(app)', '(tools)']).has(route)) throw new Error(`${route} is no longer a page of the app`);
+        out.set(route, query);
+    }
+    return out;
+}
+
+/** The route a visit key names: its path without the query. */
+const pathOfVisit = (key: string): string => key.split('?')[0];
 
 /**
  * The routes the named parenthesized route groups own, derived from the app
@@ -211,11 +295,19 @@ function canonicalPathOf(distDir: string, route: string): string | null {
     }
 }
 
+/** What a visit judges beyond status, console and hydration. */
+interface VisitRules {
+    /** The page must show content: a non-empty <main> or <h1>. */
+    content: boolean;
+    /** The page is the wallet's (`app/(app)`, `app/(tools)`): its <main> must hold more than the wallet gate. */
+    walletTier: boolean;
+}
+
 /** A crawl worker: one tab, its console/pageerror listeners attached once. */
 interface Worker {
     page: Page;
     current: { route: string };
-    visit(route: string): Promise<RawLink[]>;
+    visit(route: string, rules: VisitRules): Promise<RawLink[]>;
 }
 
 async function makeWorker(context: BrowserContext, findings: Finding[]): Promise<Worker> {
@@ -232,7 +324,7 @@ async function makeWorker(context: BrowserContext, findings: Finding[]): Promise
         findings.push({ route: current.route, kind: 'page-error', detail: String(err) });
     });
 
-    const visit = async (route: string): Promise<RawLink[]> => {
+    const visit = async (route: string, rules: VisitRules): Promise<RawLink[]> => {
         current.route = route;
         let response;
         try {
@@ -248,17 +340,39 @@ async function makeWorker(context: BrowserContext, findings: Finding[]): Promise
         }
         const hydration = await waitForAnyHydration(page);
         if (hydration) findings.push({ route, kind: 'hydration', detail: hydration });
+
+        // Content is waited for, not sampled after a delay: a page that reads
+        // the network renders as its reads land. A page with neither a
+        // non-empty <main> nor an <h1> by the end of the budget rendered nothing.
+        if (rules.content) {
+            const hasContent = await page
+                .waitForFunction(() => {
+                    const main = document.querySelector('main');
+                    const h1 = document.querySelector('h1');
+                    return Boolean(main?.textContent?.trim() || h1?.textContent?.trim());
+                }, undefined, { timeout: NAV_TIMEOUT })
+                .then(() => true, () => false);
+            if (!hasContent) {
+                findings.push({ route, kind: 'empty-page', detail: `no non-empty <main> and no <h1> within ${NAV_TIMEOUT}ms` });
+            }
+        }
+        // Late console errors land on their own page before the next navigation.
         await page.waitForTimeout(SETTLE_MS);
 
-        // A loading shell is fine; a page with neither a non-empty <main>
-        // nor an <h1> rendered nothing at all.
-        const hasContent = await page.evaluate(() => {
-            const main = document.querySelector('main');
-            const h1 = document.querySelector('h1');
-            return Boolean(main?.textContent?.trim() || h1?.textContent?.trim());
-        });
-        if (!hasContent) {
-            findings.push({ route, kind: 'empty-page', detail: 'no non-empty <main> and no <h1> rendered' });
+        // The wallet signs; it is never a login. A wallet-tier page whose
+        // <main> holds nothing but the wallet gate withholds its reads.
+        if (rules.walletTier) {
+            const outsideGate = await page.evaluate(() => {
+                const main = document.querySelector('main');
+                if (!main) return '';
+                const copy = main.cloneNode(true) as HTMLElement;
+                copy.querySelectorAll('[data-testid="wallet-gate"]').forEach((gate) => gate.remove());
+                return copy.textContent?.trim() ?? '';
+            });
+            const hasGate = await page.locator('main [data-testid="wallet-gate"]').count();
+            if (hasGate > 0 && outsideGate === '') {
+                findings.push({ route, kind: 'wallet-as-login', detail: 'the page shows nothing but the wallet gate to a visitor with no wallet' });
+            }
         }
 
         return page.evaluate(() =>
@@ -279,14 +393,37 @@ test.describe('The stranger: the blind visitor', () => {
         expect(baseURL, 'the config supplies baseURL').toBeTruthy();
         const origin = new URL(baseURL!).origin;
 
+        // ── The precondition (spec header §0) ──
+        if (E2E_CHAIN === 'devnet') {
+            const answer = await context.request
+                .post(RPC_URL, { data: { jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] } })
+                .then((r) => r.ok(), () => false);
+            expect(answer, `the chain the build reads (${RPC_URL}) does not answer: start it (scripts/devup.sh) before the crawl`).toBe(true);
+        }
+
+        // The census and the app's own source, both read before the crawl.
+        const distDir = exportDistDir();
+        expect(fs.existsSync(distDir), `the static export is missing at ${distDir}: the webServer builds it`).toBe(true);
+        const appDir = path.resolve(__dirname, '../../app');
+        const runtimeTiers = routesOfGroups(appDir, ['(app)', '(tools)']);
+        const subjects = subjectRoutes(appDir);
+        const rulesFor = (key: string): VisitRules => ({
+            content: !subjects.has(pathOfVisit(key)),
+            walletTier: runtimeTiers.has(pathOfVisit(key)),
+        });
+
         const findings: Finding[] = [];
         const visited = new Set<string>();
         const queue: string[] = [];
-        const enqueue = (route: string) => {
-            if (!visited.has(route)) {
-                visited.add(route);
-                queue.push(route);
+        const enqueue = (key: string) => {
+            if (!visited.has(key)) {
+                visited.add(key);
+                queue.push(key);
             }
+            // A page that names its subject in the address is visited with a
+            // well-formed one as well as bare.
+            const subject = subjects.get(key);
+            if (subject !== undefined) enqueue(`${key}?${subject}`);
         };
         const assets = new Set<string>();
         /** external href → the pages carrying it + the worst attributes seen */
@@ -298,7 +435,7 @@ test.describe('The stranger: the blind visitor', () => {
 
         const ingest = (fromRoute: string, links: RawLink[]) => {
             for (const link of links) {
-                const c = classify(link.href, origin);
+                const c = classify(link.href, origin, subjects);
                 if (c.kind === 'route') enqueue(c.route);
                 else if (c.kind === 'asset') assets.add(c.path);
                 else if (c.kind === 'external') {
@@ -326,12 +463,12 @@ test.describe('The stranger: the blind visitor', () => {
             ...NAV_LINKS_MARKETING_DRAWER,
             ...MARKETING_MAP.flatMap((clauseEntry) => clauseEntry.links),
         ]) {
-            const c = classify(link.href, origin);
+            const c = classify(link.href, origin, subjects);
             if (c.kind === 'route') enqueue(c.route);
         }
         while (queue.length > 0) {
             const batch = queue.splice(0, workers.length);
-            const results = await Promise.all(batch.map((route, i) => workers[i].visit(route)));
+            const results = await Promise.all(batch.map((route, i) => workers[i].visit(route, rulesFor(route))));
             batch.forEach((route, i) => ingest(route, results[i]));
         }
 
@@ -340,21 +477,28 @@ test.describe('The stranger: the blind visitor', () => {
         expect(visited.size, 'the transitive crawl reached a real route set').toBeGreaterThan(50);
 
         // ── Completeness: the export's own census vs. what crawling reached ──
-        const distDir = exportDistDir();
         const unreachable: string[] = [];
-        if (fs.existsSync(distDir)) {
+        {
             const unreached = exportedRoutes(distDir).filter((r) => !visited.has(r));
             // Still gate every unreached route — a stranger can land on any of
             // them from a shared URL, so status/console/content run either way.
             for (let i = 0; i < unreached.length; i += workers.length) {
                 const batch = unreached.slice(i, i + workers.length);
-                const results = await Promise.all(batch.map((route, j) => workers[j].visit(route)));
+                const results = await Promise.all(batch.map((route, j) => workers[j].visit(route, rulesFor(route))));
                 batch.forEach((route, j) => ingest(route, results[j]));
+            }
+            // A page that names its subject in the address, reached only by the
+            // census, is visited with a well-formed subject too.
+            const withSubject = unreached.filter((r) => subjects.has(r)).map((r) => `${r}?${subjects.get(r)}`).filter((k) => !visited.has(k));
+            for (let i = 0; i < withSubject.length; i += workers.length) {
+                const batch = withSubject.slice(i, i + workers.length);
+                batch.forEach((key) => visited.add(key));
+                const results = await Promise.all(batch.map((key, j) => workers[j].visit(key, rulesFor(key))));
+                batch.forEach((key, j) => ingest(key, results[j]));
             }
             // The reachability bar, by the repo's own seams (spec header §2):
             // aliases and wallet-scope runtime surfaces are reported, never
             // failed; a marketing-tier route nothing links is a failure.
-            const runtimeTiers = routesOfGroups(path.resolve(__dirname, '../../app'), ['(app)', '(tools)']);
             const aliases: string[] = [];
             const walletScoped: string[] = [];
             for (const route of unreached) {
@@ -372,7 +516,22 @@ test.describe('The stranger: the blind visitor', () => {
         }
 
         // ── Same-origin linked assets: status only, one request each ──
+        // A paper's PDF is written after the export, and the harness build
+        // skips that step (spec header §4): an export holding no paper PDF at
+        // all is such a build, and its PDF links are reported, not checked.
+        const PAPER_PDF = /^\/papers\/([^/]+)\/\1\.pdf$/;
+        const papersDir = path.join(distDir, 'papers');
+        const exportHasPaperPdfs = fs.existsSync(papersDir) && fs.readdirSync(papersDir, { withFileTypes: true })
+            .some((d) => d.isDirectory() && fs.existsSync(path.join(papersDir, d.name, `${d.name}.pdf`)));
+        const unwrittenPdfs = exportHasPaperPdfs ? [] : [...assets].filter((a) => PAPER_PDF.test(a));
+        if (unwrittenPdfs.length > 0) {
+            test.info().annotations.push({
+                type: 'paper PDFs not checked: this export holds none, so its build skipped the PDF step (npm run check:paper-pdfs checks a real build)',
+                description: unwrittenPdfs.join(', '),
+            });
+        }
         for (const asset of assets) {
+            if (unwrittenPdfs.includes(asset)) continue;
             const response = await workers[0].page.request.get(origin + asset);
             if (response.status() >= 400) {
                 findings.push({ route: asset, kind: 'asset', detail: `linked file answers HTTP ${response.status()}` });

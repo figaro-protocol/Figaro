@@ -1149,8 +1149,12 @@ Per workflow, what it runs and when:
   scheduled run here) and on a dispatch with `suite=full`, the same job runs
   the whole `devnet` project through `npm run test:e2e:devnet` in place of
   the spine spec — every runtime devnet spec after the `devnet-authoring`
-  wizard, under a 120-minute budget. The `devnet-standalone` and `stranger`
-  projects run on a laptop.
+  wizard. Either scope then runs the `stranger` project's crawl
+  (`crawl.stranger.spec.ts`) against a fresh export and the seeded chain, so
+  every pull request that touches `frontend/` runs it; the budget is 50
+  minutes for the spine and 140 for the full scope. The `devnet-standalone`
+  project and the `stranger` project's `accessibility.stranger.spec.ts` run on
+  a laptop.
 - **`Dependency Audit CI`** — push/PR, NOT path-filtered: three npm-audit legs (root
   production deps at high+; frontend production deps at critical-only, through
   `scripts/audit-frontend.mjs`, which sets aside by id the advisories named in

@@ -1,6 +1,6 @@
 import { Order, OrderState } from "@/lib/core/store";
 import type { Agreement } from "@figaro-protocol/sdk";
-import { clauseByField, isProcessRoot } from "@figaro-protocol/sdk";
+import { calculateResolution, clauseByField, isProcessRoot } from "@figaro-protocol/sdk";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { ProcessSummary } from "@/lib/core/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
@@ -434,11 +434,14 @@ function deriveResolutionBreakdown(order: Order, follows: string[] | null, addre
         },
         // What resolution refunds to THIS party: the seller's bond whole; the
         // buyer's bond less the payment it carried — the payment transfers to
-        // the seller in the same call. A receipt that printed the locked
-        // amount as the refund read 6 for a 3 MOCK order (beta panel r4).
+        // the seller in the same call, so the buyer's figure is the SDK's
+        // `calculateResolution(...).buyerPayout`. A receipt that printed the
+        // locked amount as the refund read 6 for a 3 MOCK order (beta panel r4).
         settledAvailable: {
             label: isBuyer ? "Buyer bond refunded" : "Seller bond refunded",
-            amount: isBuyer ? order.buyerBond - order.payment : order.sellerBond,
+            amount: isBuyer
+                ? calculateResolution(order.payment, order.sellerBond, order.buyerBond).buyerPayout
+                : order.sellerBond,
             source: {
                 truthClass: "protocol-derived",
                 sourceLabel: isBuyer ? "buyer bond less the payment it carried" : "seller bond, refunded whole",

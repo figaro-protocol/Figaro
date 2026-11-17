@@ -92,6 +92,22 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
     return { profileMetadata };
 }
 
+type DraftState = ReturnType<typeof useOnboardingState>["state"];
+
+/** Whether the draft holds anything the review shows. A visitor with no wallet
+ *  reads the anonymous draft, which is empty once a wallet has adopted it:
+ *  an empty draft is an empty place, never an "incomplete" error. */
+function draftShowsNothing(state: DraftState): boolean {
+    const p = state.profile;
+    const profileEmpty = !p || !(p.name || p.specialty || p.description || p.location?.geohash
+        || p.location?.addressText || p.branding?.logoURI || (p.acceptedTokens ?? []).length > 0);
+    return profileEmpty
+        && (state.catalog?.items ?? []).length === 0
+        && (state.assemblies ?? []).length === 0
+        && (state.buyerAssemblies ?? []).length === 0
+        && !(state.services && Object.values(state.services).some(Boolean));
+}
+
 export function OnboardingReview() {
     const router = useRouter();
     const mounted = useMounted();
@@ -172,18 +188,11 @@ export function OnboardingReview() {
         return <OnboardingLoadingCard />;
     }
 
-    if (!isConnected) {
-        return (
-            <Card className="p-6 space-y-4">
-                <p className="text-sm text-ink-body">Connect a wallet to publish your registration.</p>
-                <Link href="/members/identity">
-                    <Button variant="outline">← Back to identity</Button>
-                </Link>
-            </Card>
-        );
-    }
+    // With no wallet the review reads the anonymous draft as it stands and the
+    // registry's stake; only the publish needs the wallet, which signs it.
+    const signer = isConnected ? address : undefined;
 
-    if (error) {
+    if (signer && error) {
         return (
             <Card className="p-6 space-y-4">
                 <p className="text-sm text-error-fg" role="alert">{error}</p>
@@ -237,15 +246,19 @@ export function OnboardingReview() {
         );
     }
 
-    const profile = "profileMetadata" in draft ? draft.profileMetadata : undefined;
+    // The preview is the draft as it stands, the wallet's or the anonymous one;
+    // the subject address is the signer's and is added only at publish.
+    const profile = state.profile;
     const items = state.catalog?.items ?? [];
     const acceptedTokens = profile?.acceptedTokens ?? [];
-    const bindings = profile?.assemblyBindings ?? [];
-    const subscriptions = profile?.buyerAssemblies ?? [];
-    const hasServices = profile?.services && Object.values(profile.services).some(Boolean);
+    const bindings = state.assemblies ?? [];
+    const subscriptions = state.buyerAssemblies ?? [];
+    const hasServices = state.services && Object.values(state.services).some(Boolean);
+    const showDraft = !!signer || !draftShowsNothing(state);
 
     return (
         <div className="space-y-8">
+            {showDraft && <>
             {/* Hero: the member page's header analog */}
             <Card className="p-6 space-y-4">
                 <div className="flex items-start justify-between gap-4">
@@ -396,9 +409,26 @@ export function OnboardingReview() {
                     {hasServices ? "Configured." : "None declared. Nothing can route offers or calls to this wallet directly; nothing else changes."}
                 </p>
             </Card>
+            </>}
 
-            {/* Publish — only once the registry has answered. */}
-            {registrationKnown && <Card className="p-6 space-y-3">
+            {/* No wallet: whether publishing would be a first registration or an
+                update is the registry's answer for a wallet, unknown until one
+                connects; the stake a registration places is read with none. */}
+            {!signer && deposit !== undefined && <Card className="p-6 space-y-3" data-testid="review-registration-stake">
+                <h2 className="text-heading-h2 text-ink-heading">Registration stake</h2>
+                <p className="text-sm text-ink-body">
+                    Stake:{" "}
+                    <span className="font-semibold text-ink-heading">
+                        {formatToken(deposit, activeChain.nativeCurrency.decimals)} tokens
+                    </span>
+                    {" "}— a first registration places it on the MembersRegistry, and the
+                    member gets it back on leaving the registry, {cooldown}. An update of a
+                    registered profile places none.
+                </p>
+            </Card>}
+
+            {/* Publish — only once the registry has answered for the signer. */}
+            {signer && registrationKnown && <Card className="p-6 space-y-3">
                 <h2 className="text-heading-h2 text-ink-heading">
                     {isRegistered ? "Update your registered profile" : "Publish"}
                 </h2>
@@ -458,7 +488,7 @@ export function OnboardingReview() {
                 >
                     ← Back to wizard
                 </Link>
-                {registrationKnown && (
+                {signer && registrationKnown && (
                     <Button
                         type="button"
                         onClick={handlePublish}
@@ -467,6 +497,16 @@ export function OnboardingReview() {
                     >
                         {isRegistered ? "Update profile" : "Publish & register"}
                     </Button>
+                )}
+                {!signer && (
+                    <div className="flex items-center gap-3">
+                        <p className="text-xs text-ink-muted" data-testid="review-publish-needs-wallet">
+                            The wallet that registers signs the publish: connect one to publish this draft.
+                        </p>
+                        <Button type="button" disabled data-testid="review-confirm-publish">
+                            Publish
+                        </Button>
+                    </div>
                 )}
             </div>
         </div>

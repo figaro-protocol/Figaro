@@ -46,6 +46,7 @@ vi.mock("@/hooks/useTokenApproval", () => ({
 }));
 
 import { YourTurnCard } from "@/app/(app)/orders/_components/OrdersList";
+import { tokenFigure } from "@/lib/shared/utils";
 
 const PAYMENT = 25_000_000n;
 const CUMULATIVE = 40_000_000n; // a sub-order: the seller bond is 2 × cumulative, the buyer bond 2 × payment
@@ -126,6 +127,20 @@ describe("YourTurnCard accept as the buyer — a seller-initiated order pulls th
         const { buyerBond, sellerBond } = calculateBonds(CUMULATIVE, PAYMENT);
         expect(buyerBond).not.toBe(sellerBond);
         expect(approval.approve).toHaveBeenCalledWith(buyerBond * 10n);
+    });
+});
+
+describe("YourTurnCard — the bond figure on the card is the SDK's calculateBonds", () => {
+    const SELLER_INITIATED = { ...PAYLOAD, buyerSig: undefined, sellerSig: "0x123456" } as unknown as CommitmentPayload;
+    it.each([
+        ["the seller", SELLER, PAYLOAD, "Your seller bond:", "sellerBond"],
+        ["the buyer", BUYER, SELLER_INITIATED, "Your buyer bond:", "buyerBond"],
+    ] as const)("%s of a sub-order reads its own bond, over the running total and the payment", (_who, address, payload, label, bond) => {
+        wallet.address = address;
+        renderCard(vi.fn(), payload);
+        const bonds = calculateBonds(CUMULATIVE, PAYMENT);
+        const line = screen.getByText(label).parentElement!.textContent ?? "";
+        expect(line).toContain(`${label} ${tokenFigure(bonds[bond], 6)}`);
     });
 });
 

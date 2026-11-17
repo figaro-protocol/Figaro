@@ -1,9 +1,11 @@
 "use client";
 
 /**
- * ClausesList — renders the connected wallet's registered clauses.
+ * ClausesList — renders one address's registered clauses: the connected
+ * wallet's, or the one `?wallet=0x…` names (`OneAddressList`); with neither,
+ * the list's place says so and reads nothing.
  *
- * Reads from `useRegisteredClausesByWallet(address)` which filters the
+ * Reads from `useRegisteredClausesByWallet(subject)` which filters the
  * `ClauseRegistered` event log by registeredBy. For most wallets the list is
  * empty; the empty state points at `/clauses/register` (the clause authoring
  * surface — paste a spec and register it) and at the marketing /clauses page
@@ -11,21 +13,27 @@
  * (which registers the bundled specs through the deploy script), the list
  * shows the built-ins with their human-readable names.
  *
- * States are `RegistryListState`'s: wallet, loading, failed (nothing), empty, list.
+ * States are `RegistryListState`'s: loading, failed (nothing), empty, list.
  */
 
 import Link from "@/components/shared/Link";
-import { useAccount } from "wagmi";
 import type { RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useRegisteredClausesByWallet } from "@/lib/protocol/useRegisterClause";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { RegistryListState } from "@/components/shared/RegistryListState";
+import { OneAddressList, RegistryListState, type ListedAddress } from "@/components/shared/RegistryListState";
 
 export function ClausesList() {
-    const { address } = useAccount();
-    const { read } = useRegisteredClausesByWallet(address);
+    return (
+        <OneAddressList testId="clauses" what="registered clauses" publicHref="/registries?family=clauses">
+            {(listed) => <ClausesOf {...listed} />}
+        </OneAddressList>
+    );
+}
+
+function ClausesOf({ subject, signer }: ListedAddress) {
+    const { read } = useRegisteredClausesByWallet(subject);
     // The chain row carries only the key; the spec's own name and version —
     // its label — are read from the verified spec once it loads.
     useClauseSpecs();
@@ -34,9 +42,8 @@ export function ClausesList() {
         <RegistryListState
             read={read}
             testId="clauses"
-            walletHint="Connect a wallet to see your registered clauses."
             loading="Loading registered clauses…"
-            empty={
+            empty={!signer ? "This address has registered no clauses." : (
                 <>
                     You haven&apos;t registered any clauses yet.{" "}
                     <Link href="/clauses/register" className="underline">
@@ -48,7 +55,7 @@ export function ClausesList() {
                     </Link>{" "}
                     to see what&apos;s in force.
                 </>
-            }
+            )}
         >
             {(data) => <ClauseRows data={data} />}
         </RegistryListState>

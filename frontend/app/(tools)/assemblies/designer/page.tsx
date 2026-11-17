@@ -53,7 +53,7 @@ export default function DesignerLanding() {
                     Your published assemblies
                 </h2>
                 <p className="text-sm text-ink-muted mb-6 max-w-2xl">
-                    Designs you&apos;ve published to the on-chain <code>AssemblyRegistry</code>. Reconstructed from <code>AssemblyRegistered</code> events filtered by your connected wallet.
+                    Designs published to the on-chain <code>AssemblyRegistry</code> by the connected wallet, or by the address a link names with <code>?wallet=0x…</code>. Reconstructed from <code>AssemblyRegistered</code> events filtered by that address.
                 </p>
                 <PublishedList />
             </section>
@@ -63,7 +63,7 @@ export default function DesignerLanding() {
                     Your registered agreements
                 </h2>
                 <p className="text-sm text-ink-muted mb-6 max-w-2xl">
-                    Agreements you&apos;ve registered on the on-chain <code>AgreementRegistry</code>, reconstructed from <code>AgreementRegistered</code> events filtered by your connected wallet. Reclaiming a stake returns it and de-surfaces the agreement for new compositions; the binding stays anchored, and every assembly already composed from it keeps reading it.
+                    Agreements registered on the on-chain <code>AgreementRegistry</code> by the connected wallet, or by the address a link names with <code>?wallet=0x…</code>, reconstructed from <code>AgreementRegistered</code> events filtered by that address. Only the wallet that registered an agreement reclaims its stake. Reclaiming a stake returns it and de-surfaces the agreement for new compositions; the binding stays anchored, and every assembly already composed from it keeps reading it.
                 </p>
                 <RegisteredAgreementsReclaim />
             </section>
@@ -73,7 +73,7 @@ export default function DesignerLanding() {
                     Your clauses
                 </h2>
                 <p className="text-sm text-ink-muted mb-6 max-w-2xl">
-                    Clauses you&apos;ve registered on the on-chain <code>ClauseRegistry</code>. Reconstructed from <code>ClauseRegistered</code> events filtered by your connected wallet. Clauses are first-write-wins and immutable once registered: each is keyed by the hash of its pinned spec.
+                    Clauses registered on the on-chain <code>ClauseRegistry</code> by the connected wallet, or by the address a link names with <code>?wallet=0x…</code>. Reconstructed from <code>ClauseRegistered</code> events filtered by that address. Clauses are first-write-wins and immutable once registered: each is keyed by the hash of its pinned spec.
                 </p>
                 <ClausesList />
             </section>

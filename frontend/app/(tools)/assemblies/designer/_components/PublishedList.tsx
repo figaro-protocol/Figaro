@@ -1,9 +1,11 @@
 "use client";
 
 /**
- * PublishedList — renders the connected wallet's published assemblies.
+ * PublishedList — renders one address's published assemblies: the connected
+ * wallet's, or the one `?wallet=0x…` names (`OneAddressList`); with neither,
+ * the list's place says so and reads nothing.
  *
- * Reads from `useAssemblyChoices(address)` which combines the
+ * Reads from `useAssemblyChoices(subject)` which combines the
  * `AssemblyRegistered` event log with a lazy hydrated read (name,
  * order count, clause set). The same hook backs the member-profile
  * assembly picker, so the two surfaces can't drift on what they show
@@ -11,7 +13,8 @@
  *
  * Each row has a Fork button (re-uses the hydrated assembly the hook already
  * fetched) and an Inspect link to /view/[slug]. States are
- * `RegistryListState`'s: wallet, loading, failed (nothing), empty, list.
+ * `RegistryListState`'s: loading, failed (nothing), empty, list. A fork is a
+ * local draft, signed by no one, so it is offered whoever's list it is.
  */
 
 import { useCallback, useState } from "react";
@@ -19,7 +22,6 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import Link from "@/components/shared/Link";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
 import {
     type AssemblyChoice,
     useAssemblyChoices,
@@ -27,12 +29,19 @@ import {
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { RegistryListState } from "@/components/shared/RegistryListState";
+import { OneAddressList, RegistryListState, type ListedAddress } from "@/components/shared/RegistryListState";
 
 export function PublishedList() {
+    return (
+        <OneAddressList testId="published" what="published assemblies" publicHref="/registries?family=assemblies">
+            {(listed) => <PublishedOf {...listed} />}
+        </OneAddressList>
+    );
+}
+
+function PublishedOf({ subject, signer }: ListedAddress) {
     const router = useRouter();
-    const { address } = useAccount();
-    const { read } = useAssemblyChoices(address);
+    const { read } = useAssemblyChoices(subject);
     const [forking, setForking] = useState<string | null>(null);
 
     const handleFork = useCallback(
@@ -61,9 +70,10 @@ export function PublishedList() {
         <RegistryListState
             read={read}
             testId="published"
-            walletHint="Connect a wallet to see your published assemblies."
             loading="Loading registered assemblies…"
-            empty="You haven't published any assemblies yet. Publish a draft from the designer to see it here."
+            empty={signer
+                ? "You haven't published any assemblies yet. Publish a draft from the designer to see it here."
+                : "This address has published no assemblies."}
         >
             {(data) => (
         <ul className="space-y-3" data-testid="published-list">
