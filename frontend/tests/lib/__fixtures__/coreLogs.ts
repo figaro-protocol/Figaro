@@ -30,6 +30,8 @@ export function orderCommittedLog(args: {
     seller: `0x${string}`;
     payment?: bigint;
     cumulativeValue?: bigint;
+    /** The agreement's merkle root the commitment signs; one shared value when omitted. */
+    checkoutHash?: Hex;
 }): FixtureLog {
     const topics = encodeEventTopics({
         abi: [EV_ORDER_COMMITTED],
@@ -47,7 +49,7 @@ export function orderCommittedLog(args: {
             "0x00000000000000000000000000000000000000c1",
             payment,
             args.cumulativeValue ?? payment,
-            word(0xc4ec),
+            args.checkoutHash ?? word(0xc4ec),
             1n,
             2_000_000_000n,
         ],

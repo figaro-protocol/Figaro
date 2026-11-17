@@ -59,8 +59,7 @@ export interface AssemblyCheckoutLineItem {
  *  composed key reads its own spec (`specs.get(clauseKey)`). Undefined while
  *  the spec is unloaded — the fill degrades to a no-op, exactly as the
  *  registry-reading frontend does before its cache warms. The ONE lookup
- *  every spec-routed fill runs — this module's clause writers and its
- *  rate-quantity resolvers alike. */
+ *  every spec-routed fill of this module runs. */
 function composedClauseWhere(
     clauses: ClauseFields,
     specs: SpecSource,
@@ -620,11 +619,13 @@ export function resolveSubOrderPricing(args: {
 //    that composes exactly one clause with exactly two such fields has a
 //    derivable distance; no sector is named.
 //  - "booking-window": derived from the order's OWN committed time window —
-//    hours between the two ISO date-times, found by their declared fields
-//    (`windowStart` + `windowEnd`), never by clause id. ANY order that commits
-//    a window (an appointment, a timeslot, a rental period alike) has derivable
-//    hours; no sector is named. This is the time dual of geodistance: both
-//    derive a quantity from committed data alone.
+//    hours between two ISO date-times. A window is a pair of string fields
+//    whose spec declares `format: "iso-datetime"`, the first declared being
+//    the start (`isoDatetimeFields`), never a clause id or a field name. ANY
+//    order that composes exactly one clause with exactly two such fields (an
+//    appointment, a timeslot, a rental period alike) has derivable hours; no
+//    sector is named. This is the time dual of geodistance: both derive a
+//    quantity from committed data alone.
 //
 // Crow-flies distance and window-hours are the derivations available from
 // committed data alone; a ROUTED distance (a maps API) is an external source —
@@ -710,16 +711,39 @@ function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
     }
 }
 
+/** The format a string field declares for an ISO 8601 date-time, the one the
+ *  content validator enforces (`validate.ts`). */
+const ISO_DATETIME_FORMAT = "iso-datetime";
+
+/** The fields of one clause that declare the date-time format statically
+ *  (`format: "iso-datetime"`), in the spec's declaration order. The validator
+ *  enforces that format on a static declaration only, so these are the fields
+ *  whose signed values are date-times; no field name and no clause id is
+ *  known here. */
+function isoDatetimeFields(spec: ProjectionSpecView): string[] {
+    return spec.fields
+        .filter((f) => f.type === "string" && f.format === ISO_DATETIME_FORMAT)
+        .map((f) => f.name);
+}
+
 function resolveBookingWindowHours(ctx: RateQuantityContext): number | null {
-    const scheduleClauseId = composedClauseWhere(
-        ctx.clauses,
-        ctx.specs,
-        (spec) => specDeclaresField(spec, "windowStart") && specDeclaresField(spec, "windowEnd"),
-    );
-    if (!scheduleClauseId) return null;
-    const clauseEntry = ctx.clauses[scheduleClauseId];
-    const start = clauseEntry?.windowStart;
-    const end = clauseEntry?.windowEnd;
+    // The window is derived from each composed clause's loaded spec
+    // (`isoDatetimeFields`). A clause with exactly two date-time fields
+    // carries a window, and the field it declares first is the start; a
+    // clause with fewer or more carries none, since its spec does not say
+    // which two bound the window. Exactly one clause of the order may carry a
+    // window: with none, or with two or more, the spec does not say which
+    // window the order means, and the quantity is unresolvable, never
+    // junk-priced.
+    const windows: { start: unknown; end: unknown }[] = [];
+    for (const [clauseKey, values] of Object.entries(ctx.clauses)) {
+        const spec = ctx.specs.get(clauseKey as Hex);
+        if (!spec) continue;
+        const fields = isoDatetimeFields(spec);
+        if (fields.length === 2) windows.push({ start: values[fields[0]!], end: values[fields[1]!] });
+    }
+    if (windows.length !== 1) return null;
+    const { start, end } = windows[0]!;
     if (typeof start !== "string" || typeof end !== "string" || !start || !end) {
         return null;
     }
@@ -750,8 +774,8 @@ const LABELS = new Map<string, string>([
 ]);
 
 /** Register a resolver for a declared quantity source. Last write wins —
- *  the registry's extension point: a booking-window derivation or a routed-
- *  distance composition registers here without touching checkout code. An
+ *  the registry's extension point: a routed-distance composition registers
+ *  here without touching checkout code. An
  *  optional human label surfaces the tenant on authoring pickers.
  *  @public */
 export function registerRateQuantitySource(

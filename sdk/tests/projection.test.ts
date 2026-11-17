@@ -841,7 +841,6 @@ describe("the sign gate's design check — the designer's values against the des
             return validateCommitmentAgreement(a, root, SPECS, COMMITMENT, picked).issues;
         };
         expect(issuesOf([])).toEqual([]);
-        expect(issuesOf([`0x${"a1".repeat(32)}`])).toEqual([]);
         const absent = issuesOf(undefined);
         expect(absent.map((i) => `${i.clause}:${i.path}`)).toEqual(["(topology):follows"]);
         expect(absent[0].message).toMatch(/carries no topology leaf/);
@@ -852,6 +851,61 @@ describe("the sign gate's design check — the designer's values against the des
             .toThrow(/carries no topology leaf/);
         // An agreement built without a design may omit the leaf, as it omits provenance.
         expect(validateCommitmentAgreement(agreement, computeCheckoutHash(agreement), SPECS, COMMITMENT, null).issues).toEqual([]);
+    });
+
+    it("refuses, at each party's signature, an order whose signed edges depart in number from every design entry of its registered agreement", () => {
+        // root → child → grandchild, the grandchild also following the root.
+        // The root and the grandchild bind one registered agreement (commerce
+        // alone), with zero and two edges; the child binds another, with one.
+        const LOG = keyOf("figaro-merchant-process");
+        const built = buildAssembly({
+            orders: [
+                { orderHash: "root", follows: [] },
+                { orderHash: "child", follows: ["root"] },
+                { orderHash: "grandchild", follows: ["root", "child"] },
+            ],
+            clausesByOrderId: {
+                root: COMMERCE,
+                child: { ...COMMERCE, [LOG]: {} },
+                grandchild: COMMERCE,
+            },
+            specs: SPECS,
+        });
+        const [rootEntry, childEntry, grandchildEntry] = built.assembly.agreements;
+        expect(rootEntry.agreementHash).toBe(grandchildEntry.agreementHash);
+        const picked: HydratedAssembly = { assembly: built.assembly, agreements: built.agreements };
+        const assemblyHash = assemblyHashOf(built.assembly);
+        const edge = (n: number) => `0x${n.toString(16).padStart(2, "0").repeat(32)}` as `0x${string}`;
+        const orderFor = (agreementHash: `0x${string}`, clauses: Record<string, Record<string, unknown>>, follows: `0x${string}`[]) => {
+            const { agreement } = buildOrderAgreement(BUYER, SELLER, clauses, SPECS);
+            const signed: Agreement = { ...agreement, provenance: { agreementHash, assemblyHash }, follows };
+            return { signed, root: computeCheckoutHash(signed) };
+        };
+        const commerceOnly = { [keyOf("figaro-commerce")]: commerceData() };
+        const withLog = { ...commerceOnly, [LOG]: {} };
+        const issuesOf = (o: { signed: Agreement; root: `0x${string}` }) =>
+            validateCommitmentAgreement(o.signed, o.root, SPECS, COMMITMENT, picked).issues;
+
+        // The design's edge count for each entry passes: commerce alone is the
+        // root with none or the grandchild with two; the child has one.
+        expect(issuesOf(orderFor(rootEntry.agreementHash, commerceOnly, []))).toEqual([]);
+        expect(issuesOf(orderFor(rootEntry.agreementHash, commerceOnly, [edge(1), edge(2)]))).toEqual([]);
+        expect(issuesOf(orderFor(childEntry.agreementHash, withLog, [edge(1)]))).toEqual([]);
+
+        // Any other count matches no entry of that registered agreement.
+        for (const [agreementHash, clauses, follows] of [
+            [rootEntry.agreementHash, commerceOnly, [edge(1)]],
+            [rootEntry.agreementHash, commerceOnly, [edge(1), edge(2), edge(3)]],
+            [childEntry.agreementHash, withLog, []],
+            [childEntry.agreementHash, withLog, [edge(1), edge(2)]],
+        ] as const) {
+            const o = orderFor(agreementHash, clauses, [...follows]);
+            const issues = issuesOf(o);
+            expect(issues.map((i) => `${i.clause}:${i.path}`)).toEqual(["(topology):follows"]);
+            expect(issues[0].message).toMatch(new RegExp(`follows ${follows.length} order`));
+            expect(() => assertAgreementSignable(o.signed, o.root, SPECS, COMMITMENT, picked))
+                .toThrow(/\(topology\) follows: .*the design gives/);
+        }
     });
 
     it("refuses an order carrying a clause the design does not compose — a registered one with content, and an unregistered one withheld", () => {

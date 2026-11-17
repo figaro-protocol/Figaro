@@ -48,6 +48,7 @@ import {
     resolveAuthoredClauseKeys,
     assemblyHashOf,
     agreementClauses,
+    assemblyFollows,
     deriveAssemblySlug,
     type Assembly,
     type RegisteredAgreement,
@@ -500,13 +501,17 @@ function currencyPinClause(
 interface DesignOrderBag {
     clauses: Record<string, Record<string, unknown>>;
     required: string[];
+    /** The number of entries the design's entry follows: the number of
+     *  orders its order's topology leaf names, one order hash for each. */
+    edges: number;
 }
 
 /** The clause bags a design gives the order an agreement instantiates: one
  *  per assembly agreement binding the registered agreement the provenance
  *  names — the assembly-scoped clauses with that agreement's clauses (its
  *  registered agreement's, its own fills over them) beside them, as the
- *  assembly walk builds every order's bag (`planAssemblyOrders`). */
+ *  assembly walk builds every order's bag (`planAssemblyOrders`), and the
+ *  number of entries that entry follows. */
 function designClauseBags(
     design: HydratedAssembly,
     agreementHash: Hex,
@@ -524,7 +529,7 @@ function designClauseBags(
             // the assembly-scoped clauses the walk folds into every order.
             const required = new Set(Object.keys(composed).map((key) => key.toLowerCase()));
             for (const key of Object.keys(assemblyClauses)) required.add(key.toLowerCase());
-            return { clauses, required: [...required] };
+            return { clauses, required: [...required], edges: assemblyFollows(entry).length };
         });
 }
 
@@ -622,7 +627,11 @@ function designIssues(
     }
     // The order matches one of the design's orders for that registered
     // agreement — every clause carried, no clause beyond them, every designer
-    // value unchanged; report against the first when it matches none.
+    // value unchanged, and as many orders followed as that entry follows
+    // entries; report against the first when it matches none. The edges are
+    // held by number only: an order hash depends on its order's parties,
+    // payment and salt, which no design carries, so which orders the edges
+    // name is the signer's own reading of the process.
     // Carried is a check on KEYS alone: a withheld clause (`dataHash`), a
     // clause whose spec is not loaded and a value-free clause (a process-log
     // clause's empty anchor) each count, so an order never names a design it
@@ -651,6 +660,15 @@ function designIssues(
             });
         }
         found.push(...designerValueIssues(agreement, bag.clauses, specs));
+        // An absent or malformed topology leaf is the topology check's to
+        // report (`topologyIssues`).
+        if (Array.isArray(agreement.follows) && agreement.follows.length !== bag.edges) {
+            found.push({
+                clause: "(topology)",
+                path: "follows",
+                message: `the order follows ${agreement.follows.length} order(s); the design gives this entry of ${named} ${bag.edges}`,
+            });
+        }
         if (found.length === 0) return [];
         first ??= found;
     }
@@ -715,8 +733,8 @@ function designBlindingIssues(
 /** The topology check: an agreement built from a design (it names one in its
  *  provenance leaf) carries its topology leaf, an empty list for a root, and
  *  any topology an agreement carries is well formed — a list of 32-byte
- *  order hashes, none named twice (`topologyLeafBytes`). Whether the edges
- *  are the ones the design gives is not checked here. */
+ *  order hashes, none named twice (`topologyLeafBytes`). The number of edges
+ *  against the design's entry is the design check's (`designIssues`). */
 function topologyIssues(agreement: Agreement): CommitmentAgreementIssue[] {
     if (agreement.follows === undefined) {
         return agreement.provenance === undefined ? [] : [{
@@ -829,7 +847,9 @@ function blindingValueIssues(
  * clause or changes a designer's value); and the `checkoutHash` about to be
  * signed equals the merkle root recomputed from the clauses. The agreement's
  * topology leaf is well formed, and present wherever a design is named
- * (`topologyIssues`). Each clause's spec keeps the private set's rules
+ * (`topologyIssues`), and it names as many orders as the matching design
+ * entry follows entries (`designIssues`); which orders it names is not
+ * checked, since no design carries an order hash. Each clause's spec keeps the private set's rules
  * (`fieldSetRuleErrors`, re-checked on the view in hand). A private clause's
  * blinding value blinds: no design the agreement names carries one, its spec
  * names the blinding field in no list another actor fills

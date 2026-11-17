@@ -462,7 +462,18 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
         expect(geodistance({ clauses: { [CARGO_KEY]: endpoints }, specs: geoSpecs })).toBeNull();
         expect(geodistance({ clauses: { [geoFake.clauseKey]: endpoints }, specs: geoSpecs })).not.toBeNull();
 
-        const window = lookalike([CARGO_ID], CARGO_ID, ["windowStart", "windowEnd"]);
+        // booking-window routes on two string fields that declare the
+        // date-time format: the lookalike carries the schedule spec's fields
+        // as they are declared.
+        const windowFake = viewOf({
+            ...cargoRaw,
+            title: `${CARGO_ID} (a stranger's registration)`,
+            fields: [...(cargoRaw.fields as Record<string, unknown>[]), ...(rawSpecOf("figaro-schedule").fields as Record<string, unknown>[])],
+        });
+        const window = {
+            specs: specSourceWithRegistrations(specSourceFromFixtures([CARGO_ID]), [windowFake]),
+            fake: windowFake.clauseKey,
+        };
         const span = { windowStart: "2026-01-01T09:00:00Z", windowEnd: "2026-01-01T12:00:00Z" };
         const bookingWindow = getRateQuantityResolver("booking-window")!;
         expect(bookingWindow({ clauses: { [CARGO_KEY]: span }, specs: window.specs })).toBeNull();

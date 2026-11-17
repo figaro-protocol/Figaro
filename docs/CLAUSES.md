@@ -130,8 +130,10 @@ list included, so absence never reads as "no edges"; an agreement built
 without a design leaves it absent. The sign gate refuses an agreement that
 names a design (its provenance) and carries no topology leaf, and any
 topology leaf whose edges are not distinct 32-byte hashes
-(`validateCommitmentAgreement`). It does not check that the edges are the
-ones the design gives. The SDK owns the format (`TOPOLOGY_LEAF_LABEL`,
+(`validateCommitmentAgreement`). It also refuses an order whose leaf names
+another number of orders than the design entry it matches follows entries.
+It does not check which orders the edges name: an order hash depends on that
+order's parties, payment and salt, which no design carries. The SDK owns the format (`TOPOLOGY_LEAF_LABEL`,
 `TOPOLOGY_LEAF_DOMAIN`, `topologyLeafBytes`, `topologyContentRef`,
 `computeTopologyLeaf`, `agreementLeaves` in `sdk/src/agreement.ts`); no
 contract and no proof program holds the constant.

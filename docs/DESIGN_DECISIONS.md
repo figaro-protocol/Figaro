@@ -1242,7 +1242,8 @@ from the signed agreement, which carries them in full.
 reproduce the leaf; the inner preimage lengths; the coordinator's rebuilt
 leaf does not open; the root moves with the edges, and an empty list differs
 from no leaf); `sdk/tests/projection.test.ts` (the sign gate refuses a
-design-built agreement whose topology leaf is absent or malformed).
+design-built agreement whose topology leaf is absent or malformed, or names
+another number of orders than its design entry follows entries).
 
 ---
 
@@ -1283,7 +1284,10 @@ whose later order's agreement carries no leaf, is unread, or carries an
 empty list: the opening order named is the chain's, and no edge is shown for
 unknown edges); `ecosystem-agents/runtime/tests/analyst.test.mjs` (the same,
 and a batched process read from the verifier's events);
-`sdk/tests/state.test.ts` (`isProcessRoot`).
+`frontend/tests/lib/batchTopologyLeaf.test.ts` (a batched two-order process
+read from the verifier's events: the order page's process model and the
+evidence file's contract section each read the sub-order's edge from its
+leaf); `sdk/tests/state.test.ts` (`isProcessRoot`).
 
 ---
 
