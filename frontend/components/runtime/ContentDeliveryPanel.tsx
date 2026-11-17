@@ -25,42 +25,37 @@
  * and the title, never a dispatch.
  */
 import { useCallback, useRef, useState } from "react";
-import { keccak256 } from "viem";
-import { encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
-import { prepareAttestationContent } from "@figaro-protocol/sdk/agent";
 import {
+    COMPLETION_STAGE,
     CONTENT_DELIVERY_MAX_BYTES,
+    completionEvidenceAnchor,
     contentCeremonyId,
+    contentHashOfBytes,
     decryptContentDelivery,
+    prepareCompletionEvidence,
     requestContentDelivery,
     sendContentDelivery,
     type DeliveredContent,
 } from "@/lib/handoff/contentDelivery";
 import { useCeremonyPanel } from "@/lib/handoff/useCeremonyChannel";
-import { attestationContentFields, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { Button } from "@/components/ui/Button";
 import { CeremonyPanelFrame } from "@/components/runtime/CeremonyPanelFrame";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
-
-/** The stage the declaring clause's completion evidence files at. */
-const COMPLETION_STAGE = 1;
 
 export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: InteractionSurfaceProps) {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const ceremonyId = contentCeremonyId(orderHash);
     const [sent, setSent] = useState<`0x${string}` | null>(null);
 
-    // Rehash what was decrypted into the stage-1 evidence shape (its
-    // content is the encoded {contentHash} struct; the event binds
-    // contentRef = keccak(content)). A private stage set carries a random
-    // blinding value only its sender holds, so its anchor cannot be
-    // recomputed here: no verdict is shown for it.
+    // Rebuild the stage-1 evidence from what was decrypted (the rehash,
+    // and a private set's blinding value from the sealed envelope); the
+    // event binds contentRef = keccak(content). Null where the spec is not
+    // loaded or a private set's value did not arrive: no verdict.
     const expectedAnchor = useCallback(
         (delivered: DeliveredContent) => {
             const spec = getClauseSpec(clauseKey);
-            const fields = attestationContentFields(clauseKey, COMPLETION_STAGE);
-            if (!spec || !fields || fields.some((f) => f.blinding === true)) return null;
-            return keccak256(encodeContentFromSpec(spec, { contentHash: delivered.contentHash }, { stage: COMPLETION_STAGE }));
+            return spec ? completionEvidenceAnchor(spec, delivered) : null;
         },
         [clauseKey],
     );
@@ -76,24 +71,24 @@ export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: In
     const handleSend = useCallback(async (file: File) => {
         const contentHash = await deliver("Delivering the content failed.", async (ctx) => {
             const bytes = new Uint8Array(await file.arrayBuffer());
+            // The spec's stage-1 completion evidence, prepared before the
+            // send so a private set's blinding value travels sealed in the
+            // envelope; the coordinator merkle-binds the content, and the
+            // submitter keeps a private set's content before sending, as
+            // for every filing.
+            const spec = getClauseSpec(clauseKey);
+            if (!spec) throw new Error(`Clause spec not loaded: ${clauseKey}`);
+            const evidence = prepareCompletionEvidence(spec, contentHashOfBytes(bytes));
             const { contentHash } = await sendContentDelivery(ctx.channel, {
                 myAddress: ctx.address, recipientAddress: ctx.counterparty, orderId: orderHash,
                 recipientPubKeyHex: ctx.peerPubKey,
                 artifact: { name: file.name, mediaType: file.type || "application/octet-stream", bytes },
                 signAuth: ctx.signAuth,
+                blinding: evidence.blinding,
             });
-            // File the spec's stage-1 completion evidence: the artifact's
-            // keccak256, encoded over the set stage 1 selects, validated,
-            // with a private set's blinding value drawn
-            // (`prepareAttestationContent`), and merkle-bound by the
-            // coordinator. The submitter keeps a private set's content
-            // before sending, as for every filing. The URI field stays
-            // omitted — counterparty-private transfers have no locator.
-            const spec = getClauseSpec(clauseKey);
-            if (!spec) throw new Error(`Clause spec not loaded: ${clauseKey}`);
             return {
                 stage: COMPLETION_STAGE,
-                content: prepareAttestationContent(spec, { contentHash }, { stage: COMPLETION_STAGE }).content,
+                content: evidence.content,
                 anchorFailureMessage: "Anchoring the completion evidence failed",
                 result: contentHash as `0x${string}`,
             };

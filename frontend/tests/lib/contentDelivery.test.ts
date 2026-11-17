@@ -7,20 +7,29 @@
  * spec's stage-1 completion evidence; the ceremony correlates on its own
  * scoped id so it never crosses an address ceremony on the same order; the
  * channel cap refuses oversized artifacts; a wrong key decrypts to absence.
+ * The stage-1 evidence: a public set's envelope is unchanged and carries no
+ * blinding value; a private set's blinding value travels sealed inside the
+ * envelope, so the receiver recomputes the filed anchor.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { keccak256 } from "viem";
+import { keccak256, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { HandoffChannel } from "@figaro-protocol/sdk/handoff";
+import { parseClauseSpec, type ClauseSpec } from "@figaro-protocol/sdk/clauses";
 import {
     CONTENT_DELIVERY_MAX_BYTES,
+    completionEvidenceAnchor,
     contentCeremonyId,
     contentHashOfBytes,
     decryptContentDelivery,
+    prepareCompletionEvidence,
     requestContentDelivery,
     sendContentDelivery,
 } from "@/lib/handoff/contentDelivery";
 import { requestAddressDetail } from "@/lib/handoff/addressDetail";
+import { decryptCeremonyBlob, sendCeremonyBlob } from "@/lib/handoff/ceremony";
 
 const SELLER_ACCOUNT = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
 const BUYER_ACCOUNT = privateKeyToAccount("0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a");
@@ -145,5 +154,97 @@ describe("the content-delivery ceremony", () => {
         expect(corrupted).toBeNull();
         // contentHashOfBytes is deterministic over the same bytes.
         expect(contentHashOfBytes(ARTIFACT.bytes)).toBe(contentHashOfBytes(new Uint8Array(ARTIFACT.bytes)));
+    });
+});
+
+// ── The stage-1 completion evidence, public and private ──────────────────
+
+function readContentHandoffJson(): { stages: Record<string, Array<Record<string, unknown>>> } {
+    return JSON.parse(readFileSync(path.resolve(process.cwd(), "../clauses/figaro-content-handoff.json"), "utf8"));
+}
+
+function parsed(raw: unknown): ClauseSpec {
+    const result = parseClauseSpec(raw);
+    if (!result.ok) throw new Error(JSON.stringify(result.errors));
+    return result.spec;
+}
+
+/** The content hand-off clause in `clauses/`, whose stage 1 is public. */
+function contentHandoffSpec(): ClauseSpec {
+    return parsed(readContentHandoffJson());
+}
+
+/** The same clause with a private stage 1: the content hash private, and
+ *  the one blinding field a private set declares. Anyone may register such
+ *  a clause; nothing in the ceremony reads its name. */
+function privateStageSpec(): ClauseSpec {
+    const raw = readContentHandoffJson();
+    raw.stages["1"] = [
+        { ...raw.stages["1"][0], disposition: "private" },
+        { name: "blinding", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true },
+    ];
+    return parsed(raw);
+}
+
+/** One delivery end to end: the sender prepares the evidence, seals the
+ *  envelope, and the receiver decrypts it. Returns the raw plaintext too. */
+async function deliverWith(spec: ClauseSpec) {
+    const { channel, sent } = recordingChannel();
+    const buyerPub = await requestContentDelivery(channel, {
+        myAddress: BUYER, recipientAddress: SELLER, orderId: ORDER, signAuth: buyerSign,
+    });
+    const evidence = prepareCompletionEvidence(spec, contentHashOfBytes(ARTIFACT.bytes));
+    const { blobB64 } = await sendContentDelivery(channel, {
+        myAddress: SELLER, recipientAddress: BUYER, orderId: ORDER,
+        recipientPubKeyHex: buyerPub, artifact: ARTIFACT, signAuth: sellerSign,
+        blinding: evidence.blinding,
+    });
+    const sellerPub = sent.find((m) => m.kind === "pubkey" && m.value !== buyerPub)!.value;
+    const plain = await decryptCeremonyBlob({
+        myAddress: BUYER, ceremonyId: contentCeremonyId(ORDER), senderPubKeyHex: sellerPub, blobB64,
+    });
+    const delivered = await decryptContentDelivery({
+        myAddress: BUYER, orderId: ORDER, senderPubKeyHex: sellerPub, blobB64,
+    });
+    if (!delivered) throw new Error("the delivery did not decrypt");
+    return { evidence, plain, delivered };
+}
+
+describe("the completion evidence the receiver checks", () => {
+    it("a public stage 1 (figaro-content-handoff): no blinding value; the plaintext is the envelope without one; the receiver's anchor is the filed one", async () => {
+        const spec = contentHandoffSpec();
+        const { evidence, plain, delivered } = await deliverWith(spec);
+        expect(evidence.blinding).toBeUndefined();
+        expect(plain).toBe(JSON.stringify({ name: ARTIFACT.name, mediaType: ARTIFACT.mediaType, bytesHex: toHex(ARTIFACT.bytes) }));
+        expect(delivered.blinding).toBeUndefined();
+        expect(completionEvidenceAnchor(spec, delivered)).toBe(keccak256(evidence.content));
+    });
+
+    it("a private stage 1: the sender's blinding value travels inside the sealed envelope, and the receiver recomputes the filed anchor with it", async () => {
+        const spec = privateStageSpec();
+        const { evidence, plain, delivered } = await deliverWith(spec);
+        expect(evidence.blinding).toMatch(/^0x[0-9a-f]{64}$/);
+        expect(JSON.parse(plain!).blinding).toBe(evidence.blinding);
+        expect(delivered.blinding).toBe(evidence.blinding);
+        expect(completionEvidenceAnchor(spec, delivered)).toBe(keccak256(evidence.content));
+        // Without the value the anchor cannot be recomputed: no verdict.
+        expect(completionEvidenceAnchor(spec, { ...delivered, blinding: undefined })).toBeNull();
+        // Another value gives an anchor the chain does not carry.
+        expect(completionEvidenceAnchor(spec, { ...delivered, blinding: `0x${"11".repeat(32)}` })).not.toBe(keccak256(evidence.content));
+    });
+
+    it("an envelope whose blinding value is not 32 bytes of hex decrypts to absence", async () => {
+        const { channel, sent } = recordingChannel();
+        const buyerPub = await requestContentDelivery(channel, {
+            myAddress: BUYER, recipientAddress: SELLER, orderId: ORDER, signAuth: buyerSign,
+        });
+        const { blobB64 } = await sendCeremonyBlob(channel, {
+            myAddress: SELLER, recipientAddress: BUYER, ceremonyId: contentCeremonyId(ORDER),
+            recipientPubKeyHex: buyerPub,
+            plain: JSON.stringify({ name: "a", mediaType: "b", bytesHex: "0x01", blinding: "0x1234" }),
+            signAuth: sellerSign,
+        });
+        const sellerPub = sent.find((m) => m.kind === "pubkey" && m.value !== buyerPub)!.value;
+        expect(await decryptContentDelivery({ myAddress: BUYER, orderId: ORDER, senderPubKeyHex: sellerPub, blobB64 })).toBeNull();
     });
 });
