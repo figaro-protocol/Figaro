@@ -18,6 +18,7 @@
 import { parseUnits } from "viem";
 import { geohashCentroidDistanceKm } from "./derive/geo.js";
 import { GEOHASH_FORMAT } from "./clauses/index.js";
+import { ownValue } from "./clauses/spec.js";
 import {
     specDeclaresDesignFill,
     specDeclaresField,
@@ -611,11 +612,13 @@ export function resolveSubOrderPricing(args: {
 // Tenants:
 //  - "checkout-quantity": the buyer enters the units at checkout (hours,
 //    seats, GB — the unit is the seller's editorial `rateUnit` label).
-//  - "order-geodistance": derived from the order's OWN committed geolocation
-//    endpoints — great-circle distance in km between the two geohash cell
-//    centroids, found by their declared fields (`origin` +
-//    `destination`), never by clause id. ANY order that composes both
-//    endpoints has a derivable distance; no sector is named.
+//  - "order-geodistance": derived from the order's OWN committed endpoints —
+//    great-circle distance in km between the two geohash cell centroids. An
+//    endpoint is a string field whose spec names a sibling in
+//    `formatFromField` and whose sibling's committed value is geohash
+//    (`geohashEndpointFields`), never a clause id or a field name. ANY order
+//    that composes exactly one clause with exactly two such fields has a
+//    derivable distance; no sector is named.
 //  - "booking-window": derived from the order's OWN committed time window —
 //    hours between the two ISO date-times, found by their declared fields
 //    (`windowStart` + `windowEnd`), never by clause id. ANY order that commits
@@ -654,33 +657,53 @@ function resolveCheckoutQuantity(ctx: RateQuantityContext): number | null {
     return typeof q === "number" && Number.isFinite(q) && q > 0 ? q : null;
 }
 
+/** The fields of one clause whose format the order's own content declares to
+ *  be geohash: each string field whose spec names a declared sibling in
+ *  `formatFromField`, where that sibling's committed value is geohash. Read
+ *  from the spec and the committed values alone, in the spec's declaration
+ *  order; no field name and no clause id is known here. The sibling's value
+ *  is read as committed, never through a default `resolveInputFormat` would
+ *  fall back to: the caller passes the values the agreement signs, with the
+ *  spec's defaults already filled (`withSpecDefaults`), so a standard the
+ *  buyer left at its declared default arrives here as that default, and a
+ *  standard committed empty or absent declares no format. */
+function geohashEndpointFields(
+    spec: ProjectionSpecView,
+    values: Record<string, unknown> | undefined,
+): string[] {
+    const declared = new Set(spec.fields.map((f) => f.name));
+    return spec.fields
+        .filter((f) => f.type === "string"
+            && typeof f.formatFromField === "string"
+            && declared.has(f.formatFromField)
+            && ownValue(values, f.formatFromField) === GEOHASH_FORMAT)
+        .map((f) => f.name);
+}
+
 function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
-    // Found by declared fields, never by clause id: any clause carrying a
-    // geocodeStandard with origin/destination participates. Distance is
-    // derivable only for standards this resolver knows — geohash today
-    // (the geolocation clause is standards-agnostic; the
-    // standard is committed content, so the gate reads the CLAUSE_DATA, not the
-    // spec). An unknown, absent or empty standard is unresolvable, never
-    // junk-priced: the codes are read as geohash only when the order says so.
-    // The caller passes the committed values, so a standard the buyer left at
-    // the spec's declared default arrives here as that default.
-    const geoClauseId = composedClauseWhere(
-        ctx.clauses,
-        ctx.specs,
-        (spec) => specDeclaresField(spec, "geocodeStandard")
-            && specDeclaresField(spec, "origin") && specDeclaresField(spec, "destination"),
-    );
-    if (!geoClauseId) return null;
-    const clauseEntry = ctx.clauses[geoClauseId];
-    const standard = clauseEntry?.geocodeStandard;
-    if (standard !== GEOHASH_FORMAT) return null;
-    const origin = clauseEntry?.origin;
-    const destination = clauseEntry?.destination;
-    if (typeof origin !== "string" || typeof destination !== "string" || !origin || !destination) {
+    // The endpoint pair is derived from each composed clause's loaded spec
+    // and the order's committed values (`geohashEndpointFields`). A clause
+    // with exactly two such fields carries the pair; a clause with fewer or
+    // more carries none, since its spec does not say which two are the
+    // endpoints. Exactly one clause of the order may carry a pair: with none,
+    // or with two or more, the spec does not say which distance the order
+    // means, and the quantity is unresolvable, never junk-priced. A
+    // standard other than geohash declares no geohash fields, so its codes
+    // are never read as geohash.
+    const pairs: { from: unknown; to: unknown }[] = [];
+    for (const [clauseKey, values] of Object.entries(ctx.clauses)) {
+        const spec = ctx.specs.get(clauseKey as Hex);
+        if (!spec) continue;
+        const fields = geohashEndpointFields(spec, values);
+        if (fields.length === 2) pairs.push({ from: values[fields[0]!], to: values[fields[1]!] });
+    }
+    if (pairs.length !== 1) return null;
+    const { from, to } = pairs[0]!;
+    if (typeof from !== "string" || typeof to !== "string" || !from || !to) {
         return null;
     }
     try {
-        return geohashCentroidDistanceKm(origin, destination);
+        return geohashCentroidDistanceKm(from, to);
     } catch {
         // Malformed committed code — unresolvable, never junk-priced.
         return null;

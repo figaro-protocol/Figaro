@@ -484,3 +484,119 @@ describe("the rate-quantity source registry", () => {
         expect(listRateQuantitySources().filter((s) => s.source === "acme-replaced")).toHaveLength(1);
     });
 });
+
+// ── order-geodistance: the endpoints are derived from the spec ──────────────
+//
+// A clause no repository file carries, written here: its endpoint names and
+// its standard's name share nothing with the reference location clause. The
+// resolver finds the endpoints by `formatFromField` and the committed value of
+// the sibling it names, never by a field name or a clause id.
+
+type FieldDoc = Record<string, unknown>;
+const standardField = (name: string): FieldDoc =>
+    ({ name, type: "string", required: true, minLength: 1, maxLength: 64, default: "geohash" });
+const pointField = (name: string, from: string): FieldDoc =>
+    ({ name, type: "string", required: true, minLength: 1, maxLength: 32, formatFromField: from });
+const strangerView = (clauseId: string, fields: FieldDoc[]) =>
+    viewOf({ clauseId, version: 1, title: clauseId, description: "", fields, stages: {} });
+
+const ROUTE = strangerView("acme-route", [
+    standardField("cellSystem"),
+    pointField("pickupCell", "cellSystem"),
+    pointField("dropoffCell", "cellSystem"),
+]);
+const geodistance = (clauses: Record<string, Record<string, unknown>>, specs: ReturnType<typeof specSourceOf>) =>
+    getRateQuantityResolver("order-geodistance")!({ clauses, specs });
+
+describe("order-geodistance — endpoints derived from the spec", () => {
+    it("prices a location clause whose fields carry other names", () => {
+        const specs = specSourceOf([ROUTE]);
+        const km = geodistance({ [ROUTE.clauseKey]: { cellSystem: "geohash", pickupCell: SF, dropoffCell: LA } }, specs);
+        expect(km).toBe(geohashCentroidDistanceKm(SF, LA));
+        const p = resolveSubOrderPricing({
+            node: nodeWithClauses({ [ROUTE.clauseKey]: { pickupCell: SF, dropoffCell: LA } }),
+            seller: SWIFT,
+            sellerCatalogs: rateCatalog({
+                id: "haul", name: "Haul", price: "0.01", available: true,
+                pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
+            }),
+            tokenDecimals: 18,
+            specs,
+        });
+        // The standard left at the spec's default prices as it is signed.
+        expect(p.issue).toBeUndefined();
+        expect(p.billedQuantity).toBe(Math.ceil(geohashCentroidDistanceKm(SF, LA)));
+    });
+
+    it("gives the reference location clause from clauses/ the centroid distance between its two endpoints", () => {
+        const km = geodistance({ [GEO]: { geocodeStandard: "geohash", origin: SF, destination: LA } }, GEO_SPECS);
+        expect(km).toBe(geohashCentroidDistanceKm(SF, LA));
+    });
+
+    it("reads no distance when the committed standard is not geohash", () => {
+        const specs = specSourceOf([ROUTE]);
+        expect(geodistance({ [ROUTE.clauseKey]: { cellSystem: "h3", pickupCell: SF, dropoffCell: LA } }, specs)).toBeNull();
+    });
+
+    it("reads no distance from a clause with one geohash field", () => {
+        const one = strangerView("acme-pin", [standardField("cellSystem"), pointField("siteCell", "cellSystem")]);
+        expect(geodistance({ [one.clauseKey]: { cellSystem: "geohash", siteCell: SF } }, specSourceOf([one]))).toBeNull();
+    });
+
+    it("reads no distance from a clause with three geohash fields: its spec names no pair", () => {
+        const three = strangerView("acme-leg", [
+            standardField("cellSystem"),
+            pointField("aCell", "cellSystem"),
+            pointField("bCell", "cellSystem"),
+            pointField("cCell", "cellSystem"),
+        ]);
+        expect(geodistance(
+            { [three.clauseKey]: { cellSystem: "geohash", aCell: SF, bCell: LA, cCell: SF } },
+            specSourceOf([three]),
+        )).toBeNull();
+    });
+
+    it("reads no distance when two clauses of the order each carry a pair, in either order", () => {
+        const specs = specSourceOf([ROUTE, viewOf(rawSpecOf("figaro-geolocation"))]);
+        const route = { cellSystem: "geohash", pickupCell: SF, dropoffCell: SF };
+        const geo = { geocodeStandard: "geohash", origin: SF, destination: LA };
+        expect(geodistance({ [ROUTE.clauseKey]: route, [GEO]: geo }, specs)).toBeNull();
+        expect(geodistance({ [GEO]: geo, [ROUTE.clauseKey]: route }, specs)).toBeNull();
+    });
+
+    it("prices from the one clause with a pair when another clause carries a single geohash field", () => {
+        const one = strangerView("acme-pin", [standardField("cellSystem"), pointField("siteCell", "cellSystem")]);
+        const specs = specSourceOf([ROUTE, one]);
+        expect(geodistance({
+            [one.clauseKey]: { cellSystem: "geohash", siteCell: SF },
+            [ROUTE.clauseKey]: { cellSystem: "geohash", pickupCell: SF, dropoffCell: LA },
+        }, specs)).toBe(geohashCentroidDistanceKm(SF, LA));
+    });
+
+    it("reads no distance when formatFromField names a field the spec does not declare", () => {
+        const dangling = strangerView("acme-dangling", [
+            pointField("pickupCell", "cellSystem"),
+            pointField("dropoffCell", "cellSystem"),
+        ]);
+        expect(geodistance(
+            { [dangling.clauseKey]: { cellSystem: "geohash", pickupCell: SF, dropoffCell: LA } },
+            specSourceOf([dangling]),
+        )).toBeNull();
+    });
+
+    it("reads no distance from two fields with a static geohash format: the order's content declares no standard", () => {
+        const fixed = strangerView("acme-fixed", [
+            { name: "aCell", type: "string", required: true, minLength: 1, maxLength: 32, format: "geohash" },
+            { name: "bCell", type: "string", required: true, minLength: 1, maxLength: 32, format: "geohash" },
+        ]);
+        expect(geodistance({ [fixed.clauseKey]: { aCell: SF, bCell: LA } }, specSourceOf([fixed]))).toBeNull();
+    });
+
+    it("reads no distance from a malformed committed code", () => {
+        const specs = specSourceOf([ROUTE]);
+        expect(geodistance(
+            { [ROUTE.clauseKey]: { cellSystem: "geohash", pickupCell: SF, dropoffCell: "not!a!cell" } },
+            specs,
+        )).toBeNull();
+    });
+});

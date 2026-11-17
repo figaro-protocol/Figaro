@@ -445,11 +445,22 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
     it("the rate-quantity resolvers (order-geodistance, booking-window)", () => {
         const CARGO_ID = "figaro-cargo";
         const CARGO_KEY = keyOf(CARGO_ID);
-        const geo = lookalike([CARGO_ID], CARGO_ID, ["geocodeStandard", "origin", "destination"]);
+        // order-geodistance routes on two string fields whose format a
+        // declared sibling's committed value names: the lookalike carries the
+        // geolocation spec's standard and endpoint fields as they are declared.
+        const cargoRaw = rawSpecOf(CARGO_ID);
+        const geoFields = (rawSpecOf(GEO).fields as Record<string, unknown>[])
+            .filter((f) => f.name === "geocodeStandard" || typeof f.formatFromField === "string");
+        const geoFake = viewOf({
+            ...cargoRaw,
+            title: `${CARGO_ID} (a stranger's registration)`,
+            fields: [...(cargoRaw.fields as Record<string, unknown>[]), ...geoFields],
+        });
+        const geoSpecs = specSourceWithRegistrations(specSourceFromFixtures([CARGO_ID]), [geoFake]);
         const endpoints = { geocodeStandard: "geohash", origin: "u4pruydqqvj", destination: "u4pruydqqvm" };
         const geodistance = getRateQuantityResolver("order-geodistance")!;
-        expect(geodistance({ clauses: { [CARGO_KEY]: endpoints }, specs: geo.specs })).toBeNull();
-        expect(geodistance({ clauses: { [geo.fake]: endpoints }, specs: geo.specs })).not.toBeNull();
+        expect(geodistance({ clauses: { [CARGO_KEY]: endpoints }, specs: geoSpecs })).toBeNull();
+        expect(geodistance({ clauses: { [geoFake.clauseKey]: endpoints }, specs: geoSpecs })).not.toBeNull();
 
         const window = lookalike([CARGO_ID], CARGO_ID, ["windowStart", "windowEnd"]);
         const span = { windowStart: "2026-01-01T09:00:00Z", windowEnd: "2026-01-01T12:00:00Z" };

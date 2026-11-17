@@ -1966,9 +1966,16 @@ values for the profile fold.</li>
 <li><strong>Open rate-quantity registry</strong>: <code>registerRateQuantitySource(source, resolver)</code>
 / <code>getRateQuantityResolver(source)</code> — a <code>pricingPolicy: &quot;rate&quot;</code> item resolves
 its billed quantity through this last-write-wins registry (shipped tenants:
-<code>checkout-quantity</code> = the buyer enters units; <code>order-geodistance</code> = derived from
-the order's committed geolocation endpoints). A booking-window or routed-distance
-composition registers a new tenant without touching checkout code.</li>
+<code>checkout-quantity</code> = the buyer enters units; <code>order-geodistance</code> = the
+great-circle distance in km between the centroids of the order's two committed
+geohash endpoints). A booking-window or routed-distance
+composition registers a new tenant without touching checkout code.
+<code>order-geodistance</code> finds its endpoints from the spec, never from a field name
+or a clause id. An endpoint is a string field whose spec names a declared
+sibling in <code>formatFromField</code>, where that sibling's committed value is
+<code>geohash</code>. The distance is read only when exactly one composed clause holds
+exactly two such fields. In every other case the quantity is unresolvable and
+the item is not priced.</li>
 </ul>
 <p>Signatures and the exact fold rules live in the <code>dist/checkoutPlan.d.ts</code>
 docblocks — treat them as the contract; this list is the map, not the territory.</p>
