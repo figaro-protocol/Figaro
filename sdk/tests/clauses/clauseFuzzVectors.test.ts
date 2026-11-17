@@ -7,11 +7,13 @@
  * from a seed and records what Layer A did with each:
  *
  *   - the spec: every protocol clause in `clauses/`, and generated specs —
- *     clauses nobody has seen, some of them malformed;
+ *     clauses nobody has seen, some of them malformed; their fields carry
+ *     dispositions, `formatFromField` and blinding fields, in private sets
+ *     that keep the set's rules and in sets that break one of them;
  *   - the content: drawn from the spec's own field shapes — half of the
  *     draws aim inside every bound, half also cross them (a wrong type, a
- *     bound crossed, a required field dropped, an unknown field added);
- *     strings leave ASCII in both;
+ *     bound crossed, a geohash finer than its grain cap, a required field
+ *     dropped, an unknown field added); strings leave ASCII in both;
  *   - the answers: whether the spec parses, whether the content validates,
  *     and the canonical ABI bytes when it does.
  *
@@ -32,8 +34,8 @@ import {
     encodeContentFromSpec,
     GEOHASH_FORMAT,
     geohashCapturePrecision,
+    PRIVATE_GEOHASH_MAX_PRECISION,
     parseClauseSpec,
-    resolveInputFormat,
     validateContent,
     type ClauseSpec,
     type FieldDisposition,
@@ -67,22 +69,41 @@ const anyString = (min: number, max: number) =>
         { weight: 1, arbitrary: fc.string({ unit: "grapheme", minLength: min, maxLength: max }) },
     );
 
-/** Keep a drawn geohash inside its disposition's grain cap. The cap is the one
- *  rule the guest's engine does not apply, so the shared stream stays on the
- *  rules both engines hold. Whole code points are dropped, never half of one. */
-function withinGrain(value: unknown, format: string | undefined, disposition: FieldDisposition | undefined): unknown {
-    if (format !== GEOHASH_FORMAT || typeof value !== "string") return value;
+/** The alphabet a geohash is written in. */
+const GEOHASH_ALPHABET = "0123456789bcdefghjkmnpqrstuvwxyz";
+
+/** A geohash-like string. `careful` draws stay inside the grain cap of the
+ *  disposition that governs the value, but one in five is one character past
+ *  it: in content whose every other field is inside its bounds, that is a
+ *  case the cap alone refuses. The others run past the private cap. */
+function geohashArb(disposition: FieldDisposition | undefined, careful: boolean): fc.Arbitrary<string> {
+    const unit = fc.constantFrom(...GEOHASH_ALPHABET.split(""));
     const cap = geohashCapturePrecision(disposition);
-    const points = Array.from(value);
-    while (points.join("").length > cap) points.pop();
-    return points.join("");
+    if (!careful) return fc.string({ unit, minLength: 1, maxLength: PRIVATE_GEOHASH_MAX_PRECISION + 2 });
+    return fc.oneof(
+        { weight: 4, arbitrary: fc.string({ unit, minLength: 1, maxLength: cap }) },
+        { weight: 1, arbitrary: fc.string({ unit, minLength: cap + 1, maxLength: cap + 1 }) },
+    );
 }
 
-/** `careful` draws aim inside the field's bounds; the others also cross them. */
-function stringArb(field: Extract<FieldSpec, { type: "string" }>, careful: boolean): fc.Arbitrary<unknown> {
+/** `careful` draws aim inside the field's bounds; the others also cross them.
+ *  `disposition` is the one that governs the value: the field's own, or the
+ *  array field's for an item. */
+function stringArb(
+    field: Extract<FieldSpec, { type: "string" }>,
+    careful: boolean,
+    disposition: FieldDisposition | undefined,
+): fc.Arbitrary<unknown> {
     const min = field.minLength ?? 0;
     const max = Math.max(min, Math.min(field.maxLength ?? min + 24, min + 48));
+    // A format named by a sibling resolves at validation; a geohash is the
+    // one whose grain the engines cap, so the draw is geohash-like.
+    if (field.formatFromField !== undefined) {
+        return careful ? geohashArb(disposition, true) : fc.oneof(geohashArb(disposition, false), anyString(min, max));
+    }
     switch (field.format) {
+        case GEOHASH_FORMAT:
+            return careful ? geohashArb(disposition, true) : fc.oneof(geohashArb(disposition, false), anyString(min, max));
         case "bytes32-hex":
             return hexArb(careful ? fc.constant(32) : fc.constantFrom(32, 31, 33, 0));
         case "address-hex":
@@ -115,10 +136,15 @@ function stringArb(field: Extract<FieldSpec, { type: "string" }>, careful: boole
     }
 }
 
-function valueArb(field: FieldSpec, careful: boolean, depth = 0): fc.Arbitrary<unknown> {
+function valueArb(
+    field: FieldSpec,
+    careful: boolean,
+    depth = 0,
+    disposition: FieldDisposition | undefined = field.disposition,
+): fc.Arbitrary<unknown> {
     switch (field.type) {
         case "string":
-            return stringArb(field, careful);
+            return stringArb(field, careful, disposition);
         case "integer": {
             const lo = field.min ?? -1000;
             const hi = Math.max(lo, field.max ?? lo + 1000);
@@ -153,8 +179,8 @@ function valueArb(field: FieldSpec, careful: boolean, depth = 0): fc.Arbitrary<u
         case "array": {
             const min = field.minItems ?? 0;
             const max = Math.max(min, Math.min(field.maxItems ?? min + 3, min + 3));
-            const itemFormat = resolveInputFormat(field.items, [], undefined);
-            const item = valueArb(field.items, careful, depth + 1).map((v) => withinGrain(v, itemFormat, field.disposition));
+            // The array field's disposition governs its items.
+            const item = valueArb(field.items, careful, depth + 1, field.disposition);
             const inside = fc.array(item, { minLength: min, maxLength: max });
             if (careful) return inside;
             return fc.oneof(
@@ -202,9 +228,6 @@ function contentArb(
     return fc.tuple(fc.tuple(...entries), extraArb).map(([pairs, extra]) => {
         const out: Record<string, unknown> = {};
         for (const pair of pairs) if (pair !== null) out[pair[0]] = pair[1];
-        for (const field of fields) {
-            if (field.name in out) out[field.name] = withinGrain(out[field.name], resolveInputFormat(field, fields, out), field.disposition);
-        }
         if (extra !== null && !["__proto__", "constructor", "prototype"].includes(extra[0])) {
             out[extra[0]] = extra[1];
         }
@@ -230,20 +253,47 @@ const patternArb = fc.oneof(
 
 const nameArb = fc.stringMatching(/^[a-z][a-zA-Z0-9]{0,7}$/);
 
+/** A field's disposition: absent most of the time, sometimes either value,
+ *  sometimes one no engine admits. */
+const dispositionArb = fc.oneof(
+    { weight: 12, arbitrary: fc.constant(undefined) },
+    { weight: 2, arbitrary: fc.constantFrom("public", "private") },
+    { weight: 1, arbitrary: fc.constantFrom("secret", "PRIVATE", null, true) as fc.Arbitrary<unknown> },
+);
+
+/** A string field's `formatFromField`: absent most of the time, a drawn name
+ *  (a sibling's now and then), or a value no engine admits. */
+const formatFromFieldArb = fc.oneof(
+    { weight: 12, arbitrary: fc.constant(undefined) },
+    { weight: 2, arbitrary: nameArb },
+    { weight: 1, arbitrary: fc.constantFrom("", 5, null) as fc.Arbitrary<unknown> },
+);
+
+/** A field the key leaves out when its drawn value is `undefined`. */
+const withoutUndefined = (field: Record<string, unknown>): Record<string, unknown> =>
+    Object.fromEntries(Object.entries(field).filter(([, v]) => v !== undefined));
+
 function fieldSpecArb(depth: number): fc.Arbitrary<Record<string, unknown>> {
+    return fieldSpecShapeArb(depth).chain((field) =>
+        dispositionArb.map((disposition) => withoutUndefined({ ...field, disposition })),
+    );
+}
+
+function fieldSpecShapeArb(depth: number): fc.Arbitrary<Record<string, unknown>> {
     const base = { name: nameArb, required: fc.boolean() };
     const leaves = [
         fc.record(
             {
                 ...base,
                 type: fc.constant("string"),
-                format: fc.constantFrom("bytes32-hex", "address-hex", "bytes-hex", "iso-datetime", "uri", "free-form"),
+                format: fc.constantFrom("bytes32-hex", "address-hex", "bytes-hex", "iso-datetime", "uri", "free-form", GEOHASH_FORMAT),
+                formatFromField: formatFromFieldArb,
                 minLength: fc.integer({ min: 0, max: 4 }),
                 maxLength: fc.integer({ min: 0, max: 40 }),
                 pattern: patternArb,
             },
-            { requiredKeys: ["name", "required", "type"] },
-        ),
+            { requiredKeys: ["name", "required", "type", "formatFromField"] },
+        ).map(withoutUndefined),
         fc.record(
             { ...base, type: fc.constant("integer"), min: fc.integer({ min: -50, max: 50 }), max: fc.integer({ min: -50, max: 500 }) },
             { requiredKeys: ["name", "required", "type"] },
@@ -293,6 +343,55 @@ function fieldSpecArb(depth: number): fc.Arbitrary<Record<string, unknown>> {
 
 const fieldsArb = fc.uniqueArray(fieldSpecArb(0), { selector: (f) => f.name, minLength: 1, maxLength: 5 });
 
+/** A set's blinding field, in its one shape. */
+const BLINDING = { name: "blind", type: "string", format: "bytes32-hex", required: true, disposition: "private", blinding: true } as const;
+
+/** A blinding field each of whose shapes breaks one rule. */
+const BROKEN_BLINDINGS: Record<string, unknown>[] = [
+    { ...BLINDING, required: false },
+    { ...BLINDING, format: "bytes-hex" },
+    { ...BLINDING, disposition: "public" },
+    { ...BLINDING, default: `0x${"00".repeat(32)}` },
+    { ...BLINDING, blinding: false },
+    { ...BLINDING, blinding: "true" },
+    { name: "blind", type: "integer", required: true, disposition: "private", blinding: true },
+];
+
+const privatized = (fields: Record<string, unknown>[]) => fields.map((f) => ({ ...f, disposition: "private" }));
+
+/**
+ * One field set (the top-level `fields`, or one stage): most draws keep the
+ * fields as drawn, and the rest shape the set around the private set's rules
+ * (`parseClauseSpec`), a valid private set or one that breaks one rule, or
+ * around a sibling whose value names a field's format.
+ */
+const fieldSetArb: fc.Arbitrary<Record<string, unknown>[]> = fc
+    .tuple(fieldsArb, fc.integer({ min: 0, max: 11 }), fc.nat())
+    .map(([fields, roll, pick]) => {
+        switch (roll) {
+            case 5: return [...privatized(fields), BLINDING];
+            case 6: return [BLINDING, ...privatized(fields)];
+            case 7: return privatized(fields);
+            case 8: return [...privatized(fields), BLINDING, { ...BLINDING, name: "blind2" }];
+            case 9: return [...privatized(fields), BROKEN_BLINDINGS[pick % BROKEN_BLINDINGS.length]];
+            case 10: {
+                // A sibling whose committed value, or its default, names the format.
+                const std = pick % 2 === 0
+                    ? { name: "std", type: "enum", values: [GEOHASH_FORMAT, "plus-code"], required: false, default: GEOHASH_FORMAT }
+                    : { name: "std", type: "string", required: false };
+                const loc = { name: "loc", type: "string", required: true, formatFromField: "std", ...(pick % 3 === 0 && { format: GEOHASH_FORMAT }) };
+                return pick % 4 === 1 ? [...privatized([...fields, std, loc]), BLINDING] : [...fields, std, loc];
+            }
+            case 11:
+                // A blinding field where none may stand: beside public fields, or nested.
+                return pick % 2 === 0
+                    ? [...fields, BLINDING]
+                    : [...privatized(fields), { name: "inner", type: "object", required: true, disposition: "private", fields: [BLINDING] }, BLINDING];
+            default:
+                return fields;
+        }
+    });
+
 const generatedSpecArb: fc.Arbitrary<Record<string, unknown>> = fc
     .record(
         {
@@ -300,8 +399,8 @@ const generatedSpecArb: fc.Arbitrary<Record<string, unknown>> = fc
             version: fc.integer({ min: 1, max: 9 }),
             title: fc.string({ maxLength: 12 }),
             description: fc.string({ maxLength: 24 }),
-            fields: fieldsArb,
-            stages: fc.dictionary(fc.constantFrom("1", "2", "3"), fieldsArb, { maxKeys: 2 }),
+            fields: fieldSetArb,
+            stages: fc.dictionary(fc.constantFrom("1", "2", "3"), fieldSetArb, { maxKeys: 2 }),
         },
         { requiredKeys: ["clauseId", "version", "title", "description", "fields"] },
     )
@@ -313,6 +412,7 @@ const generatedSpecArb: fc.Arbitrary<Record<string, unknown>> = fc
             if (roll === 1) damaged.version = "1";
             if (roll === 2) damaged.fields = {};
             if (roll === 3) damaged.fields = [...(spec.fields as unknown[]), { name: "x", required: true, type: "decimal" }];
+            if (roll === 4) damaged.fields = [...(spec.fields as unknown[]), { name: "e", required: true, type: "enum", values: Array.from({ length: 257 }, (_, i) => `v${i}`) }];
             return damaged;
         }),
     );
@@ -427,35 +527,28 @@ describe("Clause fuzz vectors — the generated leg of the clause-engine lock", 
         expect(JSON.stringify(a)).toBe(JSON.stringify(b));
     });
 
-    it("no vector is refused by the geohash grain cap, the one rule the guest's engine does not apply", () => {
-        // The stream holds the rules both engines share; the grain cap is the
-        // SDK's alone (`engineVectors.test.ts`, the rules beyond the shared
-        // vectors), so a drawn geohash stays inside its disposition's cap.
+    it("the stream reaches the grain cap, the private set's rules and a valid private set", () => {
+        // Both engines apply these rules, so the stream holds cases of each:
+        // content the cap alone refuses, specs the private set's rules alone
+        // refuse, and a private set whose content both engines encode.
+        let capRefusals = 0;
+        let privateSetRefusals = 0;
+        let privateSetsEncoded = 0;
         for (const seed of [1, 2, 3]) {
-            for (const v of build(seed, 8, 6)) {
-                if (!v.specOk || v.validateOk !== false) continue;
+            for (const v of build(seed, 8, 40)) {
                 const parsed = parseClauseSpec(v.spec);
-                if (!parsed.ok) continue;
+                if (!parsed.ok) {
+                    if (parsed.errors.every((e) => PRIVATE_SET_REFUSAL.test(e.message))) privateSetRefusals += 1;
+                    continue;
+                }
+                if (v.validateOk === true && JSON.stringify(v.spec).includes('"blinding":true')) privateSetsEncoded += 1;
+                if (v.validateOk !== false) continue;
                 const verdict = validateContent(v.content, parsed.spec, v.stage === null ? {} : { stage: v.stage });
-                // Refused by the cap alone: the guest's engine would accept it.
-                const capAlone = !verdict.ok && verdict.errors.every((e) => GRAIN_REFUSAL.test(e.message));
-                expect(capAlone, `${v.origin} stage ${v.stage}: ${JSON.stringify(v.content)}`).toBe(false);
+                if (!verdict.ok && verdict.errors.every((e) => GRAIN_REFUSAL.test(e.message))) capRefusals += 1;
             }
         }
-    });
-
-    it("no spec is refused by the private set's rules, which the guest's parser does not apply", () => {
-        // The guest's parser reads no disposition and no blinding attribute
-        // (`engineVectors.test.ts`, the rules beyond the shared vectors), so
-        // the generator draws neither, and a protocol clause that declares a
-        // private set keeps every rule of it.
-        for (const seed of [1, 2, 3]) {
-            for (const v of build(seed, 2, 6)) {
-                if (v.specOk) continue;
-                const parsed = parseClauseSpec(v.spec);
-                const byPrivateSetRules = !parsed.ok && parsed.errors.every((e) => PRIVATE_SET_REFUSAL.test(e.message));
-                expect(byPrivateSetRules, `${v.origin}: ${JSON.stringify(parsed.ok ? [] : parsed.errors)}`).toBe(false);
-            }
-        }
+        expect(capRefusals, "content the grain cap alone refuses").toBeGreaterThan(0);
+        expect(privateSetRefusals, "specs the private set's rules alone refuse").toBeGreaterThan(0);
+        expect(privateSetsEncoded, "private sets whose content validates").toBeGreaterThan(0);
     });
 });

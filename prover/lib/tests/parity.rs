@@ -414,11 +414,16 @@ struct AttestFixture {
 }
 
 fn attest_fixture() -> AttestFixture {
-    let spec_json = load_spec_json("figaro-modalities");
+    attest_fixture_for(load_spec_json("figaro-modalities"), CLAUSE_DATA)
+}
+
+/// The single-clause agreement over any witness spec and committed clause
+/// data: the order commits the one leaf, so `checkoutHash` is that leaf.
+fn attest_fixture_for(spec_json: String, clause_data: &str) -> AttestFixture {
     // The clause key is keccak256 of the spec bytes the witness carries:
     // the canonical form of the spec without its `block`.
     let clause_key = keccak256(spec_json.as_bytes());
-    let leaf = clause_leaf(&clause_key, CLAUSE_DATA);
+    let leaf = clause_leaf(&clause_key, clause_data);
 
     let root = Commitment {
         checkout_hash: leaf,
@@ -513,13 +518,24 @@ fn seller_attest_op_with(
     content_ref: B256,
     signer: &SigningKey,
 ) -> KernelOp {
+    seller_attest_at_stage(f, 0, witness, content_ref, signer)
+}
+
+/// A seller attestation on the fixture's root order at `stage`.
+fn seller_attest_at_stage(
+    f: &AttestFixture,
+    stage: u8,
+    witness: AttestationWitness,
+    content_ref: B256,
+    signer: &SigningKey,
+) -> KernelOp {
     let domain = domain_separator(CHAIN_ID, CORE);
-    let struct_hash = attest_seller_struct_hash(&f.root_order_hash, &f.clause_key, 0, &content_ref);
+    let struct_hash = attest_seller_struct_hash(&f.root_order_hash, &f.clause_key, stage, &content_ref);
     let digest = typed_data_hash(&domain, &struct_hash);
     KernelOp::AttestAsSeller {
         target: f.root.clone(),
         clause_id: f.clause_key,
-        stage: 0,
+        stage,
         content_ref,
         seller_sig: sign_digest(signer, &digest),
         proof: witness,
@@ -778,6 +794,174 @@ fn attest_wrong_inclusion_proof_fails() {
     match apply_batch(&input) {
         Err(KernelError::InvalidInclusionProof) => {}
         other => panic!("expected InvalidInclusionProof, got {other:?}"),
+    }
+}
+
+// ── Private sets and the grain cap in the plaintext form ───────────
+//
+// The clause engine applies the spec format's private-set rules and the
+// geohash grain cap, so Gate S refuses a spec that breaks the set rules and
+// Gate C refuses content finer than its grain cap. The private clauses
+// below are the SDK's hand-written vectors (`engineVectors.test.ts`,
+// frozen into `test/fixtures/clause-engine-vectors.json`).
+
+/// The SDK's encode vector labeled `label`.
+fn sdk_encode_vector(label: &str) -> serde_json::Value {
+    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    p.pop(); // prover/
+    p.pop(); // repo root
+    p.push("test/fixtures/clause-engine-vectors.json");
+    let text = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
+    let fx: serde_json::Value = serde_json::from_str(&text).expect("fixture JSON");
+    fx["encodings"]
+        .as_array()
+        .expect("encodings")
+        .iter()
+        .find(|c| c["label"] == label)
+        .unwrap_or_else(|| panic!("no encode vector {label}"))
+        .clone()
+}
+
+/// A witness spec text over `fields` and, when given, `stages` — the bytes
+/// its clause key hashes.
+fn witness_spec(fields: &serde_json::Value, stages: Option<&serde_json::Value>) -> String {
+    let mut spec = serde_json::json!({
+        "clauseId": "t",
+        "version": 1,
+        "title": "T",
+        "description": "D",
+        "fields": fields,
+    });
+    if let Some(stages) = stages {
+        spec["stages"] = stages.clone();
+    }
+    serde_json::to_string(&spec).expect("serialize")
+}
+
+fn hex_to_bytes(hex: &str) -> Vec<u8> {
+    let body = hex.trim_start_matches("0x");
+    (0..body.len()).step_by(2).map(|i| u8::from_str_radix(&body[i..i + 2], 16).expect("hex")).collect()
+}
+
+#[test]
+fn a_re_assert_of_a_blinded_private_clause_passes_its_gates() {
+    let vector = sdk_encode_vector("a private set with its blinding value");
+    let spec_json = witness_spec(&vector["fields"], None);
+    // The committed clause data: the canonical JSON of the content, its
+    // blinding value with it.
+    let clause_data = serde_json::to_string(&vector["content"]).expect("serialize");
+    let f = attest_fixture_for(spec_json, &clause_data);
+    let content_ref = keccak256(clause_data.as_bytes());
+    let proof = AttestationContentProof {
+        spec_json: f.spec_json.clone(),
+        content_json: clause_data.clone(),
+        clause_data: clause_data.clone(),
+        inclusion_proof: vec![],
+        content_kind: ContentKind::ReAssert,
+    };
+    let op = seller_attest_op(&f, proof, content_ref, &make_signing_key(SELLER1_KEY));
+    let (_pv, _positions, events) = run_attest_batch(&f, op).expect("the blinded private clause passes gates S, C and I");
+    assert_eq!(events.attestations.len(), 1);
+    assert_eq!(events.attestations[0].content_ref, content_ref);
+    assert_eq!(events.spec_bindings.len(), 1);
+    assert_eq!(events.spec_bindings[0].clause_id, f.clause_key);
+
+    // The same clause data without its blinding value is refused at gate C.
+    let mut bare = vector["content"].clone();
+    bare.as_object_mut().expect("content object").remove("b");
+    let bare_data = serde_json::to_string(&bare).expect("serialize");
+    let f = attest_fixture_for(witness_spec(&vector["fields"], None), &bare_data);
+    let proof = AttestationContentProof {
+        spec_json: f.spec_json.clone(),
+        content_json: bare_data.clone(),
+        clause_data: bare_data.clone(),
+        inclusion_proof: vec![],
+        content_kind: ContentKind::ReAssert,
+    };
+    let op = seller_attest_op(&f, proof, keccak256(bare_data.as_bytes()), &make_signing_key(SELLER1_KEY));
+    match run_attest_batch(&f, op) {
+        Err(KernelError::ClauseContentInvalid(_)) => {}
+        other => panic!("expected ClauseContentInvalid, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_runtime_witness_at_a_private_stage_with_its_blinding_value_passes_and_its_content_ref_is_the_sdk_s() {
+    let vector = sdk_encode_vector("a private stage with its blinding value");
+    let stage = vector["stage"].as_u64().expect("stage") as u8;
+    let spec_json = witness_spec(&vector["fields"], Some(&vector["stages"]));
+    let committed = r#"{"note":"x"}"#;
+    let f = attest_fixture_for(spec_json, committed);
+
+    // The SDK's content reference: keccak256 of the bytes its encoder wrote.
+    let sdk_content_ref = keccak256(hex_to_bytes(vector["encoded"].as_str().expect("encoded")));
+    let content_ref = keccak256(encode_content(&f.spec_json, &vector["content"], stage).as_slice());
+    assert_eq!(content_ref, sdk_content_ref, "the guest's content reference is the SDK's");
+
+    let proof = AttestationContentProof {
+        spec_json: f.spec_json.clone(),
+        content_json: serde_json::to_string(&vector["content"]).expect("serialize"),
+        clause_data: committed.to_string(),
+        inclusion_proof: vec![],
+        content_kind: ContentKind::RuntimeWitness,
+    };
+    let op = seller_attest_at_stage(&f, stage, AttestationWitness::Plaintext(proof), sdk_content_ref, &make_signing_key(SELLER1_KEY));
+    let (_pv, _positions, events) = run_attest_batch(&f, op).expect("the private stage passes gates S, C and I");
+    assert_eq!(events.attestations.len(), 1);
+    assert_eq!(events.attestations[0].stage, stage);
+    assert_eq!(events.attestations[0].content_ref, sdk_content_ref);
+}
+
+#[test]
+fn a_plaintext_attestation_whose_public_location_is_finer_than_the_cap_is_refused() {
+    let fields = serde_json::json!([{ "name": "origin", "type": "string", "required": true, "format": "geohash" }]);
+    let at_cap = r#"{"origin":"dr5reg"}"#;
+    let f = attest_fixture_for(witness_spec(&fields, None), at_cap);
+    let seller1_key = make_signing_key(SELLER1_KEY);
+
+    // Six characters, the public cap: accepted.
+    let content: serde_json::Value = serde_json::from_str(at_cap).unwrap();
+    let content_ref = keccak256(encode_content(&f.spec_json, &content, 0).as_slice());
+    let proof = AttestationContentProof {
+        spec_json: f.spec_json.clone(),
+        content_json: at_cap.to_string(),
+        clause_data: at_cap.to_string(),
+        inclusion_proof: vec![],
+        content_kind: ContentKind::RuntimeWitness,
+    };
+    run_attest_batch(&f, seller_attest_op(&f, proof, content_ref, &seller1_key)).expect("a public geohash at the cap passes");
+
+    // Seven: refused at gate C, before any byte is derived.
+    let finer = r#"{"origin":"dr5regw"}"#;
+    let proof = AttestationContentProof {
+        spec_json: f.spec_json.clone(),
+        content_json: finer.to_string(),
+        clause_data: at_cap.to_string(),
+        inclusion_proof: vec![],
+        content_kind: ContentKind::RuntimeWitness,
+    };
+    match run_attest_batch(&f, seller_attest_op(&f, proof, keccak256("any"), &seller1_key)) {
+        Err(KernelError::ClauseContentInvalid(reason)) => assert!(reason.contains("geohash"), "{reason}"),
+        other => panic!("expected ClauseContentInvalid, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_spec_with_a_private_set_and_no_blinding_field_is_refused() {
+    let fields = serde_json::json!([{ "name": "grade", "type": "enum", "values": ["a", "b"], "required": true, "disposition": "private" }]);
+    let clause_data = r#"{"grade":"a"}"#;
+    let f = attest_fixture_for(witness_spec(&fields, None), clause_data);
+    let proof = AttestationContentProof {
+        spec_json: f.spec_json.clone(),
+        content_json: clause_data.to_string(),
+        clause_data: clause_data.to_string(),
+        inclusion_proof: vec![],
+        content_kind: ContentKind::ReAssert,
+    };
+    let op = seller_attest_op(&f, proof, keccak256(clause_data.as_bytes()), &make_signing_key(SELLER1_KEY));
+    match run_attest_batch(&f, op) {
+        Err(KernelError::ClauseSpecParseFailed(reason)) => assert!(reason.contains("blinding"), "{reason}"),
+        other => panic!("expected ClauseSpecParseFailed, got {other:?}"),
     }
 }
 

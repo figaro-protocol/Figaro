@@ -1316,9 +1316,12 @@ under the `checkoutHash`, and a witness's `contentRef`, while the spec is
 public. Without a random value inside the hashed bytes, anyone confirms the
 value by hashing each guess. The value sits inside the set as a declared
 field, so it enters the canonical JSON of stage 0 and the ABI bytes of a
-stage like any field: no hash function, leaf, content reference, CID,
-contract or proof program changes, and both engines already validate and
-encode a `bytes32-hex` string. A reserved key that no spec declares would be
+stage like any field: no hash function, leaf, content reference, CID or
+contract changes, and both engines validate and encode a `bytes32-hex`
+string. Both engines apply the set's rules (`parseClauseSpec`;
+`parse_clause_spec`, `prover/clause/src/spec.rs`), so gate S of a plaintext
+attestation refuses a spec that breaks them, and gate C refuses a private
+set's content without its blinding value. A reserved key that no spec declares would be
 refused as an undeclared field by both validators, dropped by the encoder
 from a witness's bytes, and refused by a stranger's validator written from
 the published format, so the rule would live outside the spec a tool fetches.
@@ -1331,8 +1334,11 @@ a zero or a repeat.
 
 **Tests**: `sdk/tests/clauses/spec.test.ts` and
 `sdk/tests/clauses/schema-conformance.test.ts` (each rule, in the parser and
-in the published definition); `sdk/tests/clauses/engineVectors.test.ts` (the
-rules are the SDK's alone, and the shared vectors carry none);
+in the published definition); `sdk/tests/clauses/engineVectors.test.ts` and
+`prover/clause/tests/engine_vectors.rs` (each rule, both verdicts, the same in
+both engines); `prover/lib/tests/parity.rs` (a blinded private clause passes
+the plaintext form's gates, and a private set without its blinding field is
+refused at gate S);
 `sdk/tests/blinding.test.ts` (two commitments of one private value differ in
 data hash and `checkoutHash`; the holder reproduces the fingerprint through
 `anchorAgreement` and a guess of the value alone does not; a public clause

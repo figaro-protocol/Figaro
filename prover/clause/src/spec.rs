@@ -61,6 +61,15 @@ pub enum DefaultValue {
     StringArray(Vec<String>),
 }
 
+/// Whether a field's committed value is published in the open or only behind
+/// its fingerprint — the SDK's `FieldDisposition`. Absent reads as public.
+/// The grain cap reads it, and a field set's rules count it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Disposition {
+    Public,
+    Private,
+}
+
 #[derive(Clone, Debug)]
 pub struct BaseFieldSpec {
     pub name: String,
@@ -73,12 +82,32 @@ pub struct BaseFieldSpec {
     /// the ABI encoder ignores it (absent optional still encodes as the
     /// ABI zero-value).
     pub default: Option<DefaultValue>,
+    /// `"public"` or `"private"`; `None` when the spec declares none, which
+    /// reads as public.
+    pub disposition: Option<Disposition>,
+    /// The set's blinding field (`"blinding": true`, the only value the
+    /// attribute takes): a top-level `bytes32-hex` string, required,
+    /// private, with no default, one per private set
+    /// (`parse_clause_spec`). Its value is content like any other field's.
+    pub blinding: bool,
+}
+
+impl BaseFieldSpec {
+    /// Is the field's committed value private? Absent reads as public.
+    pub fn is_private(&self) -> bool {
+        self.disposition == Some(Disposition::Private)
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct StringFieldSpec {
     pub base: BaseFieldSpec,
     pub format: Option<StringFormat>,
+    /// The name of a sibling field whose committed value is this field's
+    /// format: resolved as the sibling's value, then the sibling's default,
+    /// then `format` (`validate::resolve_input_format`). The grain cap reads
+    /// the resolved format.
+    pub format_from_field: Option<String>,
     pub min_length: Option<usize>,
     pub max_length: Option<usize>,
     pub pattern: Option<String>,
@@ -285,7 +314,24 @@ fn parse_base(raw: &Value, path: &str, errors: &mut Vec<SpecParseError>) -> Opti
             return None;
         }
     };
-    Some(BaseFieldSpec { name, required, description, label, default: None })
+    let disposition = match obj.get("disposition") {
+        None => None,
+        Some(Value::String(s)) if s == "public" => Some(Disposition::Public),
+        Some(Value::String(s)) if s == "private" => Some(Disposition::Private),
+        Some(_) => {
+            err(errors, &format!("{path}.disposition"), "disposition must be \"public\" or \"private\" when present");
+            return None;
+        }
+    };
+    let blinding = match obj.get("blinding") {
+        None => false,
+        Some(Value::Bool(true)) => true,
+        Some(_) => {
+            err(errors, &format!("{path}.blinding"), "blinding must be true when present");
+            return None;
+        }
+    };
+    Some(BaseFieldSpec { name, required, description, label, default: None, disposition, blinding })
 }
 
 fn parse_non_negative_usize(
@@ -425,7 +471,99 @@ pub fn parse_field_spec(
         }
         spec.base_mut().default = default_value_of(raw_default);
     }
+    // A default of any type marks the field: `default_value_of` carries
+    // only the shapes a default may take, and the rule reads the raw key.
+    if spec.base().blinding && !blinding_shape_holds(&spec, raw.get("default").is_some(), path, errors, depth) {
+        return None;
+    }
     Some(spec)
+}
+
+/// The format a blinding field carries: 32 bytes as hex, validated and
+/// encoded as `bytes32` by both engines.
+const BLINDING_FORMAT: &str = "bytes32-hex";
+
+/// The one shape of a blinding field — the SDK's `blindingShapeHolds`: a
+/// top-level string of format `bytes32-hex`, required, private, with no
+/// default. Pushes one error per broken rule and returns whether all hold.
+fn blinding_shape_holds(
+    spec: &FieldSpec,
+    has_default: bool,
+    path: &str,
+    errors: &mut Vec<SpecParseError>,
+    depth: u32,
+) -> bool {
+    let before = errors.len();
+    if depth > 0 {
+        err(
+            errors,
+            &format!("{path}.blinding"),
+            "a blinding field is a top-level field of its set, never nested in an object or an array",
+        );
+    }
+    match spec {
+        FieldSpec::String(s) => {
+            if s.format != Some(StringFormat::Bytes32Hex) {
+                err(errors, &format!("{path}.format"), &format!("a blinding field carries format \"{BLINDING_FORMAT}\""));
+            }
+        }
+        _ => err(errors, &format!("{path}.type"), "a blinding field is of type \"string\""),
+    }
+    let base = spec.base();
+    if !base.required {
+        err(errors, &format!("{path}.required"), "a blinding field is required");
+    }
+    if !base.is_private() {
+        err(errors, &format!("{path}.disposition"), "a blinding field is \"private\"");
+    }
+    if has_default {
+        err(
+            errors,
+            &format!("{path}.default"),
+            "a blinding field carries no default: a default is the same in every order, so it blinds nothing",
+        );
+    }
+    errors.len() == before
+}
+
+/// The rules of one field set (the top-level `fields`, or one `stages[N]`)
+/// — the SDK's `fieldSetRulesHold`: the set does not mix public and private
+/// fields, a set that declares a private field declares exactly one
+/// blinding field, and a set with no other private field declares none.
+/// The leaf model withholds a whole set, never one field, and a private
+/// set's fingerprint without a fresh random value can be confirmed by
+/// hashing guesses.
+fn field_set_rules_hold(fields: &[FieldSpec], path: &str, errors: &mut Vec<SpecParseError>) {
+    if fields.is_empty() {
+        return;
+    }
+    let blinding_count = fields.iter().filter(|f| f.base().blinding).count();
+    let private_values = fields
+        .iter()
+        .filter(|f| f.base().is_private() && !f.base().blinding)
+        .count();
+    let any_public = fields.iter().any(|f| !f.base().is_private());
+    if any_public && (private_values > 0 || blinding_count > 0) {
+        err(
+            errors,
+            path,
+            "a clause may not mix public and private field dispositions — a clause is withheld as a whole; declare private fields in a clause of their own",
+        );
+    }
+    if private_values > 0 && blinding_count != 1 {
+        err(
+            errors,
+            path,
+            &format!("a set that declares a private field declares exactly one blinding field (\"blinding\": true); this set declares {blinding_count}"),
+        );
+    }
+    if private_values == 0 && blinding_count > 0 {
+        err(
+            errors,
+            path,
+            "a blinding field stands only beside another private field; this set declares no private field",
+        );
+    }
 }
 
 fn parse_field_spec_core(
@@ -455,6 +593,7 @@ fn parse_field_spec_core(
             let mut spec = StringFieldSpec {
                 base,
                 format: None,
+                format_from_field: None,
                 min_length: None,
                 max_length: None,
                 pattern: None,
@@ -467,6 +606,19 @@ fn parse_field_spec_core(
                     Some(s) if !s.is_empty() => spec.format = Some(StringFormat::from_str(s)),
                     _ => {
                         err(errors, &format!("{path}.format"), "format must be a non-empty string");
+                        return None;
+                    }
+                }
+            }
+            if let Some(f) = raw.get("formatFromField") {
+                match f.as_str() {
+                    Some(s) if !s.is_empty() => spec.format_from_field = Some(s.to_string()),
+                    _ => {
+                        err(
+                            errors,
+                            &format!("{path}.formatFromField"),
+                            "formatFromField must be a non-empty string (a sibling field name)",
+                        );
                         return None;
                     }
                 }
@@ -548,6 +700,16 @@ fn parse_field_spec_core(
                     return None;
                 }
             };
+            // An enum encodes as uint8, its 0-based position: a spec past
+            // 256 values would parse and then fail at its first encoding.
+            if arr.len() > 256 {
+                err(
+                    errors,
+                    &format!("{path}.values"),
+                    &format!("enum encodes as uint8 — at most 256 values (got {})", arr.len()),
+                );
+                return None;
+            }
             let mut values = Vec::with_capacity(arr.len());
             for (i, v) in arr.iter().enumerate() {
                 match v.as_str() {
@@ -725,6 +887,9 @@ pub fn parse_clause_spec(raw: &Value) -> ParseClauseSpecResult {
             Vec::new()
         }
     };
+    // A private set carries its one blinding field and never mixes public
+    // and private fields; each stage's set is held to the same rules.
+    field_set_rules_hold(&parsed_fields, "$.fields", &mut errors);
 
     let parsed_stages: Option<std::collections::BTreeMap<u8, Vec<FieldSpec>>> =
         match obj.get("stages") {
@@ -767,6 +932,7 @@ pub fn parse_clause_spec(raw: &Value) -> ParseClauseSpecResult {
                                 sf.push(c);
                             }
                         }
+                        field_set_rules_hold(&sf, &format!("$.stages.{key}"), &mut errors);
                         out.insert(stage_num as u8, sf);
                     }
                     Some(out)

@@ -46721,6 +46721,569 @@
    },
    "value": "x",
    "ok": false
+  },
+  {
+   "group": "geohash, no disposition",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "maxLength": 12
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "geohash, no disposition",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "maxLength": 12
+   },
+   "value": "d",
+   "ok": true
+  },
+  {
+   "group": "geohash, no disposition",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "maxLength": 12
+   },
+   "value": "dr5re",
+   "ok": true
+  },
+  {
+   "group": "geohash, no disposition",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "maxLength": 12
+   },
+   "value": "dr5reg",
+   "ok": true
+  },
+  {
+   "group": "geohash, no disposition",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "maxLength": 12
+   },
+   "value": "dr5regw",
+   "ok": false
+  },
+  {
+   "group": "geohash, no disposition",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "maxLength": 12
+   },
+   "value": "dr5regw3pg6s",
+   "ok": false
+  },
+  {
+   "group": "geohash, no disposition",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "maxLength": 12
+   },
+   "value": "dr5regw3pg6st",
+   "ok": false
+  },
+  {
+   "group": "geohash, no disposition",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "maxLength": 12
+   },
+   "value": "dr5reé",
+   "ok": true
+  },
+  {
+   "group": "geohash, no disposition",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "maxLength": 12
+   },
+   "value": "dr5regé",
+   "ok": false
+  },
+  {
+   "group": "geohash, no disposition",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "maxLength": 12
+   },
+   "value": "🚚🚚🚚",
+   "ok": true
+  },
+  {
+   "group": "geohash, no disposition",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "maxLength": 12
+   },
+   "value": "🚚🚚🚚a",
+   "ok": false
+  },
+  {
+   "group": "geohash, no disposition",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "maxLength": 12
+   },
+   "value": 7,
+   "ok": false
+  },
+  {
+   "group": "geohash, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "disposition": "public"
+   },
+   "value": "",
+   "ok": true
+  },
+  {
+   "group": "geohash, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "disposition": "public"
+   },
+   "value": "d",
+   "ok": true
+  },
+  {
+   "group": "geohash, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "disposition": "public"
+   },
+   "value": "dr5re",
+   "ok": true
+  },
+  {
+   "group": "geohash, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "disposition": "public"
+   },
+   "value": "dr5reg",
+   "ok": true
+  },
+  {
+   "group": "geohash, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "disposition": "public"
+   },
+   "value": "dr5regw",
+   "ok": false
+  },
+  {
+   "group": "geohash, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "disposition": "public"
+   },
+   "value": "dr5regw3pg6s",
+   "ok": false
+  },
+  {
+   "group": "geohash, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "disposition": "public"
+   },
+   "value": "dr5regw3pg6st",
+   "ok": false
+  },
+  {
+   "group": "geohash, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "disposition": "public"
+   },
+   "value": "dr5reé",
+   "ok": true
+  },
+  {
+   "group": "geohash, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "disposition": "public"
+   },
+   "value": "dr5regé",
+   "ok": false
+  },
+  {
+   "group": "geohash, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "disposition": "public"
+   },
+   "value": "🚚🚚🚚",
+   "ok": true
+  },
+  {
+   "group": "geohash, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "disposition": "public"
+   },
+   "value": "🚚🚚🚚a",
+   "ok": false
+  },
+  {
+   "group": "geohash, public",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "disposition": "public"
+   },
+   "value": 7,
+   "ok": false
+  },
+  {
+   "group": "a format the cap does not read",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "plus-code",
+    "maxLength": 12
+   },
+   "value": "dr5regw",
+   "ok": true
+  },
+  {
+   "group": "a format the cap does not read",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "plus-code",
+    "maxLength": 12
+   },
+   "value": "dr5regw3pg6s",
+   "ok": true
+  },
+  {
+   "group": "geohash items of a public array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "items": {
+     "type": "string",
+     "format": "geohash"
+    }
+   },
+   "value": [],
+   "ok": true
+  },
+  {
+   "group": "geohash items of a public array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "items": {
+     "type": "string",
+     "format": "geohash"
+    }
+   },
+   "value": [
+    "dr5reg"
+   ],
+   "ok": true
+  },
+  {
+   "group": "geohash items of a public array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "items": {
+     "type": "string",
+     "format": "geohash"
+    }
+   },
+   "value": [
+    "dr5regw"
+   ],
+   "ok": false
+  },
+  {
+   "group": "geohash items of a public array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "items": {
+     "type": "string",
+     "format": "geohash"
+    }
+   },
+   "value": [
+    "dr5reg",
+    "dr5regw3"
+   ],
+   "ok": false
+  },
+  {
+   "group": "geohash items of a public array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "items": {
+     "type": "string",
+     "format": "geohash"
+    }
+   },
+   "value": [
+    7
+   ],
+   "ok": false
+  },
+  {
+   "group": "geohash items marked private in a public array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "items": {
+     "type": "string",
+     "format": "geohash",
+     "disposition": "private"
+    }
+   },
+   "value": [
+    "dr5reg"
+   ],
+   "ok": true
+  },
+  {
+   "group": "geohash items marked private in a public array",
+   "field": {
+    "name": "v",
+    "type": "array",
+    "required": true,
+    "items": {
+     "type": "string",
+     "format": "geohash",
+     "disposition": "private"
+    }
+   },
+   "value": [
+    "dr5regw"
+   ],
+   "ok": false
+  },
+  {
+   "group": "geohash in a nested object, public",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "g",
+      "type": "string",
+      "required": true,
+      "format": "geohash"
+     }
+    ]
+   },
+   "value": {
+    "g": "dr5reg"
+   },
+   "ok": true
+  },
+  {
+   "group": "geohash in a nested object, public",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "g",
+      "type": "string",
+      "required": true,
+      "format": "geohash"
+     }
+    ]
+   },
+   "value": {
+    "g": "dr5regw"
+   },
+   "ok": false
+  },
+  {
+   "group": "geohash in a nested object, private",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "g",
+      "type": "string",
+      "required": true,
+      "format": "geohash",
+      "disposition": "private"
+     }
+    ]
+   },
+   "value": {
+    "g": "dr5regw"
+   },
+   "ok": true
+  },
+  {
+   "group": "geohash in a nested object, private",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "g",
+      "type": "string",
+      "required": true,
+      "format": "geohash",
+      "disposition": "private"
+     }
+    ]
+   },
+   "value": {
+    "g": "dr5regw3pg6s"
+   },
+   "ok": true
+  },
+  {
+   "group": "geohash in a nested object, private",
+   "field": {
+    "name": "v",
+    "type": "object",
+    "required": true,
+    "fields": [
+     {
+      "name": "g",
+      "type": "string",
+      "required": true,
+      "format": "geohash",
+      "disposition": "private"
+     }
+    ]
+   },
+   "value": {
+    "g": "dr5regw3pg6st"
+   },
+   "ok": false
+  },
+  {
+   "group": "formatFromField with no sibling, a static geohash format",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "formatFromField": "standard"
+   },
+   "value": "dr5reg",
+   "ok": true
+  },
+  {
+   "group": "formatFromField with no sibling, a static geohash format",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "format": "geohash",
+    "formatFromField": "standard"
+   },
+   "value": "dr5regw",
+   "ok": false
+  },
+  {
+   "group": "formatFromField with no sibling, no static format",
+   "field": {
+    "name": "v",
+    "type": "string",
+    "required": true,
+    "formatFromField": "standard"
+   },
+   "value": "dr5regw3pg6st",
+   "ok": true
   }
  ],
  "contents": [
@@ -46811,6 +47374,615 @@
     }
    ],
    "content": "x",
+   "ok": false
+  },
+  {
+   "label": "private geohash {\"g\":\"dr5regw3pg6s\",\"b\":\"0xabababababababababababababababababababababababababababababababab\"}",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "geohash",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "dr5regw3pg6s",
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": true
+  },
+  {
+   "label": "private geohash {\"g\":\"dr5regw3pg6st\",\"b\":\"0xabababababababababababababababababababababababababababababababab\"}",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "geohash",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "dr5regw3pg6st",
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": false
+  },
+  {
+   "label": "private geohash {\"g\":\"dr5reg\"}",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "geohash",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "dr5reg"
+   },
+   "ok": false
+  },
+  {
+   "label": "private geohash {\"g\":\"dr5reg\",\"b\":\"0xab\"}",
+   "fields": [
+    {
+     "name": "g",
+     "type": "string",
+     "required": true,
+     "format": "geohash",
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "g": "dr5reg",
+    "b": "0xab"
+   },
+   "ok": false
+  },
+  {
+   "label": "private array of geohashes {\"a\":[\"dr5regw3pg6s\"],\"b\":\"0xabababababababababababababababababababababababababababababababab\"}",
+   "fields": [
+    {
+     "name": "a",
+     "type": "array",
+     "required": true,
+     "disposition": "private",
+     "items": {
+      "type": "string",
+      "format": "geohash"
+     }
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "a": [
+     "dr5regw3pg6s"
+    ],
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": true
+  },
+  {
+   "label": "private array of geohashes {\"a\":[\"dr5regw3pg6st\"],\"b\":\"0xabababababababababababababababababababababababababababababababab\"}",
+   "fields": [
+    {
+     "name": "a",
+     "type": "array",
+     "required": true,
+     "disposition": "private",
+     "items": {
+      "type": "string",
+      "format": "geohash"
+     }
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "a": [
+     "dr5regw3pg6st"
+    ],
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField, a sibling with no default {\"std\":\"geohash\",\"loc\":\"dr5regw\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "geohash",
+    "loc": "dr5regw"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField, a sibling with no default {\"std\":\"geohash\",\"loc\":\"dr5reg\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "geohash",
+    "loc": "dr5reg"
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField, a sibling with no default {\"std\":\"plus-code\",\"loc\":\"dr5regw3pg6st\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "plus-code",
+    "loc": "dr5regw3pg6st"
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField, a sibling with no default {\"std\":\"\",\"loc\":\"dr5regw\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "",
+    "loc": "dr5regw"
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField, a sibling with no default {\"loc\":\"dr5regw\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "loc": "dr5regw"
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField, a sibling whose default is geohash {\"loc\":\"dr5regw\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "loc": "dr5regw"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField, a sibling whose default is geohash {\"std\":\"\",\"loc\":\"dr5regw\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "",
+    "loc": "dr5regw"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField, a sibling whose default is geohash {\"std\":\"plus-code\",\"loc\":\"dr5regw\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "plus-code",
+    "loc": "dr5regw"
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField, a sibling whose default is geohash {\"std\":\"geohash\",\"loc\":\"dr5reg\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "geohash",
+    "loc": "dr5reg"
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField, an enum sibling whose default is geohash {\"loc\":\"dr5regw\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "enum",
+     "values": [
+      "geohash",
+      "plus-code"
+     ],
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "loc": "dr5regw"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField, an enum sibling whose default is geohash {\"std\":\"geohash\",\"loc\":\"dr5regw\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "enum",
+     "values": [
+      "geohash",
+      "plus-code"
+     ],
+     "required": false,
+     "default": "geohash"
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "geohash",
+    "loc": "dr5regw"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField over a static geohash format {\"loc\":\"dr5regw\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "format": "geohash",
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "loc": "dr5regw"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField over a static geohash format {\"std\":\"plus-code\",\"loc\":\"dr5regw\"}",
+   "fields": [
+    {
+     "name": "std",
+     "type": "string",
+     "required": false
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "format": "geohash",
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": "plus-code",
+    "loc": "dr5regw"
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField, a sibling whose value is no string",
+   "fields": [
+    {
+     "name": "std",
+     "type": "integer",
+     "required": false
+    },
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "format": "geohash",
+     "formatFromField": "std"
+    }
+   ],
+   "content": {
+    "std": 5,
+    "loc": "dr5regw"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField naming the field itself {\"loc\":\"geohash\"}",
+   "fields": [
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "loc"
+    }
+   ],
+   "content": {
+    "loc": "geohash"
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField naming the field itself {\"loc\":\"dr5regw\"}",
+   "fields": [
+    {
+     "name": "loc",
+     "type": "string",
+     "required": true,
+     "formatFromField": "loc"
+    }
+   ],
+   "content": {
+    "loc": "dr5regw"
+   },
+   "ok": true
+  },
+  {
+   "label": "an absent optional field named toString",
+   "fields": [
+    {
+     "name": "toString",
+     "type": "string",
+     "required": false
+    }
+   ],
+   "content": {},
+   "ok": true
+  },
+  {
+   "label": "an absent optional field named constructor",
+   "fields": [
+    {
+     "name": "constructor",
+     "type": "string",
+     "required": false
+    }
+   ],
+   "content": {},
+   "ok": true
+  },
+  {
+   "label": "an absent optional field named valueOf",
+   "fields": [
+    {
+     "name": "valueOf",
+     "type": "string",
+     "required": false
+    }
+   ],
+   "content": {},
+   "ok": true
+  },
+  {
+   "label": "an absent optional field named hasOwnProperty",
+   "fields": [
+    {
+     "name": "hasOwnProperty",
+     "type": "string",
+     "required": false
+    }
+   ],
+   "content": {},
+   "ok": true
+  },
+  {
+   "label": "an absent optional field named __proto__",
+   "fields": [
+    {
+     "name": "__proto__",
+     "type": "string",
+     "required": false
+    }
+   ],
+   "content": {},
+   "ok": true
+  },
+  {
+   "label": "an absent optional object field named constructor",
+   "fields": [
+    {
+     "name": "constructor",
+     "type": "object",
+     "required": false,
+     "fields": []
+    }
+   ],
+   "content": {},
+   "ok": true
+  },
+  {
+   "label": "an absent required field named toString",
+   "fields": [
+    {
+     "name": "toString",
+     "type": "string",
+     "required": true
+    }
+   ],
+   "content": {},
+   "ok": false
+  },
+  {
+   "label": "a present field named __proto__",
+   "fields": [
+    {
+     "name": "__proto__",
+     "type": "string",
+     "required": true
+    }
+   ],
+   "content": {
+    "__proto__": "x"
+   },
+   "ok": true
+  },
+  {
+   "label": "an undeclared key named toString",
+   "fields": [
+    {
+     "name": "v",
+     "type": "string",
+     "required": false
+    }
+   ],
+   "content": {
+    "toString": "x"
+   },
    "ok": false
   }
  ],
@@ -50341,9 +51513,1640 @@
    "label": "spec is null",
    "spec": null,
    "ok": false
+  },
+  {
+   "label": "enum of 256 values",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "v0",
+       "v1",
+       "v2",
+       "v3",
+       "v4",
+       "v5",
+       "v6",
+       "v7",
+       "v8",
+       "v9",
+       "v10",
+       "v11",
+       "v12",
+       "v13",
+       "v14",
+       "v15",
+       "v16",
+       "v17",
+       "v18",
+       "v19",
+       "v20",
+       "v21",
+       "v22",
+       "v23",
+       "v24",
+       "v25",
+       "v26",
+       "v27",
+       "v28",
+       "v29",
+       "v30",
+       "v31",
+       "v32",
+       "v33",
+       "v34",
+       "v35",
+       "v36",
+       "v37",
+       "v38",
+       "v39",
+       "v40",
+       "v41",
+       "v42",
+       "v43",
+       "v44",
+       "v45",
+       "v46",
+       "v47",
+       "v48",
+       "v49",
+       "v50",
+       "v51",
+       "v52",
+       "v53",
+       "v54",
+       "v55",
+       "v56",
+       "v57",
+       "v58",
+       "v59",
+       "v60",
+       "v61",
+       "v62",
+       "v63",
+       "v64",
+       "v65",
+       "v66",
+       "v67",
+       "v68",
+       "v69",
+       "v70",
+       "v71",
+       "v72",
+       "v73",
+       "v74",
+       "v75",
+       "v76",
+       "v77",
+       "v78",
+       "v79",
+       "v80",
+       "v81",
+       "v82",
+       "v83",
+       "v84",
+       "v85",
+       "v86",
+       "v87",
+       "v88",
+       "v89",
+       "v90",
+       "v91",
+       "v92",
+       "v93",
+       "v94",
+       "v95",
+       "v96",
+       "v97",
+       "v98",
+       "v99",
+       "v100",
+       "v101",
+       "v102",
+       "v103",
+       "v104",
+       "v105",
+       "v106",
+       "v107",
+       "v108",
+       "v109",
+       "v110",
+       "v111",
+       "v112",
+       "v113",
+       "v114",
+       "v115",
+       "v116",
+       "v117",
+       "v118",
+       "v119",
+       "v120",
+       "v121",
+       "v122",
+       "v123",
+       "v124",
+       "v125",
+       "v126",
+       "v127",
+       "v128",
+       "v129",
+       "v130",
+       "v131",
+       "v132",
+       "v133",
+       "v134",
+       "v135",
+       "v136",
+       "v137",
+       "v138",
+       "v139",
+       "v140",
+       "v141",
+       "v142",
+       "v143",
+       "v144",
+       "v145",
+       "v146",
+       "v147",
+       "v148",
+       "v149",
+       "v150",
+       "v151",
+       "v152",
+       "v153",
+       "v154",
+       "v155",
+       "v156",
+       "v157",
+       "v158",
+       "v159",
+       "v160",
+       "v161",
+       "v162",
+       "v163",
+       "v164",
+       "v165",
+       "v166",
+       "v167",
+       "v168",
+       "v169",
+       "v170",
+       "v171",
+       "v172",
+       "v173",
+       "v174",
+       "v175",
+       "v176",
+       "v177",
+       "v178",
+       "v179",
+       "v180",
+       "v181",
+       "v182",
+       "v183",
+       "v184",
+       "v185",
+       "v186",
+       "v187",
+       "v188",
+       "v189",
+       "v190",
+       "v191",
+       "v192",
+       "v193",
+       "v194",
+       "v195",
+       "v196",
+       "v197",
+       "v198",
+       "v199",
+       "v200",
+       "v201",
+       "v202",
+       "v203",
+       "v204",
+       "v205",
+       "v206",
+       "v207",
+       "v208",
+       "v209",
+       "v210",
+       "v211",
+       "v212",
+       "v213",
+       "v214",
+       "v215",
+       "v216",
+       "v217",
+       "v218",
+       "v219",
+       "v220",
+       "v221",
+       "v222",
+       "v223",
+       "v224",
+       "v225",
+       "v226",
+       "v227",
+       "v228",
+       "v229",
+       "v230",
+       "v231",
+       "v232",
+       "v233",
+       "v234",
+       "v235",
+       "v236",
+       "v237",
+       "v238",
+       "v239",
+       "v240",
+       "v241",
+       "v242",
+       "v243",
+       "v244",
+       "v245",
+       "v246",
+       "v247",
+       "v248",
+       "v249",
+       "v250",
+       "v251",
+       "v252",
+       "v253",
+       "v254",
+       "v255"
+      ]
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "enum of 257 values",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "enum",
+      "values": [
+       "v0",
+       "v1",
+       "v2",
+       "v3",
+       "v4",
+       "v5",
+       "v6",
+       "v7",
+       "v8",
+       "v9",
+       "v10",
+       "v11",
+       "v12",
+       "v13",
+       "v14",
+       "v15",
+       "v16",
+       "v17",
+       "v18",
+       "v19",
+       "v20",
+       "v21",
+       "v22",
+       "v23",
+       "v24",
+       "v25",
+       "v26",
+       "v27",
+       "v28",
+       "v29",
+       "v30",
+       "v31",
+       "v32",
+       "v33",
+       "v34",
+       "v35",
+       "v36",
+       "v37",
+       "v38",
+       "v39",
+       "v40",
+       "v41",
+       "v42",
+       "v43",
+       "v44",
+       "v45",
+       "v46",
+       "v47",
+       "v48",
+       "v49",
+       "v50",
+       "v51",
+       "v52",
+       "v53",
+       "v54",
+       "v55",
+       "v56",
+       "v57",
+       "v58",
+       "v59",
+       "v60",
+       "v61",
+       "v62",
+       "v63",
+       "v64",
+       "v65",
+       "v66",
+       "v67",
+       "v68",
+       "v69",
+       "v70",
+       "v71",
+       "v72",
+       "v73",
+       "v74",
+       "v75",
+       "v76",
+       "v77",
+       "v78",
+       "v79",
+       "v80",
+       "v81",
+       "v82",
+       "v83",
+       "v84",
+       "v85",
+       "v86",
+       "v87",
+       "v88",
+       "v89",
+       "v90",
+       "v91",
+       "v92",
+       "v93",
+       "v94",
+       "v95",
+       "v96",
+       "v97",
+       "v98",
+       "v99",
+       "v100",
+       "v101",
+       "v102",
+       "v103",
+       "v104",
+       "v105",
+       "v106",
+       "v107",
+       "v108",
+       "v109",
+       "v110",
+       "v111",
+       "v112",
+       "v113",
+       "v114",
+       "v115",
+       "v116",
+       "v117",
+       "v118",
+       "v119",
+       "v120",
+       "v121",
+       "v122",
+       "v123",
+       "v124",
+       "v125",
+       "v126",
+       "v127",
+       "v128",
+       "v129",
+       "v130",
+       "v131",
+       "v132",
+       "v133",
+       "v134",
+       "v135",
+       "v136",
+       "v137",
+       "v138",
+       "v139",
+       "v140",
+       "v141",
+       "v142",
+       "v143",
+       "v144",
+       "v145",
+       "v146",
+       "v147",
+       "v148",
+       "v149",
+       "v150",
+       "v151",
+       "v152",
+       "v153",
+       "v154",
+       "v155",
+       "v156",
+       "v157",
+       "v158",
+       "v159",
+       "v160",
+       "v161",
+       "v162",
+       "v163",
+       "v164",
+       "v165",
+       "v166",
+       "v167",
+       "v168",
+       "v169",
+       "v170",
+       "v171",
+       "v172",
+       "v173",
+       "v174",
+       "v175",
+       "v176",
+       "v177",
+       "v178",
+       "v179",
+       "v180",
+       "v181",
+       "v182",
+       "v183",
+       "v184",
+       "v185",
+       "v186",
+       "v187",
+       "v188",
+       "v189",
+       "v190",
+       "v191",
+       "v192",
+       "v193",
+       "v194",
+       "v195",
+       "v196",
+       "v197",
+       "v198",
+       "v199",
+       "v200",
+       "v201",
+       "v202",
+       "v203",
+       "v204",
+       "v205",
+       "v206",
+       "v207",
+       "v208",
+       "v209",
+       "v210",
+       "v211",
+       "v212",
+       "v213",
+       "v214",
+       "v215",
+       "v216",
+       "v217",
+       "v218",
+       "v219",
+       "v220",
+       "v221",
+       "v222",
+       "v223",
+       "v224",
+       "v225",
+       "v226",
+       "v227",
+       "v228",
+       "v229",
+       "v230",
+       "v231",
+       "v232",
+       "v233",
+       "v234",
+       "v235",
+       "v236",
+       "v237",
+       "v238",
+       "v239",
+       "v240",
+       "v241",
+       "v242",
+       "v243",
+       "v244",
+       "v245",
+       "v246",
+       "v247",
+       "v248",
+       "v249",
+       "v250",
+       "v251",
+       "v252",
+       "v253",
+       "v254",
+       "v255",
+       "v256"
+      ]
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "disposition public",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean",
+      "disposition": "public"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "disposition secret",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean",
+      "disposition": "secret"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "disposition null",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean",
+      "disposition": null
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "disposition true",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean",
+      "disposition": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "disposition PRIVATE",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "PRIVATE"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "formatFromField": "std"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField naming no sibling",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "formatFromField": "nowhere"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "formatFromField empty",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "formatFromField": ""
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField a number",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "formatFromField": 5
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField null",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "formatFromField": null
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "formatFromField on an integer field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "integer",
+      "formatFromField": 5
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "private set with its blinding field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "private set, the blinding field first",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     },
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "private set without a blinding field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean",
+      "disposition": "private"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "private set with two blinding fields",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     },
+     {
+      "name": "b2",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field alone",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field beside a public field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a mixed set",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true
+     },
+     {
+      "name": "w",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a mixed set, public written out",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "public"
+     },
+     {
+      "name": "w",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a public field beside a private object",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true
+     },
+     {
+      "name": "o",
+      "type": "object",
+      "required": true,
+      "disposition": "private",
+      "fields": []
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "blinding false",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "blinding": false
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "blinding as a string",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": "true"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "blinding null",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "string",
+      "blinding": null
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field of type integer",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "integer",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field of type enum",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "enum",
+      "required": true,
+      "disposition": "private",
+      "blinding": true,
+      "values": [
+       "a"
+      ]
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field with no format",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field of format bytes-hex",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field not required",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": false,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field public",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "public",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field with no disposition",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field with a default",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true,
+      "default": "0xabababababababababababababababababababababababababababababababab"
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field with a default of the wrong type",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "type": "boolean",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true,
+      "default": 5
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field nested in an object",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "o",
+      "type": "object",
+      "required": true,
+      "disposition": "private",
+      "fields": [
+       {
+        "name": "v",
+        "type": "boolean",
+        "required": true,
+        "disposition": "private"
+       },
+       {
+        "name": "b",
+        "type": "string",
+        "format": "bytes32-hex",
+        "required": true,
+        "disposition": "private",
+        "blinding": true
+       }
+      ]
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a blinding field as an array item",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "a",
+      "type": "array",
+      "required": true,
+      "disposition": "private",
+      "items": {
+       "type": "string",
+       "format": "bytes32-hex",
+       "disposition": "private",
+       "blinding": true
+      }
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "ok": false
+  },
+  {
+   "label": "a private field nested in a public object",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "object",
+      "fields": [
+       {
+        "name": "w",
+        "type": "boolean",
+        "required": true,
+        "disposition": "private"
+       }
+      ]
+     }
+    ]
+   },
+   "ok": true
+  },
+  {
+   "label": "a private stage with its blinding field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "1": [
+      {
+       "name": "r",
+       "type": "integer",
+       "required": true,
+       "disposition": "private"
+      },
+      {
+       "name": "b",
+       "type": "string",
+       "format": "bytes32-hex",
+       "required": true,
+       "disposition": "private",
+       "blinding": true
+      }
+     ]
+    }
+   },
+   "ok": true
+  },
+  {
+   "label": "a private stage without a blinding field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "1": [
+      {
+       "name": "r",
+       "type": "integer",
+       "required": true,
+       "disposition": "private"
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "a mixed stage",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "1": [
+      {
+       "name": "r",
+       "type": "integer",
+       "required": true,
+       "disposition": "private"
+      },
+      {
+       "name": "n",
+       "type": "string",
+       "required": true
+      },
+      {
+       "name": "b",
+       "type": "string",
+       "format": "bytes32-hex",
+       "required": true,
+       "disposition": "private",
+       "blinding": true
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "a public stage with a blinding field",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "2": [
+      {
+       "name": "n",
+       "type": "string",
+       "required": true
+      },
+      {
+       "name": "b",
+       "type": "string",
+       "format": "bytes32-hex",
+       "required": true,
+       "disposition": "private",
+       "blinding": true
+      }
+     ]
+    }
+   },
+   "ok": false
+  },
+  {
+   "label": "an empty stage",
+   "spec": {
+    "clauseId": "t",
+    "version": 1,
+    "title": "T",
+    "description": "D",
+    "fields": [
+     {
+      "name": "v",
+      "required": true,
+      "type": "boolean"
+     }
+    ],
+    "stages": {
+     "1": []
+    }
+   },
+   "ok": true
   }
  ],
  "encodings": [
+  {
+   "label": "a private set with its blinding value",
+   "fields": [
+    {
+     "name": "grade",
+     "type": "enum",
+     "values": [
+      "a",
+      "b",
+      "c"
+     ],
+     "required": true,
+     "disposition": "private"
+    },
+    {
+     "name": "b",
+     "type": "string",
+     "format": "bytes32-hex",
+     "required": true,
+     "disposition": "private",
+     "blinding": true
+    }
+   ],
+   "content": {
+    "grade": "b",
+    "b": "0xabababababababababababababababababababababababababababababababab"
+   },
+   "encoded": "0x0000000000000000000000000000000000000000000000000000000000000001abababababababababababababababababababababababababababababababab"
+  },
+  {
+   "label": "a private stage with its blinding value",
+   "fields": [
+    {
+     "name": "note",
+     "type": "string",
+     "required": true
+    }
+   ],
+   "stages": {
+    "1": [
+     {
+      "name": "reading",
+      "type": "integer",
+      "required": true,
+      "disposition": "private"
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "format": "bytes32-hex",
+      "required": true,
+      "disposition": "private",
+      "blinding": true
+     }
+    ]
+   },
+   "stage": 1,
+   "content": {
+    "reading": 42,
+    "b": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+   },
+   "encoded": "0x000000000000000000000000000000000000000000000000000000000000002acdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+  },
+  {
+   "label": "a public geohash at the cap",
+   "fields": [
+    {
+     "name": "v",
+     "type": "string",
+     "required": true,
+     "format": "geohash"
+    }
+   ],
+   "content": {
+    "v": "dr5reg"
+   },
+   "encoded": "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000066472357265670000000000000000000000000000000000000000000000000000"
+  },
   {
    "label": "bytes-hex empty",
    "fields": [

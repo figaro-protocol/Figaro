@@ -698,22 +698,20 @@ spec declares, the specs that parse and the ones that do not — and freezes Lay
 into `test/fixtures/clause-engine-vectors.json`
 (`HARVEST_CLAUSE_ENGINE_VECTORS=1` regenerates);
 `prover/clause/tests/engine_vectors.rs` asserts the guest's engine gives the
-same verdicts and the same bytes on every rule of the shared vectors. Three
-rules are the SDK's alone, and the guest's engine applies none of them: the
-geohash grain cap by disposition; the private set's rules (a set that declares
-a private field declares exactly one blinding field, of one shape, at its top
-level, and never mixes public and private fields); and the blinding
-attribute's one value (the SDK refuses a field carrying `"blinding": false`).
-The guest's parser reads no `disposition` and no `blinding` attribute. A proof of a plaintext attestation
-therefore binds the spec and the content's shape, and attests neither the grain
-nor the presence of a blinding value. The test "Rules the SDK applies beyond
-the shared vectors", in the same file, lists the three rules, fails if the SDK's
-engine refuses a case the vectors mark valid, and fails if the vectors hold a
-`blinding` attribute or a private disposition; the generated clause stream
-(`clauseFuzzVectors.test.ts`) keeps each drawn geohash inside its cap and draws
-no disposition and no blinding attribute, and a test there fails if any spec
-it holds is refused by the private set's rules alone, so it holds only the
-shared rules. The EIP-712 fixture carries the batch
+same verdicts and the same bytes on every case. The two engines apply the same
+rules: the vectors hold each rule of the disposition, of `formatFromField`, of
+the private set's blinding field (a set that declares a private field declares
+exactly one, of one shape, at its top level, and never mixes public and private
+fields), of the enum's 256 values and of the geohash grain cap by disposition,
+with both verdicts, and the encode cases hold a private set and a private stage
+with their blinding values. A proof of a plaintext attestation therefore
+attests the grain and the presence of a blinding value. The test "The rules
+both engines apply", in the same file, holds the list of rules the SDK alone
+applies empty, and fails if the vectors lose an accepted or a refused case of
+the cap, the private disposition, `formatFromField` or the blinding field.
+`prover/lib/tests/parity.rs` reads two of the encode cases: a blinded private
+clause passes the plaintext form's gates, and a private stage's content
+reference is the SDK's. The EIP-712 fixture carries the batch
 path's three authorizations — `ResolveProcess` (over the process id and the
 cumulative value the buyer accepts), `AttestSeller`, `AttestBuyer`, hashed by
 viem from the type strings — and
@@ -732,15 +730,19 @@ through `MERKLE_VECTORS`, rebuild every leaf, open every proof, and refuse a
 tampered leaf. The clause stream:
 `sdk/tests/clauses/clauseFuzzVectors.test.ts` under `CLAUSE_FUZZ_SEED` draws
 cases from every spec in `clauses/` and from generated specs nobody has seen
-(some malformed) and from specs of one patterned field whose pattern is drawn
+(some malformed; their fields carry dispositions, `formatFromField` and
+blinding fields, in private sets that keep the set's rules and in sets that
+break one) and from specs of one patterned field whose pattern is drawn
 from the characters regexes are written in, with content drawn from each
 spec's field shapes — half of
-the draws inside every bound, half crossing them, strings leaving ASCII in
-both — and writes Layer A's three answers to `test/fixtures/streams/clauses.jsonl`:
+the draws inside every bound, half crossing them, geohashes past their grain
+cap among them, strings leaving ASCII in both — and writes the SDK's three answers to `test/fixtures/streams/clauses.jsonl`:
 whether the spec parses, whether the content validates, and the canonical ABI
 bytes; `prover/clause/tests/fuzz_vectors.rs` asks the guest's engine the same
 three questions. Without the variable the SDK file asserts the generator is
-deterministic. The `FigaroCore` stream has two halves.
+deterministic, and that its stream holds content the grain cap alone refuses,
+specs the private set's rules alone refuse, and a private set whose content
+validates. The `FigaroCore` stream has two halves.
 `test/core/kernel/KernelDifferentialFuzzTest.t.sol` draws a stream of commits,
 resolutions and attestations from the seed, over five wallets and two tokens,
 every order signing a two-clause agreement derived from its salt: valid ones,

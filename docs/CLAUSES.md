@@ -258,12 +258,13 @@ its manual.
   "Public and private fields, and the blinding field"): a set that declares a
   private field declares exactly one blinding field, of one shape, at its top
   level, and no set mixes public and private fields. The attribute is present
-  only as `true`: the SDK refuses a field carrying `"blinding": false`. These
-  rules are the SDK's alone, as the grain cap below is: the guest's parser reads no `disposition`
-  and no `blinding` attribute, so it parses a spec that breaks them, and a
-  proof of a plaintext attestation does not attest that a blinding value is
-  present (`sdk/tests/clauses/engineVectors.test.ts`, the rules beyond the
-  shared vectors).
+  only as `true`: a field carrying `"blinding": false` is refused. A
+  `disposition` other than `"public"` or `"private"`, and a `formatFromField`
+  that is not a non-empty string, are refused too. The guest's engine
+  (`prover/clause`) applies every one of these rules, so a spec that breaks
+  them fails gate S of a plaintext attestation, and a proof of a private
+  set's content attests that its blinding value is present
+  (`sdk/tests/clauses/engineVectors.test.ts`, `prover/clause/tests/engine_vectors.rs`).
 - `validateContent(content, spec, { stage? })` — validates a value against a
   parsed spec; rejects unknown fields; applies `spec.stages[stage]` when a
   stage is named. It applies the geohash grain cap, cap(disposition,
@@ -277,10 +278,10 @@ its manual.
   at most 12, under the field's `maxLength`, which stays the structural
   ceiling. An array whose item spec declares `format: "geohash"` caps each
   item by the array field's disposition. A standard it carries no grain
-  knowledge of is bounded by `maxLength` only. This cap is the SDK's alone:
-  the guest's engine (`prover/clause`) does not apply it, so a proof of a
-  plaintext attestation binds the spec and the content's shape and does not
-  attest the grain. An `integer` value is a JSON number inside the safe range
+  knowledge of is bounded by `maxLength` only. The guest's engine
+  (`prover/clause/src/grain.rs`, `validate.rs`) applies the same cap through
+  the same resolution, so a proof of a plaintext attestation attests the
+  grain. An `integer` value is a JSON number inside the safe range
   (±(2^53 − 1)), however the text writes it (`5`, `5.0` and `5e0` are one
   integer, read exactly by both engines); a `bigint` value is an unsigned decimal string inside the
   uint256 word. Content that validates encodes, in both engines. Every

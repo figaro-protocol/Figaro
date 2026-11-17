@@ -24,7 +24,7 @@
  */
 
 import { decodeAbiParameters, encodeAbiParameters, type AbiParameter, type Hex } from "viem";
-import type { FieldSpec, ClauseSpec } from "./spec.js";
+import { ownValue, type FieldSpec, type ClauseSpec } from "./spec.js";
 
 // ── Empty content (some clauses accept empty bytes) ─────────────────────────
 
@@ -117,7 +117,7 @@ function abiValueOf(field: FieldSpec, raw: unknown): unknown {
             return (raw as unknown[]).map((item) => abiValueOf(field.items, item));
         case "object": {
             const obj = raw as Record<string, unknown>;
-            return field.fields.map((sub) => abiValueOf(sub, obj[sub.name]));
+            return field.fields.map((sub) => abiValueOf(sub, ownValue(obj, sub.name)));
         }
     }
 }
@@ -157,7 +157,7 @@ export function encodeContentFromSpec(
 ): Hex {
     const fields = contentFieldsFor(spec, options);
     const params = fields.map(abiParamOf);
-    const values = fields.map((field) => abiValueOf(field, content[field.name]));
+    const values = fields.map((field) => abiValueOf(field, ownValue(content, field.name)));
     return encodeAbiParameters(params, values as never);
 }
 
