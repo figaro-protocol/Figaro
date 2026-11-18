@@ -23,7 +23,6 @@ use figaro_kernel::state::KernelState;
 use figaro_kernel::types::KernelStateSnapshot;
 use serde::{Deserialize, Serialize};
 
-
 /// Thread-safe wrapper around the local guest state.
 #[derive(Clone)]
 pub struct StateMirror {
@@ -66,12 +65,25 @@ impl StateMirror {
 
     /// The root buyer of a process the state holds.
     pub async fn root_buyer(&self, process_id: &B256) -> Option<alloy_primitives::Address> {
-        self.inner.read().await.state.process(process_id).ok().flatten().map(|p| p.root_buyer)
+        self.inner
+            .read()
+            .await
+            .state
+            .process(process_id)
+            .ok()
+            .flatten()
+            .map(|p| p.root_buyer)
     }
 
     /// Whether the state holds the order committed and not yet resolved.
     pub async fn order_active(&self, order_hash: &B256) -> bool {
-        self.inner.read().await.state.order_status_of(order_hash).ok() == Some(1)
+        self.inner
+            .read()
+            .await
+            .state
+            .order_status_of(order_hash)
+            .ok()
+            == Some(1)
     }
 
     /// Advance the local state by applying a batch.
@@ -148,7 +160,9 @@ impl StateStore {
     /// the store. A file that is there and cannot be read whole is an
     /// error, never a silent start from less than this host holds: both
     /// files are written whole, so a record that does not parse is damage.
-    pub async fn open(path: Option<PathBuf>) -> Result<(Self, Option<KernelStateSnapshot>), String> {
+    pub async fn open(
+        path: Option<PathBuf>,
+    ) -> Result<(Self, Option<KernelStateSnapshot>), String> {
         let mut kept = None;
         let mut next = Vec::new();
         if let Some(path) = &path {
@@ -160,7 +174,10 @@ impl StateStore {
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
                 Err(e) => {
-                    return Err(format!("the state file {} cannot be read: {e}", path.display()))
+                    return Err(format!(
+                        "the state file {} cannot be read: {e}",
+                        path.display()
+                    ))
                 }
             }
             let journal = next_journal(path);
@@ -215,7 +232,13 @@ impl StateStore {
 
     /// Roots of the held next states.
     pub async fn next_roots(&self) -> Vec<B256> {
-        self.inner.lock().await.next.iter().map(|n| n.root).collect()
+        self.inner
+            .lock()
+            .await
+            .next
+            .iter()
+            .map(|n| n.root)
+            .collect()
     }
 
     /// Make `state`, whose root is `root` and is the verifier's, the kept
@@ -271,5 +294,8 @@ pub async fn held_state_for(mirror: &StateMirror, store: &StateStore, root: B256
     if mirror.state_root().await == root {
         return Some(Held::Current);
     }
-    store.next_for(root).await.map(|next| Held::Next(Box::new(next)))
+    store
+        .next_for(root)
+        .await
+        .map(|next| Held::Next(Box::new(next)))
 }

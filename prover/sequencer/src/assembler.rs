@@ -158,8 +158,16 @@ pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bo
         KernelError::CumulativeValueMismatch { expected, actual } => expected < actual,
         KernelError::StaleResolveAuthorization { signed, current } => signed < current,
         KernelError::OrderNotCommitted(_) => match op {
-            KernelOp::Resolve { process_id, commitments, .. }
-            | KernelOp::ResolveByWalletCode { process_id, commitments, .. } => commitments
+            KernelOp::Resolve {
+                process_id,
+                commitments,
+                ..
+            }
+            | KernelOp::ResolveByWalletCode {
+                process_id,
+                commitments,
+                ..
+            } => commitments
                 .iter()
                 .any(|c| figaro_kernel::kernel::derive_commitment_ids(domain, c).1 != *process_id),
             _ => false,
@@ -193,7 +201,9 @@ pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bo
         | KernelError::ReservedKeyIsNotARegistration(_) => false,
         // The guest's witnessed run's refusals; the relay runs every batch on
         // the full state, where no key is unwitnessed, and never meets them.
-        KernelError::UnwitnessedKey | KernelError::DuplicateWitnessEntry | KernelError::Witness(_) => false,
+        KernelError::UnwitnessedKey
+        | KernelError::DuplicateWitnessEntry
+        | KernelError::Witness(_) => false,
     }
 }
 
@@ -213,14 +223,26 @@ pub fn split_permanent_refusals(
     block_timestamp: u64,
     prev_state: &KernelStateSnapshot,
     poison: Vec<(PendingOp, String)>,
-) -> (Vec<(PendingOp, String)>, Vec<(PendingOp, String)>, Vec<(PendingOp, String)>) {
+) -> (
+    Vec<(PendingOp, String)>,
+    Vec<(PendingOp, String)>,
+    Vec<(PendingOp, String)>,
+) {
     let domain = figaro_kernel::eip712::domain_separator(chain_id, verifying_contract);
     let landed = KernelState::from_snapshot(prev_state);
     let mut deferrable = Vec::new();
     let mut refused = Vec::new();
     for (op, reason) in poison {
-        match trial_apply_kernel(chain_id, verifying_contract, block_timestamp, &landed, &op.op) {
-            Err(e) if is_permanent_refusal(&e, &op.op, &domain) => refused.push((op, e.to_string())),
+        match trial_apply_kernel(
+            chain_id,
+            verifying_contract,
+            block_timestamp,
+            &landed,
+            &op.op,
+        ) {
+            Err(e) if is_permanent_refusal(&e, &op.op, &domain) => {
+                refused.push((op, e.to_string()))
+            }
             _ => deferrable.push((op, reason)),
         }
     }
@@ -234,7 +256,9 @@ pub fn split_permanent_refusals(
     let landed_orders: std::collections::HashSet<B256> =
         prev_state.order_status.iter().map(|(h, _)| *h).collect();
     let mut gone: std::collections::HashMap<B256, String> = std::collections::HashMap::new();
-    let add_created = |op: &KernelOp, why: &str, gone: &mut std::collections::HashMap<B256, String>| {
+    let add_created = |op: &KernelOp,
+                       why: &str,
+                       gone: &mut std::collections::HashMap<B256, String>| {
         if let KernelOp::Commit { commitment: c, .. } = op {
             let (order_hash, process_id) = figaro_kernel::kernel::derive_commitment_ids(&domain, c);
             if c.process_id == B256::ZERO && !landed_processes.contains(&process_id) {
@@ -253,10 +277,16 @@ pub fn split_permanent_refusals(
         let mut moved = false;
         let mut waiting = Vec::with_capacity(deferrable.len());
         for (op, reason) in deferrable {
-            match referenced_ids(&domain, &op.op).iter().find_map(|id| gone.get(id).cloned()) {
+            match referenced_ids(&domain, &op.op)
+                .iter()
+                .find_map(|id| gone.get(id).cloned())
+            {
                 Some(why) => {
                     add_created(&op.op, &why, &mut gone);
-                    built_on.push((op, format!("built on an operation the kernel refused for good: {why}")));
+                    built_on.push((
+                        op,
+                        format!("built on an operation the kernel refused for good: {why}"),
+                    ));
                     moved = true;
                 }
                 None => waiting.push((op, reason)),
@@ -274,7 +304,9 @@ pub fn split_permanent_refusals(
 /// process, a resolve's process and listed orders, an attestation's target
 /// order.
 fn referenced_ids(domain: &B256, op: &KernelOp) -> Vec<B256> {
-    let order = |c: &figaro_kernel::types::Commitment| figaro_kernel::kernel::derive_commitment_ids(domain, c).0;
+    let order = |c: &figaro_kernel::types::Commitment| {
+        figaro_kernel::kernel::derive_commitment_ids(domain, c).0
+    };
     match op {
         KernelOp::Commit { commitment, .. } => {
             if commitment.process_id == B256::ZERO {
@@ -283,11 +315,22 @@ fn referenced_ids(domain: &B256, op: &KernelOp) -> Vec<B256> {
                 vec![commitment.process_id]
             }
         }
-        KernelOp::Resolve { process_id, commitments, .. }
-        | KernelOp::ResolveByWalletCode { process_id, commitments, .. } => {
+        KernelOp::Resolve {
+            process_id,
+            commitments,
+            ..
+        }
+        | KernelOp::ResolveByWalletCode {
+            process_id,
+            commitments,
+            ..
+        } => {
             let mut ids = vec![*process_id];
             ids.extend(commitments.iter().map(|c| {
-                figaro_kernel::eip712::compute_order_hash(process_id, &figaro_kernel::eip712::commitment_struct_hash(c))
+                figaro_kernel::eip712::compute_order_hash(
+                    process_id,
+                    &figaro_kernel::eip712::commitment_struct_hash(c),
+                )
             }));
             ids
         }
@@ -313,8 +356,13 @@ pub fn refilter_after_drops(
     valid: Vec<PendingOp>,
     deferred: &[PendingOp],
 ) -> (Vec<PendingOp>, Vec<PendingOp>, Vec<(PendingOp, String)>) {
-    let (kept, built_on) =
-        filter_applicable_ops(chain_id, verifying_contract, block_timestamp, prev_state, valid);
+    let (kept, built_on) = filter_applicable_ops(
+        chain_id,
+        verifying_contract,
+        block_timestamp,
+        prev_state,
+        valid,
+    );
     if built_on.is_empty() || deferred.is_empty() {
         return (kept, Vec::new(), built_on);
     }
@@ -334,7 +382,11 @@ pub fn refilter_after_drops(
     let (follow, dropped): (Vec<_>, Vec<_>) = built_on
         .into_iter()
         .partition(|(op, _)| applies.iter().any(|a| a.id == op.id));
-    (kept, follow.into_iter().map(|(op, _)| op).collect(), dropped)
+    (
+        kept,
+        follow.into_iter().map(|(op, _)| op).collect(),
+        dropped,
+    )
 }
 
 /// Drop the commits that would grow a batch-path process past what one
@@ -353,14 +405,18 @@ pub fn filter_commits_within_resolve_capacity(
     max_orders: usize,
 ) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
     let domain = figaro_kernel::eip712::domain_separator(chain_id, verifying_contract);
-    let mut active: std::collections::BTreeMap<B256, u64> =
-        prev_state.processes.iter().map(|(id, p)| (*id, p.active_order_count)).collect();
+    let mut active: std::collections::BTreeMap<B256, u64> = prev_state
+        .processes
+        .iter()
+        .map(|(id, p)| (*id, p.active_order_count))
+        .collect();
     let mut kept = Vec::new();
     let mut dropped = Vec::new();
     for op in ops {
         match &op.op {
             KernelOp::Commit { commitment, .. } => {
-                let process_id = figaro_kernel::kernel::derive_commitment_ids(&domain, commitment).1;
+                let process_id =
+                    figaro_kernel::kernel::derive_commitment_ids(&domain, commitment).1;
                 let count = active.get(&process_id).copied().unwrap_or(0) + 1;
                 if count as usize > max_orders {
                     dropped.push((
@@ -373,7 +429,8 @@ pub fn filter_commits_within_resolve_capacity(
                 }
                 active.insert(process_id, count);
             }
-            KernelOp::Resolve { process_id, .. } | KernelOp::ResolveByWalletCode { process_id, .. } => {
+            KernelOp::Resolve { process_id, .. }
+            | KernelOp::ResolveByWalletCode { process_id, .. } => {
                 active.insert(*process_id, 0);
             }
             _ => {}
@@ -427,7 +484,13 @@ pub fn filter_applicable_claims(
     // succeeds; if it somehow does not, every claim is undecidable and
     // dropped conservatively (re-submittable).
     let mut state = KernelState::from_snapshot(prev_state);
-    if let Err(e) = apply_operations(&mut state, chain_id, verifying_contract, block_timestamp, valid_ops) {
+    if let Err(e) = apply_operations(
+        &mut state,
+        chain_id,
+        verifying_contract,
+        block_timestamp,
+        valid_ops,
+    ) {
         let why = format!("post-op state did not assemble: {e}");
         return (
             Vec::new(),
@@ -446,8 +509,13 @@ pub fn filter_applicable_claims(
             std::slice::from_ref(&claim),
         ) {
             Ok(uses) => match uses.first() {
-                Some(u) if carried.insert((u.kind, u.clause_or_assembly, u.process_id)) => valid.push(claim),
-                _ => poison.push((claim, "the batch already carries this (kind, key, process)".to_string())),
+                Some(u) if carried.insert((u.kind, u.clause_or_assembly, u.process_id)) => {
+                    valid.push(claim)
+                }
+                _ => poison.push((
+                    claim,
+                    "the batch already carries this (kind, key, process)".to_string(),
+                )),
             },
             Err(e) => poison.push((claim, e.to_string())),
         }
@@ -464,7 +532,8 @@ fn trial_apply(
     state: &KernelState,
     op: &KernelOp,
 ) -> Result<KernelState, String> {
-    trial_apply_kernel(chain_id, verifying_contract, block_timestamp, state, op).map_err(|e| e.to_string())
+    trial_apply_kernel(chain_id, verifying_contract, block_timestamp, state, op)
+        .map_err(|e| e.to_string())
 }
 
 /// [`trial_apply`] with the Core's own refusal. The op is applied to a
@@ -482,6 +551,12 @@ fn trial_apply_kernel(
     // against the running state?", and usage claims answer a different
     // question against the batch's POST-state.
     let mut trial = state.clone();
-    apply_operations(&mut trial, chain_id, verifying_contract, block_timestamp, std::slice::from_ref(op))?;
+    apply_operations(
+        &mut trial,
+        chain_id,
+        verifying_contract,
+        block_timestamp,
+        std::slice::from_ref(op),
+    )?;
     Ok(trial)
 }

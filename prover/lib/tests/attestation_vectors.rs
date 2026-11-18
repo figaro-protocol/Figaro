@@ -49,7 +49,10 @@ fn words(v: &serde_json::Value) -> Vec<B256> {
 }
 fn hex_bytes(v: &serde_json::Value) -> Vec<u8> {
     let hex = s(v).trim_start_matches("0x");
-    (0..hex.len()).step_by(2).map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("hex")).collect()
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("hex"))
+        .collect()
 }
 
 fn make_signing_key(secret: u64) -> SigningKey {
@@ -60,9 +63,14 @@ fn make_signing_key(secret: u64) -> SigningKey {
 
 fn sign_digest(key: &SigningKey, digest: &B256) -> Signature {
     use k256::ecdsa::{signature::hazmat::PrehashSigner, RecoveryId};
-    let (sig, recid): (k256::ecdsa::Signature, RecoveryId) = key.sign_prehash(digest.as_slice()).unwrap();
+    let (sig, recid): (k256::ecdsa::Signature, RecoveryId) =
+        key.sign_prehash(digest.as_slice()).unwrap();
     let bytes = sig.to_bytes();
-    Signature { v: recid.to_byte() + 27, r: B256::from_slice(&bytes[..32]), s: B256::from_slice(&bytes[32..]) }
+    Signature {
+        v: recid.to_byte() + 27,
+        r: B256::from_slice(&bytes[..32]),
+        s: B256::from_slice(&bytes[32..]),
+    }
 }
 
 /// The `Attestation` event as the EVM logs it: the signature and the three
@@ -134,7 +142,13 @@ fn a_hash_only_batched_attestation_emits_the_coordinator_s_event_bytes() {
                 }
             }
             "buyer" => {
-                let h = attest_buyer_struct_hash(&process_id, &order_hash, &clause_id, stage, &content_ref);
+                let h = attest_buyer_struct_hash(
+                    &process_id,
+                    &order_hash,
+                    &clause_id,
+                    stage,
+                    &content_ref,
+                );
                 KernelOp::AttestAsBuyer {
                     target: order.clone(),
                     clause_id,
@@ -166,9 +180,20 @@ fn a_hash_only_batched_attestation_emits_the_coordinator_s_event_bytes() {
     for (k, e) in events.attestations.iter().enumerate() {
         let v = &fx[format!("v{k}")];
         let (topics, data) = encode_log(e);
-        assert_eq!(topics, words(&v["topics"]), "vector {k}: the topics are the coordinator's");
-        assert_eq!(data, hex_bytes(&v["data"]), "vector {k}: the data is the coordinator's");
+        assert_eq!(
+            topics,
+            words(&v["topics"]),
+            "vector {k}: the topics are the coordinator's"
+        );
+        assert_eq!(
+            data,
+            hex_bytes(&v["data"]),
+            "vector {k}: the data is the coordinator's"
+        );
     }
-    assert!(events.spec_bindings.is_empty(), "the hash-only form commits no spec binding");
+    assert!(
+        events.spec_bindings.is_empty(),
+        "the hash-only form commits no spec binding"
+    );
     assert_eq!(pv.spec_bindings_hash, compute_spec_bindings_hash(&[]));
 }

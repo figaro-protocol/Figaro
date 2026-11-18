@@ -12,7 +12,7 @@
 //! anywhere reachable from `BatchInput` (skipping bytes desyncs the
 //! guest's deserializer).
 
-use alloy_primitives::{address, Address, B256, U256, keccak256};
+use alloy_primitives::{address, keccak256, Address, B256, U256};
 use figaro_kernel::types::*;
 
 const BUYER: Address = address!("0376AAc07Ad725E01357B1725B5ceC61aE10473c");
@@ -125,7 +125,10 @@ fn bincode_roundtrip_both_witness_forms() {
     };
     let bytes = bincode::serialize(&hash_only).expect("serialize");
     match bincode::deserialize(&bytes).expect("deserialize") {
-        AttestationWitness::HashOnly { clause_data_hash, inclusion_proof } => {
+        AttestationWitness::HashOnly {
+            clause_data_hash,
+            inclusion_proof,
+        } => {
             assert_eq!(clause_data_hash, B256::repeat_byte(0xab));
             assert_eq!(inclusion_proof.len(), 2);
         }
@@ -213,7 +216,10 @@ fn bincode_roundtrip_public_values_and_events() {
     let abi = pv.abi_encode();
     assert_eq!(abi.len(), 320, "public values are 10 × 32-byte words");
     let abi_decoded = PublicValues::abi_decode(&abi).expect("abi round-trips");
-    assert_eq!(abi_decoded.block_timestamp, pv.block_timestamp, "block_timestamp survives the abi round-trip");
+    assert_eq!(
+        abi_decoded.block_timestamp, pv.block_timestamp,
+        "block_timestamp survives the abi round-trip"
+    );
     assert_eq!(abi_decoded.prev_state_root, pv.prev_state_root);
     assert_eq!(abi_decoded.usage_accrual_hash, pv.usage_accrual_hash);
 
@@ -226,7 +232,9 @@ fn bincode_roundtrip_public_values_and_events() {
             stage: 2,
             content_ref: B256::repeat_byte(0x09),
         }],
-        spec_bindings: vec![SpecBinding { clause_id: B256::repeat_byte(0x0a) }],
+        spec_bindings: vec![SpecBinding {
+            clause_id: B256::repeat_byte(0x0a),
+        }],
         uses: vec![BatchUse {
             clause_or_assembly: B256::repeat_byte(0x0c),
             kind: USAGE_KIND_CLAUSE,

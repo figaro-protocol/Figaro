@@ -303,7 +303,9 @@ impl Mempool {
             });
         }
         // A deferred operation is still pending: the cap bounds both.
-        if inner.pending.len() + inner.deferred_len() + inner.isolating_len() >= self.max_pending_ops {
+        if inner.pending.len() + inner.deferred_len() + inner.isolating_len()
+            >= self.max_pending_ops
+        {
             return Err(SubmitError::Full);
         }
         let id = inner.next_id;
@@ -314,7 +316,9 @@ impl Mempool {
             if commitment.process_id == B256::ZERO {
                 let domain = domain_separator(self.chain_id, self.verifying_contract);
                 let process_id = derive_commitment_ids(&domain, commitment).1;
-                inner.queued_roots.insert(process_id, (key, commitment.buyer));
+                inner
+                    .queued_roots
+                    .insert(process_id, (key, commitment.buyer));
             }
         }
         inner.pending.push_back(PendingOp {
@@ -361,7 +365,8 @@ impl Mempool {
                 // Admission checks the signer against the root buyer of a
                 // held or queued process (`refuse_unknown`); the signer
                 // stays in the key.
-                let digest = typed_data_hash(&domain, &resolve_struct_hash(process_id, cumulative_value));
+                let digest =
+                    typed_data_hash(&domain, &resolve_struct_hash(process_id, cumulative_value));
                 if let Ok(signer) = recover_signer(&digest, buyer_sig) {
                     buf.extend_from_slice(signer.as_slice());
                 }
@@ -511,7 +516,10 @@ impl Mempool {
         if let Some(mut suspect) = inner.isolating.pop_front() {
             if suspect.ops.len() > max {
                 let rest = suspect.ops.split_off(max);
-                inner.isolating.push_front(Suspect { ops: rest, origin: suspect.origin });
+                inner.isolating.push_front(Suspect {
+                    ops: rest,
+                    origin: suspect.origin,
+                });
             }
             inner.isolating_in_flight = Some(suspect.origin);
             let drained = suspect.ops;
@@ -546,12 +554,24 @@ impl Mempool {
         // and not re-queued since has landed or been dropped, and its count
         // goes with it.
         let drained_keys: HashSet<B256> = drained.iter().map(|op| op.key).collect();
-        let MempoolInner { requeues, index, queued_roots, .. } = &mut *inner;
+        let MempoolInner {
+            requeues,
+            index,
+            queued_roots,
+            ..
+        } = &mut *inner;
         requeues.retain(|key, _| index.contains_key(key) || drained_keys.contains(key));
         queued_roots.retain(|_, (key, _)| index.contains_key(key) || drained_keys.contains(key));
         inner.in_flight = drained_keys.clone();
         // A budget is kept while a set of its batch waits or is in flight.
-        let MempoolInner { split_budgets, isolating, isolating_in_flight, isolation_rounds, index, .. } = &mut *inner;
+        let MempoolInner {
+            split_budgets,
+            isolating,
+            isolating_in_flight,
+            isolation_rounds,
+            index,
+            ..
+        } = &mut *inner;
         split_budgets.retain(|origin, _| {
             *isolating_in_flight == Some(*origin) || isolating.iter().any(|s| s.origin == *origin)
         });
@@ -622,7 +642,11 @@ impl Mempool {
     /// Split `ops` into those that stay and those past the window since their
     /// own first deferral, with what was filtered behind one of those,
     /// transitively, each with its reason. The kept keep their order.
-    fn take_expired(&self, ops: Vec<PendingOp>, now: Instant) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
+    fn take_expired(
+        &self,
+        ops: Vec<PendingOp>,
+        now: Instant,
+    ) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
         let late = |op: &PendingOp| {
             op.deferred_since
                 .is_some_and(|since| now.saturating_duration_since(since) >= self.defer_window)
@@ -665,8 +689,16 @@ impl Mempool {
         let order = |c: &Commitment| derive_commitment_ids(&domain, c).0;
         match op {
             KernelOp::Commit { commitment, .. } => vec![order(commitment)],
-            KernelOp::Resolve { process_id, commitments, .. }
-            | KernelOp::ResolveByWalletCode { process_id, commitments, .. } => commitments
+            KernelOp::Resolve {
+                process_id,
+                commitments,
+                ..
+            }
+            | KernelOp::ResolveByWalletCode {
+                process_id,
+                commitments,
+                ..
+            } => commitments
                 .iter()
                 .map(|c| compute_order_hash(process_id, &commitment_struct_hash(c)))
                 .collect(),
@@ -683,11 +715,27 @@ impl Mempool {
     /// orders — so an operation applies against the slice exactly as
     /// against the whole.
     fn group_state(&self, state: &KernelStateSnapshot, group: &[PendingOp]) -> KernelStateSnapshot {
-        let processes: HashSet<B256> = group.iter().flat_map(|p| self.touched_processes(&p.op)).collect();
-        let orders: HashSet<B256> = group.iter().flat_map(|p| self.touched_orders(&p.op)).collect();
+        let processes: HashSet<B256> = group
+            .iter()
+            .flat_map(|p| self.touched_processes(&p.op))
+            .collect();
+        let orders: HashSet<B256> = group
+            .iter()
+            .flat_map(|p| self.touched_orders(&p.op))
+            .collect();
         KernelStateSnapshot {
-            processes: state.processes.iter().filter(|(p, _)| processes.contains(p)).cloned().collect(),
-            order_status: state.order_status.iter().filter(|(o, _)| orders.contains(o)).cloned().collect(),
+            processes: state
+                .processes
+                .iter()
+                .filter(|(p, _)| processes.contains(p))
+                .cloned()
+                .collect(),
+            order_status: state
+                .order_status
+                .iter()
+                .filter(|(o, _)| orders.contains(o))
+                .cloned()
+                .collect(),
         }
     }
 
@@ -699,7 +747,8 @@ impl Mempool {
         let process = |c: &Commitment| derive_commitment_ids(&domain, c).1;
         match op {
             KernelOp::Commit { commitment, .. } => vec![process(commitment)],
-            KernelOp::Resolve { process_id, .. } | KernelOp::ResolveByWalletCode { process_id, .. } => vec![*process_id],
+            KernelOp::Resolve { process_id, .. }
+            | KernelOp::ResolveByWalletCode { process_id, .. } => vec![*process_id],
             KernelOp::AttestAsSeller { target, .. } => vec![process(target)],
             KernelOp::AttestAsBuyer { target, .. } => vec![process(target)],
             KernelOp::AttestByWalletCode { target, .. } => vec![process(target)],
@@ -725,7 +774,12 @@ impl Mempool {
             deferred,
         );
         let reruns = self.mark_behind(block_timestamp, prev_state, &kept, &mut follow, deferred);
-        Refiltered { kept, follow, dropped, reruns }
+        Refiltered {
+            kept,
+            follow,
+            dropped,
+            reruns,
+        }
     }
 
     /// Mark, on each of `follow`, the operations it was filtered behind:
@@ -769,19 +823,27 @@ impl Mempool {
             .filter(|p| is_commit(p))
             .map(|p| p.key)
             .collect();
-        let all: Vec<PendingOp> = kept.iter().chain(deferred).chain(follow.iter()).cloned().collect();
+        let all: Vec<PendingOp> = kept
+            .iter()
+            .chain(deferred)
+            .chain(follow.iter())
+            .cloned()
+            .collect();
         let mut reruns = 0;
         let mut edges: HashMap<B256, Vec<B256>> = HashMap::new();
         for group in self.group_by_process(all) {
             if !group.iter().any(|p| follow_keys.contains(&p.key)) {
                 continue;
             }
-            let group_candidates: Vec<&PendingOp> =
-                group.iter().filter(|p| candidates.contains(&p.key)).collect();
+            let group_candidates: Vec<&PendingOp> = group
+                .iter()
+                .filter(|p| candidates.contains(&p.key))
+                .collect();
             if reruns + group_candidates.len() > MAX_DEPENDENCY_RERUNS {
                 // Past the cap: the conservative mark.
                 for f in group.iter().filter(|p| follow_keys.contains(&p.key)) {
-                    let touched: HashSet<B256> = self.touched_processes(&f.op).into_iter().collect();
+                    let touched: HashSet<B256> =
+                        self.touched_processes(&f.op).into_iter().collect();
                     for c in &group_candidates {
                         if c.key != f.key && commit_precedes(&domain, &c.op, &f.op, &touched) {
                             edges.entry(f.key).or_default().push(c.key);
@@ -803,7 +865,10 @@ impl Mempool {
                     without,
                 );
                 let applies: HashSet<B256> = applies.iter().map(|p| p.key).collect();
-                for f in group.iter().filter(|p| follow_keys.contains(&p.key) && p.key != x.key) {
+                for f in group
+                    .iter()
+                    .filter(|p| follow_keys.contains(&p.key) && p.key != x.key)
+                {
                     if !applies.contains(&f.key) {
                         edges.entry(f.key).or_default().push(x.key);
                     }
@@ -992,7 +1057,11 @@ impl Mempool {
     }
 
     /// A fresh refused batch's operations: a new origin, its budget.
-    fn isolate_fresh(&self, inner: &mut MempoolInner, ops: Vec<PendingOp>) -> Vec<(PendingOp, String)> {
+    fn isolate_fresh(
+        &self,
+        inner: &mut MempoolInner,
+        ops: Vec<PendingOp>,
+    ) -> Vec<(PendingOp, String)> {
         if ops.is_empty() {
             return Vec::new();
         }
@@ -1004,7 +1073,11 @@ impl Mempool {
 
     /// The refused set of `origin`: one operation dead-lettered alone, more
     /// split while the budget lasts, the rest dead-lettered unattributed.
-    fn split(inner: &mut MempoolInner, origin: u64, mut ops: Vec<PendingOp>) -> Vec<(PendingOp, String)> {
+    fn split(
+        inner: &mut MempoolInner,
+        origin: u64,
+        mut ops: Vec<PendingOp>,
+    ) -> Vec<(PendingOp, String)> {
         if ops.len() == 1 {
             let op = ops.pop().unwrap();
             let why = "the chain refused a batch of this operation alone and named nobody: it reverts on its own — dead-lettered, re-submittable".to_string();
@@ -1027,7 +1100,13 @@ impl Mempool {
                 }
                 inner.index.insert(op.key, op.id);
             }
-            let half = half.into_iter().map(|mut op| { op.behind.clear(); op }).collect();
+            let half = half
+                .into_iter()
+                .map(|mut op| {
+                    op.behind.clear();
+                    op
+                })
+                .collect();
             inner.isolating.push_front(Suspect { ops: half, origin });
         }
         Vec::new()
@@ -1061,12 +1140,22 @@ impl Mempool {
     /// operation that names a process nobody committed would otherwise wait
     /// out the deferral window in the queue at no cost to its sender; it is
     /// re-submittable once its commit is.
-    pub async fn refuse_unknown(&self, op: &KernelOp, held: &crate::state::StateMirror) -> Result<(), String> {
+    pub async fn refuse_unknown(
+        &self,
+        op: &KernelOp,
+        held: &crate::state::StateMirror,
+    ) -> Result<(), String> {
         let domain = domain_separator(self.chain_id, self.verifying_contract);
         let root_buyer = |process_id: B256| async move {
             match held.root_buyer(&process_id).await {
                 Some(buyer) => Some(buyer),
-                None => self.inner.lock().await.queued_roots.get(&process_id).map(|(_, buyer)| *buyer),
+                None => self
+                    .inner
+                    .lock()
+                    .await
+                    .queued_roots
+                    .get(&process_id)
+                    .map(|(_, buyer)| *buyer),
             }
         };
         let unknown = |what: &str, id: &B256| {
@@ -1074,17 +1163,26 @@ impl Mempool {
         };
         match op {
             KernelOp::Commit { commitment, .. } => {
-                if commitment.process_id != B256::ZERO && root_buyer(commitment.process_id).await.is_none() {
+                if commitment.process_id != B256::ZERO
+                    && root_buyer(commitment.process_id).await.is_none()
+                {
                     return Err(unknown("the sub-order's process", &commitment.process_id));
                 }
                 Ok(())
             }
-            KernelOp::Resolve { process_id, cumulative_value, buyer_sig, .. } => {
+            KernelOp::Resolve {
+                process_id,
+                cumulative_value,
+                buyer_sig,
+                ..
+            } => {
                 let Some(buyer) = root_buyer(*process_id).await else {
                     return Err(unknown("the resolve's process", process_id));
                 };
-                let digest = typed_data_hash(&domain, &resolve_struct_hash(process_id, cumulative_value));
-                let signer = recover_signer(&digest, buyer_sig).map_err(|e| format!("invalid resolve signature: {e}"))?;
+                let digest =
+                    typed_data_hash(&domain, &resolve_struct_hash(process_id, cumulative_value));
+                let signer = recover_signer(&digest, buyer_sig)
+                    .map_err(|e| format!("invalid resolve signature: {e}"))?;
                 if signer != buyer {
                     return Err(format!(
                         "resolve signed by {signer}, not the process's root buyer {buyer} — the Core refuses it (NotProcessBuyer)"
@@ -1314,7 +1412,9 @@ fn commit_key(order_hash: &B256) -> B256 {
 /// (plaintext).
 fn witness_key(buf: &mut Vec<u8>, witness: &AttestationWitness) {
     match witness {
-        AttestationWitness::HashOnly { clause_data_hash, .. } => {
+        AttestationWitness::HashOnly {
+            clause_data_hash, ..
+        } => {
             buf.extend_from_slice(b"hash-only");
             buf.extend_from_slice(clause_data_hash.as_slice());
         }
@@ -1337,7 +1437,9 @@ fn commit_precedes(domain: &B256, c: &KernelOp, f: &KernelOp, touched: &HashSet<
         return false;
     }
     match f {
-        KernelOp::Commit { commitment: f, .. } => c.expected_cumulative_value < f.expected_cumulative_value,
+        KernelOp::Commit { commitment: f, .. } => {
+            c.expected_cumulative_value < f.expected_cumulative_value
+        }
         _ => true,
     }
 }

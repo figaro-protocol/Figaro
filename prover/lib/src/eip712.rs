@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, B256, U256, keccak256};
+use alloy_primitives::{keccak256, Address, B256, U256};
 
 use crate::types::{Commitment, KernelError, Signature};
 
@@ -184,12 +184,9 @@ pub fn recover_signer(digest: &B256, sig: &Signature) -> Result<Address, KernelE
     let signature =
         EcdsaSignature::from_slice(&sig_bytes).map_err(|_| KernelError::InvalidSignature)?;
 
-    let verifying_key = VerifyingKey::recover_from_prehash(
-        digest.as_slice(),
-        &signature,
-        recovery_id,
-    )
-    .map_err(|_| KernelError::InvalidSignature)?;
+    let verifying_key =
+        VerifyingKey::recover_from_prehash(digest.as_slice(), &signature, recovery_id)
+            .map_err(|_| KernelError::InvalidSignature)?;
 
     // Uncompressed public key: 0x04 || x[32] || y[32].
     // Ethereum address = keccak256(x || y)[12..].

@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, B256, U256, b256, keccak256};
+use alloy_primitives::{b256, keccak256, Address, B256, U256};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::eip712::{
@@ -277,7 +277,9 @@ fn apply_resolve(
     }
 
     // ── Finalize process ──
-    let ps = state.process_mut(process_id)?.ok_or(KernelError::UnknownProcess)?;
+    let ps = state
+        .process_mut(process_id)?
+        .ok_or(KernelError::UnknownProcess)?;
     ps.active_order_count = 0;
 
     Ok(())
@@ -394,9 +396,7 @@ fn validate_provenance_attestation(
     checkout_hash: &B256,
 ) -> Result<(), KernelError> {
     let bytes = proof.clause_data.as_bytes();
-    if bytes.len() != PROVENANCE_LEAF_LEN
-        || !bytes.starts_with(PROVENANCE_AGREEMENT_PREFIX)
-    {
+    if bytes.len() != PROVENANCE_LEAF_LEN || !bytes.starts_with(PROVENANCE_AGREEMENT_PREFIX) {
         return Err(KernelError::ProvenanceLeafNotCanonical);
     }
     let first = PROVENANCE_AGREEMENT_PREFIX.len();
@@ -484,13 +484,15 @@ pub fn validate_attestation_content(
     if keccak256(proof.spec_json.as_bytes()) != *clause_id {
         return Err(KernelError::SpecIdentityMismatch(*clause_id));
     }
-    let binding = SpecBinding { clause_id: *clause_id };
+    let binding = SpecBinding {
+        clause_id: *clause_id,
+    };
 
     // ── Gate C: content satisfies the spec and hashes to content_ref ──
     match proof.content_kind {
         ContentKind::RuntimeWitness => {
-            let content: serde_json::Value = serde_json::from_str(&proof.content_json)
-                .map_err(|e| {
+            let content: serde_json::Value =
+                serde_json::from_str(&proof.content_json).map_err(|e| {
                     KernelError::ContentEncodingFailed(format!("content_json not valid JSON: {e}"))
                 })?;
             let options = figaro_clause::ValidateOptions { stage: Some(stage) };
@@ -520,8 +522,8 @@ pub fn validate_attestation_content(
             if keccak256(proof.clause_data.as_bytes()) != *content_ref {
                 return Err(KernelError::ContentHashMismatch);
             }
-            let clause_data: serde_json::Value = serde_json::from_str(&proof.clause_data)
-                .map_err(|e| {
+            let clause_data: serde_json::Value =
+                serde_json::from_str(&proof.clause_data).map_err(|e| {
                     KernelError::ClauseContentInvalid(format!("clause_data not valid JSON: {e}"))
                 })?;
             if let figaro_clause::ValidationResult::Err(errors) = figaro_clause::validate_content(
@@ -574,7 +576,10 @@ pub fn validate_attestation_witness(
     checkout_hash: &B256,
 ) -> Result<Option<SpecBinding>, KernelError> {
     match witness {
-        AttestationWitness::HashOnly { clause_data_hash, inclusion_proof } => {
+        AttestationWitness::HashOnly {
+            clause_data_hash,
+            inclusion_proof,
+        } => {
             let leaf = format_leaf(clause_id, clause_data_hash);
             if !crate::merkle::verify_inclusion(inclusion_proof, *checkout_hash, leaf) {
                 return Err(KernelError::InvalidInclusionProof);
@@ -625,10 +630,16 @@ fn apply_attestation(
     //    be the role's party ──
     if let Some(sig) = signature {
         let struct_hash = match role {
-            AttesterRole::Seller => attest_seller_struct_hash(&target_order_hash, clause_id, stage, content_ref),
-            AttesterRole::Buyer => {
-                attest_buyer_struct_hash(&target_process_id, &target_order_hash, clause_id, stage, content_ref)
+            AttesterRole::Seller => {
+                attest_seller_struct_hash(&target_order_hash, clause_id, stage, content_ref)
             }
+            AttesterRole::Buyer => attest_buyer_struct_hash(
+                &target_process_id,
+                &target_order_hash,
+                clause_id,
+                stage,
+                content_ref,
+            ),
         };
         let digest = typed_data_hash(domain, &struct_hash);
         if recover_signer(&digest, sig)? != attester {
@@ -805,7 +816,9 @@ fn apply_usage_claims(
         //    the agreementHash of an agreement position — the terms leaf is not an
         //    agreement position. The counter refuses both by the same constants.
         if is_reserved_key(&claim.clause_or_assembly) {
-            return Err(KernelError::ReservedKeyIsNotARegistration(claim.clause_or_assembly));
+            return Err(KernelError::ReservedKeyIsNotARegistration(
+                claim.clause_or_assembly,
+            ));
         }
         if let UsageClaimKind::Assembly { agreement_hash, .. } = &claim.kind {
             if is_reserved_key(agreement_hash) {
@@ -828,14 +841,22 @@ fn apply_usage_claims(
         //    agreementHash and the assemblyHash together, under the format's
         //    own key: no batch input names it (blind audit F-7).
         let (leaf_key, clause_data_hash) = match &claim.kind {
-            UsageClaimKind::Clause { clause_data_hash } => (claim.clause_or_assembly, *clause_data_hash),
+            UsageClaimKind::Clause { clause_data_hash } => {
+                (claim.clause_or_assembly, *clause_data_hash)
+            }
             UsageClaimKind::Agreement { assembly_hash } => (
                 PROVENANCE_LEAF_KEY,
-                keccak256(provenance_leaf_bytes(&claim.clause_or_assembly, assembly_hash)),
+                keccak256(provenance_leaf_bytes(
+                    &claim.clause_or_assembly,
+                    assembly_hash,
+                )),
             ),
             UsageClaimKind::Assembly { agreement_hash, .. } => (
                 PROVENANCE_LEAF_KEY,
-                keccak256(provenance_leaf_bytes(agreement_hash, &claim.clause_or_assembly)),
+                keccak256(provenance_leaf_bytes(
+                    agreement_hash,
+                    &claim.clause_or_assembly,
+                )),
             ),
         };
         if !crate::merkle::verify_inclusion(
@@ -1092,7 +1113,13 @@ fn execute(
     usage_claims: &[UsageClaim],
     usage_period: u8,
 ) -> Result<Executed, KernelError> {
-    let effects = apply_operations(state, chain_id, verifying_contract, block_timestamp, operations)?;
+    let effects = apply_operations(
+        state,
+        chain_id,
+        verifying_contract,
+        block_timestamp,
+        operations,
+    )?;
 
     // ── Designer-reward uses ─────────────────────────────────────
     // Proved AFTER every operation, against the post-state, so a process
@@ -1164,7 +1191,14 @@ fn apply_batch_inner(
         input.usage_period,
     )?;
     let new_root = state.compute_root();
-    let pv = public_values(prev_root, new_root, input.chain_id, input.verifying_contract, input.block_timestamp, &ex);
+    let pv = public_values(
+        prev_root,
+        new_root,
+        input.chain_id,
+        input.verifying_contract,
+        input.block_timestamp,
+        &ex,
+    );
     Ok((pv, ex.positions, ex.events, state))
 }
 
@@ -1172,16 +1206,27 @@ fn apply_batch_inner(
 /// computed from the witness by one descent (`state_tree::roots`). An entry
 /// the batch touches outside the witness is refused; the previous root is
 /// committed, and the chain holds it to the root it keeps.
-pub fn apply_guest(input: &GuestInput) -> Result<(PublicValues, Vec<NetPosition>, BatchEvents), KernelError> {
+pub fn apply_guest(
+    input: &GuestInput,
+) -> Result<(PublicValues, Vec<NetPosition>, BatchEvents), KernelError> {
     let mut state = KernelState::from_witness(&input.prev_witness)?;
     let keys: Vec<(u8, B256)> = input
         .prev_witness
         .processes
         .iter()
         .map(|(k, _)| (crate::state::PROCESS_TAG, *k))
-        .chain(input.prev_witness.orders.iter().map(|(k, _)| (crate::state::ORDER_TAG, *k)))
+        .chain(
+            input
+                .prev_witness
+                .orders
+                .iter()
+                .map(|(k, _)| (crate::state::ORDER_TAG, *k)),
+        )
         .collect();
-    let before: Vec<Option<B256>> = keys.iter().map(|(t, k)| state.leaf_value_hash(*t, k)).collect();
+    let before: Vec<Option<B256>> = keys
+        .iter()
+        .map(|(t, k)| state.leaf_value_hash(*t, k))
+        .collect();
     let ex = execute(
         &mut state,
         input.chain_id,
@@ -1201,9 +1246,16 @@ pub fn apply_guest(input: &GuestInput) -> Result<(PublicValues, Vec<NetPosition>
         })
         .collect();
     leaves.sort_by(|a, b| a.path.cmp(&b.path));
-    let (prev_root, new_root) =
-        crate::state_tree::roots(&leaves, &input.prev_witness.proof).map_err(KernelError::Witness)?;
-    let pv = public_values(prev_root, new_root, input.chain_id, input.verifying_contract, input.block_timestamp, &ex);
+    let (prev_root, new_root) = crate::state_tree::roots(&leaves, &input.prev_witness.proof)
+        .map_err(KernelError::Witness)?;
+    let pv = public_values(
+        prev_root,
+        new_root,
+        input.chain_id,
+        input.verifying_contract,
+        input.block_timestamp,
+        &ex,
+    );
     Ok((pv, ex.positions, ex.events))
 }
 

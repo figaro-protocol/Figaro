@@ -36,8 +36,15 @@ fn recover_signer_refuses_the_high_s_twin_of_a_valid_signature() {
     let s = U256::from_be_bytes(low.s.0);
     assert!(s <= SECP256K1_N >> 1, "k256 signs low-s");
 
-    let high = Signature { v: 55 - low.v, r: low.r, s: B256::from((SECP256K1_N - s).to_be_bytes::<32>()) };
-    assert!(U256::from_be_bytes(high.s.0) > SECP256K1_N >> 1, "the twin is high-s");
+    let high = Signature {
+        v: 55 - low.v,
+        r: low.r,
+        s: B256::from((SECP256K1_N - s).to_be_bytes::<32>()),
+    };
+    assert!(
+        U256::from_be_bytes(high.s.0) > SECP256K1_N >> 1,
+        "the twin is high-s"
+    );
     let twin = recover_signer(&digest, &high);
     assert!(
         matches!(twin, Err(KernelError::InvalidSignature)),

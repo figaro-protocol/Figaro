@@ -11,21 +11,24 @@
 //! the regular `cargo test` loop, no proving keys involved.
 
 use alloy_primitives::{keccak256, B256, U256};
-use figaro_kernel::eip712::{commitment_struct_hash, domain_separator, resolve_struct_hash, typed_data_hash};
+use figaro_kernel::eip712::{
+    commitment_struct_hash, domain_separator, resolve_struct_hash, typed_data_hash,
+};
 use figaro_kernel::kernel::{apply_batch, provenance_leaf_bytes};
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
-    AttestationWitness, BatchInput, Commitment, KernelOp, KernelStateSnapshot, PublicValues, UsageClaim, UsageClaimKind,
-    USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY,
+    AttestationWitness, BatchInput, Commitment, KernelOp, KernelStateSnapshot, PublicValues,
+    UsageClaim, UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY,
 };
 use figaro_prove_test::{
-    build_canonical_batch_input, load_spec_json, make_signing_key, sign_commitment, sign_digest, BUYER,
-    BUYER_KEY, CHAIN_ID, CORE, SELLER1, SELLER1_KEY, TOKEN,
+    build_canonical_batch_input, load_spec_json, make_signing_key, sign_commitment, sign_digest,
+    BUYER, BUYER_KEY, CHAIN_ID, CORE, SELLER1, SELLER1_KEY, TOKEN,
 };
 use sp1_sdk::{Prover, ProverClient, SP1Stdin};
 
 async fn execute_guest(input: &figaro_kernel::types::BatchInput) -> sp1_sdk::SP1PublicValues {
-    execute_guest_input(&figaro_kernel::kernel::guest_input(input).expect("the batch's witness")).await
+    execute_guest_input(&figaro_kernel::kernel::guest_input(input).expect("the batch's witness"))
+        .await
 }
 
 /// Run the guest on a given input — one a dishonest prover may have altered.
@@ -58,8 +61,16 @@ async fn guest_program_executes_canonical_batch() {
         "prev root must be the empty-state genesis root",
     );
     assert_ne!(pv.prev_state_root, pv.new_state_root, "state must advance");
-    assert_ne!(pv.attestation_events_hash, B256::ZERO, "attestation events must be hashed");
-    assert_ne!(pv.spec_bindings_hash, B256::ZERO, "spec bindings must be committed");
+    assert_ne!(
+        pv.attestation_events_hash,
+        B256::ZERO,
+        "attestation events must be hashed"
+    );
+    assert_ne!(
+        pv.spec_bindings_hash,
+        B256::ZERO,
+        "spec bindings must be committed"
+    );
 }
 
 #[tokio::test]
@@ -79,7 +90,10 @@ async fn guest_output_matches_host_apply_batch_exactly() {
     assert_eq!(guest_pv.prev_state_root, host_pv.prev_state_root);
     assert_eq!(guest_pv.new_state_root, host_pv.new_state_root);
     assert_eq!(guest_pv.token_ops_hash, host_pv.token_ops_hash);
-    assert_eq!(guest_pv.attestation_events_hash, host_pv.attestation_events_hash);
+    assert_eq!(
+        guest_pv.attestation_events_hash,
+        host_pv.attestation_events_hash
+    );
     assert_eq!(guest_pv.spec_bindings_hash, host_pv.spec_bindings_hash);
     assert_eq!(guest_pv.usage_accrual_hash, host_pv.usage_accrual_hash);
 
@@ -90,7 +104,11 @@ async fn guest_output_matches_host_apply_batch_exactly() {
     // And it credited the clause for the process it resolved — asserted here
     // because "field for field" above is only as strong as the batch it runs
     // on: no uses would make `usage_accrual_hash` agree trivially.
-    assert_eq!(host_events.uses.len(), 1, "the canonical batch credits one clause");
+    assert_eq!(
+        host_events.uses.len(),
+        1,
+        "the canonical batch credits one clause"
+    );
 }
 
 #[tokio::test]
@@ -105,7 +123,8 @@ async fn guest_program_rejects_corrupt_buyer_signature_on_commit() {
     // gate at the guest layer.
     // The witness is built from the valid batch; the guest's input is then
     // corrupted, as a dishonest prover would hand it over.
-    let mut input = figaro_kernel::kernel::guest_input(&build_canonical_batch_input()).expect("the canonical batch's witness");
+    let mut input = figaro_kernel::kernel::guest_input(&build_canonical_batch_input())
+        .expect("the canonical batch's witness");
     if let KernelOp::Commit { buyer_sig, .. } = &mut input.operations[0] {
         buyer_sig.r = B256::ZERO;
     } else {
@@ -116,8 +135,10 @@ async fn guest_program_rejects_corrupt_buyer_signature_on_commit() {
     let client = ProverClient::builder().mock().build().await;
     let mut stdin = SP1Stdin::new();
     stdin.write(&input);
-    let (public_values, _report) =
-        client.execute(elf, stdin).await.expect("mock executor must finish");
+    let (public_values, _report) = client
+        .execute(elf, stdin)
+        .await
+        .expect("mock executor must finish");
 
     assert!(
         public_values.as_slice().is_empty(),
@@ -129,15 +150,26 @@ async fn guest_program_rejects_corrupt_buyer_signature_on_commit() {
 /// ECDSA public-key recovery written out, `Q = r⁻¹ · (s · R − z · G)`, with
 /// `R` the curve point whose x is `r` and whose y parity is `v − 27`: no
 /// library refusal of a high `s` stands in the path. Returns the address of `Q`.
-fn recover_without_s_check(digest: &B256, sig: &figaro_kernel::types::Signature) -> alloy_primitives::Address {
-    use k256::elliptic_curve::{ops::Reduce, point::DecompressPoint, sec1::ToEncodedPoint, subtle::Choice, PrimeField};
+fn recover_without_s_check(
+    digest: &B256,
+    sig: &figaro_kernel::types::Signature,
+) -> alloy_primitives::Address {
+    use k256::elliptic_curve::{
+        ops::Reduce, point::DecompressPoint, sec1::ToEncodedPoint, subtle::Choice, PrimeField,
+    };
     use k256::{AffinePoint, FieldBytes, ProjectivePoint, Scalar};
     let r = Scalar::from_repr(FieldBytes::clone_from_slice(sig.r.as_slice())).expect("r below n");
     let s = Scalar::from_repr(FieldBytes::clone_from_slice(sig.s.as_slice())).expect("s below n");
-    let z = <Scalar as Reduce<k256::U256>>::reduce_bytes(&FieldBytes::clone_from_slice(digest.as_slice()));
-    let big_r = AffinePoint::decompress(&FieldBytes::clone_from_slice(sig.r.as_slice()), Choice::from(sig.v - 27))
-        .expect("r is a point's x");
-    let q = (ProjectivePoint::from(big_r) * s - ProjectivePoint::GENERATOR * z) * r.invert().expect("r is not zero");
+    let z = <Scalar as Reduce<k256::U256>>::reduce_bytes(&FieldBytes::clone_from_slice(
+        digest.as_slice(),
+    ));
+    let big_r = AffinePoint::decompress(
+        &FieldBytes::clone_from_slice(sig.r.as_slice()),
+        Choice::from(sig.v - 27),
+    )
+    .expect("r is a point's x");
+    let q = (ProjectivePoint::from(big_r) * s - ProjectivePoint::GENERATOR * z)
+        * r.invert().expect("r is not zero");
     let encoded = q.to_affine().to_encoded_point(false);
     alloy_primitives::Address::from_slice(&keccak256(&encoded.as_bytes()[1..])[12..])
 }
@@ -150,13 +182,17 @@ async fn guest_program_rejects_the_high_s_twin_of_the_buyer_signature() {
     // `ecdsa`/`k256`, must refuse it too: a guest that accepted it would
     // commit exactly the canonical batch's public values.
     use k256::elliptic_curve::scalar::IsHigh;
-    let mut input = figaro_kernel::kernel::guest_input(&build_canonical_batch_input()).expect("the canonical batch's witness");
+    let mut input = figaro_kernel::kernel::guest_input(&build_canonical_batch_input())
+        .expect("the canonical batch's witness");
     if let KernelOp::Commit { buyer_sig, .. } = &mut input.operations[0] {
         let mut rs = [0u8; 64];
         rs[..32].copy_from_slice(buyer_sig.r.as_slice());
         rs[32..].copy_from_slice(buyer_sig.s.as_slice());
         let low = k256::ecdsa::Signature::from_slice(&rs).expect("the canonical signature parses");
-        assert!(bool::from(!low.s().is_high()), "the canonical signature is low-s");
+        assert!(
+            bool::from(!low.s().is_high()),
+            "the canonical signature is low-s"
+        );
         let high_s = -*low.s().as_ref();
         assert!(bool::from(high_s.is_high()), "its twin is high-s");
         buyer_sig.s = B256::from_slice(&high_s.to_bytes());
@@ -167,9 +203,21 @@ async fn guest_program_rejects_the_high_s_twin_of_the_buyer_signature() {
     // The positive control: recovered by hand, with no check on s, the twin
     // names the canonical buyer, so the guest's abort below is the s check's
     // and nothing else's.
-    if let KernelOp::Commit { commitment, buyer_sig, .. } = &input.operations[0] {
-        let digest = typed_data_hash(&domain_separator(CHAIN_ID, CORE), &commitment_struct_hash(commitment));
-        assert_eq!(recover_without_s_check(&digest, buyer_sig), BUYER, "the twin recovers the canonical buyer");
+    if let KernelOp::Commit {
+        commitment,
+        buyer_sig,
+        ..
+    } = &input.operations[0]
+    {
+        let digest = typed_data_hash(
+            &domain_separator(CHAIN_ID, CORE),
+            &commitment_struct_hash(commitment),
+        );
+        assert_eq!(
+            recover_without_s_check(&digest, buyer_sig),
+            BUYER,
+            "the twin recovers the canonical buyer"
+        );
     }
 
     let pv_bytes = execute_guest_input(&input).await;
@@ -185,10 +233,14 @@ async fn guest_program_rejects_substituted_witness_spec() {
     // Gate S inside the VM: swapping the witness spec for a different
     // clause's spec (a permissive-spec substitution) must kill the batch —
     // the spec's bytes no longer hash to the op's clause key.
-    let mut input = figaro_kernel::kernel::guest_input(&build_canonical_batch_input()).expect("the canonical batch's witness");
+    let mut input = figaro_kernel::kernel::guest_input(&build_canonical_batch_input())
+        .expect("the canonical batch's witness");
     let wrong_spec = load_spec_json("figaro-handoff");
     match &mut input.operations[1] {
-        KernelOp::AttestAsSeller { proof: AttestationWitness::Plaintext(proof), .. } => proof.spec_json = wrong_spec,
+        KernelOp::AttestAsSeller {
+            proof: AttestationWitness::Plaintext(proof),
+            ..
+        } => proof.spec_json = wrong_spec,
         other => panic!("expected op[1] to be AttestAsSeller, got {other:?}"),
     }
 
@@ -196,8 +248,10 @@ async fn guest_program_rejects_substituted_witness_spec() {
     let client = ProverClient::builder().mock().build().await;
     let mut stdin = SP1Stdin::new();
     stdin.write(&input);
-    let (public_values, _report) =
-        client.execute(elf, stdin).await.expect("mock executor must finish");
+    let (public_values, _report) = client
+        .execute(elf, stdin)
+        .await
+        .expect("mock executor must finish");
 
     assert!(
         public_values.as_slice().is_empty(),
@@ -242,11 +296,17 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
         &keccak256(b"the-following-agreement"),
         &keccak256(br#"{"clauses":{},"follows":["agreement-0"],"slot":1}"#),
     );
-    let composition = sorted_pair(figaro_kernel::kernel::assembly_leaf(&agreement, &slot0), slot1_leaf);
+    let composition = sorted_pair(
+        figaro_kernel::kernel::assembly_leaf(&agreement, &slot0),
+        slot1_leaf,
+    );
     let membership = if membership_root_is_the_claimed_one {
         vec![slot1_leaf]
     } else {
-        vec![figaro_kernel::kernel::assembly_leaf(&keccak256(b"some-other-agreement"), &slot0)]
+        vec![figaro_kernel::kernel::assembly_leaf(
+            &keccak256(b"some-other-agreement"),
+            &slot0,
+        )]
     };
 
     let clause_data_hash = keccak256(provenance_leaf_bytes(&agreement, &composition));
@@ -262,8 +322,10 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
         deadline: U256::from(2000u64),
     };
     let process_id = typed_data_hash(&domain, &commitment_struct_hash(&order));
-    let resolve_sig =
-        sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_struct_hash(&process_id, &order.payment)));
+    let resolve_sig = sign_digest(
+        &buyer_key,
+        &typed_data_hash(&domain, &resolve_struct_hash(&process_id, &order.payment)),
+    );
 
     BatchInput {
         chain_id: CHAIN_ID,
@@ -290,7 +352,9 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
             UsageClaim {
                 order: order.clone(),
                 clause_or_assembly: agreement,
-                kind: UsageClaimKind::Agreement { assembly_hash: composition },
+                kind: UsageClaimKind::Agreement {
+                    assembly_hash: composition,
+                },
                 inclusion_proof: vec![],
             },
             UsageClaim {
@@ -330,7 +394,8 @@ async fn guest_refuses_an_assembly_claim_whose_membership_proof_is_under_another
     assert!(apply_batch(&input).is_err(), "the host refuses it");
     // The witness of the valid twin batch (the same entries), carrying the
     // claim whose membership proof is under another root.
-    let mut guest = figaro_kernel::kernel::guest_input(&provenance_batch(true)).expect("the twin batch's witness");
+    let mut guest = figaro_kernel::kernel::guest_input(&provenance_batch(true))
+        .expect("the twin batch's witness");
     guest.usage_claims = input.usage_claims;
     let pv_bytes = execute_guest_input(&guest).await;
     assert!(

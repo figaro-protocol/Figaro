@@ -540,7 +540,10 @@ impl PublicValues {
     /// public-values stream. Strict: the length and every pad byte must hold.
     pub fn abi_decode(data: &[u8]) -> Result<Self, String> {
         if data.len() != 320 {
-            return Err(format!("public values must be 320 bytes, got {}", data.len()));
+            return Err(format!(
+                "public values must be 320 bytes, got {}",
+                data.len()
+            ));
         }
         let word = |i: usize| -> [u8; 32] { data[i * 32..(i + 1) * 32].try_into().unwrap() };
         let chain_word = word(2);
@@ -627,16 +630,25 @@ pub enum KernelError {
     ZeroPayment,
     ProcessAlreadyExists,
     UnknownProcess,
-    CumulativeValueMismatch { expected: U256, actual: U256 },
+    CumulativeValueMismatch {
+        expected: U256,
+        actual: U256,
+    },
     NotProcessBuyer,
     CurrencyMismatch,
     OrderNotCommitted(B256),
     NoActiveOrders,
-    IncompleteOrderList { required: u64, provided: u64 },
+    IncompleteOrderList {
+        required: u64,
+        provided: u64,
+    },
     /// The resolve authorization signs a cumulative value the process does
     /// not hold at application: an order committed after the buyer signed
     /// (or the buyer signed over a value the process has not reached).
-    StaleResolveAuthorization { signed: U256, current: U256 },
+    StaleResolveAuthorization {
+        signed: U256,
+        current: U256,
+    },
     DuplicateCommitment,
     InvalidRootCumulativeValue,
     ProcessAlreadyResolved,
@@ -702,13 +714,22 @@ impl core::fmt::Display for KernelError {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {
             Self::CumulativeValueMismatch { expected, actual } => {
-                write!(f, "CumulativeValueMismatch(expected={expected}, actual={actual})")
+                write!(
+                    f,
+                    "CumulativeValueMismatch(expected={expected}, actual={actual})"
+                )
             }
             Self::IncompleteOrderList { required, provided } => {
-                write!(f, "IncompleteOrderList(required={required}, provided={provided})")
+                write!(
+                    f,
+                    "IncompleteOrderList(required={required}, provided={provided})"
+                )
             }
             Self::StaleResolveAuthorization { signed, current } => {
-                write!(f, "StaleResolveAuthorization(signed={signed}, current={current})")
+                write!(
+                    f,
+                    "StaleResolveAuthorization(signed={signed}, current={current})"
+                )
             }
             Self::OrderNotCommitted(h) => write!(f, "OrderNotCommitted({h})"),
             Self::SpecIdentityMismatch(h) => write!(f, "SpecIdentityMismatch({h})"),

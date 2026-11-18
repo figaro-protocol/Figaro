@@ -70,7 +70,10 @@ where
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
-    RpcDouble { url: format!("http://{addr}"), calls }
+    RpcDouble {
+        url: format!("http://{addr}"),
+        calls,
+    }
 }
 
 /// Bytes as a JSON-RPC hex string.
@@ -81,8 +84,15 @@ pub fn hex_value(bytes: &[u8]) -> Value {
 /// An `eth_call`'s target and input.
 pub fn call_of(params: &Value) -> (Address, Vec<u8>) {
     let tx = &params[0];
-    let to: Address = tx["to"].as_str().expect("an eth_call names its target").parse().unwrap();
-    let input = tx["input"].as_str().or(tx["data"].as_str()).expect("an eth_call carries input");
+    let to: Address = tx["to"]
+        .as_str()
+        .expect("an eth_call names its target")
+        .parse()
+        .unwrap();
+    let input = tx["input"]
+        .as_str()
+        .or(tx["data"].as_str())
+        .expect("an eth_call carries input");
     (to, hex::decode(input).unwrap())
 }
 

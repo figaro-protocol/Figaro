@@ -45,13 +45,18 @@ pub async fn rebuild_from_chain(
     from_block: u64,
     chain_id: u64,
 ) -> Result<Rebuilt, String> {
-    let provider = ProviderBuilder::new()
-        .connect_http(rpc_url.parse().map_err(|e| format!("invalid rpc url: {e}"))?);
+    let provider = ProviderBuilder::new().connect_http(
+        rpc_url
+            .parse()
+            .map_err(|e| format!("invalid rpc url: {e}"))?,
+    );
     let contract = IFigaroBatchVerifier::new(verifier, &provider);
-    let head = provider
-        .get_block_number()
-        .await
-        .map_err(|e| format!("block number read failed: {}", crate::api::without_urls(&e.to_string())))?;
+    let head = provider.get_block_number().await.map_err(|e| {
+        format!(
+            "block number read failed: {}",
+            crate::api::without_urls(&e.to_string())
+        )
+    })?;
 
     let mut state = KernelState::new();
     let mut root = state.compute_root();
@@ -67,10 +72,12 @@ pub async fn rebuild_from_chain(
             ])
             .from_block(from)
             .to_block(to);
-        let mut logs = provider
-            .get_logs(&filter)
-            .await
-            .map_err(|e| format!("verifier log read failed ({from}..{to}): {}", crate::api::without_urls(&e.to_string())))?;
+        let mut logs = provider.get_logs(&filter).await.map_err(|e| {
+            format!(
+                "verifier log read failed ({from}..{to}): {}",
+                crate::api::without_urls(&e.to_string())
+            )
+        })?;
         logs.sort_by_key(|l| (l.block_number, l.log_index));
         let mut pending: Option<(B256, IFigaroBatchVerifier::BatchOperations)> = None;
         for log in logs {
@@ -85,11 +92,17 @@ pub async fn rebuild_from_chain(
             }
             let settled = IFigaroBatchVerifier::BatchSettled::decode_log(&log.inner)
                 .map_err(|e| format!("{tx}: a BatchSettled log does not decode: {e}"))?;
-            let (ops_tx, ops) = pending
-                .take()
-                .ok_or_else(|| format!("batch {} in {tx} has no BatchOperations log before it", settled.batchId))?;
+            let (ops_tx, ops) = pending.take().ok_or_else(|| {
+                format!(
+                    "batch {} in {tx} has no BatchOperations log before it",
+                    settled.batchId
+                )
+            })?;
             if ops_tx != tx || ops.batchId != settled.batchId {
-                return Err(format!("batch {} in {tx}: its BatchOperations log is another batch's", settled.batchId));
+                return Err(format!(
+                    "batch {} in {tx}: its BatchOperations log is another batch's",
+                    settled.batchId
+                ));
             }
             if settled.prevStateRoot != root {
                 return Err(format!(
@@ -100,12 +113,29 @@ pub async fn rebuild_from_chain(
             // A wallet-code attestation's entry moves no state, and the
             // replay applies nothing for it: the entries are parsed (a
             // malformed one fails the rebuild) and set aside.
-            let (operations, _wallet_code_attestations, claims) = decode_operation_stream(&ops.operations)
-                .map_err(|e| format!("batch {} in {tx}: operation stream: {e}", settled.batchId))?;
-            apply_operations(&mut state, chain_id, verifier, ops.blockTimestamp, &operations)
-                .map_err(|e| format!("batch {} in {tx}: the operations do not apply: {e:?}", settled.batchId))?;
-            apply_claims(&state, chain_id, verifier, &claims)
-                .map_err(|e| format!("batch {} in {tx}: the claims do not prove: {e:?}", settled.batchId))?;
+            let (operations, _wallet_code_attestations, claims) =
+                decode_operation_stream(&ops.operations).map_err(|e| {
+                    format!("batch {} in {tx}: operation stream: {e}", settled.batchId)
+                })?;
+            apply_operations(
+                &mut state,
+                chain_id,
+                verifier,
+                ops.blockTimestamp,
+                &operations,
+            )
+            .map_err(|e| {
+                format!(
+                    "batch {} in {tx}: the operations do not apply: {e:?}",
+                    settled.batchId
+                )
+            })?;
+            apply_claims(&state, chain_id, verifier, &claims).map_err(|e| {
+                format!(
+                    "batch {} in {tx}: the claims do not prove: {e:?}",
+                    settled.batchId
+                )
+            })?;
             let reached = state.compute_root();
             if reached != settled.newStateRoot {
                 return Err(format!(
@@ -124,11 +154,12 @@ pub async fn rebuild_from_chain(
         from = to + 1;
     }
 
-    let on_chain = contract
-        .stateRoot()
-        .call()
-        .await
-        .map_err(|e| format!("stateRoot() call failed: {}", crate::api::without_urls(&e.to_string())))?;
+    let on_chain = contract.stateRoot().call().await.map_err(|e| {
+        format!(
+            "stateRoot() call failed: {}",
+            crate::api::without_urls(&e.to_string())
+        )
+    })?;
     if on_chain != root {
         return Err(format!(
             "the replay of {batches} batch(es) reaches {root}, the verifier holds {on_chain} (a batch landed after the logs were read, or before REBUILD_FROM_BLOCK)"
@@ -173,7 +204,10 @@ mod tests {
             "eth_chainId" => Ok(serde_json::json!(format!("0x{CHAIN_ID:x}"))),
             "eth_blockNumber" => Ok(serde_json::json!(format!("0x{head:x}"))),
             "eth_getLogs" => {
-                let block = |k: &str| u64::from_str_radix(params[0][k].as_str().unwrap().trim_start_matches("0x"), 16).unwrap();
+                let block = |k: &str| {
+                    u64::from_str_radix(params[0][k].as_str().unwrap().trim_start_matches("0x"), 16)
+                        .unwrap()
+                };
                 let (from, to) = (block("fromBlock"), block("toBlock"));
                 let served: Vec<serde_json::Value> = logs
                     .iter()
@@ -211,7 +245,8 @@ mod tests {
     /// the batch reaches.
     fn landed_canonical_batch(block: u64, tx: B256) -> (Vec<Logged>, B256, B256) {
         let input = build_canonical_batch_input();
-        let (pv, positions, _, _) = apply_batch_with_state(&input).expect("the canonical batch applies");
+        let (pv, positions, _, _) =
+            apply_batch_with_state(&input).expect("the canonical batch applies");
         let operations = IFigaroBatchVerifier::BatchOperations {
             batchId: 1,
             blockTimestamp: input.block_timestamp,
@@ -227,8 +262,16 @@ mod tests {
         };
         (
             vec![
-                Logged { block, tx, data: operations.encode_log_data() },
-                Logged { block, tx, data: landed.encode_log_data() },
+                Logged {
+                    block,
+                    tx,
+                    data: operations.encode_log_data(),
+                },
+                Logged {
+                    block,
+                    tx,
+                    data: landed.encode_log_data(),
+                },
             ],
             pv.prev_state_root,
             pv.new_state_root,
@@ -243,14 +286,28 @@ mod tests {
     async fn the_state_behind_the_verifiers_root_is_rebuilt_from_its_logs() {
         let block = LOG_CHUNK + 7;
         let (logs, empty, reached) = landed_canonical_batch(block, B256::repeat_byte(0x7a));
-        assert_eq!(empty, KernelState::new().compute_root(), "the batch starts from the empty state");
+        assert_eq!(
+            empty,
+            KernelState::new().compute_root(),
+            "the batch starts from the empty state"
+        );
         let double = verifier_double(block + 1, logs, reached).await;
 
-        let rebuilt = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID).await.expect("the replay lands");
+        let rebuilt = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID)
+            .await
+            .expect("the replay lands");
         assert_eq!(rebuilt.batches, 1);
         assert_eq!(rebuilt.root, reached);
-        assert_eq!(KernelState::from_snapshot(&rebuilt.state).compute_root(), reached, "the state is the root's");
-        assert_eq!(double.calls_to("eth_getLogs").len(), 2, "the history is read in chunks");
+        assert_eq!(
+            KernelState::from_snapshot(&rebuilt.state).compute_root(),
+            reached,
+            "the state is the root's"
+        );
+        assert_eq!(
+            double.calls_to("eth_getLogs").len(),
+            2,
+            "the history is read in chunks"
+        );
     }
 
     // An empty history rebuilds the empty state, and only when the verifier
@@ -259,7 +316,9 @@ mod tests {
     async fn an_empty_history_is_the_empty_state() {
         let empty = KernelState::new().compute_root();
         let double = verifier_double(3, vec![], empty).await;
-        let rebuilt = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID).await.expect("nothing to replay");
+        let rebuilt = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID)
+            .await
+            .expect("nothing to replay");
         assert_eq!((rebuilt.batches, rebuilt.root), (0, empty));
     }
 
@@ -271,25 +330,60 @@ mod tests {
     async fn a_history_that_does_not_replay_is_refused_naming_the_batch() {
         let tx = B256::repeat_byte(0x7a);
         let (logs, prev, reached) = landed_canonical_batch(5, tx);
-        let landed = |prev: B256, new: B256| IFigaroBatchVerifier::BatchSettled {
-            batchId: 1,
-            prevStateRoot: prev,
-            newStateRoot: new,
-            positionCount: alloy::primitives::U256::from(2),
-        }
-        .encode_log_data();
+        let landed = |prev: B256, new: B256| {
+            IFigaroBatchVerifier::BatchSettled {
+                batchId: 1,
+                prevStateRoot: prev,
+                newStateRoot: new,
+                positionCount: alloy::primitives::U256::from(2),
+            }
+            .encode_log_data()
+        };
         let other = B256::repeat_byte(0x99);
 
         let cases: Vec<(Vec<Logged>, B256, &str)> = vec![
-            (vec![logs[0].clone(), Logged { data: landed(prev, other), ..logs[1].clone() }], other, "the replay reaches"),
-            (vec![logs[0].clone(), Logged { data: landed(other, reached), ..logs[1].clone() }], reached, "starts from"),
+            (
+                vec![
+                    logs[0].clone(),
+                    Logged {
+                        data: landed(prev, other),
+                        ..logs[1].clone()
+                    },
+                ],
+                other,
+                "the replay reaches",
+            ),
+            (
+                vec![
+                    logs[0].clone(),
+                    Logged {
+                        data: landed(other, reached),
+                        ..logs[1].clone()
+                    },
+                ],
+                reached,
+                "starts from",
+            ),
             (vec![logs[1].clone()], reached, "has no BatchOperations log"),
-            (vec![logs[0].clone(), Logged { tx: B256::repeat_byte(0x7b), ..logs[1].clone() }], reached, "another batch's"),
+            (
+                vec![
+                    logs[0].clone(),
+                    Logged {
+                        tx: B256::repeat_byte(0x7b),
+                        ..logs[1].clone()
+                    },
+                ],
+                reached,
+                "another batch's",
+            ),
             (logs.clone(), other, "the verifier holds"),
         ];
         for (logs, held, refusal) in cases {
             let double = verifier_double(6, logs, held).await;
-            let err = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID).await.err().expect("refused");
+            let err = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID)
+                .await
+                .err()
+                .expect("refused");
             assert!(err.contains(refusal), "expected {refusal:?}: {err}");
         }
     }
@@ -303,9 +397,16 @@ mod tests {
         let (logs, prev, _) = landed_canonical_batch(5, B256::repeat_byte(0x7a));
         for held in [prev, B256::repeat_byte(0x99)] {
             let double = verifier_double(6, logs.clone(), held).await;
-            let err = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID).await.err().expect("refused");
+            let err = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID)
+                .await
+                .err()
+                .expect("refused");
             assert!(err.contains("the verifier holds"), "{err}");
-            assert_eq!(double.calls_to("eth_call").len(), 1, "the root is read after the logs");
+            assert_eq!(
+                double.calls_to("eth_call").len(),
+                1,
+                "the root is read after the logs"
+            );
         }
     }
 
@@ -329,16 +430,35 @@ mod tests {
             newStateRoot: reached,
             positionCount: alloy::primitives::U256::ZERO,
         };
-        logs.push(Logged { block: LOG_CHUNK, tx, data: nothing.encode_log_data() });
-        logs.push(Logged { block: LOG_CHUNK, tx, data: settled.encode_log_data() });
+        logs.push(Logged {
+            block: LOG_CHUNK,
+            tx,
+            data: nothing.encode_log_data(),
+        });
+        logs.push(Logged {
+            block: LOG_CHUNK,
+            tx,
+            data: settled.encode_log_data(),
+        });
         let double = verifier_double(LOG_CHUNK, logs, reached).await;
 
-        let rebuilt = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID).await.expect("the replay lands");
-        assert_eq!((rebuilt.batches, rebuilt.root), (2, reached), "each batch replayed once");
+        let rebuilt = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID)
+            .await
+            .expect("the replay lands");
+        assert_eq!(
+            (rebuilt.batches, rebuilt.root),
+            (2, reached),
+            "each batch replayed once"
+        );
         let ranges: Vec<(String, String)> = double
             .calls_to("eth_getLogs")
             .iter()
-            .map(|p| (p[0]["fromBlock"].as_str().unwrap().to_string(), p[0]["toBlock"].as_str().unwrap().to_string()))
+            .map(|p| {
+                (
+                    p[0]["fromBlock"].as_str().unwrap().to_string(),
+                    p[0]["toBlock"].as_str().unwrap().to_string(),
+                )
+            })
             .collect();
         assert_eq!(
             ranges,
@@ -358,19 +478,38 @@ mod tests {
     async fn a_batch_operations_without_its_batch_settled_is_refused_naming_the_batch() {
         let (logs, _, reached) = landed_canonical_batch(5, B256::repeat_byte(0x7a));
         let alone = vec![logs[0].clone()];
-        let followed = vec![logs[0].clone(), Logged { tx: B256::repeat_byte(0x7b), ..logs[0].clone() }, logs[1].clone()];
+        let followed = vec![
+            logs[0].clone(),
+            Logged {
+                tx: B256::repeat_byte(0x7b),
+                ..logs[0].clone()
+            },
+            logs[1].clone(),
+        ];
         for logs in [alone, followed] {
             let double = verifier_double(6, logs, reached).await;
-            let err = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID).await.err().expect("refused");
-            assert!(err.contains("batch 1") && err.contains("has no BatchSettled"), "{err}");
+            let err = rebuild_from_chain(&double.url, CORE, 0, CHAIN_ID)
+                .await
+                .err()
+                .expect("refused");
+            assert!(
+                err.contains("batch 1") && err.contains("has no BatchSettled"),
+                "{err}"
+            );
         }
     }
 
     // A chain that cannot be read is an error whose text carries no URL.
     #[tokio::test]
     async fn a_failed_read_carries_no_url() {
-        let err = rebuild_from_chain("http://127.0.0.1:1/v2/SECRETKEY", CORE, 0, CHAIN_ID).await.err().expect("refused");
+        let err = rebuild_from_chain("http://127.0.0.1:1/v2/SECRETKEY", CORE, 0, CHAIN_ID)
+            .await
+            .err()
+            .expect("refused");
         assert!(err.starts_with("block number read failed"), "{err}");
-        assert!(!err.contains("SECRETKEY") && !err.contains("127.0.0.1"), "{err}");
+        assert!(
+            !err.contains("SECRETKEY") && !err.contains("127.0.0.1"),
+            "{err}"
+        );
     }
 }

@@ -41,8 +41,7 @@ fn clauses_dir() -> PathBuf {
 
 fn load_spec(clause_id: &str) -> figaro_clause::ClauseSpec {
     let path = clauses_dir().join(format!("{clause_id}.json"));
-    let bytes = std::fs::read(&path)
-        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
     let value: Value = serde_json::from_slice(&bytes)
         .unwrap_or_else(|e| panic!("{clause_id} is not valid JSON: {e}"));
     match parse_clause_spec(&value) {
@@ -212,7 +211,10 @@ fn required_absent_field_errors() {
     let spec = load_spec("figaro-modalities");
     let err = encode_content_from_spec(&spec, &json!({}), EncodeOptions::default())
         .expect_err("required absent field must error");
-    assert!(err.to_string().contains("required field is absent"), "{err}");
+    assert!(
+        err.to_string().contains("required field is absent"),
+        "{err}"
+    );
 }
 
 #[test]
@@ -224,7 +226,10 @@ fn undeclared_enum_value_errors() {
         EncodeOptions::default(),
     )
     .expect_err("undeclared enum value must error");
-    assert!(err.to_string().contains("not a declared enum value"), "{err}");
+    assert!(
+        err.to_string().contains("not a declared enum value"),
+        "{err}"
+    );
 }
 
 #[test]

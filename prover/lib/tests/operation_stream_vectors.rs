@@ -100,21 +100,22 @@ fn vectors() -> Value {
         },
         inclusion_proof: vec![B256::repeat_byte(0xA3), B256::repeat_byte(0xA4)],
     };
-    let attest_by_wallet_code = |role: AttesterRole, target: &Commitment, seed: u8, authorization: Vec<u8>| {
-        KernelOp::AttestByWalletCode {
-            role,
-            target: target.clone(),
-            clause_id: B256::repeat_byte(0xD0 + seed),
-            stage: seed,
-            content_ref: B256::repeat_byte(0xE0 + seed),
-            authorization: alloy_primitives::Bytes::from(authorization),
-            // The witness never enters the stream.
-            proof: AttestationWitness::HashOnly {
-                clause_data_hash: B256::repeat_byte(0xF0 + seed),
-                inclusion_proof: vec![],
-            },
-        }
-    };
+    let attest_by_wallet_code =
+        |role: AttesterRole, target: &Commitment, seed: u8, authorization: Vec<u8>| {
+            KernelOp::AttestByWalletCode {
+                role,
+                target: target.clone(),
+                clause_id: B256::repeat_byte(0xD0 + seed),
+                stage: seed,
+                content_ref: B256::repeat_byte(0xE0 + seed),
+                authorization: alloy_primitives::Bytes::from(authorization),
+                // The witness never enters the stream.
+                proof: AttestationWitness::HashOnly {
+                    clause_data_hash: B256::repeat_byte(0xF0 + seed),
+                    inclusion_proof: vec![],
+                },
+            }
+        };
     let streams = vec![
         (
             "oneRootCommit",
@@ -185,7 +186,9 @@ fn vectors() -> Value {
                 process_id: process,
                 cumulative_value: second.expected_cumulative_value,
                 commitments: vec![first.clone(), second.clone()],
-                authorization: alloy_primitives::Bytes::from((0..300u16).map(|i| i as u8).collect::<Vec<u8>>()),
+                authorization: alloy_primitives::Bytes::from(
+                    (0..300u16).map(|i| i as u8).collect::<Vec<u8>>(),
+                ),
             }],
             vec![],
         ),
@@ -206,7 +209,12 @@ fn vectors() -> Value {
                     buyer_sig: signature(1),
                     seller_sig: signature(2),
                 },
-                attest_by_wallet_code(AttesterRole::Seller, &first, 1, b"seller-guardian-1".to_vec()),
+                attest_by_wallet_code(
+                    AttesterRole::Seller,
+                    &first,
+                    1,
+                    b"seller-guardian-1".to_vec(),
+                ),
                 attest_by_wallet_code(AttesterRole::Buyer, &root, 2, vec![]),
             ],
             vec![agreement_claim],
@@ -218,13 +226,23 @@ fn vectors() -> Value {
         let mut entries = Vec::new();
         for op in &ops {
             match op {
-                KernelOp::Commit { commitment, .. } => entries.push(json!({"kind": "commit", "commitment": commitment_json(commitment)})),
-                KernelOp::Resolve { process_id, commitments, .. } => entries.push(json!({
+                KernelOp::Commit { commitment, .. } => entries
+                    .push(json!({"kind": "commit", "commitment": commitment_json(commitment)})),
+                KernelOp::Resolve {
+                    process_id,
+                    commitments,
+                    ..
+                } => entries.push(json!({
                     "kind": "resolve",
                     "processId": format!("{:#x}", process_id),
                     "commitments": commitments.iter().map(commitment_json).collect::<Vec<_>>(),
                 })),
-                KernelOp::ResolveByWalletCode { process_id, commitments, authorization, .. } => entries.push(json!({
+                KernelOp::ResolveByWalletCode {
+                    process_id,
+                    commitments,
+                    authorization,
+                    ..
+                } => entries.push(json!({
                     "kind": "resolveByWalletCode",
                     "processId": format!("{:#x}", process_id),
                     "authorization": format!("{authorization:#x}"),
@@ -263,14 +281,23 @@ fn vectors() -> Value {
 #[ignore]
 fn write_fixture() {
     let v = vectors();
-    std::fs::write(fixture_path(), serde_json::to_string_pretty(&v).unwrap() + "\n").unwrap();
+    std::fs::write(
+        fixture_path(),
+        serde_json::to_string_pretty(&v).unwrap() + "\n",
+    )
+    .unwrap();
 }
 
 #[test]
 fn the_committed_fixture_is_what_the_encoder_produces() {
     let committed: Value = serde_json::from_str(
-        &std::fs::read_to_string(fixture_path()).expect("the fixture is committed; write it with --ignored write_fixture"),
+        &std::fs::read_to_string(fixture_path())
+            .expect("the fixture is committed; write it with --ignored write_fixture"),
     )
     .unwrap();
-    assert_eq!(committed, vectors(), "the fixture drifted from the encoder: rewrite it with --ignored write_fixture");
+    assert_eq!(
+        committed,
+        vectors(),
+        "the fixture drifted from the encoder: rewrite it with --ignored write_fixture"
+    );
 }

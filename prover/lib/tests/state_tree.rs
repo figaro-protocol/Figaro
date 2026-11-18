@@ -42,9 +42,17 @@ fn two_leaves_apart_at_the_first_bit_are_one_node() {
     let (a, b) = (path(0x00, 1), path(0x80, 2));
     let leaves = BTreeMap::from([(a, vh(1)), (b, vh(2))]);
     let expected = keccak256(
-        [&[0x01u8][..], leaf_hash(&a, &vh(1)).as_slice(), leaf_hash(&b, &vh(2)).as_slice()].concat(),
+        [
+            &[0x01u8][..],
+            leaf_hash(&a, &vh(1)).as_slice(),
+            leaf_hash(&b, &vh(2)).as_slice(),
+        ]
+        .concat(),
     );
-    assert_eq!(node_hash(&leaf_hash(&a, &vh(1)), &leaf_hash(&b, &vh(2))), expected);
+    assert_eq!(
+        node_hash(&leaf_hash(&a, &vh(1)), &leaf_hash(&b, &vh(2))),
+        expected
+    );
     assert_eq!(root(&leaves), expected);
 }
 
@@ -73,12 +81,19 @@ fn a_third_leaf_beside_a_pair_leaves_the_pair_below_and_rises_alone() {
 
 /// Run a batch's touched leaves through the witness: build it from the full
 /// previous set, check it, and return the new root.
-fn step(prev: &BTreeMap<B256, B256>, writes: &BTreeMap<B256, Option<B256>>) -> Result<B256, TreeError> {
+fn step(
+    prev: &BTreeMap<B256, B256>,
+    writes: &BTreeMap<B256, Option<B256>>,
+) -> Result<B256, TreeError> {
     let paths: Vec<B256> = writes.keys().copied().collect();
     let proof = prove(prev, &paths);
     let leaves: Vec<WitnessedLeaf> = writes
         .iter()
-        .map(|(p, after)| WitnessedLeaf { path: *p, before: prev.get(p).copied(), after: after.or(prev.get(p).copied()) })
+        .map(|(p, after)| WitnessedLeaf {
+            path: *p,
+            before: prev.get(p).copied(),
+            after: after.or(prev.get(p).copied()),
+        })
         .collect();
     verify_and_update(root(prev), &leaves, &proof)
 }
@@ -112,7 +127,10 @@ fn two_inserts_into_one_empty_position() {
     let (a, b, c) = (path(0x80, 1), path(0x00, 2), path(0x01, 3));
     let prev = BTreeMap::from([(a, vh(1))]);
     let new = step(&prev, &BTreeMap::from([(b, Some(vh(2))), (c, Some(vh(3)))])).unwrap();
-    assert_eq!(new, root(&BTreeMap::from([(a, vh(1)), (b, vh(2)), (c, vh(3))])));
+    assert_eq!(
+        new,
+        root(&BTreeMap::from([(a, vh(1)), (b, vh(2)), (c, vh(3))]))
+    );
 }
 
 #[test]
@@ -151,11 +169,18 @@ fn the_descent_reaches_the_root_of_the_true_post_state_on_random_histories() {
             let mut writes: BTreeMap<B256, Option<B256>> = BTreeMap::new();
             for _ in 0..(1 + rng.next() % 6) {
                 let p = if !state.is_empty() && rng.next() % 2 == 0 {
-                    *state.keys().nth((rng.next() as usize) % state.len()).unwrap()
+                    *state
+                        .keys()
+                        .nth((rng.next() as usize) % state.len())
+                        .unwrap()
                 } else {
                     rng.path()
                 };
-                let write = if rng.next() % 4 == 0 { None } else { Some(vh((rng.next() % 250) as u8)) };
+                let write = if rng.next() % 4 == 0 {
+                    None
+                } else {
+                    Some(vh((rng.next() % 250) as u8))
+                };
                 writes.insert(p, write);
             }
             let new = step(&state, &writes).expect("an honest witness is accepted");
@@ -174,7 +199,11 @@ fn the_descent_reaches_the_root_of_the_true_post_state_on_random_histories() {
 fn honest(prev: &BTreeMap<B256, B256>, paths: &[B256]) -> (Vec<WitnessedLeaf>, Vec<ProofItem>) {
     let leaves = paths
         .iter()
-        .map(|p| WitnessedLeaf { path: *p, before: prev.get(p).copied(), after: prev.get(p).copied() })
+        .map(|p| WitnessedLeaf {
+            path: *p,
+            before: prev.get(p).copied(),
+            after: prev.get(p).copied(),
+        })
         .collect();
     (leaves, prove(prev, paths))
 }
@@ -187,7 +216,10 @@ fn a_present_leaf_read_as_absent_is_refused() {
     let (mut leaves, proof) = honest(&prev, &[a]);
     leaves[0].before = None;
     leaves[0].after = Some(vh(5));
-    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::PresentLeafClaimedAbsent));
+    assert_eq!(
+        verify_and_update(root(&prev), &leaves, &proof),
+        Err(TreeError::PresentLeafClaimedAbsent)
+    );
 }
 
 #[test]
@@ -196,7 +228,10 @@ fn a_wrong_previous_value_is_refused() {
     let prev = BTreeMap::from([(a, vh(1))]);
     let (mut leaves, proof) = honest(&prev, &[a]);
     leaves[0].before = Some(vh(2));
-    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::ValueMismatch));
+    assert_eq!(
+        verify_and_update(root(&prev), &leaves, &proof),
+        Err(TreeError::ValueMismatch)
+    );
 }
 
 #[test]
@@ -205,9 +240,15 @@ fn unsorted_and_duplicate_entries_are_refused() {
     let prev = BTreeMap::from([(a, vh(1)), (b, vh(2))]);
     let (leaves, proof) = honest(&prev, &[a, b]);
     let reversed = vec![leaves[1].clone(), leaves[0].clone()];
-    assert_eq!(verify_and_update(root(&prev), &reversed, &proof), Err(TreeError::EntriesNotStrictlyIncreasing));
+    assert_eq!(
+        verify_and_update(root(&prev), &reversed, &proof),
+        Err(TreeError::EntriesNotStrictlyIncreasing)
+    );
     let doubled = vec![leaves[0].clone(), leaves[0].clone()];
-    assert_eq!(verify_and_update(root(&prev), &doubled, &proof), Err(TreeError::EntriesNotStrictlyIncreasing));
+    assert_eq!(
+        verify_and_update(root(&prev), &doubled, &proof),
+        Err(TreeError::EntriesNotStrictlyIncreasing)
+    );
 }
 
 #[test]
@@ -216,9 +257,23 @@ fn another_leaf_off_the_position_is_refused() {
     // says holds a leaf with bit 0 = 1: not on that position's prefix.
     let p = path(0x01, 5);
     let x = path(0x80, 9);
-    let leaves = vec![WitnessedLeaf { path: p, before: None, after: None }];
-    let proof = vec![ProofItem::Descend, ProofItem::Leaf { path: x, value_hash: vh(9) }, ProofItem::Empty];
-    assert_eq!(verify_and_update(B256::ZERO, &leaves, &proof), Err(TreeError::LeafOffPosition));
+    let leaves = vec![WitnessedLeaf {
+        path: p,
+        before: None,
+        after: None,
+    }];
+    let proof = vec![
+        ProofItem::Descend,
+        ProofItem::Leaf {
+            path: x,
+            value_hash: vh(9),
+        },
+        ProofItem::Empty,
+    ];
+    assert_eq!(
+        verify_and_update(B256::ZERO, &leaves, &proof),
+        Err(TreeError::LeafOffPosition)
+    );
 }
 
 #[test]
@@ -226,8 +281,15 @@ fn a_present_entry_beside_another_leaf_is_refused() {
     let (a, b) = (path(0x00, 1), path(0x20, 2));
     let prev = BTreeMap::from([(a, vh(1))]);
     let proof = prove(&prev, &[b]);
-    let leaves = vec![WitnessedLeaf { path: b, before: Some(vh(2)), after: Some(vh(2)) }];
-    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::AbsenceProofForPresentEntry));
+    let leaves = vec![WitnessedLeaf {
+        path: b,
+        before: Some(vh(2)),
+        after: Some(vh(2)),
+    }];
+    assert_eq!(
+        verify_and_update(root(&prev), &leaves, &proof),
+        Err(TreeError::AbsenceProofForPresentEntry)
+    );
 }
 
 #[test]
@@ -235,8 +297,15 @@ fn an_empty_position_for_a_present_entry_is_refused() {
     let b = path(0x80, 2);
     let prev = BTreeMap::new();
     let proof = prove(&prev, &[b]);
-    let leaves = vec![WitnessedLeaf { path: b, before: Some(vh(2)), after: Some(vh(2)) }];
-    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::AbsenceProofForPresentEntry));
+    let leaves = vec![WitnessedLeaf {
+        path: b,
+        before: Some(vh(2)),
+        after: Some(vh(2)),
+    }];
+    assert_eq!(
+        verify_and_update(root(&prev), &leaves, &proof),
+        Err(TreeError::AbsenceProofForPresentEntry)
+    );
 }
 
 #[test]
@@ -245,19 +314,32 @@ fn a_surplus_or_a_short_proof_is_refused() {
     let prev = BTreeMap::from([(a, vh(1)), (b, vh(2))]);
     let (leaves, mut proof) = honest(&prev, &[a]);
     proof.push(ProofItem::Empty);
-    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::ProofNotConsumed));
+    assert_eq!(
+        verify_and_update(root(&prev), &leaves, &proof),
+        Err(TreeError::ProofNotConsumed)
+    );
     let (leaves, mut proof) = honest(&prev, &[a]);
     proof.pop();
-    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::ProofTooShort));
+    assert_eq!(
+        verify_and_update(root(&prev), &leaves, &proof),
+        Err(TreeError::ProofTooShort)
+    );
 }
 
 #[test]
 fn a_node_at_a_witnessed_position_is_refused() {
     let a = path(0x00, 1);
     let prev = BTreeMap::from([(a, vh(1)), (path(0x40, 2), vh(2))]);
-    let leaves = vec![WitnessedLeaf { path: a, before: Some(vh(1)), after: Some(vh(1)) }];
+    let leaves = vec![WitnessedLeaf {
+        path: a,
+        before: Some(vh(1)),
+        after: Some(vh(1)),
+    }];
     let proof = vec![ProofItem::Node(root(&prev))];
-    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::NodeAtWitnessedPosition));
+    assert_eq!(
+        verify_and_update(root(&prev), &leaves, &proof),
+        Err(TreeError::NodeAtWitnessedPosition)
+    );
 }
 
 #[test]
@@ -266,9 +348,20 @@ fn a_misstated_shape_fails_the_previous_root() {
     // hash is not the previous root.
     let (a, b) = (path(0x00, 1), path(0x80, 2));
     let prev = BTreeMap::from([(b, vh(2))]);
-    let leaves = vec![WitnessedLeaf { path: a, before: None, after: Some(vh(1)) }];
-    let proof = vec![ProofItem::Descend, ProofItem::Empty, ProofItem::Node(leaf_hash(&b, &vh(2)))];
-    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::PreviousRootMismatch));
+    let leaves = vec![WitnessedLeaf {
+        path: a,
+        before: None,
+        after: Some(vh(1)),
+    }];
+    let proof = vec![
+        ProofItem::Descend,
+        ProofItem::Empty,
+        ProofItem::Node(leaf_hash(&b, &vh(2))),
+    ];
+    assert_eq!(
+        verify_and_update(root(&prev), &leaves, &proof),
+        Err(TreeError::PreviousRootMismatch)
+    );
 }
 
 #[test]
@@ -277,7 +370,10 @@ fn a_leaf_removed_is_refused() {
     let prev = BTreeMap::from([(a, vh(1))]);
     let (mut leaves, proof) = honest(&prev, &[a]);
     leaves[0].after = None;
-    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::LeafRemoved));
+    assert_eq!(
+        verify_and_update(root(&prev), &leaves, &proof),
+        Err(TreeError::LeafRemoved)
+    );
 }
 
 // ── The relocation attack: every leaf is checked against its position ───
@@ -291,8 +387,16 @@ fn a_lone_leaf_moved_off_its_path_beside_split_witnesses_is_refused() {
     let prev = BTreeMap::from([(x, vh(1))]);
     let (p, q) = (path(0x00, 2), path(0x40, 3));
     let leaves = vec![
-        WitnessedLeaf { path: p, before: None, after: None },
-        WitnessedLeaf { path: q, before: None, after: None },
+        WitnessedLeaf {
+            path: p,
+            before: None,
+            after: None,
+        },
+        WitnessedLeaf {
+            path: q,
+            before: None,
+            after: None,
+        },
     ];
     // depth 0 split: left {p, q}, right {}. Left depth 1 split: p left, q right.
     // Honest: [Empty (p), Empty (q), Leaf x (right of root)].
@@ -300,11 +404,17 @@ fn a_lone_leaf_moved_off_its_path_beside_split_witnesses_is_refused() {
     let proof = vec![
         ProofItem::Descend,
         ProofItem::Empty,
-        ProofItem::Leaf { path: x, value_hash: vh(1) },
+        ProofItem::Leaf {
+            path: x,
+            value_hash: vh(1),
+        },
         ProofItem::Empty,
         ProofItem::Empty,
     ];
-    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::LeafOffPosition));
+    assert_eq!(
+        verify_and_update(root(&prev), &leaves, &proof),
+        Err(TreeError::LeafOffPosition)
+    );
 }
 
 #[test]
@@ -315,9 +425,23 @@ fn a_descend_over_a_lone_leaf_that_moves_it_aside_is_refused() {
     let x = path(0x01, 1);
     let p = path(0x00, 2);
     let prev = BTreeMap::from([(x, vh(1))]);
-    let leaves = vec![WitnessedLeaf { path: p, before: None, after: Some(vh(2)) }];
-    let proof = vec![ProofItem::Descend, ProofItem::Empty, ProofItem::Leaf { path: x, value_hash: vh(1) }];
-    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::LeafOffPosition));
+    let leaves = vec![WitnessedLeaf {
+        path: p,
+        before: None,
+        after: Some(vh(2)),
+    }];
+    let proof = vec![
+        ProofItem::Descend,
+        ProofItem::Empty,
+        ProofItem::Leaf {
+            path: x,
+            value_hash: vh(1),
+        },
+    ];
+    assert_eq!(
+        verify_and_update(root(&prev), &leaves, &proof),
+        Err(TreeError::LeafOffPosition)
+    );
 }
 
 #[test]
@@ -325,9 +449,16 @@ fn a_descend_past_the_last_bit_is_refused() {
     // The all-zero path: every split sends it left, so a run of `Descend`
     // follows it to the last bit.
     let p = B256::ZERO;
-    let leaves = vec![WitnessedLeaf { path: p, before: None, after: None }];
+    let leaves = vec![WitnessedLeaf {
+        path: p,
+        before: None,
+        after: None,
+    }];
     let proof = vec![ProofItem::Descend; 300];
-    assert_eq!(verify_and_update(B256::ZERO, &leaves, &proof), Err(TreeError::DescendPastLastBit));
+    assert_eq!(
+        verify_and_update(B256::ZERO, &leaves, &proof),
+        Err(TreeError::DescendPastLastBit)
+    );
 }
 
 /// Mutate an honest proof: whatever the descent accepts must reach the root
@@ -343,16 +474,30 @@ fn a_mutated_proof_is_refused_or_reaches_the_true_root() {
         let mut writes: BTreeMap<B256, Option<B256>> = BTreeMap::new();
         for _ in 0..(1 + rng.next() % 4) {
             let p = if !state.is_empty() && rng.next() % 2 == 0 {
-                *state.keys().nth((rng.next() as usize) % state.len()).unwrap()
+                *state
+                    .keys()
+                    .nth((rng.next() as usize) % state.len())
+                    .unwrap()
             } else {
                 rng.path()
             };
-            writes.insert(p, if rng.next() % 3 == 0 { None } else { Some(vh((rng.next() % 250) as u8)) });
+            writes.insert(
+                p,
+                if rng.next() % 3 == 0 {
+                    None
+                } else {
+                    Some(vh((rng.next() % 250) as u8))
+                },
+            );
         }
         let paths: Vec<B256> = writes.keys().copied().collect();
         let leaves: Vec<WitnessedLeaf> = writes
             .iter()
-            .map(|(p, w)| WitnessedLeaf { path: *p, before: state.get(p).copied(), after: w.or(state.get(p).copied()) })
+            .map(|(p, w)| WitnessedLeaf {
+                path: *p,
+                before: state.get(p).copied(),
+                after: w.or(state.get(p).copied()),
+            })
             .collect();
         let mut post = state.clone();
         for (p, w) in &writes {
@@ -363,13 +508,19 @@ fn a_mutated_proof_is_refused_or_reaches_the_true_root() {
         let honest = prove(&state, &paths);
         let leaf_pool: Vec<ProofItem> = state
             .iter()
-            .map(|(p, v)| ProofItem::Leaf { path: *p, value_hash: *v })
+            .map(|(p, v)| ProofItem::Leaf {
+                path: *p,
+                value_hash: *v,
+            })
             .collect();
         for _ in 0..200 {
             let mut proof = honest.clone();
             match rng.next() % 6 {
                 0 if proof.len() > 1 => {
-                    let (i, j) = ((rng.next() as usize) % proof.len(), (rng.next() as usize) % proof.len());
+                    let (i, j) = (
+                        (rng.next() as usize) % proof.len(),
+                        (rng.next() as usize) % proof.len(),
+                    );
                     proof.swap(i, j);
                 }
                 1 => {
@@ -382,7 +533,10 @@ fn a_mutated_proof_is_refused_or_reaches_the_true_root() {
                 }
                 3 if !leaf_pool.is_empty() => {
                     let i = (rng.next() as usize) % (proof.len() + 1);
-                    proof.insert(i, leaf_pool[(rng.next() as usize) % leaf_pool.len()].clone());
+                    proof.insert(
+                        i,
+                        leaf_pool[(rng.next() as usize) % leaf_pool.len()].clone(),
+                    );
                     proof.insert(i, ProofItem::Empty);
                 }
                 4 if !proof.is_empty() => {
@@ -399,7 +553,11 @@ fn a_mutated_proof_is_refused_or_reaches_the_true_root() {
                 }
             }
             if let Ok(new) = verify_and_update(root(&state), &leaves, &proof) {
-                assert_eq!(new, root(&post), "seed {seed}: an accepted proof must reach the true root");
+                assert_eq!(
+                    new,
+                    root(&post),
+                    "seed {seed}: an accepted proof must reach the true root"
+                );
             }
         }
     }
@@ -411,7 +569,14 @@ fn a_descend_where_no_path_is_witnessed_is_refused() {
     let prev = BTreeMap::from([(b, vh(2))]);
     // a's side is split by the witnessed path; b's side holds nothing
     // witnessed, and the proof says to descend there.
-    let leaves = vec![WitnessedLeaf { path: a, before: None, after: None }];
+    let leaves = vec![WitnessedLeaf {
+        path: a,
+        before: None,
+        after: None,
+    }];
     let proof = vec![ProofItem::Descend, ProofItem::Empty, ProofItem::Descend];
-    assert_eq!(verify_and_update(root(&prev), &leaves, &proof), Err(TreeError::DescendWithoutWitnessedPath));
+    assert_eq!(
+        verify_and_update(root(&prev), &leaves, &proof),
+        Err(TreeError::DescendWithoutWitnessedPath)
+    );
 }

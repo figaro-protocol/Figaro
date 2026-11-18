@@ -90,7 +90,9 @@ fn the_engine_gives_layer_a_answers_on_every_generated_case() {
                 continue;
             }
             (ParseClauseSpecResult::Ok(_), false) => {
-                divergences.push(format!("{at}: Layer A refuses the spec, the engine PARSES it"));
+                divergences.push(format!(
+                    "{at}: Layer A refuses the spec, the engine PARSES it"
+                ));
                 continue;
             }
             (ParseClauseSpecResult::Err(errors), true) => {
@@ -107,8 +109,16 @@ fn the_engine_gives_layer_a_answers_on_every_generated_case() {
         if verdict.is_ok() != layer_a_validates {
             divergences.push(format!(
                 "{at}: Layer A {} the content, the engine {}: {} — content {content}",
-                if layer_a_validates { "accepts" } else { "rejects" },
-                if verdict.is_ok() { "ACCEPTS" } else { "rejects" },
+                if layer_a_validates {
+                    "accepts"
+                } else {
+                    "rejects"
+                },
+                if verdict.is_ok() {
+                    "ACCEPTS"
+                } else {
+                    "rejects"
+                },
                 verdict
                     .errors()
                     .iter()

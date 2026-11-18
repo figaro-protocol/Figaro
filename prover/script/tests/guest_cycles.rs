@@ -37,12 +37,18 @@ async fn the_guests_cycles_do_not_grow_with_the_stored_state() {
         let guest = guest_input(&input).expect("the canonical batch's witness");
         let mut stdin = SP1Stdin::new();
         stdin.write(&guest);
-        let (_, report) = client.execute(elf.clone(), stdin).await.expect("the guest executes");
+        let (_, report) = client
+            .execute(elf.clone(), stdin)
+            .await
+            .expect("the guest executes");
         let total = report.total_instruction_count();
         println!("CYCLES stored_orders={n} cycles={total}");
         cycles.push(total);
     }
     // A tree path grows with the logarithm of the state: allow a margin,
     // never a factor of the state.
-    assert!(cycles[2] < cycles[0] * 2, "cycles grew with the stored state: {cycles:?}");
+    assert!(
+        cycles[2] < cycles[0] * 2,
+        "cycles grew with the stored state: {cycles:?}"
+    );
 }

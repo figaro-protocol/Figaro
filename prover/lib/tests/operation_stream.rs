@@ -11,8 +11,9 @@ use figaro_kernel::operation_stream::{
 };
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
-    AttestationContentProof, AttestationWitness, AttesterRole, BatchInput, Commitment, ContentKind, KernelOp, Signature, UsageClaim,
-    UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE,
+    AttestationContentProof, AttestationWitness, AttesterRole, BatchInput, Commitment, ContentKind,
+    KernelOp, Signature, UsageClaim, UsageClaimKind, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY,
+    USAGE_KIND_CLAUSE,
 };
 
 fn commitment(seed: u8) -> Commitment {
@@ -124,7 +125,11 @@ fn the_stream_round_trips_and_skips_attestations() {
     let (ops2, _, claims2) = decode_operation_stream(&bytes).expect("decodes");
     assert_eq!(ops2.len(), 3, "the attestation is not in the stream");
     assert_eq!(claims2.len(), 3);
-    assert_eq!(encode_operation_stream(&ops2, &claims2), bytes, "re-encoding is the identity");
+    assert_eq!(
+        encode_operation_stream(&ops2, &claims2),
+        bytes,
+        "re-encoding is the identity"
+    );
     match &ops2[2] {
         KernelOp::Resolve {
             process_id,
@@ -133,7 +138,11 @@ fn the_stream_round_trips_and_skips_attestations() {
             buyer_sig,
         } => {
             assert_eq!(*process_id, B256::repeat_byte(0x01));
-            assert_eq!(*cumulative_value, U256::from(300u64), "the decoder derives the signed value from the listed payments");
+            assert_eq!(
+                *cumulative_value,
+                U256::from(300u64),
+                "the decoder derives the signed value from the listed payments"
+            );
             assert_eq!(commitments.len(), 2);
             assert_eq!(commitments[1].seller, commitment(2).seller);
             assert_eq!(buyer_sig.v, signature(5).v);
@@ -149,9 +158,18 @@ fn the_stream_round_trips_and_skips_attestations() {
     // The kind byte is the chain's family code: the byte after the claim's
     // commitment and key.
     let claim_offset = 2 * commit_len + resolve_len;
-    assert_eq!(bytes[claim_offset + 1 + COMMITMENT_BYTES + 32], USAGE_KIND_CLAUSE);
-    assert_eq!(bytes[claim_offset + claim_clause + 1 + COMMITMENT_BYTES + 32], USAGE_KIND_AGREEMENT);
-    assert_eq!(bytes[claim_offset + claim_clause + claim_agreement + 1 + COMMITMENT_BYTES + 32], USAGE_KIND_ASSEMBLY);
+    assert_eq!(
+        bytes[claim_offset + 1 + COMMITMENT_BYTES + 32],
+        USAGE_KIND_CLAUSE
+    );
+    assert_eq!(
+        bytes[claim_offset + claim_clause + 1 + COMMITMENT_BYTES + 32],
+        USAGE_KIND_AGREEMENT
+    );
+    assert_eq!(
+        bytes[claim_offset + claim_clause + claim_agreement + 1 + COMMITMENT_BYTES + 32],
+        USAGE_KIND_ASSEMBLY
+    );
 }
 
 #[test]
@@ -161,21 +179,33 @@ fn the_hash_is_keccak_of_the_bytes_and_the_empty_stream_hashes_to_keccak_empty()
     assert_eq!(compute_operations_hash(&bytes), keccak256(&bytes));
     assert_eq!(compute_operations_hash(&[]), keccak256([]));
     assert!(encode_operation_stream(&[], &[]).is_empty());
-    assert!(encode_operation_stream(&[attestation(1)], &[]).is_empty(), "attestations alone leave an empty stream");
+    assert!(
+        encode_operation_stream(&[attestation(1)], &[]).is_empty(),
+        "attestations alone leave an empty stream"
+    );
 }
 
 #[test]
 fn the_decoder_refuses_a_truncated_stream_an_unknown_tag_and_a_claim_before_an_operation() {
     let (ops, claims) = sample();
     let bytes = encode_operation_stream(&ops, &claims);
-    assert!(decode_operation_stream(&bytes[..bytes.len() - 1]).is_err(), "one byte short");
+    assert!(
+        decode_operation_stream(&bytes[..bytes.len() - 1]).is_err(),
+        "one byte short"
+    );
     assert!(decode_operation_stream(&[0x09]).is_err(), "unknown tag");
     let mut swapped = encode_operation_stream(&[], &claims[..1]);
     swapped.extend(encode_operation_stream(&ops[..1], &[]));
-    assert!(decode_operation_stream(&swapped).is_err(), "a commit after a claim");
+    assert!(
+        decode_operation_stream(&swapped).is_err(),
+        "a commit after a claim"
+    );
     let mut trailing = bytes.clone();
     trailing.push(0x00);
-    assert!(decode_operation_stream(&trailing).is_err(), "a trailing byte is an unknown tag");
+    assert!(
+        decode_operation_stream(&trailing).is_err(),
+        "a trailing byte is an unknown tag"
+    );
 }
 
 #[test]
@@ -193,7 +223,11 @@ fn a_batch_of_nothing_commits_the_empty_stream_hash_as_word_nine() {
     assert_eq!(pv.operations_hash, keccak256([]));
     let abi = pv.abi_encode();
     assert_eq!(abi.len(), 320);
-    assert_eq!(&abi[288..320], pv.operations_hash.as_slice(), "word nine is the operations hash");
+    assert_eq!(
+        &abi[288..320],
+        pv.operations_hash.as_slice(),
+        "word nine is the operations hash"
+    );
 }
 
 /// A wallet-code resolve is its own entry, `0x04 processId len(2)
@@ -211,10 +245,22 @@ fn a_wallet_code_resolve_round_trips_with_its_authorization() {
     assert_eq!(bytes.len(), 1 + 32 + 2 + 97 + 2 + 2 * COMMITMENT_BYTES);
     assert_eq!(bytes[0], 0x04, "the wallet-code resolve's tag");
     let (ops2, _, _) = decode_operation_stream(&bytes).expect("decodes");
-    assert_eq!(encode_operation_stream(&ops2, &[]), bytes, "re-encoding is the identity");
+    assert_eq!(
+        encode_operation_stream(&ops2, &[]),
+        bytes,
+        "re-encoding is the identity"
+    );
     match &ops2[0] {
-        KernelOp::ResolveByWalletCode { cumulative_value, authorization, .. } => {
-            assert_eq!(*cumulative_value, U256::from(300u64), "derived from the listed payments");
+        KernelOp::ResolveByWalletCode {
+            cumulative_value,
+            authorization,
+            ..
+        } => {
+            assert_eq!(
+                *cumulative_value,
+                U256::from(300u64),
+                "derived from the listed payments"
+            );
             assert_eq!(authorization.len(), 97);
         }
         other => panic!("expected the wallet-code resolve, got {other:?}"),
@@ -231,7 +277,10 @@ fn wallet_code_attestation(seed: u8, role: AttesterRole, len: usize) -> KernelOp
         stage: 2,
         content_ref: B256::repeat_byte(0x73),
         authorization: alloy_primitives::Bytes::from(vec![0xcd; len]),
-        proof: AttestationWitness::HashOnly { clause_data_hash: B256::repeat_byte(0x74), inclusion_proof: vec![] },
+        proof: AttestationWitness::HashOnly {
+            clause_data_hash: B256::repeat_byte(0x74),
+            inclusion_proof: vec![],
+        },
     }
 }
 
@@ -250,20 +299,40 @@ fn a_wallet_code_attestation_round_trips_as_its_own_list() {
     assert_eq!(ops2.len(), 3, "the commits and the resolve");
     assert_eq!(claims2.len(), claims.len());
     assert_eq!(entries.len(), 2);
-    assert_eq!((entries[0].role, entries[0].authorization.len()), (AttesterRole::Seller, 97));
-    assert_eq!((entries[1].role, entries[1].authorization.len()), (AttesterRole::Buyer, 0));
+    assert_eq!(
+        (entries[0].role, entries[0].authorization.len()),
+        (AttesterRole::Seller, 97)
+    );
+    assert_eq!(
+        (entries[1].role, entries[1].authorization.len()),
+        (AttesterRole::Buyer, 0)
+    );
     assert_eq!(entries[0].stage, 2);
-    assert_eq!(encode_stream_parts(&ops2, &entries, &claims2), bytes, "re-encoding is the identity");
+    assert_eq!(
+        encode_stream_parts(&ops2, &entries, &claims2),
+        bytes,
+        "re-encoding is the identity"
+    );
 
     let entry_len = |auth: usize| 1 + 1 + COMMITMENT_BYTES + 32 + 1 + 32 + 2 + auth;
     let without = encode_operation_stream(&sample().0, &[]);
     let with = encode_operation_stream(&ops, &[]);
     assert_eq!(with.len(), without.len() + entry_len(97) + entry_len(0));
-    assert_eq!(with[without.len()], 0x05, "the entries follow every commit and resolve");
+    assert_eq!(
+        with[without.len()],
+        0x05,
+        "the entries follow every commit and resolve"
+    );
     assert_eq!(with[without.len() + 1], 0x00, "the seller's role byte");
-    assert_eq!(with[without.len() + entry_len(97) + 1], 0x01, "the buyer's role byte");
+    assert_eq!(
+        with[without.len() + entry_len(97) + 1],
+        0x01,
+        "the buyer's role byte"
+    );
     assert!(
-        !with.windows(32).any(|w| w == B256::repeat_byte(0x74).as_slice()),
+        !with
+            .windows(32)
+            .any(|w| w == B256::repeat_byte(0x74).as_slice()),
         "the witness's clauseDataHash is never published"
     );
 }
@@ -273,17 +342,30 @@ fn a_wallet_code_attestation_round_trips_as_its_own_list() {
 #[test]
 fn the_decoder_refuses_a_0x05_out_of_place_or_with_an_unknown_role() {
     let (ops, claims) = sample();
-    let entry = encode_operation_stream(&[wallet_code_attestation(1, AttesterRole::Seller, 3)], &[]);
+    let entry =
+        encode_operation_stream(&[wallet_code_attestation(1, AttesterRole::Seller, 3)], &[]);
     let mut after_claim = encode_operation_stream(&[], &claims[..1]);
     after_claim.extend(&entry);
-    assert!(decode_operation_stream(&after_claim).is_err(), "a 0x05 after a claim");
+    assert!(
+        decode_operation_stream(&after_claim).is_err(),
+        "a 0x05 after a claim"
+    );
     let mut op_after = entry.clone();
     op_after.extend(encode_operation_stream(&ops[..1], &[]));
-    assert!(decode_operation_stream(&op_after).is_err(), "a commit after a 0x05");
+    assert!(
+        decode_operation_stream(&op_after).is_err(),
+        "a commit after a 0x05"
+    );
     let mut bad_role = entry.clone();
     bad_role[1] = 0x02;
-    assert!(decode_operation_stream(&bad_role).is_err(), "role byte 0x02");
-    assert!(decode_operation_stream(&entry[..entry.len() - 1]).is_err(), "one byte short");
+    assert!(
+        decode_operation_stream(&bad_role).is_err(),
+        "role byte 0x02"
+    );
+    assert!(
+        decode_operation_stream(&entry[..entry.len() - 1]).is_err(),
+        "one byte short"
+    );
 }
 
 // ── The round trip as a property: decode(encode(x)) == x over generated streams ──
@@ -321,9 +403,17 @@ impl Gen {
     /// A commitment with every field drawn; `payment` below 2^128 when
     /// `bounded`, so a resolve's listed payments sum without overflow.
     fn commitment(&mut self, bounded: bool) -> Commitment {
-        let payment = if bounded { (U256::from(self.u64()) << 64) | U256::from(self.u64()) } else { self.u256() };
+        let payment = if bounded {
+            (U256::from(self.u64()) << 64) | U256::from(self.u64())
+        } else {
+            self.u256()
+        };
         Commitment {
-            process_id: if self.below(4) == 0 { B256::ZERO } else { self.b256() },
+            process_id: if self.below(4) == 0 {
+                B256::ZERO
+            } else {
+                self.b256()
+            },
             buyer: self.address(),
             seller: self.address(),
             currency: self.address(),
@@ -335,13 +425,20 @@ impl Gen {
         }
     }
     fn signature(&mut self) -> Signature {
-        Signature { v: self.u64() as u8, r: self.b256(), s: self.b256() }
+        Signature {
+            v: self.u64() as u8,
+            r: self.b256(),
+            s: self.b256(),
+        }
     }
     fn listed(&mut self) -> Vec<Commitment> {
         (0..self.below(4)).map(|_| self.commitment(true)).collect()
     }
     fn witness(&mut self) -> AttestationWitness {
-        AttestationWitness::HashOnly { clause_data_hash: self.b256(), inclusion_proof: self.words(3) }
+        AttestationWitness::HashOnly {
+            clause_data_hash: self.b256(),
+            inclusion_proof: self.words(3),
+        }
     }
     fn role(&mut self) -> AttesterRole {
         if self.below(2) == 0 {
@@ -356,12 +453,17 @@ impl Gen {
     /// attestations it skips.
     fn op(&mut self) -> KernelOp {
         match self.below(6) {
-            0 => KernelOp::Commit { commitment: self.commitment(false), buyer_sig: self.signature(), seller_sig: self.signature() },
+            0 => KernelOp::Commit {
+                commitment: self.commitment(false),
+                buyer_sig: self.signature(),
+                seller_sig: self.signature(),
+            },
             1 => {
                 let commitments = self.listed();
                 KernelOp::Resolve {
                     process_id: self.b256(),
-                    cumulative_value: resolved_cumulative_value(&commitments).expect("bounded payments sum"),
+                    cumulative_value: resolved_cumulative_value(&commitments)
+                        .expect("bounded payments sum"),
                     commitments,
                     buyer_sig: self.signature(),
                 }
@@ -371,7 +473,8 @@ impl Gen {
                 let len = [0, 1, 17, 65, 300][self.below(5) as usize];
                 KernelOp::ResolveByWalletCode {
                     process_id: self.b256(),
-                    cumulative_value: resolved_cumulative_value(&commitments).expect("bounded payments sum"),
+                    cumulative_value: resolved_cumulative_value(&commitments)
+                        .expect("bounded payments sum"),
                     commitments,
                     authorization: self.bytes(len).into(),
                 }
@@ -410,15 +513,24 @@ impl Gen {
     /// assembly claim's membership proof) of zero to four words.
     fn claim(&mut self) -> UsageClaim {
         let kind = match self.below(3) {
-            0 => UsageClaimKind::Clause { clause_data_hash: self.b256() },
+            0 => UsageClaimKind::Clause {
+                clause_data_hash: self.b256(),
+            },
             1 => UsageClaimKind::Assembly {
                 agreement_hash: self.b256(),
                 slot_content_hash: self.b256(),
                 membership_proof: self.words(4),
             },
-            _ => UsageClaimKind::Agreement { assembly_hash: self.b256() },
+            _ => UsageClaimKind::Agreement {
+                assembly_hash: self.b256(),
+            },
         };
-        UsageClaim { order: self.commitment(false), clause_or_assembly: self.b256(), kind, inclusion_proof: self.words(4) }
+        UsageClaim {
+            order: self.commitment(false),
+            clause_or_assembly: self.b256(),
+            kind,
+            inclusion_proof: self.words(4),
+        }
     }
 }
 
@@ -442,22 +554,51 @@ fn every_generated_stream_decodes_to_what_was_encoded() {
 
         let written: Vec<KernelOp> = ops
             .iter()
-            .filter(|op| matches!(op, KernelOp::Commit { .. } | KernelOp::Resolve { .. } | KernelOp::ResolveByWalletCode { .. }))
+            .filter(|op| {
+                matches!(
+                    op,
+                    KernelOp::Commit { .. }
+                        | KernelOp::Resolve { .. }
+                        | KernelOp::ResolveByWalletCode { .. }
+                )
+            })
             .cloned()
             .collect();
         let entries = wallet_code_attestations(&ops);
-        let (ops2, entries2, claims2) =
-            decode_operation_stream(&bytes).unwrap_or_else(|e| panic!("seed {seed}: the stream does not decode: {e}"));
-        assert_eq!(format!("{ops2:?}"), format!("{written:?}"), "seed {seed}: the commits and resolves");
-        assert_eq!(format!("{entries2:?}"), format!("{entries:?}"), "seed {seed}: the wallet-code attestations");
-        assert_eq!(format!("{claims2:?}"), format!("{claims:?}"), "seed {seed}: the usage claims");
-        assert_eq!(encode_stream_parts(&ops2, &entries2, &claims2), bytes, "seed {seed}: re-encoding is the identity");
+        let (ops2, entries2, claims2) = decode_operation_stream(&bytes)
+            .unwrap_or_else(|e| panic!("seed {seed}: the stream does not decode: {e}"));
+        assert_eq!(
+            format!("{ops2:?}"),
+            format!("{written:?}"),
+            "seed {seed}: the commits and resolves"
+        );
+        assert_eq!(
+            format!("{entries2:?}"),
+            format!("{entries:?}"),
+            "seed {seed}: the wallet-code attestations"
+        );
+        assert_eq!(
+            format!("{claims2:?}"),
+            format!("{claims:?}"),
+            "seed {seed}: the usage claims"
+        );
+        assert_eq!(
+            encode_stream_parts(&ops2, &entries2, &claims2),
+            bytes,
+            "seed {seed}: re-encoding is the identity"
+        );
         if !bytes.is_empty() {
-            assert!(decode_operation_stream(&bytes[..bytes.len() - 1]).is_err(), "seed {seed}: one byte short");
+            assert!(
+                decode_operation_stream(&bytes[..bytes.len() - 1]).is_err(),
+                "seed {seed}: one byte short"
+            );
         }
         let mut long = bytes.clone();
         long.push(g.u64() as u8);
-        assert!(decode_operation_stream(&long).is_err(), "seed {seed}: one byte long");
+        assert!(
+            decode_operation_stream(&long).is_err(),
+            "seed {seed}: one byte long"
+        );
 
         for op in &written {
             seen[match op {
@@ -478,7 +619,8 @@ fn every_generated_stream_decodes_to_what_was_encoded() {
             if !c.inclusion_proof.is_empty() {
                 seen[8] += 1;
             }
-            if matches!(&c.kind, UsageClaimKind::Assembly { membership_proof, .. } if !membership_proof.is_empty()) {
+            if matches!(&c.kind, UsageClaimKind::Assembly { membership_proof, .. } if !membership_proof.is_empty())
+            {
                 seen[9] += 1;
             }
         }
@@ -496,6 +638,9 @@ fn every_generated_stream_decodes_to_what_was_encoded() {
         "assembly claim with a membership proof",
     ];
     for (n, name) in seen.iter().zip(names) {
-        assert!(*n > 50, "the generated streams met too few of: {name} ({n})");
+        assert!(
+            *n > 50,
+            "the generated streams met too few of: {name} ({n})"
+        );
     }
 }

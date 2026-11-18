@@ -77,8 +77,8 @@
 use alloy_primitives::{keccak256, Address, Bytes, B256, U256};
 
 use crate::types::{
-    AttesterRole, Commitment, KernelOp, Signature, UsageClaim, UsageClaimKind, USAGE_KIND_AGREEMENT,
-    USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE,
+    AttesterRole, Commitment, KernelOp, Signature, UsageClaim, UsageClaimKind,
+    USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE,
 };
 
 const TAG_COMMIT: u8 = 0x01;
@@ -105,16 +105,22 @@ pub fn wallet_code_attestations(operations: &[KernelOp]) -> Vec<WalletCodeAttest
     operations
         .iter()
         .filter_map(|op| match op {
-            KernelOp::AttestByWalletCode { role, target, clause_id, stage, content_ref, authorization, .. } => {
-                Some(WalletCodeAttestation {
-                    role: *role,
-                    target: target.clone(),
-                    clause_id: *clause_id,
-                    stage: *stage,
-                    content_ref: *content_ref,
-                    authorization: authorization.clone(),
-                })
-            }
+            KernelOp::AttestByWalletCode {
+                role,
+                target,
+                clause_id,
+                stage,
+                content_ref,
+                authorization,
+                ..
+            } => Some(WalletCodeAttestation {
+                role: *role,
+                target: target.clone(),
+                clause_id: *clause_id,
+                stage: *stage,
+                content_ref: *content_ref,
+                authorization: authorization.clone(),
+            }),
             _ => None,
         })
         .collect()
@@ -182,7 +188,9 @@ pub fn encode_stream_parts(
                     put_commitment(&mut out, c);
                 }
             }
-            KernelOp::AttestAsSeller { .. } | KernelOp::AttestAsBuyer { .. } | KernelOp::AttestByWalletCode { .. } => {}
+            KernelOp::AttestAsSeller { .. }
+            | KernelOp::AttestAsBuyer { .. }
+            | KernelOp::AttestByWalletCode { .. } => {}
         }
     }
     for a in attestations {
@@ -236,7 +244,10 @@ pub type DecodedStream = (Vec<KernelOp>, Vec<WalletCodeAttestation>, Vec<UsageCl
 /// a trailing byte, or an entry out of its place (a commit or resolve after
 /// a `0x05` or a `0x03`, a `0x05` after a `0x03`) is an error.
 pub fn decode_operation_stream(stream: &[u8]) -> Result<DecodedStream, String> {
-    let mut r = Reader { data: stream, pos: 0 };
+    let mut r = Reader {
+        data: stream,
+        pos: 0,
+    };
     let mut operations = Vec::new();
     let mut attestations: Vec<WalletCodeAttestation> = Vec::new();
     let mut claims = Vec::new();
@@ -306,7 +317,14 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<DecodedStream, String> {
                 let content_ref = r.b256()?;
                 let len = r.count()?;
                 let authorization = Bytes::copy_from_slice(r.take(len)?);
-                attestations.push(WalletCodeAttestation { role, target, clause_id, stage, content_ref, authorization });
+                attestations.push(WalletCodeAttestation {
+                    role,
+                    target,
+                    clause_id,
+                    stage,
+                    content_ref,
+                    authorization,
+                });
             }
             TAG_USAGE_CLAIM => {
                 let order = r.commitment()?;
@@ -333,7 +351,12 @@ pub fn decode_operation_stream(stream: &[u8]) -> Result<DecodedStream, String> {
                     inclusion_proof,
                 });
             }
-            t => return Err(format!("unknown stream tag 0x{t:02x} at byte {}", r.pos - 1)),
+            t => {
+                return Err(format!(
+                    "unknown stream tag 0x{t:02x} at byte {}",
+                    r.pos - 1
+                ))
+            }
         }
     }
     Ok((operations, attestations, claims))
@@ -367,7 +390,8 @@ fn put_signature(out: &mut Vec<u8>, s: &Signature) {
 }
 
 fn put_count(out: &mut Vec<u8>, n: usize) {
-    let n = u16::try_from(n).expect("a stream count fits u16: a batch never carries 65,536 of one thing");
+    let n = u16::try_from(n)
+        .expect("a stream count fits u16: a batch never carries 65,536 of one thing");
     out.extend_from_slice(&n.to_be_bytes());
 }
 
