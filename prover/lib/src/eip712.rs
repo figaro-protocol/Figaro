@@ -132,10 +132,12 @@ pub fn attest_buyer_struct_hash(
     keccak256(&data)
 }
 
-// Registry mutations (RegisterClause / SetMechanismClause / RegisterSeller /
-// UpdateProfile) are once-per-clause-or-assembly ETH-staked intents that stay
-// on the direct path — the batch covers FigaroCore + attestation surface
-// only, so this module defines no EIP-712 types for them.
+// Registry mutations (ClauseRegistry.registerClause,
+// AgreementRegistry.registerAgreement, AssemblyRegistry.registerAssembly,
+// MembersRegistry.register / updateProfile) are payable, called by the
+// registering wallet itself, and stay on the direct path: the batch covers
+// FigaroCore + attestation surface only, so this module defines no EIP-712
+// types for them.
 
 // ── Typed data hash ───────────────────────────────────────────────
 
