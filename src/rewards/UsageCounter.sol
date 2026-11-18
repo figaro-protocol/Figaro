@@ -186,8 +186,6 @@ contract UsageCounter {
     ///         leaf key, so both are proved through this leaf; fixing the key as
     ///         a constant rather than taking it per call is what stops a caller
     ///         passing some clause whose committed bytes happen to name the two keys.
-    ///         A clause earns for its designer of record wherever a designer
-    ///         composed it, like any other clause.
     bytes32 public constant provenanceLeaf = keccak256("figaro-agreement-provenance");
 
     /// @notice The key of an assembly tree's TERMS leaf — the leaf whose

@@ -225,9 +225,11 @@ contract FigaroCoreInvariantTest is Test {
         targetSelector(FuzzSelector({addr: address(handler), selectors: actions}));
     }
 
-    /// The walk is not empty: over a run, the handler commits and resolves.
+    /// The walk is not empty: over a run, the handler committed at least once
+    /// and resolved at least once.
     function afterInvariant() public view {
         assertGt(handler.commits(), 0, "the run committed");
+        assertGt(handler.resolves(), 0, "the run resolved");
     }
 
     function invariant_noTokenIsCreatedOrLost() public view {
